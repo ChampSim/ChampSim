@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center"> ChampSim </h1>
-  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from [this CRC-2 trace link.](http://bit.ly/2t2nkUj "CRC-2 trace") <p>
+  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
 </p>
 
 # Clone ChampSim repository
@@ -80,7 +80,7 @@ a wide variety of program types and behaviors.
 The included Pin Tool champsim_tracer.cpp can be used to generate new traces.
 We used Pin 3.2 (pin-3.2-81205-gcc-linux), and it may require 
 installing libdwarf.so, libelf.so, or other libraries, if you do not already 
-have them. Please refer to [Pin documentation] (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/ "Pin manual")
+have them. Please refer to the Pin documentation (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/)
 for working with Pin 3.2.
 
 
