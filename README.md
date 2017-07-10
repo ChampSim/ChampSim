@@ -115,3 +115,5 @@ but they generally compress down to 2-10 bytes per instruction using gzip.
 
 ChampSim measures the IPC (Instruction Per Cycle) value as a performance metric. <br>
 There are some other useful metrics printed out at the end of simulation. <br>
+
+Good luck and be a champion! <br>
