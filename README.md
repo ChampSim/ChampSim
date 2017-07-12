@@ -108,8 +108,8 @@ skipping the first 100,000 instructions, with this command:
 ```
 pin -t obj/champsim_tracer.so -o traces/ls_trace.champsim -s 100000 -t 200000 -- ls
 ```
-Traces created with the champsim_tracer.so are 60 bytes per instruction,
-but they generally compress down to 2-10 bytes per instruction using gzip.
+Traces created with the champsim_tracer.so are approximately 64 bytes per instruction,
+but they generally compress down to less than a byte per instruction using xz compression.
 
 # Evaluate Simulation
 
