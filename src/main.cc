@@ -551,7 +551,18 @@ int main(int argc, char** argv)
             printf("CPU %d runs %s\n", count_traces, argv[i]);
 
             sprintf(ooo_cpu[count_traces].trace_string, "%s", argv[i]);
-            sprintf(ooo_cpu[count_traces].gunzip_command, "gunzip -c %s", argv[i]);
+
+            char *full_name = ooo_cpu[count_traces].trace_string,
+                 *last_dot = strrchr(ooo_cpu[count_traces].trace_string, '.');
+
+            if (full_name[last_dot - full_name + 1] == 'g') // gzip format
+                sprintf(ooo_cpu[count_traces].gunzip_command, "gunzip -c %s", argv[i]);
+            else if (full_name[last_dot - full_name + 1] == 'x') // xz
+                sprintf(ooo_cpu[count_traces].gunzip_command, "xz -dc %s", argv[i]);
+            else {
+                cout << "ChampSim does not support traces other than gz or xz compression!" << endl; 
+                assert(0);
+            }
 
             char *pch[100];
             int count_str = 0;
