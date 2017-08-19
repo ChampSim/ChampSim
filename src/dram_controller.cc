@@ -2,7 +2,7 @@
 
 // initialized in main.cc
 uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME,
-         tRP, tRCD, tCAS;
+         tRP_t, tRCD_t, tCAS;
 
 void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t channel)
 {
@@ -220,7 +220,7 @@ void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
         if (row_buffer_hit)  
             LATENCY = tCAS;
         else 
-            LATENCY = tRP + tRCD + tCAS;
+            LATENCY = tRP_t + tRCD_t + tCAS;
 
         uint64_t op_addr = queue->entry[oldest_index].address;
         uint32_t op_cpu = queue->entry[oldest_index].cpu,

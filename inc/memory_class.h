@@ -3,6 +3,7 @@
 
 #include "champsim.h"
 #include "block.h"
+#include "DRAMSim.h"
 
 // CACHE ACCESS TYPE
 #define LOAD      0
@@ -11,8 +12,8 @@
 #define WRITEBACK 3
 #define NUM_TYPES 4
 
-extern uint32_t tRP,  // Row Precharge (RP) latency
-                tRCD, // Row address to Column address (RCD) latency
+extern uint32_t tRP_t,  // Row Precharge (RP) latency
+                tRCD_t, // Row address to Column address (RCD) latency
                 tCAS; // Column Address Strobe (CAS) latency
 
 extern uint64_t l2pf_access;
@@ -21,6 +22,7 @@ class MEMORY {
   public:
     // memory interface
     MEMORY *upper_level_icache[NUM_CPUS], *upper_level_dcache[NUM_CPUS], *lower_level, *extra_interface;
+    DRAMSim::MultiChannelMemorySystem *lower_dram;
 
     // empty queues
     PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
