@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+
 // instruction format
 #define ROB_SIZE 256
 #define LQ_SIZE 72
@@ -8,6 +9,8 @@
 #define NUM_INSTR_DESTINATIONS_SPARC 4
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
+
+#include "set.h"
 
 class input_instr {
   public:
@@ -121,7 +124,9 @@ class ooo_model_instr {
     // these are instruction ids of other instructions in the window
     //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
     // these are indices of instructions in the window that depend on me
-    uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
+    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
+    myset
+	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
 
 
     // memory addresses that may cause dependencies between instructions
@@ -138,7 +143,8 @@ class ooo_model_instr {
     //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
 
     // these are indices of instructions in the ROB that depend on me
-    uint8_t memory_instrs_depend_on_me[ROB_SIZE];
+    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
+    myset memory_instrs_depend_on_me;
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
              sq_index[NUM_INSTR_DESTINATIONS_SPARC],
@@ -199,6 +205,7 @@ class ooo_model_instr {
             forwarding_index[i] = 0;
         }
 
+#if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
             registers_instrs_depend_on_me[i] = 0;
             memory_instrs_depend_on_me[i] = 0;
@@ -206,6 +213,7 @@ class ooo_model_instr {
             for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++)
                 registers_index_depend_on_me[i][j] = 0;
         }
+#endif
     };
 };
 

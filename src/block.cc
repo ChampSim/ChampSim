@@ -81,7 +81,7 @@ void PACKET_QUEUE::add_queue(PACKET *packet)
 #endif
 
     // add entry
-    memcpy(&entry[tail], packet, sizeof(PACKET));
+    entry[tail] = *packet;
 
     DP ( if (warmup_complete[packet->cpu]) {
     cout << "[" << NAME << "] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << packet->instr_id;
@@ -108,7 +108,7 @@ void PACKET_QUEUE::remove_queue(PACKET *packet)
 
     // reset entry
     PACKET empty_packet;
-    memcpy(packet, &empty_packet, sizeof(PACKET));
+    *packet = empty_packet;
 
     occupancy--;
     head++;

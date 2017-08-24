@@ -3,6 +3,7 @@
 
 #include "champsim.h"
 #include "instruction.h"
+#include "set.h"
 
 // CACHE BLOCK
 class BLOCK {
@@ -80,15 +81,20 @@ class PACKET {
         confidence;
 
     uint8_t  is_producer, 
-             rob_index_depend_on_me[ROB_SIZE], 
-             lq_index_depend_on_me[ROB_SIZE], 
-             sq_index_depend_on_me[ROB_SIZE], 
+             //rob_index_depend_on_me[ROB_SIZE], 
+             //lq_index_depend_on_me[ROB_SIZE], 
+             //sq_index_depend_on_me[ROB_SIZE], 
              instr_merged,
              load_merged, 
              store_merged,
              returned,
              asid[2],
              type;
+
+    myset
+             rob_index_depend_on_me, 
+             lq_index_depend_on_me, 
+             sq_index_depend_on_me;
 
     uint32_t cpu, data_index, lq_index, sq_index;
 
@@ -124,11 +130,13 @@ class PACKET {
         signature = 0;
         confidence = 0;
 
+#if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
             rob_index_depend_on_me[i] = 0;
             lq_index_depend_on_me[i] = 0;
             sq_index_depend_on_me[i] = 0;
         }
+#endif
         is_producer = 0;
         instr_merged = 0;
         load_merged = 0;
@@ -318,8 +326,10 @@ class LSQ_ENTRY {
 
     uint8_t translated,
             fetched,
-            asid[2],
-            forwarding_depend_on_me[ROB_SIZE];
+            asid[2];
+// forwarding_depend_on_me[ROB_SIZE];
+    myset
+		forwarding_depend_on_me;
 
     // constructor
     LSQ_ENTRY() {
@@ -339,8 +349,10 @@ class LSQ_ENTRY {
         asid[0] = UINT8_MAX;
         asid[1] = UINT8_MAX;
 
+#if 0
         for (uint32_t i=0; i<ROB_SIZE; i++)
             forwarding_depend_on_me[i] = 0;
+#endif
     };
 };
 

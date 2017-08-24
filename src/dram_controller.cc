@@ -462,7 +462,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     for (index=0; index<DRAM_RQ_SIZE; index++) {
         if (RQ[channel].entry[index].address == 0) {
             
-            memcpy(&RQ[channel].entry[index], packet, sizeof(PACKET));
+            RQ[channel].entry[index] = *packet;
             RQ[channel].occupancy++;
 
 #ifdef DEBUG_PRINT
@@ -504,7 +504,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     for (index=0; index<DRAM_WQ_SIZE; index++) {
         if (WQ[channel].entry[index].address == 0) {
             
-            memcpy(&WQ[channel].entry[index], packet, sizeof(PACKET));
+            WQ[channel].entry[index] = *packet;
             WQ[channel].occupancy++;
 
 #ifdef DEBUG_PRINT

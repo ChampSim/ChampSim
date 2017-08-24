@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "set.h"
 
 uint64_t l2pf_access = 0;
 
@@ -261,7 +262,7 @@ void CACHE::handle_writeback()
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
                             uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
                             uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                            memcpy(&MSHR.entry[mshr_index], &WQ.entry[index], sizeof(PACKET));
+			    MSHR.entry[mshr_index] = WQ.entry[index];
 
                             // in case request is already returned, we should keep event_cycle and retunred variables
                             MSHR.entry[mshr_index].returned = prior_returned;
@@ -528,72 +529,47 @@ void CACHE::handle_read()
                             if (RQ.entry[index].tlb_access) {
                                 uint32_t sq_index = RQ.entry[index].sq_index;
                                 MSHR.entry[mshr_index].store_merged = 1;
-                                MSHR.entry[mshr_index].sq_index_depend_on_me[sq_index] = 1;
-                                for (uint32_t i=0; i<SQ_SIZE; i++) {
-                                    if (RQ.entry[index].sq_index_depend_on_me[i])
-                                        MSHR.entry[mshr_index].sq_index_depend_on_me[i] = 1;
-                                    else
-                                        continue;
-                                }
+                                MSHR.entry[mshr_index].sq_index_depend_on_me.insert (sq_index);
+				MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                             }
 
                             if (RQ.entry[index].load_merged) {
                                 //uint32_t lq_index = RQ.entry[index].lq_index; 
                                 MSHR.entry[mshr_index].load_merged = 1;
                                 //MSHR.entry[mshr_index].lq_index_depend_on_me[lq_index] = 1;
-                                for (uint32_t i=0; i<LQ_SIZE; i++) {
-                                    if (RQ.entry[index].lq_index_depend_on_me[i])
-                                        MSHR.entry[mshr_index].lq_index_depend_on_me[i] = 1;
-                                }
+				MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
                             }
                         }
                         else {
                             if (RQ.entry[index].instruction) {
                                 uint32_t rob_index = RQ.entry[index].rob_index;
                                 MSHR.entry[mshr_index].instr_merged = 1;
-                                MSHR.entry[mshr_index].rob_index_depend_on_me[rob_index] = 1;
+                                MSHR.entry[mshr_index].rob_index_depend_on_me.insert (rob_index);
 
                                 DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
                                 cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
                                 cout << " merged rob_index: " << rob_index << " instr_id: " << RQ.entry[index].instr_id << endl; });
 
                                 if (RQ.entry[index].instr_merged) {
-                                    for (uint32_t i=0; i<ROB_SIZE; i++) {
-                                        if (RQ.entry[index].rob_index_depend_on_me[i]) {
-                                            MSHR.entry[mshr_index].rob_index_depend_on_me[i] = 1;
-
-                                            DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
-                                            cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
-                                            cout << " merged rob_index: " << i << " instr_id: N/A" << endl; });
-                                        }
-                                    }
+				    MSHR.entry[mshr_index].rob_index_depend_on_me.join (RQ.entry[index].rob_index_depend_on_me, ROB_SIZE);
+                                    DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
+                                    cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
+                                    cout << " merged rob_index: " << i << " instr_id: N/A" << endl; });
                                 }
                             }
                             else 
                             {
                                 uint32_t lq_index = RQ.entry[index].lq_index;
                                 MSHR.entry[mshr_index].load_merged = 1;
-                                MSHR.entry[mshr_index].lq_index_depend_on_me[lq_index] = 1;
+                                MSHR.entry[mshr_index].lq_index_depend_on_me.insert (lq_index);
 
                                 DP (if (warmup_complete[read_cpu]) {
                                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << read_cpu << " instr_id: " << RQ.entry[index].instr_id;
                                 cout << " merged rob_index: " << RQ.entry[index].rob_index << " instr_id: " << RQ.entry[index].instr_id << " lq_index: " << RQ.entry[index].lq_index << endl; });
-
-                                for (uint32_t i=0; i<LQ_SIZE; i++) {
-                                    if (RQ.entry[index].lq_index_depend_on_me[i]) 
-                                        MSHR.entry[mshr_index].lq_index_depend_on_me[i] = 1;
-                                }
-
+				MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
                                 if (RQ.entry[index].store_merged) {
-                                    //uint32_t sq_index = RQ.entry[index].sq_index;
                                     MSHR.entry[mshr_index].store_merged = 1;
-                                    //MSHR.entry[mshr_index].sq_index_depend_on_me[sq_index] = 1;
-                                    for (uint32_t i=0; i<SQ_SIZE; i++) {
-                                        if (RQ.entry[index].sq_index_depend_on_me[i])
-                                            MSHR.entry[mshr_index].sq_index_depend_on_me[i] = 1;
-                                        else
-                                            continue;
-                                    }
+				    MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                                 }
                             }
                         }
@@ -606,7 +582,7 @@ void CACHE::handle_read()
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
                             uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
                             uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                            memcpy(&MSHR.entry[mshr_index], &RQ.entry[index], sizeof(PACKET));
+                            MSHR.entry[mshr_index] = RQ.entry[index];
                             
                             // in case request is already returned, we should keep event_cycle and retunred variables
                             MSHR.entry[mshr_index].returned = prior_returned;
@@ -975,7 +951,7 @@ int CACHE::add_rq(PACKET *packet)
         
         if (packet->instruction) {
             uint32_t rob_index = packet->rob_index;
-            RQ.entry[index].rob_index_depend_on_me[rob_index] = 1;
+            RQ.entry[index].rob_index_depend_on_me.insert (rob_index);
             RQ.entry[index].instr_merged = 1;
 
             DP (if (warmup_complete[packet->cpu]) {
@@ -988,12 +964,12 @@ int CACHE::add_rq(PACKET *packet)
             if (packet->type == RFO) {
 
                 uint32_t sq_index = packet->sq_index;
-                RQ.entry[index].sq_index_depend_on_me[sq_index] = 1;
+                RQ.entry[index].sq_index_depend_on_me.insert (sq_index);
                 RQ.entry[index].store_merged = 1;
             }
             else {
                 uint32_t lq_index = packet->lq_index; 
-                RQ.entry[index].lq_index_depend_on_me[lq_index] = 1;
+                RQ.entry[index].lq_index_depend_on_me.insert (lq_index);
                 RQ.entry[index].load_merged = 1;
 
                 DP (if (warmup_complete[packet->cpu]) {
@@ -1027,7 +1003,7 @@ int CACHE::add_rq(PACKET *packet)
     }
 #endif
 
-    memcpy(&RQ.entry[index], packet, sizeof(PACKET));
+    RQ.entry[index] = *packet;
 
     // ADD LATENCY
     if (RQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
@@ -1080,7 +1056,7 @@ int CACHE::add_wq(PACKET *packet)
         assert(0);
     }
 
-    memcpy (&WQ.entry[index], packet, sizeof(PACKET));
+    WQ.entry[index] = *packet;
 
     // ADD LATENCY
     if (WQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
@@ -1230,7 +1206,7 @@ int CACHE::add_pq(PACKET *packet)
     }
 #endif
 
-    memcpy(&PQ.entry[index], packet, sizeof(PACKET));
+    PQ.entry[index] = *packet;
 
     // ADD LATENCY
     if (PQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
@@ -1362,7 +1338,7 @@ void CACHE::add_mshr(PACKET *packet)
     for (index=0; index<MSHR_SIZE; index++) {
         if (MSHR.entry[index].address == 0) {
             
-            memcpy(&MSHR.entry[index], packet, sizeof(PACKET));
+            MSHR.entry[index] = *packet;
             MSHR.entry[index].returned = INFLIGHT;
             MSHR.occupancy++;
 
