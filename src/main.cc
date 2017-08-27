@@ -18,6 +18,10 @@ uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
          champsim_seed;
 
+float master_clock,
+      next_cpu_event,
+      next_dram_event;
+
 time_t start_time;
 
 // PAGE TABLE
@@ -714,6 +718,11 @@ int main(int argc, char** argv)
     uncore.LLC.llc_initialize_replacement();
     uncore.LLC.llc_prefetcher_initialize();
 
+    float dram_latency = uncore.DRAM.get_latency();
+    float cpu_latency = 1000.0/CPU_FREQ;
+    next_cpu_event = cpu_latency;
+    next_dram_event = dram_latency;
+
     // simulation entry point
     start_time = time(NULL);
     uint8_t run_simulation = 1;
@@ -725,115 +734,121 @@ int main(int argc, char** argv)
         elapsed_minute -= elapsed_hour*60;
         elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
 
-        for (int i=0; i<NUM_CPUS; i++) {
-            // proceed one cycle
-            current_core_cycle[i]++;
+        master_clock = (next_cpu_event < next_dram_event) ? next_cpu_event : next_dram_event;
 
-            //cout << "Trying to process instr_id: " << ooo_cpu[i].instr_unique_id << " fetch_stall: " << +ooo_cpu[i].fetch_stall;
-            //cout << " stall_cycle: " << stall_cycle[i] << " current: " << current_core_cycle[i] << endl;
+        if (master_clock == next_cpu_event) {
+            next_cpu_event += cpu_latency;
+            for (int i=0; i<NUM_CPUS; i++) {
+                // proceed one cycle
+                current_core_cycle[i]++;
 
-            // core might be stalled due to page fault or branch misprediction
-            if (stall_cycle[i] <= current_core_cycle[i]) {
+                //cout << "Trying to process instr_id: " << ooo_cpu[i].instr_unique_id << " fetch_stall: " << +ooo_cpu[i].fetch_stall;
+                //cout << " stall_cycle: " << stall_cycle[i] << " current: " << current_core_cycle[i] << endl;
 
-                // fetch unit
-                if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
-                    // handle branch
-                    if (ooo_cpu[i].fetch_stall == 0) 
-                        ooo_cpu[i].handle_branch();
+                // core might be stalled due to page fault or branch misprediction
+                if (stall_cycle[i] <= current_core_cycle[i]) {
+
+                    // fetch unit
+                    if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
+                        // handle branch
+                        if (ooo_cpu[i].fetch_stall == 0) 
+                            ooo_cpu[i].handle_branch();
+                    }
+
+                    // fetch
+                    ooo_cpu[i].fetch_instruction();
+
+
+                    // schedule (including decode latency)
+                    uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
+                    if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
+                        ooo_cpu[i].schedule_instruction();
+
+                    // execute
+                    ooo_cpu[i].execute_instruction();
+
+                    // memory operation
+                    ooo_cpu[i].schedule_memory_instruction();
+                    ooo_cpu[i].execute_memory_instruction();
+
+                    // complete 
+                    ooo_cpu[i].update_rob();
+
+                    // retire
+                    if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
+                        ooo_cpu[i].retire_rob();
                 }
 
-                // fetch
-                ooo_cpu[i].fetch_instruction();
+                // heartbeat information
+                if (show_heartbeat && (ooo_cpu[i].num_retired >= ooo_cpu[i].next_print_instruction)) {
+                    float cumulative_ipc;
+                    if (warmup_complete[i])
+                        cumulative_ipc = (1.0*(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr)) / (current_core_cycle[i] - ooo_cpu[i].begin_sim_cycle);
+                    else
+                        cumulative_ipc = (1.0*ooo_cpu[i].num_retired) / current_core_cycle[i];
+                    float heartbeat_ipc = (1.0*ooo_cpu[i].num_retired - ooo_cpu[i].last_sim_instr) / (current_core_cycle[i] - ooo_cpu[i].last_sim_cycle);
 
+                    cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i].num_retired << " cycles: " << current_core_cycle[i];
+                    cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc; 
+                    cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+                    ooo_cpu[i].next_print_instruction += STAT_PRINTING_PERIOD;
 
-                // schedule (including decode latency)
-                uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
-                if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
-                    ooo_cpu[i].schedule_instruction();
+                    ooo_cpu[i].last_sim_instr = ooo_cpu[i].num_retired;
+                    ooo_cpu[i].last_sim_cycle = current_core_cycle[i];
+                }
 
-                // execute
-                ooo_cpu[i].execute_instruction();
+                // check for deadlock
+                if (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].ip && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
+                    print_deadlock(i);
 
-                // memory operation
-                ooo_cpu[i].schedule_memory_instruction();
-                ooo_cpu[i].execute_memory_instruction();
+                // check for warmup
+                // warmup complete
+                if ((warmup_complete[i] == 0) && (ooo_cpu[i].num_retired > warmup_instructions)) {
+                    warmup_complete[i] = 1;
+                    all_warmup_complete++;
+                }
+                if (all_warmup_complete == NUM_CPUS) { // this part is called only once when all cores are warmed up
+                    all_warmup_complete++;
+                    finish_warmup();
+                }
 
-                // complete 
-                ooo_cpu[i].update_rob();
+                /*
+                if (all_warmup_complete == 0) { 
+                    all_warmup_complete = 1;
+                    finish_warmup();
+                }
+                if (ooo_cpu[1].num_retired > 0)
+                    warmup_complete[1] = 1;
+                */
+                
+                // simulation complete
+                if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i].num_retired >= (ooo_cpu[i].begin_sim_instr + ooo_cpu[i].simulation_instructions))) {
+                    simulation_complete[i] = 1;
+                    ooo_cpu[i].finish_sim_instr = ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr;
+                    ooo_cpu[i].finish_sim_cycle = current_core_cycle[i] - ooo_cpu[i].begin_sim_cycle;
 
-                // retire
-                if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
-                    ooo_cpu[i].retire_rob();
+                    cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i].finish_sim_instr << " cycles: " << ooo_cpu[i].finish_sim_cycle;
+                    cout << " cumulative IPC: " << ((float) ooo_cpu[i].finish_sim_instr / ooo_cpu[i].finish_sim_cycle);
+                    cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+
+                    record_roi_stats(i, &ooo_cpu[i].L1D);
+                    record_roi_stats(i, &ooo_cpu[i].L1I);
+                    record_roi_stats(i, &ooo_cpu[i].L2C);
+                    record_roi_stats(i, &uncore.LLC);
+
+                    all_simulation_complete++;
+                }
+
+                if (all_simulation_complete == NUM_CPUS)
+                    run_simulation = 0;
             }
-
-            // heartbeat information
-            if (show_heartbeat && (ooo_cpu[i].num_retired >= ooo_cpu[i].next_print_instruction)) {
-                float cumulative_ipc;
-                if (warmup_complete[i])
-                    cumulative_ipc = (1.0*(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr)) / (current_core_cycle[i] - ooo_cpu[i].begin_sim_cycle);
-                else
-                    cumulative_ipc = (1.0*ooo_cpu[i].num_retired) / current_core_cycle[i];
-                float heartbeat_ipc = (1.0*ooo_cpu[i].num_retired - ooo_cpu[i].last_sim_instr) / (current_core_cycle[i] - ooo_cpu[i].last_sim_cycle);
-
-                cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i].num_retired << " cycles: " << current_core_cycle[i];
-                cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc; 
-                cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-                ooo_cpu[i].next_print_instruction += STAT_PRINTING_PERIOD;
-
-                ooo_cpu[i].last_sim_instr = ooo_cpu[i].num_retired;
-                ooo_cpu[i].last_sim_cycle = current_core_cycle[i];
-            }
-
-            // check for deadlock
-            if (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].ip && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
-                print_deadlock(i);
-
-            // check for warmup
-            // warmup complete
-            if ((warmup_complete[i] == 0) && (ooo_cpu[i].num_retired > warmup_instructions)) {
-                warmup_complete[i] = 1;
-                all_warmup_complete++;
-            }
-            if (all_warmup_complete == NUM_CPUS) { // this part is called only once when all cores are warmed up
-                all_warmup_complete++;
-                finish_warmup();
-            }
-
-            /*
-            if (all_warmup_complete == 0) { 
-                all_warmup_complete = 1;
-                finish_warmup();
-            }
-            if (ooo_cpu[1].num_retired > 0)
-                warmup_complete[1] = 1;
-            */
-            
-            // simulation complete
-            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i].num_retired >= (ooo_cpu[i].begin_sim_instr + ooo_cpu[i].simulation_instructions))) {
-                simulation_complete[i] = 1;
-                ooo_cpu[i].finish_sim_instr = ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr;
-                ooo_cpu[i].finish_sim_cycle = current_core_cycle[i] - ooo_cpu[i].begin_sim_cycle;
-
-                cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i].finish_sim_instr << " cycles: " << ooo_cpu[i].finish_sim_cycle;
-                cout << " cumulative IPC: " << ((float) ooo_cpu[i].finish_sim_instr / ooo_cpu[i].finish_sim_cycle);
-                cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-
-                record_roi_stats(i, &ooo_cpu[i].L1D);
-                record_roi_stats(i, &ooo_cpu[i].L1I);
-                record_roi_stats(i, &ooo_cpu[i].L2C);
-                record_roi_stats(i, &uncore.LLC);
-
-                all_simulation_complete++;
-            }
-
-            if (all_simulation_complete == NUM_CPUS)
-                run_simulation = 0;
         }
-
         // TODO: should it be backward?
         uncore.LLC.operate();
-        if (current_core_cycle[0] % 5 == 0)
-        uncore.DRAM.operate();
+        if (master_clock == next_dram_event) {
+            next_dram_event += dram_latency;
+            uncore.DRAM.operate();
+        }
     }
 
 #ifndef CRC2_COMPILE

@@ -123,3 +123,10 @@ void DRAM_CONTROLLER::increment_WQ_FULL(uint64_t address)
 {
 
 }
+
+float DRAM_CONTROLLER::get_latency()
+{
+    float latency;
+    mem->getIniFloat("tCK", &latency);
+    return latency;
+}

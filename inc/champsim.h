@@ -87,6 +87,10 @@ extern uint64_t current_core_cycle[NUM_CPUS],
                 last_drc_write_mode,
                 drc_blocks;
 
+extern float master_clock,
+             next_cpu_event,
+             next_dram_event;
+
 extern queue <uint64_t> page_queue;
 extern map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
 extern uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];

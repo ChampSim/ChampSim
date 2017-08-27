@@ -61,6 +61,7 @@ class DRAM_CONTROLLER : public MEMORY {
              drc_check_hit (uint64_t address, uint32_t cpu, uint32_t channel, uint32_t rank, uint32_t bank, uint32_t row);
 
     uint64_t get_bank_earliest_cycle();
+    float get_latency();
 
     int check_dram_queue(PACKET_QUEUE *queue, PACKET *packet);
 
