@@ -106,7 +106,12 @@ void DRAM_CONTROLLER::return_data(PACKET *packet)
 
 uint32_t DRAM_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
 {
-    return -1;
+    if (queue_type == 1)
+        return RQ.occupancy;
+    else if (queue_type == 2)
+        return WQ.occupancy;
+
+    return 0;
 }
 
 uint32_t DRAM_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)

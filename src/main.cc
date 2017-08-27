@@ -106,28 +106,6 @@ void print_branch_stats()
 
 void print_dram_stats()
 {
-    /*
-    cout << endl;
-    cout << "DRAM Statistics" << endl;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        cout << " CHANNEL " << i << endl;
-        cout << " RQ ROW_BUFFER_HIT: " << setw(10) << uncore.DRAM.RQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << uncore.DRAM.RQ[i].ROW_BUFFER_MISS << endl;
-        cout << " DBUS_CONGESTED: " << setw(10) << uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES] << endl; 
-        cout << " WQ ROW_BUFFER_HIT: " << setw(10) << uncore.DRAM.WQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << uncore.DRAM.WQ[i].ROW_BUFFER_MISS;
-        cout << "  FULL: " << setw(10) << uncore.DRAM.WQ[i].FULL << endl; 
-        cout << endl;
-    }
-
-    uint64_t total_congested_cycle = 0;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-        total_congested_cycle += uncore.DRAM.dbus_cycle_congested[i];
-    if (uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
-        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
-    else
-        cout << " AVG_CONGESTED_CYCLE: -" << endl;
-
-    cout << "DRAMSim2 Statistics" << endl;
-    */
 }
 
 void reset_cache_stats(uint32_t cpu, CACHE *cache)
@@ -187,14 +165,6 @@ void finish_warmup()
         reset_cache_stats(i, &uncore.LLC);
     }
     cout << endl;
-
-    // reset DRAM stats
-    /*for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        uncore.DRAM.RQ[i].ROW_BUFFER_HIT = 0;
-        uncore.DRAM.RQ[i].ROW_BUFFER_MISS = 0;
-        uncore.DRAM.WQ[i].ROW_BUFFER_HIT = 0;
-        uncore.DRAM.WQ[i].ROW_BUFFER_MISS = 0;
-    }*/
 
     // set actual cache latency
     for (uint32_t i=0; i<NUM_CPUS; i++) {
@@ -534,26 +504,6 @@ int main(int argc, char** argv)
     cout << "Number of CPUs: " << NUM_CPUS << endl;
     cout << "LLC sets: " << LLC_SET << endl;
     cout << "LLC ways: " << LLC_WAY << endl;
-
-    /*
-    if (knob_low_bandwidth)
-        DRAM_MTPS = DRAM_IO_FREQ/4;
-    else
-        DRAM_MTPS = DRAM_IO_FREQ;
-
-    // DRAM access latency
-    tRP_t  = tRP_DRAM_CYCLE  * (CPU_FREQ / DRAM_IO_FREQ);
-    tRCD_t = tRCD_DRAM_CYCLE * (CPU_FREQ / DRAM_IO_FREQ);
-    tCAS = tCAS_DRAM_CYCLE * (CPU_FREQ / DRAM_IO_FREQ);
-
-    // default: 16 = (64 / 8) * (3200 / 1600)
-    // it takes 16 CPU cycles to tranfser 64B cache block on a 8B (64-bit) bus 
-    // note that dram burst length = BLOCK_SIZE/DRAM_CHANNEL_WIDTH
-    DRAM_DBUS_RETURN_TIME = (BLOCK_SIZE / DRAM_CHANNEL_WIDTH) * (CPU_FREQ / DRAM_MTPS);
-
-    printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
-            DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
-    */
 
     // end consequence of knobs
 
