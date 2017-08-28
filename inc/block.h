@@ -91,7 +91,7 @@ class PACKET {
              asid[2],
              type;
 
-    myset
+    fastset
              rob_index_depend_on_me, 
              lq_index_depend_on_me, 
              sq_index_depend_on_me;
@@ -328,7 +328,7 @@ class LSQ_ENTRY {
             fetched,
             asid[2];
 // forwarding_depend_on_me[ROB_SIZE];
-    myset
+    fastset
 		forwarding_depend_on_me;
 
     // constructor

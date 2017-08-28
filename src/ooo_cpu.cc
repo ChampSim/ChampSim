@@ -600,35 +600,25 @@ void O3_CPU::reg_dependency(uint32_t rob_index)
 
     if (rob_index != ROB.head) {
         if ((int)ROB.head <= prior) {
-            for (int i=prior; i>=(int)ROB.head; i--) {
-                //if (ROB.entry[i].destination_registers[0] && (ROB.entry[i].executed != COMPLETED)) {
-                if (ROB.entry[i].executed != COMPLETED) {
-                    for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-                        if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-                            reg_RAW_dependency(i, rob_index, j);
-                    }
-                }
-            }
-        }
-        else {
-            for (int i=prior; i>=0; i--) {
-                //if (ROB.entry[i].destination_registers[0] && (ROB.entry[i].executed != COMPLETED)) {
-                if (ROB.entry[i].executed != COMPLETED) {
-                    for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-                        if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-                            reg_RAW_dependency(i, rob_index, j);
-                    }
-                }
-            }
-            for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) {
-                //if (ROB.entry[i].destination_registers[0] && (ROB.entry[i].executed != COMPLETED)) {
-                if (ROB.entry[i].executed != COMPLETED) {
-                    for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-                        if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-                            reg_RAW_dependency(i, rob_index, j);
-                    }
-                }
-            }
+            for (int i=prior; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
+		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
+			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
+				reg_RAW_dependency(i, rob_index, j);
+		}
+	    }
+        } else {
+            for (int i=prior; i>=0; i--) if (ROB.entry[i].executed != COMPLETED) {
+		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
+			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
+				reg_RAW_dependency(i, rob_index, j);
+		}
+	    }
+            for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
+		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
+			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
+				reg_RAW_dependency(i, rob_index, j);
+		}
+	    }
         }
     }
 }

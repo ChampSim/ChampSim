@@ -1,7 +1,7 @@
 /*
  * This file defines a specalized bitset data structure that uses 64 bit
- * words to store bits in a set, but does something special for empty and
- * singleton sets to make it faster.
+ * words to store bits in a set, but does something special for small
+ * sets to make it faster.
  */
 
 #ifndef __SET_H
@@ -14,50 +14,125 @@
 #define TYPE	unsigned short int
 #define MAX_SIZE	ROB_SIZE
 
-class danbitset {
-	bool
-		_empty, 	// this set is empty
-		_single;	// this set is a singleton
-	TYPE 
-		_singlevalue;	// the singleton value, if any
+// tuned empirically
 
+#define SMALL_SIZE	13
+#define SMALLER_SIZE	6
 
-	// the bits representing the set
+class fastset {
+	union {
+		// values for a small set
+		TYPE 
+			values[SMALL_SIZE];
 
-	unsigned long long int 
-		bits[MAX_SIZE/64];
+		// the bits representing the set
+		unsigned long long int 
+			bits[MAX_SIZE/64];
+	} data;
+
+	int
+		card;		// cardinality of small set
 
 	// set a bit in the bits
 
 	void setbit (TYPE x) {
 		int word = x >> 6;
 		int bit = x & 63;
-		bits[word] |= 1ull << bit;
+		data.bits[word] |= 1ull << bit;
+	}
+
+	// get one of the bits
+
+	bool getbit (TYPE x) {
+		int word = x >> 6;
+		int bit = x & 63;
+		return (data.bits[word] >> bit) & 1;
+	}
+
+	// insert an item into a small set
+
+	void insert_small (TYPE x) {
+		int i;
+		for (i=0; i<card; i++) {
+			TYPE y = data.values[i];
+			if (y == x) return;
+			if (y > x) break;
+		}
+		// x belongs in i; move everything from v[i] through v[n-1]
+		// to v[i+1] through v[n]
+		for (int j=card-1; j>=i; j--) data.values[j+1] = data.values[j];
+		// the loop seems a little faster than memmove
+		//memmove (&data.values[i+1], &data.values[i], (sizeof (TYPE) * (card-i)));
+		data.values[i] = x;
+		card++;
+	}
+
+
+	// do a linear search in a small set
+
+	bool search_small_linear (TYPE x) {
+		for (int i=0; i<card; i++) {
+			TYPE y = data.values[i];
+			if (y > x) return false;
+			if (y == x) return true;
+		}
+		return false;
+	}
+
+
+	// search a small set, specializing for the set size
+
+	bool search_small (TYPE x) {
+
+		// no elements? we're done.
+
+		if (!card) return false;
+
+		// below a certain size linear search is faster
+
+		if (card < SMALLER_SIZE) return search_small_linear (x);
+
+		// do a binary search for the item
+
+		int begin = 0;
+		int end = card-1;
+		int middle = end/2;
+		for (;;) {
+			TYPE y = data.values[middle];
+			if (x < y) {
+				end = middle-1;
+			} else if (x > y) {
+				begin = middle+1;
+			} else return true;
+			if (end < begin) break;
+			middle = (begin + end) / 2;
+			// assert (middle < card && middle >= 0);
+		}
+		return false;
+	}
+
+	// convert a small set into a bitset
+
+	void smalltobit (void) {
+
+		// we have to use a temporary array to hold the small set contents
+		// because the small set and bitset occupy the same memory 
+	
+		TYPE tmp[SMALL_SIZE];
+		memcpy (tmp, data.values, sizeof (TYPE) * card);
+		memset (data.bits, 0, sizeof (data.bits));
+		for (int i=0; i<card; i++) setbit (tmp[i]);
 	}
 
 public:
 
 	// constructor
 
-	danbitset (void) {
-		_empty = true;
-		_single = false;
-		_singlevalue = 0;
-	}
+	fastset (void) { card = 0; }
 
 	// destructor
 
-	~danbitset (void) {
-	}
-
-	// read _single
-	bool single (void) { return _single; }
-
-	// read _singevalue
-	TYPE singlevalue (void) { return _singlevalue; }
-
-	// read _empty
-	bool empty (void) { return _empty; }
+	~fastset (void) { }
 
 	// insert a value into the set
 
@@ -65,43 +140,22 @@ public:
 		//assert (x < MAX_SIZE);
 
 		// if the set is empty...
-		if (_empty) {
-			// now it's not empty
+		if (!card) {
+			// now it has a single value
 
-			_empty = false;
-
-			// it has a single value
-
-			_singlevalue = x;
-			_single = true;
+			data.values[card++] = x;
 
 			// and we're done
 
 			return;
 		} 
 
-		// if the set is a singleton...
+		// if the set is small
 
-		if (_single) {
-
-			// if we're not inserting the same value...
-
-			if (x != _singlevalue) {
- 				// then it's no longer a singleton
-				_single = false;
-
-				// clear out the bits (we don't do this
-				// in the constructor to save time)
-
-				memset (bits, 0, sizeof (bits));
-
-				// set the value that we know
-
-				setbit (_singlevalue);
-			} 
-				// if it was the same value, we're done
-				else return;
-		}
+		if (card < SMALL_SIZE) {
+			insert_small (x);
+			if (card == SMALL_SIZE) smalltobit ();
+		} else
 
 		// set the value
 		setbit (x);
@@ -113,74 +167,89 @@ public:
 		//assert (x < MAX_SIZE);
 
 		// empty?
-		if (_empty)
-			return false;
+		if (!card) return false;
 
 		// singleton?
-		else if (_single) 
-			return x == _singlevalue;
+		if (card == 1) return data.values[0] == x;
+
+		// small?
+		if (card < SMALL_SIZE) return search_small (x);
 
 		// none of those; extract the bit
 
-		int word = x >> 6;
-		int bit = x & 63;
-		return (bits[word] >> bit) & 1;
+		return getbit (x);
 	}
 
 	// this set becomes the union of itself and the other set
+	// (call it "join" because "union" is a C++ keyword)
 
-	void join (danbitset & other, int n) {
+	void join (fastset & other, int n) {
 
 		// special rules for special sets
 
-		if (other._empty) return;
-		if (other._single) {
-			insert (other._singlevalue);
+		if (!other.card) return;
+
+		if (other.card < SMALL_SIZE) {
+			// not too many values in other; just insert them one by one
+
+			for (int i=0; i<other.card; i++) insert (other.data.values[i]);
 			return;
-		}
-		if (_single) {
-			if (other._singlevalue != _singlevalue)
-				insert (other._singlevalue);
-			else
-				return;
+		} else if (card < SMALL_SIZE) {
+			// here, we know that other is not small, so we
+			// know we're going to end up with this as a bit
+			// set, so just make it a bit set now and fall 
+			// through to the bitwise ANDing
+			smalltobit ();
+			card = SMALL_SIZE; // fake
+			assert (other.card >= SMALL_SIZE);
 		}
 
 		// lim is the next multiple of 64
 
 		int lim = ((n | 63) + 1) / 64;
 
-		for (int i=0; i<lim; i++) {
-			// bitwise OR the other bits into this set
-
-			bits[i] |= other.bits[i];
-
-			// if our bits aren't false, then this set isn't empty
-
-			_empty &= !bits[i];
-		}
+		// bitwise OR the other bits into this set
+		for (int i=0; i<lim; i++) data.bits[i] |= other.data.bits[i];
 	}
 
+	// expand the entire set into the array v, returning the cardinality
+
+	int expand (TYPE v[], int n) {
+		if (!card) return 0;
+
+		// a small set can just be copied
+
+		if (card < SMALL_SIZE) {
+			for (int i=0; i<card; i++) v[i] = data.values[i];
+			return card;
+		}
+
+		// go through the bit array looking for elements
+
+		int k = 0;
+		TYPE i;
+		for (i=0; i<n; i+=64) {
+
+			// if this 64 bit subset is not empty, copy it into v
+
+			if (data.bits[i/64]) {
+				for (TYPE j=0; j<64; j++) {
+					TYPE l = i + j;
+					if (l < n) {
+						if (getbit (l)) v[k++] = l;
+					} else break;
+				}
+			}
+		}
+		return k;
+	}
 };
 
-typedef danbitset myset;
-
 // this little macro iterates over either the whole set or just the single member
-// it's not specialized for the empty set because this seems to not happen often
-// enough in ChampSim
 
 #define ITERATE_SET(i,a,n) \
-	TYPE lo, hi; \
-	if ((a).single()) { \
-		lo = (a).singlevalue(); \
-		hi = lo+1; \
-		if (lo >= n) { \
-			lo = 0; \
-			hi = 0; \
-		} \
-	} else { \
-		lo = 0; \
-		hi = (n); \
-	} \
-	for (TYPE (i)=lo; i<hi; i++) if ((a).search(i))
+	TYPE expand_##i[n+1]; \
+	int card_##i = (a).expand (expand_##i, n); \
+	for (int count_##i=0, i=expand_##i[0]; count_##i<card_##i; i=expand_##i[++count_##i])
 
 #endif

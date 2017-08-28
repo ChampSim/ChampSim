@@ -125,7 +125,7 @@ class ooo_model_instr {
     //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
     // these are indices of instructions in the window that depend on me
     //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
-    myset
+    fastset
 	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
 
 
@@ -144,7 +144,7 @@ class ooo_model_instr {
 
     // these are indices of instructions in the ROB that depend on me
     //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
-    myset memory_instrs_depend_on_me;
+    fastset memory_instrs_depend_on_me;
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
              sq_index[NUM_INSTR_DESTINATIONS_SPARC],
