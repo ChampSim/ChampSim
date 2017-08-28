@@ -1,3 +1,4 @@
+#!/bin/sh
 # ChampSim configuration
 BRANCH=$1           # branch/*.bpred
 L1D_PREFETCHER=$2   # prefetcher/*.l1d_pref
