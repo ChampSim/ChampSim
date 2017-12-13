@@ -78,6 +78,14 @@ else
 fi
 echo
 
+# Setup the DRAMSim2
+if [ ! -d "DRAMSim2/.git" ]
+then
+    git submodule update --init
+    cp DRAMSim2/system.ini.example DRAMSim2/system.ini
+fi
+make -C DRAMSim2/ libdramsim.so
+
 # Change prefetchers and replacement policy
 cp branch/${BRANCH}.bpred branch/branch_predictor.cc
 cp prefetcher/${L1D_PREFETCHER}.l1d_pref prefetcher/l1d_prefetcher.cc
