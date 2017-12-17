@@ -24,7 +24,7 @@ void DRAM_CONTROLLER::write_complete(unsigned id, uint64_t address, uint64_t clo
     if (index == -1)
         abort();
 
-    WQ.remove_queue(&RQ.entry[index]);
+    WQ.remove_queue(&WQ.entry[index]);
 
 }
 
