@@ -75,7 +75,7 @@ extern uint64_t current_core_cycle[NUM_CPUS],
                 last_drc_write_mode,
                 drc_blocks;
 
-extern float master_clock,
+extern long double master_clock,
              next_cpu_event,
              next_dram_event;
 

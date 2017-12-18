@@ -18,7 +18,7 @@ uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
          champsim_seed;
 
-float master_clock,
+long double master_clock,
       next_cpu_event,
       next_dram_event;
 
