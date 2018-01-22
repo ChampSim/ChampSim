@@ -3,7 +3,7 @@
 
 // SPP functional knobs
 #define LOOKAHEAD_ON
-//#define FILTER_ON
+#define FILTER_ON
 //#define GHR_ON
 #define SPP_SANITY_CHECK
 
@@ -17,7 +17,6 @@
 // Signature table parameters
 #define ST_SET 1
 #define ST_WAY 256
-#define ST_PRIME 1
 #define ST_TAG_BIT 16
 #define ST_TAG_MASK ((1 << ST_TAG_BIT) - 1)
 #define SIG_SHIFT 3
@@ -28,7 +27,6 @@
 // Pattern table parameters
 #define PT_SET 512
 #define PT_WAY 4
-#define PT_PRIME 509
 #define C_SIG_BIT 4
 #define C_DELTA_BIT 4
 #define C_SIG_MAX ((1 << C_SIG_BIT) - 1)
