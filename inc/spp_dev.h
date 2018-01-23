@@ -4,7 +4,7 @@
 // SPP functional knobs
 #define LOOKAHEAD_ON
 #define FILTER_ON
-//#define GHR_ON
+#define GHR_ON
 #define SPP_SANITY_CHECK
 
 //#define SPP_DEBUG_PRINT
@@ -22,7 +22,7 @@
 #define SIG_SHIFT 3
 #define SIG_BIT 12
 #define SIG_MASK ((1 << SIG_BIT) - 1)
-#define DELTA_BIT 7
+#define SIG_DELTA_BIT 7
 
 // Pattern table parameters
 #define PT_SET 512
@@ -41,8 +41,9 @@
 #define PF_THRESHOLD 25
 
 // Global register parameters
-#define GHR_COUNTER_BIT 10
-#define GHR_COUNTER_MAX ((1 << GHR_COUNTER_BIT) - 1) 
+#define GLOBAL_COUNTER_BIT 10
+#define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1) 
+#define MAX_GHR_ENTRY 8
 
 enum FILTER_REQUEST {SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT}; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
@@ -56,7 +57,7 @@ class SIGNATURE_TABLE {
              lru[ST_SET][ST_WAY];
 
     SIGNATURE_TABLE() {
-        cout << endl << "Initialize SIGNATURE TABLE" << endl;
+        cout << "Initialize SIGNATURE TABLE" << endl;
         cout << "ST_SET: " << ST_SET << endl;
         cout << "ST_WAY: " << ST_WAY << endl;
         cout << "ST_TAG_BIT: " << ST_TAG_BIT << endl;
@@ -72,7 +73,7 @@ class SIGNATURE_TABLE {
             }
     };
 
-    void read_and_update_sig(uint64_t page, uint32_t offset, uint32_t &last_sig, uint32_t &curr_sig, int32_t &delta);
+    void read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t &last_sig, uint32_t &curr_sig, int32_t &delta);
 };
 
 class PATTERN_TABLE {
@@ -85,7 +86,7 @@ class PATTERN_TABLE {
         cout << endl << "Initialize PATTERN TABLE" << endl;
         cout << "PT_SET: " << PT_SET << endl;
         cout << "PT_WAY: " << PT_WAY << endl;
-        cout << "DELTA_BIT: " << DELTA_BIT << endl;
+        cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << endl;
         cout << "C_SIG_BIT: " << C_SIG_BIT << endl;
         cout << "C_DELTA_BIT: " << C_DELTA_BIT << endl;
 
@@ -125,15 +126,34 @@ class PREFETCH_FILTER {
 
 class GLOBAL_REGISTER {
   public:
+    // Global counters to calculate global prefetching accuracy
     uint64_t pf_useful,
              pf_issued,
-             global_conf;
+             global_accuracy; // Alpha value in Section III. Equation 3
+
+    // Global History Register (GHR) entries
+    uint8_t  valid[MAX_GHR_ENTRY];
+    uint32_t sig[MAX_GHR_ENTRY],
+             confidence[MAX_GHR_ENTRY],
+             offset[MAX_GHR_ENTRY];
+    int      delta[MAX_GHR_ENTRY];
 
     GLOBAL_REGISTER() {
         pf_useful = 0;
         pf_issued = 0;
-        global_conf = 0;
+        global_accuracy = 0;
+
+        for (uint32_t i = 0; i < MAX_GHR_ENTRY; i++) {
+            valid[i] = 0;
+            sig[i] = 0;
+            confidence[i] = 0;
+            offset[i] = 0;
+            delta[i] = 0;
+        }
     }
+
+    void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
+    uint32_t check_entry(uint32_t page_offset);
 };
 
 #endif
