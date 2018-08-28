@@ -3,7 +3,7 @@
 
 
 // instruction format
-#define ROB_SIZE 256
+#define ROB_SIZE 224
 #define LQ_SIZE 72
 #define SQ_SIZE 56
 #define NUM_INSTR_DESTINATIONS_SPARC 4
