@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include "ooo_cpu.h"
 #include "uncore.h"
+#include <fstream>
 
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
@@ -554,6 +555,12 @@ int main(int argc, char** argv)
 
             char *full_name = ooo_cpu[count_traces].trace_string,
                  *last_dot = strrchr(ooo_cpu[count_traces].trace_string, '.');
+
+			ifstream test_file(full_name);
+			if(!test_file.good()){
+				printf("TRACE FILE DOES NOT EXIST\n");
+			}
+				
 
             if (full_name[last_dot - full_name + 1] == 'g') // gzip format
                 sprintf(ooo_cpu[count_traces].gunzip_command, "gunzip -c %s", argv[i]);
