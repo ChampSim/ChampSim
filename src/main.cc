@@ -559,6 +559,7 @@ int main(int argc, char** argv)
 			ifstream test_file(full_name);
 			if(!test_file.good()){
 				printf("TRACE FILE DOES NOT EXIST\n");
+				assert(false);
 			}
 				
 
