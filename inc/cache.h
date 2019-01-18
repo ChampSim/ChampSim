@@ -195,15 +195,19 @@ class CACHE : public MEMORY {
          //prefetcher_initialize(),
          l1d_prefetcher_initialize(),
          l2c_prefetcher_initialize(),
+         llc_prefetcher_initialize(),
          prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
+         llc_prefetcher_operate(uint32_t cpu, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
          l1d_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
          l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
+         llc_prefetcher_cache_fill(uint32_t cpu, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
          //prefetcher_final_stats(),
          l1d_prefetcher_final_stats(),
-         l2c_prefetcher_final_stats();
+         l2c_prefetcher_final_stats(),
+         llc_prefetcher_final_stats();
 
     uint32_t get_set(uint64_t address),
              get_way(uint64_t address, uint32_t set),

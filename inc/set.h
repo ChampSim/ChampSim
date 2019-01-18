@@ -12,7 +12,10 @@
 #include <string.h>
 
 #define TYPE	unsigned short int
-#define MAX_SIZE	ROB_SIZE
+//#define MAX_SIZE	ROB_SIZE
+// sethpugsley - changed this from ROB_SIZE to allow for non-power-of-2 ROB sizes, like real CPUs have
+// but MAX_SIZE here still requires a power-of-2 number
+#define MAX_SIZE	256
 
 // tuned empirically
 

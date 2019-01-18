@@ -1,4 +1,5 @@
-TRACE_DIR=/your/trace/directory/
+#TRACE_DIR=/home/shpugsle/champsim_github/ChampSim/sample_traces
+TRACE_DIR=/nfs/mal/static/traces/ChampSim
 binary=${1}
 n_warm=${2}
 n_sim=${3}

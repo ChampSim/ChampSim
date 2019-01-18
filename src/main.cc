@@ -705,6 +705,7 @@ int main(int argc, char** argv)
     }
 
     uncore.LLC.llc_initialize_replacement();
+    uncore.LLC.llc_prefetcher_initialize();
 
     // simulation entry point
     start_time = time(NULL);
@@ -851,6 +852,7 @@ int main(int argc, char** argv)
 #endif
             print_sim_stats(i, &uncore.LLC);
         }
+        uncore.LLC.llc_prefetcher_final_stats();
     }
 
     cout << endl << "Region of Interest Statistics" << endl;
@@ -870,6 +872,8 @@ int main(int argc, char** argv)
         ooo_cpu[i].L1D.l1d_prefetcher_final_stats();
         ooo_cpu[i].L2C.l2c_prefetcher_final_stats();
     }
+
+    uncore.LLC.llc_prefetcher_final_stats();
 
 #ifndef CRC2_COMPILE
     uncore.LLC.llc_replacement_final_stats();
