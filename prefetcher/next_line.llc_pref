@@ -1,0 +1,22 @@
+#include "cache.h"
+
+void CACHE::llc_prefetcher_initialize() 
+{
+    cout << "LLC Next Line Prefetcher" << endl;
+}
+
+void CACHE::llc_prefetcher_operate(uint32_t cpu, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type)
+{
+  uint64_t pf_addr = ((addr>>LOG2_BLOCK_SIZE)+1) << LOG2_BLOCK_SIZE;
+  prefetch_line(ip, addr, pf_addr, FILL_LLC);
+}
+
+void CACHE::llc_prefetcher_cache_fill(uint32_t cpu, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr)
+{
+
+}
+
+void CACHE::llc_prefetcher_final_stats()
+{
+  cout << "LLC Next Line Prefetcher Final Stats: none" << endl;
+}
