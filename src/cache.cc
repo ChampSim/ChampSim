@@ -110,11 +110,12 @@ void CACHE::handle_fill()
                 l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
             if  (cache_type == IS_L2C)
                 l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
-
+            if (cache_type == IS_LLC)
+                llc_prefetcher_cache_fill(fill_cpu, MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
+              
             // update replacement policy
             if (cache_type == IS_LLC) {
                 llc_update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
-
             }
             else
                 update_replacement_state(fill_cpu, set, way, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].ip, block[set][way].full_addr, MSHR.entry[mshr_index].type, 0);
@@ -360,11 +361,12 @@ void CACHE::handle_writeback()
                         l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
                     else if (cache_type == IS_L2C)
                         l2c_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
+                    if (cache_type == IS_LLC)
+                        llc_prefetcher_cache_fill(writeback_cpu, WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
 
                     // update replacement policy
                     if (cache_type == IS_LLC) {
                         llc_update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
-
                     }
                     else
                         update_replacement_state(writeback_cpu, set, way, WQ.entry[index].full_addr, WQ.entry[index].ip, block[set][way].full_addr, WQ.entry[index].type, 0);
@@ -445,6 +447,8 @@ void CACHE::handle_read()
                         l1d_prefetcher_operate(block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
                         l2c_prefetcher_operate(block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
+                    else if (cache_type == IS_LLC)
+                        llc_prefetcher_operate(read_cpu, block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                 }
 
                 // update replacement policy
@@ -611,6 +615,8 @@ void CACHE::handle_read()
                             l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_L2C)
                             l2c_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
+                        if (cache_type == IS_LLC)
+                            llc_prefetcher_operate(read_cpu, RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                     }
 
                     MISS[RQ.entry[index].type]++;

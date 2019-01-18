@@ -3,8 +3,9 @@
 BRANCH=$1           # branch/*.bpred
 L1D_PREFETCHER=$2   # prefetcher/*.l1d_pref
 L2C_PREFETCHER=$3   # prefetcher/*.l2c_pref
-LLC_REPLACEMENT=$4  # replacement/*.llc_repl
-NUM_CORE=$5         # tested up to 8-core system
+LLC_PREFETCHER=$4   # prefetcher/*.llc_pref
+LLC_REPLACEMENT=$5  # replacement/*.llc_repl
+NUM_CORE=$6         # tested up to 8-core system
 
 ############## Some useful macros ###############
 BOLD=$(tput bold)
@@ -23,7 +24,7 @@ embed_newline()
 #################################################
 
 # Sanity check
-if [ ! -f ./branch/${BRANCH}.bpred ] || [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1d_pref ] || [ ! -f ./prefetcher/${L2C_PREFETCHER}.l2c_pref ] || [ ! -f ./replacement/${LLC_REPLACEMENT}.llc_repl ]; then
+if [ ! -f ./branch/${BRANCH}.bpred ] || [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1d_pref ] || [ ! -f ./prefetcher/${L2C_PREFETCHER}.l2c_pref ] || [ ! -f ./prefetcher/${LLC_PREFETCHER}.llc_pref ] || [ ! -f ./replacement/${LLC_REPLACEMENT}.llc_repl ]; then
 	echo "${BOLD}Possible Branch Predictor: ${NORMAL}"
 	LIST=$(ls branch/*.bpred | cut -d '/' -f2 | cut -d '.' -f1)
 	p=$( embed_newline $LIST )
@@ -37,6 +38,12 @@ if [ ! -f ./branch/${BRANCH}.bpred ] || [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1
 	echo
 	echo "${BOLD}Possible L2C Prefetcher: ${NORMAL}"
 	LIST=$(ls prefetcher/*.l2c_pref | cut -d '/' -f2 | cut -d '.' -f1)
+	p=$( embed_newline $LIST )
+	echo "$p"
+
+	echo
+	echo "${BOLD}Possible LLC Prefetcher: ${NORMAL}"
+	LIST=$(ls prefetcher/*.llc_pref | cut -d '/' -f2 | cut -d '.' -f1)
 	p=$( embed_newline $LIST )
 	echo "$p"
 
@@ -64,6 +71,7 @@ echo
 cp branch/${BRANCH}.bpred branch/branch_predictor.cc
 cp prefetcher/${L1D_PREFETCHER}.l1d_pref prefetcher/l1d_prefetcher.cc
 cp prefetcher/${L2C_PREFETCHER}.l2c_pref prefetcher/l2c_prefetcher.cc
+cp prefetcher/${LLC_PREFETCHER}.llc_pref prefetcher/llc_prefetcher.cc
 cp replacement/${LLC_REPLACEMENT}.llc_repl replacement/llc_replacement.cc
 
 # Build
@@ -84,9 +92,10 @@ echo "${BOLD}ChampSim is successfully built"
 echo "Branch Predictor: ${BRANCH}"
 echo "L1D Prefetcher: ${L1D_PREFETCHER}"
 echo "L2C Prefetcher: ${L2C_PREFETCHER}"
+echo "LLC Prefetcher: ${LLC_PREFETCHER}"
 echo "LLC Replacement: ${LLC_REPLACEMENT}"
 echo "Cores: ${NUM_CORE}"
-BINARY_NAME="${BRANCH}-${L1D_PREFETCHER}-${L2C_PREFETCHER}-${LLC_REPLACEMENT}-${NUM_CORE}core"
+BINARY_NAME="${BRANCH}-${L1D_PREFETCHER}-${L2C_PREFETCHER}-${LLC_PREFETCHER}-${LLC_REPLACEMENT}-${NUM_CORE}core"
 echo "Binary: bin/${BINARY_NAME}${NORMAL}"
 echo ""
 mv bin/champsim bin/${BINARY_NAME}
@@ -100,4 +109,5 @@ sed -i.bak 's/\<DRAM_CHANNELS_LOG2 1\>/DRAM_CHANNELS_LOG2 0/g' inc/champsim.h
 cp branch/bimodal.bpred branch/branch_predictor.cc
 cp prefetcher/no.l1d_pref prefetcher/l1d_prefetcher.cc
 cp prefetcher/no.l2c_pref prefetcher/l2c_prefetcher.cc
+cp prefetcher/no.llc_pref prefetcher/llc_prefetcher.cc
 cp replacement/lru.llc_repl replacement/llc_replacement.cc
