@@ -13,9 +13,9 @@ git clone https://github.com/ChampSim/ChampSim.git
 ChampSim takes five parameters: Branch predictor, L1D prefetcher, L2C prefetcher, LLC replacement policy, and the number of cores. 
 For example, `./build_champsim.sh bimodal no no lru 1` builds a single-core processor with bimodal branch predictor, no L1/L2 data prefetchers, and the baseline LRU replacement policy for the LLC.
 ```
-$ ./build_champsim.sh bimodal no no lru 1
+$ ./build_champsim.sh bimodal no no no lru 1
 
-$ ./build_champsim.sh ${BRANCH} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
+$ ./build_champsim.sh ${BRANCH} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
 ```
 
 # Run simulation
@@ -25,7 +25,7 @@ Copy `scripts/run_champsim.sh` to the ChampSim root directory and change `TRACE_
 * Single-core simulation: Run simulation with `run_champsim.sh` script.
 
 ```
-$ ./run_champsim.sh bimodal-no-no-lru-1core 1 10 bzip2_183B
+$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 bzip2_183B
 
 $ ./run_champsim.sh ${binary} ${n_warm} ${n_sim} ${trace} ${option}
 
@@ -52,6 +52,7 @@ ${num}: mix number is the corresponding line number written in sim_list/4core_wo
 $ cp branch/branch_predictor.cc prefetcher/mybranch.bpred
 $ cp prefetcher/l1d_prefetcher.cc prefetcher/mypref.l1d_pref
 $ cp prefetcher/l2c_prefetcher.cc prefetcher/mypref.l2c_pref
+$ cp prefetcher/llc_prefetcher.cc prefetcher/mypref.llc_pref
 $ cp replacement/llc_replacement.cc replacement/myrepl.llc_repl
 ```
 
@@ -60,13 +61,14 @@ $ cp replacement/llc_replacement.cc replacement/myrepl.llc_repl
 $ vim branch/mybranch.bpred
 $ vim prefetcher/mypref.l1d_pref
 $ vim prefetcher/mypref.l2c_pref
+$ vim prefetcher/mypref.llc_pref
 $ vim replacement/myrepl.llc_repl
 ```
 
 **Compile and test**
 ```
-$ ./build_champsim.sh mybranch mypref mypref myrepl 1
-$ ./run_champsim.sh mybranch-mypref-mypref-myrepl-1core 1 10 bzip2_183B
+$ ./build_champsim.sh mybranch mypref mypref mypref myrepl 1
+$ ./run_champsim.sh mybranch-mypref-mypref-mypref-myrepl-1core 1 10 bzip2_183B
 ```
 
 # How to create traces
