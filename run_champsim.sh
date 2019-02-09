@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "$#" -lt 4 ]; then
+    echo "Illegal number of parameters"
+    echo "Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]"
+    exit 1
+fi
+
 TRACE_DIR=$PWD/dpc3_traces
 BINARY=${1}
 N_WARM=${2}

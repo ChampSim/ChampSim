@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center"> ChampSim </h1>
-  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
+  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. Traces for the 3rd Data Prefetching Championship (DPC-3) can be found from here (https://dpc3.compas.cs.stonybrook.edu/?SW_IS). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
 </p>
 
 # Clone ChampSim repository
@@ -18,30 +18,38 @@ $ ./build_champsim.sh bimodal no no no lru 1
 $ ./build_champsim.sh ${BRANCH} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
 ```
 
+# Download DPC-3 trace
+
+Professor Daniel Jimenez at Texas A&M University kindly provided traces for DPC-3. Use the following script to download these traces (~20GB size and max simpoint only).
+```
+$ cd scripts
+
+$ ./download_dpc3_traces.sh
+```
+
 # Run simulation
 
-Copy `scripts/run_champsim.sh` to the ChampSim root directory and change `TRACE_DIR` in `run_champsim.sh` <br>
+Execute `run_champsim.sh` with proper input arguments. The default `TRACE_DIR` in `run_champsim.sh` is set to `$PWD/dpc3_traces`. <br>
 
 * Single-core simulation: Run simulation with `run_champsim.sh` script.
 
 ```
-$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 bzip2_183B
+Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]
+$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
 
-$ ./run_champsim.sh ${binary} ${n_warm} ${n_sim} ${trace} ${option}
-
-${binary}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
-${n_warm}: number of instructions for warmup (1 million)
-${n_sim}:  number of instructinos for detailed simulation (10 million)
-${trace}: trace name (bzip2)
-${option}: extra option for "-low_bandwidth" (src/main.cc)
+${BINARY}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
+${N_WARM}: number of instructions for warmup (1 million)
+${N_SIM}:  number of instructinos for detailed simulation (10 million)
+${TRACE}: trace name (400.perlbench-41B.champsimtrace.xz)
+${OPTION}: extra option for "-low_bandwidth" (src/main.cc)
 ```
-Simulation results will be stored under "results_${n_sim}M" as a form of "${trace}-${binary}-${option}.txt".<br> 
+Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br> 
 
 * Multi-core simulation: Run simulation with `run_4core.sh` or `run_8core.sh`. <br>
-Note that `${trace}` is replaced with `${num}` that represents a unique ID for randomly mixed multi-programmed workloads. 
+Note that `${TRACE}` is replaced with `${num}` that represents a unique ID for randomly mixed multi-programmed workloads. 
 
 ```
-$ ./run_4core.sh ${binary} ${n_warm} ${n_sim} ${num} ${option}
+$ ./run_4core.sh ${BINARY} ${N_WARM} ${N_SIM} ${num} ${OPTION}
 
 ${num}: mix number is the corresponding line number written in sim_list/4core_workloads.txt
 ```
