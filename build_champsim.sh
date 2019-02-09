@@ -1,4 +1,11 @@
-#!/bin/sh
+#!/bin/bash
+
+if [ "$#" -ne 6 ]; then
+    echo "Illegal number of parameters"
+    echo "Usage: ./build_champsim.sh [branch_pred] [l1d_pref] [l2c_pref] [llc_pref] [llc_repl] [num_core]"
+    exit 1
+fi
+
 # ChampSim configuration
 BRANCH=$1           # branch/*.bpred
 L1D_PREFETCHER=$2   # prefetcher/*.l1d_pref
@@ -10,60 +17,64 @@ NUM_CORE=$6         # tested up to 8-core system
 ############## Some useful macros ###############
 BOLD=$(tput bold)
 NORMAL=$(tput sgr0)
-
-embed_newline()
-{
-   local p="$1"
-   shift
-   for i in "$@"
-   do
-      p="$p\n$i"         # Append
-   done
-   echo -e "$p"          # Use -e
-}
 #################################################
 
 # Sanity check
-if [ ! -f ./branch/${BRANCH}.bpred ] || [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1d_pref ] || [ ! -f ./prefetcher/${L2C_PREFETCHER}.l2c_pref ] || [ ! -f ./prefetcher/${LLC_PREFETCHER}.llc_pref ] || [ ! -f ./replacement/${LLC_REPLACEMENT}.llc_repl ]; then
-	echo "${BOLD}Possible Branch Predictor: ${NORMAL}"
-	LIST=$(ls branch/*.bpred | cut -d '/' -f2 | cut -d '.' -f1)
-	p=$( embed_newline $LIST )
-	echo "$p"
+if [ ! -f ./branch/${BRANCH}.bpred ]; then
+    echo "[ERROR] Cannot find branch predictor"
+	echo "[ERROR] Possible branch predictors from branch/*.bpred "
+    find branch -name "*.bpred"
+    exit 1
+fi
 
-	echo "${BOLD}Possible L1D Prefetcher: ${NORMAL}"
-	LIST=$(ls prefetcher/*.l1d_pref | cut -d '/' -f2 | cut -d '.' -f1)
-	p=$( embed_newline $LIST )
-	echo "$p"
+if [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1d_pref ]; then
+    echo "[ERROR] Cannot find L1D prefetcher"
+	echo "[ERROR] Possible L1D prefetchers from prefetcher/*.l1d_pref "
+    find prefetcher -name "*.l1d_pref"
+    exit 1
+fi
 
-	echo
-	echo "${BOLD}Possible L2C Prefetcher: ${NORMAL}"
-	LIST=$(ls prefetcher/*.l2c_pref | cut -d '/' -f2 | cut -d '.' -f1)
-	p=$( embed_newline $LIST )
-	echo "$p"
+if [ ! -f ./prefetcher/${L2C_PREFETCHER}.l2c_pref ]; then
+    echo "[ERROR] Cannot find L2C prefetcher"
+	echo "[ERROR] Possible L2C prefetchers from prefetcher/*.l2c_pref "
+    find prefetcher -name "*.l2c_pref"
+    exit 1
+fi
 
-	echo
-	echo "${BOLD}Possible LLC Prefetcher: ${NORMAL}"
-	LIST=$(ls prefetcher/*.llc_pref | cut -d '/' -f2 | cut -d '.' -f1)
-	p=$( embed_newline $LIST )
-	echo "$p"
+if [ ! -f ./prefetcher/${LLC_PREFETCHER}.llc_pref ]; then
+    echo "[ERROR] Cannot find LLC prefetcher"
+	echo "[ERROR] Possible LLC prefetchers from prefetcher/*.llc_pref "
+    find prefetcher -name "*.llc_pref"
+    exit 1
+fi
 
-	echo
-	echo "${BOLD}Possible LLC Replacement: ${NORMAL}"
-	LIST=$(ls replacement/*.llc_repl | cut -d '/' -f2 | cut -d '.' -f1)
-	p=$( embed_newline $LIST )
-	echo "$p"
-	exit
+if [ ! -f ./replacement/${LLC_REPLACEMENT}.llc_repl ]; then
+    echo "[ERROR] Cannot find LLC replacement policy"
+	echo "[ERROR] Possible LLC replacement policy from replacement/*.llc_repl"
+    find replacement -name "*.llc_repl"
+    exit 1
+fi
+
+# Check num_core
+re='^[0-9]+$'
+if ! [[ $NUM_CORE =~ $re ]] ; then
+    echo "[ERROR]: num_core is NOT a number" >&2;
+    exit 1
 fi
 
 # Check for multi-core
-if [ "$NUM_CORE" != "1" ]
-then
-    echo "${BOLD}Building multi-core ChampSim...${NORMAL}"
+if [ "$NUM_CORE" -gt "1" ]; then
+    echo "Building multi-core ChampSim..."
     sed -i.bak 's/\<NUM_CPUS 1\>/NUM_CPUS '${NUM_CORE}'/g' inc/champsim.h
 	sed -i.bak 's/\<DRAM_CHANNELS 1\>/DRAM_CHANNELS 2/g' inc/champsim.h
 	sed -i.bak 's/\<DRAM_CHANNELS_LOG2 0\>/DRAM_CHANNELS_LOG2 1/g' inc/champsim.h
 else
-    echo "${BOLD}Building single-core ChampSim...${NORMAL}"
+    if [ "$NUM_CORE" -lt "1" ]; then
+        echo "Number of core: $NUM_CORE must be greater or equal than 1"
+        exit 1
+    else
+        echo "Building single-core ChampSim..."
+    fi
 fi
 echo
 
@@ -83,9 +94,9 @@ make
 # Sanity check
 echo ""
 if [ ! -f bin/champsim ]; then
-    echo "${BOLD}ChampSim build FAILED!${NORMAL}"
+    echo "${BOLD}ChampSim build FAILED!"
     echo ""
-    exit
+    exit 1
 fi
 
 echo "${BOLD}ChampSim is successfully built"
@@ -96,7 +107,7 @@ echo "LLC Prefetcher: ${LLC_PREFETCHER}"
 echo "LLC Replacement: ${LLC_REPLACEMENT}"
 echo "Cores: ${NUM_CORE}"
 BINARY_NAME="${BRANCH}-${L1D_PREFETCHER}-${L2C_PREFETCHER}-${LLC_PREFETCHER}-${LLC_REPLACEMENT}-${NUM_CORE}core"
-echo "Binary: bin/${BINARY_NAME}${NORMAL}"
+echo "Binary: bin/${BINARY_NAME}"
 echo ""
 mv bin/champsim bin/${BINARY_NAME}
 
