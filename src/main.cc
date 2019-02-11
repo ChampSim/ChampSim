@@ -115,7 +115,10 @@ void print_dram_stats()
     uint64_t total_congested_cycle = 0;
     for (uint32_t i=0; i<DRAM_CHANNELS; i++)
         total_congested_cycle += uncore.DRAM.dbus_cycle_congested[i];
-    cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
+    if (uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
+        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
+    else
+        cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
 
 void reset_cache_stats(uint32_t cpu, CACHE *cache)
