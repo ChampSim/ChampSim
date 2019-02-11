@@ -45,14 +45,14 @@ ${OPTION}: extra option for "-low_bandwidth" (src/main.cc)
 ```
 Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br> 
 
-* Multi-core simulation: Run simulation with `run_4core.sh` or `run_8core.sh`. <br>
-Note that `${TRACE}` is replaced with `${num}` that represents a unique ID for randomly mixed multi-programmed workloads. 
-
+* Multi-core simulation: Run simulation with `run_4core.sh` script. <br>
 ```
-$ ./run_4core.sh ${BINARY} ${N_WARM} ${N_SIM} ${num} ${OPTION}
-
-${num}: mix number is the corresponding line number written in sim_list/4core_workloads.txt
+Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE2] [TRACE3] [OPTION]
+$ ./run_4core.sh bimodal-no-no-no-lru-4core 1 10 0 400.perlbench-41B.champsimtrace.xz \\
+  401.bzip2-38B.champsimtrace.xz 403.gcc-17B.champsimtrace.xz 410.bwaves-945B.champsimtrace.xz
 ```
+Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads. 
+
 
 # Add your own branch predictor, data prefetchers, and replacement policy
 **Copy an empty template**
