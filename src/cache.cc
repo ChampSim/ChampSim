@@ -107,11 +107,11 @@ void CACHE::handle_fill()
         if (do_fill) {
             // update prefetcher
             if (cache_type == IS_L1D)
-                l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
+	      l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
             if  (cache_type == IS_L2C)
-                l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
+	      l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
             if (cache_type == IS_LLC)
-                llc_prefetcher_cache_fill(fill_cpu, MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].full_addr);
+	      llc_prefetcher_cache_fill(fill_cpu, MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
               
             // update replacement policy
             if (cache_type == IS_LLC) {
@@ -358,11 +358,11 @@ void CACHE::handle_writeback()
                 if (do_fill) {
                     // update prefetcher
                     if (cache_type == IS_L1D)
-                        l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
+		      l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
                     else if (cache_type == IS_L2C)
-                        l2c_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
+		      l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
                     if (cache_type == IS_LLC)
-                        llc_prefetcher_cache_fill(writeback_cpu, WQ.entry[index].full_addr, set, way, 0, block[set][way].full_addr);
+		      llc_prefetcher_cache_fill(writeback_cpu, WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
 
                     // update replacement policy
                     if (cache_type == IS_LLC) {
@@ -444,11 +444,11 @@ void CACHE::handle_read()
                 // update prefetcher on load instruction
                 if (RQ.entry[index].type == LOAD) {
                     if (cache_type == IS_L1D) 
-                        l1d_prefetcher_operate(block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
+                        l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
-                        l2c_prefetcher_operate(block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_LLC)
-                        llc_prefetcher_operate(read_cpu, block[set][way].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      llc_prefetcher_operate(read_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
                 }
 
                 // update replacement policy
@@ -614,9 +614,9 @@ void CACHE::handle_read()
                         if (cache_type == IS_L1D) 
                             l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_L2C)
-                            l2c_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			  l2c_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_LLC)
-                            llc_prefetcher_operate(read_cpu, RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			  llc_prefetcher_operate(read_cpu, RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
                     }
 
                     MISS[RQ.entry[index].type]++;
