@@ -442,7 +442,7 @@ void CACHE::handle_read()
                 }
 
                 // update prefetcher on load instruction
-                if (RQ.entry[index].type == LOAD) {
+		if ((RQ.entry[index].type == LOAD) || (RQ.entry[index].type == PREFETCH)) {
                     if (cache_type == IS_L1D) 
                         l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
@@ -610,7 +610,7 @@ void CACHE::handle_read()
 
                 if (miss_handled) {
                     // update prefetcher on load instruction
-                    if (RQ.entry[index].type == LOAD) {
+		    if ((RQ.entry[index].type == LOAD)  || (RQ.entry[index].type == PREFETCH)) {
                         if (cache_type == IS_L1D) 
                             l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_L2C)
@@ -698,29 +698,12 @@ void CACHE::handle_prefetch()
                     // first check if the lower level PQ is full or not
                     // this is possible since multiple prefetchers can exist at each level of caches
                     if (lower_level) {
-                        if (cache_type == IS_LLC) {
-                            if (lower_level->get_occupancy(1, PQ.entry[index].address) == lower_level->get_size(1, PQ.entry[index].address))
-                                miss_handled = 0;
-                            else {
-                                // add it to MSHRs if this prefetch miss will be filled to this cache level
-                                if (PQ.entry[index].fill_level <= fill_level)
-                                    add_mshr(&PQ.entry[index]);
-                                
-                                lower_level->add_rq(&PQ.entry[index]); // add it to the DRAM RQ
-                            }
-                        }
-                        else {
-                            if (lower_level->get_occupancy(3, PQ.entry[index].address) == lower_level->get_size(3, PQ.entry[index].address))
-                                miss_handled = 0;
-                            else {
-                                // add it to MSHRs if this prefetch miss will be filled to this cache level
-                                if (PQ.entry[index].fill_level <= fill_level)
-                                    add_mshr(&PQ.entry[index]);
-
-                                lower_level->add_pq(&PQ.entry[index]); // add it to the DRAM RQ
-                            }
-                        }
-                    }
+		      if (PQ.entry[index].fill_level <= fill_level)
+			{
+			  add_mshr(&PQ.entry[index]);
+			}
+		      lower_level->add_rq(&PQ.entry[index]);
+		    }
                 }
                 else {
                     if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
