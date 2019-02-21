@@ -700,9 +700,29 @@ void CACHE::handle_prefetch()
                     if (lower_level) {
 		      if (PQ.entry[index].fill_level <= fill_level)
 			{
-			  add_mshr(&PQ.entry[index]);
+			  // fill into this level or higher, so we're now moving over to the lower level's read queue
+			  if (lower_level->get_occupancy(1, PQ.entry[index].address) == lower_level->get_size(1, PQ.entry[index].address))
+			    {
+			      miss_handled = 0;
+			    }
+			  else
+			    {
+			      add_mshr(&PQ.entry[index]);
+			      lower_level->add_rq(&PQ.entry[index]);
+			    }
 			}
-		      lower_level->add_rq(&PQ.entry[index]);
+		      else
+			{
+			  // fill into a lower cache, so use the lower cache's prefetch queue
+			  if (lower_level->get_occupancy(3, PQ.entry[index].address) == lower_level->get_size(3, PQ.entry[index].address))
+			    {
+			      miss_handled = 0;
+			    }
+			  else
+			    {
+			      lower_level->add_pq(&PQ.entry[index]);
+			    }
+			}
 		    }
                 }
                 else {
