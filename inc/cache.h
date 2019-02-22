@@ -175,8 +175,8 @@ class CACHE : public MEMORY {
     int  check_hit(PACKET *packet),
          invalidate_entry(uint64_t inval_addr),
          check_mshr(PACKET *packet),
-         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int fill_level),
-         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int fill_level, int delta, int depth, int signature, int confidence);
+         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level),
+         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence);
 
     void handle_fill(),
          handle_writeback(),

@@ -72,6 +72,7 @@ class PACKET {
             drc_tag_read;
 
     int fill_level, 
+        pf_origin_level,
         rob_signal, 
         rob_index, 
         producer,
