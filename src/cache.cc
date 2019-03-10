@@ -448,7 +448,10 @@ void CACHE::handle_read()
                     else if (cache_type == IS_L2C)
 		      l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_LLC)
-		      llc_prefetcher_operate(read_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      {
+			cpu = read_cpu;
+			llc_prefetcher_operate(read_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      }
                 }
 
                 // update replacement policy
@@ -616,7 +619,10 @@ void CACHE::handle_read()
                         if (cache_type == IS_L2C)
 			  l2c_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_LLC)
-			  llc_prefetcher_operate(read_cpu, RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			  {
+			    cpu = read_cpu;
+			    llc_prefetcher_operate(read_cpu, RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			  }
                     }
 
                     MISS[RQ.entry[index].type]++;
@@ -678,7 +684,10 @@ void CACHE::handle_prefetch()
                     else if (cache_type == IS_L2C)
                       l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
                     else if (cache_type == IS_LLC)
-                      llc_prefetcher_operate(prefetch_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
+		      {
+			cpu = prefetch_cpu;
+			llc_prefetcher_operate(prefetch_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
+		      }
 		  }
 
                 HIT[PQ.entry[index].type]++;
@@ -780,7 +789,10 @@ void CACHE::handle_prefetch()
 			if (cache_type == IS_L2C)
 			  l2c_prefetcher_operate(PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
 			if (cache_type == IS_LLC)
-			  llc_prefetcher_operate(prefetch_cpu, PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
+			  {
+			    cpu = prefetch_cpu;
+			    llc_prefetcher_operate(prefetch_cpu, PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
+			  }
 		      }
 
                     MISS[PQ.entry[index].type]++;
