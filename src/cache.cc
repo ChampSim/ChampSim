@@ -111,7 +111,11 @@ void CACHE::handle_fill()
             if  (cache_type == IS_L2C)
 	      l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
             if (cache_type == IS_LLC)
-	      llc_prefetcher_cache_fill(fill_cpu, MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+	      {
+		cpu = fill_cpu;
+		llc_prefetcher_cache_fill(fill_cpu, MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+		cpu = 0;
+	      }
               
             // update replacement policy
             if (cache_type == IS_LLC) {
@@ -362,7 +366,11 @@ void CACHE::handle_writeback()
                     else if (cache_type == IS_L2C)
 		      l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
                     if (cache_type == IS_LLC)
-		      llc_prefetcher_cache_fill(writeback_cpu, WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+		      {
+			cpu = writeback_cpu;
+			llc_prefetcher_cache_fill(writeback_cpu, WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+			cpu = 0;
+		      }
 
                     // update replacement policy
                     if (cache_type == IS_LLC) {
@@ -451,6 +459,7 @@ void CACHE::handle_read()
 		      {
 			cpu = read_cpu;
 			llc_prefetcher_operate(read_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
+			cpu = 0;
 		      }
                 }
 
@@ -622,6 +631,7 @@ void CACHE::handle_read()
 			  {
 			    cpu = read_cpu;
 			    llc_prefetcher_operate(read_cpu, RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			    cpu = 0;
 			  }
                     }
 
@@ -687,6 +697,7 @@ void CACHE::handle_prefetch()
 		      {
 			cpu = prefetch_cpu;
 			llc_prefetcher_operate(prefetch_cpu, block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
+			cpu = 0;
 		      }
 		  }
 
@@ -792,6 +803,7 @@ void CACHE::handle_prefetch()
 			  {
 			    cpu = prefetch_cpu;
 			    llc_prefetcher_operate(prefetch_cpu, PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
+			    cpu = 0;
 			  }
 		      }
 
