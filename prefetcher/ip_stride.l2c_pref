@@ -49,7 +49,7 @@ void CACHE::l2c_prefetcher_initialize()
         trackers[i].lru = i;
 }
 
-void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     // check for a tracker hit
     uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
@@ -120,9 +120,9 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 
             // check the MSHR occupancy to decide if we're going to prefetch to the L2 or LLC
             if (MSHR.occupancy < (MSHR.SIZE>>1))
-                prefetch_line(ip, addr, pf_address, FILL_L2);
+	      prefetch_line(ip, addr, pf_address, FILL_L2, 0);
             else
-                prefetch_line(ip, addr, pf_address, FILL_LLC);
+	      prefetch_line(ip, addr, pf_address, FILL_LLC, 0);
         }
     }
 
@@ -134,11 +134,13 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
             trackers[i].lru++;
     }
     trackers[index].lru = 0;
+
+    return metadata_in;
 }
 
-void CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
-
+  return metadata_in;
 }
 
 void CACHE::l2c_prefetcher_final_stats()

@@ -595,7 +595,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
 */
 
 // TODO: from here
-void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     // Check ST
     L2_ST_update(cpu, addr);
@@ -690,7 +690,7 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
             }
             else {
                 if (pf_buffer[cpu][i].conf >= FILL_THRESHOLD) { // Prefetch to the L2
-                    if (prefetch_line(ip, addr, pf_addr, FILL_L2)) {
+		  if (prefetch_line(ip, addr, pf_addr, FILL_L2, 0)) {
                         PF_inflight[cpu]++; 
                         if (warmup_complete[cpu])
                         L2_PF_DEBUG(printf("L2_PREFETCH  cpu: %d base_cl: %lx pf_cl: %lx delta: %d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
@@ -710,7 +710,7 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
                     }
                 }
                 else if (pf_buffer[cpu][i].conf >= PF_THRESHOLD) { // Prefetch to the LLC
-                    if (prefetch_line(ip, addr, pf_addr, FILL_LLC)) {
+		  if (prefetch_line(ip, addr, pf_addr, FILL_LLC, 0)) {
                         PF_inflight[cpu]++; 
                         if (warmup_complete[cpu])
                         L2_PF_DEBUG(printf("LLC_PREFETCH cpu: %d base_cl: %lx pf_cl: %lx delta: %d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
@@ -724,9 +724,11 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 
     if (warmup_complete[cpu])
     L2_PF_DEBUG(printf("\n"));
+
+    return metadata_in;
 }
 
-void CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
 	// L2 FILL
     uint64_t evicted_cl = evicted_addr >> LOG2_BLOCK_SIZE;
@@ -760,6 +762,8 @@ void CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
             table[l2_st_match].used[evicted_block] = 0;
         }
     }
+
+    return metadata_in;
 }
 
 void CACHE::l2c_prefetcher_final_stats()

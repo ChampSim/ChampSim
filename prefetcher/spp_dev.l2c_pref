@@ -11,7 +11,7 @@ void CACHE::l2c_prefetcher_initialize()
 
 }
 
-void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     uint64_t page = addr >> LOG2_PAGE_SIZE;
     uint32_t page_offset = (addr >> LOG2_BLOCK_SIZE) & (PAGE_SIZE / BLOCK_SIZE - 1),
@@ -66,7 +66,7 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 
                 if ((addr & ~(PAGE_SIZE - 1)) == (pf_addr & ~(PAGE_SIZE - 1))) { // Prefetch request is in the same physical page
                     if (FILTER.check(pf_addr, ((confidence_q[i] >= FILL_THRESHOLD) ? SPP_L2C_PREFETCH : SPP_LLC_PREFETCH))) {
-                        prefetch_line(ip, addr, pf_addr, ((confidence_q[i] >= FILL_THRESHOLD) ? FILL_L2 : FILL_LLC)); // Use addr (not base_addr) to obey the same physical page boundary
+		      prefetch_line(ip, addr, pf_addr, ((confidence_q[i] >= FILL_THRESHOLD) ? FILL_L2 : FILL_LLC), 0); // Use addr (not base_addr) to obey the same physical page boundary
 
                         if (confidence_q[i] >= FILL_THRESHOLD) {
                             GHR.pf_issued++;
@@ -114,14 +114,18 @@ void CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 #ifdef LOOKAHEAD_ON
     } while (do_lookahead);
 #endif
+
+    return metadata_in;
 }
 
-void CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
 #ifdef FILTER_ON
     SPP_DP (cout << endl;);
     FILTER.check(evicted_addr, L2C_EVICT);
 #endif
+
+    return metadata_in;
 }
 
 void CACHE::l2c_prefetcher_final_stats()

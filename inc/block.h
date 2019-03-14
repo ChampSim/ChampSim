@@ -81,6 +81,8 @@ class PACKET {
         signature,
         confidence;
 
+    uint32_t pf_metadata;
+
     uint8_t  is_producer, 
              //rob_index_depend_on_me[ROB_SIZE], 
              //lq_index_depend_on_me[ROB_SIZE], 

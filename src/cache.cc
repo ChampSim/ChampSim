@@ -107,13 +107,16 @@ void CACHE::handle_fill()
         if (do_fill) {
             // update prefetcher
             if (cache_type == IS_L1D)
-	      l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+	      l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE,
+					MSHR.entry[mshr_index].pf_metadata);
             if  (cache_type == IS_L2C)
-	      l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+	      MSHR.entry[mshr_index].pf_metadata = l2c_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0,
+									     block[set][way].address<<LOG2_BLOCK_SIZE, MSHR.entry[mshr_index].pf_metadata);
             if (cache_type == IS_LLC)
 	      {
 		cpu = fill_cpu;
-		llc_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+		MSHR.entry[mshr_index].pf_metadata = llc_prefetcher_cache_fill(MSHR.entry[mshr_index].address<<LOG2_BLOCK_SIZE, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0,
+									       block[set][way].address<<LOG2_BLOCK_SIZE, MSHR.entry[mshr_index].pf_metadata);
 		cpu = 0;
 	      }
               
@@ -362,13 +365,15 @@ void CACHE::handle_writeback()
                 if (do_fill) {
                     // update prefetcher
                     if (cache_type == IS_L1D)
-		      l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+		      l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
                     else if (cache_type == IS_L2C)
-		      l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+		      WQ.entry[index].pf_metadata = l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
+									      block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
                     if (cache_type == IS_LLC)
 		      {
 			cpu = writeback_cpu;
-			llc_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE);
+			WQ.entry[index].pf_metadata =llc_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
+									       block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
 			cpu = 0;
 		      }
 
@@ -452,13 +457,13 @@ void CACHE::handle_read()
                 // update prefetcher on load instruction
 		if (RQ.entry[index].type == LOAD) {
                     if (cache_type == IS_L1D) 
-                        l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
-		      l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
+		      l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type, 0);
                     else if (cache_type == IS_LLC)
 		      {
 			cpu = read_cpu;
-			llc_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type);
+			llc_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type, 0);
 			cpu = 0;
 		      }
                 }
@@ -626,11 +631,11 @@ void CACHE::handle_read()
                         if (cache_type == IS_L1D) 
                             l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_L2C)
-			  l2c_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			  l2c_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type, 0);
                         if (cache_type == IS_LLC)
 			  {
 			    cpu = read_cpu;
-			    llc_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type);
+			    llc_prefetcher_operate(RQ.entry[index].address<<LOG2_BLOCK_SIZE, RQ.entry[index].ip, 0, RQ.entry[index].type, 0);
 			    cpu = 0;
 			  }
                     }
@@ -677,6 +682,21 @@ void CACHE::handle_prefetch()
                 sim_hit[prefetch_cpu][PQ.entry[index].type]++;
                 sim_access[prefetch_cpu][PQ.entry[index].type]++;
 
+		// run prefetcher on prefetches from higher caches
+		if(PQ.entry[index].pf_origin_level < fill_level)
+		  {
+		    if (cache_type == IS_L1D)
+		      l1d_prefetcher_operate(PQ.entry[index].full_addr, PQ.entry[index].ip, 1, PREFETCH);
+                    else if (cache_type == IS_L2C)
+                      PQ.entry[index].pf_metadata = l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH, PQ.entry[index].pf_metadata);
+                    else if (cache_type == IS_LLC)
+		      {
+			cpu = prefetch_cpu;
+			PQ.entry[index].pf_metadata = llc_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH, PQ.entry[index].pf_metadata);
+			cpu = 0;
+		      }
+		  }
+
                 // check fill level
                 if (PQ.entry[index].fill_level < fill_level) {
 
@@ -685,21 +705,6 @@ void CACHE::handle_prefetch()
                     else // data
                         upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[index]);
                 }
-
-		if(PQ.entry[index].pf_origin_level < fill_level)
-		  {
-		    // this prefetch came from a higher cache
-		    if (cache_type == IS_L1D)
-		      l1d_prefetcher_operate(PQ.entry[index].full_addr, PQ.entry[index].ip, 1, PREFETCH);
-                    else if (cache_type == IS_L2C)
-                      l2c_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
-                    else if (cache_type == IS_LLC)
-		      {
-			cpu = prefetch_cpu;
-			llc_prefetcher_operate(block[set][way].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 1, PREFETCH);
-			cpu = 0;
-		      }
-		  }
 
                 HIT[PQ.entry[index].type]++;
                 ACCESS[PQ.entry[index].type]++;
@@ -733,6 +738,18 @@ void CACHE::handle_prefetch()
 			if (lower_level->get_occupancy(1, PQ.entry[index].address) == lower_level->get_size(1, PQ.entry[index].address))
 			  miss_handled = 0;
 			else {
+			  
+			  // run prefetcher on prefetches from higher caches
+			  if(PQ.entry[index].pf_origin_level < fill_level)
+			    {
+			      if (cache_type == IS_LLC)
+				{
+				  cpu = prefetch_cpu;
+				  PQ.entry[index].pf_metadata = llc_prefetcher_operate(PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH, PQ.entry[index].pf_metadata);
+				  cpu = 0;
+				}
+			    }
+			  
 			  // add it to MSHRs if this prefetch miss will be filled to this cache level
 			  if (PQ.entry[index].fill_level <= fill_level)
 			    add_mshr(&PQ.entry[index]);
@@ -744,6 +761,16 @@ void CACHE::handle_prefetch()
 			if (lower_level->get_occupancy(3, PQ.entry[index].address) == lower_level->get_size(3, PQ.entry[index].address))
 			  miss_handled = 0;
 			else {
+
+			  // run prefetcher on prefetches from higher caches
+			  if(PQ.entry[index].pf_origin_level < fill_level)
+			    {
+			      if (cache_type == IS_L1D)
+				l1d_prefetcher_operate(PQ.entry[index].full_addr, PQ.entry[index].ip, 0, PREFETCH);
+			      if (cache_type == IS_L2C)
+				PQ.entry[index].pf_metadata = l2c_prefetcher_operate(PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH, PQ.entry[index].pf_metadata);
+			    }
+			  
 			  // add it to MSHRs if this prefetch miss will be filled to this cache level
 			  if (PQ.entry[index].fill_level <= fill_level)
 			    add_mshr(&PQ.entry[index]);
@@ -791,21 +818,6 @@ void CACHE::handle_prefetch()
                     cout << " instr_id: " << PQ.entry[index].instr_id << " address: " << hex << PQ.entry[index].address;
                     cout << " full_addr: " << PQ.entry[index].full_addr << dec << " fill_level: " << PQ.entry[index].fill_level;
                     cout << " cycle: " << PQ.entry[index].event_cycle << endl; });
-
-		    if(PQ.entry[index].pf_origin_level < fill_level)
-		      {
-			// this prefetch came from a higher level cache
-			if (cache_type == IS_L1D)
-			  l1d_prefetcher_operate(PQ.entry[index].full_addr, PQ.entry[index].ip, 0, PREFETCH);
-			if (cache_type == IS_L2C)
-			  l2c_prefetcher_operate(PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
-			if (cache_type == IS_LLC)
-			  {
-			    cpu = prefetch_cpu;
-			    llc_prefetcher_operate(PQ.entry[index].address<<LOG2_BLOCK_SIZE, PQ.entry[index].ip, 0, PREFETCH);
-			    cpu = 0;
-			  }
-		      }
 
                     MISS[PQ.entry[index].type]++;
                     ACCESS[PQ.entry[index].type]++;
@@ -1134,7 +1146,7 @@ int CACHE::add_wq(PACKET *packet)
     return -1;
 }
 
-int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level)
+int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
 {
     pf_requested++;
 
@@ -1144,6 +1156,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
+	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
             //pf_packet.lq_index = lq_index;
@@ -1167,7 +1180,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
     return 0;
 }
 
-int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int delta, int depth, int signature, int confidence)
+int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
 {
     if (PQ.occupancy < PQ.SIZE) {
         if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
@@ -1175,6 +1188,7 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
+	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
             //pf_packet.lq_index = lq_index;
@@ -1307,6 +1321,7 @@ void CACHE::return_data(PACKET *packet)
     MSHR.num_returned++;
     MSHR.entry[mshr_index].returned = COMPLETED;
     MSHR.entry[mshr_index].data = packet->data;
+    MSHR.entry[mshr_index].pf_metadata = packet->pf_metadata;
 
     // ADD LATENCY
     if (MSHR.entry[mshr_index].event_cycle < current_core_cycle[packet->cpu])
