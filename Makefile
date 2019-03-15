@@ -5,13 +5,14 @@ srcDir = src branch replacement prefetcher
 objDir = obj
 binDir = bin
 inc = inc
+dramsim = DRAMSim2
 
 debug = 1
 
 CFlags = -Wall -O3 -std=c++11
 LDFlags =
-libs =
-libDir =
+libs = dramsim
+libDir = DRAMSim2
 
 
 #************************ DO NOT EDIT BELOW THIS LINE! ************************
@@ -22,9 +23,10 @@ else
 	debug=
 endif
 inc := $(addprefix -I,$(inc))
+dramsim := $(addprefix -I,$(dramsim))
 libs := $(addprefix -l,$(libs))
 libDir := $(addprefix -L,$(libDir))
-CFlags += -c $(debug) $(inc) $(libDir) $(libs)
+CFlags += -c $(debug) $(inc) $(dramsim) $(libDir) $(libs)
 sources := $(shell find $(srcDir) -name '*.$(srcExt)')
 srcDirs := $(shell find . -name '*.$(srcExt)' -exec dirname {} \; | uniq)
 objects := $(patsubst %.$(srcExt),$(objDir)/%.o,$(sources))
@@ -43,7 +45,7 @@ all: $(binDir)/$(app)
 $(binDir)/$(app): buildrepo $(objects)
 	@mkdir -p `dirname $@`
 	@echo "Linking $@..."
-	@$(CC) $(objects) $(LDFlags) -o $@
+	@$(CC) $(objects) -LDRAMSim2/ -ldramsim $(LDFlags) -o $@
 
 $(objDir)/%.o: %.$(srcExt)
 	@echo "Generating dependencies for $<..."

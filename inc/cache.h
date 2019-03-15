@@ -141,6 +141,7 @@ class CACHE : public MEMORY {
         }
 
         lower_level = NULL;
+        lower_dram = NULL;
         extra_interface = NULL;
         fill_level = -1;
         MAX_READ = 1;

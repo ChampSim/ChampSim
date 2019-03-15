@@ -55,19 +55,7 @@
 #define FILL_DRAM 16
 
 // DRAM
-#define DRAM_CHANNELS 1      // default: assuming one DIMM per one channel 4GB * 1 => 4GB off-chip memory
-#define LOG2_DRAM_CHANNELS 0
-#define DRAM_RANKS 8         // 512MB * 8 ranks => 4GB per DIMM
-#define LOG2_DRAM_RANKS 3
-#define DRAM_BANKS 8         // 64MB * 8 banks => 512MB per rank
-#define LOG2_DRAM_BANKS 3
-#define DRAM_ROWS 32768      // 2KB * 32K rows => 64MB per bank
-#define LOG2_DRAM_ROWS 15
-#define DRAM_COLUMNS 32      // 64B * 32 column chunks (Assuming 1B DRAM cell * 8 chips * 8 transactions = 64B size of column chunks) => 2KB per row
-#define LOG2_DRAM_COLUMNS 5
-#define DRAM_ROW_SIZE (BLOCK_SIZE*DRAM_COLUMNS/1024)
-
-#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024) 
+#define DRAM_SIZE 4096
 #define DRAM_PAGES ((DRAM_SIZE<<10)>>2) 
 //#define DRAM_PAGES 10
 
@@ -86,6 +74,10 @@ extern uint64_t current_core_cycle[NUM_CPUS],
                 last_drc_read_mode, 
                 last_drc_write_mode,
                 drc_blocks;
+
+extern long double master_clock,
+             next_cpu_event,
+             next_dram_event;
 
 extern queue <uint64_t> page_queue;
 extern map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];

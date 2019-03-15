@@ -1,0 +1,3 @@
+[submodule "DRAMSim2"]
+	path = DRAMSim2
+	url = https://github.com/umd-memsys/DRAMSim2.git

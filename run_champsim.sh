@@ -7,6 +7,7 @@ if [ "$#" -lt 4 ]; then
 fi
 
 TRACE_DIR=$PWD/dpc3_traces
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/DRAMSim2/
 BINARY=${1}
 N_WARM=${2}
 N_SIM=${3}
