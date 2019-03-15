@@ -246,12 +246,28 @@ void CACHE::handle_writeback()
 
                 if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
-                    // add it to mshr (RFO miss)
-                    add_mshr(&WQ.entry[index]);
-
-                    // add it to the next level's read queue
-                    //if (lower_level) // L1D always has a lower level cache
-                        lower_level->add_rq(&WQ.entry[index]);
+		  if(cache_type == IS_LLC)
+		    {
+		      // check to make sure the DRAM RQ has room for this LLC RFO miss
+		      if (lower_level->get_occupancy(1, WQ.entry[index].address) == lower_level->get_size(1, WQ.entry[index].address))
+			{
+			  miss_handled = 0;
+			}
+		      else
+			{
+			  add_mshr(&WQ.entry[index]);
+			  lower_level->add_rq(&WQ.entry[index]);
+			}
+		    }
+		  else
+		    {
+		      // add it to mshr (RFO miss)
+		      add_mshr(&WQ.entry[index]);
+		      
+		      // add it to the next level's read queue
+		      //if (lower_level) // L1D always has a lower level cache
+		      lower_level->add_rq(&WQ.entry[index]);
+		    }
                 }
                 else {
                     if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
@@ -516,24 +532,43 @@ void CACHE::handle_read()
 
                 if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
-                    // add it to mshr (read miss)
-                    add_mshr(&RQ.entry[index]);
-
-                    // add it to the next level's read queue
-                    if (lower_level)
+		  if(cache_type == IS_LLC)
+		    {
+		      // check to make sure the DRAM RQ has room for this LLC read miss
+		      if (lower_level->get_occupancy(1, RQ.entry[index].address) == lower_level->get_size(1, RQ.entry[index].address))
+			{
+			  miss_handled = 0;
+			}
+		      else
+			{
+			  add_mshr(&RQ.entry[index]);
+			  if(lower_level)
+			    {
+			      lower_level->add_rq(&RQ.entry[index]);
+			    }
+			}
+		    }
+		  else
+		    {
+		      // add it to mshr (read miss)
+		      add_mshr(&RQ.entry[index]);
+		      
+		      // add it to the next level's read queue
+		      if (lower_level)
                         lower_level->add_rq(&RQ.entry[index]);
-                    else { // this is the last level
+		      else { // this is the last level
                         if (cache_type == IS_STLB) {
-                            // TODO: need to differentiate page table walk and actual swap
-
-                            // emulate page table walk
-                            uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address);
-
-                            RQ.entry[index].data = pa >> LOG2_PAGE_SIZE; 
-                            RQ.entry[index].event_cycle = current_core_cycle[read_cpu];
-                            return_data(&RQ.entry[index]);
+			  // TODO: need to differentiate page table walk and actual swap
+			  
+			  // emulate page table walk
+			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address);
+			  
+			  RQ.entry[index].data = pa >> LOG2_PAGE_SIZE; 
+			  RQ.entry[index].event_cycle = current_core_cycle[read_cpu];
+			  return_data(&RQ.entry[index]);
                         }
-                    }
+		      }
+		    }
                 }
                 else {
                     if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
