@@ -157,23 +157,23 @@ if [ -f "$file" ]; then
                 echo "Using C++ compiler $value"
                 ;;
             "CFLAGS")
-                CFLAGS="$value"
+                CFLAGS="$CFLAGS $value"
                 echo "Found C compiler flags $value"
                 ;;
             "CXXFLAGS")
-                CXXFLAGS="$value"
+                CXXFLAGS="$CXXFLAGS $value"
                 echo "Found C++ compiler flags $value"
                 ;;
             "CPPFLAGS")
-                CPPFLAGS="$value"
+                CPPFLAGS="$CPPFLAGS $value"
                 echo "Found preprocessor flags $value"
                 ;;
             "LDFLAGS")
-                LDFLAGS="$value"
+                LDFLAGS="$LDFLAGS $value"
                 echo "Found linker flags $value"
                 ;;
             "LDLIBS")
-                LDLIBS="$value"
+                LDLIBS="$LDLIBS $value"
                 echo "Found linker libs $value"
                 ;;
             # ...more?
