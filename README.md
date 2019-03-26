@@ -11,12 +11,17 @@ git clone https://github.com/ChampSim/ChampSim.git
 # Compile
 
 ChampSim takes five parameters: Branch predictor, L1D prefetcher, L2C prefetcher, LLC replacement policy, and the number of cores. 
-For example, `./build_champsim.sh bimodal no no lru 1` builds a single-core processor with bimodal branch predictor, no L1/L2 data prefetchers, and the baseline LRU replacement policy for the LLC.
+For example, the following builds a single-core processor with bimodal branch predictor, next-line L1/L2/LL data prefetchers, and the baseline LRU replacement policy for the LLC.
 ```
-$ ./build_champsim.sh bimodal no no no no lru 1
-
-$ ./build_champsim.sh ${BRANCH} ${L1I_PREFETCHER} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
+$ ./config.sh -b branch/bimodal.b_pred\
+              -1 prefetcher/next_line.l1d_pref\
+              -2 prefetcher/next_line.l2c_pref\
+              -3 prefetcher/next_line.llc_pref\
+              -r replacement/lru.llc_repl\
+              -n 1
 ```
+More options are available. Run `./config.sh -h` for more information. Additionally, the configuration script supports a configuration file of key-value pairs. An example, `example_config.txt`, is given.
+After the configuration step, ChampSim can be built with `make`. If the configuration script is re-run with new parameters, a `make clean` may be required to commit the changes.
 
 # Download DPC-3 trace
 
@@ -75,7 +80,8 @@ $ vim replacement/myrepl.llc_repl
 
 **Compile and test**
 ```
-$ ./build_champsim.sh mybranch mypref mypref mypref myrepl 1
+$ ./config.sh -b mybranch -1 mypref -2 mypref -3 mypref -r myrepl -n 1 -o mybranch-mypref-mypref-mypref-myrepl-1core
+$ make
 $ ./run_champsim.sh mybranch-mypref-mypref-mypref-myrepl-1core 1 10 bzip2_183B
 ```
 
