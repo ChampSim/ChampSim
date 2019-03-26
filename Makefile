@@ -1,79 +1,59 @@
-app = champsim
+include configure.mk
 
-srcExt = cc
-srcDir = src branch replacement prefetcher
+executable_name ?= champsim
+
+srcDir = src
 objDir = obj
 binDir = bin
-inc = inc
 
-debug = 1
+# Set defaults if not specified in configure.mk
+CC ?= gcc
+CXX ?= g++
+CFLAGS ?= -Wall -O3
+CXXFLAGS ?= -Wall -O3
 
-CFlags = -Wall -O3 -std=c++11
-LDFlags =
-libs =
-libDir =
+# Add some flags which must always be used
+CFLAGS += -std=gnu99
+CXXFLAGS += -std=c++11
+CPPFLAGS += -Iinc -MMD -MP
+LDFLAGS +=
+LDLIBS +=
 
-
-#************************ DO NOT EDIT BELOW THIS LINE! ************************
-
-ifeq ($(debug),1)
-	debug=-g
-else
-	debug=
-endif
-inc := $(addprefix -I,$(inc))
-libs := $(addprefix -l,$(libs))
-libDir := $(addprefix -L,$(libDir))
-CFlags += -c $(debug) $(inc) $(libDir) $(libs)
-sources := $(shell find $(srcDir) -name '*.$(srcExt)')
-srcDirs := $(shell find . -name '*.$(srcExt)' -exec dirname {} \; | uniq)
-objects := $(patsubst %.$(srcExt),$(objDir)/%.o,$(sources))
-
-ifeq ($(srcExt),cc)
-	CC = $(CXX)
-else
-	CFlags += -std=gnu99
-endif
+core_sources = $(srcDir)/main.cc $(srcDir)/block.cc $(srcDir)/cache.cc $(srcDir)/dram_controller.cc $(srcDir)/ooo_cpu.cc $(srcDir)/uncore.cc $(srcDir)/base_replacement.cc
+user_objects = $(objDir)/l1prefetcher.o $(objDir)/l2prefetcher.o $(objDir)/llprefetcher.o $(objDir)/llreplacement.o $(objDir)/branch_predictor.o
+core_objects := $(patsubst $(srcDir)/%.cc,$(objDir)/%.o,$(core_sources))
 
 .phony: all clean distclean
 
+all: $(binDir)/$(executable_name)
 
-all: $(binDir)/$(app)
+$(binDir)/$(executable_name): $(core_objects) $(user_objects) configure.mk
+	@mkdir -p $(dir $@)
+	$(CXX) $(LDFLAGS) -o $@ $(core_objects) $(user_objects) $(LDLIBS)
 
-$(binDir)/$(app): buildrepo $(objects)
-	@mkdir -p `dirname $@`
-	@echo "Linking $@..."
-	@$(CC) $(objects) $(LDFlags) -o $@
+$(objDir)/%.o: $(srcDir)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) -c -O3 $(CPPFLAGS) $(CFLAGS) -o $@ $<
 
-$(objDir)/%.o: %.$(srcExt)
-	@echo "Generating dependencies for $<..."
-	@$(call make-depend,$<,$@,$(subst .o,.d,$@))
-	@echo "Compiling $<..."
-	@$(CC) $(CFlags) $< -o $@
+$(objDir)/%.o: $(srcDir)/%.cc
+	@mkdir -p $(dir $@)
+	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
+
+$(objDir)/l1prefetcher.o: $(L1PREFETCHER)
+$(objDir)/l2prefetcher.o: $(L2PREFETCHER)
+$(objDir)/llprefetcher.o: $(LLPREFETCHER)
+$(objDir)/llreplacement.o: $(LLREPLACEMENT)
+$(objDir)/branch_predictor.o: $(BRANCH_PREDICTOR)
+$(user_objects):
+	@mkdir -p $(dir $@)
+	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $^
 
 clean:
 	$(RM) -r $(objDir)
 
 distclean: clean
 	$(RM) -r $(binDir)/$(app)
+	$(RM) configure.mk
 
-buildrepo:
-	@$(call make-repo)
+-include $(wildcard $(objDir)/*.d)
 
-define make-repo
-   for dir in $(srcDirs); \
-   do \
-	mkdir -p $(objDir)/$$dir; \
-   done
-endef
-
-
-# usage: $(call make-depend,source-file,object-file,depend-file)
-define make-depend
-  $(CC) -MM       \
-        -MF $3    \
-        -MP       \
-        -MT $2    \
-        $(CFlags) \
-        $1
-endef

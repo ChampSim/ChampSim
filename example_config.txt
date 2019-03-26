@@ -1,0 +1,27 @@
+###
+# Example configuration file
+###
+
+# Lines starting with a # are comments
+
+## Setting some basic information
+#executable_name=champsim-nl-nl-nl-lru-1
+#num_cores=1
+
+## Selecting a prefetcher
+l1prefetcher=prefetcher/next_line.l1d_pref
+#l2prefetcher=prefetcher/next_line.l2c_pref
+#llprefetcher=prefetcher/next_line.llc_pref
+
+## Selecting a LLC replacement policy
+#llreplacement=replacement/lru.llc_repl
+
+## Various Make options can be set in this file as well
+#CC=gcc
+#CXX=g++
+#CFLAGS=-O2
+#CXXFLAGS=-Og -g
+#CPPFLAGS=-I/usr/include -D
+#LDFLAGS=-L/usr/lib
+#LDLIBS=-lm
+

@@ -7,5 +7,8 @@ replacement/llc_replacement.cc
 
 inc/champsim.h.bak
 
-bin/
+configure.mk
+
 obj/
+bin/
+
