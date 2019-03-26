@@ -46,7 +46,7 @@ $(objDir)/llreplacement.o: $(LLREPLACEMENT)
 $(objDir)/branch_predictor.o: $(BRANCH_PREDICTOR)
 $(user_objects):
 	@mkdir -p $(dir $@)
-	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $^
+	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $<
 
 clean:
 	$(RM) -r $(objDir)
