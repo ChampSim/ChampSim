@@ -2,8 +2,8 @@
 
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
-    // baseline LRU replacement policy for other caches 
-    return lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type); 
+    // baseline LRU replacement policy for other caches
+    return lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type);
 }
 
 void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
@@ -71,30 +71,3 @@ void CACHE::replacement_final_stats()
 {
 
 }
-
-#ifdef NO_CRC2_COMPILE
-void InitReplacementState()
-{
-    
-}
-
-uint32_t GetVictimInSet (uint32_t cpu, uint32_t set, const BLOCK *current_set, uint64_t PC, uint64_t paddr, uint32_t type)
-{
-    return 0;
-}
-
-void UpdateReplacementState (uint32_t cpu, uint32_t set, uint32_t way, uint64_t paddr, uint64_t PC, uint64_t victim_addr, uint32_t type, uint8_t hit)
-{
-    
-}
-
-void PrintStats_Heartbeat()
-{
-    
-}
-
-void PrintStats()
-{
-
-}
-#endif
