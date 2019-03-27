@@ -1,0 +1,4 @@
+# Ignoring the build directory. This directory is dedicated to the compilation
+# process of the simulator. We should ignore the binary directory as well.
+bin/
+build/
