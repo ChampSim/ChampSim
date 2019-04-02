@@ -77,7 +77,7 @@ message(STATUS "Using the L1D prefetcher: ${CHAMPSIM_PREFETCHER_L1D}")
 message(STATUS "Using the L2C prefetcher: ${CHAMPSIM_PREFETCHER_L2C}")
 message(STATUS "Using the LLC prefetcher: ${CHAMPSIM_PREFETCHER_LLC}")
 message(STATUS "Using the replacement policy: ${CHAMPSIM_REPLACEMENT_POLICY}")
-message(STATUS "Using ${CHAMPSIM_NUMBER_CORE} cores")
+message(STATUS "Using ${CHAMPSIM_NUMBER_CORE} core(s)")
 
 add_executable(
   ${CHAMPSIM_BINARY_NAME}
