@@ -1,0 +1,5 @@
+file(
+  GLOB_RECURSE
+  CHAMPSIM_PREFETCHER_L2C_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/prefetcher/l2c_kpcp/*.cc
+)
