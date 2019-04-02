@@ -10,13 +10,28 @@ git clone https://github.com/ChampSim/ChampSim.git
 
 # Compile
 
-ChampSim takes five parameters: Branch predictor, L1D prefetcher, L2C prefetcher, LLC replacement policy, and the number of cores. 
-For example, `./build_champsim.sh bimodal no no lru 1` builds a single-core processor with bimodal branch predictor, no L1/L2 data prefetchers, and the baseline LRU replacement policy for the LLC.
-```
-$ ./build_champsim.sh bimodal no no no lru 1
+ChampSim is delivered with a set configuration files and a build script to manage one of the most common use case of *ChampSim*. Namely, testing many algorithm of one of the components of the simulator against a whole lot of benchmarks and traces.
 
-$ ./build_champsim.sh ${BRANCH} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
+As mentioned above, ChampSim is shipped with a set of configuration files that can be found in the `config` directory. Actually, there's one configuration file for each component of the simulator.
+
+There's actually two ways to use the build command. The first simply consists in invoking the build script with no arguments, which turns it into a default mode.
+
+```bash
+$ ./scripts/build.sh
 ```
+
+The second one consists in calling the same build scripts, providing it five arguments:
+ 1. A list of the branch predictors to use;
+ 2. A list of the L1D prefetchers to use;
+ 3. A list of the L2C prefetchers to use;
+ 4. A list of the LLC prefetchers to use;
+ 5. A list of the replacement policies to use.
+
+```bash
+$ ./scripts/build.sh config/branch_predictors.config config/l1d_prefetchers.config config/l2c_prefetchers.config config/llc_prefetchers.config config/replacement_policies.config
+```
+
+**Warning:** This new build system is based on CMake and does not support multi-core simulations yet.
 
 # Download DPC-3 trace
 
@@ -43,7 +58,7 @@ ${N_SIM}:  number of instructinos for detailed simulation (10 million)
 ${TRACE}: trace name (400.perlbench-41B.champsimtrace.xz)
 ${OPTION}: extra option for "-low_bandwidth" (src/main.cc)
 ```
-Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br> 
+Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br>
 
 * Multi-core simulation: Run simulation with `run_4core.sh` script. <br>
 ```
@@ -51,7 +66,7 @@ Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE
 $ ./run_4core.sh bimodal-no-no-no-lru-4core 1 10 0 400.perlbench-41B.champsimtrace.xz \\
   401.bzip2-38B.champsimtrace.xz 403.gcc-17B.champsimtrace.xz 410.bwaves-945B.champsimtrace.xz
 ```
-Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads. 
+Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads.
 
 
 # Add your own branch predictor, data prefetchers, and replacement policy
@@ -81,15 +96,15 @@ $ ./run_champsim.sh mybranch-mypref-mypref-mypref-myrepl-1core 1 10 bzip2_183B
 
 # How to create traces
 
-We have included only 4 sample traces, taken from SPEC CPU 2006. These 
-traces are short (10 million instructions), and do not necessarily cover the range of behaviors your 
+We have included only 4 sample traces, taken from SPEC CPU 2006. These
+traces are short (10 million instructions), and do not necessarily cover the range of behaviors your
 replacement algorithm will likely see in the full competition trace list (not
 included).  We STRONGLY recommend creating your own traces, covering
 a wide variety of program types and behaviors.
 
 The included Pin Tool champsim_tracer.cpp can be used to generate new traces.
-We used Pin 3.2 (pin-3.2-81205-gcc-linux), and it may require 
-installing libdwarf.so, libelf.so, or other libraries, if you do not already 
+We used Pin 3.2 (pin-3.2-81205-gcc-linux), and it may require
+installing libdwarf.so, libelf.so, or other libraries, if you do not already
 have them. Please refer to the Pin documentation (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/)
 for working with Pin 3.2.
 
