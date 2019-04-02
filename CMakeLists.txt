@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(CPUSimulator C CXX)
 
+set(CMAKE_CXX_STANDARD 11)
+
 set(CHAMPSIM_BRANCH_PREDICTOR "hashed_perceptron" CACHE STRING "The branch prediction mechanism used by the simulation.")
 set(CHAMPSIM_PREFETCHER_L1D "l1d_no" CACHE STRING "The prefetching mechanism used in the L1D cache.")
 set(CHAMPSIM_PREFETCHER_L2C "l2c_no" CACHE STRING "The prefetching mechanism used in the L2C cache.")

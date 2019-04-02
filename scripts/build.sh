@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 
-BRANCH_PREDICTORS=$1
-L1D_PREFETCHERS=$2
-L2C_PREFETCHERS=$3
-LLC_PREFETCHERS=$4
-REPLACEMENT_POLICIES=$5
-
 CMAKE_WD=$PWD
 
 # Doing some sanity checks before modifying any states.
-if [[ $# -ne 5 ]]; then
+if [[ $# -eq 0 ]]; then
+  BRANCH_PREDICTORS="config/branch_predictors.config"
+  L1D_PREFETCHERS="config/l1d_prefetchers.config"
+  L2C_PREFETCHERS="config/l2c_prefetchers.config"
+  LLC_PREFETCHERS="config/llc_prefetchers.config"
+  REPLACEMENT_POLICIES="config/replacement_policies.config"
+elif [[ $# -ne 5 ]]; then
 	printf "The command is provided an illegal number of arguments. %s parameter(s) given but 5 required.\n" $#
+  printf "Usage: ./scripts/build.sh [BRANCH_PREDICTOR_FILE] [L1D_PREFETCHER_FILE] [L2C_PREFETCHER_FILE] [LLC_PREFETCHER_FILE] [REPLACEMENT_POLICY_FILE]\n"
 	exit 1
+else
+  BRANCH_PREDICTORS=$1
+  L1D_PREFETCHERS=$2
+  L2C_PREFETCHERS=$3
+  LLC_PREFETCHERS=$4
+  REPLACEMENT_POLICIES=$5
 fi
 
 if [[ ! -e $PWD/$BRANCH_PREDICTORS ]]; then
@@ -25,7 +32,7 @@ if [[ ! -e $PWD/$L1D_PREFETCHERS ]]; then
 fi
 
 if [[ ! -e $PWD/$L2C_PREFETCHERS ]]; then
-	printf "The file ${PWD}/${l2C_PREFETCHERS} couldn't be found. Exiting.\n"
+	printf "The file ${PWD}/${L2C_PREFETCHERS} couldn't be found. Exiting.\n"
 	exit 1
 fi
 
