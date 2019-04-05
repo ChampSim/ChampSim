@@ -80,7 +80,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
         }
         trackers[index].lru = 0;
 
-        return;
+        return metadata_in;
     }
 
     // sanity check
@@ -103,7 +103,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 
     // don't do anything if we somehow saw the same address twice in a row
     if (stride == 0)
-        return;
+        return metadata_in;
 
     // only do any prefetching if there's a pattern of seeing the same
     // stride more than once
