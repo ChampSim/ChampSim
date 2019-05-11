@@ -33,11 +33,11 @@ $(binDir)/$(executable_name): $(core_objects) $(user_objects) configure.mk
 
 $(objDir)/%.o: $(srcDir)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) -c -O3 $(CPPFLAGS) $(CFLAGS) -o $@ $<
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) -o $@ $<
 
 $(objDir)/%.o: $(srcDir)/%.cc
 	@mkdir -p $(dir $@)
-	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
 $(objDir)/l1prefetcher.o: $(L1PREFETCHER)
 $(objDir)/l2prefetcher.o: $(L2PREFETCHER)
@@ -46,7 +46,7 @@ $(objDir)/llreplacement.o: $(LLREPLACEMENT)
 $(objDir)/branch_predictor.o: $(BRANCH_PREDICTOR)
 $(user_objects):
 	@mkdir -p $(dir $@)
-	$(CXX) -c -O3 $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $<
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $<
 
 clean:
 	$(RM) -r $(objDir)
