@@ -39,25 +39,20 @@ Execute `run_champsim.sh` with proper input arguments. The default `TRACE_DIR` i
 * Single-core simulation: Run simulation with `run_champsim.sh` script.
 
 ```
-Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]
-$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
+$ ./${BINARY} -warmup_instructions ${N_WARM}000000 -simulation_instructions ${N_SIM}000000 ${OPTION} -traces ${TRACE}
 
-${BINARY}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
+Example:
+$ ./champsim -warmup_instructions 1 -simulation_instructions 10 -traces dpc3_traces/400.perlbench-41B.champsimtrace.xz
+
+${BINARY}: name of the compiled champsim binary (bin/champsim)
 ${N_WARM}: number of instructions for warmup (1 million)
 ${N_SIM}:  number of instructinos for detailed simulation (10 million)
-${TRACE}: trace name (400.perlbench-41B.champsimtrace.xz)
 ${OPTION}: extra option for "-low_bandwidth" (src/main.cc)
+${TRACE}: trace name (400.perlbench-41B.champsimtrace.xz)
 ```
-Simulation results will be stored under "results_${N_SIM}M" as a form of "${TRACE}-${BINARY}-${OPTION}.txt".<br> 
+Simulation results will be outputted to the standard output, where they can be piped to a file of your choosing.<br>
 
-* Multi-core simulation: Run simulation with `run_4core.sh` script. <br>
-```
-Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE2] [TRACE3] [OPTION]
-$ ./run_4core.sh bimodal-no-no-no-lru-4core 1 10 0 400.perlbench-41B.champsimtrace.xz \\
-  401.bzip2-38B.champsimtrace.xz 403.gcc-17B.champsimtrace.xz 410.bwaves-945B.champsimtrace.xz
-```
-Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads. 
-
+* Multi-core simulation is the same as above, but one trace per core must be specified. <br>
 
 # Add your own branch predictor, data prefetchers, and replacement policy
 **Copy an empty template**
@@ -82,7 +77,7 @@ $ vim replacement/myrepl.llc_repl
 ```
 $ ./config.sh -b mybranch -1 mypref -2 mypref -3 mypref -r myrepl -n 1 -o mybranch-mypref-mypref-mypref-myrepl-1core
 $ make
-$ ./run_champsim.sh mybranch-mypref-mypref-mypref-myrepl-1core 1 10 bzip2_183B
+$ ./mybranch-mypref-mypref-mypref-myrepl-1core -warmup_instructions 1 -simulation_instructions 10 -traces dpc3_traces/bzip2_183B
 ```
 
 # How to create traces
