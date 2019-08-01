@@ -120,6 +120,7 @@ void O3_CPU::handle_branch()
                         uint8_t branch_prediction = predict_branch(arch_instr.ip);
                         
                         if (arch_instr.branch_taken != branch_prediction) {
+			  //if(false) { // this simulates perfect branch prediction			  
                             branch_mispredictions++;
 
                             DP( if (warmup_complete[cpu]) {
@@ -155,7 +156,9 @@ void O3_CPU::handle_branch()
                 }
                 instr_unique_id++;
             }
-        } else {
+        }
+	else
+	  {
             if (!fread(&current_instr, instr_size, 1, trace_file)) {
                 // reached end of file for this trace
                 cout << "*** Reached end of trace for Core: " << cpu << " Repeating trace: " << trace_string << endl; 
@@ -249,7 +252,8 @@ void O3_CPU::handle_branch()
                         uint8_t branch_prediction = predict_branch(arch_instr.ip);
                         
                         if (arch_instr.branch_taken != branch_prediction) {
-                            branch_mispredictions++;
+			  //if(false) { // this simulates perfect branch prediction
+			  branch_mispredictions++;
 
                             DP( if (warmup_complete[cpu]) {
                             cout << "[BRANCH] MISPREDICTED instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
@@ -371,6 +375,13 @@ void O3_CPU::fetch_instruction()
 {
     // TODO: can we model wrong path execusion?
 
+  // if we had a branch mispredict, turn fetching back on after the branch mispredict penalty
+  if((fetch_stall == 1) && (current_core_cycle[cpu] >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
+    {
+      fetch_stall = 0;
+      fetch_resume_cycle = 0;
+    }
+  
     // add this request to ITLB
     uint32_t read_index = (ROB.last_read == (ROB.SIZE-1)) ? 0 : (ROB.last_read + 1);
     for (uint32_t i=0; i<FETCH_WIDTH; i++) {
@@ -1377,8 +1388,11 @@ void O3_CPU::complete_execution(uint32_t rob_index)
             if (ROB.entry[rob_index].reg_RAW_producer)
                 reg_RAW_release(rob_index);
 
-            if (ROB.entry[rob_index].branch_mispredicted) 
-                fetch_stall = 0;
+            if (ROB.entry[rob_index].branch_mispredicted)
+	      {
+		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+		//fetch_stall = 0;
+	      }
 
             DP(if(warmup_complete[cpu]) {
             cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
@@ -1396,8 +1410,11 @@ void O3_CPU::complete_execution(uint32_t rob_index)
                 if (ROB.entry[rob_index].reg_RAW_producer)
                     reg_RAW_release(rob_index);
 
-                if (ROB.entry[rob_index].branch_mispredicted) 
-                    fetch_stall = 0;
+                if (ROB.entry[rob_index].branch_mispredicted)
+		  {
+		    fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+		    //fetch_stall = 0;
+		  }
 
                 DP(if(warmup_complete[cpu]) {
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;

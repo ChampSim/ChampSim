@@ -13,13 +13,14 @@
 using namespace std;
 
 // CORE PROCESSOR
-#define FETCH_WIDTH 3
-#define DECODE_WIDTH 3
-#define EXEC_WIDTH 3
+#define FETCH_WIDTH 6
+#define DECODE_WIDTH 6
+#define EXEC_WIDTH 4
 #define LQ_WIDTH 2
-#define SQ_WIDTH 1
-#define RETIRE_WIDTH 3
-#define SCHEDULER_SIZE 64
+#define SQ_WIDTH 2
+#define RETIRE_WIDTH 4
+#define SCHEDULER_SIZE 128
+#define BRANCH_MISPREDICT_PENALTY 10
 //#define SCHEDULING_LATENCY 6
 //#define EXEC_LATENCY 1
 
@@ -72,6 +73,7 @@ class O3_CPU {
     int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
     int mispredicted_branch_iw_index; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
     uint8_t  fetch_stall;
+    uint64_t fetch_resume_cycle;
     uint64_t num_branch, branch_mispredictions;
 
     // TLBs and caches
@@ -116,6 +118,7 @@ class O3_CPU {
         branch_mispredict_stall_fetch = 0;
         mispredicted_branch_iw_index = 0;
         fetch_stall = 0;
+	fetch_resume_cycle = 0;
         num_branch = 0;
         branch_mispredictions = 0;
 
