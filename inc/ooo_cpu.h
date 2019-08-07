@@ -20,7 +20,7 @@ using namespace std;
 #define SQ_WIDTH 2
 #define RETIRE_WIDTH 4
 #define SCHEDULER_SIZE 128
-#define BRANCH_MISPREDICT_PENALTY 10
+#define BRANCH_MISPREDICT_PENALTY 20
 //#define SCHEDULING_LATENCY 6
 //#define EXEC_LATENCY 1
 
