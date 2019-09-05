@@ -108,7 +108,8 @@ class PACKET {
              data,
              instr_id,
              ip, 
-             event_cycle;
+             event_cycle,
+             cycle_enqueued;
 
     PACKET() {
         instruction = 0;
@@ -157,6 +158,7 @@ class PACKET {
         instr_id = 0;
         ip = 0;
         event_cycle = UINT64_MAX;
+	cycle_enqueued = 0;
     };
 };
 

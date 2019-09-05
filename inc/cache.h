@@ -58,7 +58,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define L1D_WQ_SIZE 64 
 #define L1D_PQ_SIZE 8
 #define L1D_MSHR_SIZE 16
-#define L1D_LATENCY 4 
+#define L1D_LATENCY 5 
 
 // L2 CACHE
 #define L2C_SET 1024
@@ -67,7 +67,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define L2C_WQ_SIZE 32
 #define L2C_PQ_SIZE 16
 #define L2C_MSHR_SIZE 32
-#define L2C_LATENCY 8  // 4 (L1I or L1D) + 8 = 12 cycles
+#define L2C_LATENCY 10  // 5 (L1I or L1D) + 10 = 15 cycles
 
 // LAST LEVEL CACHE
 #define LLC_SET NUM_CPUS*2048
@@ -76,7 +76,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define LLC_WQ_SIZE NUM_CPUS*L2C_MSHR_SIZE //48
 #define LLC_PQ_SIZE NUM_CPUS*32
 #define LLC_MSHR_SIZE NUM_CPUS*64
-#define LLC_LATENCY 20  // 4 (L1I or L1D) + 8 + 20 = 32 cycles
+#define LLC_LATENCY 20  // 5 (L1I or L1D) + 10 + 20 = 35 cycles
 
 class CACHE : public MEMORY {
   public:
@@ -87,6 +87,7 @@ class CACHE : public MEMORY {
     BLOCK **block;
     int fill_level;
     uint32_t MAX_READ, MAX_FILL;
+    uint32_t reads_available_this_cycle;
     uint8_t cache_type;
 
     // prefetch stats
@@ -109,6 +110,8 @@ class CACHE : public MEMORY {
              roi_access[NUM_CPUS][NUM_TYPES],
              roi_hit[NUM_CPUS][NUM_TYPES],
              roi_miss[NUM_CPUS][NUM_TYPES];
+
+    uint64_t total_miss_latency;
     
     // constructor
     CACHE(string v1, uint32_t v2, int v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8) 
@@ -139,6 +142,8 @@ class CACHE : public MEMORY {
                 roi_miss[i][j] = 0;
             }
         }
+
+	total_miss_latency = 0;
 
         lower_level = NULL;
         extra_interface = NULL;

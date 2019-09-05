@@ -62,6 +62,9 @@ void print_roi_stats(uint32_t cpu, CACHE *cache)
     cout << cache->NAME;
     cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
     cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
+
+    cout << cache->NAME;
+    cout << " AVERAGE MISS LATENCY: " << (1.0*(cache->total_miss_latency))/TOTAL_MISS << " cycles" << endl;
 }
 
 void print_sim_stats(uint32_t cpu, CACHE *cache)
@@ -95,7 +98,8 @@ void print_branch_stats()
     for (uint32_t i=0; i<NUM_CPUS; i++) {
         cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
         cout << (100.0*(ooo_cpu[i].num_branch - ooo_cpu[i].branch_mispredictions)) / ooo_cpu[i].num_branch;
-        cout << "% MPKI: " << (1000.0*ooo_cpu[i].branch_mispredictions)/(ooo_cpu[i].num_retired - ooo_cpu[i].warmup_instructions) << endl;
+        cout << "% MPKI: " << (1000.0*ooo_cpu[i].branch_mispredictions)/(ooo_cpu[i].num_retired - ooo_cpu[i].warmup_instructions);
+	cout << " Average ROB Occupancy at Mispredict: " << (1.0*ooo_cpu[i].total_rob_occupancy_at_branch_mispredict)/ooo_cpu[i].branch_mispredictions << endl;
     }
 }
 
@@ -135,6 +139,8 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
         cache->sim_miss[cpu][i] = 0;
     }
 
+    cache->total_miss_latency = 0;
+
     cache->RQ.ACCESS = 0;
     cache->RQ.MERGED = 0;
     cache->RQ.TO_CACHE = 0;
@@ -171,6 +177,7 @@ void finish_warmup()
         // reset branch stats
         ooo_cpu[i].num_branch = 0;
         ooo_cpu[i].branch_mispredictions = 0;
+	ooo_cpu[i].total_rob_occupancy_at_branch_mispredict = 0;
 
         reset_cache_stats(i, &ooo_cpu[i].L1I);
         reset_cache_stats(i, &ooo_cpu[i].L1D);
@@ -532,9 +539,9 @@ int main(int argc, char** argv)
         DRAM_MTPS = DRAM_IO_FREQ;
 
     // DRAM access latency
-    tRP  = tRP_DRAM_CYCLE  * (CPU_FREQ / DRAM_IO_FREQ); 
-    tRCD = tRCD_DRAM_CYCLE * (CPU_FREQ / DRAM_IO_FREQ); 
-    tCAS = tCAS_DRAM_CYCLE * (CPU_FREQ / DRAM_IO_FREQ); 
+    tRP  = (uint32_t)((1.0 * tRP_DRAM_NANOSECONDS  * CPU_FREQ) / 1000); 
+    tRCD = (uint32_t)((1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
+    tCAS = (uint32_t)((1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
 
     // default: 16 = (64 / 8) * (3200 / 1600)
     // it takes 16 CPU cycles to tranfser 64B cache block on a 8B (64-bit) bus 
@@ -679,6 +686,7 @@ int main(int argc, char** argv)
         // SHARED CACHE
         uncore.LLC.cache_type = IS_LLC;
         uncore.LLC.fill_level = FILL_LLC;
+        uncore.LLC.MAX_READ = NUM_CPUS;
         uncore.LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
         uncore.LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
         uncore.LLC.lower_level = &uncore.DRAM;

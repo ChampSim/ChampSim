@@ -120,8 +120,10 @@ void O3_CPU::handle_branch()
                         uint8_t branch_prediction = predict_branch(arch_instr.ip);
                         
                         if (arch_instr.branch_taken != branch_prediction) {
-			  //if(false) { // this simulates perfect branch prediction			  
+   			    //if(false) { // this simulates perfect branch prediction			  
                             branch_mispredictions++;
+
+			    total_rob_occupancy_at_branch_mispredict +=	ROB.occupancy;
 
                             DP( if (warmup_complete[cpu]) {
                             cout << "[BRANCH] MISPREDICTED instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
@@ -252,8 +254,10 @@ void O3_CPU::handle_branch()
                         uint8_t branch_prediction = predict_branch(arch_instr.ip);
                         
                         if (arch_instr.branch_taken != branch_prediction) {
-			  //if(false) { // this simulates perfect branch prediction
-			  branch_mispredictions++;
+			    //if(false) { // this simulates perfect branch prediction
+			    branch_mispredictions++;
+
+			    total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
 
                             DP( if (warmup_complete[cpu]) {
                             cout << "[BRANCH] MISPREDICTED instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;

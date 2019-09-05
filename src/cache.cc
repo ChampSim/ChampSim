@@ -51,6 +51,12 @@ void CACHE::handle_fill()
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
             }
 
+	    if(warmup_complete[fill_cpu])
+	      {
+		uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);	
+		total_miss_latency += current_miss_latency;
+	      }
+
             MSHR.remove_queue(&MSHR.entry[mshr_index]);
             MSHR.num_returned--;
 
@@ -104,7 +110,7 @@ void CACHE::handle_fill()
 #endif
         }
 
-        if (do_fill) {
+        if (do_fill){
             // update prefetcher
             if (cache_type == IS_L1D)
 	      l1d_prefetcher_cache_fill(MSHR.entry[mshr_index].full_addr, set, way, (MSHR.entry[mshr_index].type == PREFETCH) ? 1 : 0, block[set][way].address<<LOG2_BLOCK_SIZE,
@@ -169,6 +175,12 @@ void CACHE::handle_fill()
                     PROCESSED.add_queue(&MSHR.entry[mshr_index]);
             }
 
+	    if(warmup_complete[fill_cpu])
+	      {
+		uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);
+		total_miss_latency += current_miss_latency;
+	      }
+	  
             MSHR.remove_queue(&MSHR.entry[mshr_index]);
             MSHR.num_returned--;
 
@@ -432,11 +444,12 @@ void CACHE::handle_writeback()
 void CACHE::handle_read()
 {
     // handle read
-    uint32_t read_cpu = RQ.entry[RQ.head].cpu;
-    if (read_cpu == NUM_CPUS)
-        return;
 
     for (uint32_t i=0; i<MAX_READ; i++) {
+
+      uint32_t read_cpu = RQ.entry[RQ.head].cpu;
+      if (read_cpu == NUM_CPUS)
+        return;
 
         // handle the oldest entry
         if ((RQ.entry[RQ.head].event_cycle <= current_core_cycle[read_cpu]) && (RQ.occupancy > 0)) {
@@ -517,6 +530,7 @@ void CACHE::handle_read()
                 
                 // remove this entry from RQ
                 RQ.remove_queue(&RQ.entry[index]);
+		reads_available_this_cycle--;
             }
             else { // read miss
 
@@ -680,20 +694,31 @@ void CACHE::handle_read()
 
                     // remove this entry from RQ
                     RQ.remove_queue(&RQ.entry[index]);
+		    reads_available_this_cycle--;
                 }
             }
         }
+	else
+	  {
+	    return;
+	  }
+
+	if(reads_available_this_cycle == 0)
+	  {
+	    return;
+	  }
     }
 }
 
 void CACHE::handle_prefetch()
 {
     // handle prefetch
-    uint32_t prefetch_cpu = PQ.entry[PQ.head].cpu;
-    if (prefetch_cpu == NUM_CPUS)
-        return;
 
     for (uint32_t i=0; i<MAX_READ; i++) {
+      
+      uint32_t prefetch_cpu = PQ.entry[PQ.head].cpu;
+      if (prefetch_cpu == NUM_CPUS)
+        return;
 
         // handle the oldest entry
         if ((PQ.entry[PQ.head].event_cycle <= current_core_cycle[prefetch_cpu]) && (PQ.occupancy > 0)) {
@@ -746,6 +771,7 @@ void CACHE::handle_prefetch()
                 
                 // remove this entry from PQ
                 PQ.remove_queue(&PQ.entry[index]);
+		reads_available_this_cycle--;
             }
             else { // prefetch miss
 
@@ -859,9 +885,19 @@ void CACHE::handle_prefetch()
 
                     // remove this entry from PQ
                     PQ.remove_queue(&PQ.entry[index]);
+		    reads_available_this_cycle--;
                 }
             }
         }
+	else
+	  {
+	    return;
+	  }
+
+	if(reads_available_this_cycle == 0)
+	  {
+	    return;
+	  }
     }
 }
 
@@ -869,9 +905,10 @@ void CACHE::operate()
 {
     handle_fill();
     handle_writeback();
+    reads_available_this_cycle = MAX_READ;
     handle_read();
 
-    if (PQ.occupancy && (RQ.occupancy == 0))
+    if (PQ.occupancy && (reads_available_this_cycle > 0))
         handle_prefetch();
 }
 
@@ -1437,6 +1474,8 @@ int CACHE::check_mshr(PACKET *packet)
 void CACHE::add_mshr(PACKET *packet)
 {
     uint32_t index = 0;
+
+    packet->cycle_enqueued = current_core_cycle[packet->cpu];
 
     // search mshr
     for (index=0; index<MSHR_SIZE; index++) {
