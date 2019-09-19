@@ -5,20 +5,20 @@
 
 // DRAM configuration
 #define DRAM_CHANNEL_WIDTH 8 // 8B
-#define DRAM_WQ_SIZE 48
-#define DRAM_RQ_SIZE 48
+#define DRAM_WQ_SIZE 64
+#define DRAM_RQ_SIZE 64
 
-#define tRP_DRAM_CYCLE  11 
-#define tRCD_DRAM_CYCLE 11
-#define tCAS_DRAM_CYCLE 11
+#define tRP_DRAM_NANOSECONDS  12.5
+#define tRCD_DRAM_NANOSECONDS 12.5
+#define tCAS_DRAM_NANOSECONDS 12.5
 
 // the data bus must wait this amount of time when switching between reads and writes, and vice versa
 #define DRAM_DBUS_TURN_AROUND_TIME ((15*CPU_FREQ)/2000) // 7.5 ns 
 extern uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME;
 
 // these values control when to send out a burst of writes
-#define DRAM_WRITE_HIGH_WM    (DRAM_WQ_SIZE*3/4)
-#define DRAM_WRITE_LOW_WM     (DRAM_WQ_SIZE*1/4)
+#define DRAM_WRITE_HIGH_WM    ((DRAM_WQ_SIZE*7)>>3) // 7/8th
+#define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
 #define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
 
 // DRAM
