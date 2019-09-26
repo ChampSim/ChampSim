@@ -93,6 +93,8 @@ installing libdwarf.so, libelf.so, or other libraries, if you do not already
 have them. Please refer to the Pin documentation (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/)
 for working with Pin 3.2.
 
+Get this version of Pin:
+wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.2-81205-gcc-linux.tar.gz
 
 **Use the Pin tool like this**
 ```
