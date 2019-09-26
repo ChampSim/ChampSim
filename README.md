@@ -94,7 +94,9 @@ have them. Please refer to the Pin documentation (https://software.intel.com/sit
 for working with Pin 3.2.
 
 Get this version of Pin:
+```
 wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.2-81205-gcc-linux.tar.gz
+```
 
 **Use the Pin tool like this**
 ```
