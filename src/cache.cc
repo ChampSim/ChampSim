@@ -51,9 +51,9 @@ void CACHE::handle_fill()
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
             }
 
-	    if(warmup_complete[fill_cpu])
+	    if(warmup_complete[fill_cpu] && (MSHR.entry[mshr_index].cycle_enqueued != 0))
 	      {
-		uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);	
+		uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);
 		total_miss_latency += current_miss_latency;
 	      }
 
@@ -175,9 +175,15 @@ void CACHE::handle_fill()
                     PROCESSED.add_queue(&MSHR.entry[mshr_index]);
             }
 
-	    if(warmup_complete[fill_cpu])
+	    if(warmup_complete[fill_cpu] && (MSHR.entry[mshr_index].cycle_enqueued != 0))
 	      {
 		uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);
+		/*
+		if(cache_type == IS_L1D)
+		  {
+		    cout << current_core_cycle[fill_cpu] << " - " << MSHR.entry[mshr_index].cycle_enqueued << " = " << current_miss_latency << " MSHR index: " << mshr_index << endl;
+		  }
+		*/
 		total_miss_latency += current_miss_latency;
 	      }
 	  

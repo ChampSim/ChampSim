@@ -65,6 +65,7 @@ void print_roi_stats(uint32_t cpu, CACHE *cache)
 
     cout << cache->NAME;
     cout << " AVERAGE MISS LATENCY: " << (1.0*(cache->total_miss_latency))/TOTAL_MISS << " cycles" << endl;
+    //cout << " AVERAGE MISS LATENCY: " << (cache->total_miss_latency)/TOTAL_MISS << " cycles " << cache->total_miss_latency << "/" << TOTAL_MISS<< endl;
 }
 
 void print_sim_stats(uint32_t cpu, CACHE *cache)
@@ -161,8 +162,9 @@ void finish_warmup()
     elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
 
     // reset core latency
-    SCHEDULING_LATENCY = 6;
+    SCHEDULING_LATENCY = 1;
     EXEC_LATENCY = 1;
+    DECODE_LATENCY = 5;
     PAGE_TABLE_LATENCY = 100;
     SWAP_LATENCY = 100000;
 
@@ -739,6 +741,47 @@ int main(int argc, char** argv)
             // core might be stalled due to page fault or branch misprediction
             if (stall_cycle[i] <= current_core_cycle[i]) {
 
+	      // retire
+	      if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
+		ooo_cpu[i].retire_rob();
+	      
+	      // complete 
+	      ooo_cpu[i].update_rob();
+	      
+	      // memory operation
+	      ooo_cpu[i].execute_memory_instruction();
+	      ooo_cpu[i].schedule_memory_instruction();
+	      
+	      // execute
+	      ooo_cpu[i].execute_instruction();
+	      
+	      // schedule
+	      uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
+	      if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
+		ooo_cpu[i].schedule_instruction();
+
+	      // decode
+	      if(ooo_cpu[i].DECODE_BUFFER.occupancy > 0)
+		{
+		  ooo_cpu[i].decode_and_dispatch();
+		}
+	      
+	      // fetch
+	      ooo_cpu[i].fetch_instruction();
+
+	      //cout << "IFETCH_BUFFER occupancy: " << ooo_cpu[i].IFETCH_BUFFER.occupancy << " DECODE_BUFFER occupancy: " << ooo_cpu[i].DECODE_BUFFER.occupancy <<
+	      //" ROB occupancy: " << ooo_cpu[i].ROB.occupancy << " cycle: " << current_core_cycle[i] << endl;
+	      
+	      // read from trace
+	      //if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
+	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy == 0) && (ooo_cpu[i].fetch_stall == 0))
+		{
+		  ooo_cpu[i].read_from_trace();
+		}
+
+	      /*
+		// old way, I reversed the order of these function calls because this isn't how CPU simulators are typically written
+
                 // fetch unit
                 if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
                     // handle branch
@@ -768,6 +811,7 @@ int main(int argc, char** argv)
                 // retire
                 if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
                     ooo_cpu[i].retire_rob();
+	      */
             }
 
             // heartbeat information
@@ -835,8 +879,8 @@ int main(int argc, char** argv)
         }
 
         // TODO: should it be backward?
-        uncore.LLC.operate();
         uncore.DRAM.operate();
+        uncore.LLC.operate();
     }
 
 #ifndef CRC2_COMPILE

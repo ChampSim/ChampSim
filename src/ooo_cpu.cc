@@ -4,14 +4,14 @@
 // out-of-order core
 O3_CPU ooo_cpu[NUM_CPUS]; 
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
-uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0;
+uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0, DECODE_LATENCY = 0;
 
 void O3_CPU::initialize_core()
 {
 
 }
 
-void O3_CPU::handle_branch()
+void O3_CPU::read_from_trace()
 {
     // actual processors do not work like this but for easier implementation,
     // we read instruction traces and virtually add them in the ROB
@@ -62,7 +62,7 @@ void O3_CPU::handle_branch()
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
 
-                        // update STA, this structure is required to execute store instructios properly without deadlock
+                        // update STA, this structure is required to execute store instructions properly without deadlock
                         if (num_mem_ops > 0) {
 #ifdef SANITY_CHECK
                             if (STA[STA_tail] < UINT64_MAX) {
@@ -95,12 +95,12 @@ void O3_CPU::handle_branch()
                 if (num_mem_ops > 0) 
                     arch_instr.is_memory = 1;
 
-                // virtually add this instruction to the ROB
-                if (ROB.occupancy < ROB.SIZE) {
-                    uint32_t rob_index = add_to_rob(&arch_instr);
-                    num_reads++;
+                // add this instruction to the IFETCH_BUFFER
+                if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
+		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
+		  num_reads++;
 
-                    // branch prediction
+                    // cut off fetch this cycle after a branch
                     if (arch_instr.is_branch) {
 
                         DP( if (warmup_complete[cpu]) {
@@ -108,52 +108,10 @@ void O3_CPU::handle_branch()
 
                         num_branch++;
 
-                        /*
-                        uint8_t branch_prediction;
-                        // for faster simulation, force perfect prediction during the warmup
-                        // note that branch predictor is still learning with real branch results
-                        if (all_warmup_complete == 0)
-                            branch_prediction = arch_instr.branch_taken; 
-                        else
-                            branch_prediction = predict_branch(arch_instr.ip);
-                        */
-                        uint8_t branch_prediction = predict_branch(arch_instr.ip);
-                        
-                        if (arch_instr.branch_taken != branch_prediction) {
-   			    //if(false) { // this simulates perfect branch prediction			  
-                            branch_mispredictions++;
-
-			    total_rob_occupancy_at_branch_mispredict +=	ROB.occupancy;
-
-                            DP( if (warmup_complete[cpu]) {
-                            cout << "[BRANCH] MISPREDICTED instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
-                            cout << " taken: " << +arch_instr.branch_taken << " predicted: " << +branch_prediction << endl; });
-
-                            // halt any further fetch this cycle
-                            instrs_to_read_this_cycle = 0;
-
-                            // and stall any additional fetches until the branch is executed
-                            fetch_stall = 1; 
-
-                            ROB.entry[rob_index].branch_mispredicted = 1;
-                        }
-                        else {
-                            if (branch_prediction == 1) {
-                                // if we are accurately predicting a branch to be taken, then we can't possibly fetch down that path this cycle,
-                                // so we have to wait until the next cycle to fetch those
-                                instrs_to_read_this_cycle = 0;
-                            }
-
-                            DP( if (warmup_complete[cpu]) {
-                            cout << "[BRANCH] PREDICTED    instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
-                            cout << " taken: " << +arch_instr.branch_taken << " predicted: " << +branch_prediction << endl; });
-                        }
-
-                        last_branch_result(arch_instr.ip, arch_instr.branch_taken);
+			instrs_to_read_this_cycle = 0;
                     }
 
-                    //if ((num_reads == FETCH_WIDTH) || (ROB.occupancy == ROB.SIZE))
-                    if ((num_reads >= instrs_to_read_this_cycle) || (ROB.occupancy == ROB.SIZE))
+		    if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
                         continue_reading = 0;
                 }
                 instr_unique_id++;
@@ -191,13 +149,18 @@ void O3_CPU::handle_branch()
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
                     arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
 
+		    if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24) && (arch_instr.destination_registers[i] < 28))
+		      {
+			arch_instr.destination_registers[i] = 0;
+		      }
+
                     if (arch_instr.destination_registers[i])
                         num_reg_ops++;
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
 
-                        // update STA, this structure is required to execute store instructios properly without deadlock
-                        if (num_mem_ops > 0) {
+                        // update STA, this structure is required to execute store instructions properly without deadlock
+                        if (num_mem_ops > 0) {			  
 #ifdef SANITY_CHECK
                             if (STA[STA_tail] < UINT64_MAX) {
                                 if (STA_head != STA_tail)
@@ -217,7 +180,12 @@ void O3_CPU::handle_branch()
                     arch_instr.source_registers[i] = current_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
-
+		    
+		    if((!arch_instr.is_branch) && (arch_instr.source_registers[i] > 25) && (arch_instr.source_registers[i] < 28))
+		      {
+			arch_instr.source_registers[i] = 0;
+		      }
+		    
                     if (arch_instr.source_registers[i])
                         num_reg_ops++;
                     if (arch_instr.source_memory[i])
@@ -229,12 +197,12 @@ void O3_CPU::handle_branch()
                 if (num_mem_ops > 0) 
                     arch_instr.is_memory = 1;
 
-                // virtually add this instruction to the ROB
-                if (ROB.occupancy < ROB.SIZE) {
-                    uint32_t rob_index = add_to_rob(&arch_instr);
-                    num_reads++;
-
-                    // branch prediction
+                // add this instruction to the IFETCH_BUFFER
+                if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
+		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
+		  num_reads++;
+		    
+                    // cut off fetch whenever we encounter a branch
                     if (arch_instr.is_branch) {
 
                         DP( if (warmup_complete[cpu]) {
@@ -242,52 +210,10 @@ void O3_CPU::handle_branch()
 
                         num_branch++;
 
-                        /*
-                        uint8_t branch_prediction;
-                        // for faster simulation, force perfect prediction during the warmup
-                        // note that branch predictor is still learning with real branch results
-                        if (all_warmup_complete == 0)
-                            branch_prediction = arch_instr.branch_taken; 
-                        else
-                            branch_prediction = predict_branch(arch_instr.ip);
-                        */
-                        uint8_t branch_prediction = predict_branch(arch_instr.ip);
-                        
-                        if (arch_instr.branch_taken != branch_prediction) {
-			    //if(false) { // this simulates perfect branch prediction
-			    branch_mispredictions++;
-
-			    total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
-
-                            DP( if (warmup_complete[cpu]) {
-                            cout << "[BRANCH] MISPREDICTED instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
-                            cout << " taken: " << +arch_instr.branch_taken << " predicted: " << +branch_prediction << endl; });
-
-                            // halt any further fetch this cycle
-                            instrs_to_read_this_cycle = 0;
-
-                            // and stall any additional fetches until the branch is executed
-                            fetch_stall = 1; 
-
-                            ROB.entry[rob_index].branch_mispredicted = 1;
-                        }
-                        else {
-                            if (branch_prediction == 1) {
-                                // if we are accurately predicting a branch to be taken, then we can't possibly fetch down that path this cycle,
-                                // so we have to wait until the next cycle to fetch those
-                                instrs_to_read_this_cycle = 0;
-                            }
-
-                            DP( if (warmup_complete[cpu]) {
-                            cout << "[BRANCH] PREDICTED    instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec;
-                            cout << " taken: " << +arch_instr.branch_taken << " predicted: " << +branch_prediction << endl; });
-                        }
-
-                        last_branch_result(arch_instr.ip, arch_instr.branch_taken);
+			instrs_to_read_this_cycle = 0;
                     }
 
-                    //if ((num_reads == FETCH_WIDTH) || (ROB.occupancy == ROB.SIZE))
-                    if ((num_reads >= instrs_to_read_this_cycle) || (ROB.occupancy == ROB.SIZE))
+                    if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
                         continue_reading = 0;
                 }
                 instr_unique_id++;
@@ -300,7 +226,7 @@ void O3_CPU::handle_branch()
 
 uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 {
-    uint32_t index = ROB.tail;
+    uint32_t index = ROB.tail;    
 
     // sanity check
     if (ROB.entry[index].instr_id != 0) {
@@ -330,8 +256,57 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
         assert(0);
     }
 #endif
-
+    
     return index;
+}
+
+uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
+{
+  uint32_t index = IFETCH_BUFFER.tail;
+  
+  if(IFETCH_BUFFER.entry[index].instr_id != 0)
+    {
+      cerr << "[IFETCH_BUFFER_ERROR] " << __func__ << " is not empty index: " << index;
+      cerr << " instr_id: " << IFETCH_BUFFER.entry[index].instr_id << endl;
+      assert(0);
+    }
+
+  IFETCH_BUFFER.entry[index] = *arch_instr;
+  IFETCH_BUFFER.entry[index].event_cycle = current_core_cycle[cpu];
+
+  IFETCH_BUFFER.occupancy++;
+  IFETCH_BUFFER.tail++;
+
+  if(IFETCH_BUFFER.tail >= IFETCH_BUFFER.SIZE)
+    {
+      IFETCH_BUFFER.tail = 0;
+    }
+  
+  return index;
+}
+
+uint32_t O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
+{
+  uint32_t index = DECODE_BUFFER.tail;
+
+  if(DECODE_BUFFER.entry[index].instr_id != 0)
+    {
+      cerr << "[DECODE_BUFFER_ERROR] " << __func__ << " is not empty index: " << index;
+      cerr << " instr_id: " << IFETCH_BUFFER.entry[index].instr_id << endl;
+      assert(0);
+    }
+
+  DECODE_BUFFER.entry[index] = *arch_instr;
+  DECODE_BUFFER.entry[index].event_cycle = current_core_cycle[cpu];
+
+  DECODE_BUFFER.occupancy++;
+  DECODE_BUFFER.tail++;
+  if(DECODE_BUFFER.tail >= DECODE_BUFFER.SIZE)
+    {
+      DECODE_BUFFER.tail = 0;
+    }
+
+  return index;
 }
 
 uint32_t O3_CPU::check_rob(uint64_t instr_id)
@@ -377,14 +352,90 @@ uint32_t O3_CPU::check_rob(uint64_t instr_id)
 
 void O3_CPU::fetch_instruction()
 {
-    // TODO: can we model wrong path execusion?
-
+  // TODO: can we model wrong path execusion?
+  // probalby not
+  
   // if we had a branch mispredict, turn fetching back on after the branch mispredict penalty
   if((fetch_stall == 1) && (current_core_cycle[cpu] >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
     {
       fetch_stall = 0;
       fetch_resume_cycle = 0;
     }
+
+  if(IFETCH_BUFFER.occupancy > 0)
+    {
+      for(uint32_t i=0; i<IFETCH_BUFFER.occupancy; i++)
+	{
+	  if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip == 0)
+	    {
+	      break;
+	    }
+	  
+	  // mark these instructions going into the decode buffer as translated & fetched (magically for now)
+	  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated = COMPLETED;
+	  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched = COMPLETED;
+
+	  // TODO
+	  // mark instructions as translated and fetched only if the cache line they come from has been translated and fetched
+
+	  if((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED) && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED))
+	    {
+	      // handle branch prediction & branch predictor update
+	      if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].is_branch && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_prediction_made == 0))
+		{
+		  uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip);
+		  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_prediction_made = 1;
+
+		  if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_taken != branch_prediction)
+		    {
+		      branch_mispredictions++;
+		      total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
+		      if(warmup_complete[cpu])
+			{
+			  fetch_stall = 1;
+			  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_mispredicted = 1;
+			}
+		    }
+		  
+		  last_branch_result(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip, IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_taken);
+	  	}
+	      
+	      // move instructions from fetch buffer to decode buffer
+	      if(DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE)
+		{	      
+		  uint32_t decode_index = add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+		  DECODE_BUFFER.entry[decode_index].event_cycle = 0;
+		  
+		  IFETCH_BUFFER.head++;
+		  if(IFETCH_BUFFER.head >= IFETCH_BUFFER.SIZE)
+		    {
+		      IFETCH_BUFFER.head = 0;
+		    }
+		  IFETCH_BUFFER.occupancy--;
+		}
+	      else
+		{
+		  break;
+		}
+	    }
+	}
+      
+      // reset IFETCH_BUFFER if we've drained it
+      if(IFETCH_BUFFER.occupancy == 0)
+	{
+	  for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
+	    {
+	      ooo_model_instr empty_entry;
+	      IFETCH_BUFFER.entry[i] = empty_entry;
+	    }
+	  IFETCH_BUFFER.tail = 0;
+	  IFETCH_BUFFER.head = 0;
+	}
+    }
+
+  return;
+
+  // original function below
   
     // add this request to ITLB
     uint32_t read_index = (ROB.last_read == (ROB.SIZE-1)) ? 0 : (ROB.last_read + 1);
@@ -505,6 +556,89 @@ void O3_CPU::fetch_instruction()
             if (fetch_index == ROB.SIZE)
                 fetch_index = 0;
         }
+    }
+}
+
+void O3_CPU::decode_and_dispatch()
+{
+  
+  // dispatch DECODE_WIDTH instructions that have decoded into the ROB
+  uint32_t count_dispatches = 0;
+  for(uint32_t i=0; i<DECODE_BUFFER.SIZE; i++)
+    {
+      if(DECODE_BUFFER.entry[DECODE_BUFFER.head].ip == 0)
+	{
+	  break;
+	}
+      
+      if((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE))
+	{
+	  // move this instruction to the ROB if there's space
+	  uint32_t rob_index = add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
+	  ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+
+	  ooo_model_instr empty_entry;
+	  DECODE_BUFFER.entry[DECODE_BUFFER.head] = empty_entry;
+	  
+	  DECODE_BUFFER.head++;
+	  if(DECODE_BUFFER.head >= DECODE_BUFFER.SIZE)
+	    {
+	      DECODE_BUFFER.head = 0;
+	    }
+	  DECODE_BUFFER.occupancy--;
+
+	  count_dispatches++;
+	  if(count_dispatches >= DECODE_WIDTH)
+	    {
+	      break;
+	    }
+	}
+      else
+	{
+	  break;
+	}
+    }
+  
+  // make new instructions pay decode penalty if they miss in the decoded instruction cache
+  uint32_t decode_index = DECODE_BUFFER.head;
+  uint32_t count_decodes = 0;
+  for(uint32_t i=0; i<DECODE_BUFFER.SIZE; i++)
+    {
+      if(DECODE_BUFFER.entry[DECODE_BUFFER.head].ip == 0)
+	{
+	  break;
+	}
+      
+      if(DECODE_BUFFER.entry[decode_index].event_cycle == 0)
+	{
+	  // this instruction hasn't gone through decode yet
+	  uint32_t decoded_instr_cache_index = (DECODE_BUFFER.entry[decode_index].ip)&(DECODED_INSTRUCTION_CACHE_SIZE-1);
+	  if(DECODE_BUFFER.entry[decode_index].ip == decoded_instruction_cache[decoded_instr_cache_index])
+	    {
+	      DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
+	    }
+	  else
+	    {
+	      DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+	      decoded_instruction_cache[decoded_instr_cache_index] = DECODE_BUFFER.entry[decode_index].ip;
+	    }
+	}
+      
+      if(decode_index == DECODE_BUFFER.tail)
+	{
+	  break;
+	}
+      decode_index++;
+      if(decode_index >= DECODE_BUFFER.SIZE)
+	{
+	  decode_index = 0;
+	}
+
+      count_decodes++;
+      if(count_decodes > DECODE_WIDTH)
+	{
+	  break;
+	}
     }
 }
 
@@ -674,7 +808,7 @@ void O3_CPU::execute_instruction()
     // out-of-order execution for non-memory instructions
     // memory instructions are handled by memory_instruction()
     uint32_t exec_issued = 0, num_iteration = 0;
-
+    
     while (exec_issued < EXEC_WIDTH) {
         if (RTE0[RTE0_head] < ROB_SIZE) {
             uint32_t exec_index = RTE0[RTE0_head];
@@ -729,6 +863,8 @@ void O3_CPU::do_execution(uint32_t rob_index)
 {
     //if (ROB.entry[rob_index].reg_ready && (ROB.entry[rob_index].scheduled == COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
 
+  //cout << "do_execution() rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
+  
         ROB.entry[rob_index].executed = INFLIGHT;
 
         // ADD LATENCY
@@ -1385,6 +1521,9 @@ void O3_CPU::complete_execution(uint32_t rob_index)
     if (ROB.entry[rob_index].is_memory == 0) {
         if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
 
+	  //cout << "complete_execution() register rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
+	  //ROB.entry[rob_index].print_instr();
+	  
             ROB.entry[rob_index].executed = COMPLETED; 
             inflight_reg_executions--;
             completed_executions++;
@@ -1407,7 +1546,10 @@ void O3_CPU::complete_execution(uint32_t rob_index)
     else {
         if (ROB.entry[rob_index].num_mem_ops == 0) {
             if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
-                ROB.entry[rob_index].executed = COMPLETED;
+
+	      //cout << "complete_execution() memory rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
+
+	      ROB.entry[rob_index].executed = COMPLETED;
                 inflight_mem_executions--;
                 completed_executions++;
                 
@@ -1916,10 +2058,13 @@ void O3_CPU::retire_rob()
             }
         }
 
+	//cout << "retire_rob() head: " << ROB.head << " cycle: " << current_core_cycle[cpu] << endl;
+	//ROB.entry[ROB.head].print_instr();
+	
         // release ROB entry
         DP ( if (warmup_complete[cpu]) {
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });
-
+	
         ooo_model_instr empty_entry;
         ROB.entry[ROB.head] = empty_entry;
 

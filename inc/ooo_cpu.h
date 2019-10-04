@@ -20,13 +20,15 @@ using namespace std;
 #define SQ_WIDTH 2
 #define RETIRE_WIDTH 4
 #define SCHEDULER_SIZE 128
-#define BRANCH_MISPREDICT_PENALTY 20
+#define BRANCH_MISPREDICT_PENALTY 3
+#define DECODED_INSTRUCTION_CACHE_SIZE 2048
 //#define SCHEDULING_LATENCY 6
 //#define EXEC_LATENCY 1
+//#define DECODE_LATENCY 5
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
-extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY;
+extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY;
 
 // cpu
 class O3_CPU {
@@ -51,6 +53,8 @@ class O3_CPU {
     uint32_t next_ITLB_fetch;
 
     // reorder buffer, load/store queue, register file
+    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH};
+    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*4};
     CORE_BUFFER ROB{"ROB", ROB_SIZE};
     LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
     
@@ -85,6 +89,9 @@ class O3_CPU {
           L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
+  // trace cache for previously decoded instructions
+  uint64_t decoded_instruction_cache[DECODED_INSTRUCTION_CACHE_SIZE];
+  
     // constructor
     O3_CPU() {
         cpu = 0;
@@ -154,11 +161,17 @@ class O3_CPU {
         RTS1_head = 0;
         RTS0_tail = 0;
         RTS1_tail = 0;
+
+	for(uint32_t i=0; i<DECODED_INSTRUCTION_CACHE_SIZE; i++)
+	  {
+	    decoded_instruction_cache[i] = 0;
+	  }
     }
 
     // functions
-    void handle_branch(),
+    void read_from_trace(),
          fetch_instruction(),
+         decode_and_dispatch(),
          schedule_instruction(),
          execute_instruction(),
          schedule_memory_instruction(),
@@ -191,6 +204,9 @@ class O3_CPU {
 
     uint32_t  add_to_rob(ooo_model_instr *arch_instr),
               check_rob(uint64_t instr_id);
+
+    uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
+    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 

@@ -99,6 +99,7 @@ class ooo_model_instr {
             is_memory,
             branch_taken,
             branch_mispredicted,
+            branch_prediction_made,
             translated,
             data_translated,
             source_added[NUM_INSTR_SOURCES],
@@ -165,6 +166,7 @@ class ooo_model_instr {
         is_memory = 0;
         branch_taken = 0;
         branch_mispredicted = 0;
+	branch_prediction_made = 0;
         translated = 0;
         data_translated = 0;
         is_producer = 0;
@@ -215,6 +217,35 @@ class ooo_model_instr {
         }
 #endif
     };
+
+  void print_instr()
+  {
+    cout << "*** " << instr_id << " ***" << endl;
+    cout << hex << "0x" << (uint64_t)ip << dec << endl;
+    cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << endl;
+    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+      {
+	cout << (uint32_t)source_registers[i] << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+      {
+	cout << hex << "0x" << (uint32_t)source_memory[i] << dec << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+      {
+	cout << (uint32_t)destination_registers[i] << " ";
+      }
+    cout << endl;
+    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+      {
+        cout << hex << "0x" << (uint32_t)destination_memory[i] << dec << " ";
+      }
+    cout << endl;
+    
+    cout << endl;
+  }
 };
 
 #endif
