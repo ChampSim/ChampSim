@@ -13,18 +13,19 @@
 using namespace std;
 
 // CORE PROCESSOR
-#define FETCH_WIDTH 6
-#define DECODE_WIDTH 6
-#define EXEC_WIDTH 4
+#define FETCH_WIDTH 8
+#define DECODE_WIDTH 8
+#define EXEC_WIDTH 6
 #define LQ_WIDTH 2
 #define SQ_WIDTH 2
-#define RETIRE_WIDTH 4
+#define RETIRE_WIDTH 6
 #define SCHEDULER_SIZE 128
-#define BRANCH_MISPREDICT_PENALTY 3
+#define BRANCH_MISPREDICT_PENALTY 1
 #define DECODED_INSTRUCTION_CACHE_SIZE 2048
-//#define SCHEDULING_LATENCY 6
-//#define EXEC_LATENCY 1
-//#define DECODE_LATENCY 5
+#define IFETCH_WORKING_CACHE_LINES 2
+//#define SCHEDULING_LATENCY 0
+//#define EXEC_LATENCY 0
+//#define DECODE_LATENCY 2
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -57,7 +58,11 @@ class O3_CPU {
     CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*4};
     CORE_BUFFER ROB{"ROB", ROB_SIZE};
     LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
-    
+
+  // current working cache lines for instruction fetch stage
+  ooo_model_instr ifetch_working_set_instrs[IFETCH_WORKING_CACHE_LINES];
+  uint32_t ifetch_working_set_mru_index;
+  
     // store array, this structure is required to properly handle store instructions
     uint64_t STA[STA_SIZE], STA_head, STA_tail; 
 
@@ -166,6 +171,15 @@ class O3_CPU {
 	  {
 	    decoded_instruction_cache[i] = 0;
 	  }
+
+	for(int i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+	  {
+	    // these are the only fields we're using from these instruction data types
+	    ifetch_working_set_instrs[i].ip = 0;
+	    ifetch_working_set_instrs[i].translated = COMPLETED;
+	    ifetch_working_set_instrs[i].fetched = COMPLETED;
+	  }
+	ifetch_working_set_mru_index = 0;
     }
 
     // functions

@@ -99,20 +99,44 @@ void O3_CPU::read_from_trace()
                 if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
 		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
 		  num_reads++;
-
-                    // cut off fetch this cycle after a branch
-                    if (arch_instr.is_branch) {
-
-                        DP( if (warmup_complete[cpu]) {
+		  
+		  // handle branch prediction
+		  if (IFETCH_BUFFER.entry[ifetch_buffer_index].is_branch) {
+		    
+		    DP( if (warmup_complete[cpu]) {
                         cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
-
-                        num_branch++;
-
-			instrs_to_read_this_cycle = 0;
-                    }
-
-		    if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
-                        continue_reading = 0;
+		    
+		    num_branch++;
+		    
+		    // handle branch prediction & branch predictor update
+		    uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
+		    
+		    if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
+		      {
+			branch_mispredictions++;
+			total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
+			if(warmup_complete[cpu])
+			  {
+			    fetch_stall = 1;
+			    instrs_to_read_this_cycle = 0;
+			    IFETCH_BUFFER.entry[ifetch_buffer_index].branch_mispredicted = 1;
+			  }
+		      }
+		    else
+		      {
+			// correct prediction
+			if(branch_prediction == 1)
+			  {
+			    // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+			    instrs_to_read_this_cycle = 0;
+			  }
+		      }
+		    
+		    last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken);
+		  }
+		  
+		  if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
+		    continue_reading = 0;
                 }
                 instr_unique_id++;
             }
@@ -202,15 +226,39 @@ void O3_CPU::read_from_trace()
 		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
 		  num_reads++;
 		    
-                    // cut off fetch whenever we encounter a branch
-                    if (arch_instr.is_branch) {
+                    // handle branch prediction
+                    if (IFETCH_BUFFER.entry[ifetch_buffer_index].is_branch) {
 
                         DP( if (warmup_complete[cpu]) {
                         cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
 
                         num_branch++;
 
-			instrs_to_read_this_cycle = 0;
+			// handle branch prediction & branch predictor update
+			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
+			
+			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
+			  {
+			    branch_mispredictions++;
+			    total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
+			    if(warmup_complete[cpu])
+			      {
+				fetch_stall = 1;
+				instrs_to_read_this_cycle = 0;
+				IFETCH_BUFFER.entry[ifetch_buffer_index].branch_mispredicted = 1;
+			      }
+			  }
+			else
+			  {
+			    // correct prediction
+			    if(branch_prediction == 1)
+			      {
+				// if correctly predicted taken, then we can't fetch anymore instructions this cycle
+				instrs_to_read_this_cycle = 0;
+			      }
+			  }
+			
+			last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken);
                     }
 
                     if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
@@ -371,35 +419,83 @@ void O3_CPU::fetch_instruction()
 	      break;
 	    }
 	  
-	  // mark these instructions going into the decode buffer as translated & fetched (magically for now)
-	  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated = COMPLETED;
-	  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched = COMPLETED;
-
-	  // TODO
-	  // mark instructions as translated and fetched only if the cache line they come from has been translated and fetched
-
-	  if((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED) && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED))
+	  // see if the cache line for this instruction is already translated & fetched
+	  bool working_set_match_found = false;
+	  for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
 	    {
-	      // handle branch prediction & branch predictor update
-	      if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].is_branch && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_prediction_made == 0))
-		{
-		  uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip);
-		  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_prediction_made = 1;
-
-		  if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_taken != branch_prediction)
+	      if(((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip)>>6))
+		{		  
+		  if((ifetch_working_set_instrs[working_set_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED))
 		    {
-		      branch_mispredictions++;
-		      total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
-		      if(warmup_complete[cpu])
+		      IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated = COMPLETED;
+		      IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched = COMPLETED;
+		    }
+		  working_set_match_found = true;
+		  ifetch_working_set_mru_index = working_set_index;
+		  break;
+		}
+	    }
+
+	  if(working_set_match_found == false)
+	    {
+	      // replace a non-MRU working set cache line, and translate and fetch it
+	      if(IFETCH_WORKING_CACHE_LINES == 1)
+		{
+		  // if there's only 1, then replace that one
+		  if((ifetch_working_set_instrs[0].translated == COMPLETED)
+		     && (ifetch_working_set_instrs[0].fetched == COMPLETED)
+		     && (((ifetch_working_set_instrs[0].ip)>>6) != ((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip)>>6)))
+		    {
+		      // only replace working set cache lines that have completed translation and fetch so we don't get into a livelock
+		      
+		      ifetch_working_set_instrs[0].ip = IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip;
+		      
+		      // mark this cache line as needing to be translated and fetched
+		      ifetch_working_set_instrs[0].translated = 0;
+		      ifetch_working_set_instrs[0].fetched = 0;
+		    }
+		}
+	      else
+		{
+		  // otherwise scan for a non-MRU cache line
+
+		  bool fetch_already_pending = false;
+		  for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
+		    {
+		      if(((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip)>>6))
 			{
-			  fetch_stall = 1;
-			  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_mispredicted = 1;
+			  fetch_already_pending = true;
+			  break;
 			}
 		    }
-		  
-		  last_branch_result(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip, IFETCH_BUFFER.entry[IFETCH_BUFFER.head].branch_taken);
-	  	}
-	      
+
+		  if(fetch_already_pending == false)
+		    {
+		      for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
+			{
+			  if((working_set_index != ifetch_working_set_mru_index)
+			     && (ifetch_working_set_instrs[working_set_index].translated == COMPLETED)
+			     && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED)
+			     && (((ifetch_working_set_instrs[working_set_index].ip)>>6) != ((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip)>>6)))
+			    {			      
+			      // only replace working set cache lines that have completed translation and fetch so we don't get into a livelock
+			      
+			      ifetch_working_set_instrs[working_set_index].ip = IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip;
+			      ifetch_working_set_mru_index = working_set_index;
+
+			      // mark this cache line as needing to be translated and fetched
+			      ifetch_working_set_instrs[working_set_index].translated = 0;
+			      ifetch_working_set_instrs[working_set_index].fetched = 0;
+
+			      break;
+			    }
+			}
+		    }
+		}
+	    }
+	  
+	  if((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED) && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED))
+	    {	      
 	      // move instructions from fetch buffer to decode buffer
 	      if(DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE)
 		{	      
@@ -432,9 +528,82 @@ void O3_CPU::fetch_instruction()
 	  IFETCH_BUFFER.head = 0;
 	}
     }
+  
+  for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+    {
+      if(ifetch_working_set_instrs[i].translated == 0)
+	{
+	  // found one that hasn't begun to be translated yet
 
+	  // add it to the ITLB's read queue
+	  PACKET trace_packet;
+	  trace_packet.instruction = 1;
+	  trace_packet.tlb_access = 1;
+	  trace_packet.fill_level = FILL_L1;
+	  trace_packet.cpu = cpu;
+	  trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
+	  if (knob_cloudsuite)
+            trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
+	  else
+            trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
+	  trace_packet.full_addr = ifetch_working_set_instrs[i].ip;
+	  trace_packet.instr_id = 0;
+	  trace_packet.rob_index = i;
+	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
+	  trace_packet.ip = ifetch_working_set_instrs[i].ip;
+	  trace_packet.type = LOAD; 
+	  trace_packet.asid[0] = 0;
+	  trace_packet.asid[1] = 0;
+	  trace_packet.event_cycle = current_core_cycle[cpu];
+	  
+	  int rq_index = ITLB.add_rq(&trace_packet);
+	  
+	  ifetch_working_set_instrs[i].translated = INFLIGHT;
+	  
+	  break;
+	}
+    }
+  
+  for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+    {
+      if((ifetch_working_set_instrs[i].translated == COMPLETED) && (ifetch_working_set_instrs[i].fetched == 0))
+	{
+	  // found one that has been translated, but hasn't been fetched yet
+
+	  // add it to the L1-I's read queue
+	  PACKET fetch_packet;
+	  fetch_packet.instruction = 1;
+	  fetch_packet.fill_level = FILL_L1;
+	  fetch_packet.cpu = cpu;
+	  fetch_packet.address = ifetch_working_set_instrs[i].instruction_pa >> 6;
+	  fetch_packet.instruction_pa = ifetch_working_set_instrs[i].instruction_pa;
+	  fetch_packet.full_addr = ifetch_working_set_instrs[i].instruction_pa;
+	  fetch_packet.instr_id = 0;
+	  fetch_packet.rob_index = i;
+	  fetch_packet.producer = 0;
+	  fetch_packet.ip = ifetch_working_set_instrs[i].ip;
+	  fetch_packet.type = LOAD; 
+	  fetch_packet.asid[0] = 0;
+	  fetch_packet.asid[1] = 0;
+	  fetch_packet.event_cycle = current_core_cycle[cpu];
+	  
+	  int rq_index = L1I.add_rq(&fetch_packet);
+
+	  if (warmup_complete[cpu])
+	    {
+	      ifetch_working_set_instrs[i].fetched = INFLIGHT;
+	    }
+	  else
+	    {
+	      ifetch_working_set_instrs[i].fetched = COMPLETED;
+	    }
+	  
+	  break;
+	}
+    }
+  
   return;
-
+    
   // original function below
   
     // add this request to ITLB
@@ -571,7 +740,8 @@ void O3_CPU::decode_and_dispatch()
 	  break;
 	}
       
-      if((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE))
+      if((!warmup_complete[cpu])
+	 || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE)))
 	{
 	  // move this instruction to the ROB if there's space
 	  uint32_t rob_index = add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
@@ -1521,9 +1691,6 @@ void O3_CPU::complete_execution(uint32_t rob_index)
     if (ROB.entry[rob_index].is_memory == 0) {
         if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
 
-	  //cout << "complete_execution() register rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
-	  //ROB.entry[rob_index].print_instr();
-	  
             ROB.entry[rob_index].executed = COMPLETED; 
             inflight_reg_executions--;
             completed_executions++;
@@ -1534,7 +1701,6 @@ void O3_CPU::complete_execution(uint32_t rob_index)
             if (ROB.entry[rob_index].branch_mispredicted)
 	      {
 		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
-		//fetch_stall = 0;
 	      }
 
             DP(if(warmup_complete[cpu]) {
@@ -1547,8 +1713,6 @@ void O3_CPU::complete_execution(uint32_t rob_index)
         if (ROB.entry[rob_index].num_mem_ops == 0) {
             if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
 
-	      //cout << "complete_execution() memory rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
-
 	      ROB.entry[rob_index].executed = COMPLETED;
                 inflight_mem_executions--;
                 completed_executions++;
@@ -1559,7 +1723,6 @@ void O3_CPU::complete_execution(uint32_t rob_index)
                 if (ROB.entry[rob_index].branch_mispredicted)
 		  {
 		    fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
-		    //fetch_stall = 0;
 		  }
 
                 DP(if(warmup_complete[cpu]) {
@@ -1655,9 +1818,28 @@ void O3_CPU::update_rob()
 void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
 {
     uint32_t index = queue->head,
-             rob_index = queue->entry[index].rob_index,
-             num_fetched = 0;
+      rob_index = queue->entry[index].rob_index,
+      num_fetched = 0;
+    uint32_t working_set_index = rob_index;
+    
+    if(is_it_tlb)
+      {
+	ifetch_working_set_instrs[working_set_index].translated = COMPLETED;
+	ifetch_working_set_instrs[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
+	  | (ifetch_working_set_instrs[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+      }
+    else
+      {
+	ifetch_working_set_instrs[working_set_index].fetched = COMPLETED;
+      }
 
+    // remove this entry
+    queue->remove_queue(&queue->entry[index]);
+
+    return;
+
+    // old function below
+    
 #ifdef SANITY_CHECK
     if (rob_index != check_rob(queue->entry[index].instr_id))
         assert(0);
@@ -2058,9 +2240,6 @@ void O3_CPU::retire_rob()
             }
         }
 
-	//cout << "retire_rob() head: " << ROB.head << " cycle: " << current_core_cycle[cpu] << endl;
-	//ROB.entry[ROB.head].print_instr();
-	
         // release ROB entry
         DP ( if (warmup_complete[cpu]) {
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });

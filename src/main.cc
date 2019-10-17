@@ -162,9 +162,11 @@ void finish_warmup()
     elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
 
     // reset core latency
-    SCHEDULING_LATENCY = 1;
-    EXEC_LATENCY = 1;
-    DECODE_LATENCY = 5;
+    // note: since re-ordering he function calls in the main simulation loop, it's no longer necessary to add
+    //       extra latency for scheduling and execution, unless you want these steps to take longer than 1 cycle.
+    SCHEDULING_LATENCY = 0;
+    EXEC_LATENCY = 0;
+    DECODE_LATENCY = 2;
     PAGE_TABLE_LATENCY = 100;
     SWAP_LATENCY = 100000;
 
@@ -744,21 +746,20 @@ int main(int argc, char** argv)
 	      // retire
 	      if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
 		ooo_cpu[i].retire_rob();
-	      
-	      // complete 
-	      ooo_cpu[i].update_rob();
-	      
-	      // memory operation
-	      ooo_cpu[i].execute_memory_instruction();
-	      ooo_cpu[i].schedule_memory_instruction();
-	      
-	      // execute
-	      ooo_cpu[i].execute_instruction();
-	      
+
 	      // schedule
 	      uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
 	      if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
 		ooo_cpu[i].schedule_instruction();
+	      // execute
+	      ooo_cpu[i].execute_instruction();
+
+	      // memory operation
+	      ooo_cpu[i].schedule_memory_instruction();
+	      ooo_cpu[i].execute_memory_instruction();
+
+	      // complete 
+	      ooo_cpu[i].update_rob();
 
 	      // decode
 	      if(ooo_cpu[i].DECODE_BUFFER.occupancy > 0)
@@ -768,9 +769,6 @@ int main(int argc, char** argv)
 	      
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
-
-	      //cout << "IFETCH_BUFFER occupancy: " << ooo_cpu[i].IFETCH_BUFFER.occupancy << " DECODE_BUFFER occupancy: " << ooo_cpu[i].DECODE_BUFFER.occupancy <<
-	      //" ROB occupancy: " << ooo_cpu[i].ROB.occupancy << " cycle: " << current_core_cycle[i] << endl;
 	      
 	      // read from trace
 	      //if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
@@ -778,41 +776,7 @@ int main(int argc, char** argv)
 		{
 		  ooo_cpu[i].read_from_trace();
 		}
-
-	      /*
-		// old way, I reversed the order of these function calls because this isn't how CPU simulators are typically written
-
-                // fetch unit
-                if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
-                    // handle branch
-                    if (ooo_cpu[i].fetch_stall == 0) 
-                        ooo_cpu[i].handle_branch();
-                }
-
-                // fetch
-                ooo_cpu[i].fetch_instruction();
-
-
-                // schedule (including decode latency)
-                uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
-                if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
-                    ooo_cpu[i].schedule_instruction();
-
-                // execute
-                ooo_cpu[i].execute_instruction();
-
-                // memory operation
-                ooo_cpu[i].schedule_memory_instruction();
-                ooo_cpu[i].execute_memory_instruction();
-
-                // complete 
-                ooo_cpu[i].update_rob();
-
-                // retire
-                if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
-                    ooo_cpu[i].retire_rob();
-	      */
-            }
+	    }
 
             // heartbeat information
             if (show_heartbeat && (ooo_cpu[i].num_retired >= ooo_cpu[i].next_print_instruction)) {
