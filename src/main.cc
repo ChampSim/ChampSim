@@ -747,6 +747,9 @@ int main(int argc, char** argv)
 	      if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
 		ooo_cpu[i].retire_rob();
 
+	      // complete 
+	      ooo_cpu[i].update_rob();
+
 	      // schedule
 	      uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
 	      if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
@@ -754,11 +757,12 @@ int main(int argc, char** argv)
 	      // execute
 	      ooo_cpu[i].execute_instruction();
 
+	      ooo_cpu[i].update_rob();
+
 	      // memory operation
 	      ooo_cpu[i].schedule_memory_instruction();
 	      ooo_cpu[i].execute_memory_instruction();
 
-	      // complete 
 	      ooo_cpu[i].update_rob();
 
 	      // decode
@@ -771,8 +775,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].fetch_instruction();
 	      
 	      // read from trace
-	      //if (ooo_cpu[i].ROB.occupancy < ooo_cpu[i].ROB.SIZE) {
-	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy == 0) && (ooo_cpu[i].fetch_stall == 0))
+	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy < ooo_cpu[i].IFETCH_BUFFER.SIZE) && (ooo_cpu[i].fetch_stall == 0))
 		{
 		  ooo_cpu[i].read_from_trace();
 		}
