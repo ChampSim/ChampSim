@@ -112,7 +112,6 @@ void O3_CPU::read_from_trace()
 		    uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
 		    
 		    if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
-		    //if(0)
 		      {
 			branch_mispredictions++;
 			total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
@@ -239,7 +238,6 @@ void O3_CPU::read_from_trace()
 			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
 			
 			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
-			//if(0)
 			  {
 			    branch_mispredictions++;
 			    total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
@@ -276,6 +274,8 @@ void O3_CPU::read_from_trace()
 
 uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 {
+  //cout << "add_to_rob() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec << endl;
+
     uint32_t index = ROB.tail;    
 
     // sanity check
@@ -312,8 +312,10 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 {
+  //cout << "add_to_ifetch_buffer() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec  << endl;
+
   uint32_t index = IFETCH_BUFFER.tail;
-  
+
   if(IFETCH_BUFFER.entry[index].instr_id != 0)
     {
       cerr << "[IFETCH_BUFFER_ERROR] " << __func__ << " is not empty index: " << index;
@@ -337,6 +339,8 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 
 uint32_t O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
 {
+  //cout << "add_to_decode_buffer() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec  << endl;
+
   uint32_t index = DECODE_BUFFER.tail;
 
   if(DECODE_BUFFER.entry[index].instr_id != 0)
@@ -412,156 +416,149 @@ void O3_CPU::fetch_instruction()
       fetch_resume_cycle = 0;
     }
 
-  // drain the IFETCH_BUFFER from the head as long as we are hitting in the code cache line working set
-  bool decode_full = false;
-  for(uint32_t i=0; i<FETCH_WIDTH; i++)
+  if(IFETCH_BUFFER.occupancy == 0)
     {
-      if(decode_full)
+      return;
+    }
+
+  // mark the instructions in the IFETCH_BUFFER as translated and fetched in-order as long as we have hits in the code working set
+  uint32_t index = IFETCH_BUFFER.head;
+  bool replacement_flag = false;
+  uint64_t replacement_ip = 0;
+
+  //for(uint32_t i=0; i<FETCH_WIDTH; i++)
+  for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
+    {
+      if(IFETCH_BUFFER.entry[index].ip == 0)
 	{
 	  break;
 	}
 
-      if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip == 0)
+      bool translate_or_fetch_pending = false;
+      if((IFETCH_BUFFER.entry[index].translated != COMPLETED) || (IFETCH_BUFFER.entry[index].fetched != COMPLETED))
 	{
-	  break;
-	}
-      
-      // check all cache lines in the working set
-      for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
-	{
-	  if(((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip)>>6))
+	  // check the working set to see if it's a match for this instruction
+	  bool found_working_set_match = false;
+	  for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
 	    {
-	      // the head instruction's IP matches one of the working set cache lines
-	      
-	      if((ifetch_working_set_instrs[working_set_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED))
+	      if((((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6)))
 		{
-		  // the working set cache line has already been translated and fetched
-		  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated = COMPLETED;
-		  IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched = COMPLETED;
-
-		  // move instructions from fetch buffer to decode buffer
-		  if(DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE)
+		  if((ifetch_working_set_instrs[working_set_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED))
 		    {
-		      // there's space in the decode buffer
-		      
-		      uint32_t decode_index = add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
-		      DECODE_BUFFER.entry[decode_index].event_cycle = 0;
-
-		      ooo_model_instr empty_entry;
-		      IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
-
-		      IFETCH_BUFFER.head++;
-		      if(IFETCH_BUFFER.head >= IFETCH_BUFFER.SIZE)
-			{
-			  IFETCH_BUFFER.head = 0;
-			}
-		      IFETCH_BUFFER.occupancy--;
+		      IFETCH_BUFFER.entry[index].translated = COMPLETED;
+		      IFETCH_BUFFER.entry[index].fetched = COMPLETED;
 		    }
 		  else
 		    {
-		      decode_full = true;
+		      translate_or_fetch_pending = true;
 		    }
-		  
+
 		  ifetch_working_set_mru_index = working_set_index;
+		  found_working_set_match = true;
 		  break;
 		}
 	    }
-	}
-    }
 
-  uint32_t count_inflight = 0;
-  for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
-    {
-      if((ifetch_working_set_instrs[working_set_index].translated == INFLIGHT) || (ifetch_working_set_instrs[working_set_index].fetched == INFLIGHT))
-	{
-	  count_inflight++;
-	}
-    }
-
-
-  if(count_inflight == 0)
-    {
-      // if the head instruction's cache line isn't in the working set, replace an old cache line
-      uint32_t index = IFETCH_BUFFER.head;
-
-      //for(uint32_t i=0; i<IFETCH_BUFFER.occupancy; i++,index++)
-      // this breaks if you try to go for more than one iteration
-      for(uint32_t i=0; i<1; i++,index++)
-	{
-	  if(index >= IFETCH_BUFFER.SIZE)
+	  if(found_working_set_match == false)
 	    {
-	      index = 0;
+	      // we need to put this instruction's cache line into the working set
+	      replacement_flag = true;
+	      replacement_ip = IFETCH_BUFFER.entry[index].ip;
+	      break;
 	    }
+	}
+
+      if(translate_or_fetch_pending || replacement_flag)
+	{
+	  break;
+	}
+
+      index++;
+      if(index >= IFETCH_BUFFER.SIZE)
+	{
+	  index = 0;
+	}
 	  
-	  if(IFETCH_BUFFER.entry[index].ip != 0)
-	    {
-	      // see if the head instruction is found in the current working set
-	      bool working_set_match = false;
-	      for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
-		{
-		  if(((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
-		    {
-		      working_set_match = true;
-		      break;
-		    }
-		}
-	      
-	      // if it's not in the working set, replace something and add its cache line
-	      if(!working_set_match)
-		{
-		  if(IFETCH_WORKING_CACHE_LINES == 1)
-		    {
-		      // if there's only 1, then replace that one
-		      if((ifetch_working_set_instrs[0].translated == COMPLETED)
-			 && (ifetch_working_set_instrs[0].fetched == COMPLETED)
-			 && (((ifetch_working_set_instrs[0].ip)>>6) != ((IFETCH_BUFFER.entry[index].ip)>>6)))
-			{
-			  // only replace working set cache lines that have completed translation and fetch so we don't get into a livelock
-			  
-			  ifetch_working_set_instrs[0].ip = IFETCH_BUFFER.entry[index].ip;
-			  
-			  // mark this cache line as needing to be translated and fetched
-			  ifetch_working_set_instrs[0].translated = 0;
-			  ifetch_working_set_instrs[0].fetched = 0;
-			}
-		    }
-		  else
-		    {
-		      // otherwise scan for a non-MRU cache line
-		      
-		      //for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
-		      uint32_t working_set_index = ifetch_working_set_mru_index;
-		      for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-			{			  
-			  if((working_set_index != ifetch_working_set_mru_index)
-			     && (ifetch_working_set_instrs[working_set_index].translated == COMPLETED)
-			     && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED)
-			     && (((ifetch_working_set_instrs[working_set_index].ip)>>6) != ((IFETCH_BUFFER.entry[index].ip)>>6)))
-			    {			      
-			      // only replace working set cache lines that have completed translation and fetch so we don't get into a livelock
-			      
-			      ifetch_working_set_instrs[working_set_index].ip = IFETCH_BUFFER.entry[index].ip;
-			      ifetch_working_set_mru_index = working_set_index;
-			      
-			      // mark this cache line as needing to be translated and fetched
-			      ifetch_working_set_instrs[working_set_index].translated = 0;
-			      ifetch_working_set_instrs[working_set_index].fetched = 0;
-			      
-			      break;
-			    }
-			  
-			  working_set_index++;
-			  if(working_set_index >= IFETCH_WORKING_CACHE_LINES)
-			    {
-			      working_set_index = 0;
-			    }
-			}
-		    }
-		}
-	    }
+      if(index == IFETCH_BUFFER.head)
+	{
+	  break;
 	}
     }
   
+  // send to DECODE stage
+  bool decode_full = false;
+  for(uint32_t i=0; i<DECODE_WIDTH; i++)
+    {
+      if(decode_full)
+	{
+          break;
+        }
+
+      if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip == 0)
+        {
+          break;
+	}	      
+      
+      if((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED) && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED))
+	{
+	  if(DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE)
+	    {
+	      uint32_t decode_index = add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+	      DECODE_BUFFER.entry[decode_index].event_cycle = 0;
+	      
+	      ooo_model_instr empty_entry;
+	      IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
+	      
+	      IFETCH_BUFFER.head++;
+	      if(IFETCH_BUFFER.head >= IFETCH_BUFFER.SIZE)
+		{
+		  IFETCH_BUFFER.head = 0;
+		}
+	      IFETCH_BUFFER.occupancy--;
+	    }
+	  else
+	    {
+	      decode_full = true;
+	    }
+	}
+
+      index++;
+      if(index >= IFETCH_BUFFER.SIZE)
+        {
+          index = 0;
+	}
+    }
+
+  if(replacement_flag == true)
+    {
+      // we need to replace something in the working set
+      
+      // start with something that isn't the MRU
+      uint32_t working_set_repl_index = ifetch_working_set_mru_index + 1;
+      for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+	{
+	  if(working_set_repl_index >= IFETCH_WORKING_CACHE_LINES)
+	    {
+	      working_set_repl_index = 0;
+	    }
+
+	  if((ifetch_working_set_instrs[working_set_repl_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_repl_index].fetched == COMPLETED))
+	    {
+	      // we've found a working set item that has completed being translated & fetched, so we can replace it
+
+	      ifetch_working_set_instrs[working_set_repl_index].ip = replacement_ip;
+	      ifetch_working_set_instrs[working_set_repl_index].translated = 0;
+	      ifetch_working_set_instrs[working_set_repl_index].fetched = 0;
+
+	      ifetch_working_set_mru_index = working_set_repl_index;
+	      
+	      break;
+	    }
+
+	  working_set_repl_index++;
+	}
+    }
+
   // send new working set cache lines out for translation
   for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
     {
@@ -635,132 +632,7 @@ void O3_CPU::fetch_instruction()
 	  
 	  break;
 	}
-    }
-  
-  return;
-    
-  // original function below
-  
-    // add this request to ITLB
-    uint32_t read_index = (ROB.last_read == (ROB.SIZE-1)) ? 0 : (ROB.last_read + 1);
-    for (uint32_t i=0; i<FETCH_WIDTH; i++) {
-
-        if (ROB.entry[read_index].ip == 0)
-            break;
-
-#ifdef SANITY_CHECK
-        // sanity check
-        if (ROB.entry[read_index].translated) {
-            if (read_index == ROB.head)
-                break;
-            else {
-                cout << "read_index: " << read_index << " ROB.head: " << ROB.head << " ROB.tail: " << ROB.tail << endl;
-                assert(0);
-            }
-        }
-#endif
-
-        PACKET trace_packet;
-        trace_packet.instruction = 1;
-        trace_packet.tlb_access = 1;
-        trace_packet.fill_level = FILL_L1;
-        trace_packet.cpu = cpu;
-        trace_packet.address = ROB.entry[read_index].ip >> LOG2_PAGE_SIZE;
-        if (knob_cloudsuite)
-            trace_packet.address = ((ROB.entry[read_index].ip >> LOG2_PAGE_SIZE) << 9) | ( 256 + ROB.entry[read_index].asid[0]);
-        else
-            trace_packet.address = ROB.entry[read_index].ip >> LOG2_PAGE_SIZE;
-        trace_packet.full_addr = ROB.entry[read_index].ip;
-        trace_packet.instr_id = ROB.entry[read_index].instr_id;
-        trace_packet.rob_index = read_index;
-        trace_packet.producer = 0; // TODO: check if this guy gets used or not
-        trace_packet.ip = ROB.entry[read_index].ip;
-        trace_packet.type = LOAD; 
-        trace_packet.asid[0] = ROB.entry[read_index].asid[0];
-        trace_packet.asid[1] = ROB.entry[read_index].asid[1];
-        trace_packet.event_cycle = current_core_cycle[cpu];
-
-        int rq_index = ITLB.add_rq(&trace_packet);
-
-        if (rq_index == -2)
-            break;
-        else {
-            /*
-            if (rq_index >= 0) {
-                uint32_t producer = ITLB.RQ.entry[rq_index].rob_index;
-                ROB.entry[read_index].fetch_producer = producer;
-                ROB.entry[read_index].is_consumer = 1;
-
-                ROB.entry[producer].memory_instrs_depend_on_me[read_index] = 1;
-                ROB.entry[producer].is_producer = 1; // producer for fetch
-            }
-            */
-
-            ROB.last_read = read_index;
-            read_index++;
-            if (read_index == ROB.SIZE)
-                read_index = 0;
-        }
-    }
-    
-    uint32_t fetch_index = (ROB.last_fetch == (ROB.SIZE-1)) ? 0 : (ROB.last_fetch + 1);
-
-    for (uint32_t i=0; i<FETCH_WIDTH; i++) {
-
-        // fetch is in-order so it should be break
-        if ((ROB.entry[fetch_index].translated != COMPLETED) || (ROB.entry[fetch_index].event_cycle > current_core_cycle[cpu])) 
-            break;
-
-        // sanity check
-        if (ROB.entry[fetch_index].fetched) {
-            if (fetch_index == ROB.head)
-                break;
-            else {
-                cout << "fetch_index: " << fetch_index << " ROB.head: " << ROB.head << " ROB.tail: " << ROB.tail << endl;
-                assert(0);
-            }
-        }
-
-        // add it to L1I
-        PACKET fetch_packet;
-        fetch_packet.instruction = 1;
-        fetch_packet.fill_level = FILL_L1;
-        fetch_packet.cpu = cpu;
-        fetch_packet.address = ROB.entry[fetch_index].instruction_pa >> 6;
-        fetch_packet.instruction_pa = ROB.entry[fetch_index].instruction_pa;
-        fetch_packet.full_addr = ROB.entry[fetch_index].instruction_pa;
-        fetch_packet.instr_id = ROB.entry[fetch_index].instr_id;
-        fetch_packet.rob_index = fetch_index;
-        fetch_packet.producer = 0;
-        fetch_packet.ip = ROB.entry[fetch_index].ip;
-        fetch_packet.type = LOAD; 
-        fetch_packet.asid[0] = ROB.entry[fetch_index].asid[0];
-        fetch_packet.asid[1] = ROB.entry[fetch_index].asid[1];
-        fetch_packet.event_cycle = current_core_cycle[cpu];
-
-        int rq_index = L1I.add_rq(&fetch_packet);
-
-        if (rq_index == -2)
-            break;
-        else {
-            /*
-            if (rq_index >= 0) {
-                uint32_t producer = L1I.RQ.entry[rq_index].rob_index;
-                ROB.entry[fetch_index].fetch_producer = producer;
-                ROB.entry[fetch_index].is_consumer = 1;
-
-                ROB.entry[producer].memory_instrs_depend_on_me[fetch_index] = 1;
-                ROB.entry[producer].is_producer = 1;
-            }
-            */
-
-            ROB.entry[fetch_index].fetched = INFLIGHT;
-            ROB.last_fetch = fetch_index;
-            fetch_index++;
-            if (fetch_index == ROB.SIZE)
-                fetch_index = 0;
-        }
-    }
+    }  
 }
 
 void O3_CPU::decode_and_dispatch()
@@ -774,8 +646,8 @@ void O3_CPU::decode_and_dispatch()
 	  break;
 	}
       
-      if(((!warmup_complete[cpu]) && (ROB.occupancy < ROB.SIZE))
-	 || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE)))
+      if(((!warmup_complete[cpu]) && (ROB.occupancy < ROB.SIZE)) ||
+	 ((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE)))
 	{
 	  // move this instruction to the ROB if there's space
 	  uint32_t rob_index = add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
@@ -2277,10 +2149,12 @@ void O3_CPU::retire_rob()
         // release ROB entry
         DP ( if (warmup_complete[cpu]) {
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });
+
+	//cout << "retire! ";
 	
         ooo_model_instr empty_entry;
         ROB.entry[ROB.head] = empty_entry;
-
+	
         ROB.head++;
         if (ROB.head == ROB.SIZE)
             ROB.head = 0;

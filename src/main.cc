@@ -779,6 +779,8 @@ int main(int argc, char** argv)
 		{
 		  ooo_cpu[i].read_from_trace();
 		}
+
+	      //cout << "ROB occupancy: " << ooo_cpu[i].ROB.occupancy << endl;
 	    }
 
             // heartbeat information
