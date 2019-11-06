@@ -42,6 +42,7 @@ class O3_CPU {
     char gunzip_command[1024];
 
     // instruction
+    input_instr next_instr;
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id, completed_executions, 

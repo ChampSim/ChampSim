@@ -143,18 +143,33 @@ void O3_CPU::read_from_trace()
         }
 	else
 	  {
-            if (!fread(&current_instr, instr_size, 1, trace_file)) {
+	    input_instr trace_read_instr;
+            //if (!fread(&current_instr, instr_size, 1, trace_file))
+            if (!fread(&trace_read_instr, instr_size, 1, trace_file))
+	      {
                 // reached end of file for this trace
                 cout << "*** Reached end of trace for Core: " << cpu << " Repeating trace: " << trace_string << endl; 
-
+		
                 // close the trace file and re-open it
                 pclose(trace_file);
                 trace_file = popen(gunzip_command, "r");
                 if (trace_file == NULL) {
-                    cerr << endl << "*** CANNOT REOPEN TRACE FILE: " << trace_string << " ***" << endl;
+		  cerr << endl << "*** CANNOT REOPEN TRACE FILE: " << trace_string << " ***" << endl;
                     assert(0);
                 }
-            } else { // successfully read the trace
+            }
+	    else
+	      { // successfully read the trace
+
+		if(instr_unique_id == 0)
+		  {
+		    current_instr = next_instr = trace_read_instr;
+		  }
+		else
+		  {
+		    current_instr = next_instr;
+		    next_instr = trace_read_instr;
+		  }
 
                 // copy the instruction into the performance model's instruction format
                 ooo_model_instr arch_instr;
@@ -168,16 +183,43 @@ void O3_CPU::read_from_trace()
                 arch_instr.asid[0] = cpu;
                 arch_instr.asid[1] = cpu;
 
+		bool reads_sp = false;
+		bool writes_sp = false;
+		bool reads_flags = false;
+		bool reads_ip = false;
+		bool writes_ip = false;
+		bool reads_other = false;
+
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     arch_instr.destination_registers[i] = current_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
                     arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
 
+		    switch(arch_instr.destination_registers[i])
+		      {
+		      case 0:
+			break;
+		      case REG_STACK_POINTER:
+			writes_sp = true;
+			break;
+		      case REG_FLAGS:
+			writes_flags = true;
+			break;
+		      case REG_INSTRUCTION_POINTER:
+			writes_ip = true;
+			break;
+		      default:
+			writes_other = true;
+			break;
+		      }
+
+		    /*
 		    if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24) && (arch_instr.destination_registers[i] < 28))
 		      {
 			arch_instr.destination_registers[i] = 0;
 		      }
-
+		    */
+		    
                     if (arch_instr.destination_registers[i])
                         num_reg_ops++;
                     if (arch_instr.destination_memory[i]) {
@@ -204,11 +246,31 @@ void O3_CPU::read_from_trace()
                     arch_instr.source_registers[i] = current_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
+
+		    switch(arch_instr.source_registers[i])
+                      {
+                      case 0:
+                        break;
+                      case REG_STACK_POINTER:
+                        reads_sp = true;
+                        break;
+                      case REG_FLAGS:
+                        reads_flags = true;
+                        break;
+                      case REG_INSTRUCTION_POINTER:
+                        reads_ip = true;
+                        break;
+                      default:
+                        reads_other = true;
+                        break;
+                      }
 		    
+		    /*
 		    if((!arch_instr.is_branch) && (arch_instr.source_registers[i] > 25) && (arch_instr.source_registers[i] < 28))
 		      {
 			arch_instr.source_registers[i] = 0;
 		      }
+		    */
 		    
                     if (arch_instr.source_registers[i])
                         num_reg_ops++;
@@ -220,6 +282,69 @@ void O3_CPU::read_from_trace()
                 arch_instr.num_mem_ops = num_mem_ops;
                 if (num_mem_ops > 0) 
                     arch_instr.is_memory = 1;
+
+		// determine what kind of branch this is, if any
+		if(!reads_sp && !reads_flags && writes_ip && !reads_other)
+		  {
+		    // direct jump
+		    arch_instr.is_branch = 1;
+                    arch_instr.branch_taken = 1;
+                    arch_instr.branch_type = DIRECT_JUMP;
+		  }
+		else if(!reads_sp && !reads_flags && writes_ip && reads_other)
+		  {
+		    // indirect jump
+		    arch_instr.is_branch = 1;
+                    arch_instr.branch_taken = 1;
+                    arch_instr.branch_type = INDIRECT_JUMP;
+		  }
+		else if(!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other)
+		  {
+		    // direct branch
+		    arch_instr.is_branch = 1;
+		    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
+		    arch_instr.branch_type = DIRECT_BRANCH;
+		  }
+		else if(!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && reads_other)
+                  {
+                    // indirect branch
+                    arch_instr.is_branch = 1;
+                    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
+                    arch_instr.branch_type = INDIRECT_BRANCH;
+                  }
+		else if(reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other)
+		  {
+		    // direct call
+		    arch_instr.is_branch = 1;
+		    arch_instr.branch_taken = 1;
+		    arch_instr.branch_type = DIRECT_CALL;
+		  }
+		else if(reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other)
+		  {
+		    // indirect call
+		    arch_instr.is_branch = 1;
+		    arch_instr.branch_taken = 1;
+		    arch_instr.branch_type = INDIRECT_CALL;
+		  }
+		else if(reads_sp && !reads_ip && writes_sp && writes_ip)
+		  {
+		    // return
+		    arch_instr.is_branch = 1;
+		    arch_instr.branch_taken = 1;
+		    arch_instr.branch_type = FUNCTION_RETURN;
+		  }
+		else if(writes_ip)
+		  {
+		    // some other branch type that doesn't fit the above categories
+		    arch_instr.is_branch = 1;
+                    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
+                    arch_instr.branch_type = OTHER_BRANCH;
+		  }
+
+		if((arch_instr.is_branch == 1) && (arch_instr.branch_taken == 1))
+		  {
+		    arch_instr.branch_target = next_instr.ip;
+		  }
 
                 // add this instruction to the IFETCH_BUFFER
                 if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
@@ -274,8 +399,6 @@ void O3_CPU::read_from_trace()
 
 uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 {
-  //cout << "add_to_rob() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec << endl;
-
     uint32_t index = ROB.tail;    
 
     // sanity check
@@ -312,8 +435,24 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 {
-  //cout << "add_to_ifetch_buffer() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec  << endl;
-
+  /*
+  if((arch_instr->is_branch != 0) && (arch_instr->branch_type == DIRECT_BRANCH))
+    {
+      cout << "IP: 0x" << hex << (uint64_t)(arch_instr->ip) << " branch_target: 0x" << (uint64_t)(arch_instr->branch_target) << dec << endl;
+      cout << (uint32_t)(arch_instr->is_branch) << " " << (uint32_t)(arch_instr->branch_type) << " " << (uint32_t)(arch_instr->branch_taken) << endl;
+      for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+	{
+	  cout << (uint32_t)(arch_instr->source_registers[i]) << " ";
+	}
+      cout << endl;
+      for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
+	{
+	  cout << (uint32_t)(arch_instr->destination_registers[i]) << " ";
+	}
+      cout << endl << endl;
+    }
+  */
+  
   uint32_t index = IFETCH_BUFFER.tail;
 
   if(IFETCH_BUFFER.entry[index].instr_id != 0)
@@ -339,8 +478,6 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 
 uint32_t O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
 {
-  //cout << "add_to_decode_buffer() instr_id: " << arch_instr->instr_id << " ip: 0x" << hex << ((arch_instr->ip)>>6) << dec  << endl;
-
   uint32_t index = DECODE_BUFFER.tail;
 
   if(DECODE_BUFFER.entry[index].instr_id != 0)
@@ -2150,8 +2287,6 @@ void O3_CPU::retire_rob()
         DP ( if (warmup_complete[cpu]) {
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });
 
-	//cout << "retire! ";
-	
         ooo_model_instr empty_entry;
         ROB.entry[ROB.head] = empty_entry;
 	

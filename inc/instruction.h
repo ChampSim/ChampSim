@@ -10,6 +10,22 @@
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
 
+// special registers that help us identify branches
+#define REG_STACK_POINTER 6
+#define REG_FLAGS 25
+#define REG_INSTRUCTION_POINTER 26
+
+// branch types
+#define NOT_BRANCH         0
+#define DIRECT_JUMP        1
+#define INDIRECT_JUMP      2
+#define DIRECT_BRANCH      4
+#define INDIRECT_BRANCH    8
+#define DIRECT_CALL        16
+#define INDIRECT_CALL      32
+#define FUNCTION_RETURN    64
+#define OTHER_BRANCH       128
+
 #include "set.h"
 
 class input_instr {
@@ -112,6 +128,9 @@ class ooo_model_instr {
             asid[2],
             reg_RAW_checked[NUM_INSTR_SOURCES];
 
+    uint8_t branch_type;
+    uint64_t branch_target;
+
     uint32_t fetched, scheduled;
     int num_reg_ops, num_mem_ops, num_reg_dependent;
 
@@ -179,6 +198,9 @@ class ooo_model_instr {
         mem_ready = 0;
         asid[0] = UINT8_MAX;
         asid[1] = UINT8_MAX;
+
+	branch_type = NOT_BRANCH;
+	branch_target = 0;
 
         instruction_pa = 0;
         data_pa = 0;
