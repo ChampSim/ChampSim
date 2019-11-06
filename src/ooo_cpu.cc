@@ -144,7 +144,6 @@ void O3_CPU::read_from_trace()
 	else
 	  {
 	    input_instr trace_read_instr;
-            //if (!fread(&current_instr, instr_size, 1, trace_file))
             if (!fread(&trace_read_instr, instr_size, 1, trace_file))
 	      {
                 // reached end of file for this trace
@@ -202,14 +201,10 @@ void O3_CPU::read_from_trace()
 		      case REG_STACK_POINTER:
 			writes_sp = true;
 			break;
-		      case REG_FLAGS:
-			writes_flags = true;
-			break;
 		      case REG_INSTRUCTION_POINTER:
 			writes_ip = true;
 			break;
 		      default:
-			writes_other = true;
 			break;
 		      }
 
@@ -306,7 +301,7 @@ void O3_CPU::read_from_trace()
 		    arch_instr.branch_type = DIRECT_BRANCH;
 		  }
 		else if(!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && reads_other)
-                  {
+		  {
                     // indirect branch
                     arch_instr.is_branch = 1;
                     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
@@ -436,7 +431,7 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 {
   /*
-  if((arch_instr->is_branch != 0) && (arch_instr->branch_type == DIRECT_BRANCH))
+  if((arch_instr->is_branch != 0) && (arch_instr->branch_type == INDIRECT_BRANCH))
     {
       cout << "IP: 0x" << hex << (uint64_t)(arch_instr->ip) << " branch_target: 0x" << (uint64_t)(arch_instr->branch_target) << dec << endl;
       cout << (uint32_t)(arch_instr->is_branch) << " " << (uint32_t)(arch_instr->branch_type) << " " << (uint32_t)(arch_instr->branch_taken) << endl;
