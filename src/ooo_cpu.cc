@@ -284,58 +284,53 @@ void O3_CPU::read_from_trace()
 		    // direct jump
 		    arch_instr.is_branch = 1;
                     arch_instr.branch_taken = 1;
-                    arch_instr.branch_type = DIRECT_JUMP;
+                    arch_instr.branch_type = BRANCH_DIRECT_JUMP;
 		  }
 		else if(!reads_sp && !reads_flags && writes_ip && reads_other)
 		  {
-		    // indirect jump
+		    // indirect branch
 		    arch_instr.is_branch = 1;
                     arch_instr.branch_taken = 1;
-                    arch_instr.branch_type = INDIRECT_JUMP;
+                    arch_instr.branch_type = BRANCH_INDIRECT;
 		  }
 		else if(!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other)
 		  {
-		    // direct branch
+		    // conditional branch
 		    arch_instr.is_branch = 1;
 		    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-		    arch_instr.branch_type = DIRECT_BRANCH;
+		    arch_instr.branch_type = BRANCH_CONDITIONAL;
 		  }
-		else if(!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && reads_other)
-		  {
-                    // indirect branch
-                    arch_instr.is_branch = 1;
-                    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-                    arch_instr.branch_type = INDIRECT_BRANCH;
-                  }
 		else if(reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other)
 		  {
 		    // direct call
 		    arch_instr.is_branch = 1;
 		    arch_instr.branch_taken = 1;
-		    arch_instr.branch_type = DIRECT_CALL;
+		    arch_instr.branch_type = BRANCH_DIRECT_CALL;
 		  }
 		else if(reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other)
 		  {
 		    // indirect call
 		    arch_instr.is_branch = 1;
 		    arch_instr.branch_taken = 1;
-		    arch_instr.branch_type = INDIRECT_CALL;
+		    arch_instr.branch_type = BRANCH_INDIRECT_CALL;
 		  }
 		else if(reads_sp && !reads_ip && writes_sp && writes_ip)
 		  {
 		    // return
 		    arch_instr.is_branch = 1;
 		    arch_instr.branch_taken = 1;
-		    arch_instr.branch_type = FUNCTION_RETURN;
+		    arch_instr.branch_type = BRANCH_RETURN;
 		  }
 		else if(writes_ip)
 		  {
 		    // some other branch type that doesn't fit the above categories
 		    arch_instr.is_branch = 1;
                     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-                    arch_instr.branch_type = OTHER_BRANCH;
+                    arch_instr.branch_type = BRANCH_OTHER;
 		  }
 
+		total_branch_types[arch_instr.branch_type]++;
+		
 		if((arch_instr.is_branch == 1) && (arch_instr.branch_taken == 1))
 		  {
 		    arch_instr.branch_target = next_instr.ip;
@@ -431,7 +426,7 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 {
   /*
-  if((arch_instr->is_branch != 0) && (arch_instr->branch_type == INDIRECT_BRANCH))
+  if((arch_instr->is_branch != 0) && (arch_instr->branch_type == BRANCH_OTHER))
     {
       cout << "IP: 0x" << hex << (uint64_t)(arch_instr->ip) << " branch_target: 0x" << (uint64_t)(arch_instr->branch_target) << dec << endl;
       cout << (uint32_t)(arch_instr->is_branch) << " " << (uint32_t)(arch_instr->branch_type) << " " << (uint32_t)(arch_instr->branch_taken) << endl;
