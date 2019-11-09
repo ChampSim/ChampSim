@@ -23,6 +23,7 @@ using namespace std;
 #define BRANCH_MISPREDICT_PENALTY 1
 #define DECODED_INSTRUCTION_CACHE_SIZE 2048
 #define IFETCH_WORKING_CACHE_LINES 4
+#define CODE_PREFETCH_BUFFER_SIZE 16
 //#define SCHEDULING_LATENCY 0
 //#define EXEC_LATENCY 0
 //#define DECODE_LATENCY 2
@@ -63,7 +64,11 @@ class O3_CPU {
   // current working cache lines for instruction fetch stage
   ooo_model_instr ifetch_working_set_instrs[IFETCH_WORKING_CACHE_LINES];
   uint32_t ifetch_working_set_mru_index;
-  
+
+  // code prefetching
+  ooo_model_instr code_prefetch_buffer[CODE_PREFETCH_BUFFER_SIZE];
+  uint32_t code_prefetch_buffer_occupancy;  
+
     // store array, this structure is required to properly handle store instructions
     uint64_t STA[STA_SIZE], STA_head, STA_tail; 
 
@@ -186,6 +191,15 @@ class O3_CPU {
 	    ifetch_working_set_instrs[i].fetched = COMPLETED;
 	  }
 	ifetch_working_set_mru_index = 0;
+
+	for(int i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+	  {
+	    code_prefetch_buffer[i].ip = 0;
+	    code_prefetch_buffer[i].branch_target = 0;
+	    code_prefetch_buffer[i].translated = 0;
+	    code_prefetch_buffer[i].fetched = 0;
+	  }
+	code_prefetch_buffer_occupancy = 0;
     }
 
     // functions
@@ -233,7 +247,14 @@ class O3_CPU {
     // branch predictor
     uint8_t predict_branch(uint64_t ip);
     void    initialize_branch_predictor(),
-            last_branch_result(uint64_t ip, uint8_t taken); 
+            last_branch_result(uint64_t ip, uint8_t taken);
+
+  // code prefetching
+  void l1i_prefetcher_initialize();
+  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint8_t branch_prediction);
+  void l1i_prefetcher_cache_operate(uint64_t addr, uint8_t cache_hit);
+  void l1i_prefetcher_final_stats();
+  int prefetch_code_line(uint64_t ip, uint64_t pf_addr); 
 };
 
 extern O3_CPU ooo_cpu[NUM_CPUS];

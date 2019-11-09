@@ -351,6 +351,8 @@ void O3_CPU::read_from_trace()
 
 			// handle branch prediction & branch predictor update
 			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
+			// call code prefetcher every time the branch predictor is used
+			l1i_prefetcher_branch_operate(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type, branch_prediction);
 			
 			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
 			  {
@@ -599,7 +601,7 @@ void O3_CPU::fetch_instruction()
 	{
 	  break;
 	}
-
+      
       index++;
       if(index >= IFETCH_BUFFER.SIZE)
 	{
@@ -655,7 +657,7 @@ void O3_CPU::fetch_instruction()
           index = 0;
 	}
     }
-
+  
   if(replacement_flag == true)
     {
       // we need to replace something in the working set
@@ -686,6 +688,8 @@ void O3_CPU::fetch_instruction()
 	}
     }
 
+  // demand code fetches
+  
   // send new working set cache lines out for translation
   for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
     {
@@ -745,6 +749,10 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
+
+	  // invoke code prefetcher
+	  int hit_way = L1I.check_hit(&fetch_packet);
+	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
 	  
 	  int rq_index = L1I.add_rq(&fetch_packet);
 
@@ -759,7 +767,84 @@ void O3_CPU::fetch_instruction()
 	  
 	  break;
 	}
-    }  
+    }
+
+  // code prefetches
+
+  // translate code prefetches
+  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+    {
+      if((code_prefetch_buffer[i].ip != 0) && (code_prefetch_buffer[i].translated == 0))
+	{
+	  // found one that hasn't begun to be translated yet
+
+	  // add it to the ITLB's read queue
+	  PACKET trace_packet;
+	  trace_packet.instruction = 1;
+	  trace_packet.tlb_access = 1;
+	  trace_packet.fill_level = FILL_L1;
+	  trace_packet.cpu = cpu;
+	  trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
+	  if (knob_cloudsuite)
+            trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
+	  else
+            trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
+	  trace_packet.full_addr = code_prefetch_buffer[i].branch_target;
+	  trace_packet.instr_id = 0;
+	  trace_packet.rob_index = i+IFETCH_WORKING_CACHE_LINES;
+	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
+	  trace_packet.ip = code_prefetch_buffer[i].ip;
+	  trace_packet.type = PREFETCH; 
+	  trace_packet.asid[0] = 0;
+	  trace_packet.asid[1] = 0;
+	  trace_packet.event_cycle = current_core_cycle[cpu];
+	  
+	  int rq_index = ITLB.add_rq(&trace_packet);
+	  
+	  code_prefetch_buffer[i].translated = INFLIGHT;
+	  
+	  break;
+	}
+    }
+
+  // fetch code prefetches
+  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+    {
+      if((code_prefetch_buffer[i].ip != 0) && (code_prefetch_buffer[i].translated == COMPLETED) && (code_prefetch_buffer[i].fetched == 0))
+	{
+	  // found one that has been translated, but hasn't been fetched yet
+
+	  // add it to the L1-I's read queue
+	  PACKET fetch_packet;
+	  fetch_packet.instruction = 1;
+	  fetch_packet.fill_level = FILL_L1;
+	  fetch_packet.cpu = cpu;
+	  fetch_packet.address = code_prefetch_buffer[i].instruction_pa >> 6;
+	  fetch_packet.instruction_pa = code_prefetch_buffer[i].instruction_pa;
+	  fetch_packet.full_addr = code_prefetch_buffer[i].instruction_pa;
+	  fetch_packet.instr_id = 0;
+	  fetch_packet.rob_index = i+IFETCH_WORKING_CACHE_LINES;
+	  fetch_packet.producer = 0;
+	  fetch_packet.ip = code_prefetch_buffer[i].ip;
+	  fetch_packet.type = PREFETCH; 
+	  fetch_packet.asid[0] = 0;
+	  fetch_packet.asid[1] = 0;
+	  fetch_packet.event_cycle = current_core_cycle[cpu];
+	  
+	  int rq_index = L1I.add_rq(&fetch_packet);
+
+	  if(warmup_complete[cpu])
+	    {
+	      code_prefetch_buffer[i].fetched = INFLIGHT;
+	    }
+	  else
+	    {
+	      code_prefetch_buffer[i].fetched = COMPLETED;
+	    }
+	  
+	  break;
+	}
+    }
 }
 
 void O3_CPU::decode_and_dispatch()
@@ -843,6 +928,54 @@ void O3_CPU::decode_and_dispatch()
 	  break;
 	}
     }
+}
+
+int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
+{
+  L1I.pf_requested++;
+
+  if(code_prefetch_buffer_occupancy == CODE_PREFETCH_BUFFER_SIZE)
+    {
+      // no room to prefetch
+      return 0;
+    }
+
+  // check if it's already present in the working set
+    for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+      {
+	if(((ifetch_working_set_instrs[i].ip)>>6) == ((pf_addr)>>6))
+	  {
+	    return 0;
+	  }
+      }
+
+  // check if it's already present in the code prefetch buffer
+  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+    {
+      if(((code_prefetch_buffer[i].ip)>>6) == ((pf_addr)>>6))
+	{
+	  return 0;
+	}
+    }
+  
+  // look for an empty spot
+  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+    {
+      if(code_prefetch_buffer[i].ip == 0)
+	{
+	  // we found an empty spot, so allocate the prefetch
+	  code_prefetch_buffer[i].ip = ip;
+	  code_prefetch_buffer[i].branch_target = pf_addr;
+	  code_prefetch_buffer[i].translated = 0;
+	  code_prefetch_buffer[i].fetched = 0;
+	  
+	  code_prefetch_buffer_occupancy++;
+
+	  return 1;
+	}
+    }
+
+  return 0;
 }
 
 // TODO: When should we update ROB.schedule_event_cycle?
@@ -1855,15 +1988,76 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
       num_fetched = 0;
     uint32_t working_set_index = rob_index;
     
-    if(is_it_tlb)
+    if(working_set_index < IFETCH_WORKING_CACHE_LINES)
       {
-	ifetch_working_set_instrs[working_set_index].translated = COMPLETED;
-	ifetch_working_set_instrs[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
-	  | (ifetch_working_set_instrs[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	// this is a demand code fetch
+	if(is_it_tlb)
+	  {
+	    ifetch_working_set_instrs[working_set_index].translated = COMPLETED;
+	    ifetch_working_set_instrs[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
+	      | (ifetch_working_set_instrs[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	  }
+	else
+	  {
+	    ifetch_working_set_instrs[working_set_index].fetched = COMPLETED;
+	  }
       }
     else
       {
-	ifetch_working_set_instrs[working_set_index].fetched = COMPLETED;
+	// this is a code prefetch
+	working_set_index -= IFETCH_WORKING_CACHE_LINES;
+
+	if(is_it_tlb)
+          {
+	    code_prefetch_buffer[working_set_index].translated = COMPLETED;
+            code_prefetch_buffer[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
+              | (code_prefetch_buffer[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+          }
+        else
+          {
+            //code_prefetch_buffer[working_set_index].fetched = COMPLETED;
+	    // this entry is done, so we can de-allocate it
+            code_prefetch_buffer[working_set_index].ip = 0;
+	    code_prefetch_buffer_occupancy--;
+          }
+      }
+
+    // clean up duplicates between the two buffers
+    
+    for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
+      {
+	if(((queue->entry[index].ip)>>6) == ((ifetch_working_set_instrs[i].ip)>>6))
+	  {
+	    // this is a demand code fetch
+	    if(is_it_tlb)
+	      {
+		ifetch_working_set_instrs[i].translated = COMPLETED;
+		ifetch_working_set_instrs[i].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
+		  | (ifetch_working_set_instrs[i].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	      }
+	    else
+	      {
+		ifetch_working_set_instrs[i].fetched = COMPLETED;
+	      }	    
+	  }
+      }
+
+    for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+      {
+	if(((queue->entry[index].ip)>>6) == ((code_prefetch_buffer[i].ip)>>6))
+	  {
+	    if(is_it_tlb)
+	      {
+		code_prefetch_buffer[i].translated = COMPLETED;
+		code_prefetch_buffer[i].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
+		  | (code_prefetch_buffer[i].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	      }
+	    else
+	      {
+		code_prefetch_buffer[i].ip = 0;
+		code_prefetch_buffer_occupancy--;
+	      }
+	  }
       }
 
     // remove this entry
