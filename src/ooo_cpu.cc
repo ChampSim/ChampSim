@@ -352,7 +352,11 @@ void O3_CPU::read_from_trace()
 			// handle branch prediction & branch predictor update
 			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
 			// call code prefetcher every time the branch predictor is used
-			l1i_prefetcher_branch_operate(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type, branch_prediction);
+			/*
+			l1i_prefetcher_branch_operate(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+						      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
+						      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target);
+			*/
 			
 			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
 			  {
@@ -550,12 +554,8 @@ void O3_CPU::fetch_instruction()
       return;
     }
 
-  // mark the instructions in the IFETCH_BUFFER as translated and fetched in-order as long as we have hits in the code working set
+  // scan through IFETCH_BUFFER to find instructions that need to be translated
   uint32_t index = IFETCH_BUFFER.head;
-  bool replacement_flag = false;
-  uint64_t replacement_ip = 0;
-
-  //for(uint32_t i=0; i<FETCH_WIDTH; i++)
   for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
     {
       if(IFETCH_BUFFER.entry[index].ip == 0)
@@ -563,51 +563,89 @@ void O3_CPU::fetch_instruction()
 	  break;
 	}
 
-      bool translate_or_fetch_pending = false;
-      if((IFETCH_BUFFER.entry[index].translated != COMPLETED) || (IFETCH_BUFFER.entry[index].fetched != COMPLETED))
+      if(IFETCH_BUFFER.entry[index].translated == 0)
 	{
-	  // check the working set to see if it's a match for this instruction
-	  bool found_working_set_match = false;
-	  for(uint32_t working_set_index=0; working_set_index<IFETCH_WORKING_CACHE_LINES; working_set_index++)
-	    {
-	      if((((ifetch_working_set_instrs[working_set_index].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6)))
-		{
-		  if((ifetch_working_set_instrs[working_set_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_index].fetched == COMPLETED))
-		    {
-		      IFETCH_BUFFER.entry[index].translated = COMPLETED;
-		      IFETCH_BUFFER.entry[index].fetched = COMPLETED;
-		    }
-		  else
-		    {
-		      translate_or_fetch_pending = true;
-		    }
+	  // begin process of fetching this instruction by sending it to the ITLB
+	  // add it to the ITLB's read queue
+	  PACKET trace_packet;
+	  trace_packet.instruction = 1;
+	  trace_packet.tlb_access = 1;
+	  trace_packet.fill_level = FILL_L1;
+	  trace_packet.cpu = cpu;
+	  trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+	  if (knob_cloudsuite)
+	    trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+	  else
+	    trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+	  trace_packet.full_addr = IFETCH_BUFFER.entry[index].ip;
+	  trace_packet.instr_id = 0;
+	  trace_packet.rob_index = i;
+	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
+	  trace_packet.ip = IFETCH_BUFFER.entry[index].ip;
+	  trace_packet.type = LOAD; 
+	  trace_packet.asid[0] = 0;
+	  trace_packet.asid[1] = 0;
+	  trace_packet.event_cycle = current_core_cycle[cpu];
+	  
+	  int rq_index = ITLB.add_rq(&trace_packet);
 
-		  ifetch_working_set_mru_index = working_set_index;
-		  found_working_set_match = true;
-		  break;
+	  if(rq_index != -2)
+	    {
+	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
+	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+		{
+		  if((((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6)) && (IFETCH_BUFFER.entry[j].translated == 0))
+		    {
+		      IFETCH_BUFFER.entry[j].translated = INFLIGHT;
+		      IFETCH_BUFFER.entry[j].fetched = 0;
+		    }
 		}
 	    }
+	}
 
-	  if(found_working_set_match == false)
+      // fetch cache lines that were part of a translated page but not the cache line that initiated the translation
+      if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == 0))
+	{
+	  // add it to the L1-I's read queue
+	  PACKET fetch_packet;
+	  fetch_packet.instruction = 1;
+	  fetch_packet.fill_level = FILL_L1;
+	  fetch_packet.cpu = cpu;
+	  fetch_packet.address = IFETCH_BUFFER.entry[index].instruction_pa >> 6;
+	  fetch_packet.instruction_pa = IFETCH_BUFFER.entry[index].instruction_pa;
+	  fetch_packet.full_addr = IFETCH_BUFFER.entry[index].instruction_pa;
+	  fetch_packet.instr_id = 0;
+	  fetch_packet.rob_index = 0;
+	  fetch_packet.producer = 0;
+	  fetch_packet.ip = IFETCH_BUFFER.entry[index].ip;
+	  fetch_packet.type = LOAD; 
+	  fetch_packet.asid[0] = 0;
+	  fetch_packet.asid[1] = 0;
+	  fetch_packet.event_cycle = current_core_cycle[cpu];
+	    
+	  // invoke code prefetcher
+	  //int hit_way = L1I.check_hit(&fetch_packet);
+	  //l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
+	      
+	  int rq_index = L1I.add_rq(&fetch_packet);
+
+	  // mark all instructions from this cache line as having been fetched
+	  for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 	    {
-	      // we need to put this instruction's cache line into the working set
-	      replacement_flag = true;
-	      replacement_ip = IFETCH_BUFFER.entry[index].ip;
-	      break;
+	      if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
+		{
+		  IFETCH_BUFFER.entry[j].translated = COMPLETED;
+		  IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
+		}
 	    }
 	}
 
-      if(translate_or_fetch_pending || replacement_flag)
-	{
-	  break;
-	}
-      
       index++;
       if(index >= IFETCH_BUFFER.SIZE)
 	{
 	  index = 0;
 	}
-	  
+      
       if(index == IFETCH_BUFFER.head)
 	{
 	  break;
@@ -655,194 +693,6 @@ void O3_CPU::fetch_instruction()
       if(index >= IFETCH_BUFFER.SIZE)
         {
           index = 0;
-	}
-    }
-  
-  if(replacement_flag == true)
-    {
-      // we need to replace something in the working set
-      
-      // start with something that isn't the MRU
-      uint32_t working_set_repl_index = ifetch_working_set_mru_index + 1;
-      for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-	{
-	  if(working_set_repl_index >= IFETCH_WORKING_CACHE_LINES)
-	    {
-	      working_set_repl_index = 0;
-	    }
-
-	  if((ifetch_working_set_instrs[working_set_repl_index].translated == COMPLETED) && (ifetch_working_set_instrs[working_set_repl_index].fetched == COMPLETED))
-	    {
-	      // we've found a working set item that has completed being translated & fetched, so we can replace it
-
-	      ifetch_working_set_instrs[working_set_repl_index].ip = replacement_ip;
-	      ifetch_working_set_instrs[working_set_repl_index].translated = 0;
-	      ifetch_working_set_instrs[working_set_repl_index].fetched = 0;
-
-	      ifetch_working_set_mru_index = working_set_repl_index;
-	      
-	      break;
-	    }
-
-	  working_set_repl_index++;
-	}
-    }
-
-  // demand code fetches
-  
-  // send new working set cache lines out for translation
-  for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-    {
-      if(ifetch_working_set_instrs[i].translated == 0)
-	{
-	  // found one that hasn't begun to be translated yet
-
-	  // add it to the ITLB's read queue
-	  PACKET trace_packet;
-	  trace_packet.instruction = 1;
-	  trace_packet.tlb_access = 1;
-	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.cpu = cpu;
-	  trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
-	  if (knob_cloudsuite)
-            trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
-	  else
-            trace_packet.address = ifetch_working_set_instrs[i].ip >> LOG2_PAGE_SIZE;
-	  trace_packet.full_addr = ifetch_working_set_instrs[i].ip;
-	  trace_packet.instr_id = 0;
-	  trace_packet.rob_index = i;
-	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
-	  trace_packet.ip = ifetch_working_set_instrs[i].ip;
-	  trace_packet.type = LOAD; 
-	  trace_packet.asid[0] = 0;
-	  trace_packet.asid[1] = 0;
-	  trace_packet.event_cycle = current_core_cycle[cpu];
-	  
-	  int rq_index = ITLB.add_rq(&trace_packet);
-	  
-	  ifetch_working_set_instrs[i].translated = INFLIGHT;
-	  
-	  break;
-	}
-    }
-
-  // fetch new working set cache lines
-  for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-    {
-      if((ifetch_working_set_instrs[i].translated == COMPLETED) && (ifetch_working_set_instrs[i].fetched == 0))
-	{
-	  // found one that has been translated, but hasn't been fetched yet
-
-	  // add it to the L1-I's read queue
-	  PACKET fetch_packet;
-	  fetch_packet.instruction = 1;
-	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.cpu = cpu;
-	  fetch_packet.address = ifetch_working_set_instrs[i].instruction_pa >> 6;
-	  fetch_packet.instruction_pa = ifetch_working_set_instrs[i].instruction_pa;
-	  fetch_packet.full_addr = ifetch_working_set_instrs[i].instruction_pa;
-	  fetch_packet.instr_id = 0;
-	  fetch_packet.rob_index = i;
-	  fetch_packet.producer = 0;
-	  fetch_packet.ip = ifetch_working_set_instrs[i].ip;
-	  fetch_packet.type = LOAD; 
-	  fetch_packet.asid[0] = 0;
-	  fetch_packet.asid[1] = 0;
-	  fetch_packet.event_cycle = current_core_cycle[cpu];
-
-	  // invoke code prefetcher
-	  int hit_way = L1I.check_hit(&fetch_packet);
-	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
-	  
-	  int rq_index = L1I.add_rq(&fetch_packet);
-
-	  if(warmup_complete[cpu])
-	    {
-	      ifetch_working_set_instrs[i].fetched = INFLIGHT;
-	    }
-	  else
-	    {
-	      ifetch_working_set_instrs[i].fetched = COMPLETED;
-	    }
-	  
-	  break;
-	}
-    }
-
-  // code prefetches
-
-  // translate code prefetches
-  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
-    {
-      if((code_prefetch_buffer[i].ip != 0) && (code_prefetch_buffer[i].translated == 0))
-	{
-	  // found one that hasn't begun to be translated yet
-
-	  // add it to the ITLB's read queue
-	  PACKET trace_packet;
-	  trace_packet.instruction = 1;
-	  trace_packet.tlb_access = 1;
-	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.cpu = cpu;
-	  trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
-	  if (knob_cloudsuite)
-            trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
-	  else
-            trace_packet.address = code_prefetch_buffer[i].branch_target >> LOG2_PAGE_SIZE;
-	  trace_packet.full_addr = code_prefetch_buffer[i].branch_target;
-	  trace_packet.instr_id = 0;
-	  trace_packet.rob_index = i+IFETCH_WORKING_CACHE_LINES;
-	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
-	  trace_packet.ip = code_prefetch_buffer[i].ip;
-	  trace_packet.type = PREFETCH; 
-	  trace_packet.asid[0] = 0;
-	  trace_packet.asid[1] = 0;
-	  trace_packet.event_cycle = current_core_cycle[cpu];
-	  
-	  int rq_index = ITLB.add_rq(&trace_packet);
-	  
-	  code_prefetch_buffer[i].translated = INFLIGHT;
-	  
-	  break;
-	}
-    }
-
-  // fetch code prefetches
-  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
-    {
-      if((code_prefetch_buffer[i].ip != 0) && (code_prefetch_buffer[i].translated == COMPLETED) && (code_prefetch_buffer[i].fetched == 0))
-	{
-	  // found one that has been translated, but hasn't been fetched yet
-
-	  // add it to the L1-I's read queue
-	  PACKET fetch_packet;
-	  fetch_packet.instruction = 1;
-	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.cpu = cpu;
-	  fetch_packet.address = code_prefetch_buffer[i].instruction_pa >> 6;
-	  fetch_packet.instruction_pa = code_prefetch_buffer[i].instruction_pa;
-	  fetch_packet.full_addr = code_prefetch_buffer[i].instruction_pa;
-	  fetch_packet.instr_id = 0;
-	  fetch_packet.rob_index = i+IFETCH_WORKING_CACHE_LINES;
-	  fetch_packet.producer = 0;
-	  fetch_packet.ip = code_prefetch_buffer[i].ip;
-	  fetch_packet.type = PREFETCH; 
-	  fetch_packet.asid[0] = 0;
-	  fetch_packet.asid[1] = 0;
-	  fetch_packet.event_cycle = current_core_cycle[cpu];
-	  
-	  int rq_index = L1I.add_rq(&fetch_packet);
-
-	  if(warmup_complete[cpu])
-	    {
-	      code_prefetch_buffer[i].fetched = INFLIGHT;
-	    }
-	  else
-	    {
-	      code_prefetch_buffer[i].fetched = COMPLETED;
-	    }
-	  
-	  break;
 	}
     }
 }
@@ -899,17 +749,8 @@ void O3_CPU::decode_and_dispatch()
       
       if(DECODE_BUFFER.entry[decode_index].event_cycle == 0)
 	{
-	  // this instruction hasn't gone through decode yet
-	  uint32_t decoded_instr_cache_index = (DECODE_BUFFER.entry[decode_index].ip)&(DECODED_INSTRUCTION_CACHE_SIZE-1);
-	  if(DECODE_BUFFER.entry[decode_index].ip == decoded_instruction_cache[decoded_instr_cache_index])
-	    {
-	      DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
-	    }
-	  else
-	    {
-	      DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
-	      decoded_instruction_cache[decoded_instr_cache_index] = DECODE_BUFFER.entry[decode_index].ip;
-	    }
+	  // apply decode latency
+	  DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
 	}
       
       if(decode_index == DECODE_BUFFER.tail)
@@ -932,22 +773,19 @@ void O3_CPU::decode_and_dispatch()
 
 int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
 {
+  if(pf_addr == 0)
+    {
+      cerr << "Cannot prefetch code line 0x0 !!!" << endl;
+      assert(0);
+    }
+  
   L1I.pf_requested++;
 
   if(code_prefetch_buffer_occupancy == CODE_PREFETCH_BUFFER_SIZE)
-    {
-      // no room to prefetch
+    { 
+     // no room to prefetch
       return 0;
     }
-
-  // check if it's already present in the working set
-    for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-      {
-	if(((ifetch_working_set_instrs[i].ip)>>6) == ((pf_addr)>>6))
-	  {
-	    return 0;
-	  }
-      }
 
   // check if it's already present in the code prefetch buffer
   for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
@@ -975,7 +813,7 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
 	}
     }
 
-  return 0;
+ return 0;
 }
 
 // TODO: When should we update ROB.schedule_event_cycle?
@@ -1986,83 +1824,95 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
     uint32_t index = queue->head,
       rob_index = queue->entry[index].rob_index,
       num_fetched = 0;
-    uint32_t working_set_index = rob_index;
-    
-    if(working_set_index < IFETCH_WORKING_CACHE_LINES)
+
+    uint64_t complete_ip = queue->entry[index].ip;
+
+    if(is_it_tlb)
       {
-	// this is a demand code fetch
-	if(is_it_tlb)
+	uint64_t instruction_physical_address = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | (complete_ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	
+	if(queue->entry[index].type == LOAD)
 	  {
-	    ifetch_working_set_instrs[working_set_index].translated = COMPLETED;
-	    ifetch_working_set_instrs[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
-	      | (ifetch_working_set_instrs[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
+	    // send
+
+	    // add it to the L1-I's read queue
+	    PACKET fetch_packet;
+	    fetch_packet.instruction = 1;
+	    fetch_packet.fill_level = FILL_L1;
+	    fetch_packet.cpu = cpu;
+	    fetch_packet.address = instruction_physical_address >> 6;
+	    fetch_packet.instruction_pa = instruction_physical_address;
+	    fetch_packet.full_addr = instruction_physical_address;
+	    fetch_packet.instr_id = 0;
+	    fetch_packet.rob_index = 0;
+	    fetch_packet.producer = 0;
+	    fetch_packet.ip = complete_ip;
+	    fetch_packet.type = LOAD; 
+	    fetch_packet.asid[0] = 0;
+	    fetch_packet.asid[1] = 0;
+	    fetch_packet.event_cycle = current_core_cycle[cpu];
+	    
+	    // invoke code prefetcher
+	    //int hit_way = L1I.check_hit(&fetch_packet);
+	    //l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
+	    
+	    int rq_index = L1I.add_rq(&fetch_packet);
+	    
+	    if(rq_index != -2) // -2 means the L1I rq was full
+	      {
+		// successfully sent to the L1I cache, so mark the appropriate instructions in the IFETCH_BUFFER as fetched INFLIGHT
+		for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+		  {
+		    if(((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((complete_ip)>>LOG2_PAGE_SIZE))
+		      {
+			IFETCH_BUFFER.entry[j].translated = COMPLETED;
+			if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((complete_ip)>>6))
+			  {
+			    // we fetched this instruction's cache line
+			    IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
+			    IFETCH_BUFFER.entry[j].instruction_pa = instruction_physical_address;
+			  }
+			else
+			  {
+			    // we did not fetch this instruction's cache line, but we did translated it
+			    IFETCH_BUFFER.entry[j].fetched = 0;
+			    // recalculate a physical address for this cache line based on the translated physical page address
+			    uint64_t instr_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+			    IFETCH_BUFFER.entry[j].instruction_pa = instr_pa;
+			  }
+		      }
+		  }
+		
+		// remove this entry
+		queue->remove_queue(&queue->entry[index]);
+	      }
+	  }
+	else if(queue->entry[index].type == PREFETCH)
+	  {
+	    // to do
 	  }
 	else
 	  {
-	    ifetch_working_set_instrs[working_set_index].fetched = COMPLETED;
+	    cerr << "*** complete_instr_fetch() completed an ITLB lookup for something other than LOAD or PREFETCH" << endl;
+	    assert(0);
 	  }
       }
     else
       {
-	// this is a code prefetch
-	working_set_index -= IFETCH_WORKING_CACHE_LINES;
+	// this is the L1I cache, so instructions are now fully fetched, so mark them as such
+	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+	  {
+	    if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((complete_ip)>>6))
+	      {
+		IFETCH_BUFFER.entry[j].translated = COMPLETED;
+		IFETCH_BUFFER.entry[j].fetched = COMPLETED;
+	      }
+	  }
 
-	if(is_it_tlb)
-          {
-	    code_prefetch_buffer[working_set_index].translated = COMPLETED;
-            code_prefetch_buffer[working_set_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
-              | (code_prefetch_buffer[working_set_index].ip & ((1 << LOG2_PAGE_SIZE) - 1));
-          }
-        else
-          {
-            //code_prefetch_buffer[working_set_index].fetched = COMPLETED;
-	    // this entry is done, so we can de-allocate it
-            code_prefetch_buffer[working_set_index].ip = 0;
-	    code_prefetch_buffer_occupancy--;
-          }
+	// remove this entry                                                                                                                                                                        
+	queue->remove_queue(&queue->entry[index]);
       }
-
-    // clean up duplicates between the two buffers
     
-    for(uint32_t i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-      {
-	if(((queue->entry[index].ip)>>6) == ((ifetch_working_set_instrs[i].ip)>>6))
-	  {
-	    // this is a demand code fetch
-	    if(is_it_tlb)
-	      {
-		ifetch_working_set_instrs[i].translated = COMPLETED;
-		ifetch_working_set_instrs[i].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
-		  | (ifetch_working_set_instrs[i].ip & ((1 << LOG2_PAGE_SIZE) - 1));
-	      }
-	    else
-	      {
-		ifetch_working_set_instrs[i].fetched = COMPLETED;
-	      }	    
-	  }
-      }
-
-    for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
-      {
-	if(((queue->entry[index].ip)>>6) == ((code_prefetch_buffer[i].ip)>>6))
-	  {
-	    if(is_it_tlb)
-	      {
-		code_prefetch_buffer[i].translated = COMPLETED;
-		code_prefetch_buffer[i].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE)
-		  | (code_prefetch_buffer[i].ip & ((1 << LOG2_PAGE_SIZE) - 1));
-	      }
-	    else
-	      {
-		code_prefetch_buffer[i].ip = 0;
-		code_prefetch_buffer_occupancy--;
-	      }
-	  }
-      }
-
-    // remove this entry
-    queue->remove_queue(&queue->entry[index]);
-
     return;
 
     // old function below

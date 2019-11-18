@@ -21,8 +21,6 @@ using namespace std;
 #define RETIRE_WIDTH 4
 #define SCHEDULER_SIZE 128
 #define BRANCH_MISPREDICT_PENALTY 1
-#define DECODED_INSTRUCTION_CACHE_SIZE 2048
-#define IFETCH_WORKING_CACHE_LINES 4
 #define CODE_PREFETCH_BUFFER_SIZE 16
 //#define SCHEDULING_LATENCY 0
 //#define EXEC_LATENCY 0
@@ -56,14 +54,10 @@ class O3_CPU {
     uint32_t next_ITLB_fetch;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*4};
-    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*2};
+    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
+    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
     CORE_BUFFER ROB{"ROB", ROB_SIZE};
     LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
-
-  // current working cache lines for instruction fetch stage
-  ooo_model_instr ifetch_working_set_instrs[IFETCH_WORKING_CACHE_LINES];
-  uint32_t ifetch_working_set_mru_index;
 
   // code prefetching
   ooo_model_instr code_prefetch_buffer[CODE_PREFETCH_BUFFER_SIZE];
@@ -102,7 +96,6 @@ class O3_CPU {
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
   // trace cache for previously decoded instructions
-  uint64_t decoded_instruction_cache[DECODED_INSTRUCTION_CACHE_SIZE];
   
     // constructor
     O3_CPU() {
@@ -178,20 +171,6 @@ class O3_CPU {
         RTS0_tail = 0;
         RTS1_tail = 0;
 
-	for(uint32_t i=0; i<DECODED_INSTRUCTION_CACHE_SIZE; i++)
-	  {
-	    decoded_instruction_cache[i] = 0;
-	  }
-
-	for(int i=0; i<IFETCH_WORKING_CACHE_LINES; i++)
-	  {
-	    // these are the only fields we're using from these instruction data types
-	    ifetch_working_set_instrs[i].ip = 0;
-	    ifetch_working_set_instrs[i].translated = COMPLETED;
-	    ifetch_working_set_instrs[i].fetched = COMPLETED;
-	  }
-	ifetch_working_set_mru_index = 0;
-
 	for(int i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
 	  {
 	    code_prefetch_buffer[i].ip = 0;
@@ -251,7 +230,7 @@ class O3_CPU {
 
   // code prefetching
   void l1i_prefetcher_initialize();
-  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint8_t branch_prediction);
+  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
   void l1i_prefetcher_cache_operate(uint64_t addr, uint8_t cache_hit);
   void l1i_prefetcher_final_stats();
   int prefetch_code_line(uint64_t ip, uint64_t pf_addr); 

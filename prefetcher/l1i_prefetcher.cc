@@ -5,7 +5,7 @@ void O3_CPU::l1i_prefetcher_initialize()
 
 }
 
-void O3_CPU::l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint8_t branch_prediction)
+void O3_CPU::l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
 {
 
 }
