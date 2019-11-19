@@ -262,7 +262,12 @@ void CACHE::handle_writeback()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&WQ.entry[index]);
 
-                if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
+		if(mshr_index == -2)
+		  {
+		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
+		    miss_handled = 0;
+		  }
+                else if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
 		  if(cache_type == IS_LLC)
 		    {
@@ -550,7 +555,12 @@ void CACHE::handle_read()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&RQ.entry[index]);
 
-                if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
+		if(mshr_index == -2)
+		  {
+		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
+		    miss_handled = 0;
+		  }
+                else if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
 		  if(cache_type == IS_LLC)
 		    {
@@ -791,7 +801,12 @@ void CACHE::handle_prefetch()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&PQ.entry[index]);
 
-                if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
+		if(mshr_index == -2)
+		  {
+		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
+		    miss_handled = 0;
+		  }
+                else if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
                     DP ( if (warmup_complete[PQ.entry[index].cpu]) {
                     cout << "[" << NAME << "_PQ] " <<  __func__ << " want to add instr_id: " << PQ.entry[index].instr_id << " address: " << hex << PQ.entry[index].address;
@@ -1451,17 +1466,32 @@ void CACHE::update_fill_cycle()
 int CACHE::check_mshr(PACKET *packet)
 {
     // search mshr
-    for (uint32_t index=0; index<MSHR_SIZE; index++) {
-        if (MSHR.entry[index].address == packet->address) {
-            
-            DP ( if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "_MSHR] " << __func__ << " same entry instr_id: " << packet->instr_id << " prior_id: " << MSHR.entry[index].instr_id;
-            cout << " address: " << hex << packet->address;
-            cout << " full_addr: " << packet->full_addr << dec << endl; });
-
-            return index;
-        }
+  bool instruction_and_data_collision = false;
+  
+  for (uint32_t index=0; index<MSHR_SIZE; index++)
+    {
+      if (MSHR.entry[index].address == packet->address)
+	{
+	  if(MSHR.entry[index].instruction != packet->instruction)
+	    {
+	      instruction_and_data_collision = true;
+	    }
+	  else
+	    {
+	      DP ( if (warmup_complete[packet->cpu]) {
+		  cout << "[" << NAME << "_MSHR] " << __func__ << " same entry instr_id: " << packet->instr_id << " prior_id: " << MSHR.entry[index].instr_id;
+		  cout << " address: " << hex << packet->address;
+		  cout << " full_addr: " << packet->full_addr << dec << endl; });
+	    
+	      return index;
+	    }
+	}
     }
+
+    if(instruction_and_data_collision)
+      {
+	return -2;
+      }
 
     DP ( if (warmup_complete[packet->cpu]) {
     cout << "[" << NAME << "_MSHR] " << __func__ << " new address: " << hex << packet->address;
