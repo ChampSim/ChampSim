@@ -455,7 +455,6 @@ void CACHE::handle_writeback()
 void CACHE::handle_read()
 {
     // handle read
-
     for (uint32_t i=0; i<MAX_READ; i++) {
 
       uint32_t read_cpu = RQ.entry[RQ.head].cpu;
@@ -591,7 +590,7 @@ void CACHE::handle_read()
 			  // TODO: need to differentiate page table walk and actual swap
 			  
 			  // emulate page table walk
-			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address);
+			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address, 0);
 			  
 			  RQ.entry[index].data = pa >> LOG2_PAGE_SIZE; 
 			  RQ.entry[index].event_cycle = current_core_cycle[read_cpu];
@@ -1338,7 +1337,13 @@ int CACHE::add_pq(PACKET *packet)
     int index = PQ.check_queue(packet);
     if (index != -1) {
         if (packet->fill_level < PQ.entry[index].fill_level)
+	  {
             PQ.entry[index].fill_level = packet->fill_level;
+	  }
+	if((packet->instruction == 1) && (PQ.entry[index].instruction != 1))
+	  {
+	    PQ.entry[index].instruction = 1;
+	  }
 
         PQ.MERGED++;
         PQ.ACCESS++;

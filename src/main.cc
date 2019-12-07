@@ -297,7 +297,7 @@ uint64_t rotr64 (uint64_t n, unsigned int c)
 }
 
 RANDOM champsim_rand(champsim_seed);
-uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_vpage)
+uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_vpage, uint8_t is_code)
 {
 #ifdef SANITY_CHECK
     if (va == 0) 
@@ -466,10 +466,15 @@ uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_
     cout << "[PAGE_TABLE] instr_id: " << instr_id << " vpage: " << hex << vpage;
     cout << " => ppage: " << (pa >> LOG2_PAGE_SIZE) << " vadress: " << unique_va << " paddress: " << pa << dec << endl; });
 
-    if (swap)
-        stall_cycle[cpu] = current_core_cycle[cpu] + SWAP_LATENCY;
-    else
-        stall_cycle[cpu] = current_core_cycle[cpu] + PAGE_TABLE_LATENCY;
+    // as a hack for code prefetching, code translations are magical and do not pay these penalties
+    if(!is_code)
+      {
+	// if it's data, pay these penalties
+	if (swap)
+	  stall_cycle[cpu] = current_core_cycle[cpu] + SWAP_LATENCY;
+	else
+	  stall_cycle[cpu] = current_core_cycle[cpu] + PAGE_TABLE_LATENCY;
+      }
 
     //cout << "cpu: " << cpu << " allocated unique_vpage: " << hex << unique_vpage << " to ppage: " << ppage << dec << endl;
 
@@ -663,19 +668,22 @@ int main(int argc, char** argv)
         // TLBs
         ooo_cpu[i].ITLB.cpu = i;
         ooo_cpu[i].ITLB.cache_type = IS_ITLB;
+	ooo_cpu[i].ITLB.MAX_READ = 2;
         ooo_cpu[i].ITLB.fill_level = FILL_L1;
         ooo_cpu[i].ITLB.extra_interface = &ooo_cpu[i].L1I;
         ooo_cpu[i].ITLB.lower_level = &ooo_cpu[i].STLB; 
 
         ooo_cpu[i].DTLB.cpu = i;
         ooo_cpu[i].DTLB.cache_type = IS_DTLB;
-        ooo_cpu[i].DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        //ooo_cpu[i].DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        ooo_cpu[i].DTLB.MAX_READ = 2;
         ooo_cpu[i].DTLB.fill_level = FILL_L1;
         ooo_cpu[i].DTLB.extra_interface = &ooo_cpu[i].L1D;
         ooo_cpu[i].DTLB.lower_level = &ooo_cpu[i].STLB;
 
         ooo_cpu[i].STLB.cpu = i;
         ooo_cpu[i].STLB.cache_type = IS_STLB;
+        ooo_cpu[i].STLB.MAX_READ = 1;
         ooo_cpu[i].STLB.fill_level = FILL_L2;
         ooo_cpu[i].STLB.upper_level_icache[i] = &ooo_cpu[i].ITLB;
         ooo_cpu[i].STLB.upper_level_dcache[i] = &ooo_cpu[i].DTLB;
@@ -683,7 +691,8 @@ int main(int argc, char** argv)
         // PRIVATE CACHE
         ooo_cpu[i].L1I.cpu = i;
         ooo_cpu[i].L1I.cache_type = IS_L1I;
-        ooo_cpu[i].L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
+        //ooo_cpu[i].L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
+        ooo_cpu[i].L1I.MAX_READ = 2;
         ooo_cpu[i].L1I.fill_level = FILL_L1;
         ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
 

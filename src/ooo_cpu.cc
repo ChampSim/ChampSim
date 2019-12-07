@@ -99,10 +99,9 @@ void O3_CPU::read_from_trace()
                 if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
 		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
 		  num_reads++;
-		  
+
 		  // handle branch prediction
 		  if (IFETCH_BUFFER.entry[ifetch_buffer_index].is_branch) {
-		    
 		    DP( if (warmup_complete[cpu]) {
                         cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
 		    
@@ -340,7 +339,7 @@ void O3_CPU::read_from_trace()
                 if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
 		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
 		  num_reads++;
-		    
+
                     // handle branch prediction
                     if (IFETCH_BUFFER.entry[ifetch_buffer_index].is_branch) {
 
@@ -351,12 +350,15 @@ void O3_CPU::read_from_trace()
 
 			// handle branch prediction & branch predictor update
 			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
+			uint64_t predicted_branch_target = IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target;
+			if(branch_prediction == 0)
+			  {
+			    predicted_branch_target = 0;
+			  }
 			// call code prefetcher every time the branch predictor is used
-			/*
 			l1i_prefetcher_branch_operate(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
 						      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
-						      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target);
-			*/
+						      predicted_branch_target);
 			
 			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
 			  {
@@ -461,6 +463,16 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
   IFETCH_BUFFER.entry[index] = *arch_instr;
   IFETCH_BUFFER.entry[index].event_cycle = current_core_cycle[cpu];
 
+  // magically translate instructions
+  uint64_t instr_pa = va_to_pa(cpu, IFETCH_BUFFER.entry[index].instr_id, IFETCH_BUFFER.entry[index].ip , (IFETCH_BUFFER.entry[index].ip)>>LOG2_PAGE_SIZE, 1);
+  instr_pa >>= LOG2_PAGE_SIZE;
+  instr_pa <<= LOG2_PAGE_SIZE;
+  instr_pa |= (IFETCH_BUFFER.entry[index].ip & ((1 << LOG2_PAGE_SIZE) - 1));  
+  IFETCH_BUFFER.entry[index].instruction_pa = instr_pa;
+  IFETCH_BUFFER.entry[index].translated = COMPLETED;
+  IFETCH_BUFFER.entry[index].fetched = 0;
+  // end magic
+  
   IFETCH_BUFFER.occupancy++;
   IFETCH_BUFFER.tail++;
 
@@ -594,7 +606,7 @@ void O3_CPU::fetch_instruction()
 	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if((((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6)) && (IFETCH_BUFFER.entry[j].translated == 0))
+		  if((((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((IFETCH_BUFFER.entry[index].ip)>>LOG2_PAGE_SIZE)) && (IFETCH_BUFFER.entry[j].translated == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = INFLIGHT;
 		      IFETCH_BUFFER.entry[j].fetched = 0;
@@ -622,20 +634,28 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
-	    
+
 	  // invoke code prefetcher
-	  //int hit_way = L1I.check_hit(&fetch_packet);
-	  //l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
+	  int hit_way = L1I.check_hit(&fetch_packet);
+	  uint8_t prefetch_hit = 0;
+	  if(hit_way != -1)
+	    {
+	      prefetch_hit = L1I.block[L1I.get_set(fetch_packet.address)][hit_way].prefetch;
+	    }
+	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1), prefetch_hit);
 	      
 	  int rq_index = L1I.add_rq(&fetch_packet);
 
-	  // mark all instructions from this cache line as having been fetched
-	  for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+	  if(rq_index != -2)
 	    {
-	      if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
+	      // mark all instructions from this cache line as having been fetched
+	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  IFETCH_BUFFER.entry[j].translated = COMPLETED;
-		  IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
+		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
+		    {
+		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
+		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
+		    }
 		}
 	    }
 	}
@@ -781,38 +801,30 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
   
   L1I.pf_requested++;
 
-  if(code_prefetch_buffer_occupancy == CODE_PREFETCH_BUFFER_SIZE)
-    { 
-     // no room to prefetch
-      return 0;
-    }
-
-  // check if it's already present in the code prefetch buffer
-  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
+  if (L1I.PQ.occupancy < L1I.PQ.SIZE)
     {
-      if(((code_prefetch_buffer[i].ip)>>6) == ((pf_addr)>>6))
-	{
-	  return 0;
-	}
+      // magically translate prefetches
+      uint64_t pf_pa = (va_to_pa(cpu, 0, pf_addr, pf_addr>>LOG2_PAGE_SIZE, 1) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_addr & ((1 << LOG2_PAGE_SIZE) - 1));
+
+      PACKET pf_packet;
+      pf_packet.instruction = 1; // this is a code prefetch
+      pf_packet.fill_level = FILL_L1;
+      pf_packet.pf_origin_level = FILL_L1;
+      pf_packet.cpu = cpu;
+
+      pf_packet.address = pf_pa >> LOG2_BLOCK_SIZE;
+      pf_packet.full_addr = pf_pa;
+
+      pf_packet.ip = ip;
+      pf_packet.type = PREFETCH;
+      pf_packet.event_cycle = current_core_cycle[cpu];
+
+      L1I.add_pq(&pf_packet);    
+      L1I.pf_issued++;
+    
+      return 1;
     }
   
-  // look for an empty spot
-  for(uint32_t i=0; i<CODE_PREFETCH_BUFFER_SIZE; i++)
-    {
-      if(code_prefetch_buffer[i].ip == 0)
-	{
-	  // we found an empty spot, so allocate the prefetch
-	  code_prefetch_buffer[i].ip = ip;
-	  code_prefetch_buffer[i].branch_target = pf_addr;
-	  code_prefetch_buffer[i].translated = 0;
-	  code_prefetch_buffer[i].fetched = 0;
-	  
-	  code_prefetch_buffer_occupancy++;
-
-	  return 1;
-	}
-    }
-
  return 0;
 }
 
@@ -1788,6 +1800,9 @@ void O3_CPU::operate_cache()
     L1I.operate();
     L1D.operate();
     L2C.operate();
+
+    // also handle per-cycle prefetcher operation
+    l1i_prefetcher_cycle_operate();
 }
 
 void O3_CPU::update_rob()
@@ -1831,71 +1846,22 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
       {
 	uint64_t instruction_physical_address = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | (complete_ip & ((1 << LOG2_PAGE_SIZE) - 1));
 	
-	if(queue->entry[index].type == LOAD)
+	// mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
+	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 	  {
-	    // send
-
-	    // add it to the L1-I's read queue
-	    PACKET fetch_packet;
-	    fetch_packet.instruction = 1;
-	    fetch_packet.fill_level = FILL_L1;
-	    fetch_packet.cpu = cpu;
-	    fetch_packet.address = instruction_physical_address >> 6;
-	    fetch_packet.instruction_pa = instruction_physical_address;
-	    fetch_packet.full_addr = instruction_physical_address;
-	    fetch_packet.instr_id = 0;
-	    fetch_packet.rob_index = 0;
-	    fetch_packet.producer = 0;
-	    fetch_packet.ip = complete_ip;
-	    fetch_packet.type = LOAD; 
-	    fetch_packet.asid[0] = 0;
-	    fetch_packet.asid[1] = 0;
-	    fetch_packet.event_cycle = current_core_cycle[cpu];
-	    
-	    // invoke code prefetcher
-	    //int hit_way = L1I.check_hit(&fetch_packet);
-	    //l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1));
-	    
-	    int rq_index = L1I.add_rq(&fetch_packet);
-	    
-	    if(rq_index != -2) // -2 means the L1I rq was full
+	    if(((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((complete_ip)>>LOG2_PAGE_SIZE))
 	      {
-		// successfully sent to the L1I cache, so mark the appropriate instructions in the IFETCH_BUFFER as fetched INFLIGHT
-		for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
-		  {
-		    if(((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((complete_ip)>>LOG2_PAGE_SIZE))
-		      {
-			IFETCH_BUFFER.entry[j].translated = COMPLETED;
-			if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((complete_ip)>>6))
-			  {
-			    // we fetched this instruction's cache line
-			    IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
-			    IFETCH_BUFFER.entry[j].instruction_pa = instruction_physical_address;
-			  }
-			else
-			  {
-			    // we did not fetch this instruction's cache line, but we did translated it
-			    IFETCH_BUFFER.entry[j].fetched = 0;
-			    // recalculate a physical address for this cache line based on the translated physical page address
-			    uint64_t instr_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
-			    IFETCH_BUFFER.entry[j].instruction_pa = instr_pa;
-			  }
-		      }
-		  }
-		
-		// remove this entry
-		queue->remove_queue(&queue->entry[index]);
+		IFETCH_BUFFER.entry[j].translated = COMPLETED;
+		// we did not fetch this instruction's cache line, but we did translated it
+		IFETCH_BUFFER.entry[j].fetched = 0;
+		// recalculate a physical address for this cache line based on the translated physical page address
+		uint64_t instr_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+		IFETCH_BUFFER.entry[j].instruction_pa = instr_pa;
 	      }
 	  }
-	else if(queue->entry[index].type == PREFETCH)
-	  {
-	    // to do
-	  }
-	else
-	  {
-	    cerr << "*** complete_instr_fetch() completed an ITLB lookup for something other than LOAD or PREFETCH" << endl;
-	    assert(0);
-	  }
+
+	// remove this entry
+	queue->remove_queue(&queue->entry[index]);
       }
     else
       {
