@@ -8,6 +8,10 @@ Para PC (Program Counter)*/
 #define IT_SIZE 256
 #define GHB_SIZE 256
 
+int it[IT_SIZE]={-1};
+globalHistory ghb[GHB_SIZE];
+int start = 0;
+int end = GHB_SIZE-1;
 
 class PC_TRACKER{
   public:
@@ -32,13 +36,10 @@ class PC_TRACKER{
 
 class globalHistory{
 public:
-  int globalAddr;
+  uint64_t globalAddr;
   int linkPtr;
 }
 
-globalHistory ghb[GHB_SIZE];
-int start = 0;
-int end = GHB_SIZE-1;
 
 int findOther(int index)
 {
@@ -59,16 +60,12 @@ int findOther(int index)
   return -1;
 }
 
-int findOther(int index){
-
-
-}
 
 void insertGhb(uint64_t pc, int index)
 {
   globalHistory novo;
-  novo.globalAddr = index;
-  novo.linkPtr = NULL;
+  novo.globalAddr = pc;
+  novo.linkPtr = -1;
   int a=findOther(index);
 
   if (a != -1)
@@ -80,13 +77,11 @@ void insertGhb(uint64_t pc, int index)
 }
 
 
-
 int hashKey(uint64_t pc)
     {
       return pc % IT_SIZE;
     }
 
-int it[IT_SIZE]={-1};
 
 int searchIT(uint64_t pc)
 {
