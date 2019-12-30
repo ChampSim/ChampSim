@@ -3,14 +3,121 @@
 
 /* Utilizamos aqui classes e métodos adaptando IP (Instruction Pointer)
 Para PC (Program Counter)*/
+
 #define PC_TRACKER_COUNT 1024
+#define IT_SIZE 256
+#define GHB_SIZE 256
+
 
 class PC_TRACKER{
   public:
 
+  //PC atual
   uint64_t pc;
+  // último endereço acessado pelo PC
+  uint64_t last_cl_addr;
+
+  int64_t last_stride;
+
+  uint32_t lru;
+
+  PC_TRACKER(){
+    pc=0;
+    last_cl_addr = 0;
+    last_stride = 0;
+    lru = 0;
+  };
+
+};
+
+class globalHistory{
+public:
+  int globalAddr;
+  int linkPtr;
+}
+
+globalHistory ghb[GHB_SIZE];
+int start = 0;
+int end = GHB_SIZE-1;
+
+int findOther(int index)
+{
+ int ptAux = start;
+
+  do{
+    globalHistory auxGh = ghb[ptAux];
+    if(auxGh.globalAddr == index)
+      return ptAux;
+    else
+    {
+      if(ptAux!=0)
+        ptAux--;
+      else
+        ptAux = GHB_SIZE-1;
+    }
+  }while (ptAux!=start);
+  return -1;
+}
+
+int findOther(int index){
+
 
 }
+
+void insertGhb(uint64_t pc, int index)
+{
+  globalHistory novo;
+  novo.globalAddr = index;
+  novo.linkPtr = NULL;
+  int a=findOther(index);
+
+  if (a != -1)
+    novo.linkPtr = a;
+
+  ghb[start]=novo;
+  return; 
+
+}
+
+
+
+int hashKey(uint64_t pc)
+    {
+      return pc % IT_SIZE;
+    }
+
+int it[IT_SIZE]={-1};
+
+int searchIT(uint64_t pc)
+{
+  int index = hashKey(pc);
+  if (it[index]!=-1)
+    return it[index];
+  else
+    return -1;
+}
+
+void insertIT(int it[], uint64_t pc)
+{
+  int index = hashKey(pc)
+  it[index]=start;
+
+  insertGhb(pc, index);  
+
+  if (start == GHB_SIZE-1)
+    start = 0;
+  else 
+    start++;
+  
+  if(end== GHB_SIZE-1)
+    end=0;
+  else
+  {
+    end++;
+  }
+  
+}
+
 
 
 // INICIALIZAÇÃO DA CACHE
