@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 7 ]; then
     echo "Illegal number of parameters"
-    echo "Usage: ./build_champsim.sh [branch_pred] [l1d_pref] [l2c_pref] [llc_pref] [llc_repl] [num_core]"
+    echo "Usage: ./build_champsim.sh [branch_pred] [l1i_pref] [l1d_pref] [l2c_pref] [llc_pref] [llc_repl] [num_core]"
     exit 1
 fi
 

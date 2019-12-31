@@ -13,9 +13,9 @@ git clone https://github.com/ChampSim/ChampSim.git
 ChampSim takes five parameters: Branch predictor, L1D prefetcher, L2C prefetcher, LLC replacement policy, and the number of cores. 
 For example, `./build_champsim.sh bimodal no no lru 1` builds a single-core processor with bimodal branch predictor, no L1/L2 data prefetchers, and the baseline LRU replacement policy for the LLC.
 ```
-$ ./build_champsim.sh bimodal no no no lru 1
+$ ./build_champsim.sh bimodal no no no no lru 1
 
-$ ./build_champsim.sh ${BRANCH} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
+$ ./build_champsim.sh ${BRANCH} ${L1I_PREFETCHER} ${L1D_PREFETCHER} ${L2C_PREFETCHER} ${LLC_PREFETCHER} ${LLC_REPLACEMENT} ${NUM_CORE}
 ```
 
 # Download DPC-3 trace
@@ -35,7 +35,7 @@ Execute `run_champsim.sh` with proper input arguments. The default `TRACE_DIR` i
 
 ```
 Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]
-$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
+$ ./run_champsim.sh bimodal-no-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
 
 ${BINARY}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
 ${N_WARM}: number of instructions for warmup (1 million)
