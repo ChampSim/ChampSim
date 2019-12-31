@@ -1,0 +1,15 @@
+401.bzip2-38B.champsimtrace.xz
+401.bzip2-226B.champsimtrace.xz
+401.bzip2-277B.champsimtrace.xz
+450.soplex-92B.champsimtrace.xz
+450.soplex-247B.champsimtrace.xz
+453.povray-252B.champsimtrace.xz
+453.povray-576B.champsimtrace.xz
+453.povray-800B.champsimtrace.xz
+458.sjeng-31B.champsimtrace.xz
+458.sjeng-283B.champsimtrace.xz
+458.sjeng-767B.champsimtrace.xz
+473.astar-42B.champsimtrace.xz 
+473.astar-153B.champsimtrace.xz 
+473.astar-359B.champsimtrace.xz
+weights-and-simpoints-speccpu.tar.gz
