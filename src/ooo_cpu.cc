@@ -581,6 +581,7 @@ void O3_CPU::fetch_instruction()
 	  // add it to the ITLB's read queue
 	  PACKET trace_packet;
 	  trace_packet.instruction = 1;
+	  trace_packet.is_data = 0;
 	  trace_packet.tlb_access = 1;
 	  trace_packet.fill_level = FILL_L1;
 	  trace_packet.cpu = cpu;
@@ -621,6 +622,7 @@ void O3_CPU::fetch_instruction()
 	  // add it to the L1-I's read queue
 	  PACKET fetch_packet;
 	  fetch_packet.instruction = 1;
+	  fetch_packet.is_data = 0;
 	  fetch_packet.fill_level = FILL_L1;
 	  fetch_packet.cpu = cpu;
 	  fetch_packet.address = IFETCH_BUFFER.entry[index].instruction_pa >> 6;
@@ -808,6 +810,7 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
 
       PACKET pf_packet;
       pf_packet.instruction = 1; // this is a code prefetch
+      pf_packet.is_data = 0;
       pf_packet.fill_level = FILL_L1;
       pf_packet.pf_origin_level = FILL_L1;
       pf_packet.cpu = cpu;
