@@ -23,12 +23,12 @@ uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, c
 // called on every cache hit and cache fill
 void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
 {
-   /*
-    string TYPE_NAME;
+   
+    /*string TYPE_NAME;
     if (type == LOAD)
         TYPE_NAME = "LOAD";
-    //else if (type == RFO)
-    //    TYPE_NAME = "RFO";
+    else if (type == RFO)
+        TYPE_NAME = "RFO";
     else if (type == PREFETCH)
         TYPE_NAME = "PF";
     else if (type == WRITEBACK)
@@ -49,10 +49,10 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
     // cout << hex << " paddr: " << setw(12) << paddr << " ip: " << setw(8) << ip << " victim_addr: " << victim_addr << dec << endl;
 
     // baseline LRU
-    if (hit && (type == WRITEBACK)) // writeback hit does not update LRU state
-        return;
+    if (hit && (type == WRITEBACK)) // writeback hit does not update FIFO state
+        return;*/
 
-    return lru_update(set, way);*/
+    return fifo_update(set, way);
 }
 
 void CACHE::llc_replacement_final_stats()
