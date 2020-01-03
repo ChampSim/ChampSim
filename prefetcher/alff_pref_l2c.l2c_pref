@@ -7,6 +7,8 @@ Para PC (Program Counter)*/
 #define PC_TRACKER_COUNT 1024
 #define IT_SIZE 256
 #define GHB_SIZE 256
+#define PREF_LOOKAHEAD 4
+#define PREF_DEGREE 4
 
 int it[IT_SIZE]={-1};
 globalHistory ghb[GHB_SIZE];
@@ -73,7 +75,6 @@ void insertGhb(uint64_t pc, int index)
 
   ghb[start]=novo;
   return; 
-
 }
 
 
@@ -124,6 +125,11 @@ void CACHE::l2c_prefetcher_initialize()
 // OPERAÇÃO DA CACHE 
 uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
+
+
+
+
+
   return metadata_in;
 }
 

@@ -1,0 +1,28 @@
+
+
+Compression
+https://www.spec.org/auto/cpu2006/Docs/401.bzip2.html
+
+Path-finding Algorithms (Computer games. Artificial Intelligence. Path finding.)
+https://www.spec.org/auto/cpu2006/Docs/473.astar.html
+
+Artificial Intelligence: chess [Artificial Intelligence (game tree search & pattern recognition)]
+https://www.spec.org/auto/cpu2006/Docs/458.sjeng.html
+
+Fluid Dynamics (Computational Fluid Dynamics (CFD))
+http://spec.org/auto/cpu2006/Docs/437.leslie3d.html
+
+Linear Programming, Optimization(Simplex Linear Program (LP) Solver)
+https://www.spec.org/auto/cpu2006/Docs/450.soplex.html
+
+Image Ray-tracing (Computer Visualization)
+https://www.spec.org/auto/cpu2006/Docs/453.povray.html
+
+
+
+
+401 -> 38B | 226B | 277B
+473 -> 42B | 153B | 359B
+458 -> 31B | 283B | 359B
+450 -> 92B | 247B
+453 -> 252B | 576B | 800B

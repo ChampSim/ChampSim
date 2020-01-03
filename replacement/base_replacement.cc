@@ -9,7 +9,7 @@ uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const
 void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
 {
     if (type == WRITEBACK) {
-        if (hit) // wrietback hit does not update LRU state
+        if (hit) // writeback hit does not update LRU state
             return;
     }
 
@@ -19,6 +19,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
 uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     uint32_t way = 0;
+
 
     // fill invalid line first
     for (way=0; way<NUM_WAY; way++) {
