@@ -3,11 +3,8 @@
 
 // Escolhemos trocar a política de substituição para FIFO
 
-class 
-uint32_t start = 0;
-uint32_t end = sizeof(NUM_SET*NUM_WAY)-1;
 
-
+/*
 uint32_t fifo_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     uint32_t way = 0;
@@ -63,7 +60,7 @@ uint32_t fifo_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK 
     } */
 
 }
-
+*/
 
 /*
 void fifo_update(uint32_t set, uint32_t way)
