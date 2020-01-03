@@ -111,7 +111,7 @@ void CACHE::lru_update(uint32_t set, uint32_t way)
     block[set][way].lru = 0; // promote to the MRU position
 }
 
-void CACHE::fifo_update(uint32_t set, uint32_t way)
+void CACHE::fifo_update(uint32_t set)
 {
     // update fifo replacement state
     for (uint32_t i=0; i<NUM_WAY; i++) {
@@ -119,7 +119,6 @@ void CACHE::fifo_update(uint32_t set, uint32_t way)
             block[set][i].fifo++;
         }
     }
-    block[set][way].fifo = 0; // promote to the MRU position
 }
 
 void CACHE::replacement_final_stats()
