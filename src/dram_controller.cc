@@ -419,7 +419,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     if (all_warmup_complete < NUM_CPUS) {
         if (packet->instruction) 
             upper_level_icache[packet->cpu]->return_data(packet);
-        else // data
+        if (packet->is_data)
             upper_level_dcache[packet->cpu]->return_data(packet);
 
         return -1;
@@ -436,7 +436,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
             packet->data = WQ[channel].entry[wq_index].data;
             if (packet->instruction) 
                 upper_level_icache[packet->cpu]->return_data(packet);
-            else // data
+            if (packet->is_data) 
                 upper_level_dcache[packet->cpu]->return_data(packet);
         //}
 

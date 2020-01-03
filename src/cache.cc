@@ -47,7 +47,7 @@ void CACHE::handle_fill()
 
                 if (MSHR.entry[mshr_index].instruction) 
                     upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
-                else // data
+                if (MSHR.entry[mshr_index].is_data)
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
             }
 
@@ -150,7 +150,7 @@ void CACHE::handle_fill()
 
                 if (MSHR.entry[mshr_index].instruction) 
                     upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
-                else // data
+                if (MSHR.entry[mshr_index].is_data)
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
             }
 
@@ -238,7 +238,7 @@ void CACHE::handle_writeback()
 
                 if (WQ.entry[index].instruction) 
                     upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
-                else // data
+                if (WQ.entry[index].is_data)
                     upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
             }
 
@@ -437,7 +437,7 @@ void CACHE::handle_writeback()
 
                         if (WQ.entry[index].instruction) 
                             upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
-                        else // data
+                        if (WQ.entry[index].is_data)
                             upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
                     }
 
@@ -524,7 +524,7 @@ void CACHE::handle_read()
 
                     if (RQ.entry[index].instruction) 
                         upper_level_icache[read_cpu]->return_data(&RQ.entry[index]);
-                    else // data
+                    if (RQ.entry[index].is_data)
                         upper_level_dcache[read_cpu]->return_data(&RQ.entry[index]);
                 }
 
@@ -628,6 +628,7 @@ void CACHE::handle_read()
                         else {
                             if (RQ.entry[index].instruction) {
                                 uint32_t rob_index = RQ.entry[index].rob_index;
+                                MSHR.entry[mshr_index].instruction = 1; // add as instruction type
                                 MSHR.entry[mshr_index].instr_merged = 1;
                                 MSHR.entry[mshr_index].rob_index_depend_on_me.insert (rob_index);
 
@@ -645,6 +646,7 @@ void CACHE::handle_read()
                             else 
                             {
                                 uint32_t lq_index = RQ.entry[index].lq_index;
+                                MSHR.entry[mshr_index].is_data = 1; // add as data type
                                 MSHR.entry[mshr_index].load_merged = 1;
                                 MSHR.entry[mshr_index].lq_index_depend_on_me.insert (lq_index);
 
@@ -777,7 +779,7 @@ void CACHE::handle_prefetch()
 
                     if (PQ.entry[index].instruction) 
                         upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[index]);
-                    else // data
+                    if (PQ.entry[index].is_data)
                         upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[index]);
                 }
 
@@ -1069,7 +1071,7 @@ int CACHE::add_rq(PACKET *packet)
             packet->data = WQ.entry[wq_index].data;
             if (packet->instruction) 
                 upper_level_icache[packet->cpu]->return_data(packet);
-            else // data
+            if (packet->is_data)
                 upper_level_dcache[packet->cpu]->return_data(packet);
         }
 
@@ -1108,6 +1110,7 @@ int CACHE::add_rq(PACKET *packet)
         if (packet->instruction) {
             uint32_t rob_index = packet->rob_index;
             RQ.entry[index].rob_index_depend_on_me.insert (rob_index);
+            RQ.entry[index].instruction = 1; // add as instruction type
             RQ.entry[index].instr_merged = 1;
 
             DP (if (warmup_complete[packet->cpu]) {
@@ -1132,6 +1135,7 @@ int CACHE::add_rq(PACKET *packet)
                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
                 cout << " merged rob_index: " << packet->rob_index << " instr_id: " << packet->instr_id << " lq_index: " << packet->lq_index << endl; });
             }
+            RQ.entry[index].is_data = 1; // add as data type
         }
 
         RQ.MERGED++;
@@ -1320,7 +1324,7 @@ int CACHE::add_pq(PACKET *packet)
             packet->data = WQ.entry[wq_index].data;
             if (packet->instruction) 
                 upper_level_icache[packet->cpu]->return_data(packet);
-            else // data
+            if (packet->is_data)
                 upper_level_dcache[packet->cpu]->return_data(packet);
         }
 
@@ -1343,6 +1347,10 @@ int CACHE::add_pq(PACKET *packet)
 	if((packet->instruction == 1) && (PQ.entry[index].instruction != 1))
 	  {
 	    PQ.entry[index].instruction = 1;
+	  }
+	if((packet->is_data == 1) && (PQ.entry[index].is_data != 1))
+	  {
+	    PQ.entry[index].is_data = 1;
 	  }
 
         PQ.MERGED++;
@@ -1471,32 +1479,32 @@ void CACHE::update_fill_cycle()
 int CACHE::check_mshr(PACKET *packet)
 {
     // search mshr
-  bool instruction_and_data_collision = false;
+  //bool instruction_and_data_collision = false;
   
   for (uint32_t index=0; index<MSHR_SIZE; index++)
     {
       if (MSHR.entry[index].address == packet->address)
 	{
-	  if(MSHR.entry[index].instruction != packet->instruction)
-	    {
-	      instruction_and_data_collision = true;
-	    }
-	  else
-	    {
+	  //if(MSHR.entry[index].instruction != packet->instruction)
+	  //  {
+	  //    instruction_and_data_collision = true;
+	  //  }
+	  //else
+	  //  {
 	      DP ( if (warmup_complete[packet->cpu]) {
 		  cout << "[" << NAME << "_MSHR] " << __func__ << " same entry instr_id: " << packet->instr_id << " prior_id: " << MSHR.entry[index].instr_id;
 		  cout << " address: " << hex << packet->address;
 		  cout << " full_addr: " << packet->full_addr << dec << endl; });
 	    
 	      return index;
-	    }
+	  //  }
 	}
     }
 
-    if(instruction_and_data_collision)
-      {
-	return -2;
-      }
+    //if(instruction_and_data_collision) // remove instruction-and-data collision safeguard
+    //  {
+	//return -2;
+    //  }
 
     DP ( if (warmup_complete[packet->cpu]) {
     cout << "[" << NAME << "_MSHR] " << __func__ << " new address: " << hex << packet->address;

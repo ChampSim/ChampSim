@@ -64,6 +64,7 @@ class DRAM_ARRAY {
 class PACKET {
   public:
     uint8_t instruction, 
+            is_data,
             tlb_access,
             scheduled,
             translated,
@@ -113,6 +114,7 @@ class PACKET {
 
     PACKET() {
         instruction = 0;
+        is_data = 1;
         tlb_access = 0;
         scheduled = 0;
         translated = 0;
