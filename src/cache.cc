@@ -45,10 +45,24 @@ void CACHE::handle_fill()
             // check fill level
             if (MSHR.entry[mshr_index].fill_level < fill_level) {
 
-                if (MSHR.entry[mshr_index].instruction) 
-                    upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
-                if (MSHR.entry[mshr_index].is_data)
+	      if(fill_level == FILL_L2)
+		{
+		  if(MSHR.entry[mshr_index].fill_l1i)
+		    {
+		      upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+		    }
+		  if(MSHR.entry[mshr_index].fill_l1d)
+		    {
+		      upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+		    }
+		}
+	      else
+		{
+		  if (MSHR.entry[mshr_index].instruction)
+		    upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+		  if (MSHR.entry[mshr_index].is_data)
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+		}
             }
 
 	    if(warmup_complete[fill_cpu] && (MSHR.entry[mshr_index].cycle_enqueued != 0))
@@ -148,10 +162,24 @@ void CACHE::handle_fill()
             // check fill level
             if (MSHR.entry[mshr_index].fill_level < fill_level) {
 
-                if (MSHR.entry[mshr_index].instruction) 
+	      if(fill_level == FILL_L2)
+                {
+                  if(MSHR.entry[mshr_index].fill_l1i)
+                    {
+                      upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+                    }
+                  if(MSHR.entry[mshr_index].fill_l1d)
+                    {
+                      upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+                    }
+                }
+	      else
+		{
+		  if (MSHR.entry[mshr_index].instruction)
                     upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
-                if (MSHR.entry[mshr_index].is_data)
+		  if (MSHR.entry[mshr_index].is_data)
                     upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+		}
             }
 
             // update processed packets
@@ -236,10 +264,24 @@ void CACHE::handle_writeback()
             // check fill level
             if (WQ.entry[index].fill_level < fill_level) {
 
-                if (WQ.entry[index].instruction) 
+	      if(fill_level == FILL_L2)
+		{
+		  if(WQ.entry[index].fill_l1i)
+		    {
+		      upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
+		    }
+		  if(WQ.entry[index].fill_l1d)
+		    {
+		      upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
+		    }
+		}
+	      else
+		{
+		  if (WQ.entry[index].instruction)
                     upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
-                if (WQ.entry[index].is_data)
+		  if (WQ.entry[index].is_data)
                     upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
+		}
             }
 
             HIT[WQ.entry[index].type]++;
@@ -304,6 +346,15 @@ void CACHE::handle_writeback()
                         // update fill_level
                         if (WQ.entry[index].fill_level < MSHR.entry[mshr_index].fill_level)
                             MSHR.entry[mshr_index].fill_level = WQ.entry[index].fill_level;
+
+			if((WQ.entry[index].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1i = 1;
+			  }
+			if((WQ.entry[index].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1d = 1;
+			  }
 
                         // update request
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
@@ -435,10 +486,24 @@ void CACHE::handle_writeback()
                     // check fill level
                     if (WQ.entry[index].fill_level < fill_level) {
 
-                        if (WQ.entry[index].instruction) 
+		      if(fill_level == FILL_L2)
+			{
+			  if(WQ.entry[index].fill_l1i)
+			    {
+			      upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
+			    }
+			  if(WQ.entry[index].fill_l1d)
+			    {
+			      upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
+			    }
+			}
+		      else
+			{
+			  if (WQ.entry[index].instruction)
                             upper_level_icache[writeback_cpu]->return_data(&WQ.entry[index]);
-                        if (WQ.entry[index].is_data)
+			  if (WQ.entry[index].is_data)
                             upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[index]);
+			}
                     }
 
                     MISS[WQ.entry[index].type]++;
@@ -522,10 +587,24 @@ void CACHE::handle_read()
                 // check fill level
                 if (RQ.entry[index].fill_level < fill_level) {
 
-                    if (RQ.entry[index].instruction) 
+		  if(fill_level == FILL_L2)
+		    {
+		      if(RQ.entry[index].fill_l1i)
+			{
+			  upper_level_icache[read_cpu]->return_data(&RQ.entry[index]);
+			}
+		      if(RQ.entry[index].fill_l1d)
+			{
+			  upper_level_dcache[read_cpu]->return_data(&RQ.entry[index]);
+			}
+		    }
+		  else
+		    {
+		      if (RQ.entry[index].instruction)
                         upper_level_icache[read_cpu]->return_data(&RQ.entry[index]);
-                    if (RQ.entry[index].is_data)
+		      if (RQ.entry[index].is_data)
                         upper_level_dcache[read_cpu]->return_data(&RQ.entry[index]);
+		    }
                 }
 
                 // update prefetch stats and reset prefetch bit
@@ -665,6 +744,15 @@ void CACHE::handle_read()
                         if (RQ.entry[index].fill_level < MSHR.entry[mshr_index].fill_level)
                             MSHR.entry[mshr_index].fill_level = RQ.entry[index].fill_level;
 
+			if((RQ.entry[index].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1i = 1;
+			  }
+			if((RQ.entry[index].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1d = 1;
+			  }
+
                         // update request
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
                             uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
@@ -777,10 +865,24 @@ void CACHE::handle_prefetch()
                 // check fill level
                 if (PQ.entry[index].fill_level < fill_level) {
 
-                    if (PQ.entry[index].instruction) 
+		  if(fill_level == FILL_L2)
+		    {
+		      if(PQ.entry[index].fill_l1i)
+			{
+			  upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[index]);
+			}
+		      if(PQ.entry[index].fill_l1d)
+			{
+			  upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[index]);
+			}
+		    }
+		  else
+		    {
+		      if (PQ.entry[index].instruction)
                         upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[index]);
-                    if (PQ.entry[index].is_data)
+		      if (PQ.entry[index].is_data)
                         upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[index]);
+		    }
                 }
 
                 HIT[PQ.entry[index].type]++;
@@ -878,6 +980,15 @@ void CACHE::handle_prefetch()
                         // update fill_level
                         if (PQ.entry[index].fill_level < MSHR.entry[mshr_index].fill_level)
                             MSHR.entry[mshr_index].fill_level = PQ.entry[index].fill_level;
+
+			if((PQ.entry[index].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1i = 1;
+			  }
+			if((PQ.entry[index].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+			  {
+			    MSHR.entry[mshr_index].fill_l1d = 1;
+			  }
 
                         MSHR_MERGED[PQ.entry[index].type]++;
 
@@ -1069,10 +1180,25 @@ int CACHE::add_rq(PACKET *packet)
         if (packet->fill_level < fill_level) {
 
             packet->data = WQ.entry[wq_index].data;
-            if (packet->instruction) 
-                upper_level_icache[packet->cpu]->return_data(packet);
-            if (packet->is_data)
-                upper_level_dcache[packet->cpu]->return_data(packet);
+
+	    if(fill_level == FILL_L2)
+	      {
+		if(packet->fill_l1i)
+		  {
+		    upper_level_icache[packet->cpu]->return_data(packet);
+		  }
+		if(packet->fill_l1d)
+		  {
+		    upper_level_dcache[packet->cpu]->return_data(packet);
+		  }
+	      }
+	    else
+	      {
+		if (packet->instruction)
+		  upper_level_icache[packet->cpu]->return_data(packet);
+		if (packet->is_data)
+		  upper_level_dcache[packet->cpu]->return_data(packet);
+	      }
         }
 
 #ifdef SANITY_CHECK
@@ -1137,6 +1263,15 @@ int CACHE::add_rq(PACKET *packet)
             }
             RQ.entry[index].is_data = 1; // add as data type
         }
+
+	if((packet->fill_l1i) && (RQ.entry[index].fill_l1i != 1))
+	  {
+	    RQ.entry[index].fill_l1i = 1;
+	  }
+	if((packet->fill_l1d) && (RQ.entry[index].fill_l1d != 1))
+	  {
+	    RQ.entry[index].fill_l1d = 1;
+	  }
 
         RQ.MERGED++;
         RQ.ACCESS++;
@@ -1252,6 +1387,10 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
+	    if(pf_fill_level == FILL_L1)
+	      {
+		pf_packet.fill_l1d = 1;
+	      }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -1284,6 +1423,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
+	    if(pf_fill_level == FILL_L1)
+              {
+                pf_packet.fill_l1d = 1;
+              }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -1322,10 +1465,25 @@ int CACHE::add_pq(PACKET *packet)
         if (packet->fill_level < fill_level) {
 
             packet->data = WQ.entry[wq_index].data;
-            if (packet->instruction) 
-                upper_level_icache[packet->cpu]->return_data(packet);
-            if (packet->is_data)
-                upper_level_dcache[packet->cpu]->return_data(packet);
+
+	    if(fill_level == FILL_L2)
+	      {
+		if(packet->fill_l1i)
+		  {
+		    upper_level_icache[packet->cpu]->return_data(packet);
+		  }
+		if(packet->fill_l1d)
+		  {
+		    upper_level_dcache[packet->cpu]->return_data(packet);
+		  }
+	      }
+	    else
+	      {
+		if (packet->instruction)
+		  upper_level_icache[packet->cpu]->return_data(packet);
+		if (packet->is_data)
+		  upper_level_dcache[packet->cpu]->return_data(packet);
+	      }
         }
 
         HIT[packet->type]++;
@@ -1351,6 +1509,14 @@ int CACHE::add_pq(PACKET *packet)
 	if((packet->is_data == 1) && (PQ.entry[index].is_data != 1))
 	  {
 	    PQ.entry[index].is_data = 1;
+	  }
+	if((packet->fill_l1i) && (PQ.entry[index].fill_l1i != 1))
+	  {
+	    PQ.entry[index].fill_l1i = 1;
+	  }
+	if((packet->fill_l1d) && (PQ.entry[index].fill_l1d != 1))
+	  {
+	    PQ.entry[index].fill_l1d = 1;
 	  }
 
         PQ.MERGED++;
