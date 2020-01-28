@@ -695,6 +695,7 @@ int main(int argc, char** argv)
         ooo_cpu[i].L1I.MAX_READ = 2;
         ooo_cpu[i].L1I.fill_level = FILL_L1;
         ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
+        ooo_cpu[i].l1i_prefetcher_initialize();
 
         ooo_cpu[i].L1D.cpu = i;
         ooo_cpu[i].L1D.cache_type = IS_L1D;
