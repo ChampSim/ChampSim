@@ -1,264 +1,123 @@
-#!/bin/bash
+#!/usr/bin/env python
 
-config_mk="configure.mk"
+import os
+import argparse
 
-usage() {
-    echo "config.sh [-h] [-v]"
-    echo "          [-1 l1_prefetcher] [-2 l2_prefetcher] [-3 ll_prefetcher]"
-    echo "          [-r llc_replacement] [-b branch_predictor] [-n num_cores]"
-    echo "          [-o executable_name]"
-    echo "          [config_file]"
-    echo ""
-    echo "Configures ChampSim before building."
-    echo ""
-    echo "where:"
-    echo "    -h   show this help text"
-    echo "    -v   configure with debugging output"
-    echo "    -1   use the given L1 prefetcher"
-    echo "    -2   use the given L2 prefetcher"
-    echo "    -3   use the given LL prefetcher"
-    echo "    -r   use the given LLC replacement policy"
-    echo "    -b   use the given branch predictor"
-    echo "    -n   build with the given number of cores"
-    echo "    -o   the executable to be created"
-}
+cwd = os.getcwd()
+champsim_dir = os.path.dirname(os.path.realpath(__file__))
 
-# GETOPTS
-while getopts "1:2:3:b:r:n:o:vh" opt; do
-    case $opt in
-        1)
-            l1prefetcher="$OPTARG"
-            echo "(override) Using L1 prefetcher at $OPTARG"
-            ;;
-        2)
-            l2prefetcher="$OPTARG"
-            echo "(override) Using L2 prefetcher at $OPTARG"
-            ;;
-        3)
-            llprefetcher="$OPTARG"
-            echo "(override) Using LL prefetcher at $OPTARG"
-            ;;
-        b)
-            branch_predictor="$OPTARG"
-            echo "(override) Using branch predictor at $OPTARG"
-            ;;
-        n)
-            # Check num_core
-            if ! [ $OPTARG -gt 0 ] ; then
-                echo "[ERROR]: num_core is NOT a number" >&2;
-                exit 1
-            else
-                num_cores=$OPTARG
-                echo "(override) Building for $OPTARG cores"
-            fi
-            ;;
-        o)
-            executable_name="$OPTARG"
-            echo "(override) Creating executable $OPTARG"
-            ;;
-        r)
-            llreplacement="$OPTARG"
-            echo "(override) Using LLC replacement at $OPTARG"
-            ;;
-        v)
-            CFLAGS="$CFLAGS -g"
-            CXXFLAGS="$CXXFLAGS -g"
-            CPPFLAGS="$CPPFLAGS -DDEBUG_PRINT"
-            ;;
-        h)
-            # print help
-            usage
-            exit
-            ;;
-        :)
-            echo "Missing option argument for -$OPTARG" >&2
-            usage
-            exit 1
-            ;;
-        \?)
-            echo "Unrecognized Argument: -$OPTARG" >&2
-            usage
-            exit 1
-            ;;
-    esac
-done
+# path-based parameters
+path_keys = ['l1prefetcher', 'l2prefetcher', 'llprefetcher', 'llreplacement', 'branchpredictor']
 
-# Now, read config file
-shift $(($OPTIND - 1))
-file="$1"
+# keys that should be appended, not replaced
+app_keys = ['cc', 'cxx', 'cflags', 'cxxflags', 'cppflags', 'ldflags', 'ldlibs']
 
-if [ -f "$file" ]; then
-    # Read properties file
-    while read line; do
-        # Ignore comments that start with (whitespace, then) "#"
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+parser = argparse.ArgumentParser(description='Configures ChampSim before building.')
 
-        # Extract the key and the value from the config line
-        key=$(echo "$line" | cut -d"=" -f1)
-        value=$(echo "$line" | cut -d"=" -f2)
+parser.add_argument('-v', '--verbose', action='store_true', help='Configure with debugging output')
 
-        case "$key" in
-            "l1prefetcher")
-                if [ -z ${l1prefetcher+x} ]; then
-                    l1prefetcher="$value"
-                    echo "(config) Using L1 prefetcher at $value"
-                fi
-                ;;
-            "l2prefetcher")
-                if [ -z ${l2prefetcher+x} ]; then
-                    l2prefetcher="$value"
-                    echo "(config) Using L2 prefetcher at $value"
-                fi
-                ;;
-            "llprefetcher")
-                if [ -z ${llprefetcher+x} ]; then
-                    llprefetcher="$value"
-                    echo "(config) Using LL prefetcher at $value"
-                fi
-                ;;
-            "llreplacement")
-                if [ -z ${llreplacement+x} ]; then
-                    llreplacement="$value"
-                    echo "(config) Using LLC replacement at $value"
-                fi
-                ;;
-            "branch_predictor")
-                if [ -z ${branch_predictor+x} ]; then
-                    branch_predictor="$value"
-                    echo "(config) Using branch predictor at $value"
-                fi
-                ;;
-            "num_cores")
-                if [ -z ${num_cores+x} ]; then
-                    if ! [ $value -gt 0 ] ; then
-                        echo "[ERROR]: num_cores is NOT a number" >&2;
-                        exit 1
-                    else
-                        num_cores="$value"
-                        echo "(config) Using $value cores"
-                    fi
-                fi
-                ;;
+parser.add_argument('-1', '--l1prefetcher', help='Use the given L1 prefetcher')
+parser.add_argument('-2', '--l2prefetcher', help='Use the given L1 prefetcher')
+parser.add_argument('-3', '--llprefetcher', help='Use the given LLC prefetcher')
+parser.add_argument('-r', '--llreplacement', help='Use the given LLC replacement policy')
+parser.add_argument('-b', '--branchpredictor', help='Use the given branch predictor')
 
-            "executable_name")
-                if [ -z ${executable_name+x} ]; then
-                    executable_name="$value"
-                    echo "(config) Creating executable $value"
-                fi
-                ;;
+parser.add_argument('-n', dest='num_cores', help='Build with the given number of cores')
 
-            # passing to compiler
-            "CC")
-                CC="$value"
-                echo "Using C compiler $value"
-                ;;
-            "CXX")
-                CXX="$value"
-                echo "Using C++ compiler $value"
-                ;;
-            "CFLAGS")
-                CFLAGS="$CFLAGS $value"
-                echo "Found C compiler flags $value"
-                ;;
-            "CXXFLAGS")
-                CXXFLAGS="$CXXFLAGS $value"
-                echo "Found C++ compiler flags $value"
-                ;;
-            "CPPFLAGS")
-                CPPFLAGS="$CPPFLAGS $value"
-                echo "Found preprocessor flags $value"
-                ;;
-            "LDFLAGS")
-                LDFLAGS="$LDFLAGS $value"
-                echo "Found linker flags $value"
-                ;;
-            "LDLIBS")
-                LDLIBS="$LDLIBS $value"
-                echo "Found linker libs $value"
-                ;;
-            # ...more?
+parser.add_argument('-o', dest='executable_name', help='The executable to be created')
 
-            "")
-                #skip empty line
-                ;;
-            *)
-                echo "(config) Unrecognized option $key"
-            ;;
-        esac
-    done < "$file"
-fi
+parser.add_argument('--cflags', action='append', type=str, help='Add the given options to CFLAGS')
+parser.add_argument('--cxxflags', action='append', type=str, help='Add the given options to CXXFLAGS')
+parser.add_argument('--cppflags', action='append', type=str, help='Add the given options to CPPFLAGS')
+parser.add_argument('--ldflags', action='append', type=str, help='Add the given options to LDFLAGS')
+parser.add_argument('--ldlibs', action='append', type=str, help='Add the given options to LDLIBS')
 
-if [ -z ${l1prefetcher+x} ]; then
-    l1prefetcher="prefetcher/no.l1d_pref"
-    echo "No L1 prefetcher found. Defaulting to no prefetcher."
-fi
+parser.add_argument('config_file', type=argparse.FileType('rt'), help='The configuration file')
 
-if [ -z ${l2prefetcher+x} ]; then
-    l2prefetcher="prefetcher/no.l2c_pref"
-    echo "No L2 prefetcher found. Defaulting to no prefetcher."
-fi
+# Get values from arguments
+args = parser.parse_args()
 
-if [ -z ${llprefetcher+x} ]; then
-    llprefetcher="prefetcher/no.llc_pref"
-    echo "No LL prefetcher found. Defaulting to no prefetcher."
-fi
+# Defaults
+params = {}
 
-if [ -z ${llreplacement+x} ]; then
-    llreplacement="replacement/lru.llc_repl"
-    echo "No LLC replacement policy found. Defaulting to LRU."
-fi
+# Check environment
+for key in app_keys:
+    if key.upper() in os.environ:
+        params[key] = os.environ[key.upper()]
 
-if [ -z ${branch_predictor+x} ]; then
-    branch_predictor="branch/bimodal.bpred"
-    echo "No branch predictor found. Defaulting to bimodal predictor."
-fi
+# Read config file
+if 'config_file' in vars(args):
+    for line in args.config_file:
+        line = line.strip()
+        if (len(line) == 0): continue
+        if (line[0] == '#'): continue
+        key, val = tuple(line.split('=',1))
 
-if [ -z ${num_cores+x} ]; then
-    num_cores=1
-    echo "Number of cores not specified. Defaulting to 1."
-fi
+        # Handle the compiler flags as a special "append case"
+        if key.lower() not in app_keys:
+            params[key.lower()] = val
+        else:
+            params[key.lower()] = params.get(key.lower(), '') + ' ' + val
 
-# Check for multi-core
-if [ "$num_cores" -gt 1 ]; then
-    echo "Building multi-core ChampSim..."
-    CPPFLAGS="$CPPFLAGS -DNUM_CPUS=$num_cores -DDRAM_CHANNELS=2 -DLOG2_DRAM_CHANNELS=1"
-else
-    echo "Building single-core ChampSim..."
-    CPPFLAGS="$CPPFLAGS -DNUM_CPUS=1 -DDRAM_CHANNELS=1 -DLOG2_DRAM_CHANNELS=0"
-fi
+# Override with values from arguments
+for key,val in vars(args).items():
+    if val is not None:
+        # keys are lower here to match the params dict
+        if key not in app_keys:
+            params[key] = ' ' + str(val)
+        else:
+            for v in val:
+                params[key] = params.get(key, '') + ' ' + v
 
-#Write to $config_mk
-#Makefile then includes that file, and compiles accordingly.
-echo "L1PREFETCHER=$l1prefetcher" >  $config_mk
-echo "L2PREFETCHER=$l2prefetcher" >> $config_mk
-echo "LLPREFETCHER=$llprefetcher" >> $config_mk
-echo "LLREPLACEMENT=$llreplacement" >> $config_mk
-echo "BRANCH_PREDICTOR=$branch_predictor" >> $config_mk
-if [ -n "$executable_name" ]; then
-    echo "executable_name=$executable_name" >> $config_mk
-fi
-if [ -n "$CC" ]; then
-    echo "CC=$CC" >> $config_mk
-fi
-if [ -n "$CXX" ]; then
-    echo "CXX=$CXX" >> $config_mk
-fi
-if [ -n "$CFLAGS" ]; then
-    echo "CFLAGS=$CFLAGS" >> $config_mk
-fi
-if [ -n "$CXXFLAGS" ]; then
-    echo "CXXFLAGS=$CXXFLAGS" >> $config_mk
-fi
-if [ -n "$CPPFLAGS" ]; then
-    echo "CPPFLAGS=$CPPFLAGS" >> $config_mk
-fi
-if [ -n "$LDFLAGS" ]; then
-    echo "LDFLAGS=$LDFLAGS" >> $config_mk
-fi
-if [ -n "$LDLIBS" ]; then
-    echo "LDLIBS=$LDLIBS" >> $config_mk
-fi
+# Adding multicore options
+params['cppflags'] = params.get('cppflags', '') + ' -DNUM_CPUS={}'.format(params['num_cores'])
 
-echo "Wrote configuration out to $config_mk"
-echo "Run 'make' to build ChampSim"
+# Adding verbosity
+if args.verbose:
+    params['cflags'] = params.get('cflags', '') + ' -g'
+    params['cxxflags'] = params.get('cxxflags', '') + ' -g'
+    params['cppflags'] = params.get('cppflags', '') + ' -DDEBUG_PRINT -UNDEBUG'
+
+# Fully qualify paths
+for key in path_keys:
+    if key in params:
+        params[key] = os.path.expanduser(params[key])
+        params[key] = os.path.expandvars(params[key])
+        params[key] = os.path.realpath(params[key])
+        params[key] = os.path.join(cwd, params[key])
+
+with open(os.path.join(champsim_dir, 'configure.mk'), 'wt') as wfp:
+    wfp.write('L1PREFETCHER=' + params.get('l1prefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l1d_pref')) + '\n')
+    wfp.write('L2PREFETCHER=' + params.get('l2prefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l2c_pref')) + '\n')
+    wfp.write('LLPREFETCHER=' + params.get('llprefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.llc_pref')) + '\n')
+    wfp.write('LLREPLACEMENT=' + params.get('llreplacement', os.path.join(champsim_dir, 'replacement', 'lru.llc_repl')) + '\n')
+    wfp.write('BRANCH_PREDICTOR=' + params.get('branchpredictor', os.path.join(champsim_dir, 'branch', 'bimodal.bpred')) + '\n')
+
+    if 'executable_name' in params:
+        wfp.write('executable_name=' + params['executable_name'] + '\n')
+
+    if 'cc' in params:
+        wfp.write('CC=' + params['cc'] + '\n')
+
+    if 'cxx' in params:
+        wfp.write('CXX=' + params['cxx'] + '\n')
+
+    if 'cflags' in params:
+        wfp.write('CFLAGS=' + params['cflags'] + '\n')
+
+    if 'cxxflags' in params:
+        wfp.write('CXXFLAGS=' + params['cxxflags'] + '\n')
+
+    if 'cppflags' in params:
+        wfp.write('CPPFLAGS=' + params['cppflags'] + '\n')
+
+    if 'ldflags' in params:
+        wfp.write('LDFLAGS=' + params['ldflags'] + '\n')
+
+    if 'ldlibs' in params:
+        wfp.write('LDLIBS=' + params['ldlibs'] + '\n')
+
+print('Configured for ' + params.get('executable_name', 'champsim'))
+
+# vim: filetype=python:
 

@@ -19,32 +19,37 @@ CPPFLAGS += -Iinc -MMD -MP
 LDFLAGS +=
 LDLIBS +=
 
+lastwords = $(wordlist 2,$(words $(1)),$(1))
+obj_of = $(addsuffix .o, $(basename $(addprefix $(objDir)/,$(notdir $(1)))))
+
 core_sources = $(srcDir)/main.cc $(srcDir)/block.cc $(srcDir)/cache.cc $(srcDir)/dram_controller.cc $(srcDir)/ooo_cpu.cc $(srcDir)/uncore.cc $(srcDir)/base_replacement.cc
-user_objects = $(objDir)/l1prefetcher.o $(objDir)/l2prefetcher.o $(objDir)/llprefetcher.o $(objDir)/llreplacement.o $(objDir)/branch_predictor.o
-core_objects := $(patsubst $(srcDir)/%.cc,$(objDir)/%.o,$(core_sources))
+user_sources = $(call lastwords,$(L1PREFETCHER)) $(call lastwords,$(L2PREFETCHER)) $(call lastwords,$(LLPREFETCHER)) $(call lastwords,$(LLREPLACEMENT)) $(call lastwords,$(BRANCH_PREDICTOR))
+module_objects = $(objDir)/l1prefetcher.o $(objDir)/l2prefetcher.o $(objDir)/llprefetcher.o $(objDir)/llreplacement.o $(objDir)/branch_predictor.o
+core_objects := $(call obj_of,$(core_sources))
+user_objects := $(call obj_of,$(user_sources))
 
 .phony: all clean distclean
 
 all: $(binDir)/$(executable_name)
 
-$(binDir)/$(executable_name): $(core_objects) $(user_objects) configure.mk
+$(binDir)/$(executable_name): configure.mk $(core_objects) $(module_objects) $(user_objects)
 	@mkdir -p $(dir $@)
-	$(CXX) $(LDFLAGS) -o $@ $(core_objects) $(user_objects) $(LDLIBS)
+	$(CXX) $(LDFLAGS) -o $@ $(filter-out $<,$^) $(LDLIBS)
 
-$(objDir)/%.o: $(srcDir)/%.c
+$(objDir)/%.o: */%.c configure.mk
 	@mkdir -p $(dir $@)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -o $@ $<
 
-$(objDir)/%.o: $(srcDir)/%.cc
+$(objDir)/%.o: */%.cc configure.mk
 	@mkdir -p $(dir $@)
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
-$(objDir)/l1prefetcher.o: $(L1PREFETCHER)
-$(objDir)/l2prefetcher.o: $(L2PREFETCHER)
-$(objDir)/llprefetcher.o: $(LLPREFETCHER)
-$(objDir)/llreplacement.o: $(LLREPLACEMENT)
-$(objDir)/branch_predictor.o: $(BRANCH_PREDICTOR)
-$(user_objects):
+$(objDir)/l1prefetcher.o: $(firstword $(L1PREFETCHER)) configure.mk
+$(objDir)/l2prefetcher.o: $(firstword $(L2PREFETCHER)) configure.mk
+$(objDir)/llprefetcher.o: $(firstword $(LLPREFETCHER)) configure.mk
+$(objDir)/llreplacement.o: $(firstword $(LLREPLACEMENT)) configure.mk
+$(objDir)/branch_predictor.o: $(firstword $(BRANCH_PREDICTOR)) configure.mk
+$(module_objects):
 	@mkdir -p $(dir $@)
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ -x c++ $<
 
