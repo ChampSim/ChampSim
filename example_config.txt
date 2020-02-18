@@ -9,7 +9,8 @@
 #num_cores=1
 
 ## Selecting a prefetcher
-l1prefetcher=prefetcher/next_line.l1d_pref
+#l1iprefetcher=prefetcher/next_line.l1i_pref
+l1dprefetcher=prefetcher/next_line.l1d_pref
 #l2prefetcher=prefetcher/next_line.l2c_pref
 #llprefetcher=prefetcher/next_line.llc_pref
 

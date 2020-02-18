@@ -7,7 +7,7 @@ cwd = os.getcwd()
 champsim_dir = os.path.dirname(os.path.realpath(__file__))
 
 # path-based parameters
-path_keys = ['l1prefetcher', 'l2prefetcher', 'llprefetcher', 'llreplacement', 'branchpredictor']
+path_keys = ['l1iprefetcher', 'l1dprefetcher', 'l2prefetcher', 'llprefetcher', 'llreplacement', 'branchpredictor']
 
 # keys that should be appended, not replaced
 app_keys = ['cc', 'cxx', 'cflags', 'cxxflags', 'cppflags', 'ldflags', 'ldlibs']
@@ -16,8 +16,9 @@ parser = argparse.ArgumentParser(description='Configures ChampSim before buildin
 
 parser.add_argument('-v', '--verbose', action='store_true', help='Configure with debugging output')
 
-parser.add_argument('-1', '--l1prefetcher', help='Use the given L1 prefetcher')
-parser.add_argument('-2', '--l2prefetcher', help='Use the given L1 prefetcher')
+parser.add_argument('-i', '--l1iprefetcher', help='Use the given L1I prefetcher')
+parser.add_argument('-1', '--l1dprefetcher', help='Use the given L1D prefetcher')
+parser.add_argument('-2', '--l2prefetcher', help='Use the given L2 prefetcher')
 parser.add_argument('-3', '--llprefetcher', help='Use the given LLC prefetcher')
 parser.add_argument('-r', '--llreplacement', help='Use the given LLC replacement policy')
 parser.add_argument('-b', '--branchpredictor', help='Use the given branch predictor')
@@ -70,7 +71,7 @@ for key,val in vars(args).items():
                 params[key] = params.get(key, '') + ' ' + v
 
 # Adding multicore options
-params['cppflags'] = params.get('cppflags', '') + ' -DNUM_CPUS={}'.format(params['num_cores'])
+params['cppflags'] = params.get('cppflags', '') + ' -DNUM_CPUS={}'.format(params.get('num_cores',1))
 
 # Adding verbosity
 if args.verbose:
@@ -87,7 +88,8 @@ for key in path_keys:
         params[key] = os.path.join(cwd, params[key])
 
 with open(os.path.join(champsim_dir, 'configure.mk'), 'wt') as wfp:
-    wfp.write('L1PREFETCHER=' + params.get('l1prefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l1d_pref')) + '\n')
+    wfp.write('L1IPREFETCHER=' + params.get('l1iprefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l1i_pref')) + '\n')
+    wfp.write('L1DPREFETCHER=' + params.get('l1dprefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l1d_pref')) + '\n')
     wfp.write('L2PREFETCHER=' + params.get('l2prefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.l2c_pref')) + '\n')
     wfp.write('LLPREFETCHER=' + params.get('llprefetcher', os.path.join(champsim_dir, 'prefetcher', 'no.llc_pref')) + '\n')
     wfp.write('LLREPLACEMENT=' + params.get('llreplacement', os.path.join(champsim_dir, 'replacement', 'lru.llc_repl')) + '\n')

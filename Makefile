@@ -24,7 +24,7 @@ obj_of = $(addsuffix .o, $(basename $(addprefix $(objDir)/,$(notdir $(1)))))
 
 core_sources = $(srcDir)/main.cc $(srcDir)/block.cc $(srcDir)/cache.cc $(srcDir)/dram_controller.cc $(srcDir)/ooo_cpu.cc $(srcDir)/uncore.cc $(srcDir)/base_replacement.cc
 user_sources = $(call lastwords,$(L1PREFETCHER)) $(call lastwords,$(L2PREFETCHER)) $(call lastwords,$(LLPREFETCHER)) $(call lastwords,$(LLREPLACEMENT)) $(call lastwords,$(BRANCH_PREDICTOR))
-module_objects = $(objDir)/l1prefetcher.o $(objDir)/l2prefetcher.o $(objDir)/llprefetcher.o $(objDir)/llreplacement.o $(objDir)/branch_predictor.o
+module_objects = $(objDir)/l1iprefetcher.o $(objDir)/l1dprefetcher.o $(objDir)/l2prefetcher.o $(objDir)/llprefetcher.o $(objDir)/llreplacement.o $(objDir)/branch_predictor.o
 core_objects := $(call obj_of,$(core_sources))
 user_objects := $(call obj_of,$(user_sources))
 
@@ -44,7 +44,8 @@ $(objDir)/%.o: */%.cc configure.mk
 	@mkdir -p $(dir $@)
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
-$(objDir)/l1prefetcher.o: $(firstword $(L1PREFETCHER)) configure.mk
+$(objDir)/l1iprefetcher.o: $(firstword $(L1IPREFETCHER)) configure.mk
+$(objDir)/l1dprefetcher.o: $(firstword $(L1DPREFETCHER)) configure.mk
 $(objDir)/l2prefetcher.o: $(firstword $(L2PREFETCHER)) configure.mk
 $(objDir)/llprefetcher.o: $(firstword $(LLPREFETCHER)) configure.mk
 $(objDir)/llreplacement.o: $(firstword $(LLREPLACEMENT)) configure.mk
