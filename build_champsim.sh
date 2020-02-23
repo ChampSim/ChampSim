@@ -1,19 +1,27 @@
 #!/bin/bash
 
-if [ "$#" -ne 7 ]; then
-    echo "Illegal number of parameters"
-    echo "Usage: ./build_champsim.sh [branch_pred] [l1d_pref] [l2c_pref] [llc_pref] [llc_repl] [num_core]"
-    exit 1
+# Environment variables: BRANCH, CORES, L1I_PREF, L1D_PREF, L2C_PREF, LLC_PREF, LLC_REPL
+
+# Legacy ChampSim configuration
+if [ "$#" == 7 ]; then
+    #echo "Usage: ./build_champsim.sh [branch_pred] [l1d_pref] [l2c_pref] [llc_pref] [llc_repl] [num_core]"
+	BRANCH=$1           # branch/*.bpred
+	L1I_PREFETCHER=$2   # prefetcher/*.l1i_pref
+	L1D_PREFETCHER=$3   # prefetcher/*.l1d_pref
+	L2C_PREFETCHER=$4   # prefetcher/*.l2c_pref
+	LLC_PREFETCHER=$5   # prefetcher/*.llc_pref
+	LLC_REPLACEMENT=$6  # replacement/*.llc_repl
+	NUM_CORE=$7         # tested up to 8-core system
 fi
 
-# ChampSim configuration
-BRANCH=$1           # branch/*.bpred
-L1I_PREFETCHER=$2   # prefetcher/*.l1i_pref
-L1D_PREFETCHER=$3   # prefetcher/*.l1d_pref
-L2C_PREFETCHER=$4   # prefetcher/*.l2c_pref
-LLC_PREFETCHER=$5   # prefetcher/*.llc_pref
-LLC_REPLACEMENT=$6  # replacement/*.llc_repl
-NUM_CORE=$7         # tested up to 8-core system
+# Set defaults for any unset variables
+BRANCH=${BRANCH:=bimodal}
+L1I_PREFETCHER=${L1I_PREF:=no}
+L1D_PREFETCHER=${L1D_PREF:=no}
+L2C_PREFETCHER=${L2C_PREF:=no}
+LLC_PREFETCHER=${LLC_PREF:=no}
+LLC_REPLACEMENT=${LLC_REPL:=lru}
+NUM_CORE=${CORES:=1}
 
 ############## Some useful macros ###############
 BOLD=$(tput bold)
