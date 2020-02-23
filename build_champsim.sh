@@ -20,46 +20,107 @@ BOLD=$(tput bold)
 NORMAL=$(tput sgr0)
 #################################################
 
+function help_bpred()
+{
+	echo "Possible branch predictors from branch/*.bpred "
+	find branch -name "*.bpred"
+}
+
+function help_l1i_pref()
+{
+	echo "Possible L1I prefetchers from prefetcher/*.l1i_pref "
+	find prefetcher -name "*.l1i_pref"
+}
+
+function help_l1d_pref()
+{
+	echo "Possible L1D prefetchers from prefetcher/*.l1d_pref "
+	find prefetcher -name "*.l1d_pref"
+}
+
+function help_l2c_pref()
+{
+	echo "Possible L2C prefetchers from prefetcher/*.l2c_pref "
+	find prefetcher -name "*.l2c_pref"
+}
+
+function help_llc_pref()
+{
+	echo "Possible LLC prefetchers from prefetcher/*.llc_pref "
+	find prefetcher -name "*.llc_pref"
+}
+
+function help_llc_repl()
+{
+	echo "Possible LLC replacement policy from replacement/*.llc_repl"
+	find replacement -name "*.llc_repl"
+}
+
+# If the user asked for help, give some hints
+if [ $BRANCH == "help" ]; then
+	help_bpred
+	exit 1
+fi
+
+if [ $L1I_PREF == "help" ]; then
+	help_l1i_pref
+	exit 1
+fi
+
+if [ $L1D_PREF == "help" ]; then
+	help_l1d_pref
+	exit 1
+fi
+
+if [ $L2C_PREF == "help" ]; then
+	help_l2c_pref
+	exit 1
+fi
+
+if [ $LLC_PREF == "help" ]; then
+	help_llc_pref
+	exit 1
+fi
+
+if [ $LLC_REPL == "help" ]; then
+	help_llc_repl
+	exit 1
+fi
+
 # Sanity check
 if [ ! -f ./branch/${BRANCH}.bpred ]; then
-    echo "[ERROR] Cannot find branch predictor"
-	echo "[ERROR] Possible branch predictors from branch/*.bpred "
-    find branch -name "*.bpred"
+    echo "[ERROR] Cannot find branch predictor:" \"$BRANCH\"
+	help_bpred
     exit 1
 fi
 
 if [ ! -f ./prefetcher/${L1I_PREFETCHER}.l1i_pref ]; then
     echo "[ERROR] Cannot find L1I prefetcher"
-	echo "[ERROR] Possible L1I prefetchers from prefetcher/*.l1i_pref "
-    find prefetcher -name "*.l1i_pref"
+	help_l1i_pref
     exit 1
 fi
 
 if [ ! -f ./prefetcher/${L1D_PREFETCHER}.l1d_pref ]; then
     echo "[ERROR] Cannot find L1D prefetcher"
-	echo "[ERROR] Possible L1D prefetchers from prefetcher/*.l1d_pref "
-    find prefetcher -name "*.l1d_pref"
+	help_l1d_pref
     exit 1
 fi
 
 if [ ! -f ./prefetcher/${L2C_PREFETCHER}.l2c_pref ]; then
     echo "[ERROR] Cannot find L2C prefetcher"
-	echo "[ERROR] Possible L2C prefetchers from prefetcher/*.l2c_pref "
-    find prefetcher -name "*.l2c_pref"
+	help_l2c_pref
     exit 1
 fi
 
 if [ ! -f ./prefetcher/${LLC_PREFETCHER}.llc_pref ]; then
     echo "[ERROR] Cannot find LLC prefetcher"
-	echo "[ERROR] Possible LLC prefetchers from prefetcher/*.llc_pref "
-    find prefetcher -name "*.llc_pref"
+	help_llc_pref
     exit 1
 fi
 
 if [ ! -f ./replacement/${LLC_REPLACEMENT}.llc_repl ]; then
     echo "[ERROR] Cannot find LLC replacement policy"
-	echo "[ERROR] Possible LLC replacement policy from replacement/*.llc_repl"
-    find replacement -name "*.llc_repl"
+	help_llc_repl
     exit 1
 fi
 
