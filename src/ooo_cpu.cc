@@ -646,7 +646,7 @@ void O3_CPU::fetch_instruction()
 	    {
 	      prefetch_hit = L1I.block[L1I.get_set(fetch_packet.address)][hit_way].prefetch;
 	    }
-	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1), prefetch_hit);
+	  l1i_prefetcher_cache_operate(fetch_packet.ip, (fetch_packet.address)<<6, (hit_way != -1), prefetch_hit);
 	      
 	  int rq_index = L1I.add_rq(&fetch_packet);
 
