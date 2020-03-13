@@ -217,9 +217,9 @@ class O3_CPU {
   // code prefetching
   void l1i_prefetcher_initialize();
   void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
-  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint64_t p_addr, uint8_t cache_hit, uint8_t prefetch_hit);
+  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
   void l1i_prefetcher_cycle_operate();
-  void l1i_prefetcher_cache_fill(uint64_t p_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_p_addr);
+  void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
   void l1i_prefetcher_final_stats();
   int prefetch_code_line(uint64_t ip, uint64_t pf_v_addr); 
 };

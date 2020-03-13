@@ -10,9 +10,9 @@ void O3_CPU::l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uin
   
 }
 
-void O3_CPU::l1i_prefetcher_cache_operate(uint64_t v_addr, uint64_t p_addr, uint8_t cache_hit, uint8_t prefetch_hit)
+void O3_CPU::l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit)
 {
-  //cout << "access v_addr: 0x" << hex << v_addr << " p_addr: 0x" << p_addr << dec << endl;
+  //cout << "access v_addr: 0x" << hex << v_addr << dec << endl;
   
   if((cache_hit == 0) && (L1I.MSHR.occupancy < (L1I.MSHR.SIZE>>1)))
     {
@@ -26,9 +26,9 @@ void O3_CPU::l1i_prefetcher_cycle_operate()
 
 }
 
-void O3_CPU::l1i_prefetcher_cache_fill(uint64_t p_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_p_addr)
+void O3_CPU::l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr)
 {
-  //cout << hex << "fill: 0x" << p_addr << dec << " " << set << " " << way << " " << (uint32_t)prefetch << " " << hex << "evict: 0x" << evicted_p_addr << dec << endl;
+  //cout << hex << "fill: 0x" << v_addr << dec << " " << set << " " << way << " " << (uint32_t)prefetch << " " << hex << "evict: 0x" << evicted_v_addr << dec << endl;
 }
 
 void O3_CPU::l1i_prefetcher_final_stats()
