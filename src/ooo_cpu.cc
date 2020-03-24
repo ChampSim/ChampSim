@@ -795,9 +795,9 @@ void O3_CPU::decode_and_dispatch()
     }
 }
 
-int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
+int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
 {
-  if(pf_addr == 0)
+  if(pf_v_addr == 0)
     {
       cerr << "Cannot prefetch code line 0x0 !!!" << endl;
       assert(0);
@@ -808,7 +808,7 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
   if (L1I.PQ.occupancy < L1I.PQ.SIZE)
     {
       // magically translate prefetches
-      uint64_t pf_pa = (va_to_pa(cpu, 0, pf_addr, pf_addr>>LOG2_PAGE_SIZE, 1) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_addr & ((1 << LOG2_PAGE_SIZE) - 1));
+      uint64_t pf_pa = (va_to_pa(cpu, 0, pf_v_addr, pf_v_addr>>LOG2_PAGE_SIZE, 1) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
 
       PACKET pf_packet;
       pf_packet.instruction = 1; // this is a code prefetch
@@ -821,7 +821,7 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
       pf_packet.address = pf_pa >> LOG2_BLOCK_SIZE;
       pf_packet.full_addr = pf_pa;
 
-      pf_packet.ip = ip;
+      pf_packet.ip = pf_v_addr;
       pf_packet.type = PREFETCH;
       pf_packet.event_cycle = current_core_cycle[cpu];
 
