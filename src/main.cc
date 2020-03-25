@@ -481,6 +481,11 @@ uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_
     return pa;
 }
 
+void cpu_l1i_prefetcher_cache_operate(uint32_t cpu_num, uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit)
+{
+  ooo_cpu[cpu_num].l1i_prefetcher_cache_operate(v_addr, cache_hit, prefetch_hit);
+}
+
 void cpu_l1i_prefetcher_cache_fill(uint32_t cpu_num, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr)
 {
   ooo_cpu[cpu_num].l1i_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr);
@@ -701,6 +706,7 @@ int main(int argc, char** argv)
         ooo_cpu[i].L1I.fill_level = FILL_L1;
         ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
         ooo_cpu[i].l1i_prefetcher_initialize();
+	ooo_cpu[i].L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
 	ooo_cpu[i].L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
 
         ooo_cpu[i].L1D.cpu = i;

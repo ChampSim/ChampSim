@@ -564,6 +564,8 @@ void CACHE::handle_read()
 
                 // update prefetcher on load instruction
 		if (RQ.entry[index].type == LOAD) {
+		    if(cache_type == IS_L1I)
+		      l1i_prefetcher_cache_operate(read_cpu, RQ.entry[index].ip, 1, block[set][way].prefetch);
                     if (cache_type == IS_L1D) 
 		      l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
@@ -786,6 +788,8 @@ void CACHE::handle_read()
                 if (miss_handled) {
                     // update prefetcher on load instruction
 		    if (RQ.entry[index].type == LOAD) {
+		        if(cache_type == IS_L1I)
+			  l1i_prefetcher_cache_operate(read_cpu, RQ.entry[index].ip, 0, 0);
                         if (cache_type == IS_L1D) 
                             l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 0, RQ.entry[index].type);
                         if (cache_type == IS_L2C)

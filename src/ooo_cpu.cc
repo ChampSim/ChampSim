@@ -639,7 +639,8 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
 
-	  // invoke code prefetcher
+	  /*
+	  // invoke code prefetcher -- THIS HAS BEEN MOVED TO cache.cc !!!
 	  int hit_way = L1I.check_hit(&fetch_packet);
 	  uint8_t prefetch_hit = 0;
 	  if(hit_way != -1)
@@ -647,7 +648,8 @@ void O3_CPU::fetch_instruction()
 	      prefetch_hit = L1I.block[L1I.get_set(fetch_packet.address)][hit_way].prefetch;
 	    }
 	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1), prefetch_hit);
-	      
+	  */
+	  
 	  int rq_index = L1I.add_rq(&fetch_packet);
 
 	  if(rq_index != -2)
