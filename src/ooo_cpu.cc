@@ -1,6 +1,8 @@
 #include "ooo_cpu.h"
 #include "set.h"
 
+#include <functional>
+
 // out-of-order core
 O3_CPU ooo_cpu[NUM_CPUS]; 
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
@@ -966,13 +968,13 @@ void O3_CPU::reg_dependency(uint32_t rob_index)
     }
 }
 
-void O3_CPU::reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index)
+void O3_CPU::reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index, std::function<bool(uint8_t, uint8_t)> comp)
 {
     for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
         if (ROB.entry[prior].destination_registers[i] == 0)
             continue;
 
-        if (ROB.entry[prior].destination_registers[i] == ROB.entry[current].source_registers[source_index]) {
+        if (comp(ROB.entry[prior].destination_registers[i], ROB.entry[current].source_registers[source_index])) {
 
             // we need to mark this dependency in the ROB since the producer might not be added in the store queue yet
             ROB.entry[prior].registers_instrs_depend_on_me.insert (current);   // this load cannot be executed until the prior store gets executed

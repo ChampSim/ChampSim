@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include "cache.h"
+#include <functional>
 
 #ifdef CRC2_COMPILE
 #define STAT_PRINTING_PERIOD 1000000
@@ -181,7 +182,6 @@ class O3_CPU {
          do_memory_scheduling(uint32_t rob_index),
          operate_lsq(),
          complete_execution(uint32_t rob_index),
-         reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
          reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
          handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
@@ -190,6 +190,8 @@ class O3_CPU {
          release_load_queue(uint32_t lq_index),
          complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb),
          complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb);
+
+    void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index, std::function<bool(uint8_t, uint8_t)> comp = std::equal_to<uint8_t>());
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
