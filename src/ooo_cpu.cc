@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 #include "set.h"
 
+#include <array>
 #include <functional>
 
 // out-of-order core
@@ -921,6 +922,33 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
     }
 }
 
+struct x86_reg_comp
+{
+    const std::array<uint8_t, 256> reg_mapper = {{
+          0,   0,   0,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,
+         16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  10,  10,  10,   9,   9,
+          9,   8,   8,   8,   7,   7,   7,   5,   4,   3,   6,  25,  26,   3,   3,   4,
+          4,   5,   5,   6,   6,   7,   8,   9,  10,  25,  26,  11,  11,  11,  12,  12,
+         12,  13,  13,  13,  14,  14,  14,  15,  15,  15,  16,  16,  16,  17,  17,  17,
+         18,  18,  18,  83,  84,  85,  86,  87,  88,  89,  90, 123, 124, 125, 126, 127,
+        128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+        144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 123, 124, 125, 126, 127,
+        128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+        144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159,
+        160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175,
+        176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191,
+        192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207,
+        208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223,
+        224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+        240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255
+    }};
+
+    bool operator () (const uint8_t lhs, const uint8_t rhs) const
+    {
+        return reg_mapper[lhs] == reg_mapper[rhs];
+    }
+};
+
 void O3_CPU::reg_dependency(uint32_t rob_index)
 {
     // print out source/destination registers
@@ -948,20 +976,20 @@ void O3_CPU::reg_dependency(uint32_t rob_index)
             for (int i=prior; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
 		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
 			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
+                reg_RAW_dependency(i, rob_index, j, x86_reg_comp());
 		}
 	    }
         } else {
             for (int i=prior; i>=0; i--) if (ROB.entry[i].executed != COMPLETED) {
 		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
 			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
+                reg_RAW_dependency(i, rob_index, j, x86_reg_comp());
 		}
 	    }
             for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
 		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
 			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
+                reg_RAW_dependency(i, rob_index, j, x86_reg_comp());
 		}
 	    }
         }
