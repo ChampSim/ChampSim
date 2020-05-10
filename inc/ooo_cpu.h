@@ -1,6 +1,7 @@
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
+#include "champsim.h"
 #include "cache.h"
 #include "instruction.h"
 
@@ -45,10 +46,10 @@ class O3_CPU {
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id = 0, completed_executions = 0,
-             begin_sim_cycle = 0, begin_sim_instr = 0,
+             begin_sim_cycle = 0, begin_sim_instr,
              last_sim_cycle = 0, last_sim_instr = 0,
              finish_sim_cycle = 0, finish_sim_instr = 0,
-             warmup_instructions = 0, simulation_instructions = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
              next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0, num_searched = 0;
     uint32_t next_ITLB_fetch = 0;
@@ -94,7 +95,8 @@ class O3_CPU {
   // trace cache for previously decoded instructions
   
     // constructor
-    O3_CPU() {
+    O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
+    {
         for (uint32_t i=0; i<STA_SIZE; i++)
 	  STA[i] = UINT64_MAX;
 
@@ -112,6 +114,58 @@ class O3_CPU {
 	  RTS0[i] = SQ_SIZE;
 	  RTS1[i] = SQ_SIZE;
         }
+
+        // ROB
+        ROB.cpu = this->cpu;
+
+        // BRANCH PREDICTOR
+        initialize_branch_predictor();
+
+        // TLBs
+        ITLB.cpu = this->cpu;
+        ITLB.cache_type = IS_ITLB;
+        ITLB.MAX_READ = 2;
+        ITLB.fill_level = FILL_L1;
+        ITLB.extra_interface = &L1I;
+        ITLB.lower_level = &STLB;
+
+        DTLB.cpu = this->cpu;
+        DTLB.cache_type = IS_DTLB;
+        //DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        DTLB.MAX_READ = 2;
+        DTLB.fill_level = FILL_L1;
+        DTLB.extra_interface = &L1D;
+        DTLB.lower_level = &STLB;
+
+        STLB.cpu = this->cpu;
+        STLB.cache_type = IS_STLB;
+        STLB.MAX_READ = 1;
+        STLB.fill_level = FILL_L2;
+        STLB.upper_level_icache[this->cpu] = &ITLB;
+        STLB.upper_level_dcache[this->cpu] = &DTLB;
+
+        // PRIVATE CACHE
+        L1I.cpu = this->cpu;
+        L1I.cache_type = IS_L1I;
+        //L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
+        L1I.MAX_READ = 2;
+        L1I.fill_level = FILL_L1;
+        L1I.lower_level = &L2C;
+        l1i_prefetcher_initialize();
+
+        L1D.cpu = this->cpu;
+        L1D.cache_type = IS_L1D;
+        L1D.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        L1D.fill_level = FILL_L1;
+        L1D.lower_level = &L2C;
+        L1D.l1d_prefetcher_initialize();
+
+        L2C.cpu = this->cpu;
+        L2C.cache_type = IS_L2C;
+        L2C.fill_level = FILL_L2;
+        L2C.upper_level_icache[this->cpu] = &L1I;
+        L2C.upper_level_dcache[this->cpu] = &L1D;
+        L2C.l2c_prefetcher_initialize();
     }
 
     // functions

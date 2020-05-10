@@ -4,6 +4,7 @@
 #include "ooo_cpu.h"
 #include "uncore.h"
 #include <fstream>
+#include <vector>
 
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
@@ -19,7 +20,7 @@ uint64_t warmup_instructions     = 1000000,
 
 time_t start_time;
 
-O3_CPU ooo_cpu[NUM_CPUS];
+std::vector<O3_CPU> ooo_cpu;
 
 // PAGE TABLE
 uint32_t PAGE_TABLE_LATENCY = 0, SWAP_LATENCY = 0;
@@ -591,6 +592,13 @@ int main(int argc, char** argv)
 
     // end consequence of knobs
 
+    // Instantiate cores
+    // TODO move this into the main cache construction loop after we separate trace reading from the core model
+    for (std::size_t i = 0; i < NUM_CPUS; ++i)
+    {
+        ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
+    }
+
     // search through the argv for "-traces"
     int found_traces = 0;
     int count_traces = 0;
@@ -688,67 +696,9 @@ int main(int argc, char** argv)
     srand(seed_number);
     champsim_seed = seed_number;
     for (int i=0; i<NUM_CPUS; i++) {
-
-        ooo_cpu[i].cpu = i; 
-        ooo_cpu[i].warmup_instructions = warmup_instructions;
-        ooo_cpu[i].simulation_instructions = simulation_instructions;
-        ooo_cpu[i].begin_sim_cycle = 0; 
-        ooo_cpu[i].begin_sim_instr = warmup_instructions;
-
-        // ROB
-        ooo_cpu[i].ROB.cpu = i;
-
-        // BRANCH PREDICTOR
-        ooo_cpu[i].initialize_branch_predictor();
-
-        // TLBs
-        ooo_cpu[i].ITLB.cpu = i;
-        ooo_cpu[i].ITLB.cache_type = IS_ITLB;
-	ooo_cpu[i].ITLB.MAX_READ = 2;
-        ooo_cpu[i].ITLB.fill_level = FILL_L1;
-        ooo_cpu[i].ITLB.extra_interface = &ooo_cpu[i].L1I;
-        ooo_cpu[i].ITLB.lower_level = &ooo_cpu[i].STLB; 
-
-        ooo_cpu[i].DTLB.cpu = i;
-        ooo_cpu[i].DTLB.cache_type = IS_DTLB;
-        //ooo_cpu[i].DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
-        ooo_cpu[i].DTLB.MAX_READ = 2;
-        ooo_cpu[i].DTLB.fill_level = FILL_L1;
-        ooo_cpu[i].DTLB.extra_interface = &ooo_cpu[i].L1D;
-        ooo_cpu[i].DTLB.lower_level = &ooo_cpu[i].STLB;
-
-        ooo_cpu[i].STLB.cpu = i;
-        ooo_cpu[i].STLB.cache_type = IS_STLB;
-        ooo_cpu[i].STLB.MAX_READ = 1;
-        ooo_cpu[i].STLB.fill_level = FILL_L2;
-        ooo_cpu[i].STLB.upper_level_icache[i] = &ooo_cpu[i].ITLB;
-        ooo_cpu[i].STLB.upper_level_dcache[i] = &ooo_cpu[i].DTLB;
-
-        // PRIVATE CACHE
-        ooo_cpu[i].L1I.cpu = i;
-        ooo_cpu[i].L1I.cache_type = IS_L1I;
-        //ooo_cpu[i].L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
-        ooo_cpu[i].L1I.MAX_READ = 2;
-        ooo_cpu[i].L1I.fill_level = FILL_L1;
-        ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
-        ooo_cpu[i].l1i_prefetcher_initialize();
-	ooo_cpu[i].L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-	ooo_cpu[i].L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-
-        ooo_cpu[i].L1D.cpu = i;
-        ooo_cpu[i].L1D.cache_type = IS_L1D;
-        ooo_cpu[i].L1D.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
-        ooo_cpu[i].L1D.fill_level = FILL_L1;
-        ooo_cpu[i].L1D.lower_level = &ooo_cpu[i].L2C; 
-        ooo_cpu[i].L1D.l1d_prefetcher_initialize();
-
-        ooo_cpu[i].L2C.cpu = i;
-        ooo_cpu[i].L2C.cache_type = IS_L2C;
-        ooo_cpu[i].L2C.fill_level = FILL_L2;
-        ooo_cpu[i].L2C.upper_level_icache[i] = &ooo_cpu[i].L1I;
-        ooo_cpu[i].L2C.upper_level_dcache[i] = &ooo_cpu[i].L1D;
+        ooo_cpu[i].L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
+        ooo_cpu[i].L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
         ooo_cpu[i].L2C.lower_level = &uncore.LLC;
-        ooo_cpu[i].L2C.l2c_prefetcher_initialize();
 
         // SHARED CACHE
         uncore.LLC.cache_type = IS_LLC;
