@@ -173,6 +173,5 @@ class O3_CPU {
   int prefetch_code_line(uint64_t pf_v_addr);
 };
 
-extern O3_CPU ooo_cpu[NUM_CPUS];
-
 #endif
+

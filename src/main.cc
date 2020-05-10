@@ -19,6 +19,8 @@ uint64_t warmup_instructions     = 1000000,
 
 time_t start_time;
 
+O3_CPU ooo_cpu[NUM_CPUS];
+
 // PAGE TABLE
 uint32_t PAGE_TABLE_LATENCY = 0, SWAP_LATENCY = 0;
 queue <uint64_t > page_queue;
