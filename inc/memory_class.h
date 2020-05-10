@@ -22,7 +22,7 @@ extern uint64_t l2pf_access;
 class MEMORY {
   public:
     // memory interface
-    MEMORY *upper_level_icache[NUM_CPUS], *upper_level_dcache[NUM_CPUS], *lower_level = NULL, *extra_interface = NULL;
+    MEMORY *upper_level_icache[NUM_CPUS] = {}, *upper_level_dcache[NUM_CPUS] = {}, *lower_level = NULL, *extra_interface = NULL;
 
     // empty queues
     PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
@@ -38,17 +38,7 @@ class MEMORY {
     virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
     // stats
-    uint64_t ACCESS[NUM_TYPES], HIT[NUM_TYPES], MISS[NUM_TYPES], MSHR_MERGED[NUM_TYPES], STALL[NUM_TYPES];
-
-    MEMORY() {
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
-            ACCESS[i] = 0;
-            HIT[i] = 0;
-            MISS[i] = 0;
-            MSHR_MERGED[i] = 0;
-            STALL[i] = 0;
-        }
-    }
+    uint64_t ACCESS[NUM_TYPES] = {}, HIT[NUM_TYPES] = {}, MISS[NUM_TYPES] = {}, MSHR_MERGED[NUM_TYPES] = {}, STALL[NUM_TYPES] = {};
 };
 
 struct BANK_REQUEST {

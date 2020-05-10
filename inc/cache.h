@@ -104,12 +104,12 @@ class CACHE : public MEMORY {
                  MSHR{NAME + "_MSHR", MSHR_SIZE}, // MSHR
                  PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
 
-    uint64_t sim_access[NUM_CPUS][NUM_TYPES],
-             sim_hit[NUM_CPUS][NUM_TYPES],
-             sim_miss[NUM_CPUS][NUM_TYPES],
-             roi_access[NUM_CPUS][NUM_TYPES],
-             roi_hit[NUM_CPUS][NUM_TYPES],
-             roi_miss[NUM_CPUS][NUM_TYPES];
+    uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
+             sim_hit[NUM_CPUS][NUM_TYPES] = {},
+             sim_miss[NUM_CPUS][NUM_TYPES] = {},
+             roi_access[NUM_CPUS][NUM_TYPES] = {},
+             roi_hit[NUM_CPUS][NUM_TYPES] = {},
+             roi_miss[NUM_CPUS][NUM_TYPES] = {};
 
     uint64_t total_miss_latency = 0;
     
@@ -124,20 +124,6 @@ class CACHE : public MEMORY {
 
             for (uint32_t j=0; j<NUM_WAY; j++) {
                 block[i][j].lru = j;
-            }
-        }
-
-        for (uint32_t i=0; i<NUM_CPUS; i++) {
-            upper_level_icache[i] = NULL;
-            upper_level_dcache[i] = NULL;
-
-            for (uint32_t j=0; j<NUM_TYPES; j++) {
-                sim_access[i][j] = 0;
-                sim_hit[i][j] = 0;
-                sim_miss[i][j] = 0;
-                roi_access[i][j] = 0;
-                roi_hit[i][j] = 0;
-                roi_miss[i][j] = 0;
             }
         }
     };

@@ -81,7 +81,7 @@ class O3_CPU {
     uint64_t fetch_resume_cycle = 0;
     uint64_t num_branch = 0, branch_mispredictions = 0;
     uint64_t total_rob_occupancy_at_branch_mispredict;
-    uint64_t total_branch_types[8] = {0,0,0,0,0,0,0,0};
+    uint64_t total_branch_types[8] = {};
 
     // TLBs and caches
     CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
