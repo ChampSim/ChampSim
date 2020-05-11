@@ -2,6 +2,10 @@
 #define OOO_CPU_H
 
 #include "cache.h"
+#include "block.h"
+
+#include <array>
+#include <limits>
 
 #ifdef CRC2_COMPILE
 #define STAT_PRINTING_PERIOD 1000000
@@ -53,25 +57,26 @@ class O3_CPU {
     uint32_t next_ITLB_fetch;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
-    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
-    CORE_BUFFER ROB{"ROB", ROB_SIZE};
-    LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+    CORE_BUFFER IFETCH_BUFFER;
+    CORE_BUFFER DECODE_BUFFER;
+    CORE_BUFFER ROB;
+    LOAD_STORE_QUEUE LQ, SQ;
 
     // store array, this structure is required to properly handle store instructions
-    uint64_t STA[STA_SIZE], STA_head, STA_tail; 
+    std::array<uint64_t, STA_SIZE> STA;
+    std::size_t STA_head, STA_tail;
 
     // Ready-To-Execute
-    uint32_t RTE0[ROB_SIZE], RTE0_head, RTE0_tail, 
-             RTE1[ROB_SIZE], RTE1_head, RTE1_tail;  
+    std::array<uint32_t, ROB_SIZE> RTE0, RTE1;
+    std::size_t RTE0_head, RTE0_tail, RTE1_head, RTE1_tail;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail, 
-             RTL1[LQ_SIZE], RTL1_head, RTL1_tail;  
+    std::array<uint32_t, LQ_SIZE> RTL0, RTL1;
+    std::size_t RTL0_head, RTL0_tail, RTL1_head, RTL1_tail;
 
     // Ready-To-Store
-    uint32_t RTS0[SQ_SIZE], RTS0_head, RTS0_tail,
-             RTS1[SQ_SIZE], RTS1_head, RTS1_tail;
+    std::array<uint32_t, SQ_SIZE> RTS0, RTS1;
+    std::size_t  RTS0_head, RTS0_tail, RTS1_head, RTS1_tail;
 
     // branch
     int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
@@ -80,7 +85,7 @@ class O3_CPU {
     uint64_t fetch_resume_cycle;
     uint64_t num_branch, branch_mispredictions;
     uint64_t total_rob_occupancy_at_branch_mispredict;
-  uint64_t total_branch_types[8];
+    std::array<uint64_t, 8> total_branch_types;
 
     // TLBs and caches
     CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
@@ -93,7 +98,13 @@ class O3_CPU {
   // trace cache for previously decoded instructions
   
     // constructor
-    O3_CPU() {
+    O3_CPU() :
+        IFETCH_BUFFER("IFETCH_BUFFER", FETCH_WIDTH*2),
+        DECODE_BUFFER("DECODE_BUFFER", DECODE_WIDTH*3),
+        ROB("ROB", ROB_SIZE),
+        LQ("LQ", LQ_SIZE),
+        SQ("SQ", SQ_SIZE)
+    {
         cpu = 0;
 
         // trace
@@ -129,38 +140,28 @@ class O3_CPU {
 	fetch_resume_cycle = 0;
         num_branch = 0;
         branch_mispredictions = 0;
-	for(uint32_t i=0; i<8; i++)
-	  {
-	    total_branch_types[i] = 0;
-	  }
+    total_branch_types.fill(0);
 	
-        for (uint32_t i=0; i<STA_SIZE; i++)
-	  STA[i] = UINT64_MAX;
+    STA.fill(std::numeric_limits<uint64_t>::max());
         STA_head = 0;
         STA_tail = 0;
 
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  RTE0[i] = ROB_SIZE;
-	  RTE1[i] = ROB_SIZE;
-        }
+    RTE0.fill(ROB_SIZE);
+    RTE1.fill(ROB_SIZE);
         RTE0_head = 0;
         RTE1_head = 0;
         RTE0_tail = 0;
         RTE1_tail = 0;
 
-        for (uint32_t i=0; i<LQ_SIZE; i++) {
-	  RTL0[i] = LQ_SIZE;
-	  RTL1[i] = LQ_SIZE;
-        }
+    RTL0.fill(LQ_SIZE);
+    RTL1.fill(LQ_SIZE);
         RTL0_head = 0;
         RTL1_head = 0;
         RTL0_tail = 0;
         RTL1_tail = 0;
 
-        for (uint32_t i=0; i<SQ_SIZE; i++) {
-	  RTS0[i] = SQ_SIZE;
-	  RTS1[i] = SQ_SIZE;
-        }
+    RTS0.fill(SQ_SIZE);
+    RTS1.fill(SQ_SIZE);
         RTS0_head = 0;
         RTS1_head = 0;
         RTS0_tail = 0;
@@ -224,6 +225,6 @@ class O3_CPU {
   int prefetch_code_line(uint64_t pf_v_addr); 
 };
 
-extern O3_CPU ooo_cpu[NUM_CPUS];
+extern std::array<O3_CPU,NUM_CPUS> ooo_cpu;
 
 #endif

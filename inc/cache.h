@@ -80,11 +80,13 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 
 class CACHE : public MEMORY {
   public:
+      using set_t = std::vector<BLOCK>;
+
     uint32_t cpu;
     const string NAME;
     const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY;
-    BLOCK **block;
+    std::vector<set_t> block;
     int fill_level;
     uint32_t MAX_READ, MAX_FILL;
     uint32_t reads_available_this_cycle;
@@ -98,31 +100,26 @@ class CACHE : public MEMORY {
              pf_fill;
 
     // queues
-    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 RQ{NAME + "_RQ", RQ_SIZE}, // read queue
-                 PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 MSHR{NAME + "_MSHR", MSHR_SIZE}, // MSHR
-                 PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+    PACKET_QUEUE WQ, // write queue
+                 RQ, // read queue
+                 PQ, // prefetch queue
+                 MSHR, // MSHR
+                 PROCESSED; // processed queue
 
-    uint64_t sim_access[NUM_CPUS][NUM_TYPES],
-             sim_hit[NUM_CPUS][NUM_TYPES],
-             sim_miss[NUM_CPUS][NUM_TYPES],
-             roi_access[NUM_CPUS][NUM_TYPES],
-             roi_hit[NUM_CPUS][NUM_TYPES],
-             roi_miss[NUM_CPUS][NUM_TYPES];
+    std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> sim_access, sim_hit, sim_miss, roi_access, roi_hit, roi_miss;
 
     uint64_t total_miss_latency;
     
     // constructor
-    CACHE(string v1, uint32_t v2, int v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8) 
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), NUM_LINE(v4), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
-
+    CACHE(string v1, uint32_t v2, int v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8)
+        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), NUM_LINE(v4), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), block(v2),
+          WQ(v1 + "_WQ", v5), RQ(v1 + "_RQ", v6), PQ(v1 + "_PQ", v7), MSHR(v1 + "_MSHR", v8), PROCESSED(v1 + "_PROCESSED", ROB_SIZE)
+    {
         LATENCY = 0;
 
         // cache block
-        block = new BLOCK* [NUM_SET];
         for (uint32_t i=0; i<NUM_SET; i++) {
-            block[i] = new BLOCK[NUM_WAY]; 
+            block[i].insert(block[i].end(), NUM_WAY, BLOCK());
 
             for (uint32_t j=0; j<NUM_WAY; j++) {
                 block[i][j].lru = j;
@@ -133,14 +130,12 @@ class CACHE : public MEMORY {
             upper_level_icache[i] = NULL;
             upper_level_dcache[i] = NULL;
 
-            for (uint32_t j=0; j<NUM_TYPES; j++) {
-                sim_access[i][j] = 0;
-                sim_hit[i][j] = 0;
-                sim_miss[i][j] = 0;
-                roi_access[i][j] = 0;
-                roi_hit[i][j] = 0;
-                roi_miss[i][j] = 0;
-            }
+            sim_access[i].fill(0);
+            sim_hit[i].fill(0);
+            sim_miss[i].fill(0);
+            roi_access[i].fill(0);
+            roi_hit[i].fill(0);
+            roi_miss[i].fill(0);
         }
 
 	total_miss_latency = 0;
@@ -156,13 +151,6 @@ class CACHE : public MEMORY {
         pf_useful = 0;
         pf_useless = 0;
         pf_fill = 0;
-    };
-
-    // destructor
-    ~CACHE() {
-        for (uint32_t i=0; i<NUM_SET; i++)
-            delete[] block[i];
-        delete[] block;
     };
 
     // functions
@@ -219,9 +207,9 @@ class CACHE : public MEMORY {
     
     uint32_t get_set(uint64_t address),
              get_way(uint64_t address, uint32_t set),
-             find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+             find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type),
+             llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type),
+             lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type);
 };
 
 #endif

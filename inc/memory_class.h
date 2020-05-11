@@ -4,6 +4,8 @@
 #include "champsim.h"
 #include "block.h"
 
+#include <array>
+
 // CACHE ACCESS TYPE
 #define LOAD      0
 #define RFO       1
@@ -36,16 +38,18 @@ class MEMORY {
     virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
     // stats
-    uint64_t ACCESS[NUM_TYPES], HIT[NUM_TYPES], MISS[NUM_TYPES], MSHR_MERGED[NUM_TYPES], STALL[NUM_TYPES];
+    std::array<uint64_t, NUM_TYPES> ACCESS;
+    std::array<uint64_t, NUM_TYPES> HIT;
+    std::array<uint64_t, NUM_TYPES> MISS;
+    std::array<uint64_t, NUM_TYPES> MSHR_MERGED;
+    std::array<uint64_t, NUM_TYPES> STALL;
 
     MEMORY() {
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
-            ACCESS[i] = 0;
-            HIT[i] = 0;
-            MISS[i] = 0;
-            MSHR_MERGED[i] = 0;
-            STALL[i] = 0;
-        }
+        ACCESS.fill(0);
+        HIT.fill(0);
+        MISS.fill(0);
+        MSHR_MERGED.fill(0);
+        STALL.fill(0);
     }
 };
 

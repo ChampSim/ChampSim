@@ -1,6 +1,8 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <array>
+#include <limits>
 
 // instruction format
 #define ROB_SIZE 352
@@ -116,16 +118,19 @@ class ooo_model_instr {
             branch_mispredicted,
             branch_prediction_made,
             translated,
-            data_translated,
-            source_added[NUM_INSTR_SOURCES],
-            destination_added[NUM_INSTR_DESTINATIONS_SPARC],
-            is_producer,
+            data_translated;
+
+    std::array<uint8_t, NUM_INSTR_SOURCES> source_added;
+    std::array<uint8_t, NUM_INSTR_DESTINATIONS_SPARC> destination_added;
+
+    uint8_t is_producer,
             is_consumer,
             reg_RAW_producer,
             reg_ready,
-            mem_ready,
-            asid[2],
-            reg_RAW_checked[NUM_INSTR_SOURCES];
+            mem_ready;
+
+    std::array<uint8_t, 2> asid;
+    std::array<uint8_t, NUM_INSTR_SOURCES> reg_RAW_checked;
 
     uint8_t branch_type;
     uint64_t branch_target;
@@ -136,38 +141,39 @@ class ooo_model_instr {
     // executed bit is set after all dependencies are eliminated and this instr is chosen on a cycle, according to EXEC_WIDTH
     int executed;
 
-    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
+    std::array<uint8_t, NUM_INSTR_DESTINATIONS_SPARC> destination_registers; // output registers
 
-    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers 
+    std::array<uint8_t, NUM_INSTR_SOURCES> source_registers; // input registers 
 
     // these are instruction ids of other instructions in the window
-    //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
+    //std::array<int64_t, NUM_INSTR_SOURCES> registers_instrs_i_depend_on;
     // these are indices of instructions in the window that depend on me
-    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
-    fastset
-	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
+    //std::array<uint8_t, ROB_SIZE> registers_instrs_depend_on_me;
+    //std::array<std::array<uint8_t, ROB_SIZE>, NUM_INSTR_SOURCES> registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
+    fastset registers_instrs_depend_on_me;
+    std::array<fastset, NUM_INSTR_SOURCES> registers_index_depend_on_me;
 
 
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa, data_pa, virtual_address, physical_address;
-    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
-    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
-    //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
+    std::array<uint64_t, NUM_INSTR_DESTINATIONS_SPARC> destination_memory; // output memory
+    std::array<uint64_t, NUM_INSTR_SOURCES> source_memory; // input memory
+    //std::array<int, NUM_INSTR_SOURCES> source_memory_outstanding;  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
     // keep around a record of what the original virtual addresses were
-    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC];
-    uint64_t source_virtual_address[NUM_INSTR_SOURCES];
+    std::array<uint64_t, NUM_INSTR_DESTINATIONS_SPARC> destination_virtual_address;
+    std::array<uint64_t, NUM_INSTR_SOURCES> source_virtual_address;
 
     // these are instruction ids of other instructions in the window
-    //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
+    //std::array<uint32_t, NUM_INSTR_SOURCES> memory_instrs_i_depend_on;
 
     // these are indices of instructions in the ROB that depend on me
-    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
+    //std::array<uint8_t, ROB_SIZE> memory_instrs_depend_on_me;
     fastset memory_instrs_depend_on_me;
 
-    uint32_t lq_index[NUM_INSTR_SOURCES],
-             sq_index[NUM_INSTR_DESTINATIONS_SPARC],
-             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC];
+    std::array<uint32_t, NUM_INSTR_SOURCES> lq_index;
+    std::array<uint32_t, NUM_INSTR_DESTINATIONS_SPARC> sq_index;
+    std::array<uint32_t, NUM_INSTR_DESTINATIONS_SPARC> forwarding_index;
 
     ooo_model_instr() {
         instr_id = 0;
@@ -195,8 +201,7 @@ class ooo_model_instr {
         executed = 0;
         reg_ready = 0;
         mem_ready = 0;
-        asid[0] = UINT8_MAX;
-        asid[1] = UINT8_MAX;
+        asid.fill(std::numeric_limits<uint8_t>::max());
 
 	branch_type = NOT_BRANCH;
 	branch_target = 0;
@@ -210,29 +215,25 @@ class ooo_model_instr {
         num_mem_ops = 0;
         num_reg_dependent = 0;
 
-        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-            source_registers[i] = 0;
-            source_memory[i] = 0;
-            source_virtual_address[i] = 0;
-            source_added[i] = 0;
-            lq_index[i] = UINT32_MAX;
-            reg_RAW_checked[i] = 0;
-        }
+        source_registers.fill(0);
+        source_memory.fill(0);
+        source_virtual_address.fill(0);
+        source_added.fill(0);
+        lq_index.fill(std::numeric_limits<uint32_t>::max());
+        reg_RAW_checked.fill(0);
 
-        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
-            destination_memory[i] = 0;
-            destination_registers[i] = 0;
-            destination_virtual_address[i] = 0;
-            destination_added[i] = 0;
-            sq_index[i] = UINT32_MAX;
-            forwarding_index[i] = 0;
-        }
+        destination_memory.fill(0);
+        destination_registers.fill(0);
+        destination_virtual_address.fill(0);
+        destination_added.fill(0);
+        sq_index.fill(std::numeric_limits<uint32_t>::max());
+        forwarding_index.fill(0);
 
 #if 0
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-            registers_instrs_depend_on_me[i] = 0;
-            memory_instrs_depend_on_me[i] = 0;
+        registers_instrs_depend_on_me.fill(0);
+        memory_instrs_depend_on_me.fill(0);
 
+        for (uint32_t i=0; i<ROB_SIZE; i++) {
             for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++)
                 registers_index_depend_on_me[i][j] = 0;
         }

@@ -81,9 +81,8 @@ extern uint8_t warmup_complete[NUM_CPUS],
                knob_cloudsuite,
                knob_low_bandwidth;
 
-extern uint64_t current_core_cycle[NUM_CPUS], 
-                stall_cycle[NUM_CPUS], 
-                last_drc_read_mode, 
+extern std::array<uint64_t, NUM_CPUS> current_core_cycle, stall_cycle;
+extern uint64_t last_drc_read_mode,
                 last_drc_write_mode,
                 drc_blocks;
 

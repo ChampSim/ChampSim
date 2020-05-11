@@ -201,7 +201,7 @@ void update_sampler(uint32_t cpu, uint32_t s_idx, uint64_t address, uint64_t ip,
 }
 
 // find replacement victim
-uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     // look for the maxRRPV line
     while (1)

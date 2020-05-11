@@ -22,10 +22,10 @@ void CACHE::handle_fill()
         // find victim
         uint32_t set = get_set(MSHR.entry[mshr_index].address), way;
         if (cache_type == IS_LLC) {
-            way = llc_find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
+            way = llc_find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set].cbegin(), block[set].cend(), MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
         }
         else
-            way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
+            way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set].cbegin(), block[set].cend(), MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
 
 #ifdef LLC_BYPASS
         if ((cache_type == IS_LLC) && (way == LLC_WAY)) { // this is a bypass that does not fill the LLC
@@ -398,10 +398,10 @@ void CACHE::handle_writeback()
                 // find victim
                 uint32_t set = get_set(WQ.entry[index].address), way;
                 if (cache_type == IS_LLC) {
-                    way = llc_find_victim(writeback_cpu, WQ.entry[index].instr_id, set, block[set], WQ.entry[index].ip, WQ.entry[index].full_addr, WQ.entry[index].type);
+                    way = llc_find_victim(writeback_cpu, WQ.entry[index].instr_id, set, block[set].cbegin(), block[set].cend(), WQ.entry[index].ip, WQ.entry[index].full_addr, WQ.entry[index].type);
                 }
                 else
-                    way = find_victim(writeback_cpu, WQ.entry[index].instr_id, set, block[set], WQ.entry[index].ip, WQ.entry[index].full_addr, WQ.entry[index].type);
+                    way = find_victim(writeback_cpu, WQ.entry[index].instr_id, set, block[set].cbegin(), block[set].cend(), WQ.entry[index].ip, WQ.entry[index].full_addr, WQ.entry[index].type);
 
 #ifdef LLC_BYPASS
                 if ((cache_type == IS_LLC) && (way == LLC_WAY)) {

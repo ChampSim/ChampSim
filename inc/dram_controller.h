@@ -26,46 +26,47 @@ class MEMORY_CONTROLLER : public MEMORY {
   public:
     const string NAME;
 
-    DRAM_ARRAY dram_array[DRAM_CHANNELS][DRAM_RANKS][DRAM_BANKS];
-    uint64_t dbus_cycle_available[DRAM_CHANNELS], dbus_cycle_congested[DRAM_CHANNELS], dbus_congested[NUM_TYPES+1][NUM_TYPES+1];
-    uint64_t bank_cycle_available[DRAM_CHANNELS][DRAM_RANKS][DRAM_BANKS];
-    uint8_t  do_write, write_mode[DRAM_CHANNELS]; 
-    uint32_t processed_writes, scheduled_reads[DRAM_CHANNELS], scheduled_writes[DRAM_CHANNELS];
+    std::array<std::array<std::array<DRAM_ARRAY, DRAM_CHANNELS>, DRAM_RANKS>, DRAM_BANKS> dram_array;
+    std::array<uint64_t, DRAM_CHANNELS> dbus_cycle_available;
+    std::array<uint64_t, DRAM_CHANNELS> dbus_cycle_congested;
+    std::array<std::array<uint64_t, NUM_TYPES+1>, NUM_TYPES+1> dbus_congested;
+    std::array<std::array<std::array<uint64_t, DRAM_CHANNELS>, DRAM_RANKS>, DRAM_BANKS> bank_cycle_available;
+    uint8_t  do_write;
+    std::array<uint8_t, DRAM_CHANNELS> write_mode;
+    uint32_t processed_writes;
+    std::array<uint32_t, DRAM_CHANNELS> scheduled_reads;
+    std::array<uint32_t, DRAM_CHANNELS> scheduled_writes;
     int fill_level;
 
-    BANK_REQUEST bank_request[DRAM_CHANNELS][DRAM_RANKS][DRAM_BANKS];
+    std::array<std::array<std::array<BANK_REQUEST, DRAM_CHANNELS>, DRAM_RANKS>, DRAM_BANKS> bank_request;
 
     // queues
-    PACKET_QUEUE WQ[DRAM_CHANNELS], RQ[DRAM_CHANNELS];
+    std::vector<PACKET_QUEUE> WQ;
+    std::vector<PACKET_QUEUE> RQ;
 
     // constructor
     MEMORY_CONTROLLER(string v1) : NAME (v1) {
         for (uint32_t i=0; i<NUM_TYPES+1; i++) {
-            for (uint32_t j=0; j<NUM_TYPES+1; j++) {
-                dbus_congested[i][j] = 0;
-            }
+            dbus_congested[i].fill(0);
         }
         do_write = 0;
         processed_writes = 0;
-        for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-            dbus_cycle_available[i] = 0;
-            dbus_cycle_congested[i] = 0;
-            write_mode[i] = 0;
-            scheduled_reads[i] = 0;
-            scheduled_writes[i] = 0;
 
+        dbus_cycle_available.fill(0);
+        dbus_cycle_congested.fill(0);
+        write_mode.fill(0);
+        scheduled_reads.fill(0);
+        scheduled_writes.fill(0);
+
+        for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
             for (uint32_t j=0; j<DRAM_RANKS; j++) {
-                for (uint32_t k=0; k<DRAM_BANKS; k++)
-                    bank_cycle_available[i][j][k] = 0;
+                bank_cycle_available[i][j].fill(0);
             }
 
-            WQ[i].NAME = "DRAM_WQ" + to_string(i);
-            WQ[i].SIZE = DRAM_WQ_SIZE;
-            WQ[i].entry = new PACKET [DRAM_WQ_SIZE];
-
-            RQ[i].NAME = "DRAM_RQ" + to_string(i);
-            RQ[i].SIZE = DRAM_RQ_SIZE;
-            RQ[i].entry = new PACKET [DRAM_RQ_SIZE];
+            WQ.emplace_back("DRAM_WQ" + to_string(i), DRAM_WQ_SIZE);
+            RQ.emplace_back("DRAM_RQ" + to_string(i), DRAM_RQ_SIZE);
+            WQ[i].entry.insert(WQ[i].entry.end(), WQ[i].SIZE, PACKET());
+            RQ[i].entry.insert(RQ[i].entry.end(), RQ[i].SIZE, PACKET());
         }
 
         fill_level = FILL_DRAM;

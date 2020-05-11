@@ -5,6 +5,9 @@
 #include "instruction.h"
 #include "set.h"
 
+#include <array>
+#include <vector>
+
 // CACHE BLOCK
 class BLOCK {
   public:
@@ -199,10 +202,11 @@ class PACKET_QUEUE {
              ROW_BUFFER_MISS,
              FULL;
 
-    PACKET *entry, processed_packet[2*MAX_READ_PER_CYCLE];
+    std::vector<PACKET> entry;
+    std::array<PACKET, 2*MAX_READ_PER_CYCLE> processed_packet;
 
     // constructor
-    PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
+    PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2), entry(v2) {
         is_RQ = 0;
         is_WQ = 0;
         write_mode = 0;
@@ -227,8 +231,6 @@ class PACKET_QUEUE {
         ROW_BUFFER_HIT = 0;
         ROW_BUFFER_MISS = 0;
         FULL = 0;
-
-        entry = new PACKET[SIZE]; 
     };
 
     PACKET_QUEUE() {
@@ -259,11 +261,6 @@ class PACKET_QUEUE {
         //entry = new PACKET[SIZE]; 
     };
 
-    // destructor
-    ~PACKET_QUEUE() {
-        delete[] entry;
-    };
-
     // functions
     int check_queue(PACKET* packet);
     void add_queue(PACKET* packet),
@@ -279,10 +276,10 @@ class CORE_BUFFER {
              head, 
              tail,
              occupancy,
-             last_read, last_fetch, last_scheduled, 
-             inorder_fetch[2],
-             next_fetch[2],
-             next_schedule;
+             last_read, last_fetch, last_scheduled;
+    std::array<uint32_t, 2> inorder_fetch;
+    std::array<uint32_t, 2> next_fetch;
+    uint32_t next_schedule;
     uint64_t event_cycle,
              fetch_event_cycle,
              schedule_event_cycle,
@@ -290,10 +287,10 @@ class CORE_BUFFER {
              lsq_event_cycle,
              retire_event_cycle;
 
-    ooo_model_instr *entry;
+    std::vector<ooo_model_instr> entry;
 
     // constructor
-    CORE_BUFFER(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
+    CORE_BUFFER(string v1, uint32_t v2) : NAME(v1), SIZE(v2), entry(v2) {
         head = 0;
         tail = 0;
         occupancy = 0;
@@ -314,13 +311,6 @@ class CORE_BUFFER {
         execute_event_cycle = UINT64_MAX;
         lsq_event_cycle = UINT64_MAX;
         retire_event_cycle = UINT64_MAX;
-
-        entry = new ooo_model_instr[SIZE];
-    };
-
-    // destructor
-    ~CORE_BUFFER() {
-        delete[] entry;
     };
 };
 
@@ -337,8 +327,8 @@ class LSQ_ENTRY {
     uint32_t rob_index, data_index, sq_index;
 
     uint8_t translated,
-            fetched,
-            asid[2];
+            fetched;
+    std::array<uint8_t, 2> asid;
 // forwarding_depend_on_me[ROB_SIZE];
     fastset
 		forwarding_depend_on_me;
@@ -374,20 +364,13 @@ class LOAD_STORE_QUEUE {
     const uint32_t SIZE;
     uint32_t occupancy, head, tail;
 
-    LSQ_ENTRY *entry;
+    std::vector<LSQ_ENTRY> entry;
 
     // constructor
-    LOAD_STORE_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
+    LOAD_STORE_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2), entry(v2) {
         occupancy = 0;
         head = 0;
         tail = 0;
-
-        entry = new LSQ_ENTRY[SIZE];
-    };
-
-    // destructor
-    ~LOAD_STORE_QUEUE() {
-        delete[] entry;
     };
 };
 #endif

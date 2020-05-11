@@ -1,9 +1,9 @@
 #include "cache.h"
 
-uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     // baseline LRU replacement policy for other caches 
-    return lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type); 
+    return lru_victim(cpu, instr_id, set, set_begin, set_end, ip, full_addr, type);
 }
 
 void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
@@ -16,7 +16,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     return lru_update(set, way);
 }
 
-uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, set_t::const_iterator set_begin, set_t::const_iterator set_end, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     uint32_t way = 0;
 
