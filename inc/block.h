@@ -81,12 +81,13 @@ class PACKET {
     int fill_level, 
         pf_origin_level,
         rob_signal, 
-        rob_index, 
         producer,
         delta,
         depth,
         signature,
         confidence;
+
+    unsigned int rob_index;
 
     uint32_t pf_metadata;
 
