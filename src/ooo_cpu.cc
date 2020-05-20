@@ -67,17 +67,9 @@ void O3_CPU::read_from_trace()
 
                         // update STA, this structure is required to execute store instructions properly without deadlock
                         if (num_mem_ops > 0) {
-#ifdef SANITY_CHECK
-                            if (STA[STA_tail] < UINT64_MAX) {
-                                if (STA_head != STA_tail)
-                                    assert(0);
-                            }
-#endif
-                            STA[STA_tail] = instr_unique_id;
-                            STA_tail++;
-
-                            if (STA_tail == STA_SIZE)
-                                STA_tail = 0;
+                            while (STA.size() >= STA_SIZE)
+                                STA.pop();
+                            STA.push(instr_unique_id);
                         }
                     }
                 }
@@ -225,18 +217,10 @@ void O3_CPU::read_from_trace()
                         num_mem_ops++;
 
                         // update STA, this structure is required to execute store instructions properly without deadlock
-                        if (num_mem_ops > 0) {			  
-#ifdef SANITY_CHECK
-                            if (STA[STA_tail] < UINT64_MAX) {
-                                if (STA_head != STA_tail)
-                                    assert(0);
-                            }
-#endif
-                            STA[STA_tail] = instr_unique_id;
-                            STA_tail++;
-
-                            if (STA_tail == STA_SIZE)
-                                STA_tail = 0;
+                        if (num_mem_ops > 0) {
+                            while (STA.size() >= STA_SIZE)
+                                STA.pop();
+                            STA.push(instr_unique_id);
                         }
                     }
                 }
@@ -917,20 +901,14 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
 
         if (rob_entry.reg_ready) {
 
-#ifdef SANITY_CHECK
-            if (RTE1[RTE1_tail] < ROB_SIZE)
-                assert(0);
-#endif
             // remember this rob_index in the Ready-To-Execute array 1
-            RTE1[RTE1_tail] = rob_index;
+            while (RTE1.size() >= ROB_SIZE)
+                RTE1.pop();
+            RTE1.push(rob_index);
 
             DP (if (warmup_complete[cpu]) {
             cout << "[RTE1] " << __func__ << " instr_id: " << rob_entry.instr_id << " rob_index: " << rob_index << " is added to RTE1";
-            cout << " head: " << RTE1_head << " tail: " << RTE1_tail << endl; }); 
-
-            RTE1_tail++;
-            if (RTE1_tail == ROB_SIZE)
-                RTE1_tail = 0;
+            });
         }
     }
 }
@@ -1044,15 +1022,12 @@ void O3_CPU::execute_instruction()
     uint32_t exec_issued = 0, num_iteration = 0;
     
     while (exec_issued < EXEC_WIDTH) {
-        if (RTE0[RTE0_head] < ROB_SIZE) {
-            uint32_t exec_index = RTE0[RTE0_head];
+        if (!RTE0.empty()) {
+            uint32_t exec_index = RTE0.front();
             if (ROB.entry.at(exec_index).event_cycle <= current_core_cycle[cpu]) {
                 do_execution(exec_index);
 
-                RTE0[RTE0_head] = ROB_SIZE;
-                RTE0_head++;
-                if (RTE0_head == ROB_SIZE)
-                    RTE0_head = 0;
+                RTE0.pop();
                 exec_issued++;
             }
         }
@@ -1069,15 +1044,12 @@ void O3_CPU::execute_instruction()
 
     num_iteration = 0;
     while (exec_issued < EXEC_WIDTH) {
-        if (RTE1[RTE1_head] < ROB_SIZE) {
-            uint32_t exec_index = RTE1[RTE1_head];
+        if (!RTE1.empty()) {
+            uint32_t exec_index = RTE1.front();
             if (ROB.entry.at(exec_index).event_cycle <= current_core_cycle[cpu]) {
                 do_execution(exec_index);
 
-                RTE1[RTE1_head] = ROB_SIZE;
-                RTE1_head++;
-                if (RTE1_head == ROB_SIZE)
-                    RTE1_head = 0;
+                RTE1.pop();
                 exec_issued++;
             }
         }
@@ -1202,7 +1174,7 @@ uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index)
             num_mem_ops++;
             if (rob_entry.source_added[i])
                 num_added++;
-            else if (LQ.occupancy < LQ.SIZE) {
+            else if (LQ.occupancy < LQ_SIZE) {
                 add_load_queue(rob_index, i);
                 num_added++;
             }
@@ -1222,7 +1194,7 @@ uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index)
             if (rob_entry.destination_added[i])
                 num_added++;
             else if (SQ.occupancy < SQ.SIZE) {
-                if (STA[STA_head] == rob_entry.instr_id)
+                if (STA.front() == rob_entry.instr_id)
                 {
                     add_store_queue(rob_index, i);
                     num_added++;
@@ -1255,8 +1227,8 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     ooo_model_instr &rob_entry = ROB.entry.at(rob_index);
 
     // search for an empty slot 
-    uint32_t lq_index = LQ.SIZE;
-    for (uint32_t i=0; i<LQ.SIZE; i++) {
+    uint32_t lq_index = LQ_SIZE;
+    for (uint32_t i=0; i<LQ_SIZE; i++) {
         if (LQ.entry.at(i).virtual_address == 0) {
             lq_index = i;
             break;
@@ -1264,7 +1236,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     }
 
     // sanity check
-    if (lq_index == LQ.SIZE) {
+    if (lq_index == LQ_SIZE) {
         std::cerr << "instr_id: " << rob_entry.instr_id << " no empty slot in the load queue!!!" << std::endl;
         assert(0);
     }
@@ -1393,14 +1365,13 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     rob_entry.source_added[data_index] = 1;
 
     if (lq_entry.virtual_address && (lq_entry.producer_id == UINT64_MAX)) { // not released and no forwarding
-        RTL0[RTL0_tail] = lq_index;
-        RTL0_tail++;
-        if (RTL0_tail == LQ_SIZE)
-            RTL0_tail = 0;
+        while (RTL0.size() >= LQ_SIZE)
+            RTL0.pop();
+        RTL0.push(lq_index);
 
         DP (if (warmup_complete[cpu]) {
                 std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is added to RTL0";
-                std::cout << " head: " << RTL0_head << " tail: " << RTL0_tail << std::endl; });
+                 });
     }
 
     DP(if(warmup_complete[cpu]) {
@@ -1478,16 +1449,12 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
 
     // succesfully added to the store queue
     rob_entry.destination_added[data_index] = 1;
-    
-    STA[STA_head] = UINT64_MAX;
-    STA_head++;
-    if (STA_head == STA_SIZE)
-        STA_head = 0;
 
-    RTS0[RTS0_tail] = sq_index;
-    RTS0_tail++;
-    if (RTS0_tail == SQ_SIZE)
-        RTS0_tail = 0;
+    STA.pop();
+
+    while (RTS0.size() >= SQ_SIZE)
+        RTS0.pop();
+    RTS0.push(sq_index);
 
     DP(if(warmup_complete[cpu]) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id;
@@ -1501,8 +1468,8 @@ void O3_CPU::operate_lsq()
     uint32_t store_issued = 0, num_iteration = 0;
 
     while (store_issued < SQ_WIDTH) {
-        if (RTS0[RTS0_head] < SQ_SIZE) {
-            LSQ_ENTRY &sq_entry = SQ.entry.at(RTS0[RTS0_head]);
+        if (!RTS0.empty()) {
+            LSQ_ENTRY &sq_entry = SQ.entry.at(RTS0.front());
             if (sq_entry.event_cycle <= current_core_cycle[cpu]) {
 
                 // add it to DTLB
@@ -1513,7 +1480,7 @@ void O3_CPU::operate_lsq()
                 data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = sq_entry.data_index;
-                data_packet.sq_index = RTS0[RTS0_head];
+                data_packet.sq_index = RTS0.front();
                 if (knob_cloudsuite)
                     data_packet.address = ((sq_entry.virtual_address >> LOG2_PAGE_SIZE) << 9) | sq_entry.asid[1];
                 else
@@ -1529,7 +1496,7 @@ void O3_CPU::operate_lsq()
 
                 DP (if (warmup_complete[cpu]) {
                         std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_entry.instr_id << " rob_index: " << sq_entry.rob_index << " is popped from to RTS0";
-                        std::cout << " head: " << RTS0_head << " tail: " << RTS0_tail << std::endl; });
+                         });
 
                 int rq_index = DTLB.add_rq(&data_packet);
 
@@ -1538,17 +1505,12 @@ void O3_CPU::operate_lsq()
                 else 
                     sq_entry.translated = INFLIGHT;
 
-                RTS0[RTS0_head] = SQ_SIZE;
-                RTS0_head++;
-                if (RTS0_head == SQ_SIZE)
-                    RTS0_head = 0;
+                RTS0.pop();
 
                 store_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS0] is empty head: " << RTS0_head << " tail: " << RTS0_tail << endl; });
             break;
         }
 
@@ -1559,22 +1521,17 @@ void O3_CPU::operate_lsq()
 
     num_iteration = 0;
     while (store_issued < SQ_WIDTH) {
-        if (RTS1[RTS1_head] < SQ_SIZE) {
-            LSQ_ENTRY &sq_entry = SQ.entry.at(RTS1[RTS1_head]);
+        if (!RTS1.empty()) {
+            LSQ_ENTRY &sq_entry = SQ.entry.at(RTS1.front());
             if (sq_entry.event_cycle <= current_core_cycle[cpu]) {
-                execute_store(sq_entry.rob_index, RTS1[RTS1_head], sq_entry.data_index);
+                execute_store(sq_entry.rob_index, RTS1.front(), sq_entry.data_index);
 
-                RTS1[RTS1_head] = SQ_SIZE;
-                RTS1_head++;
-                if (RTS1_head == SQ_SIZE)
-                    RTS1_head = 0;
+                RTS1.pop();
 
                 store_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS1] is empty head: " << RTS1_head << " tail: " << RTS1_tail << endl; });
             break;
         }
 
@@ -1586,8 +1543,8 @@ void O3_CPU::operate_lsq()
     unsigned load_issued = 0;
     num_iteration = 0;
     while (load_issued < LQ_WIDTH) {
-        if (RTL0[RTL0_head] < LQ_SIZE) {
-            LSQ_ENTRY &lq_entry = LQ.entry.at(RTL0[RTL0_head]);
+        if (!RTL0.empty()) {
+            LSQ_ENTRY &lq_entry = LQ.entry.at(RTL0.front());
             if (lq_entry.event_cycle <= current_core_cycle[cpu]) {
 
                 // add it to DTLB
@@ -1596,7 +1553,7 @@ void O3_CPU::operate_lsq()
                 data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = lq_entry.data_index;
-                data_packet.lq_index = RTL0[RTL0_head];
+                data_packet.lq_index = RTL0.front();
                 if (knob_cloudsuite)
                     data_packet.address = ((lq_entry.virtual_address >> LOG2_PAGE_SIZE) << 9) | lq_entry.asid[1];
                 else
@@ -1612,7 +1569,7 @@ void O3_CPU::operate_lsq()
 
                 DP (if (warmup_complete[cpu]) {
                         std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is popped to RTL0";
-                        std::cout << " head: " << RTL0_head << " tail: " << RTL0_tail << std::endl; });
+                         });
 
                 int rq_index = DTLB.add_rq(&data_packet);
 
@@ -1621,17 +1578,12 @@ void O3_CPU::operate_lsq()
                 else  
                     lq_entry.translated = INFLIGHT;
 
-                RTL0[RTL0_head] = LQ_SIZE;
-                RTL0_head++;
-                if (RTL0_head == LQ_SIZE)
-                    RTL0_head = 0;
+                RTL0.pop();
 
                 load_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL0] is empty head: " << RTL0_head << " tail: " << RTL0_tail << endl; });
             break;
         }
 
@@ -1642,24 +1594,19 @@ void O3_CPU::operate_lsq()
 
     num_iteration = 0;
     while (load_issued < LQ_WIDTH) {
-        if (RTL1[RTL1_head] < LQ_SIZE) {
-            LSQ_ENTRY &lq_entry = LQ.entry.at(RTL1[RTL1_head]);
+        if (!RTL1.empty()) {
+            LSQ_ENTRY &lq_entry = LQ.entry.at(RTL1.front());
             if (lq_entry.event_cycle <= current_core_cycle[cpu]) {
-                int rq_index = execute_load(lq_entry.rob_index, RTL1[RTL1_head], lq_entry.data_index);
+                int rq_index = execute_load(lq_entry.rob_index, RTL1.front(), lq_entry.data_index);
 
                 if (rq_index != -2) {
-                    RTL1[RTL1_head] = LQ_SIZE;
-                    RTL1_head++;
-                    if (RTL1_head == LQ_SIZE)
-                        RTL1_head = 0;
+                    RTL1.pop();
 
                     load_issued++;
                 }
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL1] is empty head: " << RTL1_head << " tail: " << RTL1_tail << endl; });
             break;
         }
 
@@ -1845,21 +1792,13 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                     else {
                         rob_entry.scheduled = COMPLETED;
 
-#ifdef SANITY_CHECK
-                        if (RTE0[RTE0_tail] < ROB_SIZE)
-                            assert(0);
-#endif
-                        // remember this rob_index in the Ready-To-Execute array 0
-                        RTE0[RTE0_tail] = i;
+                        while (RTE0.size() >= ROB_SIZE)
+                            RTE0.pop();
+                        RTE0.push(i);
 
                         DP (if (warmup_complete[cpu]) {
                                 std::cout << "[RTE0] " << __func__ << " instr_id: " << rob_entry.instr_id << " rob_index: " << i << " is added to RTE0";
-                                std::cout << " head: " << RTE0_head << " tail: " << RTE0_tail << std::endl; });
-
-                        RTE0_tail++;
-                        if (RTE0_tail == ROB_SIZE)
-                            RTE0_tail = 0;
-
+                                 });
                     }
                 }
 
@@ -2028,10 +1967,9 @@ void O3_CPU::complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
             sq_entry.translated = COMPLETED;
             sq_entry.event_cycle = current_core_cycle[cpu];
 
-            RTS1[RTS1_tail] = head_packet.sq_index;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
+            while (RTS1.size() >= SQ_SIZE)
+                RTS1.pop();
+            RTS1.push(head_packet.sq_index);
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " RFO instr_id: " << sq_entry.instr_id;
@@ -2046,14 +1984,13 @@ void O3_CPU::complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
             lq_entry.translated = COMPLETED;
             lq_entry.event_cycle = current_core_cycle[cpu];
 
-            RTL1[RTL1_tail] = head_packet.lq_index;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
+            while (RTL1.size() >= LQ_SIZE)
+                RTL1.pop();
+            RTL1.push(head_packet.lq_index);
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[RTL1] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is added to RTL1";
-                    std::cout << " head: " << RTL1_head << " tail: " << RTL1_tail << std::endl; });
+                     });
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " load instr_id: " << lq_entry.instr_id;
@@ -2119,10 +2056,9 @@ void O3_CPU::handle_o3_fetch(PACKET *current_packet, uint32_t cache_type)
             sq_entry.physical_address = (current_packet->data_pa << LOG2_PAGE_SIZE) | (sq_entry.virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             sq_entry.translated = COMPLETED;
 
-            RTS1[RTS1_tail] = current_packet->sq_index;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
+            while (RTS1.size() >= SQ_SIZE)
+                RTS1.pop();
+            RTS1.push(current_packet->sq_index);
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " RFO instr_id: " << sq_entry.instr_id;
@@ -2136,14 +2072,13 @@ void O3_CPU::handle_o3_fetch(PACKET *current_packet, uint32_t cache_type)
             lq_entry.physical_address = (current_packet->data_pa << LOG2_PAGE_SIZE) | (lq_entry.virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             lq_entry.translated = COMPLETED;
 
-            RTL1[RTL1_tail] = current_packet->lq_index;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
+            while (RTL1.size() >= LQ_SIZE)
+                RTL1.pop();
+            RTL1.push(current_packet->lq_index);
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[RTL1] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is added to RTL1";
-                    std::cout << " head: " << RTL1_head << " tail: " << RTL1_tail << std::endl; });
+                     });
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " load instr_id: " << lq_entry.instr_id;
@@ -2204,10 +2139,9 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
             sq_entry.physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (sq_entry.virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             sq_entry.event_cycle = current_core_cycle[cpu];
 
-            RTS1[RTS1_tail] = merged;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
+            while (RTS1.size() >= SQ_SIZE)
+                RTS1.pop();
+            RTS1.push(merged);
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " store instr_id: " << sq_entry.instr_id;
@@ -2216,20 +2150,18 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
         }
     }
     if (provider->load_merged) {
-	ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ.SIZE) {
+	ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ_SIZE) {
         LSQ_ENTRY &lq_entry = LQ.entry.at(merged);
             lq_entry.translated = COMPLETED;
             lq_entry.physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (lq_entry.virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             lq_entry.event_cycle = current_core_cycle[cpu];
 
-            RTL1[RTL1_tail] = merged;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
-
+            while (RTL1.size() >= LQ_SIZE)
+                RTL1.pop();
+            RTL1.push(merged);
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[RTL1] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is added to RTL1";
-                    std::cout << " head: " << RTL1_head << " tail: " << RTL1_tail << std::endl; });
+                     });
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[ROB] " << __func__ << " load instr_id: " << lq_entry.instr_id;
@@ -2241,7 +2173,7 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
 
 void O3_CPU::handle_merged_load(PACKET *provider)
 {
-    ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ.SIZE) {
+    ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ_SIZE) {
         LSQ_ENTRY &lq_entry = LQ.entry.at(merged);
         ooo_model_instr &rob_entry = ROB.entry.at(lq_entry.rob_index);
 

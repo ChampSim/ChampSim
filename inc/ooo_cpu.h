@@ -6,6 +6,7 @@
 
 #include <array>
 #include <limits>
+#include <queue>
 
 #ifdef CRC2_COMPILE
 #define STAT_PRINTING_PERIOD 1000000
@@ -62,21 +63,10 @@ class O3_CPU {
     CORE_BUFFER ROB;
     LOAD_STORE_QUEUE LQ, SQ;
 
-    // store array, this structure is required to properly handle store instructions
-    std::array<uint64_t, STA_SIZE> STA;
-    std::size_t STA_head, STA_tail;
-
-    // Ready-To-Execute
-    std::array<uint32_t, ROB_SIZE> RTE0, RTE1;
-    std::size_t RTE0_head, RTE0_tail, RTE1_head, RTE1_tail;
-
-    // Ready-To-Load
-    std::array<uint32_t, LQ_SIZE> RTL0, RTL1;
-    std::size_t RTL0_head, RTL0_tail, RTL1_head, RTL1_tail;
-
-    // Ready-To-Store
-    std::array<uint32_t, SQ_SIZE> RTS0, RTS1;
-    std::size_t  RTS0_head, RTS0_tail, RTS1_head, RTS1_tail;
+    std::queue<uint64_t> STA; // store array, this structure is required to properly handle store instructions
+    std::queue<uint32_t> RTE0, RTE1; // Ready-To-Execute
+    std::queue<uint32_t> RTL0, RTL1; // Ready-To-Load
+    std::queue<uint32_t> RTS0, RTS1; // Ready-To-Store
 
     // branch
     int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
@@ -141,31 +131,6 @@ class O3_CPU {
         num_branch = 0;
         branch_mispredictions = 0;
     total_branch_types.fill(0);
-	
-    STA.fill(std::numeric_limits<uint64_t>::max());
-        STA_head = 0;
-        STA_tail = 0;
-
-    RTE0.fill(ROB_SIZE);
-    RTE1.fill(ROB_SIZE);
-        RTE0_head = 0;
-        RTE1_head = 0;
-        RTE0_tail = 0;
-        RTE1_tail = 0;
-
-    RTL0.fill(LQ_SIZE);
-    RTL1.fill(LQ_SIZE);
-        RTL0_head = 0;
-        RTL1_head = 0;
-        RTL0_tail = 0;
-        RTL1_tail = 0;
-
-    RTS0.fill(SQ_SIZE);
-    RTS1.fill(SQ_SIZE);
-        RTS0_head = 0;
-        RTS1_head = 0;
-        RTS0_tail = 0;
-        RTS1_tail = 0;
     }
 
     // functions
