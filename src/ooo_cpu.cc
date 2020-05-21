@@ -845,12 +845,13 @@ void O3_CPU::schedule_instruction()
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
         return;
 
-    // execution is out-of-order but we have an in-order scheduling algorithm to detect all RAW dependencies
-    uint32_t limit = ROB.next_fetch[1];
     num_searched = 0;
-    if (ROB.head < limit) {
-        for (uint32_t i=ROB.head; i<limit; i++) { 
-            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+    if (ROB.head < ROB.tail)
+    {
+        for (uint32_t i=ROB.head; i<ROB.tail; i++)
+        {
+            ooo_model_instr &rob_entry = ROB.entry.at(i);
+            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
@@ -859,9 +860,12 @@ void O3_CPU::schedule_instruction()
             num_searched++;
         }
     }
-    else {
-        for (uint32_t i=ROB.head; i<ROB.SIZE; i++) {
-            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+    else
+    {
+        for (uint32_t i=ROB.head; i<ROB.SIZE; i++)
+        {
+            ooo_model_instr &rob_entry = ROB.entry.at(i);
+            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
@@ -869,8 +873,10 @@ void O3_CPU::schedule_instruction()
 
             num_searched++;
         }
-        for (uint32_t i=0; i<limit; i++) { 
-            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+        for (uint32_t i=0; i<ROB.tail; i++)
+        {
+            ooo_model_instr &rob_entry = ROB.entry.at(i);
+            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
@@ -886,7 +892,6 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
     ROB.entry[rob_index].reg_ready = 1; // reg_ready will be reset to 0 if there is RAW dependency 
 
     reg_dependency(rob_index);
-    ROB.next_schedule = (rob_index == (ROB.SIZE - 1)) ? 0 : (rob_index + 1);
 
     if (ROB.entry[rob_index].is_memory)
         ROB.entry[rob_index].scheduled = INFLIGHT;

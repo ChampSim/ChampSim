@@ -788,8 +788,6 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].update_rob();
 
 	      // schedule
-	      uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
-	      if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
 		ooo_cpu[i].schedule_instruction();
 	      // execute
 	      ooo_cpu[i].execute_instruction();
