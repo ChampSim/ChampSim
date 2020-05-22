@@ -850,8 +850,7 @@ void O3_CPU::schedule_instruction()
     {
         for (uint32_t i=ROB.head; i<ROB.tail; i++)
         {
-            ooo_model_instr &rob_entry = ROB.entry.at(i);
-            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
@@ -864,8 +863,7 @@ void O3_CPU::schedule_instruction()
     {
         for (uint32_t i=ROB.head; i<ROB.SIZE; i++)
         {
-            ooo_model_instr &rob_entry = ROB.entry.at(i);
-            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
@@ -875,8 +873,7 @@ void O3_CPU::schedule_instruction()
         }
         for (uint32_t i=0; i<ROB.tail; i++)
         {
-            ooo_model_instr &rob_entry = ROB.entry.at(i);
-            if ((rob_entry.fetched != COMPLETED) || (rob_entry.event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+            if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
