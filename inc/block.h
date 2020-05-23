@@ -106,7 +106,9 @@ class PACKET {
     uint32_t cpu, data_index, lq_index, sq_index;
 
     uint64_t address, 
-             full_addr, 
+             full_addr,
+             v_address,
+             full_v_addr,
              instruction_pa,
              data_pa,
              data,
