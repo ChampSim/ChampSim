@@ -18,7 +18,7 @@ using namespace std;
 #define EXEC_WIDTH 6
 #define LQ_WIDTH 2
 #define SQ_WIDTH 2
-#define RETIRE_WIDTH 4
+#define RETIRE_WIDTH 5
 #define SCHEDULER_SIZE 128
 #define BRANCH_MISPREDICT_PENALTY 1
 //#define SCHEDULING_LATENCY 0
@@ -209,6 +209,8 @@ class O3_CPU {
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
+    uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
+
     // branch predictor
     uint8_t predict_branch(uint64_t ip);
     void    initialize_branch_predictor(),
@@ -221,7 +223,7 @@ class O3_CPU {
   void l1i_prefetcher_cycle_operate();
   void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
   void l1i_prefetcher_final_stats();
-  int prefetch_code_line(uint64_t pf_v_addr); 
+  int prefetch_code_line(uint64_t pf_v_addr);
 };
 
 extern O3_CPU ooo_cpu[NUM_CPUS];
