@@ -630,6 +630,8 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.address = IFETCH_BUFFER.entry[index].instruction_pa >> 6;
 	  fetch_packet.instruction_pa = IFETCH_BUFFER.entry[index].instruction_pa;
 	  fetch_packet.full_addr = IFETCH_BUFFER.entry[index].instruction_pa;
+	  fetch_packet.v_address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+	  fetch_packet.full_v_addr = IFETCH_BUFFER.entry[index].ip;
 	  fetch_packet.instr_id = 0;
 	  fetch_packet.rob_index = 0;
 	  fetch_packet.producer = 0;
@@ -845,38 +847,44 @@ void O3_CPU::schedule_instruction()
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
         return;
 
-    // execution is out-of-order but we have an in-order scheduling algorithm to detect all RAW dependencies
-    uint32_t limit = ROB.next_fetch[1];
     num_searched = 0;
-    if (ROB.head < limit) {
-        for (uint32_t i=ROB.head; i<limit; i++) { 
+    if (ROB.head < ROB.tail)
+    {
+        for (uint32_t i=ROB.head; i<ROB.tail; i++)
+        {
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
                 do_scheduling(i);
 
-            num_searched++;
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
         }
     }
-    else {
-        for (uint32_t i=ROB.head; i<ROB.SIZE; i++) {
+    else
+    {
+        for (uint32_t i=ROB.head; i<ROB.SIZE; i++)
+        {
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
                 do_scheduling(i);
 
-            num_searched++;
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
         }
-        for (uint32_t i=0; i<limit; i++) { 
+        for (uint32_t i=0; i<ROB.tail; i++)
+        {
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 return;
 
             if (ROB.entry[i].scheduled == 0)
                 do_scheduling(i);
 
-            num_searched++;
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
         }
     }
 }
@@ -886,7 +894,6 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
     ROB.entry[rob_index].reg_ready = 1; // reg_ready will be reset to 0 if there is RAW dependency 
 
     reg_dependency(rob_index);
-    ROB.next_schedule = (rob_index == (ROB.SIZE - 1)) ? 0 : (rob_index + 1);
 
     if (ROB.entry[rob_index].is_memory)
         ROB.entry[rob_index].scheduled = INFLIGHT;
@@ -1075,49 +1082,81 @@ void O3_CPU::do_execution(uint32_t rob_index)
     //}
 }
 
+uint8_t O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
+{
+  if(ROB.entry[rob_index].reg_ready)
+    {
+      return 1;
+    }
+  else
+    {
+      uint8_t count_source_regs = 0;
+      uint8_t stack_pointer_source = 0;
+      for(int i=0; i<NUM_INSTR_SOURCES; i++)
+	{
+	  if(ROB.entry[rob_index].source_registers[i] != 0)
+	    {
+	      count_source_regs++;
+	    }
+	  if(ROB.entry[rob_index].source_registers[i] == REG_STACK_POINTER)
+	    {
+	      stack_pointer_source = 1;
+	    }
+	}
+
+      if(stack_pointer_source == 1)
+	{
+	  return 0;
+	}
+
+      if((count_source_regs == 1) && (ROB.entry[rob_index].source_registers[0] == ROB.entry[rob_index].destination_registers[0]))
+	{
+	  return 1;
+	}
+    }
+  
+  return 0;
+}
+
 void O3_CPU::schedule_memory_instruction()
 {
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
         return;
 
     // execution is out-of-order but we have an in-order scheduling algorithm to detect all RAW dependencies
-    uint32_t limit = ROB.next_schedule;
     num_searched = 0;
-    if (ROB.head < limit) {
-        for (uint32_t i=ROB.head; i<limit; i++) {
-
-            if (ROB.entry[i].is_memory == 0)
-                continue;
-
+    if (ROB.head < ROB.tail) {
+        for (uint32_t i=ROB.head; i<ROB.tail; i++) {
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
+
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
         }
     }
     else {
         for (uint32_t i=ROB.head; i<ROB.SIZE; i++) {
-
-            if (ROB.entry[i].is_memory == 0)
-                continue;
-
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
-        }
-        for (uint32_t i=0; i<limit; i++) {
 
-            if (ROB.entry[i].is_memory == 0)
-                continue;
-
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
+	}
+        for (uint32_t i=0; i<ROB.tail; i++) {
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
+
+	    if(ROB.entry[i].executed == 0)
+	      num_searched++;
         }
     }
 }
@@ -1140,8 +1179,6 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index;
         cout << " scheduled all num_mem_ops: " << ROB.entry[rob_index].num_mem_ops << endl; });
     }
-
-    num_searched++;
 }
 
 uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index) 
@@ -1695,6 +1732,8 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.lq_index = lq_index;
     data_packet.address = LQ.entry[lq_index].physical_address >> LOG2_BLOCK_SIZE;
     data_packet.full_addr = LQ.entry[lq_index].physical_address;
+    data_packet.v_address = LQ.entry[lq_index].virtual_address >> LOG2_BLOCK_SIZE;
+    data_packet.full_v_addr = LQ.entry[lq_index].virtual_address;
     data_packet.instr_id = LQ.entry[lq_index].instr_id;
     data_packet.rob_index = LQ.entry[lq_index].rob_index;
     data_packet.ip = LQ.entry[lq_index].ip;
@@ -2252,6 +2291,8 @@ void O3_CPU::retire_rob()
                         data_packet.sq_index = sq_index;
                         data_packet.address = SQ.entry[sq_index].physical_address >> LOG2_BLOCK_SIZE;
                         data_packet.full_addr = SQ.entry[sq_index].physical_address;
+                        data_packet.v_address = SQ.entry[sq_index].virtual_address >> LOG2_BLOCK_SIZE;
+                        data_packet.full_v_addr = SQ.entry[sq_index].virtual_address;
                         data_packet.instr_id = SQ.entry[sq_index].instr_id;
                         data_packet.rob_index = SQ.entry[sq_index].rob_index;
                         data_packet.ip = SQ.entry[sq_index].ip;
