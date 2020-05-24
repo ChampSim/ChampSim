@@ -467,7 +467,9 @@ uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_
     cout << " => ppage: " << (pa >> LOG2_PAGE_SIZE) << " vadress: " << unique_va << " paddress: " << pa << dec << endl; });
 
     // as a hack for code prefetching, code translations are magical and do not pay these penalties
-    if(!is_code)
+    //if(!is_code)
+    // actually, just disable this stall feature entirely
+    if(0)
       {
 	// if it's data, pay these penalties
 	if (swap)
@@ -810,9 +812,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].update_rob();
 
 	      // schedule
-	      uint32_t schedule_index = ooo_cpu[i].ROB.next_schedule;
-	      if ((ooo_cpu[i].ROB.entry[schedule_index].scheduled == 0) && (ooo_cpu[i].ROB.entry[schedule_index].event_cycle <= current_core_cycle[i]))
-		ooo_cpu[i].schedule_instruction();
+	      ooo_cpu[i].schedule_instruction();
 	      // execute
 	      ooo_cpu[i].execute_instruction();
 
