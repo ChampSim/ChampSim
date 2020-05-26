@@ -67,23 +67,23 @@
 #define LOG2_DRAM_COLUMNS 7
 #define DRAM_ROW_SIZE (BLOCK_SIZE*DRAM_COLUMNS/1024)
 
-#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024) 
-#define DRAM_PAGES ((DRAM_SIZE<<10)>>2) 
+#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024)
+#define DRAM_PAGES ((DRAM_SIZE<<10)>>2)
 //#define DRAM_PAGES 10
 
 using namespace std;
 
-extern uint8_t warmup_complete[NUM_CPUS], 
-       simulation_complete[NUM_CPUS], 
-       all_warmup_complete, 
+extern uint8_t warmup_complete[NUM_CPUS],
+       simulation_complete[NUM_CPUS],
+       all_warmup_complete,
        all_simulation_complete,
        MAX_INSTR_DESTINATIONS,
        knob_cloudsuite,
        knob_low_bandwidth;
 
-extern uint64_t current_core_cycle[NUM_CPUS], 
-       stall_cycle[NUM_CPUS], 
-       last_drc_read_mode, 
+extern uint64_t current_core_cycle[NUM_CPUS],
+       stall_cycle[NUM_CPUS],
+       last_drc_read_mode,
        last_drc_write_mode,
        drc_blocks;
 

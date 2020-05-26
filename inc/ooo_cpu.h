@@ -43,8 +43,8 @@ class O3_CPU {
     input_instr next_instr;
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
-    uint64_t instr_unique_id, completed_executions, 
-             begin_sim_cycle, begin_sim_instr, 
+    uint64_t instr_unique_id, completed_executions,
+             begin_sim_cycle, begin_sim_instr,
              last_sim_cycle, last_sim_instr,
              finish_sim_cycle, finish_sim_instr,
              warmup_instructions, simulation_instructions, instrs_to_read_this_cycle, instrs_to_fetch_this_cycle,
@@ -59,15 +59,15 @@ class O3_CPU {
     LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
     // store array, this structure is required to properly handle store instructions
-    uint64_t STA[STA_SIZE], STA_head, STA_tail; 
+    uint64_t STA[STA_SIZE], STA_head, STA_tail;
 
     // Ready-To-Execute
-    uint32_t RTE0[ROB_SIZE], RTE0_head, RTE0_tail, 
-             RTE1[ROB_SIZE], RTE1_head, RTE1_tail;  
+    uint32_t RTE0[ROB_SIZE], RTE0_head, RTE0_tail,
+             RTE1[ROB_SIZE], RTE1_head, RTE1_tail;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail, 
-             RTL1[LQ_SIZE], RTL1_head, RTL1_tail;  
+    uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail,
+             RTL1[LQ_SIZE], RTL1_head, RTL1_tail;
 
     // Ready-To-Store
     uint32_t RTS0[SQ_SIZE], RTS0_head, RTS0_tail,
@@ -177,7 +177,7 @@ class O3_CPU {
          execute_instruction(),
          schedule_memory_instruction(),
          execute_memory_instruction(),
-         do_scheduling(uint32_t rob_index),  
+         do_scheduling(uint32_t rob_index),
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),
          do_memory_scheduling(uint32_t rob_index),
@@ -223,7 +223,7 @@ class O3_CPU {
     void l1i_prefetcher_cycle_operate();
     void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
     void l1i_prefetcher_final_stats();
-    int prefetch_code_line(uint64_t pf_v_addr); 
+    int prefetch_code_line(uint64_t pf_v_addr);
 };
 
 extern O3_CPU ooo_cpu[NUM_CPUS];

@@ -253,13 +253,13 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
                 spec_sig = get_new_signature(L2_GHR[cpu][i].signature, L2_GHR[cpu][i].oop_delta);
                 if (warmup_complete[cpu])
                 L2_PF_DEBUG(printf("cpu: %d OOP_match  L2_GHR[%d]  signature: %x  path_conf: %d  last_block: %d  oop_delta: %d  spec_block: %d == curr_block: %d  spec_sig: %x\n",
-                          cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block, 
+                          cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block,
                           L2_GHR[cpu][i].oop_delta, spec_block, curr_block, spec_sig));
             }
             else {
                 if (warmup_complete[cpu])
                 L2_PF_DEBUG(printf("cpu: %d OOP_unmatch  L2_GHR[%d]  signature: %x  path_conf: %d  last_block: %d  oop_delta: %d  spec_block: %d != curr_block: %d  spec_sig: %x\n",
-                          cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block, 
+                          cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block,
                           L2_GHR[cpu][i].oop_delta, spec_block, curr_block, spec_sig));
             }
         }
@@ -271,7 +271,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
             hit = 1;
             table[match].signature = spec_sig;
             if (warmup_complete[cpu])
-            L2_PF_DEBUG(printf("cpu: %d spec_update  page: %x  sig: %3x  delta: %3d  curr_block: %2d  last_block[NA]: %2d\n", 
+            L2_PF_DEBUG(printf("cpu: %d spec_update  page: %x  sig: %3x  delta: %3d  curr_block: %2d  last_block[NA]: %2d\n",
                       cpu, tag, spec_sig, L2_GHR[cpu][ghr_idx].oop_delta, curr_block, L2_GHR[cpu][ghr_idx].last_block));
         }
         #endif
@@ -302,7 +302,7 @@ int L2_ST_check(uint32_t cpu, uint64_t addr) {
     for (match = 0; match < L2_ST_WAY; match++) {
         if (table[match].valid && (table[match].tag == tag)) {
             if (warmup_complete[cpu])
-            L2_PF_DEBUG(printf("ST_check found cpu: %d cl_addr: %lx page: %lx block: %ld old_sig: %x last_block: %d\n", 
+            L2_PF_DEBUG(printf("ST_check found cpu: %d cl_addr: %lx page: %lx block: %ld old_sig: %x last_block: %d\n",
                         cpu, addr >> LOG2_BLOCK_SIZE, curr_page, (addr >> LOG2_BLOCK_SIZE) & 0x3F, table[match].signature, table[match].last_block));
             return match;
         }
@@ -331,11 +331,11 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
 
     int match;
     for (match=0; match<L2_PT_WAY; match++) {
-        if (table[match].delta == delta) { // Hit 
+        if (table[match].delta == delta) { // Hit
             table[match].c_delta++;
 
             if (warmup_complete[cpu])
-            L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_hit delta[%d]: %2d (%d / %d)\n", 
+            L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_hit delta[%d]: %2d (%d / %d)\n",
                         signature, cpu, match, table[match].delta, table[match].c_delta, table[0].c_sig));
             L2_PT_hit[cpu]++; L2_PT_access[cpu]++;
             break;
@@ -350,7 +350,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
                 table[match].c_delta = 0;
 
                 if (warmup_complete[cpu])
-                L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_invalid delta[%d]: %2d (%d / %d)\n", 
+                L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_invalid delta[%d]: %2d (%d / %d)\n",
                             signature, cpu, match, table[match].delta, table[match].c_delta, table[0].c_sig));
                 L2_PT_invalid[cpu]++; L2_PT_access[cpu]++;
                 break;
@@ -375,14 +375,14 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
         table[match].c_delta = 0;
 
         if (warmup_complete[cpu])
-        L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_miss delta[%d]: %2d (%d / %d)\n", 
+        L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_miss delta[%d]: %2d (%d / %d)\n",
                     signature, cpu, match, table[match].delta, table[match].c_delta, table[0].c_sig));
         L2_PT_miss[cpu]++; L2_PT_access[cpu]++;
     }
 }
 
 // TODO: this functino should be moved to the replacement policy file
-// Check sampler 
+// Check sampler
 void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful) {
     /*
     int set = llc_get_set(address);
@@ -392,7 +392,7 @@ void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful) {
         return;
 
     SAMPLER_T *s_set = sampler[s_idx];
-    int tag = (int) address / (64*LLC_SETS); 
+    int tag = (int) address / (64*LLC_SETS);
     int match = -1;
 
     // Check hit

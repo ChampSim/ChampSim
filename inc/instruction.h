@@ -138,7 +138,7 @@ class ooo_model_instr {
 
     uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
 
-    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers 
+    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
 
     // these are instruction ids of other instructions in the window
     //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];

@@ -64,7 +64,7 @@ class DRAM_ARRAY {
 // message packet
 class PACKET {
     public:
-        uint8_t instruction, 
+        uint8_t instruction,
                 is_data,
                 fill_l1i,
                 fill_l1d,
@@ -75,10 +75,10 @@ class PACKET {
                 prefetched,
                 drc_tag_read;
 
-        int fill_level, 
+        int fill_level,
             pf_origin_level,
-            rob_signal, 
-            rob_index, 
+            rob_signal,
+            rob_index,
             producer,
             delta,
             depth,
@@ -87,31 +87,31 @@ class PACKET {
 
         uint32_t pf_metadata;
 
-        uint8_t  is_producer, 
-                 //rob_index_depend_on_me[ROB_SIZE], 
-                 //lq_index_depend_on_me[ROB_SIZE], 
-                 //sq_index_depend_on_me[ROB_SIZE], 
+        uint8_t  is_producer,
+                 //rob_index_depend_on_me[ROB_SIZE],
+                 //lq_index_depend_on_me[ROB_SIZE],
+                 //sq_index_depend_on_me[ROB_SIZE],
                  instr_merged,
-                 load_merged, 
+                 load_merged,
                  store_merged,
                  returned,
                  asid[2],
                  type;
 
                  fastset
-                     rob_index_depend_on_me, 
-                     lq_index_depend_on_me, 
+                     rob_index_depend_on_me,
+                     lq_index_depend_on_me,
                      sq_index_depend_on_me;
 
                  uint32_t cpu, data_index, lq_index, sq_index;
 
-                 uint64_t address, 
-                          full_addr, 
+                 uint64_t address,
+                          full_addr,
                           instruction_pa,
                           data_pa,
                           data,
                           instr_id,
-                          ip, 
+                          ip,
                           event_cycle,
                           cycle_enqueued;
 
@@ -132,7 +132,7 @@ class PACKET {
                      asid[1] = UINT8_MAX;
                      type = 0;
 
-                     fill_level = -1; 
+                     fill_level = -1;
                      rob_signal = -1;
                      rob_index = -1;
                      producer = -1;
@@ -175,21 +175,21 @@ class PACKET_QUEUE {
         string NAME;
         uint32_t SIZE;
 
-        uint8_t  is_RQ, 
+        uint8_t  is_RQ,
                  is_WQ,
                  write_mode;
 
-        uint32_t cpu, 
-                 head, 
-                 tail, 
-                 occupancy, 
-                 num_returned, 
-                 next_fill_index, 
-                 next_schedule_index, 
+        uint32_t cpu,
+                 head,
+                 tail,
+                 occupancy,
+                 num_returned,
+                 next_fill_index,
+                 next_schedule_index,
                  next_process_index;
 
-        uint64_t next_fill_cycle, 
-                 next_schedule_cycle, 
+        uint64_t next_fill_cycle,
+                 next_schedule_cycle,
                  next_process_cycle,
                  ACCESS,
                  FORWARD,
@@ -207,7 +207,7 @@ class PACKET_QUEUE {
             is_WQ = 0;
             write_mode = 0;
 
-            cpu = 0; 
+            cpu = 0;
             head = 0;
             tail = 0;
             occupancy = 0;
@@ -228,14 +228,14 @@ class PACKET_QUEUE {
             ROW_BUFFER_MISS = 0;
             FULL = 0;
 
-            entry = new PACKET[SIZE]; 
+            entry = new PACKET[SIZE];
         };
 
         PACKET_QUEUE() {
             is_RQ = 0;
             is_WQ = 0;
 
-            cpu = 0; 
+            cpu = 0;
             head = 0;
             tail = 0;
             occupancy = 0;
@@ -256,7 +256,7 @@ class PACKET_QUEUE {
             ROW_BUFFER_MISS = 0;
             FULL = 0;
 
-            //entry = new PACKET[SIZE]; 
+            //entry = new PACKET[SIZE];
         };
 
         // destructor
@@ -275,11 +275,11 @@ class CORE_BUFFER {
     public:
         const string NAME;
         const uint32_t SIZE;
-        uint32_t cpu, 
-                 head, 
+        uint32_t cpu,
+                 head,
                  tail,
                  occupancy,
-                 last_read, last_fetch, last_scheduled, 
+                 last_read, last_fetch, last_scheduled,
                  inorder_fetch[2],
                  next_fetch[2],
                  next_schedule;
@@ -324,7 +324,7 @@ class CORE_BUFFER {
                  };
 };
 
-// load/store queue 
+// load/store queue
 class LSQ_ENTRY {
     public:
         uint64_t instr_id,

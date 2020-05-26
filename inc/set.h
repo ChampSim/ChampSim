@@ -58,7 +58,7 @@ class fastset {
         }
         // x belongs in i; move everything from v[i] through v[n-1]
         // to v[i+1] through v[n]
-        for (int j = card-1; j >= i; j--) 
+        for (int j = card-1; j >= i; j--)
             data.values[j+1] = data.values[j];
         // the loop seems a little faster than memmove
         //memmove (&data.values[i+1], &data.values[i], (sizeof (TYPE) * (card-i)));
@@ -70,9 +70,9 @@ class fastset {
     bool search_small_linear (TYPE x) {
         for (int i = 0; i < card; i++) {
             TYPE y = data.values[i];
-            if (y > x) 
+            if (y > x)
                 return false;
-            if (y == x) 
+            if (y == x)
                 return true;
         }
         return false;
@@ -82,11 +82,11 @@ class fastset {
     bool search_small (TYPE x) {
 
         // no elements? we're done.
-        if (!card) 
+        if (!card)
             return false;
 
         // below a certain size linear search is faster
-        if (card < SMALLER_SIZE) 
+        if (card < SMALLER_SIZE)
             return search_small_linear (x);
 
         // do a binary search for the item
@@ -101,7 +101,7 @@ class fastset {
             } else if (x > y) {
                 begin = middle+1;
             } else return true;
-            if (end < begin) 
+            if (end < begin)
                 break;
             middle = (begin + end) / 2;
             // assert (middle < card && middle >= 0);
@@ -113,11 +113,11 @@ class fastset {
     void smalltobit (void) {
 
         // we have to use a temporary array to hold the small set contents
-        // because the small set and bitset occupy the same memory 
+        // because the small set and bitset occupy the same memory
         TYPE tmp[SMALL_SIZE];
         memcpy (tmp, data.values, sizeof (TYPE) * card);
         memset (data.bits, 0, sizeof (data.bits));
-        for (int i = 0; i < card; i++) 
+        for (int i = 0; i < card; i++)
             setbit (tmp[i]);
     }
 
@@ -141,7 +141,7 @@ public:
 
             // and we're done
             return;
-        } 
+        }
 
         // if the set is small
         if (card < SMALL_SIZE) {
@@ -158,15 +158,15 @@ public:
         //assert (x < MAX_SIZE);
 
         // empty?
-        if (!card) 
+        if (!card)
             return false;
 
         // singleton?
-        if (card == 1) 
+        if (card == 1)
             return data.values[0] == x;
 
         // small?
-        if (card < SMALL_SIZE) 
+        if (card < SMALL_SIZE)
             return search_small (x);
 
         // none of those; extract the bit
@@ -178,18 +178,18 @@ public:
     void join (fastset & other, int n) {
 
         // special rules for special sets
-        if (!other.card) 
+        if (!other.card)
             return;
 
         if (other.card < SMALL_SIZE) {
             // not too many values in other; just insert them one by one
-            for (int i = 0; i < other.card; i++) 
+            for (int i = 0; i < other.card; i++)
                 insert (other.data.values[i]);
             return;
         } else if (card < SMALL_SIZE) {
             // here, we know that other is not small, so we
             // know we're going to end up with this as a bit
-            // set, so just make it a bit set now and fall 
+            // set, so just make it a bit set now and fall
             // through to the bitwise ANDing
             smalltobit ();
             card = SMALL_SIZE; // fake
@@ -200,18 +200,18 @@ public:
         int lim = ((n | 63) + 1) / 64;
 
         // bitwise OR the other bits into this set
-        for (int i = 0; i < lim; i++) 
+        for (int i = 0; i < lim; i++)
             data.bits[i] |= other.data.bits[i];
     }
 
     // expand the entire set into the array v, returning the cardinality
     int expand (TYPE v[], int n) {
-        if (!card) 
+        if (!card)
             return 0;
 
         // a small set can just be copied
         if (card < SMALL_SIZE) {
-            for (int i = 0; i < card; i++) 
+            for (int i = 0; i < card; i++)
                 v[i] = data.values[i];
             return card;
         }
@@ -226,9 +226,9 @@ public:
                 for (TYPE j = 0; j < 64; j++) {
                     TYPE l = i + j;
                     if (l < n) {
-                        if (getbit (l)) 
+                        if (getbit (l))
                             v[k++] = l;
-                    } else 
+                    } else
                         break;
                 }
             }

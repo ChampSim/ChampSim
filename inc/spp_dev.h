@@ -42,7 +42,7 @@
 
 // Global register parameters
 #define GLOBAL_COUNTER_BIT 10
-#define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1) 
+#define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1)
 #define MAX_GHR_ENTRY 8
 
 enum FILTER_REQUEST {SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT}; // Request type for prefetch filter
