@@ -80,7 +80,7 @@ class O3_CPU {
     uint64_t fetch_resume_cycle;
     uint64_t num_branch, branch_mispredictions;
     uint64_t total_rob_occupancy_at_branch_mispredict;
-  uint64_t total_branch_types[8];
+    uint64_t total_branch_types[8];
 
     // TLBs and caches
     CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
@@ -90,8 +90,8 @@ class O3_CPU {
           L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
-  // trace cache for previously decoded instructions
-  
+    // trace cache for previously decoded instructions
+
     // constructor
     O3_CPU() {
         cpu = 0;
@@ -126,41 +126,43 @@ class O3_CPU {
         branch_mispredict_stall_fetch = 0;
         mispredicted_branch_iw_index = 0;
         fetch_stall = 0;
-	fetch_resume_cycle = 0;
+        fetch_resume_cycle = 0;
         num_branch = 0;
         branch_mispredictions = 0;
-	for(uint32_t i=0; i<8; i++)
-	  {
-	    total_branch_types[i] = 0;
-	  }
-	
-        for (uint32_t i=0; i<STA_SIZE; i++)
-	  STA[i] = UINT64_MAX;
+        for(uint32_t i = 0; i < 8; i++) {
+            total_branch_types[i] = 0;
+        }
+
+        for (uint32_t i = 0; i < STA_SIZE; i++)
+            STA[i] = UINT64_MAX;
         STA_head = 0;
         STA_tail = 0;
 
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  RTE0[i] = ROB_SIZE;
-	  RTE1[i] = ROB_SIZE;
+        for (uint32_t i = 0; i < ROB_SIZE; i++) {
+            RTE0[i] = ROB_SIZE;
+            RTE1[i] = ROB_SIZE;
         }
+
         RTE0_head = 0;
         RTE1_head = 0;
         RTE0_tail = 0;
         RTE1_tail = 0;
 
-        for (uint32_t i=0; i<LQ_SIZE; i++) {
-	  RTL0[i] = LQ_SIZE;
-	  RTL1[i] = LQ_SIZE;
+        for (uint32_t i = 0; i < LQ_SIZE; i++) {
+            RTL0[i] = LQ_SIZE;
+            RTL1[i] = LQ_SIZE;
         }
+
         RTL0_head = 0;
         RTL1_head = 0;
         RTL0_tail = 0;
         RTL1_tail = 0;
 
-        for (uint32_t i=0; i<SQ_SIZE; i++) {
-	  RTS0[i] = SQ_SIZE;
-	  RTS1[i] = SQ_SIZE;
+        for (uint32_t i = 0; i < SQ_SIZE; i++) {
+            RTS0[i] = SQ_SIZE;
+            RTS1[i] = SQ_SIZE;
         }
+
         RTS0_head = 0;
         RTS1_head = 0;
         RTS0_tail = 0;
@@ -214,14 +216,14 @@ class O3_CPU {
     void    initialize_branch_predictor(),
             last_branch_result(uint64_t ip, uint8_t taken);
 
-  // code prefetching
-  void l1i_prefetcher_initialize();
-  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
-  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
-  void l1i_prefetcher_cycle_operate();
-  void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
-  void l1i_prefetcher_final_stats();
-  int prefetch_code_line(uint64_t pf_v_addr); 
+    // code prefetching
+    void l1i_prefetcher_initialize();
+    void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+    void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
+    void l1i_prefetcher_cycle_operate();
+    void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
+    void l1i_prefetcher_final_stats();
+    int prefetch_code_line(uint64_t pf_v_addr); 
 };
 
 extern O3_CPU ooo_cpu[NUM_CPUS];

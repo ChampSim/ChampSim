@@ -179,7 +179,7 @@ void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
             oldest_cycle = queue->entry[i].event_cycle;
             oldest_index = i;
             row_buffer_hit = 1;
-        }	  
+        }  
     }
 
     if (oldest_index == -1) { // no matching open_row (row buffer miss)

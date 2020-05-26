@@ -39,7 +39,7 @@ class MEMORY {
     uint64_t ACCESS[NUM_TYPES], HIT[NUM_TYPES], MISS[NUM_TYPES], MSHR_MERGED[NUM_TYPES], STALL[NUM_TYPES];
 
     MEMORY() {
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
+        for (uint32_t i = 0; i < NUM_TYPES; i++) {
             ACCESS[i] = 0;
             HIT[i] = 0;
             MISS[i] = 0;

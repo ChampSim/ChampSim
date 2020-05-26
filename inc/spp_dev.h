@@ -121,7 +121,7 @@ class PREFETCH_FILTER {
 
     }
 
-    bool     check(uint64_t pf_addr, FILTER_REQUEST filter_request);
+    bool    check(uint64_t pf_addr, FILTER_REQUEST filter_request);
 };
 
 class GLOBAL_REGISTER {

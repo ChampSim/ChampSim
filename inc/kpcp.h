@@ -48,8 +48,8 @@ class SIGNATURE_TABLE {
         last_block = 0;
         signature = 0;
         lru = 0;
-        
-        for (uint32_t i=0; i<64; i++) {
+
+        for (uint32_t i = 0; i < 64; i++) {
             l2_pf[i] = 0;
             used[i] = 0;
             delta[i] = 0;
@@ -146,8 +146,8 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
     SIGNATURE_TABLE *table = L2_ST[cpu][L2_ST_idx];
     int delta_buffer = 0, sig_buffer = 0;
 
-    for (match=0; match<L2_ST_WAY; match++) {
-        if (table[match].valid && (table[match].tag == tag)) { // Hit 
+    for (match = 0; match < L2_ST_WAY; match++) {
+        if (table[match].valid && (table[match].tag == tag)) { // Hit
             delta_buffer = curr_block - table[match].last_block; // Buffer current delta
             sig_buffer = table[match].signature; // Buffer old signature
 
@@ -165,7 +165,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
                 l2_sig_dist[cpu][table[match].signature]++;
 
                 if (warmup_complete[cpu])
-                L2_PF_DEBUG(printf("ST_hit_first cpu: %d cl_addr: %lx page: %lx block: %d init_sig: %x delta: %d\n", 
+                L2_PF_DEBUG(printf("ST_hit_first cpu: %d cl_addr: %lx page: %lx block: %d init_sig: %x delta: %d\n",
                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, table[match].signature, delta_buffer));
             }
             else {
@@ -181,7 +181,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
                     break;
 
                 if (warmup_complete[cpu])
-                L2_PF_DEBUG(printf("ST_hit cpu: %d cl_addr: %lx page: %lx block: %d old_sig: %x delta: %d\n", 
+                L2_PF_DEBUG(printf("ST_hit cpu: %d cl_addr: %lx page: %lx block: %d old_sig: %x delta: %d\n",
                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, sig_buffer, delta_buffer));
 
                 // Update signature
@@ -198,7 +198,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
     }
 
     if (match == L2_ST_WAY) {
-        for (match=0; match<L2_ST_WAY; match++) {
+        for (match = 0; match < L2_ST_WAY; match++) {
             if (table[match].valid == 0) { // Invalid
                 // Update metadata
                 table[match].valid = 1;
@@ -217,7 +217,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
 
     if (match == L2_ST_WAY) { // Miss
         // Search for LRU victim
-        for (match=0; match<L2_ST_WAY; match++) {
+        for (match = 0; match < L2_ST_WAY; match++) {
             if (table[match].lru == (L2_ST_WAY-1))
                 break;
         }
@@ -228,8 +228,8 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
         table[match].signature = 0;
         table[match].first_hit = 0;
         table[match].last_block = curr_block;
-        
-        for (int i=0; i<64; i++) {
+
+        for (int i = 0; i < 64; i++) {
             table[match].l2_pf[i] = 0;
             table[match].used[i] = 0;
         }
@@ -241,7 +241,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
         #ifdef L2_GHR_ON
         // Check GHR
         int ghr_max = 0, ghr_idx = -1, spec_block = 0, spec_sig = 0;
-        for (int i=0; i<L2_GHR_TRACK; i++) {
+        for (int i = 0; i < L2_GHR_TRACK; i++) {
             spec_block = L2_GHR[cpu][i].last_block + L2_GHR[cpu][i].oop_delta;
             if (spec_block >= 64)
                 spec_block -= 64;
@@ -279,7 +279,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
 
     // Update LRU
     int position = table[match].lru;
-    for (int i=0; i<L2_ST_WAY; i++) {
+    for (int i = 0; i < L2_ST_WAY; i++) {
         if (table[i].lru < position)
             table[i].lru++;
     }
@@ -291,8 +291,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr)
         return -1;
 }
 
-int L2_ST_check(uint32_t cpu, uint64_t addr)
-{
+int L2_ST_check(uint32_t cpu, uint64_t addr) {
     uint64_t curr_page = addr >> LOG2_PAGE_SIZE;
     int tag = curr_page & 0xFFFF,
         match = -1,
@@ -300,7 +299,7 @@ int L2_ST_check(uint32_t cpu, uint64_t addr)
 
     SIGNATURE_TABLE *table = L2_ST[cpu][L2_ST_idx];
 
-    for (match=0; match<L2_ST_WAY; match++) {
+    for (match = 0; match < L2_ST_WAY; match++) {
         if (table[match].valid && (table[match].tag == tag)) {
             if (warmup_complete[cpu])
             L2_PF_DEBUG(printf("ST_check found cpu: %d cl_addr: %lx page: %lx block: %ld old_sig: %x last_block: %d\n", 
@@ -314,8 +313,7 @@ int L2_ST_check(uint32_t cpu, uint64_t addr)
     return -1;
 }
 
-void L2_PT_update(uint32_t cpu, int signature, int delta)
-{
+void L2_PT_update(uint32_t cpu, int signature, int delta) {
     int L2_PT_idx = signature % L2_PT_PRIME;
     PATTERN_TABLE *table = L2_PT[cpu][L2_PT_idx];
 
@@ -323,8 +321,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
     // Update metadata
     table[0].c_sig++;
 
-    if (table[0].c_sig == (CSIG_MAX))
-    {
+    if (table[0].c_sig == (CSIG_MAX)) {
         table[0].c_sig = CSIG_MAX >> 1;
         for (int i = 0; i<L2_PT_WAY; i++)
             table[i].c_delta = table[i].c_delta >> 1;
@@ -333,10 +330,8 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
     }
 
     int match;
-    for (match=0; match<L2_PT_WAY; match++) 
-    {
-        if (table[match].delta == delta) // Hit 
-        {
+    for (match=0; match<L2_PT_WAY; match++) {
+        if (table[match].delta == delta) { // Hit 
             table[match].c_delta++;
 
             if (warmup_complete[cpu])
@@ -347,12 +342,9 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
         }
     }
 
-    if (match == L2_PT_WAY)
-    {
-        for (match=0; match<L2_PT_WAY; match++)
-        {
-            if (table[match].delta == 0) // Invalid
-            {
+    if (match == L2_PT_WAY) {
+        for (match = 0; match < L2_PT_WAY; match++) {
+            if (table[match].delta == 0) { // Invalid
                 // Update metadata
                 table[match].delta = delta;
                 table[match].c_delta = 0;
@@ -366,15 +358,12 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
         }
     }
 
-    if (match == L2_PT_WAY) // Miss
-    {
+    if (match == L2_PT_WAY) { // Miss
         // Search for the lowest counter
         int min_idx = -1;
         int min_val = CDELTA_MAX;
-        for (match=0; match<L2_PT_WAY; match++)
-        {
-            if (table[match].c_delta < min_val)
-            {
+        for (match = 0; match < L2_PT_WAY; match++) {
+            if (table[match].c_delta < min_val) {
                 min_idx = match;
                 min_val = table[match].c_delta;
             }
@@ -394,8 +383,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
 
 // TODO: this functino should be moved to the replacement policy file
 // Check sampler 
-void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful)
-{
+void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful) {
     /*
     int set = llc_get_set(address);
     int s_idx = is_it_sampled(set);
@@ -408,35 +396,28 @@ void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful)
     int match = -1;
 
     // Check hit
-    for (match=0; match<SAMPLER_WAY; match++)
-    {
-        if (s_set[match].valid && (s_set[match].tag == tag))
-        {
-            if (s_set[match].l2pf)
-            {
-                if (useful)
-                {
+    for (match=0; match<SAMPLER_WAY; match++) {
+        if (s_set[match].valid && (s_set[match].tag == tag)) {
+            if (s_set[match].l2pf) {
+                if (useful) {
                     if (conf_counter[cpu] < MAX_CC)
                         conf_counter[cpu]++;
 
-                    if (conf_counter[cpu] == MAX_CC)
-                    {
-                        if (dynamic_fill_thrs[cpu] > 0)
-                        {
+                    if (conf_counter[cpu] == MAX_CC) {
+                        if (dynamic_fill_thrs[cpu] > 0) {
                             dynamic_fill_thrs[cpu]--;
                             fill_down++;
                             conf_level[dynamic_fill_thrs[cpu]]++;
 
                             printf("FILL_THRESHOLD goes down %d => %d at cycle: %ld\n", dynamic_fill_thrs[cpu]+1, dynamic_fill_thrs[cpu], ooo_cpu[cpu].current_cycle);
                         }
-                            
+
                         conf_counter[cpu] = 0;
                     }
 
                     l2pf_was_useful++;
                 }
-                else
-                {
+                else {
                     if (conf_counter[cpu] > 0)
                         conf_counter[cpu]--;
 
@@ -445,7 +426,7 @@ void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful)
 
                 l2pf_match++;
             }
-            
+
             break;
         }
     }
