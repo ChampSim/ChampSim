@@ -790,7 +790,7 @@ void O3_CPU::decode_and_dispatch()
 	}
 
       count_decodes++;
-      if(count_decodes > DECODE_WIDTH)
+      if(count_decodes >= DECODE_WIDTH)
 	{
 	  break;
 	}
