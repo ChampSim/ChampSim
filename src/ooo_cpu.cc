@@ -659,7 +659,7 @@ void O3_CPU::fetch_instruction()
 	      // mark all instructions from this cache line as having been fetched
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
+		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6) && (IFETCH_BUFFER.entry[j].fetched == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
