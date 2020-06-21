@@ -5,6 +5,8 @@
 #include "instruction.h"
 #include "set.h"
 
+#include <vector>
+
 // CACHE BLOCK
 class BLOCK {
   public:
@@ -292,10 +294,11 @@ class CORE_BUFFER {
              lsq_event_cycle,
              retire_event_cycle;
 
-    ooo_model_instr *entry;
+    std::vector<ooo_model_instr> entry;
 
     // constructor
-    CORE_BUFFER(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
+    CORE_BUFFER(string v1, uint32_t v2) : NAME(v1), SIZE(v2), entry(v2)
+    {
         head = 0;
         tail = 0;
         occupancy = 0;
@@ -316,13 +319,6 @@ class CORE_BUFFER {
         execute_event_cycle = UINT64_MAX;
         lsq_event_cycle = UINT64_MAX;
         retire_event_cycle = UINT64_MAX;
-
-        entry = new ooo_model_instr[SIZE];
-    };
-
-    // destructor
-    ~CORE_BUFFER() {
-        delete[] entry;
     };
 };
 

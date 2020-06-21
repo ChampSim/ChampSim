@@ -2,6 +2,9 @@
 #define OOO_CPU_H
 
 #include "cache.h"
+#include "block.h"
+
+#include <unordered_map>
 
 #ifdef CRC2_COMPILE
 #define STAT_PRINTING_PERIOD 1000000
@@ -51,6 +54,9 @@ class O3_CPU {
              next_print_instruction, num_retired;
     uint32_t inflight_reg_executions, inflight_mem_executions, num_searched;
     uint32_t next_ITLB_fetch;
+
+    // A map from register indices to the instruction (in the ROB) which is producing its value
+    std::unordered_map<uint8_t, std::vector<ooo_model_instr>::iterator> producers;
 
     // reorder buffer, load/store queue, register file
     CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
@@ -181,7 +187,6 @@ class O3_CPU {
          do_memory_scheduling(uint32_t rob_index),
          operate_lsq(),
          complete_execution(uint32_t rob_index),
-         reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
          reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
          handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
@@ -209,7 +214,7 @@ class O3_CPU {
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
-    uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
+    bool     mem_reg_dependence_resolved(uint32_t rob_index);
 
     // branch predictor
     uint8_t predict_branch(uint64_t ip);

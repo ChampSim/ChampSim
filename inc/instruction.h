@@ -121,11 +121,9 @@ class ooo_model_instr {
             destination_added[NUM_INSTR_DESTINATIONS_SPARC],
             is_producer,
             is_consumer,
-            reg_RAW_producer,
             reg_ready,
             mem_ready,
-            asid[2],
-            reg_RAW_checked[NUM_INSTR_SOURCES];
+            asid[2];
 
     uint8_t branch_type;
     uint64_t branch_target;
@@ -136,16 +134,11 @@ class ooo_model_instr {
     // executed bit is set after all dependencies are eliminated and this instr is chosen on a cycle, according to EXEC_WIDTH
     int executed;
 
-    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
+    std::vector<uint8_t> destination_registers = {}; // output registers
+    std::vector<uint8_t> source_registers = {}; // input registers
 
-    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers 
-
-    // these are instruction ids of other instructions in the window
-    //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
-    // these are indices of instructions in the window that depend on me
-    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
-    fastset
-	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
+    // these are pointers to the other instructions in the window
+    std::vector<std::vector<ooo_model_instr>::iterator> reg_RAW_dependents;
 
 
     // memory addresses that may cause dependencies between instructions
@@ -189,7 +182,6 @@ class ooo_model_instr {
         data_translated = 0;
         is_producer = 0;
         is_consumer = 0;
-        reg_RAW_producer = 0;
         fetched = 0;
         scheduled = 0;
         executed = 0;
@@ -211,17 +203,14 @@ class ooo_model_instr {
         num_reg_dependent = 0;
 
         for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-            source_registers[i] = 0;
             source_memory[i] = 0;
             source_virtual_address[i] = 0;
             source_added[i] = 0;
             lq_index[i] = UINT32_MAX;
-            reg_RAW_checked[i] = 0;
         }
 
         for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
             destination_memory[i] = 0;
-            destination_registers[i] = 0;
             destination_virtual_address[i] = 0;
             destination_added[i] = 0;
             sq_index[i] = UINT32_MAX;

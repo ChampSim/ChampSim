@@ -1,4 +1,8 @@
 #include "ooo_cpu.h"
+
+#include <algorithm>
+#include <iostream>
+
 #include "set.h"
 
 // out-of-order core
@@ -52,13 +56,11 @@ void O3_CPU::read_from_trace()
                 arch_instr.asid[0] = current_cloudsuite_instr.asid[0];
                 arch_instr.asid[1] = current_cloudsuite_instr.asid[1];
 
+                std::copy_if(std::begin(current_cloudsuite_instr.destination_registers), std::end(current_cloudsuite_instr.destination_registers), std::back_inserter(arch_instr.destination_registers), [](uint8_t x){ return x != 0; });
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-                    arch_instr.destination_registers[i] = current_cloudsuite_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_cloudsuite_instr.destination_memory[i];
                     arch_instr.destination_virtual_address[i] = current_cloudsuite_instr.destination_memory[i];
 
-                    if (arch_instr.destination_registers[i])
-                        num_reg_ops++;
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
 
@@ -79,16 +81,18 @@ void O3_CPU::read_from_trace()
                     }
                 }
 
+                num_reg_ops = arch_instr.destination_registers.size();
+
+                std::copy_if(std::begin(current_cloudsuite_instr.source_registers), std::end(current_cloudsuite_instr.source_registers), std::back_inserter(arch_instr.source_registers), [](uint8_t x){ return x != 0; });
                 for (int i=0; i<NUM_INSTR_SOURCES; i++) {
-                    arch_instr.source_registers[i] = current_cloudsuite_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_cloudsuite_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_cloudsuite_instr.source_memory[i];
 
-                    if (arch_instr.source_registers[i])
-                        num_reg_ops++;
                     if (arch_instr.source_memory[i])
                         num_mem_ops++;
                 }
+
+                num_reg_ops = arch_instr.source_registers.size();
 
                 arch_instr.num_reg_ops = num_reg_ops;
                 arch_instr.num_mem_ops = num_mem_ops;
@@ -181,41 +185,18 @@ void O3_CPU::read_from_trace()
                 arch_instr.asid[0] = cpu;
                 arch_instr.asid[1] = cpu;
 
-		bool reads_sp = false;
-		bool writes_sp = false;
-		bool reads_flags = false;
-		bool reads_ip = false;
-		bool writes_ip = false;
-		bool reads_other = false;
+                bool reads_sp = false;
+                bool writes_sp = false;
+                bool reads_flags = false;
+                bool reads_ip = false;
+                bool writes_ip = false;
+                bool reads_other = false;
 
+                std::copy_if(std::begin(current_instr.destination_registers), std::end(current_instr.destination_registers), std::back_inserter(arch_instr.destination_registers), [](uint8_t x){ return x != 0; });
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-                    arch_instr.destination_registers[i] = current_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
                     arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
 
-		    switch(arch_instr.destination_registers[i])
-		      {
-		      case 0:
-			break;
-		      case REG_STACK_POINTER:
-			writes_sp = true;
-			break;
-		      case REG_INSTRUCTION_POINTER:
-			writes_ip = true;
-			break;
-		      default:
-			break;
-		      }
-
-		    /*
-		    if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24) && (arch_instr.destination_registers[i] < 28))
-		      {
-			arch_instr.destination_registers[i] = 0;
-		      }
-		    */
-		    
-                    if (arch_instr.destination_registers[i])
-                        num_reg_ops++;
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
 
@@ -236,40 +217,37 @@ void O3_CPU::read_from_trace()
                     }
                 }
 
+                for (uint8_t reg : arch_instr.destination_registers)
+                {
+                    if (reg == REG_STACK_POINTER)
+                        writes_sp = true;
+                    else if (reg == REG_INSTRUCTION_POINTER)
+                        writes_ip = true;
+                }
+
+                num_reg_ops = arch_instr.destination_registers.size();
+
+                std::copy_if(std::begin(current_instr.source_registers), std::end(current_instr.source_registers), std::back_inserter(arch_instr.source_registers), [](uint8_t x){ return x != 0; });
                 for (int i=0; i<NUM_INSTR_SOURCES; i++) {
-                    arch_instr.source_registers[i] = current_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
 
-		    switch(arch_instr.source_registers[i])
-                      {
-                      case 0:
-                        break;
-                      case REG_STACK_POINTER:
-                        reads_sp = true;
-                        break;
-                      case REG_FLAGS:
-                        reads_flags = true;
-                        break;
-                      case REG_INSTRUCTION_POINTER:
-                        reads_ip = true;
-                        break;
-                      default:
-                        reads_other = true;
-                        break;
-                      }
-		    
-		    /*
-		    if((!arch_instr.is_branch) && (arch_instr.source_registers[i] > 25) && (arch_instr.source_registers[i] < 28))
-		      {
-			arch_instr.source_registers[i] = 0;
-		      }
-		    */
-		    
-                    if (arch_instr.source_registers[i])
-                        num_reg_ops++;
                     if (arch_instr.source_memory[i])
                         num_mem_ops++;
+                }
+
+                num_reg_ops = arch_instr.source_registers.size();
+
+                for (uint8_t reg : arch_instr.source_registers)
+                {
+                    if (reg == REG_STACK_POINTER)
+                        reads_sp = true;
+                    else if (reg == REG_FLAGS)
+                        reads_flags = true;
+                    else if (reg == REG_INSTRUCTION_POINTER)
+                        reads_ip = true;
+                    else
+                        reads_other = true;
                 }
 
                 arch_instr.num_reg_ops = num_reg_ops;
@@ -928,76 +906,39 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
 
 void O3_CPU::reg_dependency(uint32_t rob_index)
 {
+    // If this instruction is at the head of the ROB, it does not depend on prior instructions
+    if (rob_index == ROB.head)
+        return;
+
+    ooo_model_instr &rob_entry = ROB.entry.at(rob_index);
     // print out source/destination registers
-    DP (if (warmup_complete[cpu]) {
-    for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-        if (ROB.entry[rob_index].source_registers[i]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " is_memory: " << +ROB.entry[rob_index].is_memory;
-            cout << " load  reg_index: " << +ROB.entry[rob_index].source_registers[i] << endl;
+    /*
+    std::cout << "[ROB] " << __func__ << " instr_id: " << rob_entry.instr_id << " is_memory: " << +rob_entry.is_memory << " load  reg_index:";
+    for (uint8_t reg : rob_entry.source_registers) {
+        std::cout << " "<< (int)reg;
+    }
+    std::cout << " store reg_index:";
+    for (uint8_t reg : rob_entry.destination_registers) {
+        std::cout << " " << (int)reg;
+    }
+    std::cout << std::endl;
+    */
+
+    auto self_it = std::next(ROB.entry.begin(), rob_index);
+    for (uint8_t s_reg : rob_entry.source_registers)
+    {
+        if (producers.find(s_reg) != producers.end())
+        {
+            rob_entry.reg_ready = 0;
+            rob_entry.num_reg_dependent += 1;
+
+            producers[s_reg]->reg_RAW_dependents.push_back(self_it);
         }
     }
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-        if (ROB.entry[rob_index].destination_registers[i]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " is_memory: " << +ROB.entry[rob_index].is_memory;
-            cout << " store reg_index: " << +ROB.entry[rob_index].destination_registers[i] << endl;
-        }
-    } }); 
 
-    // check RAW dependency
-    int prior = rob_index - 1;
-    if (prior < 0)
-        prior = ROB.SIZE - 1;
-
-    if (rob_index != ROB.head) {
-        if ((int)ROB.head <= prior) {
-            for (int i=prior; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-        } else {
-            for (int i=prior; i>=0; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-            for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-        }
-    }
-}
-
-void O3_CPU::reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index)
-{
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-        if (ROB.entry[prior].destination_registers[i] == 0)
-            continue;
-
-        if (ROB.entry[prior].destination_registers[i] == ROB.entry[current].source_registers[source_index]) {
-
-            // we need to mark this dependency in the ROB since the producer might not be added in the store queue yet
-            ROB.entry[prior].registers_instrs_depend_on_me.insert (current);   // this load cannot be executed until the prior store gets executed
-            ROB.entry[prior].registers_index_depend_on_me[source_index].insert (current);   // this load cannot be executed until the prior store gets executed
-            ROB.entry[prior].reg_RAW_producer = 1;
-
-            ROB.entry[current].reg_ready = 0;
-            ROB.entry[current].producer_id = ROB.entry[prior].instr_id; 
-            ROB.entry[current].num_reg_dependent++;
-            ROB.entry[current].reg_RAW_checked[source_index] = 1;
-
-            DP (if(warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[current].instr_id << " is_memory: " << +ROB.entry[current].is_memory;
-            cout << " RAW reg_index: " << +ROB.entry[current].source_registers[source_index];
-            cout << " producer_id: " << ROB.entry[prior].instr_id << endl; });
-
-            return;
-        }
+    for (uint8_t d_reg : rob_entry.destination_registers)
+    {
+        producers[d_reg] = self_it;
     }
 }
 
@@ -1082,40 +1023,20 @@ void O3_CPU::do_execution(uint32_t rob_index)
     //}
 }
 
-uint8_t O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
+bool O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
 {
-  if(ROB.entry[rob_index].reg_ready)
+    ooo_model_instr &rob_entry = ROB.entry[rob_index];
+    if(rob_entry.reg_ready)
     {
-      return 1;
+        return true;
     }
-  else
+
+    if(std::find(rob_entry.source_registers.begin(), rob_entry.source_registers.end(), REG_STACK_POINTER) != rob_entry.source_registers.end())
     {
-      uint8_t count_source_regs = 0;
-      uint8_t stack_pointer_source = 0;
-      for(int i=0; i<NUM_INSTR_SOURCES; i++)
-	{
-	  if(ROB.entry[rob_index].source_registers[i] != 0)
-	    {
-	      count_source_regs++;
-	    }
-	  if(ROB.entry[rob_index].source_registers[i] == REG_STACK_POINTER)
-	    {
-	      stack_pointer_source = 1;
-	    }
-	}
-
-      if(stack_pointer_source == 1)
-	{
-	  return 0;
-	}
-
-      if((count_source_regs == 1) && (ROB.entry[rob_index].source_registers[0] == ROB.entry[rob_index].destination_registers[0]))
-	{
-	  return 1;
-	}
+        return false;
     }
-  
-  return 0;
+
+    return (rob_entry.source_registers.size() == 1) && (rob_entry.source_registers[0] == rob_entry.destination_registers[0]);
 }
 
 void O3_CPU::schedule_memory_instruction()
@@ -1761,8 +1682,7 @@ void O3_CPU::complete_execution(uint32_t rob_index)
             inflight_reg_executions--;
             completed_executions++;
 
-            if (ROB.entry[rob_index].reg_RAW_producer)
-                reg_RAW_release(rob_index);
+            reg_RAW_release(rob_index);
 
             if (ROB.entry[rob_index].branch_mispredicted)
 	      {
@@ -1782,9 +1702,8 @@ void O3_CPU::complete_execution(uint32_t rob_index)
 	      ROB.entry[rob_index].executed = COMPLETED;
                 inflight_mem_executions--;
                 completed_executions++;
-                
-                if (ROB.entry[rob_index].reg_RAW_producer)
-                    reg_RAW_release(rob_index);
+
+                reg_RAW_release(rob_index);
 
                 if (ROB.entry[rob_index].branch_mispredicted)
 		  {
@@ -1802,43 +1721,50 @@ void O3_CPU::complete_execution(uint32_t rob_index)
 
 void O3_CPU::reg_RAW_release(uint32_t rob_index)
 {
-    // if (!ROB.entry[rob_index].registers_instrs_depend_on_me.empty()) 
+    for (uint8_t d_reg : ROB.entry[rob_index].destination_registers)
+    {
+        auto self_it = std::next(ROB.entry.begin(), rob_index);
+        auto producer = producers.find(d_reg);
+        if (producer != producers.end() && producer->second == self_it)
+        {
+            producers.erase(producer);
+        }
+    }
 
-    ITERATE_SET(i,ROB.entry[rob_index].registers_instrs_depend_on_me, ROB_SIZE) {
-        for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-            if (ROB.entry[rob_index].registers_index_depend_on_me[j].search (i)) {
-                ROB.entry[i].num_reg_dependent--;
+    for (auto dependent : ROB.entry[rob_index].reg_RAW_dependents)
+    {
+        dependent->num_reg_dependent--;
 
-                if (ROB.entry[i].num_reg_dependent == 0) {
-                    ROB.entry[i].reg_ready = 1;
-                    if (ROB.entry[i].is_memory)
-                        ROB.entry[i].scheduled = INFLIGHT;
-                    else {
-                        ROB.entry[i].scheduled = COMPLETED;
+        if (dependent->num_reg_dependent == 0)
+        {
+            dependent->reg_ready = 1;
+            if (dependent->is_memory)
+                dependent->scheduled = INFLIGHT;
+            else {
+                dependent->scheduled = COMPLETED;
 
 #ifdef SANITY_CHECK
-                        if (RTE0[RTE0_tail] < ROB_SIZE)
-                            assert(0);
+                if (RTE0[RTE0_tail] < ROB_SIZE)
+                    assert(0);
 #endif
-                        // remember this rob_index in the Ready-To-Execute array 0
-                        RTE0[RTE0_tail] = i;
-
-                        DP (if (warmup_complete[cpu]) {
-                        cout << "[RTE0] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to RTE0";
-                        cout << " head: " << RTE0_head << " tail: " << RTE0_tail << endl; }); 
-
-                        RTE0_tail++;
-                        if (RTE0_tail == ROB_SIZE)
-                            RTE0_tail = 0;
-
-                    }
-                }
+                // remember this rob_index in the Ready-To-Execute array 0
+                RTE0[RTE0_tail] = std::distance(ROB.entry.begin(), dependent);
 
                 DP (if (warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
-                cout << ROB.entry[i].instr_id << " reg_index: " << +ROB.entry[i].source_registers[j] << " num_reg_dependent: " << ROB.entry[i].num_reg_dependent << " cycle: " << current_core_cycle[cpu] << endl; });
+                        std::cout << "[RTE0] " << __func__ << " instr_id: " << dependent->instr_id << " rob_index: " << std::distance(ROB.entry.begin(), dependent) << " is added to RTE0";
+                        std::cout << " head: " << RTE0_head << " tail: " << RTE0_tail << std::endl; });
+
+                RTE0_tail++;
+                if (RTE0_tail == ROB_SIZE)
+                    RTE0_tail = 0;
+
             }
         }
+
+
+        DP (if (warmup_complete[cpu]) {
+                std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry.at(rob_index).instr_id << " releases instr_id: ";
+                std::cout << dependent->instr_id << " num_reg_dependent: " << dependent->num_reg_dependent << " cycle: " << current_core_cycle[cpu] << std::endl; });
     }
 }
 
