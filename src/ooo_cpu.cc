@@ -1084,38 +1084,7 @@ void O3_CPU::do_execution(uint32_t rob_index)
 
 uint8_t O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
 {
-  if(ROB.entry[rob_index].reg_ready)
-    {
-      return 1;
-    }
-  else
-    {
-      uint8_t count_source_regs = 0;
-      uint8_t stack_pointer_source = 0;
-      for(int i=0; i<NUM_INSTR_SOURCES; i++)
-	{
-	  if(ROB.entry[rob_index].source_registers[i] != 0)
-	    {
-	      count_source_regs++;
-	    }
-	  if(ROB.entry[rob_index].source_registers[i] == REG_STACK_POINTER)
-	    {
-	      stack_pointer_source = 1;
-	    }
-	}
-
-      if(stack_pointer_source == 1)
-	{
-	  return 0;
-	}
-
-      if((count_source_regs == 1) && (ROB.entry[rob_index].source_registers[0] == ROB.entry[rob_index].destination_registers[0]))
-	{
-	  return 1;
-	}
-    }
-  
-  return 0;
+  return ROB.entry[rob_index].reg_ready;
 }
 
 void O3_CPU::schedule_memory_instruction()
