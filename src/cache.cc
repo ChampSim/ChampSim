@@ -2,6 +2,11 @@
 #include "set.h"
 
 uint64_t l2pf_access = 0;
+/* you can implement each page walk cache level as a 2d array */
+uint64_t pml4[PML4_SET][PML4_WAY], pdp[PDP_SET][PDP_WAY], pd[PD_SET][PD_WAY];
+
+/* implementation of LRU policy with counters */
+uint64_t pml4_lru[PML4_SET][PML4_WAY], pdp_lru[PDP_SET][PDP_WAY], pd_lru[PD_SET][PD_WAY];
 
 void CACHE::handle_fill()
 {
@@ -675,7 +680,7 @@ void CACHE::handle_read()
 			  // TODO: need to differentiate page table walk and actual swap
 			  
 			  // emulate page table walk
-			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address, 0);
+			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address, 0, RQ.entry[index].ip, RQ.entry[index].type);
 			  
 			  RQ.entry[index].data = pa >> LOG2_PAGE_SIZE; 
 			  RQ.entry[index].event_cycle = current_core_cycle[read_cpu];
@@ -1750,4 +1755,99 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 void CACHE::increment_WQ_FULL(uint64_t address)
 {
     WQ.FULL++;
+}
+
+/*
+Georgios's Page Walker
+Author: Georgios Vavouliotis
+Advisors: Lluc Alvarez, Marc Casas Guix
+{georgios.vavouliotis, lluc.alvarez, marc.casas}@bsc.es
+
+Ported by James Coman - james in the domain tamu.edu
+*/
+int CACHE::search_pml4(uint64_t address){
+    for(int s=0; s<PML4_SET; s++){
+        for(int w=0; w<PML4_WAY; w++){
+            if(pml4[s][w] == address)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+int CACHE::search_pdp(uint64_t address){
+    for(int s=0; s<PDP_SET; s++){
+        for(int w=0; w<PDP_WAY; w++){
+            if(pdp[s][w] == address)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+int CACHE::search_pd(uint64_t address){
+    for(int s=0; s<PD_SET; s++){
+        for(int w=0; w<PD_WAY; w++){
+            if(pd[s][w] == address)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+void CACHE::update_pml4(uint64_t timer, uint64_t address){
+	// if the entry is not stored in the pdp based on the LRU policy find the victim, replace it, and update the LRU policy
+	uint64_t min = pml4_lru[0][0];
+    int victim[2] = {0,0};
+
+    for(int s=0; s<PML4_SET; s++){
+        for(int w=0; w<PML4_WAY; w++){
+            if(pml4_lru[s][w] < min){
+                min = pml4_lru[s][w];
+                victim[0] = s;
+                victim[1] = w;
+            }
+        }
+    }
+
+    pml4[victim[0]][victim[1]] = address;
+    pml4_lru[victim[0]][victim[1]] = timer;
+}
+
+void CACHE::update_pdp(uint64_t timer, uint64_t address){
+	// if the entry is not stored in the pdp based on the LRU policy find the victim, replace it, and update the LRU policy
+	uint64_t min = pdp_lru[0][0];
+    int victim[2] = {0,0};
+
+    for(int s=0; s<PDP_SET; s++){
+        for(int w=0; w<PDP_WAY; w++){
+            if(pdp_lru[s][w] < min){
+                min = pdp_lru[s][w];
+                victim[0] = s;
+                victim[1] = w;
+            }
+        }
+    }
+
+    pdp[victim[0]][victim[1]] = address;
+    pdp_lru[victim[0]][victim[1]] = timer;
+}
+
+void CACHE::update_pd(uint64_t timer, uint64_t address){
+	// if the entry is not stored in the pd based on the LRU policy find the victim, replace it, and update the LRU policy
+	uint64_t min = pd_lru[0][0];
+    int victim[2] = {0,0};
+
+    for(int s=0; s<PD_SET; s++){
+        for(int w=0; w<PD_WAY; w++){
+            if(pd_lru[s][w] < min){
+                min = pd_lru[s][w];
+                victim[0] = s;
+                victim[1] = w;
+            }
+        }
+    }
+
+    pd[victim[0]][victim[1]] = address;
+    pd_lru[victim[0]][victim[1]] = timer;
 }

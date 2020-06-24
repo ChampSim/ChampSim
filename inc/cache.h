@@ -1,6 +1,32 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+/*
+Georgios's Page Walker
+Author: Georgios Vavouliotis
+Advisors: Lluc Alvarez, Marc Casas Guix
+{georgios.vavouliotis, lluc.alvarez, marc.casas}@bsc.es
+
+Ported by James Coman - james in the domain tamu.edu
+*/
+#include <stdint.h>
+#define PML4_SET 2
+#define PML4_WAY 4
+#define PDP_SET 8
+#define PDP_WAY 1
+#define PD_SET 1
+#define PD_WAY 4
+
+//uint64_t mmu_timer; //One of the placements from Georgios
+int simulated_page_walker(uint32_t cpu, uint64_t vpage, int swap, uint64_t instr_id, uint64_t ip, int type);
+
+/* you can implement each page walk cache level as a 2d array */
+extern uint64_t pml4[PML4_SET][PML4_WAY], pdp[PDP_SET][PDP_WAY], pd[PD_SET][PD_WAY];
+
+/* implementation of LRU policy with counters */
+extern uint64_t pml4_lru[PML4_SET][PML4_WAY], pdp_lru[PDP_SET][PDP_WAY], pd_lru[PD_SET][PD_WAY];
+
+
 #include "memory_class.h"
 
 // PAGE
@@ -84,6 +110,7 @@ class CACHE : public MEMORY {
     const string NAME;
     const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY;
+	uint64_t mmu_timer;
     BLOCK **block;
     int fill_level;
     uint32_t MAX_READ, MAX_FILL;
@@ -118,6 +145,7 @@ class CACHE : public MEMORY {
         : NAME(v1), NUM_SET(v2), NUM_WAY(v3), NUM_LINE(v4), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
 
         LATENCY = 0;
+		mmu_timer=0;
 
         // cache block
         block = new BLOCK* [NUM_SET];
@@ -222,6 +250,22 @@ class CACHE : public MEMORY {
              find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+
+/*
+Georgios's Page Walker
+Author: Georgios Vavouliotis
+Advisors: Lluc Alvarez, Marc Casas Guix
+{georgios.vavouliotis, lluc.alvarez, marc.casas}@bsc.es
+
+Ported by James Coman - james in the domain tamu.edu
+*/
+/* functions for searching in the page walk caches for possible hits */
+int  search_pml4(uint64_t address), search_pdp(uint64_t address), search_pd(uint64_t address);
+
+/* functions for storing/updating entries in the page walk caches */
+void update_pml4(uint64_t timer, uint64_t address), update_pdp(uint64_t timer, uint64_t address), update_pd(uint64_t timer, uint64_t address);
+
+
 };
 
 #endif

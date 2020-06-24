@@ -94,7 +94,7 @@ extern uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_p
 void print_stats();
 uint64_t rotl64 (uint64_t n, unsigned int c),
          rotr64 (uint64_t n, unsigned int c),
-  va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_vpage, uint8_t is_code);
+  va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_vpage, uint8_t is_code, uint64_t ip, int type);
 
 // log base 2 function from efectiu
 int lg2(int n);

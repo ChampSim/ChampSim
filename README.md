@@ -53,6 +53,22 @@ $ ./run_4core.sh bimodal-no-no-no-lru-4core 1 10 0 400.perlbench-41B.champsimtra
 ```
 Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is used to represent a unique ID for mixed multi-programmed workloads. 
 
+## Run-time flags
+
+Two environment variables are read that can be used to configure page walker
+settings. The status of these values will be reported in the default output.
+
+* `CS_PAGE_TABLE_LATENCY`
+	* Sets `PAGE_TABLE_LATENCY` (a constant estimate of the time to walk the
+	  page table) to the value of this variable.
+	* default is 100 (as of 2020-06-16), if unset.
+	* If set to be the default value, it will appear as changed in the output,
+	  despite having no effect.
+* `CS_DO_PAGE_WALK`
+	* Set to any non-empty string to enable.
+	* Enables the simulated page walker, makes `CS_PAGE_TABLE_LATENCY`, and the
+	  default value for `PAGE_TABLE_LATENCY` (100) irrelevant as they are not
+used.
 
 # Add your own branch predictor, data prefetchers, and replacement policy
 **Copy an empty template**
