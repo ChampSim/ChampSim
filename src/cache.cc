@@ -763,7 +763,15 @@ void CACHE::handle_read()
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
                             uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
                             uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                            MSHR.entry[mshr_index] = RQ.entry[index];
+                            uint8_t  prior_fill_l1i = MSHR.entry[mshr_index].fill_l1i;
+			    uint8_t  prior_fill_l1d = MSHR.entry[mshr_index].fill_l1d;
+			    
+			    MSHR.entry[mshr_index] = RQ.entry[index];
+                            
+			    if(prior_fill_l1i && MSHR.entry[mshr_index].fill_l1i == 0)
+				    MSHR.entry[mshr_index].fill_l1i = 1;
+			    if(prior_fill_l1d && MSHR.entry[mshr_index].fill_l1d == 0)
+				    MSHR.entry[mshr_index].fill_l1d = 1;
                             
                             // in case request is already returned, we should keep event_cycle and retunred variables
                             MSHR.entry[mshr_index].returned = prior_returned;
