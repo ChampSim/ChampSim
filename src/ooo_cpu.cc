@@ -779,6 +779,7 @@ void O3_CPU::decode_and_dispatch()
 	{
 	  // apply decode latency
 	  DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+	  count_decodes++;
 	}
       
       if(decode_index == DECODE_BUFFER.tail)
@@ -791,8 +792,7 @@ void O3_CPU::decode_and_dispatch()
 	  decode_index = 0;
 	}
 
-      count_decodes++;
-      if(count_decodes > DECODE_WIDTH)
+      if(count_decodes >= DECODE_WIDTH)
 	{
 	  break;
 	}
