@@ -637,7 +637,7 @@ void O3_CPU::fetch_instruction()
 	      // mark all instructions from this cache line as having been fetched
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6))
+		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6) && (IFETCH_BUFFER.entry[j].fetched == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
@@ -757,6 +757,7 @@ void O3_CPU::decode_and_dispatch()
 	{
 	  // apply decode latency
 	  DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+	  count_decodes++;
 	}
       
       if(decode_index == DECODE_BUFFER.tail)
@@ -769,8 +770,7 @@ void O3_CPU::decode_and_dispatch()
 	  decode_index = 0;
 	}
 
-      count_decodes++;
-      if(count_decodes > DECODE_WIDTH)
+      if(count_decodes >= DECODE_WIDTH)
 	{
 	  break;
 	}
@@ -1025,18 +1025,7 @@ void O3_CPU::do_execution(uint32_t rob_index)
 
 bool O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
 {
-    ooo_model_instr &rob_entry = ROB.entry[rob_index];
-    if(rob_entry.reg_ready)
-    {
-        return true;
-    }
-
-    if(std::find(rob_entry.source_registers.begin(), rob_entry.source_registers.end(), REG_STACK_POINTER) != rob_entry.source_registers.end())
-    {
-        return false;
-    }
-
-    return (rob_entry.source_registers.size() == 1) && (rob_entry.source_registers[0] == rob_entry.destination_registers[0]);
+  return ROB.entry[rob_index].reg_ready;
 }
 
 void O3_CPU::schedule_memory_instruction()

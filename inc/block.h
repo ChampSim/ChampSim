@@ -22,6 +22,8 @@ class BLOCK {
 
     uint64_t address,
              full_addr,
+             v_address,
+             full_v_addr,
              tag,
              data,
              ip,
