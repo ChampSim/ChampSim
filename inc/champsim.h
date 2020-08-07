@@ -54,6 +54,8 @@
 #define FILL_DRAM 16
 
 // DRAM
+#define DRAM_CHANNELS 1
+#define LOG2_DRAM_CHANNELS 0
 #define DRAM_RANKS 1         // 512MB * 8 ranks => 4GB per DIMM
 #define LOG2_DRAM_RANKS 0
 #define DRAM_BANKS 8         // 64MB * 8 banks => 512MB per rank
