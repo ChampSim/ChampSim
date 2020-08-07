@@ -1023,11 +1023,6 @@ void O3_CPU::do_execution(uint32_t rob_index)
     //}
 }
 
-bool O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
-{
-  return ROB.entry[rob_index].reg_ready;
-}
-
 void O3_CPU::schedule_memory_instruction()
 {
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
@@ -1040,7 +1035,7 @@ void O3_CPU::schedule_memory_instruction()
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
 
 	    if(ROB.entry[i].executed == 0)
@@ -1052,7 +1047,7 @@ void O3_CPU::schedule_memory_instruction()
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
 
 	    if(ROB.entry[i].executed == 0)
@@ -1062,7 +1057,7 @@ void O3_CPU::schedule_memory_instruction()
             if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
                 break;
 
-            if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
+            if (ROB.entry[i].is_memory && ROB.entry[i].reg_ready && (ROB.entry[i].scheduled == INFLIGHT))
                 do_memory_scheduling(i);
 
 	    if(ROB.entry[i].executed == 0)

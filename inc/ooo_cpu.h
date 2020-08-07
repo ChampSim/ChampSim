@@ -214,8 +214,6 @@ class O3_CPU {
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
-    bool     mem_reg_dependence_resolved(uint32_t rob_index);
-
     // branch predictor
     uint8_t predict_branch(uint64_t ip);
     void    initialize_branch_predictor(),
