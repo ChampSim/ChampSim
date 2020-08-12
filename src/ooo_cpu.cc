@@ -659,7 +659,7 @@ void O3_CPU::fetch_instruction()
 	      // mark all instructions from this cache line as having been fetched
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((IFETCH_BUFFER.entry[index].ip)>>6) && (IFETCH_BUFFER.entry[j].fetched == 0))
+            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) && (IFETCH_BUFFER.entry[j].fetched == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
@@ -1887,7 +1887,7 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
 	// this is the L1I cache, so instructions are now fully fetched, so mark them as such
 	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 	  {
-	    if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((complete_ip)>>6))
+          if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (complete_ip >> LOG2_BLOCK_SIZE))
 	      {
 		IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		IFETCH_BUFFER.entry[j].fetched = COMPLETED;
