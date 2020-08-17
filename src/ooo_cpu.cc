@@ -909,19 +909,19 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         if (ROB.entry[rob_index].reg_ready) {
 
 #ifdef SANITY_CHECK
-            if (RTE1[RTE1_tail] < ROB_SIZE)
+            if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
                 assert(0);
 #endif
             // remember this rob_index in the Ready-To-Execute array 1
-            RTE1[RTE1_tail] = rob_index;
+            ready_to_execute[ready_to_execute_tail] = rob_index;
 
             DP (if (warmup_complete[cpu]) {
-            cout << "[RTE1] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index << " is added to RTE1";
-            cout << " head: " << RTE1_head << " tail: " << RTE1_tail << endl; }); 
+            cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
+            cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
 
-            RTE1_tail++;
-            if (RTE1_tail == ROB_SIZE)
-                RTE1_tail = 0;
+            ready_to_execute_tail++;
+            if (ready_to_execute_tail == ROB_SIZE)
+                ready_to_execute_tail = 0;
         }
     }
 }
@@ -1011,46 +1011,21 @@ void O3_CPU::execute_instruction()
     uint32_t exec_issued = 0, num_iteration = 0;
     
     while (exec_issued < EXEC_WIDTH) {
-        if (RTE0[RTE0_head] < ROB_SIZE) {
-            uint32_t exec_index = RTE0[RTE0_head];
+        if (ready_to_execute[ready_to_execute_head] < ROB_SIZE) {
+            uint32_t exec_index = ready_to_execute[ready_to_execute_head];
             if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
                 do_execution(exec_index);
 
-                RTE0[RTE0_head] = ROB_SIZE;
-                RTE0_head++;
-                if (RTE0_head == ROB_SIZE)
-                    RTE0_head = 0;
+                ready_to_execute[ready_to_execute_head] = ROB_SIZE;
+                ready_to_execute_head++;
+                if (ready_to_execute_head == ROB_SIZE)
+                    ready_to_execute_head = 0;
                 exec_issued++;
             }
         }
         else {
             //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTE0] is empty head: " << RTE0_head << " tail: " << RTE0_tail << endl; });
-            break;
-        }
-
-        num_iteration++;
-        if (num_iteration == (ROB_SIZE-1))
-            break;
-    }
-
-    num_iteration = 0;
-    while (exec_issued < EXEC_WIDTH) {
-        if (RTE1[RTE1_head] < ROB_SIZE) {
-            uint32_t exec_index = RTE1[RTE1_head];
-            if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
-                do_execution(exec_index);
-
-                RTE1[RTE1_head] = ROB_SIZE;
-                RTE1_head++;
-                if (RTE1_head == ROB_SIZE)
-                    RTE1_head = 0;
-                exec_issued++;
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTE1] is empty head: " << RTE1_head << " tail: " << RTE1_tail << endl; });
+            //cout << "[ready_to_execute] is empty head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; });
             break;
         }
 
@@ -1721,7 +1696,7 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     return rq_index;
 }
 
-void O3_CPU::complete_execution(uint32_t rob_index)
+uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 {
     if (ROB.entry[rob_index].is_memory == 0) {
         if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
@@ -1742,6 +1717,8 @@ void O3_CPU::complete_execution(uint32_t rob_index)
             cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
             cout << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted << " fetch_stall: " << +fetch_stall;
             cout << " event: " << ROB.entry[rob_index].event_cycle << endl; });
+
+	    return 1;
         }
     }
     else {
@@ -1764,9 +1741,13 @@ void O3_CPU::complete_execution(uint32_t rob_index)
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
                 cout << " is_memory: " << +ROB.entry[rob_index].is_memory << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted;
                 cout << " fetch_stall: " << +fetch_stall << " event: " << ROB.entry[rob_index].event_cycle << " current: " << current_core_cycle[cpu] << endl; });
+
+		return 1;
             }
         }
     }
+
+    return 0;
 }
 
 void O3_CPU::reg_RAW_release(uint32_t rob_index)
@@ -1786,19 +1767,19 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                         ROB.entry[i].scheduled = COMPLETED;
 
 #ifdef SANITY_CHECK
-                        if (RTE0[RTE0_tail] < ROB_SIZE)
+                        if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
                             assert(0);
 #endif
                         // remember this rob_index in the Ready-To-Execute array 0
-                        RTE0[RTE0_tail] = i;
+                        ready_to_execute[ready_to_execute_tail] = i;
 
                         DP (if (warmup_complete[cpu]) {
-                        cout << "[RTE0] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to RTE0";
-                        cout << " head: " << RTE0_head << " tail: " << RTE0_tail << endl; }); 
+                        cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to ready_to_execute";
+                        cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
 
-                        RTE0_tail++;
-                        if (RTE0_tail == ROB_SIZE)
-                            RTE0_tail = 0;
+                        ready_to_execute_tail++;
+                        if (ready_to_execute_tail == ROB_SIZE)
+                            ready_to_execute_tail = 0;
 
                     }
                 }
@@ -1840,15 +1821,35 @@ void O3_CPU::update_rob()
 
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
+      uint32_t instrs_executed = 0;
         if (ROB.head < ROB.tail) {
-            for (uint32_t i=ROB.head; i<ROB.tail; i++) 
-                complete_execution(i);
+            for (uint32_t i=ROB.head; i<ROB.tail; i++)
+	      {
+		if(instrs_executed >= EXEC_WIDTH)
+		  {
+		    break;
+		  }
+		instrs_executed += complete_execution(i);
+	      }
+	    
         }
         else {
             for (uint32_t i=ROB.head; i<ROB.SIZE; i++)
-                complete_execution(i);
+	      {
+		if(instrs_executed >= EXEC_WIDTH)
+                  {
+                    break;
+                  }
+                instrs_executed += complete_execution(i);
+	      }
             for (uint32_t i=0; i<ROB.tail; i++)
-                complete_execution(i);
+	      {
+		if(instrs_executed >= EXEC_WIDTH)
+                  {
+                    break;
+                  }
+                instrs_executed += complete_execution(i);
+	      }
         }
     }
 }
