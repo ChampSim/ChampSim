@@ -18,7 +18,7 @@ using namespace std;
 // CORE PROCESSOR
 #define FETCH_WIDTH 6
 #define DECODE_WIDTH 6
-#define EXEC_WIDTH 6
+#define EXEC_WIDTH 4
 #define LQ_WIDTH 2
 #define SQ_WIDTH 2
 #define RETIRE_WIDTH 5
@@ -68,8 +68,7 @@ class O3_CPU {
     uint64_t STA[STA_SIZE], STA_head, STA_tail; 
 
     // Ready-To-Execute
-    uint32_t RTE0[ROB_SIZE], RTE0_head, RTE0_tail, 
-             RTE1[ROB_SIZE], RTE1_head, RTE1_tail;  
+    uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
 
     // Ready-To-Load
     uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail, 
@@ -146,13 +145,10 @@ class O3_CPU {
         STA_tail = 0;
 
         for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  RTE0[i] = ROB_SIZE;
-	  RTE1[i] = ROB_SIZE;
+	  ready_to_execute[i] = ROB_SIZE;
         }
-        RTE0_head = 0;
-        RTE1_head = 0;
-        RTE0_tail = 0;
-        RTE1_tail = 0;
+        ready_to_execute_head = 0;
+        ready_to_execute_head = 0;
 
         for (uint32_t i=0; i<LQ_SIZE; i++) {
 	  RTL0[i] = LQ_SIZE;
@@ -185,9 +181,9 @@ class O3_CPU {
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),
          do_memory_scheduling(uint32_t rob_index),
-         operate_lsq(),
-         complete_execution(uint32_t rob_index),
-         reg_RAW_release(uint32_t rob_index),
+         operate_lsq();
+    uint32_t complete_execution(uint32_t rob_index);
+    void reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
          handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
          handle_merged_translation(PACKET *provider),
