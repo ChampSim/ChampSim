@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "ooo_cpu.h"
 #include "set.h"
 
@@ -570,12 +572,14 @@ void O3_CPU::fetch_instruction()
   uint32_t index = IFETCH_BUFFER.head;
   for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
     {
-      if(IFETCH_BUFFER.entry[index].ip == 0)
+        ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
+
+      if(ifb_entry.ip == 0)
 	{
 	  break;
 	}
 
-      if(IFETCH_BUFFER.entry[index].translated == 0)
+      if(ifb_entry.translated == 0)
 	{
 	  // begin process of fetching this instruction by sending it to the ITLB
 	  // add it to the ITLB's read queue
@@ -586,16 +590,16 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.fill_level = FILL_L1;
 	  trace_packet.fill_l1i = 1;
 	  trace_packet.cpu = cpu;
-	  trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+          trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
 	  if (knob_cloudsuite)
-	    trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
+              trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
 	  else
-	    trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
-	  trace_packet.full_addr = IFETCH_BUFFER.entry[index].ip;
+              trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
+          trace_packet.full_addr = ifb_entry.ip;
 	  trace_packet.instr_id = 0;
 	  trace_packet.rob_index = i;
 	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
-	  trace_packet.ip = IFETCH_BUFFER.entry[index].ip;
+          trace_packet.ip = ifb_entry.ip;
 	  trace_packet.type = LOAD; 
 	  trace_packet.asid[0] = 0;
 	  trace_packet.asid[1] = 0;
@@ -608,7 +612,7 @@ void O3_CPU::fetch_instruction()
 	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if((((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((IFETCH_BUFFER.entry[index].ip)>>LOG2_PAGE_SIZE)) && (IFETCH_BUFFER.entry[j].translated == 0))
+                    if(((IFETCH_BUFFER.entry[j].ip >> LOG2_PAGE_SIZE) == (ifb_entry.ip >> LOG2_PAGE_SIZE)) && (IFETCH_BUFFER.entry[j].translated == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = INFLIGHT;
 		      IFETCH_BUFFER.entry[j].fetched = 0;
@@ -617,8 +621,22 @@ void O3_CPU::fetch_instruction()
 	    }
 	}
 
+      // Check L0I to see if we recently fetched this line
+      l0i_t::value_type &l0i_set = L0I[ifb_entry.ip % L0I_SET];
+      auto way = std::find_if(l0i_set.begin(), l0i_set.end(), [ifb_entry](l0i_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
+      if (way != l0i_set.end())
+      {
+          // The cache line is in the L0, so we can mark this as complete
+          ifb_entry.fetched = COMPLETED;
+
+          // Update LRU
+          unsigned hit_lru = way->lru;
+          std::for_each(l0i_set.begin(), l0i_set.end(), [hit_lru](l0i_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+          way->lru = 0;
+      }
+
       // fetch cache lines that were part of a translated page but not the cache line that initiated the translation
-      if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == 0))
+      if((ifb_entry.translated == COMPLETED) && (ifb_entry.fetched == 0))
 	{
 	  // add it to the L1-I's read queue
 	  PACKET fetch_packet;
@@ -627,15 +645,15 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.fill_level = FILL_L1;
 	  fetch_packet.fill_l1i = 1;
 	  fetch_packet.cpu = cpu;
-	  fetch_packet.address = IFETCH_BUFFER.entry[index].instruction_pa >> 6;
-	  fetch_packet.instruction_pa = IFETCH_BUFFER.entry[index].instruction_pa;
-	  fetch_packet.full_addr = IFETCH_BUFFER.entry[index].instruction_pa;
-	  fetch_packet.v_address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
-	  fetch_packet.full_v_addr = IFETCH_BUFFER.entry[index].ip;
+          fetch_packet.address = ifb_entry.instruction_pa >> LOG2_BLOCK_SIZE;
+          fetch_packet.instruction_pa = ifb_entry.instruction_pa;
+          fetch_packet.full_addr = ifb_entry.instruction_pa;
+          fetch_packet.v_address = ifb_entry.ip >> LOG2_PAGE_SIZE;
+          fetch_packet.full_v_addr = ifb_entry.ip;
 	  fetch_packet.instr_id = 0;
 	  fetch_packet.rob_index = 0;
 	  fetch_packet.producer = 0;
-	  fetch_packet.ip = IFETCH_BUFFER.entry[index].ip;
+          fetch_packet.ip = ifb_entry.ip;
 	  fetch_packet.type = LOAD; 
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
@@ -659,7 +677,7 @@ void O3_CPU::fetch_instruction()
 	      // mark all instructions from this cache line as having been fetched
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) && (IFETCH_BUFFER.entry[j].fetched == 0))
+            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE) && (IFETCH_BUFFER.entry[j].fetched == 0))
 		    {
 		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
@@ -1894,6 +1912,22 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
 		IFETCH_BUFFER.entry[j].fetched = COMPLETED;
 	      }
 	  }
+
+        // find victim in L0I
+        l0i_t::value_type &l0i_set = L0I[complete_ip % L0I_SET];
+        auto way = std::find_if_not(l0i_set.begin(), l0i_set.end(), [](l0i_entry_t x){ return x.valid; }); // search for invalid
+        if (way == l0i_set.end())
+            way = std::find_if(l0i_set.begin(), l0i_set.end(), [](l0i_entry_t x){ return x.lru >= L0I_WAY-1;}); // search for LRU
+        assert(way != l0i_set.end());
+
+        // update LRU in L0I
+        unsigned hit_lru = way->lru;
+        std::for_each(l0i_set.begin(), l0i_set.end(), [hit_lru](l0i_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+
+        // add to L0I
+        way->valid = true;
+        way->lru = 0;
+        way->addr = queue->entry[index].ip;
 
 	// remove this entry                                                                                                                                                                        
 	queue->remove_queue(&queue->entry[index]);

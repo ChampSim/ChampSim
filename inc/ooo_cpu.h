@@ -1,6 +1,8 @@
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
+#include <array>
+
 #include "cache.h"
 
 #ifdef CRC2_COMPILE
@@ -24,6 +26,10 @@ using namespace std;
 //#define SCHEDULING_LATENCY 0
 //#define EXEC_LATENCY 0
 //#define DECODE_LATENCY 2
+
+// Dimensions of instruction buffer
+#define L0I_SET 1
+#define L0I_WAY 1
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -51,6 +57,17 @@ class O3_CPU {
              next_print_instruction, num_retired;
     uint32_t inflight_reg_executions, inflight_mem_executions, num_searched;
     uint32_t next_ITLB_fetch;
+
+    struct l0i_entry_t
+    {
+        bool valid = false;
+        unsigned lru = L0I_WAY;
+        uint64_t addr = 0;
+    };
+
+    // instruction buffer
+    using l0i_t= std::array<std::array<l0i_entry_t, L0I_WAY>, L0I_SET>;
+    l0i_t L0I;
 
     // reorder buffer, load/store queue, register file
     CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
