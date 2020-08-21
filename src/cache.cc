@@ -678,8 +678,7 @@ void CACHE::handle_read()
 			  // TODO: need to differentiate page table walk and actual swap
 			  
 			  // emulate page table walk
-			  //uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, RQ.entry[index].address, 0);
-			  uint64_t pa = va_to_pa(read_cpu, RQ.entry[index].instr_id, RQ.entry[index].full_addr, (RQ.entry[index].full_addr)>>LOG2_PAGE_SIZE, 0);
+			  uint64_t pa = vmem->va_to_pa(read_cpu, RQ.entry[index].full_addr);
 			  
 			  RQ.entry[index].data = pa >> LOG2_PAGE_SIZE; 
 			  RQ.entry[index].event_cycle = current_core_cycle[read_cpu];
@@ -1578,7 +1577,7 @@ void CACHE::va_translate_prefetches()
     {
       if((VAPQ.entry[vapq_index].address == VAPQ.entry[vapq_index].v_address) && (VAPQ.entry[vapq_index].event_cycle <= current_core_cycle[cpu]))
         {
-	  VAPQ.entry[vapq_index].full_addr = va_to_pa(cpu, 0, VAPQ.entry[vapq_index].full_v_addr, (VAPQ.entry[vapq_index].full_v_addr)>>LOG2_PAGE_SIZE, 0);
+	  VAPQ.entry[vapq_index].full_addr = vmem->va_to_pa(cpu, VAPQ.entry[vapq_index].full_v_addr);
 	  VAPQ.entry[vapq_index].address = (VAPQ.entry[vapq_index].full_addr)>>LOG2_BLOCK_SIZE;
           break;
         }
