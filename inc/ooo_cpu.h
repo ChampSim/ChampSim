@@ -214,11 +214,9 @@ class O3_CPU {
     void update_rob();
     void retire_rob();
 
-    void  add_to_rob(ooo_model_instr *arch_instr);
     uint32_t check_rob(uint64_t instr_id);
 
     uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
-    void add_to_decode_buffer(ooo_model_instr *arch_instr);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 

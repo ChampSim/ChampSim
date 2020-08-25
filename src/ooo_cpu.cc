@@ -397,40 +397,6 @@ void O3_CPU::read_from_trace()
     //instrs_to_fetch_this_cycle = num_reads;
 }
 
-void O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
-{
-    uint32_t index = ROB.tail;    
-
-    // sanity check
-    if (ROB.entry[index].instr_id != 0) {
-        cerr << "[ROB_ERROR] " << __func__ << " is not empty index: " << index;
-        cerr << " instr_id: " << ROB.entry[index].instr_id << endl;
-        assert(0);
-    }
-
-    ROB.entry[index] = *arch_instr;
-    ROB.entry[index].event_cycle = current_core_cycle[cpu];
-
-    ROB.occupancy++;
-    ROB.tail++;
-    if (ROB.tail >= ROB.SIZE)
-        ROB.tail = 0;
-
-    DP ( if (warmup_complete[cpu]) {
-    cout << "[ROB] " <<  __func__ << " instr_id: " << ROB.entry[index].instr_id;
-    cout << " ip: " << hex << ROB.entry[index].ip << dec;
-    cout << " head: " << ROB.head << " tail: " << ROB.tail << " occupancy: " << ROB.occupancy;
-    cout << " event: " << ROB.entry[index].event_cycle << " current: " << current_core_cycle[cpu] << endl; });
-
-#ifdef SANITY_CHECK
-    if (ROB.entry[index].ip == 0) {
-        cerr << "[ROB_ERROR] " << __func__ << " ip is zero index: " << index;
-        cerr << " instr_id: " << ROB.entry[index].instr_id << " ip: " << ROB.entry[index].ip << endl;
-        assert(0);
-    }
-#endif
-}
-
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
 {
   /*
@@ -482,28 +448,6 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
     }
   
   return index;
-}
-
-void O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
-{
-  uint32_t index = DECODE_BUFFER.tail;
-
-  if(DECODE_BUFFER.entry[index].instr_id != 0)
-    {
-      cerr << "[DECODE_BUFFER_ERROR] " << __func__ << " is not empty index: " << index;
-      cerr << " instr_id: " << IFETCH_BUFFER.entry[index].instr_id << endl;
-      assert(0);
-    }
-
-  DECODE_BUFFER.entry[index] = *arch_instr;
-  DECODE_BUFFER.entry[index].event_cycle = current_core_cycle[cpu];
-
-  DECODE_BUFFER.occupancy++;
-  DECODE_BUFFER.tail++;
-  if(DECODE_BUFFER.tail >= DECODE_BUFFER.SIZE)
-    {
-      DECODE_BUFFER.tail = 0;
-    }
 }
 
 uint32_t O3_CPU::check_rob(uint64_t instr_id)
@@ -705,7 +649,16 @@ void O3_CPU::fetch_instruction()
     while (checked_for_decode < DECODE_WIDTH && IFETCH_BUFFER.occupancy > 0 && DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE &&
             IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED && IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED)
     {
-        add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+        // ADD to decode buffer
+        DECODE_BUFFER.entry[DECODE_BUFFER.tail] = IFETCH_BUFFER.entry[IFETCH_BUFFER.head];
+        DECODE_BUFFER.entry[DECODE_BUFFER.tail].event_cycle = current_core_cycle[cpu];
+
+        DECODE_BUFFER.tail++;
+        if(DECODE_BUFFER.tail >= DECODE_BUFFER.SIZE)
+        {
+            DECODE_BUFFER.tail = 0;
+        }
+        DECODE_BUFFER.occupancy++;
 
         ooo_model_instr empty_entry;
         IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
@@ -731,8 +684,14 @@ void O3_CPU::decode_and_dispatch()
     while (count_dispatches < DECODE_WIDTH && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
             (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
     {
-        // move this instruction to the ROB if there's space
-        add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
+        // Add to ROB
+        ROB.entry[ROB.tail] = DECODE_BUFFER.entry[DECODE_BUFFER.head];
+        ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
+
+        ROB.tail++;
+        if (ROB.tail >= ROB.SIZE)
+            ROB.tail = 0;
+        ROB.occupancy++;
 
         ooo_model_instr empty_entry;
         DECODE_BUFFER.entry[DECODE_BUFFER.head] = empty_entry;
