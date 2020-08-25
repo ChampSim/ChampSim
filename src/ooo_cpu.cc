@@ -561,10 +561,10 @@ void O3_CPU::fetch_instruction()
 	    }
 	}
 
-      // Check L0I to see if we recently fetched this line
-      l0i_t::value_type &l0i_set = L0I[ifb_entry.ip % L0I_SET];
-      auto way = std::find_if(l0i_set.begin(), l0i_set.end(), [ifb_entry](l0i_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
-      if (way != l0i_set.end())
+      // Check DIB to see if we recently fetched this line
+      dib_t::value_type &dib_set = DIB[ifb_entry.ip % DIB_SET];
+      auto way = std::find_if(dib_set.begin(), dib_set.end(), [ifb_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
+      if (way != dib_set.end())
       {
           // The cache line is in the L0, so we can mark this as complete
           ifb_entry.fetched = COMPLETED;
@@ -577,7 +577,7 @@ void O3_CPU::fetch_instruction()
 
           // Update LRU
           unsigned hit_lru = way->lru;
-          std::for_each(l0i_set.begin(), l0i_set.end(), [hit_lru](l0i_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+          std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
           way->lru = 0;
       }
 
@@ -1823,18 +1823,18 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
 	      }
 	  }
 
-        // find victim in L0I
-        l0i_t::value_type &l0i_set = L0I[complete_ip % L0I_SET];
-        auto way = std::find_if_not(l0i_set.begin(), l0i_set.end(), [](l0i_entry_t x){ return x.valid; }); // search for invalid
-        if (way == l0i_set.end())
-            way = std::find_if(l0i_set.begin(), l0i_set.end(), [](l0i_entry_t x){ return x.lru >= L0I_WAY-1;}); // search for LRU
-        assert(way != l0i_set.end());
+        // find victim in DIB
+        dib_t::value_type &dib_set = DIB[complete_ip % DIB_SET];
+        auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
+        if (way == dib_set.end())
+            way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
+        assert(way != dib_set.end());
 
-        // update LRU in L0I
+        // update LRU in DIB
         unsigned hit_lru = way->lru;
-        std::for_each(l0i_set.begin(), l0i_set.end(), [hit_lru](l0i_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+        std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
 
-        // add to L0I
+        // add to DIB
         way->valid = true;
         way->lru = 0;
         way->addr = queue->entry[index].ip;

@@ -28,8 +28,8 @@ using namespace std;
 //#define DECODE_LATENCY 2
 
 // Dimensions of instruction buffer
-#define L0I_SET 8
-#define L0I_WAY 8
+#define DIB_SET 8
+#define DIB_WAY 8
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -58,16 +58,16 @@ class O3_CPU {
     uint32_t inflight_reg_executions, inflight_mem_executions, num_searched;
     uint32_t next_ITLB_fetch;
 
-    struct l0i_entry_t
+    struct dib_entry_t
     {
         bool valid = false;
-        unsigned lru = L0I_WAY;
+        unsigned lru = DIB_WAY;
         uint64_t addr = 0;
     };
 
     // instruction buffer
-    using l0i_t= std::array<std::array<l0i_entry_t, L0I_WAY>, L0I_SET>;
-    l0i_t L0I;
+    using dib_t= std::array<std::array<dib_entry_t, DIB_WAY>, DIB_SET>;
+    dib_t DIB;
 
     // reorder buffer, load/store queue, register file
     CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
