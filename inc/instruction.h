@@ -115,8 +115,6 @@ class ooo_model_instr {
             branch_taken,
             branch_mispredicted,
             branch_prediction_made,
-            translated,
-            data_translated,
             source_added[NUM_INSTR_SOURCES],
             destination_added[NUM_INSTR_DESTINATIONS_SPARC],
             is_producer,
@@ -130,11 +128,12 @@ class ooo_model_instr {
     uint8_t branch_type;
     uint64_t branch_target;
 
-    uint32_t fetched, scheduled;
+    uint8_t translated = 0,
+            fetched = 0,
+            decoded = 0,
+            scheduled = 0,
+            executed = 0;
     int num_reg_ops, num_mem_ops, num_reg_dependent;
-
-    // executed bit is set after all dependencies are eliminated and this instr is chosen on a cycle, according to EXEC_WIDTH
-    int executed;
 
     uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
 
@@ -185,14 +184,9 @@ class ooo_model_instr {
         branch_taken = 0;
         branch_mispredicted = 0;
 	branch_prediction_made = 0;
-        translated = 0;
-        data_translated = 0;
         is_producer = 0;
         is_consumer = 0;
         reg_RAW_producer = 0;
-        fetched = 0;
-        scheduled = 0;
-        executed = 0;
         reg_ready = 0;
         mem_ready = 0;
         asid[0] = UINT8_MAX;

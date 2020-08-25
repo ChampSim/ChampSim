@@ -397,7 +397,7 @@ void O3_CPU::read_from_trace()
     //instrs_to_fetch_this_cycle = num_reads;
 }
 
-uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
+void O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
 {
     uint32_t index = ROB.tail;    
 
@@ -429,8 +429,6 @@ uint32_t O3_CPU::add_to_rob(ooo_model_instr *arch_instr)
         assert(0);
     }
 #endif
-    
-    return index;
 }
 
 uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
@@ -486,7 +484,7 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
   return index;
 }
 
-uint32_t O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
+void O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
 {
   uint32_t index = DECODE_BUFFER.tail;
 
@@ -506,8 +504,6 @@ uint32_t O3_CPU::add_to_decode_buffer(ooo_model_instr *arch_instr)
     {
       DECODE_BUFFER.tail = 0;
     }
-
-  return index;
 }
 
 uint32_t O3_CPU::check_rob(uint64_t instr_id)
@@ -575,9 +571,9 @@ void O3_CPU::fetch_instruction()
         ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
 
       if(ifb_entry.ip == 0)
-	{
-	  break;
-	}
+       {
+           break;
+       }
 
       if(ifb_entry.translated == 0)
 	{
@@ -628,6 +624,12 @@ void O3_CPU::fetch_instruction()
       {
           // The cache line is in the L0, so we can mark this as complete
           ifb_entry.fetched = COMPLETED;
+
+          // Also mark it as decoded
+          ifb_entry.decoded = COMPLETED;
+
+          // It can be acted on immediately
+          ifb_entry.event_cycle = current_core_cycle[cpu];
 
           // Update LRU
           unsigned hit_lru = way->lru;
@@ -697,123 +699,72 @@ void O3_CPU::fetch_instruction()
 	  break;
 	}
     }
-  
-  // send to DECODE stage
-  bool decode_full = false;
-  for(uint32_t i=0; i<DECODE_WIDTH; i++)
+
+    // send to DECODE stage
+    std::size_t checked_for_decode = 0;
+    while (checked_for_decode < DECODE_WIDTH && IFETCH_BUFFER.occupancy > 0 && DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE &&
+            IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED && IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED)
     {
-      if(decode_full)
-	{
-          break;
+        add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+
+        ooo_model_instr empty_entry;
+        IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
+
+        IFETCH_BUFFER.head++;
+        if(IFETCH_BUFFER.head >= IFETCH_BUFFER.SIZE)
+        {
+            IFETCH_BUFFER.head = 0;
         }
+        IFETCH_BUFFER.occupancy--;
 
-      if(IFETCH_BUFFER.entry[IFETCH_BUFFER.head].ip == 0)
-        {
-          break;
-	}	      
-      
-      if((IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED) && (IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED))
-	{
-	  if(DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE)
-	    {
-	      uint32_t decode_index = add_to_decode_buffer(&IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
-	      DECODE_BUFFER.entry[decode_index].event_cycle = 0;
-	      
-	      ooo_model_instr empty_entry;
-	      IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
-	      
-	      IFETCH_BUFFER.head++;
-	      if(IFETCH_BUFFER.head >= IFETCH_BUFFER.SIZE)
-		{
-		  IFETCH_BUFFER.head = 0;
-		}
-	      IFETCH_BUFFER.occupancy--;
-	    }
-	  else
-	    {
-	      decode_full = true;
-	    }
-	}
-
-      index++;
-      if(index >= IFETCH_BUFFER.SIZE)
-        {
-          index = 0;
-	}
+        checked_for_decode++;
     }
 }
 
 void O3_CPU::decode_and_dispatch()
 {
-  // dispatch DECODE_WIDTH instructions that have decoded into the ROB
-  uint32_t count_dispatches = 0;
-  for(uint32_t i=0; i<DECODE_BUFFER.SIZE; i++)
+    if (DECODE_BUFFER.occupancy == 0)
+        return;
+
+    // dispatch DECODE_WIDTH instructions that have decoded into the ROB
+    uint32_t count_dispatches = 0;
+    while (count_dispatches < DECODE_WIDTH && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
+            (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
     {
-      if(DECODE_BUFFER.entry[DECODE_BUFFER.head].ip == 0)
-	{
-	  break;
-	}
-      
-      if(((!warmup_complete[cpu]) && (ROB.occupancy < ROB.SIZE)) ||
-	 ((DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle != 0) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]) && (ROB.occupancy < ROB.SIZE)))
-	{
-	  // move this instruction to the ROB if there's space
-	  uint32_t rob_index = add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
-	  ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+        // move this instruction to the ROB if there's space
+        add_to_rob(&DECODE_BUFFER.entry[DECODE_BUFFER.head]);
 
-	  ooo_model_instr empty_entry;
-	  DECODE_BUFFER.entry[DECODE_BUFFER.head] = empty_entry;
-	  
-	  DECODE_BUFFER.head++;
-	  if(DECODE_BUFFER.head >= DECODE_BUFFER.SIZE)
-	    {
-	      DECODE_BUFFER.head = 0;
-	    }
-	  DECODE_BUFFER.occupancy--;
+        ooo_model_instr empty_entry;
+        DECODE_BUFFER.entry[DECODE_BUFFER.head] = empty_entry;
 
-	  count_dispatches++;
-	  if(count_dispatches >= DECODE_WIDTH)
-	    {
-	      break;
-	    }
-	}
-      else
-	{
-	  break;
-	}
+        DECODE_BUFFER.head++;
+        if(DECODE_BUFFER.head >= DECODE_BUFFER.SIZE)
+        {
+            DECODE_BUFFER.head = 0;
+        }
+        DECODE_BUFFER.occupancy--;
+
+        count_dispatches++;
     }
-  
-  // make new instructions pay decode penalty if they miss in the decoded instruction cache
-  uint32_t decode_index = DECODE_BUFFER.head;
-  uint32_t count_decodes = 0;
-  for(uint32_t i=0; i<DECODE_BUFFER.SIZE; i++)
-    {
-      if(DECODE_BUFFER.entry[DECODE_BUFFER.head].ip == 0)
-	{
-	  break;
-	}
-      
-      if(DECODE_BUFFER.entry[decode_index].event_cycle == 0)
-	{
-	  // apply decode latency
-	  DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
-	  count_decodes++;
-	}
-      
-      if(decode_index == DECODE_BUFFER.tail)
-	{
-	  break;
-	}
-      decode_index++;
-      if(decode_index >= DECODE_BUFFER.SIZE)
-	{
-	  decode_index = 0;
-	}
 
-      if(count_decodes >= DECODE_WIDTH)
-	{
-	  break;
-	}
+    // make new instructions pay decode penalty if they miss in the decoded instruction cache
+    uint32_t decode_index = DECODE_BUFFER.head;
+    uint32_t count_decodes = 0;
+    while (count_decodes < DECODE_WIDTH && decode_index != DECODE_BUFFER.tail)
+    {
+        if (!DECODE_BUFFER.entry[decode_index].decoded)
+        {
+            // apply decode latency
+            DECODE_BUFFER.entry[decode_index].decoded = COMPLETED;
+            DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+            count_decodes++;
+        }
+
+        decode_index++;
+        if(decode_index >= DECODE_BUFFER.SIZE)
+        {
+            decode_index = 0;
+        }
     }
 }
 

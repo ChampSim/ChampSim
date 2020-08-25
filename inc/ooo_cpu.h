@@ -28,8 +28,8 @@ using namespace std;
 //#define DECODE_LATENCY 2
 
 // Dimensions of instruction buffer
-#define L0I_SET 1
-#define L0I_WAY 1
+#define L0I_SET 8
+#define L0I_WAY 8
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -214,11 +214,11 @@ class O3_CPU {
     void update_rob();
     void retire_rob();
 
-    uint32_t  add_to_rob(ooo_model_instr *arch_instr),
-              check_rob(uint64_t instr_id);
+    void  add_to_rob(ooo_model_instr *arch_instr);
+    uint32_t check_rob(uint64_t instr_id);
 
     uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
-    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
+    void add_to_decode_buffer(ooo_model_instr *arch_instr);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
