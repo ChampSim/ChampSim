@@ -1,6 +1,8 @@
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
+#include <array>
+
 #include "cache.h"
 #include "block.h"
 
@@ -27,6 +29,10 @@ using namespace std;
 //#define SCHEDULING_LATENCY 0
 //#define EXEC_LATENCY 0
 //#define DECODE_LATENCY 2
+
+// Dimensions of instruction buffer
+#define DIB_SET 8
+#define DIB_WAY 8
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -57,6 +63,17 @@ class O3_CPU {
 
     // A map from register indices to the instruction (in the ROB) which is producing its value
     std::unordered_map<uint8_t, std::vector<ooo_model_instr>::iterator> producers;
+
+    struct dib_entry_t
+    {
+        bool valid = false;
+        unsigned lru = DIB_WAY;
+        uint64_t addr = 0;
+    };
+
+    // instruction buffer
+    using dib_t= std::array<std::array<dib_entry_t, DIB_WAY>, DIB_SET>;
+    dib_t DIB;
 
     // reorder buffer, load/store queue, register file
     CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
@@ -202,11 +219,9 @@ class O3_CPU {
     void update_rob();
     void retire_rob();
 
-    uint32_t  add_to_rob(ooo_model_instr *arch_instr),
-              check_rob(uint64_t instr_id);
+    uint32_t check_rob(uint64_t instr_id);
 
     uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
-    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
