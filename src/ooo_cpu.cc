@@ -30,24 +30,6 @@ void O3_CPU::read_from_trace()
 
         if (knob_cloudsuite) {
             if (!fread(&current_cloudsuite_instr, instr_size, 1, trace_file)) {
-	      if((SINGLE_CORE_TRACE_END_EXIT==1) && (NUM_CPUS==1))
-		{
-		  cout << "*** Reached end of trace for Core: " << cpu << " Simulation complete." << endl << endl;
-		  if(warmup_complete[cpu] == 1)
-		    {
-		      ooo_cpu[cpu].simulation_instructions = ooo_cpu[cpu].num_retired - ooo_cpu[cpu].begin_sim_instr;
-		    }
-		  else
-		    {
-		      cout << "Reached the end of trace before completing the warmup period." << endl << endl;
-		      warmup_complete[cpu] = 1;
-		      all_warmup_complete = 2;
-		      ooo_cpu[cpu].begin_sim_instr = 0;
-		      ooo_cpu[cpu].simulation_instructions = ooo_cpu[cpu].num_retired - ooo_cpu[cpu].begin_sim_instr;
-		    }
-		  return;
-		}
-
                 // reached end of file for this trace
                 cout << "*** Reached end of trace for Core: " << cpu << " Repeating trace: " << trace_string << endl; 
 
@@ -165,24 +147,6 @@ void O3_CPU::read_from_trace()
 	    input_instr trace_read_instr;
             if (!fread(&trace_read_instr, instr_size, 1, trace_file))
 	      {
-		if((SINGLE_CORE_TRACE_END_EXIT==1) && (NUM_CPUS==1))
-		  {
-		    cout << "*** Reached end of trace for Core: " << cpu << " Simulation complete." << endl << endl;
-		    if(warmup_complete[cpu] == 1)
-		      {
-			ooo_cpu[cpu].simulation_instructions = ooo_cpu[cpu].num_retired - ooo_cpu[cpu].begin_sim_instr;
-		      }
-		    else
-		      {
-			cout << "Reached the end of trace before completing the warmup period." << endl << endl;
-			warmup_complete[cpu] = 1;
-			all_warmup_complete = 2;
-			ooo_cpu[cpu].begin_sim_instr = 0;
-			ooo_cpu[cpu].simulation_instructions = ooo_cpu[cpu].num_retired - ooo_cpu[cpu].begin_sim_instr;
-		      }
-		    return;
-		  }
-
                 // reached end of file for this trace
                 cout << "*** Reached end of trace for Core: " << cpu << " Repeating trace: " << trace_string << endl; 
 		
