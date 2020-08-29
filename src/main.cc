@@ -838,6 +838,8 @@ int main(int argc, char** argv)
 		{
 		  ooo_cpu[i].read_from_trace();
 		}
+
+          std::cout << std::endl; //STATS
 	    }
 
             // heartbeat information

@@ -61,7 +61,7 @@ void O3_CPU::read_from_trace()
                 std::copy_if(std::begin(current_cloudsuite_instr.destination_registers), std::end(current_cloudsuite_instr.destination_registers), std::back_inserter(arch_instr.destination_registers), [](uint8_t x){ return x != 0; });
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     arch_instr.destination_memory[i] = current_cloudsuite_instr.destination_memory[i];
-                    arch_instr.destination_virtual_address[i] = current_cloudsuite_instr.destination_memory[i];
+                    //arch_instr.destination_virtual_address[i] = current_cloudsuite_instr.destination_memory[i];
 
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
@@ -197,7 +197,7 @@ void O3_CPU::read_from_trace()
                 std::copy_if(std::begin(current_instr.destination_registers), std::end(current_instr.destination_registers), std::back_inserter(arch_instr.destination_registers), [](uint8_t x){ return x != 0; });
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
-                    arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
+                    //arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
 
                     if (arch_instr.destination_memory[i]) {
                         num_mem_ops++;
@@ -883,6 +883,7 @@ void O3_CPU::execute_instruction()
         if (ready_to_execute[ready_to_execute_head] < ROB_SIZE) {
             uint32_t exec_index = ready_to_execute[ready_to_execute_head];
             if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
+                std::cout << ROB.entry[exec_index].instr_id << " "; //STATS
                 do_execution(exec_index);
 
                 ready_to_execute[ready_to_execute_head] = ROB_SIZE;
@@ -1460,6 +1461,8 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
     SQ.entry[sq_index].fetched = COMPLETED;
     SQ.entry[sq_index].event_cycle = current_core_cycle[cpu];
 
+    std::cout << SQ.entry[sq_index].instr_id << " "; //STATS
+
     ROB.entry[rob_index].num_mem_ops--;
     ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
     if (ROB.entry[rob_index].num_mem_ops < 0) {
@@ -1549,6 +1552,8 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.asid[0] = LQ.entry[lq_index].asid[0];
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
     data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+
+    std::cout << LQ.entry[lq_index].instr_id << " "; //STATS
 
     int rq_index = L1D.add_rq(&data_packet);
 

@@ -147,7 +147,7 @@ class ooo_model_instr {
     //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
     // keep around a record of what the original virtual addresses were
-    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC];
+    //uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC];
     uint64_t source_virtual_address[NUM_INSTR_SOURCES];
 
     // these are instruction ids of other instructions in the window
@@ -205,7 +205,7 @@ class ooo_model_instr {
 
         for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
             destination_memory[i] = 0;
-            destination_virtual_address[i] = 0;
+            //destination_virtual_address[i] = 0;
             destination_added[i] = 0;
             sq_index[i] = UINT32_MAX;
             forwarding_index[i] = 0;
