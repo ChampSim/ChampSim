@@ -93,10 +93,10 @@ extern queue <uint64_t> page_queue;
 extern map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
 extern uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
 
-extern VirtualMemory* vmem;
-
 void print_stats();
 
-// log base 2 function from efectiu
-int lg2(int n);
+constexpr uint64_t lg2(uint64_t n)
+{
+    return n < 2 ? 0 : 1+lg2(n/2);
+}
 #endif

@@ -1,3 +1,5 @@
+#ifndef VMEM_H
+#define VMEM_H
 
 #include <iostream>
 #include <deque>
@@ -31,3 +33,6 @@ class VirtualMemory
   uint64_t va_to_pa(uint32_t cpu_num, uint64_t vaddr);
   uint64_t get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
 };
+
+#endif
+

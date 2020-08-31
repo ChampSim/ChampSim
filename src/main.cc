@@ -269,17 +269,6 @@ void signal_handler(int signal)
 	exit(1);
 }
 
-// log base 2 function from efectiu
-int lg2(int n)
-{
-    int i, m = n, c = -1;
-    for (i=0; m; i++) {
-        m /= 2;
-        c++;
-    }
-    return c;
-}
-
 void cpu_l1i_prefetcher_cache_operate(uint32_t cpu_num, uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit)
 {
   ooo_cpu[cpu_num].l1i_prefetcher_cache_operate(v_addr, cache_hit, prefetch_hit);

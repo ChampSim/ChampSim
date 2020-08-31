@@ -1,7 +1,12 @@
 #include "cache.h"
+
+#include "champsim.h"
 #include "set.h"
+#include "vmem.h"
 
 uint64_t l2pf_access = 0;
+
+extern VirtualMemory *vmem;
 
 void CACHE::handle_fill()
 {
