@@ -89,8 +89,8 @@ class CACHE : public MEMORY {
     uint32_t LATENCY;
     BLOCK **block;
     int fill_level;
-    uint32_t MAX_READ, MAX_FILL;
-    uint32_t reads_available_this_cycle;
+    uint32_t MAX_READ, MAX_WRITE;
+    uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
 
     // prefetch stats
@@ -152,8 +152,8 @@ class CACHE : public MEMORY {
         lower_level = NULL;
         extra_interface = NULL;
         fill_level = -1;
-        MAX_READ = 1;
-        MAX_FILL = 1;
+        MAX_READ = MAX_READ_PER_CYCLE;
+        MAX_WRITE = MAX_WRITE_PER_CYCLE;
 
         pf_requested = 0;
         pf_issued = 0;

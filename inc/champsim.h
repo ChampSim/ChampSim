@@ -43,7 +43,7 @@
 #define BLOCK_SIZE 64
 #define LOG2_BLOCK_SIZE 6
 #define MAX_READ_PER_CYCLE 8
-#define MAX_FILL_PER_CYCLE 1
+#define MAX_WRITE_PER_CYCLE 8
 
 #define INFLIGHT 1
 #define COMPLETED 2

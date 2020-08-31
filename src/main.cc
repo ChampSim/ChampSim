@@ -710,14 +710,15 @@ int main(int argc, char** argv)
         ooo_cpu[i].ITLB.cpu = i;
         ooo_cpu[i].ITLB.cache_type = IS_ITLB;
 	ooo_cpu[i].ITLB.MAX_READ = 2;
+	ooo_cpu[i].ITLB.MAX_WRITE = 2;
         ooo_cpu[i].ITLB.fill_level = FILL_L1;
         ooo_cpu[i].ITLB.extra_interface = &ooo_cpu[i].L1I;
         ooo_cpu[i].ITLB.lower_level = &ooo_cpu[i].STLB; 
 
         ooo_cpu[i].DTLB.cpu = i;
         ooo_cpu[i].DTLB.cache_type = IS_DTLB;
-        //ooo_cpu[i].DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
         ooo_cpu[i].DTLB.MAX_READ = 2;
+        ooo_cpu[i].DTLB.MAX_WRITE = 2;
         ooo_cpu[i].DTLB.fill_level = FILL_L1;
         ooo_cpu[i].DTLB.extra_interface = &ooo_cpu[i].L1D;
         ooo_cpu[i].DTLB.lower_level = &ooo_cpu[i].STLB;
@@ -725,6 +726,7 @@ int main(int argc, char** argv)
         ooo_cpu[i].STLB.cpu = i;
         ooo_cpu[i].STLB.cache_type = IS_STLB;
         ooo_cpu[i].STLB.MAX_READ = 1;
+        ooo_cpu[i].STLB.MAX_WRITE = 1;
         ooo_cpu[i].STLB.fill_level = FILL_L2;
         ooo_cpu[i].STLB.upper_level_icache[i] = &ooo_cpu[i].ITLB;
         ooo_cpu[i].STLB.upper_level_dcache[i] = &ooo_cpu[i].DTLB;
@@ -732,8 +734,8 @@ int main(int argc, char** argv)
         // PRIVATE CACHE
         ooo_cpu[i].L1I.cpu = i;
         ooo_cpu[i].L1I.cache_type = IS_L1I;
-        //ooo_cpu[i].L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
         ooo_cpu[i].L1I.MAX_READ = 2;
+        ooo_cpu[i].L1I.MAX_WRITE = 2;
         ooo_cpu[i].L1I.fill_level = FILL_L1;
         ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
         ooo_cpu[i].l1i_prefetcher_initialize();
@@ -742,13 +744,16 @@ int main(int argc, char** argv)
 
         ooo_cpu[i].L1D.cpu = i;
         ooo_cpu[i].L1D.cache_type = IS_L1D;
-        ooo_cpu[i].L1D.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        ooo_cpu[i].L1D.MAX_READ = 2;
+        ooo_cpu[i].L1D.MAX_WRITE = 2;
         ooo_cpu[i].L1D.fill_level = FILL_L1;
         ooo_cpu[i].L1D.lower_level = &ooo_cpu[i].L2C; 
         ooo_cpu[i].L1D.l1d_prefetcher_initialize();
 
         ooo_cpu[i].L2C.cpu = i;
         ooo_cpu[i].L2C.cache_type = IS_L2C;
+        ooo_cpu[i].L2C.MAX_READ = 1;
+        ooo_cpu[i].L2C.MAX_WRITE = 1;
         ooo_cpu[i].L2C.fill_level = FILL_L2;
         ooo_cpu[i].L2C.upper_level_icache[i] = &ooo_cpu[i].L1I;
         ooo_cpu[i].L2C.upper_level_dcache[i] = &ooo_cpu[i].L1D;
@@ -759,6 +764,7 @@ int main(int argc, char** argv)
         uncore.LLC.cache_type = IS_LLC;
         uncore.LLC.fill_level = FILL_LLC;
         uncore.LLC.MAX_READ = NUM_CPUS;
+        uncore.LLC.MAX_WRITE = NUM_CPUS;
         uncore.LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
         uncore.LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
         uncore.LLC.lower_level = &uncore.DRAM;
