@@ -70,10 +70,6 @@ VirtualMemory::VirtualMemory(uint32_t number_of_cpus, uint64_t capacity, uint64_
     }
 }
 
-VirtualMemory::~VirtualMemory()
-{
-}
-
 uint64_t VirtualMemory::get_next_free_ppage()
 {
   if(ppage_free_list.empty())

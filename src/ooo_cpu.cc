@@ -7,7 +7,7 @@ O3_CPU ooo_cpu[NUM_CPUS];
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0, DECODE_LATENCY = 0;
 
-extern VirtualMemory *vmem;
+extern VirtualMemory vmem;
 
 void O3_CPU::initialize_core()
 {
@@ -467,7 +467,7 @@ uint32_t O3_CPU::add_to_ifetch_buffer(ooo_model_instr *arch_instr)
   IFETCH_BUFFER.entry[index].event_cycle = current_core_cycle[cpu];
 
   // magically translate instructions
-  uint64_t instr_pa = vmem->va_to_pa(cpu, IFETCH_BUFFER.entry[index].ip);
+  uint64_t instr_pa = vmem.va_to_pa(cpu, IFETCH_BUFFER.entry[index].ip);
   instr_pa >>= LOG2_PAGE_SIZE;
   instr_pa <<= LOG2_PAGE_SIZE;
   instr_pa |= (IFETCH_BUFFER.entry[index].ip & ((1 << LOG2_PAGE_SIZE) - 1));  
@@ -815,7 +815,7 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
   if (L1I.PQ.occupancy < L1I.PQ.SIZE)
     {
       // magically translate prefetches
-      uint64_t pf_pa = (vmem->va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
+      uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
 
       PACKET pf_packet;
       pf_packet.instruction = 1; // this is a code prefetch

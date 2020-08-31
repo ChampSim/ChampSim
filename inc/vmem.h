@@ -27,8 +27,8 @@ class VirtualMemory
   uint64_t rand_state;
   uint64_t vmem_rand();
  public:
+  // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
   VirtualMemory(uint32_t number_of_cpus, uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed);
-  ~VirtualMemory();
   uint32_t get_paget_table_level_count();
   uint64_t va_to_pa(uint32_t cpu_num, uint64_t vaddr);
   uint64_t get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);

@@ -19,7 +19,7 @@ uint64_t warmup_instructions     = 1000000,
 
 time_t start_time;
 
-VirtualMemory* vmem;
+VirtualMemory vmem(NUM_CPUS, 8589934592, 4096, 5, 1);
 
 // PAGE TABLE
 uint32_t PAGE_TABLE_LATENCY = 0, SWAP_LATENCY = 0;
@@ -568,9 +568,6 @@ int main(int argc, char** argv)
 
     uncore.LLC.llc_initialize_replacement();
     uncore.LLC.llc_prefetcher_initialize();
-
-    // initialize virtual memory system
-    vmem = new VirtualMemory(NUM_CPUS, 8589934592, 4096, 4, 1);
 
     // simulation entry point
     start_time = time(NULL);
