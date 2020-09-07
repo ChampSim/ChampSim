@@ -2,11 +2,14 @@
 
 #include "ooo_cpu.h"
 #include "set.h"
+#include "vmem.h"
 
 // out-of-order core
 O3_CPU ooo_cpu[NUM_CPUS]; 
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0, DECODE_LATENCY = 0;
+
+extern VirtualMemory vmem;
 
 void O3_CPU::initialize_core()
 {
@@ -223,7 +226,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.event_cycle = current_core_cycle[cpu];
 
     // magically translate instructions
-    uint64_t instr_pa = va_to_pa(cpu, arch_instr.instr_id, arch_instr.ip , (arch_instr.ip)>>LOG2_PAGE_SIZE, 1);
+    uint64_t instr_pa = vmem.va_to_pa(cpu, arch_instr.ip);
     instr_pa >>= LOG2_PAGE_SIZE;
     instr_pa <<= LOG2_PAGE_SIZE;
     instr_pa |= (arch_instr.ip & ((1 << LOG2_PAGE_SIZE) - 1));  
@@ -245,7 +248,6 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     instr_unique_id++;
 
-    //instrs_to_fetch_this_cycle = num_reads;
     return instrs_to_read_this_cycle;
 }
 
@@ -539,7 +541,7 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
   if (L1I.PQ.occupancy < L1I.PQ.SIZE)
     {
       // magically translate prefetches
-      uint64_t pf_pa = (va_to_pa(cpu, 0, pf_v_addr, pf_v_addr>>LOG2_PAGE_SIZE, 1) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
+      uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
 
       PACKET pf_packet;
       pf_packet.instruction = 1; // this is a code prefetch
