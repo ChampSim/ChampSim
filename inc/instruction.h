@@ -1,11 +1,9 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <iostream>
 
 // instruction format
-#define ROB_SIZE 352
-#define LQ_SIZE 128
-#define SQ_SIZE 72
 #define NUM_INSTR_DESTINATIONS_SPARC 4
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
@@ -139,10 +137,6 @@ class ooo_model_instr {
 
     uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers 
 
-    // these are instruction ids of other instructions in the window
-    //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
-    // these are indices of instructions in the window that depend on me
-    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
     fastset
 	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
 
@@ -161,7 +155,6 @@ class ooo_model_instr {
     //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
 
     // these are indices of instructions in the ROB that depend on me
-    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
     fastset memory_instrs_depend_on_me;
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
@@ -221,46 +214,35 @@ class ooo_model_instr {
             sq_index[i] = UINT32_MAX;
             forwarding_index[i] = 0;
         }
-
-#if 0
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-            registers_instrs_depend_on_me[i] = 0;
-            memory_instrs_depend_on_me[i] = 0;
-
-            for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++)
-                registers_index_depend_on_me[i][j] = 0;
-        }
-#endif
     };
 
-  void print_instr()
-  {
-    cout << "*** " << instr_id << " ***" << endl;
-    cout << hex << "0x" << (uint64_t)ip << dec << endl;
-    cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << endl;
-    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-      {
-	cout << (uint32_t)source_registers[i] << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-      {
-	cout << hex << "0x" << (uint32_t)source_memory[i] << dec << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
-      {
-	cout << (uint32_t)destination_registers[i] << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
-      {
-        cout << hex << "0x" << (uint32_t)destination_memory[i] << dec << " ";
-      }
-    cout << endl;
-    
-    cout << endl;
-  }
+    void print_instr()
+    {
+        std::cout << "*** " << instr_id << " ***" << std::endl;
+        std::cout << std::hex << "0x" << (uint64_t)ip << std::dec << std::endl;
+        std::cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+        {
+            std::cout << (uint32_t)source_registers[i] << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+        {
+            std::cout << std::hex << "0x" << (uint32_t)source_memory[i] << std::dec << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+        {
+            std::cout << (uint32_t)destination_registers[i] << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+        {
+            std::cout << std::hex << "0x" << (uint32_t)destination_memory[i] << std::dec << " ";
+        }
+        std::cout << std::endl;
+        std::cout << std::endl;
+    }
 };
 
 #endif

@@ -203,7 +203,7 @@ class PACKET_QUEUE {
              ROW_BUFFER_MISS,
              FULL;
 
-    PACKET *entry, processed_packet[2*MAX_READ_PER_CYCLE];
+    PACKET *entry;
 
     // constructor
     PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
