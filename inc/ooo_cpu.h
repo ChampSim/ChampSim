@@ -159,8 +159,8 @@ class O3_CPU {
     }
 
     // functions
-    void read_from_trace(),
-         fetch_instruction(),
+    uint32_t init_instruction(ooo_model_instr instr);
+    void fetch_instruction(),
          decode_and_dispatch(),
          schedule_instruction(),
          execute_instruction(),
@@ -193,8 +193,6 @@ class O3_CPU {
     void retire_rob();
 
     uint32_t check_rob(uint64_t instr_id);
-
-    uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
