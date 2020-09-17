@@ -306,7 +306,7 @@ void CACHE::handle_writeback()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&WQ.entry[index]);
 
-		if(mshr_index == -2)
+		if(mshr_index >= 0)
 		  {
 		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
 		    miss_handled = 0;
@@ -639,7 +639,7 @@ void CACHE::handle_read()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&RQ.entry[index]);
 
-		if(mshr_index == -2)
+		if(mshr_index >= 0)
 		  {
 		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
 		    miss_handled = 0;
@@ -912,7 +912,7 @@ void CACHE::handle_prefetch()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&PQ.entry[index]);
 
-		if(mshr_index == -2)
+		if(mshr_index >= 0)
 		  {
 		    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
 		    miss_handled = 0;
