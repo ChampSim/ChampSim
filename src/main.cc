@@ -388,13 +388,6 @@ int main(int argc, char** argv)
 
     // end consequence of knobs
 
-    // Instantiate cores
-    // TODO move this into the main cache construction loop after we separate trace reading from the core model
-    for (std::size_t i = 0; i < NUM_CPUS; ++i)
-    {
-        ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
-    }
-
     // search through the argv for "-traces"
     int found_traces = 0;
     std::cout << std::endl;
@@ -440,13 +433,13 @@ int main(int argc, char** argv)
     }
     // end trace file setup
 
-    // TODO: can we initialize these variables from the class constructor?
     srand(seed_number);
     champsim_seed = seed_number;
     for (int i=0; i<NUM_CPUS; i++) {
-        ooo_cpu[i].L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-        ooo_cpu[i].L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-        ooo_cpu[i].L2C.lower_level = &uncore.LLC;
+        ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
+        ooo_cpu.at(i).L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
+        ooo_cpu.at(i).L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
+        ooo_cpu.at(i).L2C.lower_level = &uncore.LLC;
 
         // SHARED CACHE
         uncore.LLC.cache_type = IS_LLC;
