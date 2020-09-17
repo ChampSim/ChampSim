@@ -21,6 +21,8 @@ struct BLOCK {
 
     uint64_t address = 0,
              full_addr = 0,
+	     v_address = 0,
+	     full_v_addr = 0,
              tag = 0,
              data = 0,
              ip,

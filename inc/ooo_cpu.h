@@ -1,6 +1,8 @@
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
+#include <array>
+
 #include "champsim.h"
 #include "cache.h"
 #include "instruction.h"
@@ -15,17 +17,21 @@
 using namespace std;
 
 // CORE PROCESSOR
-#define FETCH_WIDTH 6
-#define DECODE_WIDTH 6
-#define EXEC_WIDTH 6
-#define LQ_WIDTH 2
-#define SQ_WIDTH 2
-#define RETIRE_WIDTH 5
-#define SCHEDULER_SIZE 128
-#define BRANCH_MISPREDICT_PENALTY 1
+#define FETCH_WIDTH 6ul
+#define DECODE_WIDTH 6ul
+#define EXEC_WIDTH 4ul
+#define LQ_WIDTH 2ul
+#define SQ_WIDTH 2ul
+#define RETIRE_WIDTH 5ul
+#define SCHEDULER_SIZE 128ul
+#define BRANCH_MISPREDICT_PENALTY 1ul
 //#define SCHEDULING_LATENCY 0
 //#define EXEC_LATENCY 0
 //#define DECODE_LATENCY 2
+
+// Dimensions of instruction buffer
+#define DIB_SET 8
+#define DIB_WAY 8
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
@@ -54,6 +60,17 @@ class O3_CPU {
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0, num_searched = 0;
     uint32_t next_ITLB_fetch = 0;
 
+    struct dib_entry_t
+    {
+        bool valid = false;
+        unsigned lru = DIB_WAY;
+        uint64_t addr = 0;
+    };
+
+    // instruction buffer
+    using dib_t= std::array<std::array<dib_entry_t, DIB_WAY>, DIB_SET>;
+    dib_t DIB;
+
     // reorder buffer, load/store queue, register file
     CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
     CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
@@ -64,8 +81,7 @@ class O3_CPU {
     uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
 
     // Ready-To-Execute
-    uint32_t RTE0[ROB_SIZE], RTE0_head = 0, RTE0_tail = 0,
-             RTE1[ROB_SIZE], RTE1_head = 0, RTE1_tail = 0;
+    uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
 
     // Ready-To-Load
     uint32_t RTL0[LQ_SIZE], RTL0_head = 0, RTL0_tail = 0,
@@ -101,9 +117,10 @@ class O3_CPU {
 	  STA[i] = UINT64_MAX;
 
         for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  RTE0[i] = ROB_SIZE;
-	  RTE1[i] = ROB_SIZE;
+	  ready_to_execute[i] = ROB_SIZE;
         }
+        ready_to_execute_head = 0;
+        ready_to_execute_head = 0;
 
         for (uint32_t i=0; i<LQ_SIZE; i++) {
 	  RTL0[i] = LQ_SIZE;
@@ -169,8 +186,8 @@ class O3_CPU {
     }
 
     // functions
-    void read_from_trace(),
-         fetch_instruction(),
+    uint32_t init_instruction(ooo_model_instr instr);
+    void fetch_instruction(),
          decode_and_dispatch(),
          schedule_instruction(),
          execute_instruction(),
@@ -180,9 +197,9 @@ class O3_CPU {
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),
          do_memory_scheduling(uint32_t rob_index),
-         operate_lsq(),
-         complete_execution(uint32_t rob_index),
-         reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
+         operate_lsq();
+    uint32_t complete_execution(uint32_t rob_index);
+    void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
          reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
          handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
@@ -202,11 +219,7 @@ class O3_CPU {
     void update_rob();
     void retire_rob();
 
-    uint32_t  add_to_rob(ooo_model_instr *arch_instr),
-              check_rob(uint64_t instr_id);
-
-    uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
-    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
+    uint32_t check_rob(uint64_t instr_id);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
 
