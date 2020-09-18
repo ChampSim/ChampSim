@@ -211,25 +211,6 @@ class ooo_model_instr {
         {
             std::cout << std::hex << "0x" << (uint32_t)source_memory[i] << std::dec << " ";
         }
-<<<<<<< HEAD
-    };
-
-    void print_instr()
-    {
-        std::cout << "*** " << instr_id << " ***" << std::endl;
-        std::cout << std::hex << "0x" << (uint64_t)ip << std::dec << std::endl;
-        std::cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << std::endl;
-        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-        {
-            std::cout << (uint32_t)source_registers[i] << " ";
-        }
-        std::cout << std::endl;
-        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-        {
-            std::cout << std::hex << "0x" << (uint32_t)source_memory[i] << std::dec << " ";
-        }
-=======
->>>>>>> develop
         std::cout << std::endl;
         for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
         {

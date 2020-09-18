@@ -28,7 +28,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     // note that these traces are not yet translated and fetched
 
     if (instrs_to_read_this_cycle == 0)
-        instrs_to_read_this_cycle = std::min(FETCH_WIDTH, (uint64_t)IFETCH_BUFFER.SIZE - IFETCH_BUFFER.occupancy);
+        instrs_to_read_this_cycle = std::min(FETCH_WIDTH, (unsigned)IFETCH_BUFFER.SIZE - IFETCH_BUFFER.occupancy);
 
     instrs_to_read_this_cycle--;
 

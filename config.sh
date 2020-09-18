@@ -32,9 +32,9 @@ prefetcher_make_fmtstr = 'obj/{}: $(wildcard prefetcher/{}/*.cc)\n\t@mkdir -p $(
 replacement_make_fmtstr = 'obj/{}: $(wildcard replacement/{}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $^ -o $@\n\n'
 branch_predictor_make_fmtstr = 'obj/{}: $(wildcard branch/{}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $^ -o $@\n\n'
 
-define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
-define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{config[{name}]}})\n'
-cache_define_fmtstr = '#define {name}_SET {attrs[sets]}\n#define {name}_WAY {attrs[ways]}\n#define {name}_WQ_SIZE {attrs[wq_size]}\n#define {name}_RQ_SIZE {attrs[rq_size]}\n#define {name}_PQ_SIZE {attrs[pq_size]}\n#define {name}_MSHR_SIZE {attrs[mshr_size]}\n#define {name}_LATENCY {attrs[latency]}\n'
+define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
+define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
+cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n'
 
 const_names = {
     'block_size': 'BLOCK_SIZE',
