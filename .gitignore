@@ -1,4 +1,5 @@
 inc/champsim_constants.h
+src/core_inst.cc
 Makefile
 
 bin/
