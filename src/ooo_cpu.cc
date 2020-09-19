@@ -225,16 +225,6 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     arch_instr.event_cycle = current_core_cycle[cpu];
 
-    // magically translate instructions
-    uint64_t instr_pa = vmem.va_to_pa(cpu, arch_instr.ip);
-    instr_pa >>= LOG2_PAGE_SIZE;
-    instr_pa <<= LOG2_PAGE_SIZE;
-    instr_pa |= (arch_instr.ip & ((1 << LOG2_PAGE_SIZE) - 1));  
-    arch_instr.instruction_pa = instr_pa;
-    arch_instr.translated = COMPLETED;
-    arch_instr.fetched = 0;
-    // end magic
-
     // Add to IFETCH_BUFFER
     assert(IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE);
     IFETCH_BUFFER.entry[IFETCH_BUFFER.tail] = arch_instr;
