@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "champsim_constants.h"
 #include "memory_class.h"
 
 // CACHE TYPE
