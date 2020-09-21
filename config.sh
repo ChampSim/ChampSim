@@ -33,7 +33,7 @@ cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
-module_make_fmtstr = 'obj/{}: $(wildcard {}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) --shared $(CPPFLAGS) $(CXXFLAGS) -fPIC $^ -o $@\n\n'
+module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
@@ -106,6 +106,7 @@ default_vmem = { 'size': 8589934592, 'num_levels': 5 }
 os.makedirs(os.path.dirname(config_file['executable_name']), exist_ok=True)
 os.makedirs(os.path.dirname(instantiation_file_name), exist_ok=True)
 os.makedirs(os.path.dirname(constants_header_name), exist_ok=True)
+os.makedirs('obj')
 
 ###
 # Establish default optional values
@@ -138,12 +139,12 @@ config_file['ooo_cpu'] = list(itertools.islice(itertools.repeat(*config_file['oo
 # Associate modules with paths
 libfilenames = {}
 for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
-    libfilenames['libcpu' + str(i) + 'l1iprefetcher.so'] = 'prefetcher/' + cpu['L1I']['prefetcher']
-    libfilenames['libcpu' + str(i) + 'l1dprefetcher.so'] = 'prefetcher/' + cpu['L1D']['prefetcher']
-    libfilenames['libcpu' + str(i) + 'l2cprefetcher.so'] = 'prefetcher/' + cpu['L2C']['prefetcher']
-    libfilenames['libcpu' + str(i) + 'branch_predictor.so'] = 'branch/' + cpu['branch_predictor']
-libfilenames['libllprefetcher.so'] = 'prefetcher/' + config_file['LLC']['prefetcher']
-libfilenames['libllreplacement.so'] = 'replacement/' + config_file['LLC']['replacement']
+    libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + cpu['L1I']['prefetcher']
+    libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + cpu['L1D']['prefetcher']
+    libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
+    libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
+libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
+libfilenames['llreplacement.a'] = 'replacement/' + config_file['LLC']['replacement']
 
 # Assert module paths exist
 for path in libfilenames.values():
@@ -235,13 +236,10 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('LDFLAGS := ' + config_file.get('LDFLAGS', '') + '\n')
     wfp.write('LDLIBS := ' + config_file.get('LDLIBS', '') + '\n')
     wfp.write('\n')
-    wfp.write('obj_of = $(addsuffix .o, $(basename $(addprefix obj/,$(notdir $(1)))))\n')
     wfp.write('.phony: all clean\n\n')
-    wfp.write('all: ' + ' '.join('obj/' + k for k in libfilenames) + ' ' + config_file['executable_name'] + '\n\n')
-    wfp.write('clean: \n\t $(RM) -r obj\n\n')
-    wfp.write(config_file['executable_name'] + ': LDFLAGS += -Lobj\n')
-    wfp.write(config_file['executable_name'] + ': LDLIBS += -ll1iprefetcher -ll1dprefetcher -ll2cprefetcher -lllprefetcher -lllreplacement -lbranch_predictor\n')
-    wfp.write(config_file['executable_name'] + ': $(call obj_of,$(wildcard src/*.cc))\n')
+    wfp.write('all: ' + config_file['executable_name'] + '\n\n')
+    wfp.write('clean: \n\t find . -name \*.d -delete\n\t $(RM) -r obj\n\n')
+    wfp.write(config_file['executable_name'] + ': $(patsubst %.cc,%.o,$(wildcard src/*.cc)) ' + ' '.join('obj/' + k for k in libfilenames) + '\n')
     wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
 
     for kv in libfilenames.items():
@@ -255,7 +253,10 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('\t@mkdir -p $(dir $@)\n')
     wfp.write('\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<\n\n')
 
-    wfp.write('-include $(wildcard obj/*.d)\n')
+    wfp.write('-include $(wildcard prefetcher/*/*.d)\n')
+    wfp.write('-include $(wildcard branch/*/*.d)\n')
+    wfp.write('-include $(wildcard replacement/*/*.d)\n')
+    wfp.write('-include $(wildcard src/*.d)\n')
 
 # Configuration cache
 with open(config_cache_name, 'wt') as wfp:

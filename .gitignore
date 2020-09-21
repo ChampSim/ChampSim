@@ -5,3 +5,7 @@ Makefile
 
 bin/
 obj/
+
+**/*.o
+**/*.d
+
