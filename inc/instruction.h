@@ -1,6 +1,9 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <cstdint>
+#include <iostream>
+#include <limits>
 
 // instruction format
 #define ROB_SIZE 352
@@ -100,55 +103,58 @@ class cloudsuite_instr {
 
 class ooo_model_instr {
   public:
-    uint64_t instr_id,
-             ip,
-             fetch_producer,
-             producer_id,
-             translated_cycle,
-             fetched_cycle,
-             execute_begin_cycle,
-             retired_cycle,
-             event_cycle;
+    uint64_t instr_id = 0,
+             ip = 0,
+             fetch_producer = 0,
+             producer_id = 0,
+             translated_cycle = 0,
+             fetched_cycle = 0,
+             execute_begin_cycle = 0,
+             retired_cycle = 0,
+             event_cycle = 0;
 
-    uint8_t is_branch,
-            is_memory,
-            branch_taken,
-            branch_mispredicted,
-            branch_prediction_made,
-            source_added[NUM_INSTR_SOURCES],
-            destination_added[NUM_INSTR_DESTINATIONS_SPARC],
-            is_producer,
-            is_consumer,
-            reg_ready,
-            mem_ready,
-            asid[2];
+    uint8_t is_branch = 0,
+            is_memory = 0,
+            branch_taken = 0,
+            branch_mispredicted = 0,
+            branch_prediction_made = 0,
+            source_added[NUM_INSTR_SOURCES] = {},
+            destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
+            is_producer = 0,
+            is_consumer = 0,
+            reg_RAW_producer = 0,
+            reg_ready = 0,
+            mem_ready = 0,
+            asid[2] = {},
+            reg_RAW_checked[NUM_INSTR_SOURCES] = {};
 
-    uint8_t branch_type;
-    uint64_t branch_target;
+    uint8_t branch_type = NOT_BRANCH;
+    uint64_t branch_target = 0;
 
     uint8_t translated = 0,
             fetched = 0,
             decoded = 0,
             scheduled = 0,
             executed = 0;
-    int num_reg_ops, num_mem_ops, num_reg_dependent;
+    int num_reg_ops = 0, num_mem_ops = 0, num_reg_dependent = 0;
 
-    std::vector<uint8_t> destination_registers = {}; // output registers
-    std::vector<uint8_t> source_registers = {}; // input registers
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
+
+    uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
 
     // these are pointers to the other instructions in the window
     std::vector<std::vector<ooo_model_instr>::iterator> reg_RAW_dependents;
 
 
     // memory addresses that may cause dependencies between instructions
-    uint64_t instruction_pa, data_pa, virtual_address, physical_address;
-    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
-    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
+    uint64_t instruction_pa = 0, data_pa = 0, virtual_address = 0, physical_address = 0;
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
     //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
     // keep around a record of what the original virtual addresses were
-    //uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC];
-    uint64_t source_virtual_address[NUM_INSTR_SOURCES];
+    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC] = {};
+    uint64_t source_virtual_address[NUM_INSTR_SOURCES] = {};
 
     // these are instruction ids of other instructions in the window
     //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
@@ -159,97 +165,69 @@ class ooo_model_instr {
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
              sq_index[NUM_INSTR_DESTINATIONS_SPARC],
-             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC];
+             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
 
     ooo_model_instr() {
-        instr_id = 0;
-        ip = 0;
-        fetch_producer = 0;
-        producer_id = 0;
-        translated_cycle = 0;
-        fetched_cycle = 0;
-        execute_begin_cycle = 0;
-        retired_cycle = 0;
-        event_cycle = 0;
-
-        is_branch = 0;
-        is_memory = 0;
-        branch_taken = 0;
-        branch_mispredicted = 0;
-	branch_prediction_made = 0;
-        is_producer = 0;
-        is_consumer = 0;
-        reg_ready = 0;
-        mem_ready = 0;
-        asid[0] = UINT8_MAX;
-        asid[1] = UINT8_MAX;
-
-	branch_type = NOT_BRANCH;
-	branch_target = 0;
-
-        instruction_pa = 0;
-        data_pa = 0;
-        virtual_address = 0;
-        physical_address = 0;
-
-        num_reg_ops = 0;
-        num_mem_ops = 0;
-        num_reg_dependent = 0;
-
-        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-            source_memory[i] = 0;
-            source_virtual_address[i] = 0;
-            source_added[i] = 0;
-            lq_index[i] = UINT32_MAX;
-        }
-
-        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
-            destination_memory[i] = 0;
-            //destination_virtual_address[i] = 0;
-            destination_added[i] = 0;
-            sq_index[i] = UINT32_MAX;
-            forwarding_index[i] = 0;
-        }
-
-#if 0
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-            registers_instrs_depend_on_me[i] = 0;
-            memory_instrs_depend_on_me[i] = 0;
-
-            for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++)
-                registers_index_depend_on_me[i][j] = 0;
-        }
-#endif
+        std::fill(std::begin(lq_index), std::end(lq_index), std::numeric_limits<uint32_t>::max());
+        std::fill(std::begin(sq_index), std::end(sq_index), std::numeric_limits<uint32_t>::max());
     };
 
-  void print_instr()
-  {
-    cout << "*** " << instr_id << " ***" << endl;
-    cout << hex << "0x" << (uint64_t)ip << dec << endl;
-    cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << endl;
-    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-      {
-	cout << (uint32_t)source_registers[i] << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
-      {
-	cout << hex << "0x" << (uint32_t)source_memory[i] << dec << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
-      {
-	cout << (uint32_t)destination_registers[i] << " ";
-      }
-    cout << endl;
-    for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
-      {
-        cout << hex << "0x" << (uint32_t)destination_memory[i] << dec << " ";
-      }
-    cout << endl;
-    
-    cout << endl;
-  }
+    ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr()
+    {
+        std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
+        std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
+        std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
+        std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
+
+        this->ip = instr.ip;
+        this->is_branch = instr.is_branch;
+        this->branch_taken = instr.branch_taken;
+
+        asid[0] = cpu;
+        asid[1] = cpu;
+    }
+
+    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ooo_model_instr()
+    {
+        std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
+        std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
+        std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
+        std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
+
+        this->ip = instr.ip;
+        this->is_branch = instr.is_branch;
+        this->branch_taken = instr.branch_taken;
+
+        std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
+    }
+
+    void print_instr()
+    {
+        std::cout << "*** " << instr_id << " ***" << std::endl;
+        std::cout << std::hex << "0x" << (uint64_t)ip << std::dec << std::endl;
+        std::cout << (uint32_t)is_branch << " " << (uint32_t)branch_taken << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+        {
+            std::cout << (uint32_t)source_registers[i] << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_SOURCES; i++)
+        {
+            std::cout << std::hex << "0x" << (uint32_t)source_memory[i] << std::dec << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+        {
+            std::cout << (uint32_t)destination_registers[i] << " ";
+        }
+        std::cout << std::endl;
+        for(uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++)
+        {
+            std::cout << std::hex << "0x" << (uint32_t)destination_memory[i] << std::dec << " ";
+        }
+        std::cout << std::endl;
+        std::cout << std::endl;
+    }
 };
 
 #endif

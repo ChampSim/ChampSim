@@ -19,6 +19,8 @@
 #include <string>
 #include <iomanip>
 
+#include "vmem.h"
+
 // USEFUL MACROS
 //#define DEBUG_PRINT
 #define SANITY_CHECK
@@ -43,7 +45,7 @@
 #define BLOCK_SIZE 64
 #define LOG2_BLOCK_SIZE 6
 #define MAX_READ_PER_CYCLE 8
-#define MAX_FILL_PER_CYCLE 1
+#define MAX_WRITE_PER_CYCLE 8
 
 #define INFLIGHT 1
 #define COMPLETED 2
@@ -92,27 +94,9 @@ extern map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_c
 extern uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
 
 void print_stats();
-uint64_t rotl64 (uint64_t n, unsigned int c),
-         rotr64 (uint64_t n, unsigned int c),
-  va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_vpage, uint8_t is_code);
 
-// log base 2 function from efectiu
-int lg2(int n);
-
-// smart random number generator
-class RANDOM {
-  public:
-    std::random_device rd;
-    std::mt19937_64 engine{rd()};
-    std::uniform_int_distribution<uint64_t> dist{0, 0xFFFFFFFFF}; // used to generate random physical page numbers
-
-    RANDOM (uint64_t seed) {
-        engine.seed(seed);
-    }
-
-    uint64_t draw_rand() {
-        return dist(engine);
-    };
-};
-extern uint64_t champsim_seed;
+constexpr uint64_t lg2(uint64_t n)
+{
+    return n < 2 ? 0 : 1+lg2(n/2);
+}
 #endif
