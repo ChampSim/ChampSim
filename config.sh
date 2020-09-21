@@ -11,6 +11,7 @@ if len(sys.argv) >= 2:
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
     config_file = {}
+
 def merge_dicts(*dicts):
     z = dicts[0].copy()
     for d in dicts[1:]:
@@ -19,8 +20,12 @@ def merge_dicts(*dicts):
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
+config_cache_name = '.champsimconfig_cache'
 
-# (cpu, name, **attrs)
+###
+# Begin format strings
+###
+
 llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[latency]});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
@@ -28,13 +33,15 @@ cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
-prefetcher_make_fmtstr = 'obj/{}: $(wildcard prefetcher/{}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $^ -o $@\n\n'
-replacement_make_fmtstr = 'obj/{}: $(wildcard replacement/{}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $^ -o $@\n\n'
-branch_predictor_make_fmtstr = 'obj/{}: $(wildcard branch/{}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $^ -o $@\n\n'
+module_make_fmtstr = 'obj/{}: $(wildcard {}/*.cc)\n\t@mkdir -p $(dir $@)\n\t$(CXX) --shared $(CPPFLAGS) $(CXXFLAGS) -fPIC $^ -o $@\n\n'
 
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
 cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n'
+
+###
+# Begin named constants
+###
 
 const_names = {
     'block_size': 'BLOCK_SIZE',
@@ -73,6 +80,10 @@ const_names = {
     }
 }
 
+###
+# Begin default core model definition
+###
+
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
@@ -88,14 +99,20 @@ default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 8, 'rq_size': 32
 default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
 
-# Make sure directories are present
+###
+# Ensure directories are present
+###
+
 os.makedirs(os.path.dirname(config_file['executable_name']), exist_ok=True)
 os.makedirs(os.path.dirname(instantiation_file_name), exist_ok=True)
 os.makedirs(os.path.dirname(constants_header_name), exist_ok=True)
 
+###
 # Establish default optional values
+###
+
 for i in range(len(config_file['ooo_cpu'])):
-    config_file['ooo_cpu'][i] = merge_dicts(default_core, config_file['ooo_cpu'][i])
+    config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
     config_file['ooo_cpu'][i]['L1I'] = merge_dicts(default_l1i, config_file.get('L1I', {}), config_file['ooo_cpu'][i].get('L1I',{}))
     config_file['ooo_cpu'][i]['L1D'] = merge_dicts(default_l1d, config_file.get('L1D', {}), config_file['ooo_cpu'][i].get('L1D',{}))
@@ -108,10 +125,49 @@ config_file['LLC'] = merge_dicts(default_llc, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
 config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
 
+###
 # Copy or trim cores as necessary to fill out the specified number of cores
+###
+
 config_file['ooo_cpu'] = list(itertools.islice(itertools.repeat(*config_file['ooo_cpu']), config_file['num_cores']))
 
+###
+# Check to make sure modules exist and they correspond to any already-built modules.
+###
+
+# Associate modules with paths
+libfilenames = {}
+for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
+    libfilenames['libcpu' + str(i) + 'l1iprefetcher.so'] = 'prefetcher/' + cpu['L1I']['prefetcher']
+    libfilenames['libcpu' + str(i) + 'l1dprefetcher.so'] = 'prefetcher/' + cpu['L1D']['prefetcher']
+    libfilenames['libcpu' + str(i) + 'l2cprefetcher.so'] = 'prefetcher/' + cpu['L2C']['prefetcher']
+    libfilenames['libcpu' + str(i) + 'branch_predictor.so'] = 'branch/' + cpu['branch_predictor']
+libfilenames['libllprefetcher.so'] = 'prefetcher/' + config_file['LLC']['prefetcher']
+libfilenames['libllreplacement.so'] = 'replacement/' + config_file['LLC']['replacement']
+
+# Assert module paths exist
+for path in libfilenames.values():
+    if not os.path.exists(path):
+        print('Path "' + path + '" does not exist. Exiting...')
+        sys.exit(1)
+
+# Check cache of previous configuration
+if os.path.exists(config_cache_name):
+    with open(config_cache_name) as rfp:
+        config_cache = json.load(rfp)
+else:
+    config_cache = {k:'' for k in libfilenames}
+
+# Prune modules whose configurations have changed (force make to rebuild it)
+for f in os.listdir('obj'):
+    if f in config_cache and not config_cache[f] == libfilenames[f]:
+        os.remove('obj/' + f)
+
+###
 # Begin file writing
+###
+
+# Instantiation file
 with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('/***\n * THIS FILE IS AUTOMATICALLY GENERATED\n * Do not edit this file. It will be overwritten when the configure script is run.\n ***/\n\n')
     wfp.write('#include "cache.h"\n')
@@ -131,6 +187,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
     wfp.write('\n')
 
+# Constants header
 with open(constants_header_name, 'wt') as wfp:
     wfp.write('/***\n * THIS FILE IS AUTOMATICALLY GENERATED\n * Do not edit this file. It will be overwritten when the configure script is run.\n ***/\n\n')
     wfp.write('#ifndef CHAMPSIM_CONSTANTS_H\n')
@@ -168,6 +225,7 @@ with open(constants_header_name, 'wt') as wfp:
 
     wfp.write('#endif\n')
 
+# Makefile
 with open('Makefile', 'wt') as wfp:
     wfp.write('CC := ' + config_file.get('CC', 'gcc') + '\n')
     wfp.write('CXX := ' + config_file.get('CXX', 'g++') + '\n')
@@ -179,18 +237,15 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('\n')
     wfp.write('obj_of = $(addsuffix .o, $(basename $(addprefix obj/,$(notdir $(1)))))\n')
     wfp.write('.phony: all clean\n\n')
-    wfp.write('all: ' + config_file['executable_name'] + '\n\n')
+    wfp.write('all: ' + ' '.join('obj/' + k for k in libfilenames) + ' ' + config_file['executable_name'] + '\n\n')
     wfp.write('clean: \n\t $(RM) -r obj\n\n')
-    wfp.write(config_file['executable_name'] + ': $(call obj_of,$(wildcard src/*.cc)) obj/l1iprefetcher.o obj/l1dprefetcher.o obj/l2cprefetcher.o obj/llprefetcher.o obj/llreplacement.o obj/branch_predictor.o $(call obj_of, ' + instantiation_file_name + ')\n')
+    wfp.write(config_file['executable_name'] + ': LDFLAGS += -Lobj\n')
+    wfp.write(config_file['executable_name'] + ': LDLIBS += -ll1iprefetcher -ll1dprefetcher -ll2cprefetcher -lllprefetcher -lllreplacement -lbranch_predictor\n')
+    wfp.write(config_file['executable_name'] + ': $(call obj_of,$(wildcard src/*.cc))\n')
     wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
 
-    #TODO heterogeneous cores
-    wfp.write(prefetcher_make_fmtstr.format('l1iprefetcher.o', config_file['ooo_cpu'][0]['L1I']['prefetcher']))
-    wfp.write(prefetcher_make_fmtstr.format('l1dprefetcher.o', config_file['ooo_cpu'][0]['L1D']['prefetcher']))
-    wfp.write(prefetcher_make_fmtstr.format('l2cprefetcher.o', config_file['ooo_cpu'][0]['L2C']['prefetcher']))
-    wfp.write(prefetcher_make_fmtstr.format('llprefetcher.o',  config_file['LLC']['prefetcher']))
-    wfp.write(replacement_make_fmtstr.format('llreplacement.o', config_file['LLC']['replacement']))
-    wfp.write(branch_predictor_make_fmtstr.format('branch_predictor.o', config_file['ooo_cpu'][0]['branch_predictor']))
+    for kv in libfilenames.items():
+        wfp.write(module_make_fmtstr.format(*kv))
 
     wfp.write('obj/%.o: */%.c\n')
     wfp.write('\t@mkdir -p $(dir $@)\n')
@@ -201,4 +256,8 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<\n\n')
 
     wfp.write('-include $(wildcard obj/*.d)\n')
+
+# Configuration cache
+with open(config_cache_name, 'wt') as wfp:
+    json.dump(libfilenames, wfp)
 
