@@ -258,7 +258,7 @@ uint32_t O3_CPU::check_rob(uint64_t instr_id)
     if (ROB.head < ROB.tail) {
         for (uint32_t i=ROB.head; i<ROB.tail; i++) {
             if (ROB.entry[i].instr_id == instr_id) {
-                DP ( if (warmup_complete[ROB.cpu]) {
+                DP ( if (warmup_complete[cpu]) {
                 cout << "[ROB] " << __func__ << " same instr_id: " << ROB.entry[i].instr_id;
                 cout << " rob_index: " << i << endl; });
                 return i;
@@ -338,7 +338,6 @@ void O3_CPU::fetch_instruction()
           trace_packet.full_addr = ifb_entry.ip;
 	  trace_packet.instr_id = 0;
 	  trace_packet.rob_index = i;
-	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
           trace_packet.ip = ifb_entry.ip;
 	  trace_packet.type = LOAD; 
 	  trace_packet.asid[0] = 0;
@@ -398,7 +397,6 @@ void O3_CPU::fetch_instruction()
           fetch_packet.full_v_addr = ifb_entry.ip;
 	  fetch_packet.instr_id = 0;
 	  fetch_packet.rob_index = 0;
-	  fetch_packet.producer = 0;
           fetch_packet.ip = ifb_entry.ip;
 	  fetch_packet.type = LOAD; 
 	  fetch_packet.asid[0] = 0;

@@ -72,10 +72,10 @@ class O3_CPU {
     dib_t DIB;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
-    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
-    CORE_BUFFER ROB{"ROB", ROB_SIZE};
-    LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+    CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
+    CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
+    CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
+    CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
     // store array, this structure is required to properly handle store instructions
     uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
@@ -101,12 +101,12 @@ class O3_CPU {
     uint64_t total_branch_types[8] = {};
 
     // TLBs and caches
-    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
-          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_SET*DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
-          STLB{"STLB", STLB_SET, STLB_WAY, STLB_SET*STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
-          L1I{"L1I", L1I_SET, L1I_WAY, L1I_SET*L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
-          L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
-          L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
+    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
+          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
+          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
+          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
+          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
+          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
   // trace cache for previously decoded instructions
   
@@ -132,9 +132,6 @@ class O3_CPU {
 	  RTS1[i] = SQ_SIZE;
         }
 
-        // ROB
-        ROB.cpu = this->cpu;
-
         // BRANCH PREDICTOR
         initialize_branch_predictor();
 
@@ -142,14 +139,15 @@ class O3_CPU {
         ITLB.cpu = this->cpu;
         ITLB.cache_type = IS_ITLB;
         ITLB.MAX_READ = 2;
+        ITLB.MAX_WRITE = 2;
         ITLB.fill_level = FILL_L1;
         ITLB.extra_interface = &L1I;
         ITLB.lower_level = &STLB;
 
         DTLB.cpu = this->cpu;
         DTLB.cache_type = IS_DTLB;
-        //DTLB.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
         DTLB.MAX_READ = 2;
+        DTLB.MAX_WRITE = 2;
         DTLB.fill_level = FILL_L1;
         DTLB.extra_interface = &L1D;
         DTLB.lower_level = &STLB;
@@ -157,6 +155,7 @@ class O3_CPU {
         STLB.cpu = this->cpu;
         STLB.cache_type = IS_STLB;
         STLB.MAX_READ = 1;
+        STLB.MAX_WRITE = 1;
         STLB.fill_level = FILL_L2;
         STLB.upper_level_icache[this->cpu] = &ITLB;
         STLB.upper_level_dcache[this->cpu] = &DTLB;
@@ -164,24 +163,28 @@ class O3_CPU {
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
         L1I.cache_type = IS_L1I;
-        //L1I.MAX_READ = (FETCH_WIDTH > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : FETCH_WIDTH;
         L1I.MAX_READ = 2;
+        L1I.MAX_WRITE = 2;
         L1I.fill_level = FILL_L1;
         L1I.lower_level = &L2C;
-        l1i_prefetcher_initialize();
 
         L1D.cpu = this->cpu;
         L1D.cache_type = IS_L1D;
-        L1D.MAX_READ = (2 > MAX_READ_PER_CYCLE) ? MAX_READ_PER_CYCLE : 2;
+        L1D.MAX_READ = 2;
+        L1D.MAX_WRITE = 2;
         L1D.fill_level = FILL_L1;
         L1D.lower_level = &L2C;
-        L1D.l1d_prefetcher_initialize();
 
         L2C.cpu = this->cpu;
         L2C.cache_type = IS_L2C;
+        L2C.MAX_READ = 1;
+        L2C.MAX_WRITE = 1;
         L2C.fill_level = FILL_L2;
         L2C.upper_level_icache[this->cpu] = &L1I;
         L2C.upper_level_dcache[this->cpu] = &L1D;
+
+        l1i_prefetcher_initialize();
+        L1D.l1d_prefetcher_initialize();
         L2C.l2c_prefetcher_initialize();
     }
 

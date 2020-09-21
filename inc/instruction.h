@@ -69,26 +69,22 @@ struct ooo_model_instr {
              ip = 0,
              fetch_producer = 0,
              producer_id = 0,
-             translated_cycle = 0,
-             fetched_cycle = 0,
-             execute_begin_cycle = 0,
-             retired_cycle = 0,
              event_cycle = 0;
 
-    uint8_t is_branch = 0,
-            is_memory = 0,
-            branch_taken = 0,
-            branch_mispredicted = 0,
-            branch_prediction_made = 0,
-            source_added[NUM_INSTR_SOURCES] = {},
-            destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
-            is_producer = 0,
-            is_consumer = 0,
-            reg_RAW_producer = 0,
-            reg_ready = 0,
-            mem_ready = 0,
-            asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-            reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+    bool is_branch = 0,
+         is_memory = 0,
+         branch_taken = 0,
+         branch_mispredicted = 0,
+         source_added[NUM_INSTR_SOURCES] = {},
+         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
+         is_producer = 0,
+         is_consumer = 0,
+         reg_RAW_producer = 0,
+         reg_ready = 0,
+         mem_ready = 0,
+         reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint8_t branch_type = NOT_BRANCH;
     uint64_t branch_target = 0;
