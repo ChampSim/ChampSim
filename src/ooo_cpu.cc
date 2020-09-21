@@ -42,35 +42,19 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     bool writes_ip = false;
     bool reads_other = false;
 
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
+    for (uint8_t dest : arch_instr.destination_registers)
     {
-        switch(arch_instr.destination_registers[i])
-        {
-            case 0:
-                break;
-            case REG_STACK_POINTER:
-                writes_sp = true;
-                break;
-            case REG_INSTRUCTION_POINTER:
-                writes_ip = true;
-                break;
-            default:
-                break;
-        }
+        if (dest == REG_STACK_POINTER)
+            writes_sp = true;
+        if (dest == REG_INSTRUCTION_POINTER)
+            writes_ip = true;
 
-        /*
-           if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24) && (arch_instr.destination_registers[i] < 28))
-           {
-           arch_instr.destination_registers[i] = 0;
-           }
-           */
+    }
 
-        if (arch_instr.destination_registers[i])
-            arch_instr.num_reg_ops++;
+    for (uint64_t dest : arch_instr.destination_memory)
+    {
         if (arch_instr.destination_memory[i])
         {
-            arch_instr.num_mem_ops++;
-
             // update STA, this structure is required to execute store instructions properly without deadlock
             if (arch_instr.num_mem_ops > 0)
             {
@@ -90,41 +74,17 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
         }
     }
 
-    for (int i=0; i<NUM_INSTR_SOURCES; i++)
+    for (uint8_t src : source_registers)
     {
-        switch(arch_instr.source_registers[i])
-        {
-            case 0:
-                break;
-            case REG_STACK_POINTER:
+            if (src == REG_STACK_POINTER)
                 reads_sp = true;
-                break;
-            case REG_FLAGS:
+            else if (src == REG_FLAGS)
                 reads_flags = true;
-                break;
-            case REG_INSTRUCTION_POINTER:
+            else if (src == REG_INSTRUCTION_POINTER)
                 reads_ip = true;
-                break;
-            default:
+            else
                 reads_other = true;
-                break;
-        }
-
-        /*
-           if((!arch_instr.is_branch) && (arch_instr.source_registers[i] > 25) && (arch_instr.source_registers[i] < 28))
-           {
-           arch_instr.source_registers[i] = 0;
-           }
-           */
-
-        if (arch_instr.source_registers[i])
-            arch_instr.num_reg_ops++;
-        if (arch_instr.source_memory[i])
-            arch_instr.num_mem_ops++;
     }
-
-    if (arch_instr.num_mem_ops > 0)
-        arch_instr.is_memory = 1;
 
     // determine what kind of branch this is, if any
     if(!reads_sp && !reads_flags && writes_ip && !reads_other)
@@ -183,8 +143,6 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     {
         arch_instr.branch_target = next_instr.ip;
     }
-
-    // add this instruction to the IFETCH_BUFFER
 
     // handle branch prediction
     if (arch_instr.is_branch) {
@@ -561,10 +519,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
  return 0;
 }
 
-// TODO: When should we update ROB.schedule_event_cycle?
-// I. Instruction is fetched
-// II. Instruction is completed
-// III. Instruction is retired
 void O3_CPU::schedule_instruction()
 {
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
