@@ -119,7 +119,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
                 break;
 
             // check the MSHR occupancy to decide if we're going to prefetch to the L2 or LLC
-            if (MSHR.occupancy < (MSHR.SIZE>>1))
+            if (get_occupancy(0,0) < (get_size(0,0)>>1))
 	      prefetch_line(ip, addr, pf_address, FILL_L2, 0);
             else
 	      prefetch_line(ip, addr, pf_address, FILL_LLC, 0);

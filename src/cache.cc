@@ -24,13 +24,24 @@ class min_fill_index
     }
 };
 
+template <typename T>
+struct eq_addr
+{
+    const decltype(T::address) val;
+    eq_addr(decltype(T::address) val) : val(val) {}
+    bool operator()(const T &test)
+    {
+        return test.address == val;
+    }
+};
+
 void CACHE::handle_fill()
 {
     bool continue_fill = true;
 
     while (continue_fill && writes_available_this_cycle > 0)
     {
-        auto fill_mshr = std::min_element(MSHR.entry, std::next(MSHR.entry, MSHR.SIZE), min_fill_index());
+        auto fill_mshr = std::min_element(std::begin(MSHR), std::end(MSHR), min_fill_index());
         if (fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
             return;
 
@@ -64,9 +75,9 @@ void CACHE::handle_fill()
             if (fill_mshr->fill_level < fill_level)
             {
                 if (fill_mshr->instruction)
-                    upper_level_icache[fill_cpu]->return_data(fill_mshr);
+                    upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
                 if (fill_mshr->is_data)
-                    upper_level_dcache[fill_cpu]->return_data(fill_mshr);
+                    upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
             }
         }
         else
@@ -130,7 +141,7 @@ void CACHE::handle_fill()
                 sim_miss[fill_cpu][fill_mshr->type]++;
                 sim_access[fill_cpu][fill_mshr->type]++;
 
-                fill_cache(set, way, fill_mshr);
+                fill_cache(set, way, &(*fill_mshr));
 
                 // RFO marks cache line dirty
                 if (fill_mshr->type == RFO && cache_type == IS_L1D)
@@ -139,29 +150,29 @@ void CACHE::handle_fill()
                 // check fill level
                 if (fill_mshr->fill_level < fill_level) {
                     if (fill_mshr->instruction)
-                        upper_level_icache[fill_cpu]->return_data(fill_mshr);
+                        upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
                     if (fill_mshr->is_data)
-                        upper_level_dcache[fill_cpu]->return_data(fill_mshr);
+                        upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
                 }
 
                 // update processed packets
                 if (cache_type == IS_ITLB) {
                     fill_mshr->instruction_pa = block[set][way].data;
                     if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(fill_mshr);
+                        PROCESSED.add_queue(&(*fill_mshr));
                 }
                 else if (cache_type == IS_DTLB) {
                     fill_mshr->data_pa = block[set][way].data;
                     if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(fill_mshr);
+                        PROCESSED.add_queue(&(*fill_mshr));
                 }
                 else if (cache_type == IS_L1I) {
                     if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(fill_mshr);
+                        PROCESSED.add_queue(&(*fill_mshr));
                 }
                 else if ((cache_type == IS_L1D) && (fill_mshr->type != PREFETCH)) {
                     if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(fill_mshr);
+                        PROCESSED.add_queue(&(*fill_mshr));
                 }
             }
         }
@@ -171,8 +182,8 @@ void CACHE::handle_fill()
             if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
                 total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
 
-            MSHR.remove_queue(fill_mshr);
-            MSHR.num_returned--;
+            PACKET empty;
+            *fill_mshr = empty;
 
             writes_available_this_cycle--;
         }
@@ -242,10 +253,10 @@ void CACHE::handle_writeback()
             if (cache_type == IS_L1D) { // RFO miss
 
                 // check mshr
-                int mshr_index = check_mshr(&WQ.entry[WQ.head]);
-                assert(mshr_index == -1 || mshr_index < MSHR.SIZE);
+                auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(WQ.entry[WQ.head].address));
+                bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
 
-                if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) // this is a new miss
+                if ((mshr_entry == MSHR.end()) && !mshr_full) // this is a new miss
                 {
                     if(cache_type == IS_LLC)
                     {
@@ -269,7 +280,7 @@ void CACHE::handle_writeback()
                         lower_level->add_rq(&WQ.entry[WQ.head]);
                     }
                 }
-                else if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) // not enough MSHR resource
+                else if ((mshr_entry == MSHR.end()) && mshr_full) // not enough MSHR resource
                 {
                     // cannot handle miss request until one of MSHRs is available
                     continue_write = false;
@@ -278,34 +289,34 @@ void CACHE::handle_writeback()
                 else // already in-flight miss
                 {
                     // update fill_level
-                    if (WQ.entry[WQ.head].fill_level < MSHR.entry[mshr_index].fill_level)
-                        MSHR.entry[mshr_index].fill_level = WQ.entry[WQ.head].fill_level;
+                    if (WQ.entry[WQ.head].fill_level < mshr_entry->fill_level)
+                        mshr_entry->fill_level = WQ.entry[WQ.head].fill_level;
 
-                    if((WQ.entry[WQ.head].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+                    if((WQ.entry[WQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
                     {
-                        MSHR.entry[mshr_index].fill_l1i = 1;
+                        mshr_entry->fill_l1i = 1;
                     }
-                    if((WQ.entry[WQ.head].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+                    if((WQ.entry[WQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
                     {
-                        MSHR.entry[mshr_index].fill_l1d = 1;
+                        mshr_entry->fill_l1d = 1;
                     }
 
                     // update request
-                    if (MSHR.entry[mshr_index].type == PREFETCH) {
-                        uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
-                        uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                        MSHR.entry[mshr_index] = WQ.entry[WQ.head];
+                    if (mshr_entry->type == PREFETCH) {
+                        uint8_t  prior_returned = mshr_entry->returned;
+                        uint64_t prior_event_cycle = mshr_entry->event_cycle;
+                        *mshr_entry = WQ.entry[WQ.head];
 
                         // in case request is already returned, we should keep event_cycle and retunred variables
-                        MSHR.entry[mshr_index].returned = prior_returned;
-                        MSHR.entry[mshr_index].event_cycle = prior_event_cycle;
+                        mshr_entry->returned = prior_returned;
+                        mshr_entry->event_cycle = prior_event_cycle;
                     }
 
                     MSHR_MERGED[WQ.entry[WQ.head].type]++;
 
                     DP ( if (warmup_complete[writeback_cpu]) {
                             cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                            cout << " instr_id: " << WQ.entry[WQ.head].instr_id << " prior_id: " << MSHR.entry[mshr_index].instr_id; 
+                            cout << " instr_id: " << WQ.entry[WQ.head].instr_id << " prior_id: " << MSHR[mshr_entry].instr_id; 
                             cout << " address: " << hex << WQ.entry[WQ.head].address;
                             cout << " full_addr: " << WQ.entry[WQ.head].full_addr << dec;
                             cout << " cycle: " << WQ.entry[WQ.head].event_cycle << endl; });
@@ -504,10 +515,10 @@ void CACHE::handle_read()
                     cout << " cycle: " << RQ.entry[RQ.head].event_cycle << endl; });
 
             // check mshr
-            int mshr_index = check_mshr(&RQ.entry[RQ.head]);
-            assert(mshr_index == -1 || mshr_index < MSHR.SIZE);
+            auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(RQ.entry[RQ.head].address));
+            bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
 
-            if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
+            if ((mshr_entry == MSHR.end()) && !mshr_full) { // this is a new miss
 
                 if(cache_type == IS_LLC)
                 {
@@ -547,7 +558,7 @@ void CACHE::handle_read()
                     }
                 }
             }
-            else if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
+            else if ((mshr_entry == MSHR.end()) && mshr_full) { // not enough MSHR resource
 
                 // cannot handle miss request until one of MSHRs is available
                 continue_read = false;
@@ -560,71 +571,71 @@ void CACHE::handle_read()
                 if (RQ.entry[RQ.head].type == RFO) {
 
                     if (RQ.entry[RQ.head].tlb_access) {
-                        MSHR.entry[mshr_index].sq_index_depend_on_me.insert (RQ.entry[RQ.head].sq_index);
-                        MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[RQ.head].sq_index_depend_on_me, SQ_SIZE);
+                        mshr_entry->sq_index_depend_on_me.insert (RQ.entry[RQ.head].sq_index);
+                        mshr_entry->sq_index_depend_on_me.join (RQ.entry[RQ.head].sq_index_depend_on_me, SQ_SIZE);
                     }
 
-                    MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[RQ.head].lq_index_depend_on_me, LQ_SIZE);
+                    mshr_entry->lq_index_depend_on_me.join (RQ.entry[RQ.head].lq_index_depend_on_me, LQ_SIZE);
                 }
                 else {
                     if (RQ.entry[RQ.head].instruction) {
-                        MSHR.entry[mshr_index].instruction = 1; // add as instruction type
+                        mshr_entry->instruction = 1; // add as instruction type
 
-                        DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
-                                cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
+                        DP (if (warmup_complete[mshr_entry->cpu]) {
+                                cout << "[INSTR_MERGED] " << __func__ << " cpu: " << mshr_entry->cpu << " instr_id: " << mshr_entry->instr_id;
                                 cout << " merged rob_index: " << RQ.entry[RQ.head].rob_index << " instr_id: " << RQ.entry[RQ.head].instr_id << endl; });
                     }
                     else
                     {
                         uint32_t lq_index = RQ.entry[RQ.head].lq_index;
-                        MSHR.entry[mshr_index].is_data = 1; // add as data type
-                        MSHR.entry[mshr_index].lq_index_depend_on_me.insert (lq_index);
+                        mshr_entry->is_data = 1; // add as data type
+                        mshr_entry->lq_index_depend_on_me.insert (lq_index);
 
                         DP (if (warmup_complete[read_cpu]) {
                                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << read_cpu << " instr_id: " << RQ.entry[RQ.head].instr_id;
                                 cout << " merged rob_index: " << RQ.entry[RQ.head].rob_index << " instr_id: " << RQ.entry[RQ.head].instr_id << " lq_index: " << RQ.entry[RQ.head].lq_index << endl; });
-                        MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[RQ.head].lq_index_depend_on_me, LQ_SIZE);
-                        MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[RQ.head].sq_index_depend_on_me, SQ_SIZE);
+                        mshr_entry->lq_index_depend_on_me.join (RQ.entry[RQ.head].lq_index_depend_on_me, LQ_SIZE);
+                        mshr_entry->sq_index_depend_on_me.join (RQ.entry[RQ.head].sq_index_depend_on_me, SQ_SIZE);
                     }
                 }
 
                 // update fill_level
-                if (RQ.entry[RQ.head].fill_level < MSHR.entry[mshr_index].fill_level)
-                    MSHR.entry[mshr_index].fill_level = RQ.entry[RQ.head].fill_level;
+                if (RQ.entry[RQ.head].fill_level < mshr_entry->fill_level)
+                    mshr_entry->fill_level = RQ.entry[RQ.head].fill_level;
 
-                if((RQ.entry[RQ.head].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+                if((RQ.entry[RQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
                 {
-                    MSHR.entry[mshr_index].fill_l1i = 1;
+                    mshr_entry->fill_l1i = 1;
                 }
-                if((RQ.entry[RQ.head].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+                if((RQ.entry[RQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
                 {
-                    MSHR.entry[mshr_index].fill_l1d = 1;
+                    mshr_entry->fill_l1d = 1;
                 }
 
                 // update request
-                if (MSHR.entry[mshr_index].type == PREFETCH) {
-                    uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
-                    uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                    uint8_t  prior_fill_l1i = MSHR.entry[mshr_index].fill_l1i;
-                    uint8_t  prior_fill_l1d = MSHR.entry[mshr_index].fill_l1d;
+                if (mshr_entry->type == PREFETCH) {
+                    uint8_t  prior_returned = mshr_entry->returned;
+                    uint64_t prior_event_cycle = mshr_entry->event_cycle;
+                    uint8_t  prior_fill_l1i = mshr_entry->fill_l1i;
+                    uint8_t  prior_fill_l1d = mshr_entry->fill_l1d;
 
-                    MSHR.entry[mshr_index] = RQ.entry[RQ.head];
+                    *mshr_entry = RQ.entry[RQ.head];
 
-                    if(prior_fill_l1i && MSHR.entry[mshr_index].fill_l1i == 0)
-                        MSHR.entry[mshr_index].fill_l1i = 1;
-                    if(prior_fill_l1d && MSHR.entry[mshr_index].fill_l1d == 0)
-                        MSHR.entry[mshr_index].fill_l1d = 1;
+                    if(prior_fill_l1i && mshr_entry->fill_l1i == 0)
+                        mshr_entry->fill_l1i = 1;
+                    if(prior_fill_l1d && mshr_entry->fill_l1d == 0)
+                        mshr_entry->fill_l1d = 1;
 
                     // in case request is already returned, we should keep event_cycle and retunred variables
-                    MSHR.entry[mshr_index].returned = prior_returned;
-                    MSHR.entry[mshr_index].event_cycle = prior_event_cycle;
+                    mshr_entry->returned = prior_returned;
+                    mshr_entry->event_cycle = prior_event_cycle;
                 }
 
                 MSHR_MERGED[RQ.entry[RQ.head].type]++;
 
                 DP ( if (warmup_complete[read_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                        cout << " instr_id: " << RQ.entry[RQ.head].instr_id << " prior_id: " << MSHR.entry[mshr_index].instr_id; 
+                        cout << " instr_id: " << RQ.entry[RQ.head].instr_id << " prior_id: " << MSHR[mshr_entry].instr_id; 
                         cout << " address: " << hex << RQ.entry[RQ.head].address;
                         cout << " full_addr: " << RQ.entry[RQ.head].full_addr << dec;
                         cout << " cycle: " << RQ.entry[RQ.head].event_cycle << endl; });
@@ -722,10 +733,10 @@ void CACHE::handle_prefetch()
                     cout << " cycle: " << PQ.entry[PQ.head].event_cycle << endl; });
 
             // check mshr
-            int mshr_index = check_mshr(&PQ.entry[PQ.head]);
-            assert(mshr_index == -1 || mshr_index < MSHR.SIZE);
+            auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(PQ.entry[PQ.head].address));
+            bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
 
-            if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
+            if ((mshr_entry == MSHR.end()) && !mshr_full) { // this is a new miss
 
                 DP ( if (warmup_complete[PQ.entry[PQ.head].cpu]) {
                         cout << "[" << NAME << "_PQ] " <<  __func__ << " want to add instr_id: " << PQ.entry[PQ.head].instr_id << " address: " << hex << PQ.entry[PQ.head].address;
@@ -782,7 +793,7 @@ void CACHE::handle_prefetch()
                     }
                 }
             }
-            else if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
+            else if ((mshr_entry == MSHR.end()) && mshr_full) { // not enough MSHR resource
 
                 // TODO: should we allow prefetching with lower fill level at this case?
 
@@ -790,30 +801,29 @@ void CACHE::handle_prefetch()
                 continue_prefetch = false;
                 STALL[PQ.entry[PQ.head].type]++;
             }
-            else if (mshr_index != -1) { // already in-flight miss
-
+            else // already in-flight miss
+            {
                 // no need to update request except fill_level
-                // update fill_level
-                if (PQ.entry[PQ.head].fill_level < MSHR.entry[mshr_index].fill_level)
-                    MSHR.entry[mshr_index].fill_level = PQ.entry[PQ.head].fill_level;
+                if (PQ.entry[PQ.head].fill_level < mshr_entry->fill_level)
+                    mshr_entry->fill_level = PQ.entry[PQ.head].fill_level;
 
-                if((PQ.entry[PQ.head].fill_l1i) && (MSHR.entry[mshr_index].fill_l1i != 1))
+                if((PQ.entry[PQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
                 {
-                    MSHR.entry[mshr_index].fill_l1i = 1;
+                    mshr_entry->fill_l1i = 1;
                 }
-                if((PQ.entry[PQ.head].fill_l1d) && (MSHR.entry[mshr_index].fill_l1d != 1))
+                if((PQ.entry[PQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
                 {
-                    MSHR.entry[mshr_index].fill_l1d = 1;
+                    mshr_entry->fill_l1d = 1;
                 }
 
                 MSHR_MERGED[PQ.entry[PQ.head].type]++;
 
                 DP ( if (warmup_complete[prefetch_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                        cout << " instr_id: " << PQ.entry[PQ.head].instr_id << " prior_id: " << MSHR.entry[mshr_index].instr_id; 
+                        cout << " instr_id: " << PQ.entry[PQ.head].instr_id << " prior_id: " << mshr_entry->instr_id; 
                         cout << " address: " << hex << PQ.entry[PQ.head].address;
-                        cout << " full_addr: " << PQ.entry[PQ.head].full_addr << dec << " fill_level: " << MSHR.entry[mshr_index].fill_level;
-                        cout << " cycle: " << MSHR.entry[mshr_index].event_cycle << endl; });
+                        cout << " full_addr: " << PQ.entry[PQ.head].full_addr << dec << " fill_level: " << mshr_entry->fill_level;
+                        cout << " cycle: " << mshr_entry->event_cycle << endl; });
             }
 
             if (continue_prefetch)
@@ -1403,10 +1413,10 @@ int CACHE::add_pq(PACKET *packet)
 void CACHE::return_data(PACKET *packet)
 {
     // check MSHR information
-    int mshr_index = check_mshr(packet);
+    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
 
     // sanity check
-    if (mshr_index == -1) {
+    if (mshr_entry == MSHR.end()) {
         cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
         cerr << " full_addr: " << hex << packet->full_addr;
         cerr << " address: " << packet->address << dec;
@@ -1416,51 +1426,39 @@ void CACHE::return_data(PACKET *packet)
 
     // MSHR holds the most updated information about this request
     // no need to do memcpy
-    MSHR.num_returned++;
-    MSHR.entry[mshr_index].returned = COMPLETED;
-    MSHR.entry[mshr_index].data = packet->data;
-    MSHR.entry[mshr_index].pf_metadata = packet->pf_metadata;
+    mshr_entry->returned = COMPLETED;
+    mshr_entry->data = packet->data;
+    mshr_entry->pf_metadata = packet->pf_metadata;
 
     // ADD LATENCY
-    if (MSHR.entry[mshr_index].event_cycle < current_core_cycle[packet->cpu])
-        MSHR.entry[mshr_index].event_cycle = current_core_cycle[packet->cpu] + LATENCY;
+    if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
+        mshr_entry->event_cycle = current_core_cycle[packet->cpu] + LATENCY;
     else
-        MSHR.entry[mshr_index].event_cycle += LATENCY;
+        mshr_entry->event_cycle += LATENCY;
 
     DP (if (warmup_complete[packet->cpu]) {
-            std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << MSHR.entry[mshr_index].instr_id;
-            std::cout << " address: " << std::hex << MSHR.entry[mshr_index].address << " full_addr: " << MSHR.entry[mshr_index].full_addr;
-            std::cout << " data: " << MSHR.entry[mshr_index].data << std::dec << " num_returned: " << MSHR.num_returned;
-            std::cout << " index: " << mshr_index << " occupancy: " << MSHR.occupancy;
-            std::cout << " event: " << MSHR.entry[mshr_index].event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
-}
-
-int CACHE::check_mshr(PACKET *packet)
-{
-    for (uint32_t index=0; index<MSHR_SIZE; index++)
-        if (MSHR.entry[index].address == packet->address)
-            return index;
-    return -1;
+            std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
+            std::cout << " address: " << std::hex << mshr_entry->address << " full_addr: " << mshr_entry->full_addr;
+            std::cout << " data: " << mshr_entry->data << std::dec;
+            std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
+            std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
 }
 
 void CACHE::add_mshr(PACKET *packet)
 {
-    for (uint32_t index=0; index<MSHR_SIZE; index++) {
-        if (MSHR.entry[index].address == 0) {
-            MSHR.entry[index] = *packet;
-            MSHR.entry[index].returned = INFLIGHT;
-            MSHR.entry[index].cycle_enqueued = current_core_cycle[packet->cpu];
-            MSHR.occupancy++;
-
-            break;
-        }
+    auto it = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
+    if (it != MSHR.end())
+    {
+        *it = *packet;
+        it->returned = INFLIGHT;
+        it->cycle_enqueued = current_core_cycle[packet->cpu];
     }
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
 {
     if (queue_type == 0)
-        return MSHR.occupancy;
+        return std::count_if(MSHR.begin(), MSHR.end(), [](PACKET x){ return x.address != 0; });
     else if (queue_type == 1)
         return RQ.occupancy;
     else if (queue_type == 2)
@@ -1474,7 +1472,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
 uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 {
     if (queue_type == 0)
-        return MSHR.SIZE;
+        return MSHR_SIZE;
     else if (queue_type == 1)
         return RQ.SIZE;
     else if (queue_type == 2)

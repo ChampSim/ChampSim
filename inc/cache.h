@@ -105,8 +105,9 @@ class CACHE : public MEMORY {
                  RQ{NAME + "_RQ", RQ_SIZE}, // read queue
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
                  VAPQ{NAME + "_VAPQ", PQ_SIZE}, // virtual address prefetch queue
-                 MSHR{NAME + "_MSHR", MSHR_SIZE}, // MSHR
                  PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+
+    std::vector<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES],
              sim_hit[NUM_CPUS][NUM_TYPES],
@@ -182,7 +183,6 @@ class CACHE : public MEMORY {
              get_size(uint8_t queue_type, uint64_t address);
 
     int  invalidate_entry(uint64_t inval_addr),
-         check_mshr(PACKET *packet),
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata),
          va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);

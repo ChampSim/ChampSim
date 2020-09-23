@@ -231,11 +231,9 @@ class PACKET_QUEUE {
         tail = 0;
         occupancy = 0;
         num_returned = 0;
-        next_fill_index = 0;
         next_schedule_index = 0;
         next_process_index = 0;
 
-        next_fill_cycle = UINT64_MAX;
         next_schedule_cycle = UINT64_MAX;
         next_process_cycle = UINT64_MAX;
 
