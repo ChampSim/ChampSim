@@ -37,9 +37,7 @@ struct eq_addr
 
 void CACHE::handle_fill()
 {
-    bool continue_fill = true;
-
-    while (continue_fill && writes_available_this_cycle > 0)
+    while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = std::min_element(std::begin(MSHR), std::end(MSHR), min_fill_index());
         if (fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
@@ -54,139 +52,113 @@ void CACHE::handle_fill()
         else
             way = find_victim(fill_cpu, fill_mshr->instr_id, set, block[set], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
 
+        bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
-        assert(way < NUM_WAY);
+        assert(!bypass);
 #endif
 
-        // Handle bypass
-        if (way == NUM_WAY)
+        bool evicting_dirty = (lower_level != NULL) && block[set][way].dirty;
+
+        // In the case where we would evict a dirty block, give up and stall if the lower-level WQ is full.
+        if (!bypass && evicting_dirty && (lower_level->get_occupancy(2, block[set][way].address) == lower_level->get_size(2, block[set][way].address)))
         {
-            // update replacement policy
-            if (cache_type == IS_LLC)
-                llc_update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
-            else
-                update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
+            // lower level WQ is full, cannot replace this victim
+            lower_level->increment_WQ_FULL(block[set][way].address);
+            STALL[fill_mshr->type]++;
 
-            // COLLECT STATS
-            sim_miss[fill_cpu][fill_mshr->type]++;
-            sim_access[fill_cpu][fill_mshr->type]++;
-
-            // check fill level
-            if (fill_mshr->fill_level < fill_level)
-            {
-                if (fill_mshr->instruction)
-                    upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
-                if (fill_mshr->is_data)
-                    upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
-            }
+            DP ( if (warmup_complete[fill_cpu]) {
+                    std::cout << "[" << NAME << "] " << __func__ << " stopping fill because";
+                    std::cout << " lower level wq is full!" << " fill_addr: " << std::hex << fill_mshr->address;
+                    std::cout << " victim_addr: " << block[set][way].tag << std::dec << std::endl; });
+            return;
         }
+
+        if (!bypass)
+        {
+            if (evicting_dirty)
+            {
+                PACKET writeback_packet;
+
+                writeback_packet.fill_level = fill_level << 1;
+                writeback_packet.cpu = fill_cpu;
+                writeback_packet.address = block[set][way].address;
+                writeback_packet.full_addr = block[set][way].full_addr;
+                writeback_packet.data = block[set][way].data;
+                writeback_packet.instr_id = fill_mshr->instr_id;
+                writeback_packet.ip = 0; // writeback does not have ip
+                writeback_packet.type = WRITEBACK;
+                writeback_packet.event_cycle = current_core_cycle[fill_cpu];
+
+                lower_level->add_wq(&writeback_packet);
+            }
+
+            fill_cache(set, way, &(*fill_mshr));
+
+            // RFO marks cache line dirty
+            if (fill_mshr->type == RFO && cache_type == IS_L1D)
+                block[set][way].dirty = 1;
+        }
+
+        if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
+            total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
+
+        // update prefetcher
+        if (cache_type == IS_L1I)
+            l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, ((block[set][way].ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
+        if (cache_type == IS_L1D)
+            l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, block[set][way].address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+        if  (cache_type == IS_L2C)
+            fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+        if (cache_type == IS_LLC)
+        {
+            cpu = fill_cpu;
+            fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            cpu = 0;
+        }
+
+
+        // update replacement policy
+        if (cache_type == IS_LLC)
+            llc_update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
         else
-        {
-            // is this dirty?
-            if (block[set][way].dirty && lower_level != NULL)
-            {
-                // check if the lower level WQ has enough room to keep this writeback request
-                    if (lower_level->get_occupancy(2, block[set][way].address) == lower_level->get_size(2, block[set][way].address)) {
+            update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
 
-                        // lower level WQ is full, cannot replace this victim
-                        continue_fill = false;
-                        lower_level->increment_WQ_FULL(block[set][way].address);
-                        STALL[fill_mshr->type]++;
-
-                        DP ( if (warmup_complete[fill_cpu]) {
-                                cout << "[" << NAME << "] " << __func__ << "continue_fill: " << +continue_fill;
-                                cout << " lower level wq is full!" << " fill_addr: " << hex << fill_mshr->address;
-                                cout << " victim_addr: " << block[set][way].tag << dec << endl; });
-                    }
-                    else {
-                        PACKET writeback_packet;
-
-                        writeback_packet.fill_level = fill_level << 1;
-                        writeback_packet.cpu = fill_cpu;
-                        writeback_packet.address = block[set][way].address;
-                        writeback_packet.full_addr = block[set][way].full_addr;
-                        writeback_packet.data = block[set][way].data;
-                        writeback_packet.instr_id = fill_mshr->instr_id;
-                        writeback_packet.ip = 0; // writeback does not have ip
-                        writeback_packet.type = WRITEBACK;
-                        writeback_packet.event_cycle = current_core_cycle[fill_cpu];
-
-                        lower_level->add_wq(&writeback_packet);
-                    }
-            }
-
-            if (continue_fill)
-            {
-                // update prefetcher
-                if (cache_type == IS_L1I)
-                    l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, ((block[set][way].ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
-                if (cache_type == IS_L1D)
-                    l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, block[set][way].address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-                if  (cache_type == IS_L2C)
-                    fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-                if (cache_type == IS_LLC)
-                {
-                    cpu = fill_cpu;
-                    fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-                    cpu = 0;
-                }
-
-                // update replacement policy
-                if (cache_type == IS_LLC)
-                    llc_update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, block[set][way].full_addr, fill_mshr->type, 0);
-                else
-                    update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, block[set][way].full_addr, fill_mshr->type, 0);
-
-                // COLLECT STATS
-                sim_miss[fill_cpu][fill_mshr->type]++;
-                sim_access[fill_cpu][fill_mshr->type]++;
-
-                fill_cache(set, way, &(*fill_mshr));
-
-                // RFO marks cache line dirty
-                if (fill_mshr->type == RFO && cache_type == IS_L1D)
-                    block[set][way].dirty = 1;
-
-                // check fill level
-                if (fill_mshr->fill_level < fill_level) {
-                    if (fill_mshr->instruction)
-                        upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
-                    if (fill_mshr->is_data)
-                        upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
-                }
-
-                // update processed packets
-                if (cache_type == IS_ITLB) {
-                    fill_mshr->instruction_pa = block[set][way].data;
-                    if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(&(*fill_mshr));
-                }
-                else if (cache_type == IS_DTLB) {
-                    fill_mshr->data_pa = block[set][way].data;
-                    if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(&(*fill_mshr));
-                }
-                else if (cache_type == IS_L1I) {
-                    if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(&(*fill_mshr));
-                }
-                else if ((cache_type == IS_L1D) && (fill_mshr->type != PREFETCH)) {
-                    if (PROCESSED.occupancy < PROCESSED.SIZE)
-                        PROCESSED.add_queue(&(*fill_mshr));
-                }
-            }
+        // check fill level
+        if (fill_mshr->fill_level < fill_level) {
+            if (fill_mshr->instruction)
+                upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
+            if (fill_mshr->is_data)
+                upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
         }
 
-        if (continue_fill)
-        {
-            if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
-                total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
-
-            PACKET empty;
-            *fill_mshr = empty;
-
-            writes_available_this_cycle--;
+        // update processed packets
+        if (cache_type == IS_ITLB) {
+            fill_mshr->instruction_pa = block[set][way].data;
+            if (PROCESSED.occupancy < PROCESSED.SIZE)
+                PROCESSED.add_queue(&(*fill_mshr));
         }
+        else if (cache_type == IS_DTLB) {
+            fill_mshr->data_pa = block[set][way].data;
+            if (PROCESSED.occupancy < PROCESSED.SIZE)
+                PROCESSED.add_queue(&(*fill_mshr));
+        }
+        else if (cache_type == IS_L1I) {
+            if (PROCESSED.occupancy < PROCESSED.SIZE)
+                PROCESSED.add_queue(&(*fill_mshr));
+        }
+        else if ((cache_type == IS_L1D) && (fill_mshr->type != PREFETCH)) {
+            if (PROCESSED.occupancy < PROCESSED.SIZE)
+                PROCESSED.add_queue(&(*fill_mshr));
+        }
+
+        // COLLECT STATS
+        sim_miss[fill_cpu][fill_mshr->type]++;
+        sim_access[fill_cpu][fill_mshr->type]++;
+
+        PACKET empty;
+        *fill_mshr = empty;
+
+        writes_available_this_cycle--;
     }
 }
 
