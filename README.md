@@ -62,6 +62,7 @@ $ ./config.sh <configuration file>
 $ make clean
 $ make
 $ bin/champsim -warmup_instructions 200000000 -simulation_instructions 500000000 -traces dpc3_traces/600.perlbench_s-210B.champsimtrace.xz
+```
 
 # How to create traces
 
