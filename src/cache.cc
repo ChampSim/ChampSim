@@ -46,11 +46,8 @@ void CACHE::handle_fill()
         uint32_t fill_cpu = fill_mshr->cpu;
 
         // find victim
-        uint32_t set = get_set(fill_mshr->address), way;
-        if (cache_type == IS_LLC)
-            way = llc_find_victim(fill_cpu, fill_mshr->instr_id, set, block[set], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
-        else
-            way = find_victim(fill_cpu, fill_mshr->instr_id, set, block[set], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
+        uint32_t set = get_set(fill_mshr->address);
+        uint32_t way = find_victim(fill_cpu, fill_mshr->instr_id, set, block[set], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
 
         bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
@@ -118,10 +115,7 @@ void CACHE::handle_fill()
 
 
         // update replacement policy
-        if (cache_type == IS_LLC)
-            llc_update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
-        else
-            update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
+        update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
 
         // check fill level
         if (fill_mshr->fill_level < fill_level) {
@@ -178,10 +172,7 @@ void CACHE::handle_writeback()
 
         if (way < NUM_WAY) // HIT
         {
-            if (cache_type == IS_LLC)
-                llc_update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[WQ.head].ip, 0, WQ.entry[WQ.head].type, 1);
-            else
-                update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[WQ.head].ip, 0, WQ.entry[WQ.head].type, 1);
+            update_replacement_state(writeback_cpu, set, way, block[set][way].full_addr, WQ.entry[WQ.head].ip, 0, WQ.entry[WQ.head].type, 1);
 
             // COLLECT STATS
             sim_hit[writeback_cpu][WQ.entry[WQ.head].type]++;
@@ -296,11 +287,8 @@ void CACHE::handle_writeback()
             }
             else {
                 // find victim
-                uint32_t set = get_set(WQ.entry[WQ.head].address), way;
-                if (cache_type == IS_LLC)
-                    way = llc_find_victim(writeback_cpu, WQ.entry[WQ.head].instr_id, set, block[set], WQ.entry[WQ.head].ip, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].type);
-                else
-                    way = find_victim(writeback_cpu, WQ.entry[WQ.head].instr_id, set, block[set], WQ.entry[WQ.head].ip, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].type);
+                uint32_t set = get_set(WQ.entry[WQ.head].address);
+                uint32_t way = find_victim(writeback_cpu, WQ.entry[WQ.head].instr_id, set, block[set], WQ.entry[WQ.head].ip, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].type);
 
                 assert(way < LLC_WAY);
 
@@ -354,10 +342,7 @@ void CACHE::handle_writeback()
                     }
 
                     // update replacement policy
-                    if (cache_type == IS_LLC)
-                        llc_update_replacement_state(writeback_cpu, set, way, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].ip, block[set][way].full_addr, WQ.entry[WQ.head].type, 0);
-                    else
-                        update_replacement_state(writeback_cpu, set, way, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].ip, block[set][way].full_addr, WQ.entry[WQ.head].type, 0);
+                    update_replacement_state(writeback_cpu, set, way, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].ip, block[set][way].full_addr, WQ.entry[WQ.head].type, 0);
 
                     // COLLECT STATS
                     sim_miss[writeback_cpu][WQ.entry[WQ.head].type]++;
@@ -446,10 +431,7 @@ void CACHE::handle_read()
             }
 
             // update replacement policy
-            if (cache_type == IS_LLC)
-                llc_update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[RQ.head].ip, 0, RQ.entry[RQ.head].type, 1);
-            else
-                update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[RQ.head].ip, 0, RQ.entry[RQ.head].type, 1);
+            update_replacement_state(read_cpu, set, way, block[set][way].full_addr, RQ.entry[RQ.head].ip, 0, RQ.entry[RQ.head].type, 1);
 
             // COLLECT STATS
             sim_hit[read_cpu][RQ.entry[RQ.head].type]++;
@@ -657,10 +639,7 @@ void CACHE::handle_prefetch()
         if (way < NUM_WAY) // HIT
         {
             // update replacement policy
-            if (cache_type == IS_LLC)
-                llc_update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[PQ.head].ip, 0, PQ.entry[PQ.head].type, 1);
-            else
-                update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[PQ.head].ip, 0, PQ.entry[PQ.head].type, 1);
+            update_replacement_state(prefetch_cpu, set, way, block[set][way].full_addr, PQ.entry[PQ.head].ip, 0, PQ.entry[PQ.head].type, 1);
 
             // COLLECT STATS
             sim_hit[prefetch_cpu][PQ.entry[PQ.head].type]++;

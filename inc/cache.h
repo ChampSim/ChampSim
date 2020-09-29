@@ -3,6 +3,8 @@
 
 #include "memory_class.h"
 
+#include <functional>
+
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 
@@ -182,50 +184,62 @@ class CACHE : public MEMORY {
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
 
+    uint32_t get_set(uint64_t address),
+             get_way(uint64_t address, uint32_t set);
+
     int  invalidate_entry(uint64_t inval_addr),
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata),
          va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);
+
+    void add_mshr(PACKET *packet),
+         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
+         va_translate_prefetches();
 
     void handle_fill(),
          handle_writeback(),
          handle_read(),
          handle_prefetch();
 
-    void add_mshr(PACKET *packet),
-         llc_initialize_replacement(),
-         update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
-         llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
-         lru_update(uint32_t set, uint32_t way),
-         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
-         replacement_final_stats(),
-         llc_replacement_final_stats(),
-         //prefetcher_initialize(),
-         l1d_prefetcher_initialize(),
-         l2c_prefetcher_initialize(),
-         llc_prefetcher_initialize(),
-         prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
-         l1d_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
-         prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
-         l1d_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-         //prefetcher_final_stats(),
-         l1d_prefetcher_final_stats(),
-         l2c_prefetcher_final_stats(),
-         llc_prefetcher_final_stats(),
-         va_translate_prefetches();
-    void (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t);
-    void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
+    void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
+         (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),
+         l1d_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
 
     uint32_t l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         llc_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-         llc_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    
-    uint32_t get_set(uint64_t address),
-             get_way(uint64_t address, uint32_t set),
-             find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+         llc_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+
+    void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
+    void prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
+             l1d_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+    uint32_t l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
+             llc_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+
+    void prefetcher_initialize(),
+         l1d_prefetcher_initialize(),
+         l2c_prefetcher_initialize(),
+         llc_prefetcher_initialize();
+
+    void prefetcher_final_stats(),
+         l1d_prefetcher_final_stats(),
+         l2c_prefetcher_final_stats(),
+         llc_prefetcher_final_stats();
+
+    void llc_initialize_replacement();
+
+    std::function<void()> replacement_final_stats;
+    void llc_replacement_final_stats();
+
+    std::function<void(uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t)> update_replacement_state;
+    void llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit);
+
+    std::function<uint32_t(uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t)> find_victim;
+    uint32_t llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+
+    void lru_initialize();
+    uint32_t lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+    void lru_update(uint32_t set, uint32_t way, uint32_t type, uint8_t hit);
+    void lru_final_stats();
 };
 
 #endif
+
