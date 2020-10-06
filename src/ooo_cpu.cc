@@ -1537,16 +1537,115 @@ void O3_CPU::operate_cache()
 void O3_CPU::update_rob()
 {
     if (ITLB.PROCESSED.occupancy && (ITLB.PROCESSED.entry[ITLB.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-        complete_instr_fetch(&ITLB.PROCESSED, 1);
+    {
+        PACKET itlb_entry = ITLB.PROCESSED.entry[ITLB.PROCESSED.head];
+        uint64_t instruction_physical_address = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | (itlb_entry.ip & ((1 << LOG2_PAGE_SIZE) - 1));
+
+        // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
+        for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+        {
+            if((IFETCH_BUFFER.entry[j].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
+            {
+                IFETCH_BUFFER.entry[j].translated = COMPLETED;
+                // we did not fetch this instruction's cache line, but we did translated it
+                IFETCH_BUFFER.entry[j].fetched = 0;
+                // recalculate a physical address for this cache line based on the translated physical page address
+                IFETCH_BUFFER.entry[j].instruction_pa = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+            }
+        }
+
+        // remove this entry
+        ITLB.PROCESSED.remove_queue(&ITLB.PROCESSED.entry[ITLB.PROCESSED.head]);
+    }
 
     if (L1I.PROCESSED.occupancy && (L1I.PROCESSED.entry[L1I.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-        complete_instr_fetch(&L1I.PROCESSED, 0);
+    {
+        PACKET &l1i_entry = L1I.PROCESSED.entry[L1I.PROCESSED.head];
+        // this is the L1I cache, so instructions are now fully fetched, so mark them as such
+        for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+        {
+            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
+            {
+                IFETCH_BUFFER.entry[j].translated = COMPLETED;
+                IFETCH_BUFFER.entry[j].fetched = COMPLETED;
+            }
+        }
+
+        // find victim in DIB
+        dib_t::value_type &dib_set = DIB[l1i_entry.ip % DIB_SET];
+        auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
+        if (way == dib_set.end())
+            way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
+        assert(way != dib_set.end());
+
+        // update LRU in DIB
+        unsigned hit_lru = way->lru;
+        std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+
+        // add to DIB
+        way->valid = true;
+        way->lru = 0;
+        way->addr = l1i_entry.ip;
+
+        // remove this entry
+        L1I.PROCESSED.remove_queue(&L1I.PROCESSED.entry[L1I.PROCESSED.head]);
+    }
 
     if (DTLB.PROCESSED.occupancy && (DTLB.PROCESSED.entry[DTLB.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-        complete_data_fetch(&DTLB.PROCESSED, 1);
+    { // DTLB
+        PACKET &dtlb_entry = DTLB.PROCESSED.entry[DTLB.PROCESSED.head];
+        if (dtlb_entry.type == RFO)
+        {
+            SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            SQ.entry[dtlb_entry.sq_index].translated = COMPLETED;
+            SQ.entry[dtlb_entry.sq_index].event_cycle = current_core_cycle[cpu];
+
+            RTS1[RTS1_tail] = dtlb_entry.sq_index;
+            RTS1_tail++;
+            if (RTS1_tail == SQ_SIZE)
+                RTS1_tail = 0;
+        }
+        else
+        {
+            LQ.entry[dtlb_entry.lq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (LQ.entry[dtlb_entry.lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            LQ.entry[dtlb_entry.lq_index].translated = COMPLETED;
+            LQ.entry[dtlb_entry.lq_index].event_cycle = current_core_cycle[cpu];
+
+            RTL1[RTL1_tail] = dtlb_entry.lq_index;
+            RTL1_tail++;
+            if (RTL1_tail == LQ_SIZE)
+                RTL1_tail = 0;
+        }
+
+        handle_merged_translation(&DTLB.PROCESSED.entry[DTLB.PROCESSED.head]);
+
+        ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
+
+        // remove this entry
+        DTLB.PROCESSED.remove_queue(&DTLB.PROCESSED.entry[DTLB.PROCESSED.head]);
+    }
 
     if (L1D.PROCESSED.occupancy && (L1D.PROCESSED.entry[L1D.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-        complete_data_fetch(&L1D.PROCESSED, 0);
+    { // L1D
+        PACKET &l1d_entry = L1D.PROCESSED.entry[L1D.PROCESSED.head];
+        if (l1d_entry.type != RFO)
+        {
+            LQ.entry[l1d_entry.lq_index].fetched = COMPLETED;
+            LQ.entry[l1d_entry.lq_index].event_cycle = current_core_cycle[cpu];
+            ROB.entry[l1d_entry.rob_index].num_mem_ops--;
+            ROB.entry[l1d_entry.rob_index].event_cycle = l1d_entry.event_cycle;
+
+            if (ROB.entry[l1d_entry.rob_index].num_mem_ops == 0)
+                inflight_mem_executions++;
+
+            release_load_queue(l1d_entry.lq_index);
+        }
+
+        handle_merged_load(&L1D.PROCESSED.entry[L1D.PROCESSED.head]);
+
+        // remove this entry
+        L1D.PROCESSED.remove_queue(&L1D.PROCESSED.entry[L1D.PROCESSED.head]);
+    }
 
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
@@ -1579,308 +1678,6 @@ void O3_CPU::update_rob()
                   }
                 instrs_executed += complete_execution(i);
 	      }
-        }
-    }
-}
-
-void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
-{
-    uint32_t index = queue->head,
-      rob_index = queue->entry[index].rob_index,
-      num_fetched = 0;
-
-    uint64_t complete_ip = queue->entry[index].ip;
-
-    if(is_it_tlb)
-      {
-	uint64_t instruction_physical_address = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | (complete_ip & ((1 << LOG2_PAGE_SIZE) - 1));
-	
-	// mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
-	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
-	  {
-	    if(((IFETCH_BUFFER.entry[j].ip)>>LOG2_PAGE_SIZE) == ((complete_ip)>>LOG2_PAGE_SIZE))
-	      {
-		IFETCH_BUFFER.entry[j].translated = COMPLETED;
-		// we did not fetch this instruction's cache line, but we did translated it
-		IFETCH_BUFFER.entry[j].fetched = 0;
-		// recalculate a physical address for this cache line based on the translated physical page address
-		uint64_t instr_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
-		IFETCH_BUFFER.entry[j].instruction_pa = instr_pa;
-	      }
-	  }
-
-	// remove this entry
-	queue->remove_queue(&queue->entry[index]);
-      }
-    else
-      {
-	// this is the L1I cache, so instructions are now fully fetched, so mark them as such
-	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
-	  {
-          if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (complete_ip >> LOG2_BLOCK_SIZE))
-	      {
-		IFETCH_BUFFER.entry[j].translated = COMPLETED;
-		IFETCH_BUFFER.entry[j].fetched = COMPLETED;
-	      }
-	  }
-
-        // find victim in DIB
-        dib_t::value_type &dib_set = DIB[complete_ip % DIB_SET];
-        auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
-        if (way == dib_set.end())
-            way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
-        assert(way != dib_set.end());
-
-        // update LRU in DIB
-        unsigned hit_lru = way->lru;
-        std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
-
-        // add to DIB
-        way->valid = true;
-        way->lru = 0;
-        way->addr = queue->entry[index].ip;
-
-	// remove this entry                                                                                                                                                                        
-	queue->remove_queue(&queue->entry[index]);
-      }
-    
-    return;
-
-    // old function below
-    
-#ifdef SANITY_CHECK
-    if (rob_index != check_rob(queue->entry[index].instr_id))
-        assert(0);
-#endif
-
-    // update ROB entry
-    if (is_it_tlb) {
-        ROB.entry[rob_index].translated = COMPLETED;
-        ROB.entry[rob_index].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | (ROB.entry[rob_index].ip & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-    }
-    else
-        ROB.entry[rob_index].fetched = COMPLETED;
-    ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
-    num_fetched++;
-
-    DP ( if (warmup_complete[cpu]) {
-    cout << "[" << queue->NAME << "] " << __func__ << " cpu: " << cpu <<  " instr_id: " << ROB.entry[rob_index].instr_id;
-    cout << " ip: " << hex << ROB.entry[rob_index].ip << " address: " << ROB.entry[rob_index].instruction_pa << dec;
-    cout << " translated: " << +ROB.entry[rob_index].translated << " fetched: " << +ROB.entry[rob_index].fetched;
-    cout << " event_cycle: " << ROB.entry[rob_index].event_cycle << endl; });
-
-    // check if other instructions were merged
-    if (queue->entry[index].instr_merged) {
-	ITERATE_SET(i,queue->entry[index].rob_index_depend_on_me, ROB_SIZE) {
-            // update ROB entry
-            if (is_it_tlb) {
-                ROB.entry[i].translated = COMPLETED;
-                ROB.entry[i].instruction_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | (ROB.entry[i].ip & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            }
-            else
-                ROB.entry[i].fetched = COMPLETED;
-            ROB.entry[i].event_cycle = current_core_cycle[cpu] + (num_fetched / FETCH_WIDTH);
-            num_fetched++;
-
-            DP ( if (warmup_complete[cpu]) {
-            cout << "[" << queue->NAME << "] " << __func__ << " cpu: " << cpu <<  " instr_id: " << ROB.entry[i].instr_id;
-            cout << " ip: " << hex << ROB.entry[i].ip << " address: " << ROB.entry[i].instruction_pa << dec;
-            cout << " translated: " << +ROB.entry[i].translated << " fetched: " << +ROB.entry[i].fetched << " provider: " << ROB.entry[rob_index].instr_id;
-            cout << " event_cycle: " << ROB.entry[i].event_cycle << endl; });
-        }
-    }
-
-    // remove this entry
-    queue->remove_queue(&queue->entry[index]);
-}
-
-void O3_CPU::complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
-{
-    uint32_t index = queue->head,
-             rob_index = queue->entry[index].rob_index,
-             sq_index = queue->entry[index].sq_index,
-             lq_index = queue->entry[index].lq_index;
-
-#ifdef SANITY_CHECK
-    if (queue->entry[index].type != RFO) {
-        if (rob_index != check_rob(queue->entry[index].instr_id))
-            assert(0);
-    }
-#endif
-
-    // update ROB entry
-    if (is_it_tlb) { // DTLB
-
-        if (queue->entry[index].type == RFO) {
-            SQ.entry[sq_index].physical_address = (queue->entry[index].data_pa << LOG2_PAGE_SIZE) | (SQ.entry[sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            SQ.entry[sq_index].translated = COMPLETED;
-            SQ.entry[sq_index].event_cycle = current_core_cycle[cpu];
-
-            RTS1[RTS1_tail] = sq_index;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " RFO instr_id: " << SQ.entry[sq_index].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +SQ.entry[sq_index].translated << hex << " page: " << (SQ.entry[sq_index].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << SQ.entry[sq_index].physical_address << dec << " store_merged: " << +queue->entry[index].store_merged;
-            cout << " load_merged: " << +queue->entry[index].load_merged << endl; }); 
-
-            handle_merged_translation(&queue->entry[index]);
-        }
-        else { 
-            LQ.entry[lq_index].physical_address = (queue->entry[index].data_pa << LOG2_PAGE_SIZE) | (LQ.entry[lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            LQ.entry[lq_index].translated = COMPLETED;
-            LQ.entry[lq_index].event_cycle = current_core_cycle[cpu];
-
-            RTL1[RTL1_tail] = lq_index;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[RTL1] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is added to RTL1";
-            cout << " head: " << RTL1_head << " tail: " << RTL1_tail << endl; }); 
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[lq_index].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +LQ.entry[lq_index].translated << hex << " page: " << (LQ.entry[lq_index].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " store_merged: " << +queue->entry[index].store_merged;
-            cout << " load_merged: " << +queue->entry[index].load_merged << endl; }); 
-
-            handle_merged_translation(&queue->entry[index]);
-        }
-
-        ROB.entry[rob_index].event_cycle = queue->entry[index].event_cycle;
-    }
-    else { // L1D
-
-        if (queue->entry[index].type == RFO)
-            handle_merged_load(&queue->entry[index]);
-        else { 
-#ifdef SANITY_CHECK
-            if (queue->entry[index].store_merged)
-                assert(0);
-#endif
-            LQ.entry[lq_index].fetched = COMPLETED;
-            LQ.entry[lq_index].event_cycle = current_core_cycle[cpu];
-            ROB.entry[rob_index].num_mem_ops--;
-            ROB.entry[rob_index].event_cycle = queue->entry[index].event_cycle;
-
-#ifdef SANITY_CHECK
-            if (ROB.entry[rob_index].num_mem_ops < 0) {
-                cerr << "instr_id: " << ROB.entry[rob_index].instr_id << endl;
-                assert(0);
-            }
-#endif
-            if (ROB.entry[rob_index].num_mem_ops == 0)
-                inflight_mem_executions++;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[lq_index].instr_id;
-            cout << " L1D_FETCH_DONE fetched: " << +LQ.entry[lq_index].fetched << hex << " address: " << (LQ.entry[lq_index].physical_address>>LOG2_BLOCK_SIZE);
-            cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " remain_mem_ops: " << ROB.entry[rob_index].num_mem_ops;
-            cout << " load_merged: " << +queue->entry[index].load_merged << " inflight_mem: " << inflight_mem_executions << endl; }); 
-
-            release_load_queue(lq_index);
-            handle_merged_load(&queue->entry[index]);
-        }
-    }
-
-    // remove this entry
-    queue->remove_queue(&queue->entry[index]);
-}
-
-void O3_CPU::handle_o3_fetch(PACKET *current_packet, uint32_t cache_type)
-{
-    uint32_t rob_index = current_packet->rob_index,
-             sq_index  = current_packet->sq_index,
-             lq_index  = current_packet->lq_index;
-
-    // update ROB entry
-    if (cache_type == 0) { // DTLB
-
-#ifdef SANITY_CHECK
-        if (rob_index != check_rob(current_packet->instr_id))
-            assert(0);
-#endif
-        if (current_packet->type == RFO) {
-            SQ.entry[sq_index].physical_address = (current_packet->data_pa << LOG2_PAGE_SIZE) | (SQ.entry[sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            SQ.entry[sq_index].translated = COMPLETED;
-
-            RTS1[RTS1_tail] = sq_index;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " RFO instr_id: " << SQ.entry[sq_index].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +SQ.entry[sq_index].translated << hex << " page: " << (SQ.entry[sq_index].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << SQ.entry[sq_index].physical_address << dec << " store_merged: " << +current_packet->store_merged;
-            cout << " load_merged: " << +current_packet->load_merged << endl; }); 
-
-            handle_merged_translation(current_packet);
-        }
-        else { 
-            LQ.entry[lq_index].physical_address = (current_packet->data_pa << LOG2_PAGE_SIZE) | (LQ.entry[lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            LQ.entry[lq_index].translated = COMPLETED;
-
-            RTL1[RTL1_tail] = lq_index;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[RTL1] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is added to RTL1";
-            cout << " head: " << RTL1_head << " tail: " << RTL1_tail << endl; }); 
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[lq_index].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +LQ.entry[lq_index].translated << hex << " page: " << (LQ.entry[lq_index].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " store_merged: " << +current_packet->store_merged;
-            cout << " load_merged: " << +current_packet->load_merged << endl; }); 
-
-            handle_merged_translation(current_packet);
-        }
-
-        ROB.entry[rob_index].event_cycle = current_packet->event_cycle;
-    }
-    else { // L1D
-
-        if (current_packet->type == RFO)
-            handle_merged_load(current_packet);
-        else { // do traditional things
-#ifdef SANITY_CHECK
-            if (rob_index != check_rob(current_packet->instr_id))
-                assert(0);
-
-            if (current_packet->store_merged)
-                assert(0);
-#endif
-            LQ.entry[lq_index].fetched = COMPLETED;
-            ROB.entry[rob_index].num_mem_ops--;
-
-#ifdef SANITY_CHECK
-            if (ROB.entry[rob_index].num_mem_ops < 0) {
-                cerr << "instr_id: " << ROB.entry[rob_index].instr_id << endl;
-                assert(0);
-            }
-#endif
-            if (ROB.entry[rob_index].num_mem_ops == 0)
-                inflight_mem_executions++;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[lq_index].instr_id;
-            cout << " L1D_FETCH_DONE fetched: " << +LQ.entry[lq_index].fetched << hex << " address: " << (LQ.entry[lq_index].physical_address>>LOG2_BLOCK_SIZE);
-            cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " remain_mem_ops: " << ROB.entry[rob_index].num_mem_ops;
-            cout << " load_merged: " << +current_packet->load_merged << " inflight_mem: " << inflight_mem_executions << endl; }); 
-
-            release_load_queue(lq_index);
-
-            handle_merged_load(current_packet);
-
-            ROB.entry[rob_index].event_cycle = current_packet->event_cycle;
         }
     }
 }
