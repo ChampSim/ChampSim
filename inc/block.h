@@ -90,18 +90,13 @@ class PACKET {
     uint32_t pf_metadata;
 
     uint8_t  is_producer, 
-             //rob_index_depend_on_me[ROB_SIZE], 
              //lq_index_depend_on_me[ROB_SIZE], 
              //sq_index_depend_on_me[ROB_SIZE], 
-             instr_merged,
-             load_merged, 
-             store_merged,
              returned,
              asid[2],
              type;
 
     fastset
-             rob_index_depend_on_me, 
              lq_index_depend_on_me, 
              sq_index_depend_on_me;
 
@@ -147,15 +142,11 @@ class PACKET {
 
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
-            rob_index_depend_on_me[i] = 0;
             lq_index_depend_on_me[i] = 0;
             sq_index_depend_on_me[i] = 0;
         }
 #endif
         is_producer = 0;
-        instr_merged = 0;
-        load_merged = 0;
-        store_merged = 0;
 
         cpu = NUM_CPUS;
         data_index = 0;

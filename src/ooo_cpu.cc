@@ -1684,43 +1684,42 @@ void O3_CPU::update_rob()
 
 void O3_CPU::handle_merged_translation(PACKET *provider)
 {
-    if (provider->store_merged) {
-	ITERATE_SET(merged, provider->sq_index_depend_on_me, SQ.SIZE) {
-            SQ.entry[merged].translated = COMPLETED;
-            SQ.entry[merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (SQ.entry[merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            SQ.entry[merged].event_cycle = current_core_cycle[cpu];
+    ITERATE_SET(sq_merged, provider->sq_index_depend_on_me, SQ.SIZE)
+    {
+        SQ.entry[sq_merged].translated = COMPLETED;
+        SQ.entry[sq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
 
-            RTS1[RTS1_tail] = merged;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
+        RTS1[RTS1_tail] = sq_merged;
+        RTS1_tail++;
+        if (RTS1_tail == SQ_SIZE)
+            RTS1_tail = 0;
 
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " store instr_id: " << SQ.entry[merged].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +SQ.entry[merged].translated << hex << " page: " << (SQ.entry[merged].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << SQ.entry[merged].physical_address << dec << " by instr_id: " << +provider->instr_id << endl; });
-        }
+        DP (if (warmup_complete[cpu]) {
+                cout << "[ROB] " << __func__ << " store instr_id: " << SQ.entry[sq_merged].instr_id;
+                cout << " DTLB_FETCH_DONE translation: " << +SQ.entry[sq_merged].translated << hex << " page: " << (SQ.entry[sq_merged].physical_address>>LOG2_PAGE_SIZE);
+                cout << " full_addr: " << SQ.entry[sq_merged].physical_address << dec << " by instr_id: " << +provider->instr_id << endl; });
     }
-    if (provider->load_merged) {
-	ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ.SIZE) {
-            LQ.entry[merged].translated = COMPLETED;
-            LQ.entry[merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (LQ.entry[merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            LQ.entry[merged].event_cycle = current_core_cycle[cpu];
 
-            RTL1[RTL1_tail] = merged;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
+    ITERATE_SET(lq_merged, provider->lq_index_depend_on_me, LQ.SIZE)
+    {
+        LQ.entry[lq_merged].translated = COMPLETED;
+        LQ.entry[lq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
 
-            DP (if (warmup_complete[cpu]) {
-            cout << "[RTL1] " << __func__ << " instr_id: " << LQ.entry[merged].instr_id << " rob_index: " << LQ.entry[merged].rob_index << " is added to RTL1";
-            cout << " head: " << RTL1_head << " tail: " << RTL1_tail << endl; }); 
+        RTL1[RTL1_tail] = lq_merged;
+        RTL1_tail++;
+        if (RTL1_tail == LQ_SIZE)
+            RTL1_tail = 0;
 
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[merged].instr_id;
-            cout << " DTLB_FETCH_DONE translation: " << +LQ.entry[merged].translated << hex << " page: " << (LQ.entry[merged].physical_address>>LOG2_PAGE_SIZE);
-            cout << " full_addr: " << LQ.entry[merged].physical_address << dec << " by instr_id: " << +provider->instr_id << endl; });
-        }
+        DP (if (warmup_complete[cpu]) {
+                cout << "[RTL1] " << __func__ << " instr_id: " << LQ.entry[lq_merged].instr_id << " rob_index: " << LQ.entry[lq_merged].rob_index << " is added to RTL1";
+                cout << " head: " << RTL1_head << " tail: " << RTL1_tail << endl; }); 
+
+        DP (if (warmup_complete[cpu]) {
+                cout << "[ROB] " << __func__ << " load instr_id: " << LQ.entry[lq_merged].instr_id;
+                cout << " DTLB_FETCH_DONE translation: " << +LQ.entry[lq_merged].translated << hex << " page: " << (LQ.entry[lq_merged].physical_address>>LOG2_PAGE_SIZE);
+                cout << " full_addr: " << LQ.entry[lq_merged].physical_address << dec << " by instr_id: " << +provider->instr_id << endl; });
     }
 }
 

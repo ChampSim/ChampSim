@@ -740,51 +740,31 @@ void CACHE::handle_read()
 
                             if (RQ.entry[index].tlb_access) {
                                 uint32_t sq_index = RQ.entry[index].sq_index;
-                                MSHR.entry[mshr_index].store_merged = 1;
                                 MSHR.entry[mshr_index].sq_index_depend_on_me.insert (sq_index);
-				MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
+                                MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                             }
 
-                            if (RQ.entry[index].load_merged) {
-                                //uint32_t lq_index = RQ.entry[index].lq_index; 
-                                MSHR.entry[mshr_index].load_merged = 1;
-                                //MSHR.entry[mshr_index].lq_index_depend_on_me[lq_index] = 1;
-				MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
-                            }
+                            MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
                         }
                         else {
                             if (RQ.entry[index].instruction) {
-                                uint32_t rob_index = RQ.entry[index].rob_index;
                                 MSHR.entry[mshr_index].instruction = 1; // add as instruction type
-                                MSHR.entry[mshr_index].instr_merged = 1;
-                                MSHR.entry[mshr_index].rob_index_depend_on_me.insert (rob_index);
 
                                 DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
-                                cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
-                                cout << " merged rob_index: " << rob_index << " instr_id: " << RQ.entry[index].instr_id << endl; });
-
-                                if (RQ.entry[index].instr_merged) {
-				    MSHR.entry[mshr_index].rob_index_depend_on_me.join (RQ.entry[index].rob_index_depend_on_me, ROB_SIZE);
-                                    DP (if (warmup_complete[MSHR.entry[mshr_index].cpu]) {
-                                    cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
-                                    cout << " merged rob_index: " << i << " instr_id: N/A" << endl; });
-                                }
+                                        std::cout << "[INSTR_MERGED] " << __func__ << " cpu: " << MSHR.entry[mshr_index].cpu << " instr_id: " << MSHR.entry[mshr_index].instr_id;
+                                        std::cout << " merged rob_index: " << RQ.entry[index].rob_index << " instr_id: " << RQ.entry[index].instr_id << endl; });
                             }
                             else 
                             {
                                 uint32_t lq_index = RQ.entry[index].lq_index;
                                 MSHR.entry[mshr_index].is_data = 1; // add as data type
-                                MSHR.entry[mshr_index].load_merged = 1;
                                 MSHR.entry[mshr_index].lq_index_depend_on_me.insert (lq_index);
 
                                 DP (if (warmup_complete[read_cpu]) {
                                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << read_cpu << " instr_id: " << RQ.entry[index].instr_id;
                                 cout << " merged rob_index: " << RQ.entry[index].rob_index << " instr_id: " << RQ.entry[index].instr_id << " lq_index: " << RQ.entry[index].lq_index << endl; });
-				MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
-                                if (RQ.entry[index].store_merged) {
-                                    MSHR.entry[mshr_index].store_merged = 1;
-				    MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
-                                }
+                                MSHR.entry[mshr_index].lq_index_depend_on_me.join (RQ.entry[index].lq_index_depend_on_me, LQ_SIZE);
+                                MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                             }
                         }
 
@@ -1314,14 +1294,11 @@ int CACHE::add_rq(PACKET *packet)
     if (index != -1) {
         
         if (packet->instruction) {
-            uint32_t rob_index = packet->rob_index;
-            RQ.entry[index].rob_index_depend_on_me.insert (rob_index);
             RQ.entry[index].instruction = 1; // add as instruction type
-            RQ.entry[index].instr_merged = 1;
 
             DP (if (warmup_complete[packet->cpu]) {
-            cout << "[INSTR_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
-            cout << " merged rob_index: " << rob_index << " instr_id: " << packet->instr_id << endl; });
+                    std::cout << "[INSTR_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
+                    std::cout << " merged rob_index: " << packet->rob_index << " instr_id: " << packet->instr_id << std::endl; });
         }
         else 
         {
@@ -1330,12 +1307,10 @@ int CACHE::add_rq(PACKET *packet)
 
                 uint32_t sq_index = packet->sq_index;
                 RQ.entry[index].sq_index_depend_on_me.insert (sq_index);
-                RQ.entry[index].store_merged = 1;
             }
             else {
                 uint32_t lq_index = packet->lq_index; 
                 RQ.entry[index].lq_index_depend_on_me.insert (lq_index);
-                RQ.entry[index].load_merged = 1;
 
                 DP (if (warmup_complete[packet->cpu]) {
                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
@@ -1480,7 +1455,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             pf_packet.v_address = 0;
             pf_packet.full_v_addr = 0;
             //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
-            //pf_packet.rob_index = LQ.entry[lq_index].rob_index;
             pf_packet.ip = ip;
             pf_packet.type = PREFETCH;
             pf_packet.event_cycle = current_core_cycle[cpu];
@@ -1518,7 +1492,6 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             pf_packet.v_address = 0;
             pf_packet.full_v_addr = 0;
             //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
-            //pf_packet.rob_index = LQ.entry[lq_index].rob_index;
             pf_packet.ip = 0;
             pf_packet.type = PREFETCH;
             pf_packet.delta = delta;
