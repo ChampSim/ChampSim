@@ -197,12 +197,9 @@ class O3_CPU {
     void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
          reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
-         handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
          handle_merged_translation(PACKET *provider),
          handle_merged_load(PACKET *provider),
-         release_load_queue(uint32_t lq_index),
-         complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb),
-         complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb);
+         release_load_queue(uint32_t lq_index);
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
