@@ -61,7 +61,6 @@ void CACHE::handle_fill()
         {
             // lower level WQ is full, cannot replace this victim
             lower_level->increment_WQ_FULL(block[set][way].address);
-            STALL[fill_mshr->type]++;
 
             DP ( if (warmup_complete[fill_cpu]) {
                     std::cout << "[" << NAME << "] " << __func__ << " stopping fill because";
@@ -197,9 +196,6 @@ void CACHE::handle_writeback()
                     upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
             }
 
-            HIT[WQ.entry[WQ.head].type]++;
-            ACCESS[WQ.entry[WQ.head].type]++;
-
             writes_available_this_cycle--;
 
             // remove this entry from WQ
@@ -247,7 +243,6 @@ void CACHE::handle_writeback()
                 {
                     // cannot handle miss request until one of MSHRs is available
                     continue_write = false;
-                    STALL[WQ.entry[WQ.head].type]++;
                 }
                 else // already in-flight miss
                 {
@@ -275,8 +270,6 @@ void CACHE::handle_writeback()
                         mshr_entry->event_cycle = prior_event_cycle;
                     }
 
-                    MSHR_MERGED[WQ.entry[WQ.head].type]++;
-
                     DP ( if (warmup_complete[writeback_cpu]) {
                             cout << "[" << NAME << "] " << __func__ << " mshr merged";
                             cout << " instr_id: " << WQ.entry[WQ.head].instr_id << " prior_id: " << MSHR[mshr_entry].instr_id; 
@@ -300,7 +293,6 @@ void CACHE::handle_writeback()
                         // lower level WQ is full, cannot replace this victim
                         continue_write = false;
                         lower_level->increment_WQ_FULL(block[set][way].address);
-                        STALL[WQ.entry[WQ.head].type]++;
 
                         DP ( if (warmup_complete[writeback_cpu]) {
                                 std::cout << "[" << NAME << "] " << __func__ << " ceasing write. ";
@@ -366,9 +358,6 @@ void CACHE::handle_writeback()
 
             if (continue_write)
             {
-                MISS[WQ.entry[WQ.head].type]++;
-                ACCESS[WQ.entry[WQ.head].type]++;
-
                 writes_available_this_cycle--;
 
                 // remove this entry from WQ
@@ -453,9 +442,6 @@ void CACHE::handle_read()
             }
             block[set][way].used = 1;
 
-            HIT[RQ.entry[RQ.head].type]++;
-            ACCESS[RQ.entry[RQ.head].type]++;
-
             // remove this entry from RQ
             RQ.remove_queue(&RQ.entry[RQ.head]);
             reads_available_this_cycle--;
@@ -516,7 +502,6 @@ void CACHE::handle_read()
 
                 // cannot handle miss request until one of MSHRs is available
                 continue_read = false;
-                STALL[RQ.entry[RQ.head].type]++;
             }
             else
             {
@@ -585,8 +570,6 @@ void CACHE::handle_read()
                     mshr_entry->event_cycle = prior_event_cycle;
                 }
 
-                MSHR_MERGED[RQ.entry[RQ.head].type]++;
-
                 DP ( if (warmup_complete[read_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
                         cout << " instr_id: " << RQ.entry[RQ.head].instr_id << " prior_id: " << MSHR[mshr_entry].instr_id; 
@@ -611,9 +594,6 @@ void CACHE::handle_read()
                         cpu = 0;
                     }
                 }
-
-                MISS[RQ.entry[RQ.head].type]++;
-                ACCESS[RQ.entry[RQ.head].type]++;
 
                 // remove this entry from RQ
                 RQ.remove_queue(&RQ.entry[RQ.head]);
@@ -667,9 +647,6 @@ void CACHE::handle_prefetch()
                 if (PQ.entry[PQ.head].is_data)
                     upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
             }
-
-            HIT[PQ.entry[PQ.head].type]++;
-            ACCESS[PQ.entry[PQ.head].type]++;
 
             // remove this entry from PQ
             PQ.remove_queue(&PQ.entry[PQ.head]);
@@ -747,10 +724,8 @@ void CACHE::handle_prefetch()
             else if ((mshr_entry == MSHR.end()) && mshr_full) { // not enough MSHR resource
 
                 // TODO: should we allow prefetching with lower fill level at this case?
-
                 // cannot handle miss request until one of MSHRs is available
                 continue_prefetch = false;
-                STALL[PQ.entry[PQ.head].type]++;
             }
             else // already in-flight miss
             {
@@ -767,8 +742,6 @@ void CACHE::handle_prefetch()
                     mshr_entry->fill_l1d = 1;
                 }
 
-                MSHR_MERGED[PQ.entry[PQ.head].type]++;
-
                 DP ( if (warmup_complete[prefetch_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
                         cout << " instr_id: " << PQ.entry[PQ.head].instr_id << " prior_id: " << mshr_entry->instr_id; 
@@ -784,9 +757,6 @@ void CACHE::handle_prefetch()
                         cout << " instr_id: " << PQ.entry[PQ.head].instr_id << " address: " << hex << PQ.entry[PQ.head].address;
                         cout << " full_addr: " << PQ.entry[PQ.head].full_addr << dec << " fill_level: " << PQ.entry[PQ.head].fill_level;
                         cout << " cycle: " << PQ.entry[PQ.head].event_cycle << endl; });
-
-                MISS[PQ.entry[PQ.head].type]++;
-                ACCESS[PQ.entry[PQ.head].type]++;
 
                 // remove this entry from PQ
                 PQ.remove_queue(&PQ.entry[PQ.head]);
@@ -910,9 +880,6 @@ int CACHE::add_rq(PACKET *packet)
             cout << hex << " read: " << packet->address << " writeback: " << WQ.entry[wq_index].address << dec;
             cout << " index: " << MAX_READ << " rob_signal: " << packet->rob_signal << endl; });
         }
-
-        HIT[packet->type]++;
-        ACCESS[packet->type]++;
 
         WQ.FORWARD++;
         RQ.ACCESS++;
@@ -1279,9 +1246,6 @@ int CACHE::add_pq(PACKET *packet)
 		  upper_level_dcache[packet->cpu]->return_data(packet);
 	      }
         }
-
-        HIT[packet->type]++;
-        ACCESS[packet->type]++;
 
         WQ.FORWARD++;
         PQ.ACCESS++;

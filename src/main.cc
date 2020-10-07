@@ -146,12 +146,6 @@ void print_dram_stats()
 void reset_cache_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->ACCESS[i] = 0;
-        cache->HIT[i] = 0;
-        cache->MISS[i] = 0;
-        cache->MSHR_MERGED[i] = 0;
-        cache->STALL[i] = 0;
-
         cache->sim_access[cpu][i] = 0;
         cache->sim_hit[cpu][i] = 0;
         cache->sim_miss[cpu][i] = 0;
