@@ -1,5 +1,7 @@
 #include "cache.h"
 
+#include <string>
+
 // initialize replacement state
 void CACHE::llc_initialize_replacement()
 {
@@ -16,7 +18,7 @@ uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, c
 // called on every cache hit and cache fill
 void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
 {
-    string TYPE_NAME;
+    std::string TYPE_NAME;
     if (type == LOAD)
         TYPE_NAME = "LOAD";
     else if (type == RFO)

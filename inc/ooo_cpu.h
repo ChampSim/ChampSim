@@ -3,37 +3,15 @@
 
 #include <array>
 
+#include "champsim_constants.h"
+#include "instruction.h"
 #include "cache.h"
 
-#ifdef CRC2_COMPILE
-#define STAT_PRINTING_PERIOD 1000000
-#else
-#define STAT_PRINTING_PERIOD 10000000
-#endif
 #define DEADLOCK_CYCLE 1000000
 
 using namespace std;
 
-// CORE PROCESSOR
-#define FETCH_WIDTH 6ul
-#define DECODE_WIDTH 6ul
-#define EXEC_WIDTH 4ul
-#define LQ_WIDTH 2ul
-#define SQ_WIDTH 2ul
-#define RETIRE_WIDTH 5ul
-#define SCHEDULER_SIZE 128ul
-#define BRANCH_MISPREDICT_PENALTY 1ul
-//#define SCHEDULING_LATENCY 0
-//#define EXEC_LATENCY 0
-//#define DECODE_LATENCY 2
-
-// Dimensions of instruction buffer
-#define DIB_SET 8
-#define DIB_WAY 8
-
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
-
-extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY;
 
 // cpu
 class O3_CPU {
@@ -232,6 +210,5 @@ class O3_CPU {
   int prefetch_code_line(uint64_t pf_v_addr);
 };
 
-extern O3_CPU ooo_cpu[NUM_CPUS];
-
 #endif
+

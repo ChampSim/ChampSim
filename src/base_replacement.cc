@@ -1,5 +1,7 @@
 #include "cache.h"
 
+#include "champsim_constants.h"
+
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
     // baseline LRU replacement policy for other caches 
@@ -25,9 +27,9 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
         if (block[set][way].valid == false) {
 
             DP ( if (warmup_complete[cpu]) {
-            cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
-            cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
-            cout << dec << " lru: " << block[set][way].lru << endl; });
+                    std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
+                    std::cout << std::hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
+                    std::cout << std::dec << " lru: " << block[set][way].lru << std::endl; });
 
             break;
         }
@@ -39,9 +41,9 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
             if (block[set][way].lru == NUM_WAY-1) {
 
                 DP ( if (warmup_complete[cpu]) {
-                cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << set << " way: " << way;
-                cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
-                cout << dec << " lru: " << block[set][way].lru << endl; });
+                        std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " replace set: " << set << " way: " << way;
+                        std::cout << std::hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
+                        std::cout << std::dec << " lru: " << block[set][way].lru << std::endl; });
 
                 break;
             }
@@ -49,7 +51,7 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
     }
 
     if (way == NUM_WAY) {
-        cerr << "[" << NAME << "] " << __func__ << " no victim! set: " << set << endl;
+        std::cerr << "[" << NAME << "] " << __func__ << " no victim! set: " << set << std::endl;
         assert(0);
     }
 
