@@ -1,12 +1,18 @@
 #include <algorithm>
+#include <vector>
 
 #include "ooo_cpu.h"
+#include "instruction.h"
 #include "set.h"
 #include "vmem.h"
 
 // out-of-order core
+extern std::vector<O3_CPU> ooo_cpu;
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
-uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0, DECODE_LATENCY = 0;
+
+extern uint8_t warmup_complete[NUM_CPUS];
+extern uint8_t knob_cloudsuite;
+extern uint8_t MAX_INSTR_DESTINATIONS;
 
 extern VirtualMemory vmem;
 
@@ -22,7 +28,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     // note that these traces are not yet translated and fetched
 
     if (instrs_to_read_this_cycle == 0)
-        instrs_to_read_this_cycle = std::min(FETCH_WIDTH, (uint64_t)IFETCH_BUFFER.SIZE - IFETCH_BUFFER.occupancy);
+        instrs_to_read_this_cycle = std::min(FETCH_WIDTH, (unsigned)IFETCH_BUFFER.SIZE - IFETCH_BUFFER.occupancy);
 
     instrs_to_read_this_cycle--;
 
@@ -503,7 +509,10 @@ void O3_CPU::decode_and_dispatch()
         {
             // apply decode latency
             DECODE_BUFFER.entry[decode_index].decoded = COMPLETED;
-            DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+            if (warmup_complete[cpu])
+                DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
+            else
+                DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
             count_decodes++;
         }
 
@@ -617,10 +626,18 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         ROB.entry[rob_index].scheduled = COMPLETED;
 
         // ADD LATENCY
-        if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-            ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
+        if (warmup_complete[cpu])
+        {
+            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
+                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
+            else
+                ROB.entry[rob_index].event_cycle += SCHEDULING_LATENCY;
+        }
         else
-            ROB.entry[rob_index].event_cycle += SCHEDULING_LATENCY;
+        {
+            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
+                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+        }
 
         if (ROB.entry[rob_index].reg_ready) {
 
@@ -760,10 +777,19 @@ void O3_CPU::do_execution(uint32_t rob_index)
         ROB.entry[rob_index].executed = INFLIGHT;
 
         // ADD LATENCY
-        if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-            ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + EXEC_LATENCY;
+        if (warmup_complete[cpu])
+        {
+            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
+                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + EXEC_LATENCY;
+            else
+                ROB.entry[rob_index].event_cycle += EXEC_LATENCY;
+        }
         else
-            ROB.entry[rob_index].event_cycle += EXEC_LATENCY;
+        {
+            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
+                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+        }
+
 
         inflight_reg_executions++;
 
