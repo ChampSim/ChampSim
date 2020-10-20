@@ -1,12 +1,17 @@
-#define _BSD_SOURCE
-
-#include "ooo_cpu.h"
-#include "uncore.h"
-#include "tracereader.h"
-
+#include <array>
 #include <getopt.h>
 #include <fstream>
+#include <iomanip>
+#include <signal.h>
 #include <vector>
+
+#include "champsim_constants.h"
+#include "dram_controller.h"
+#include "ooo_cpu.h"
+#include "vmem.h"
+#include "tracereader.h"
+
+#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024)
 
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
@@ -22,13 +27,12 @@ uint64_t warmup_instructions     = 1000000,
 
 time_t start_time;
 
-VirtualMemory vmem(NUM_CPUS, 8589934592, 4096, 5, 1);
+extern CACHE LLC;
+extern MEMORY_CONTROLLER DRAM;
+extern VirtualMemory vmem;
+extern std::array<O3_CPU, NUM_CPUS> ooo_cpu;
 
-// PAGE TABLE
-uint32_t PAGE_TABLE_LATENCY = 0, SWAP_LATENCY = 0;
-queue <uint64_t > page_queue;
-map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
-uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
+extern uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 
 std::vector<tracereader*> traces;
 
@@ -127,18 +131,18 @@ void print_dram_stats()
     cout << "DRAM Statistics" << endl;
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
         cout << " CHANNEL " << i << endl;
-        cout << " RQ ROW_BUFFER_HIT: " << setw(10) << uncore.DRAM.RQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << uncore.DRAM.RQ[i].ROW_BUFFER_MISS << endl;
-        cout << " DBUS_CONGESTED: " << setw(10) << uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES] << endl; 
-        cout << " WQ ROW_BUFFER_HIT: " << setw(10) << uncore.DRAM.WQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << uncore.DRAM.WQ[i].ROW_BUFFER_MISS;
-        cout << "  FULL: " << setw(10) << uncore.DRAM.WQ[i].FULL << endl; 
+        cout << " RQ ROW_BUFFER_HIT: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_MISS << endl;
+        cout << " DBUS_CONGESTED: " << setw(10) << DRAM.dbus_congested[NUM_TYPES][NUM_TYPES] << endl; 
+        cout << " WQ ROW_BUFFER_HIT: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_MISS;
+        cout << "  FULL: " << setw(10) << DRAM.WQ[i].FULL << endl; 
         cout << endl;
     }
 
     uint64_t total_congested_cycle = 0;
     for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-        total_congested_cycle += uncore.DRAM.dbus_cycle_congested[i];
-    if (uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
-        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / uncore.DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
+        total_congested_cycle += DRAM.dbus_cycle_congested[i];
+    if (DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
+        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
     else
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
@@ -188,11 +192,8 @@ void finish_warmup()
     // reset core latency
     // note: since re-ordering he function calls in the main simulation loop, it's no longer necessary to add
     //       extra latency for scheduling and execution, unless you want these steps to take longer than 1 cycle.
-    SCHEDULING_LATENCY = 0;
-    EXEC_LATENCY = 0;
-    DECODE_LATENCY = 2;
-    PAGE_TABLE_LATENCY = 100;
-    SWAP_LATENCY = 100000;
+    //PAGE_TABLE_LATENCY = 100;
+    //SWAP_LATENCY = 100000;
 
     cout << endl;
     for (uint32_t i=0; i<NUM_CPUS; i++) {
@@ -215,16 +216,16 @@ void finish_warmup()
         reset_cache_stats(i, &ooo_cpu[i].L1I);
         reset_cache_stats(i, &ooo_cpu[i].L1D);
         reset_cache_stats(i, &ooo_cpu[i].L2C);
-        reset_cache_stats(i, &uncore.LLC);
+        reset_cache_stats(i, &LLC);
     }
     cout << endl;
 
     // reset DRAM stats
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        uncore.DRAM.RQ[i].ROW_BUFFER_HIT = 0;
-        uncore.DRAM.RQ[i].ROW_BUFFER_MISS = 0;
-        uncore.DRAM.WQ[i].ROW_BUFFER_HIT = 0;
-        uncore.DRAM.WQ[i].ROW_BUFFER_MISS = 0;
+        DRAM.RQ[i].ROW_BUFFER_HIT = 0;
+        DRAM.RQ[i].ROW_BUFFER_MISS = 0;
+        DRAM.WQ[i].ROW_BUFFER_HIT = 0;
+        DRAM.WQ[i].ROW_BUFFER_MISS = 0;
     }
 
     // set actual cache latency
@@ -236,7 +237,7 @@ void finish_warmup()
         ooo_cpu[i].L1D.LATENCY  = L1D_LATENCY;
         ooo_cpu[i].L2C.LATENCY  = L2C_LATENCY;
     }
-    uncore.LLC.LATENCY = LLC_LATENCY;
+    LLC.LATENCY = LLC_LATENCY;
 }
 
 void print_deadlock(uint32_t i)
@@ -500,25 +501,25 @@ int main(int argc, char** argv)
         ooo_cpu[i].L2C.fill_level = FILL_L2;
         ooo_cpu[i].L2C.upper_level_icache[i] = &ooo_cpu[i].L1I;
         ooo_cpu[i].L2C.upper_level_dcache[i] = &ooo_cpu[i].L1D;
-        ooo_cpu[i].L2C.lower_level = &uncore.LLC;
+        ooo_cpu[i].L2C.lower_level = &LLC;
         ooo_cpu[i].L2C.l2c_prefetcher_initialize();
 
         // SHARED CACHE
-        uncore.LLC.cache_type = IS_LLC;
-        uncore.LLC.fill_level = FILL_LLC;
-        uncore.LLC.MAX_READ = NUM_CPUS;
-        uncore.LLC.MAX_WRITE = NUM_CPUS;
-        uncore.LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
-        uncore.LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
-        uncore.LLC.lower_level = &uncore.DRAM;
+        LLC.cache_type = IS_LLC;
+        LLC.fill_level = FILL_LLC;
+        LLC.MAX_READ = NUM_CPUS;
+        LLC.MAX_WRITE = NUM_CPUS;
+        LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
+        LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
+        LLC.lower_level = &DRAM;
 
         // OFF-CHIP DRAM
-        uncore.DRAM.fill_level = FILL_DRAM;
-        uncore.DRAM.upper_level_icache[i] = &uncore.LLC;
-        uncore.DRAM.upper_level_dcache[i] = &uncore.LLC;
+        DRAM.fill_level = FILL_DRAM;
+        DRAM.upper_level_icache[i] = &LLC;
+        DRAM.upper_level_dcache[i] = &LLC;
         for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-            uncore.DRAM.RQ[i].is_RQ = 1;
-            uncore.DRAM.WQ[i].is_WQ = 1;
+            DRAM.RQ[i].is_RQ = 1;
+            DRAM.WQ[i].is_WQ = 1;
         }
 
         warmup_complete[i] = 0;
@@ -526,18 +527,10 @@ int main(int argc, char** argv)
         simulation_complete[i] = 0;
         current_core_cycle[i] = 0;
         stall_cycle[i] = 0;
-        
-        previous_ppage = 0;
-        num_adjacent_page = 0;
-        num_cl[i] = 0;
-        allocated_pages = 0;
-        num_page[i] = 0;
-        minor_fault[i] = 0;
-        major_fault[i] = 0;
     }
 
-    uncore.LLC.llc_initialize_replacement();
-    uncore.LLC.llc_prefetcher_initialize();
+    LLC.llc_initialize_replacement();
+    LLC.llc_prefetcher_initialize();
 
     // simulation entry point
     start_time = time(NULL);
@@ -651,7 +644,7 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L1D);
                 record_roi_stats(i, &ooo_cpu[i].L1I);
                 record_roi_stats(i, &ooo_cpu[i].L2C);
-                record_roi_stats(i, &uncore.LLC);
+                record_roi_stats(i, &LLC);
 
                 all_simulation_complete++;
             }
@@ -661,8 +654,8 @@ int main(int argc, char** argv)
         }
 
         // TODO: should it be backward?
-        uncore.DRAM.operate();
-        uncore.LLC.operate();
+        DRAM.operate();
+        LLC.operate();
     }
 
     uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
@@ -685,9 +678,9 @@ int main(int argc, char** argv)
             ooo_cpu[i].L1D.l1d_prefetcher_final_stats();
 	    ooo_cpu[i].L2C.l2c_prefetcher_final_stats();
 #endif
-            print_sim_stats(i, &uncore.LLC);
+            print_sim_stats(i, &LLC);
         }
-        uncore.LLC.llc_prefetcher_final_stats();
+        LLC.llc_prefetcher_final_stats();
     }
 
     cout << endl << "Region of Interest Statistics" << endl;
@@ -699,8 +692,8 @@ int main(int argc, char** argv)
         print_roi_stats(i, &ooo_cpu[i].L1I);
         print_roi_stats(i, &ooo_cpu[i].L2C);
 #endif
-        print_roi_stats(i, &uncore.LLC);
-        cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
+        print_roi_stats(i, &LLC);
+        //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
     }
 
     for (uint32_t i=0; i<NUM_CPUS; i++) {
@@ -709,10 +702,10 @@ int main(int argc, char** argv)
         ooo_cpu[i].L2C.l2c_prefetcher_final_stats();
     }
 
-    uncore.LLC.llc_prefetcher_final_stats();
+    LLC.llc_prefetcher_final_stats();
 
 #ifndef CRC2_COMPILE
-    uncore.LLC.llc_replacement_final_stats();
+    LLC.llc_replacement_final_stats();
     print_dram_stats();
     print_branch_stats();
 #endif

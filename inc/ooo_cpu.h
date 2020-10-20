@@ -3,40 +3,18 @@
 
 #include <array>
 
+#include "champsim_constants.h"
+#include "instruction.h"
 #include "cache.h"
 #include "block.h"
 
 #include <unordered_map>
 
-#ifdef CRC2_COMPILE
-#define STAT_PRINTING_PERIOD 1000000
-#else
-#define STAT_PRINTING_PERIOD 10000000
-#endif
 #define DEADLOCK_CYCLE 1000000
 
 using namespace std;
 
-// CORE PROCESSOR
-#define FETCH_WIDTH 6ul
-#define DECODE_WIDTH 6ul
-#define EXEC_WIDTH 4ul
-#define LQ_WIDTH 2ul
-#define SQ_WIDTH 2ul
-#define RETIRE_WIDTH 5ul
-#define SCHEDULER_SIZE 128ul
-#define BRANCH_MISPREDICT_PENALTY 1ul
-//#define SCHEDULING_LATENCY 0
-//#define EXEC_LATENCY 0
-//#define DECODE_LATENCY 2
-
-// Dimensions of instruction buffer
-#define DIB_SET 8
-#define DIB_WAY 8
-
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
-
-extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY;
 
 // cpu
 class O3_CPU {
@@ -202,12 +180,9 @@ class O3_CPU {
     uint32_t complete_execution(uint32_t rob_index);
     void reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
-         handle_o3_fetch(PACKET *current_packet, uint32_t cache_type),
          handle_merged_translation(PACKET *provider),
          handle_merged_load(PACKET *provider),
-         release_load_queue(uint32_t lq_index),
-         complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb),
-         complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb);
+         release_load_queue(uint32_t lq_index);
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
@@ -238,6 +213,5 @@ class O3_CPU {
   int prefetch_code_line(uint64_t pf_v_addr);
 };
 
-extern O3_CPU ooo_cpu[NUM_CPUS];
-
 #endif
+

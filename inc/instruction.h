@@ -8,9 +8,6 @@
 #include <vector>
 
 // instruction format
-#define ROB_SIZE 352
-#define LQ_SIZE 128
-#define SQ_SIZE 72
 #define NUM_INSTR_DESTINATIONS_SPARC 4
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
@@ -148,7 +145,6 @@ class ooo_model_instr {
     // these are pointers to the other instructions in the window
     std::vector<std::vector<ooo_model_instr>::iterator> reg_RAW_dependents;
 
-
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa = 0, data_pa = 0, virtual_address = 0, physical_address = 0;
     //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
@@ -161,7 +157,6 @@ class ooo_model_instr {
     //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
 
     // these are indices of instructions in the ROB that depend on me
-    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
     fastset memory_instrs_depend_on_me;
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
