@@ -1334,7 +1334,7 @@ void CACHE::return_data(PACKET *packet)
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
 
     // sanity check
-    if (mshr_index == -1) {
+    if (mshr_entry == MSHR.end()) {
         std::cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
         std::cerr << " full_addr: " << std::hex << packet->full_addr;
         std::cerr << " address: " << packet->address << std::dec;

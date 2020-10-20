@@ -507,9 +507,9 @@ int main(int argc, char** argv)
         LLC.lower_level = &DRAM;
 
         using namespace std::placeholders;
-        uncore.LLC.find_victim = std::bind(&CACHE::llc_find_victim, &uncore.LLC, _1, _2, _3, _4, _5, _6, _7);
-        uncore.LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &uncore.LLC, _1, _2, _3, _4, _5, _6, _7, _8);
-        uncore.LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &uncore.LLC);
+        LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
+        LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &LLC, _1, _2, _3, _4, _5, _6, _7, _8);
+        LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &LLC);
 
         // OFF-CHIP DRAM
         DRAM.fill_level = FILL_DRAM;
