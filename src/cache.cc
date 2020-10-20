@@ -4,6 +4,7 @@
 #include <iterator>
 
 #include "champsim.h"
+#include "champsim_constants.h"
 #include "set.h"
 #include "vmem.h"
 
@@ -14,6 +15,8 @@
 uint64_t l2pf_access = 0;
 
 extern VirtualMemory vmem;
+extern uint64_t current_core_cycle[NUM_CPUS];
+extern uint8_t  warmup_complete[NUM_CPUS];
 
 class min_fill_index
 {
@@ -572,7 +575,7 @@ void CACHE::handle_read()
 
                 DP ( if (warmup_complete[read_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                        cout << " instr_id: " << RQ.entry[RQ.head].instr_id << " prior_id: " << MSHR[mshr_entry].instr_id; 
+                        cout << " instr_id: " << RQ.entry[RQ.head].instr_id << " prior_id: " << mshr_entry->instr_id; 
                         cout << " address: " << hex << RQ.entry[RQ.head].address;
                         cout << " full_addr: " << RQ.entry[RQ.head].full_addr << dec;
                         cout << " cycle: " << RQ.entry[RQ.head].event_cycle << endl; });
@@ -991,9 +994,9 @@ int CACHE::add_wq(PACKET *packet)
     // if there is no duplicate, add it to the write queue
     index = WQ.tail;
     if (WQ.entry[index].address != 0) {
-        cerr << "[" << NAME << "_ERROR] " << __func__ << " is not empty index: " << index;
-        cerr << " address: " << hex << WQ.entry[index].address;
-        cerr << " full_addr: " << WQ.entry[index].full_addr << dec << endl;
+        std::cerr << "[" << NAME << "_ERROR] " << __func__ << " is not empty index: " << index;
+        std::cerr << " address: " << std::hex << WQ.entry[index].address;
+        std::cerr << " full_addr: " << WQ.entry[index].full_addr << std::dec << std::endl;
         assert(0);
     }
 
@@ -1106,10 +1109,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
 int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
 {
   if(pf_addr == 0)
-    {
-      cout << "va_prefetch_line() pf_addr cannot be 0! exiting" << endl;
+  {
+      std::cerr << "va_prefetch_line() pf_addr cannot be 0! exiting" << std::endl;
       assert(0);
-    }
+  }
 
   pf_requested++;
   if(VAPQ.occupancy < VAPQ.SIZE)
@@ -1331,11 +1334,11 @@ void CACHE::return_data(PACKET *packet)
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
 
     // sanity check
-    if (mshr_entry == MSHR.end()) {
-        cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
-        cerr << " full_addr: " << hex << packet->full_addr;
-        cerr << " address: " << packet->address << dec;
-        cerr << " event: " << packet->event_cycle << " current: " << current_core_cycle[packet->cpu] << endl;
+    if (mshr_index == -1) {
+        std::cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
+        std::cerr << " full_addr: " << std::hex << packet->full_addr;
+        std::cerr << " address: " << packet->address << std::dec;
+        std::cerr << " event: " << packet->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl;
         assert(0);
     }
 

@@ -1,8 +1,12 @@
 #include "dram_controller.h"
+#include "champsim_constants.h"
 
 // initialized in main.cc
 uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME,
          tRP, tRCD, tCAS;
+
+extern uint64_t current_core_cycle[NUM_CPUS];
+extern uint8_t  all_warmup_complete;
 
 void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t channel)
 {

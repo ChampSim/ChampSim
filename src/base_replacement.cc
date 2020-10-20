@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include "champsim_constants.h"
 
 class lru_comparator
 {

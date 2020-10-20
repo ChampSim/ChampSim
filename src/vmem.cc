@@ -1,5 +1,6 @@
 #include "vmem.h"
 #include "champsim.h"
+#include "util.h"
 
 VirtualMemory::VirtualMemory(uint32_t number_of_cpus, uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed)
 {

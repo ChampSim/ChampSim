@@ -6,9 +6,6 @@
 #include <limits>
 
 // instruction format
-#define ROB_SIZE 352
-#define LQ_SIZE 128
-#define SQ_SIZE 72
 #define NUM_INSTR_DESTINATIONS_SPARC 4
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
@@ -142,10 +139,6 @@ class ooo_model_instr {
 
     uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
 
-    // these are instruction ids of other instructions in the window
-    //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
-    // these are indices of instructions in the window that depend on me
-    //uint8_t registers_instrs_depend_on_me[ROB_SIZE], registers_index_depend_on_me[ROB_SIZE][NUM_INSTR_SOURCES];
     fastset
 	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
 
@@ -164,7 +157,6 @@ class ooo_model_instr {
     //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
 
     // these are indices of instructions in the ROB that depend on me
-    //uint8_t memory_instrs_depend_on_me[ROB_SIZE];
     fastset memory_instrs_depend_on_me;
 
     uint32_t lq_index[NUM_INSTR_SOURCES],
