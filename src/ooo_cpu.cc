@@ -304,11 +304,58 @@ void O3_CPU::fetch_instruction()
       return;
     }
 
-  // scan through IFETCH_BUFFER to find instructions that need to be translated
+  std::size_t available_fetch_bandwidth = FETCH_WIDTH;
+
+  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   uint32_t index = IFETCH_BUFFER.head;
   for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
     {
-        ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
+      ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
+
+      // Check DIB to see if we recently fetched this line
+      dib_t::value_type &dib_set = DIB[(ifb_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
+      auto way = std::find_if(dib_set.begin(), dib_set.end(), [ifb_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
+      if (way != dib_set.end())
+      {
+          // The cache line is in the L0, so we can mark this as complete
+          ifb_entry.fetched = COMPLETED;
+
+          // Also mark it as decoded
+          ifb_entry.decoded = COMPLETED;
+
+          // It can be acted on immediately
+          ifb_entry.event_cycle = current_core_cycle[cpu];
+
+          // Update LRU
+          unsigned hit_lru = way->lru;
+          std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+          way->lru = 0;
+
+	  available_fetch_bandwidth--;
+      }
+
+      if(available_fetch_bandwidth == 0)
+	{
+	  break;
+	}
+
+      index++;
+      if(index >= IFETCH_BUFFER.SIZE)
+	{
+	  index = 0;
+	}
+
+      if(index == IFETCH_BUFFER.head)
+	{
+	  break;
+	}
+    }
+
+  // scan through IFETCH_BUFFER to find instructions that need to be translated
+  index = IFETCH_BUFFER.head;
+  for(uint32_t i=0; i<IFETCH_BUFFER.SIZE; i++)
+    {
+      ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
 
       if(ifb_entry.ip == 0)
        {
@@ -356,26 +403,6 @@ void O3_CPU::fetch_instruction()
 		}
 	    }
 	}
-
-      // Check DIB to see if we recently fetched this line
-      dib_t::value_type &dib_set = DIB[ifb_entry.ip % DIB_SET];
-      auto way = std::find_if(dib_set.begin(), dib_set.end(), [ifb_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
-      if (way != dib_set.end())
-      {
-          // The cache line is in the L0, so we can mark this as complete
-          ifb_entry.fetched = COMPLETED;
-
-          // Also mark it as decoded
-          ifb_entry.decoded = COMPLETED;
-
-          // It can be acted on immediately
-          ifb_entry.event_cycle = current_core_cycle[cpu];
-
-          // Update LRU
-          unsigned hit_lru = way->lru;
-          std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
-          way->lru = 0;
-      }
 
       // fetch cache lines that were part of a translated page but not the cache line that initiated the translation
       if((ifb_entry.translated == COMPLETED) && (ifb_entry.fetched == 0))
@@ -441,8 +468,8 @@ void O3_CPU::fetch_instruction()
     }
 
     // send to DECODE stage
-    std::size_t checked_for_decode = 0;
-    while (checked_for_decode < DECODE_WIDTH && IFETCH_BUFFER.occupancy > 0 && DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE &&
+    available_fetch_bandwidth = FETCH_WIDTH;
+    while (available_fetch_bandwidth > 0 && IFETCH_BUFFER.occupancy > 0 && DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE &&
             IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED && IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED)
     {
         // ADD to decode buffer
@@ -466,7 +493,7 @@ void O3_CPU::fetch_instruction()
         }
         IFETCH_BUFFER.occupancy--;
 
-        checked_for_decode++;
+	available_fetch_bandwidth--;
     }
 }
 
@@ -475,13 +502,39 @@ void O3_CPU::decode_and_dispatch()
     if (DECODE_BUFFER.occupancy == 0)
         return;
 
+    std::size_t decode_bandwidth_available = DECODE_WIDTH;
+
     // dispatch DECODE_WIDTH instructions that have decoded into the ROB
-    uint32_t count_dispatches = 0;
-    while (count_dispatches < DECODE_WIDTH && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
+    while (decode_bandwidth_available > 0 && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
             (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
     {
+        ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
+
+	// Search DIB to see if we need to add this instruction
+	dib_t::value_type &dib_hit_check_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
+	auto way = std::find_if(dib_hit_check_set.begin(), dib_hit_check_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (db_entry.ip >> LOG2_BLOCK_SIZE));});
+	if (way == dib_hit_check_set.end())
+	  {
+	    // we have a miss in the DIB, so we need to replace something
+	    // find victim in DIB
+	    dib_t::value_type &dib_set = DIB[db_entry.ip % DIB_SET];
+	    auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
+	    if (way == dib_set.end())
+	      way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
+	    assert(way != dib_set.end());
+
+	    // update LRU in DIB
+	    unsigned hit_lru = way->lru;
+	    std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+
+	    // add to DIB
+	    way->valid = true;
+	    way->lru = 0;
+	    way->addr = db_entry.ip;
+	  }
+
         // Add to ROB
-        ROB.entry[ROB.tail] = DECODE_BUFFER.entry[DECODE_BUFFER.head];
+        ROB.entry[ROB.tail] = db_entry;
         ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
 
         ROB.tail++;
@@ -490,7 +543,7 @@ void O3_CPU::decode_and_dispatch()
         ROB.occupancy++;
 
         ooo_model_instr empty_entry;
-        DECODE_BUFFER.entry[DECODE_BUFFER.head] = empty_entry;
+        db_entry = empty_entry;
 
         DECODE_BUFFER.head++;
         if(DECODE_BUFFER.head >= DECODE_BUFFER.SIZE)
@@ -499,13 +552,13 @@ void O3_CPU::decode_and_dispatch()
         }
         DECODE_BUFFER.occupancy--;
 
-        count_dispatches++;
+	decode_bandwidth_available--;
     }
 
     // make new instructions pay decode penalty if they miss in the decoded instruction cache
     uint32_t decode_index = DECODE_BUFFER.head;
-    uint32_t count_decodes = 0;
-    while (count_decodes < DECODE_WIDTH && decode_index != DECODE_BUFFER.tail)
+    decode_bandwidth_available = DECODE_WIDTH;
+    while (decode_bandwidth_available > 0 && decode_index != DECODE_BUFFER.tail)
     {
         if (!DECODE_BUFFER.entry[decode_index].decoded)
         {
@@ -515,7 +568,7 @@ void O3_CPU::decode_and_dispatch()
                 DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
             else
                 DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
-            count_decodes++;
+	    decode_bandwidth_available--;
         }
 
         decode_index++;
@@ -965,7 +1018,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
                 if (LQ.entry[lq_index].producer_id != UINT64_MAX)
                     break;
 
-                    mem_RAW_dependency(i, rob_index, data_index, lq_index);
+		mem_RAW_dependency(i, rob_index, data_index, lq_index);
             }
         }
         else {
@@ -973,13 +1026,13 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
                 if (LQ.entry[lq_index].producer_id != UINT64_MAX)
                     break;
 
-                    mem_RAW_dependency(i, rob_index, data_index, lq_index);
+		mem_RAW_dependency(i, rob_index, data_index, lq_index);
             }
             for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) { 
                 if (LQ.entry[lq_index].producer_id != UINT64_MAX)
                     break;
 
-                    mem_RAW_dependency(i, rob_index, data_index, lq_index);
+		mem_RAW_dependency(i, rob_index, data_index, lq_index);
             }
         }
     }
@@ -1554,7 +1607,6 @@ void O3_CPU::update_rob()
     if (ITLB.PROCESSED.occupancy && (ITLB.PROCESSED.entry[ITLB.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     {
         PACKET itlb_entry = ITLB.PROCESSED.entry[ITLB.PROCESSED.head];
-        uint64_t instruction_physical_address = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | (itlb_entry.ip & ((1 << LOG2_PAGE_SIZE) - 1));
 
         // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
         for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
@@ -1585,22 +1637,6 @@ void O3_CPU::update_rob()
                 IFETCH_BUFFER.entry[j].fetched = COMPLETED;
             }
         }
-
-        // find victim in DIB
-        dib_t::value_type &dib_set = DIB[l1i_entry.ip % DIB_SET];
-        auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
-        if (way == dib_set.end())
-            way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
-        assert(way != dib_set.end());
-
-        // update LRU in DIB
-        unsigned hit_lru = way->lru;
-        std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
-
-        // add to DIB
-        way->valid = true;
-        way->lru = 0;
-        way->addr = l1i_entry.ip;
 
         // remove this entry
         L1I.PROCESSED.remove_queue(&L1I.PROCESSED.entry[L1I.PROCESSED.head]);
