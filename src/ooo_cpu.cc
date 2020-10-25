@@ -446,9 +446,10 @@ void O3_CPU::fetch_instruction()
 	      // mark all instructions from this cache line as having been fetched
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE) && (IFETCH_BUFFER.entry[j].fetched == 0))
+		  if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE)
+		     && (IFETCH_BUFFER.entry[j].translated == COMPLETED) && (IFETCH_BUFFER.entry[j].fetched == 0))
 		    {
-		      IFETCH_BUFFER.entry[j].translated = COMPLETED;
+		      //IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
 		    }
 		}
@@ -502,10 +503,10 @@ void O3_CPU::decode_and_dispatch()
     if (DECODE_BUFFER.occupancy == 0)
         return;
 
-    std::size_t decode_bandwidth_available = DECODE_WIDTH;
+    std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
     // dispatch DECODE_WIDTH instructions that have decoded into the ROB
-    while (decode_bandwidth_available > 0 && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
+    while (available_decode_bandwidth > 0 && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
             (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
     {
         ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
@@ -552,13 +553,13 @@ void O3_CPU::decode_and_dispatch()
         }
         DECODE_BUFFER.occupancy--;
 
-	decode_bandwidth_available--;
+	available_decode_bandwidth--;
     }
 
     // make new instructions pay decode penalty if they miss in the decoded instruction cache
     uint32_t decode_index = DECODE_BUFFER.head;
-    decode_bandwidth_available = DECODE_WIDTH;
-    while (decode_bandwidth_available > 0 && decode_index != DECODE_BUFFER.tail)
+    available_decode_bandwidth = DECODE_WIDTH;
+    while (available_decode_bandwidth > 0 && decode_index != DECODE_BUFFER.tail)
     {
         if (!DECODE_BUFFER.entry[decode_index].decoded)
         {
@@ -568,7 +569,7 @@ void O3_CPU::decode_and_dispatch()
                 DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
             else
                 DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
-	    decode_bandwidth_available--;
+	    available_decode_bandwidth--;
         }
 
         decode_index++;
@@ -1608,17 +1609,39 @@ void O3_CPU::update_rob()
     {
         PACKET itlb_entry = ITLB.PROCESSED.entry[ITLB.PROCESSED.head];
 
+	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
+
         // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
+	uint32_t index = IFETCH_BUFFER.head;
         for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
         {
-            if((IFETCH_BUFFER.entry[j].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
+            if((IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
             {
-                IFETCH_BUFFER.entry[j].translated = COMPLETED;
-                // we did not fetch this instruction's cache line, but we did translated it
-                IFETCH_BUFFER.entry[j].fetched = 0;
-                // recalculate a physical address for this cache line based on the translated physical page address
-                IFETCH_BUFFER.entry[j].instruction_pa = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+	      if(IFETCH_BUFFER.entry[index].translated == INFLIGHT)
+		{
+		  if(available_fetch_bandwidth)
+		    {
+		      IFETCH_BUFFER.entry[index].translated = COMPLETED;
+		      // we did not fetch this instruction's cache line, but we did translated it
+		      IFETCH_BUFFER.entry[index].fetched = 0;
+		      // recalculate a physical address for this cache line based on the translated physical page address
+		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+
+		      available_fetch_bandwidth--;
+		    }
+		  else
+		    {
+		      // not enough fetch bandwidth to translate this instruction this time, so try reading the ITLB again
+		      IFETCH_BUFFER.entry[index].translated = 0;
+		    }
+		}
             }
+
+	    index++;
+	    if(index >= IFETCH_BUFFER.SIZE)
+	      {
+		index = 0;
+	      }
         }
 
         // remove this entry
@@ -1628,14 +1651,36 @@ void O3_CPU::update_rob()
     if (L1I.PROCESSED.occupancy && (L1I.PROCESSED.entry[L1I.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     {
         PACKET &l1i_entry = L1I.PROCESSED.entry[L1I.PROCESSED.head];
+
+	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
+
         // this is the L1I cache, so instructions are now fully fetched, so mark them as such
+	uint32_t index = IFETCH_BUFFER.head;
         for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
         {
-            if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
+            if((IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
             {
-                IFETCH_BUFFER.entry[j].translated = COMPLETED;
-                IFETCH_BUFFER.entry[j].fetched = COMPLETED;
+	      if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == INFLIGHT))
+		{
+		  if(available_fetch_bandwidth)
+		    {
+		      IFETCH_BUFFER.entry[index].fetched = COMPLETED;
+
+		      available_fetch_bandwidth--;
+		    }
+		  else
+		    {
+		      // not enough fetch bandwidth to get this instruction this time, so try reading the L1I again
+		      IFETCH_BUFFER.entry[index].fetched = 0;
+		    }
+		}
             }
+
+	    index++;
+            if(index >= IFETCH_BUFFER.SIZE)
+              {
+                index = 0;
+              }
         }
 
         // remove this entry
