@@ -318,7 +318,8 @@ void O3_CPU::fetch_instruction()
       if (way != dib_set.end())
       {
           // The cache line is in the L0, so we can mark this as complete
-          ifb_entry.fetched = COMPLETED;
+	  ifb_entry.translated = COMPLETED;
+	  ifb_entry.fetched = COMPLETED;
 
           // Also mark it as decoded
           ifb_entry.decoded = COMPLETED;
@@ -540,7 +541,7 @@ void O3_CPU::decode_and_dispatch()
 	  {
 	    // we have a miss in the DIB, so we need to replace something
 	    // find victim in DIB
-	    dib_t::value_type &dib_set = DIB[db_entry.ip % DIB_SET];
+	    dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
 	    auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
 	    if (way == dib_set.end())
 	      way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
