@@ -393,13 +393,25 @@ void O3_CPU::fetch_instruction()
 	  if(rq_index != -2)
 	    {
 	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
+	      uint32_t translate_inflight_index = index;
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-                    if(((IFETCH_BUFFER.entry[j].ip >> LOG2_PAGE_SIZE) == (ifb_entry.ip >> LOG2_PAGE_SIZE)) && (IFETCH_BUFFER.entry[j].translated == 0))
-		    {
-		      IFETCH_BUFFER.entry[j].translated = INFLIGHT;
-		      IFETCH_BUFFER.entry[j].fetched = 0;
-		    }
+		    if(IFETCH_BUFFER.entry[translate_inflight_index].ip == 0)
+		      {
+			break;
+		      }
+                    if(((IFETCH_BUFFER.entry[translate_inflight_index].ip >> LOG2_PAGE_SIZE) == (ifb_entry.ip >> LOG2_PAGE_SIZE))
+		       && (IFETCH_BUFFER.entry[translate_inflight_index].translated == 0))
+		      {
+			IFETCH_BUFFER.entry[translate_inflight_index].translated = INFLIGHT;
+			IFETCH_BUFFER.entry[translate_inflight_index].fetched = 0;
+		      }
+
+		    translate_inflight_index++;
+		    if(translate_inflight_index >= IFETCH_BUFFER.SIZE)
+		      {
+			translate_inflight_index = 0;
+		      }
 		}
 	    }
 	}
@@ -444,13 +456,23 @@ void O3_CPU::fetch_instruction()
 	  if(rq_index != -2)
 	    {
 	      // mark all instructions from this cache line as having been fetched
+	      uint32_t fetch_inflight_index = index;
 	      for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
 		{
-		  if((IFETCH_BUFFER.entry[j].ip >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE)
-		     && (IFETCH_BUFFER.entry[j].translated == COMPLETED) && (IFETCH_BUFFER.entry[j].fetched == 0))
+		  if(IFETCH_BUFFER.entry[fetch_inflight_index].ip == 0)
+                      {
+                        break;
+                      }
+		  if(((IFETCH_BUFFER.entry[fetch_inflight_index].ip >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE))
+		     && (IFETCH_BUFFER.entry[fetch_inflight_index].translated == COMPLETED) && (IFETCH_BUFFER.entry[fetch_inflight_index].fetched == 0))
 		    {
-		      //IFETCH_BUFFER.entry[j].translated = COMPLETED;
-		      IFETCH_BUFFER.entry[j].fetched = INFLIGHT;
+		      IFETCH_BUFFER.entry[fetch_inflight_index].fetched = INFLIGHT;
+		    }
+
+		  fetch_inflight_index++;
+		  if(fetch_inflight_index >= IFETCH_BUFFER.SIZE)
+		    {
+		      fetch_inflight_index = 0;
 		    }
 		}
 	    }
@@ -1615,6 +1637,10 @@ void O3_CPU::update_rob()
 	uint32_t index = IFETCH_BUFFER.head;
         for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
         {
+	    if(IFETCH_BUFFER.entry[index].ip == 0)
+	      {
+		break;
+	      }
             if((IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
             {
 	      if(IFETCH_BUFFER.entry[index].translated == INFLIGHT)
@@ -1658,6 +1684,10 @@ void O3_CPU::update_rob()
 	uint32_t index = IFETCH_BUFFER.head;
         for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
         {
+	    if(IFETCH_BUFFER.entry[index].ip == 0)
+              {
+                break;
+              }
             if((IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
             {
 	      if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == INFLIGHT))
@@ -1681,6 +1711,11 @@ void O3_CPU::update_rob()
               {
                 index = 0;
               }
+
+	    if(j >= IFETCH_BUFFER.occupancy)
+	      {
+		break;
+	      }
         }
 
         // remove this entry
@@ -1745,8 +1780,9 @@ void O3_CPU::update_rob()
 
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
-      uint32_t instrs_executed = 0;
-        if (ROB.head < ROB.tail) {
+        uint32_t instrs_executed = 0;
+        if (ROB.head < ROB.tail)
+	  {
             for (uint32_t i=ROB.head; i<ROB.tail; i++)
 	      {
 		if(instrs_executed >= EXEC_WIDTH)
@@ -1755,9 +1791,9 @@ void O3_CPU::update_rob()
 		  }
 		instrs_executed += complete_execution(i);
 	      }
-	    
-        }
-        else {
+	  }
+        else
+	  {
             for (uint32_t i=ROB.head; i<ROB.SIZE; i++)
 	      {
 		if(instrs_executed >= EXEC_WIDTH)
