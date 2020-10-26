@@ -535,27 +535,24 @@ void O3_CPU::decode_and_dispatch()
         ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
 
 	// Search DIB to see if we need to add this instruction
-	dib_t::value_type &dib_hit_check_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
-	auto way = std::find_if(dib_hit_check_set.begin(), dib_hit_check_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (db_entry.ip >> LOG2_BLOCK_SIZE));});
-	if (way == dib_hit_check_set.end())
-	  {
-	    // we have a miss in the DIB, so we need to replace something
-	    // find victim in DIB
-	    dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
-	    auto way = std::find_if_not(dib_set.begin(), dib_set.end(), [](dib_entry_t x){ return x.valid; }); // search for invalid
-	    if (way == dib_set.end())
-	      way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return x.lru < y.lru;}); // search for LRU
-	    assert(way != dib_set.end());
+	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
+	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (db_entry.ip >> LOG2_BLOCK_SIZE));});
+
+    // If we did not find the entry in the DIB, find a victim
+    if (way == dib_set.end())
+    {
+        way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
+        assert(way != dib_set.end());
+    }
 
 	    // update LRU in DIB
 	    unsigned hit_lru = way->lru;
 	    std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
 
-	    // add to DIB
+        // update way
 	    way->valid = true;
 	    way->lru = 0;
 	    way->addr = db_entry.ip;
-	  }
 
         // Add to ROB
         ROB.entry[ROB.tail] = db_entry;
