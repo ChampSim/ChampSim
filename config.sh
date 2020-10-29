@@ -213,21 +213,21 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('\n')
     for k,v in config_file['ooo_cpu'][0].items():
         if isinstance(v,dict):
-            if k is 'DIB':
+            if k == 'DIB':
                 wfp.write(define_fmtstr.format(name='sets').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='ways').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
             else:
                 wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
             wfp.write('\n')
         else:
-            if k is not 'branch_predictor':
+            if k != 'branch_predictor':
                 wfp.write(define_fmtstr.format(name=k).format(names=const_names['core'], config=config_file['ooo_cpu'][0]))
 
     wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
 
     for k in const_names['physical_memory']:
         wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
-        if k is not 'frequency':
+        if k != 'frequency':
             wfp.write(define_log_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
 
     wfp.write('#endif\n')
