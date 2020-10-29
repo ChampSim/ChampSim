@@ -139,12 +139,18 @@ config_file['ooo_cpu'] = list(itertools.islice(itertools.repeat(*config_file['oo
 # Associate modules with paths
 libfilenames = {}
 for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
-    libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + cpu['L1I']['prefetcher']
-    libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + cpu['L1D']['prefetcher']
-    libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
-    libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
-libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
-libfilenames['llreplacement.a'] = 'replacement/' + config_file['LLC']['replacement']
+    if cpu['L1I']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + cpu['L1I']['prefetcher']
+    if cpu['L1D']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + cpu['L1D']['prefetcher']
+    if cpu['L2C']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
+    if cpu['branch_predictor'] is not None:
+        libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
+if config_file['LLC']['prefetcher'] is not None:
+    libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
+if config_file['LLC']['replacement'] is not None:
+    libfilenames['llreplacement.a'] = 'replacement/' + config_file['LLC']['replacement']
 
 # Assert module paths exist
 for path in libfilenames.values():
@@ -161,7 +167,7 @@ else:
 
 # Prune modules whose configurations have changed (force make to rebuild it)
 for f in os.listdir('obj'):
-    if f in config_cache and not config_cache[f] == libfilenames[f]:
+    if f in libfilenames and f in config_cache and config_cache[f] != libfilenames[f]:
         os.remove('obj/' + f)
 
 ###
