@@ -121,10 +121,20 @@ void CACHE::handle_fill()
 
         // check fill level
         if (fill_mshr->fill_level < fill_level) {
-            if (fill_mshr->instruction)
-                upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
-            if (fill_mshr->is_data)
-                upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
+            if(fill_level == FILL_L2)
+            {
+                if (fill_mshr->fill_l1i)
+                    upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
+                if (fill_mshr->fill_l1d)
+                    upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
+            }
+            else
+            {
+                if (fill_mshr->instruction)
+                    upper_level_icache[fill_cpu]->return_data(&(*fill_mshr));
+                if (fill_mshr->is_data)
+                    upper_level_dcache[fill_cpu]->return_data(&(*fill_mshr));
+            }
         }
 
         // update processed packets
@@ -193,10 +203,20 @@ void CACHE::handle_writeback()
             // check fill level
             if (WQ.entry[WQ.head].fill_level < fill_level)
             {
-                if (WQ.entry[WQ.head].instruction)
-                    upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
-                if (WQ.entry[WQ.head].is_data)
-                    upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                if(fill_level == FILL_L2)
+                {
+                    if (WQ.entry[WQ.head].fill_l1i)
+                        upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                    if (WQ.entry[WQ.head].fill_l1d)
+                        upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                }
+                else
+                {
+                    if (WQ.entry[WQ.head].instruction)
+                        upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                    if (WQ.entry[WQ.head].is_data)
+                        upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                }
             }
 
             writes_available_this_cycle--;
@@ -250,17 +270,9 @@ void CACHE::handle_writeback()
                 else // already in-flight miss
                 {
                     // update fill_level
-                    if (WQ.entry[WQ.head].fill_level < mshr_entry->fill_level)
-                        mshr_entry->fill_level = WQ.entry[WQ.head].fill_level;
-
-                    if((WQ.entry[WQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
-                    {
-                        mshr_entry->fill_l1i = 1;
-                    }
-                    if((WQ.entry[WQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
-                    {
-                        mshr_entry->fill_l1d = 1;
-                    }
+                    mshr_entry->fill_level = std::min(mshr_entry->fill_level, WQ.entry[WQ.head].fill_level);
+                    mshr_entry->fill_l1i |= WQ.entry[WQ.head].fill_l1i;
+                    mshr_entry->fill_l1d |= WQ.entry[WQ.head].fill_l1d;
 
                     // update request
                     if (mshr_entry->type == PREFETCH) {
@@ -349,12 +361,22 @@ void CACHE::handle_writeback()
                     block[set][way].dirty = 1; 
 
                     // check fill level
-                    if (WQ.entry[WQ.head].fill_level < fill_level) {
-
-                        if (WQ.entry[WQ.head].instruction)
-                            upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
-                        if (WQ.entry[WQ.head].is_data)
-                            upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                    if (WQ.entry[WQ.head].fill_level < fill_level)
+                    {
+                        if(fill_level == FILL_L2)
+                        {
+                            if (WQ.entry[WQ.head].fill_l1i)
+                                upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                            if (WQ.entry[WQ.head].fill_l1d)
+                                upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                        }
+                        else
+                        {
+                            if (WQ.entry[WQ.head].instruction)
+                                upper_level_icache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                            if (WQ.entry[WQ.head].is_data)
+                                upper_level_dcache[writeback_cpu]->return_data(&WQ.entry[WQ.head]);
+                        }
                     }
                 }
             }
@@ -432,10 +454,20 @@ void CACHE::handle_read()
             // check fill level
             if (RQ.entry[RQ.head].fill_level < fill_level)
             {
-                if (RQ.entry[RQ.head].instruction)
-                    upper_level_icache[read_cpu]->return_data(&RQ.entry[RQ.head]);
-                if (RQ.entry[RQ.head].is_data)
-                    upper_level_dcache[read_cpu]->return_data(&RQ.entry[RQ.head]);
+                if(fill_level == FILL_L2)
+                {
+                    if (RQ.entry[RQ.head].fill_l1i)
+                        upper_level_icache[read_cpu]->return_data(&RQ.entry[RQ.head]);
+                    if (RQ.entry[RQ.head].fill_l1d)
+                        upper_level_dcache[read_cpu]->return_data(&RQ.entry[RQ.head]);
+                }
+                else
+                {
+                    if (RQ.entry[RQ.head].instruction)
+                        upper_level_icache[read_cpu]->return_data(&RQ.entry[RQ.head]);
+                    if (RQ.entry[RQ.head].is_data)
+                        upper_level_dcache[read_cpu]->return_data(&RQ.entry[RQ.head]);
+                }
             }
 
             // update prefetch stats and reset prefetch bit
@@ -542,35 +574,20 @@ void CACHE::handle_read()
                 }
 
                 // update fill_level
-                if (RQ.entry[RQ.head].fill_level < mshr_entry->fill_level)
-                    mshr_entry->fill_level = RQ.entry[RQ.head].fill_level;
+                mshr_entry->fill_level = std::min(mshr_entry->fill_level, RQ.entry[RQ.head].fill_level);
 
-                if((RQ.entry[RQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
-                {
-                    mshr_entry->fill_l1i = 1;
-                }
-                if((RQ.entry[RQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
-                {
-                    mshr_entry->fill_l1d = 1;
-                }
+                mshr_entry->fill_l1i |= RQ.entry[RQ.head].fill_l1i;
+                mshr_entry->fill_l1d |= RQ.entry[RQ.head].fill_l1d;
 
                 // update request
                 if (mshr_entry->type == PREFETCH) {
-                    uint8_t  prior_returned = mshr_entry->returned;
-                    uint64_t prior_event_cycle = mshr_entry->event_cycle;
-                    uint8_t  prior_fill_l1i = mshr_entry->fill_l1i;
-                    uint8_t  prior_fill_l1d = mshr_entry->fill_l1d;
+                    // in case request is already returned, we should keep event_cycle and retunred variables
+                    RQ.entry[RQ.head].returned = mshr_entry->returned;
+                    RQ.entry[RQ.head].event_cycle = mshr_entry->event_cycle;
+                    RQ.entry[RQ.head].fill_l1i |= mshr_entry->fill_l1i;
+                    RQ.entry[RQ.head].fill_l1d |= mshr_entry->fill_l1d;
 
                     *mshr_entry = RQ.entry[RQ.head];
-
-                    if(prior_fill_l1i && mshr_entry->fill_l1i == 0)
-                        mshr_entry->fill_l1i = 1;
-                    if(prior_fill_l1d && mshr_entry->fill_l1d == 0)
-                        mshr_entry->fill_l1d = 1;
-
-                    // in case request is already returned, we should keep event_cycle and retunred variables
-                    mshr_entry->returned = prior_returned;
-                    mshr_entry->event_cycle = prior_event_cycle;
                 }
 
                 DP ( if (warmup_complete[read_cpu]) {
@@ -644,11 +661,22 @@ void CACHE::handle_prefetch()
             }
 
             // check fill level
-            if (PQ.entry[PQ.head].fill_level < fill_level) {
-                if (PQ.entry[PQ.head].instruction)
-                    upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
-                if (PQ.entry[PQ.head].is_data)
-                    upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
+            if (PQ.entry[PQ.head].fill_level < fill_level)
+            {
+                if(fill_level == FILL_L2)
+                {
+                    if (PQ.entry[PQ.head].fill_l1i)
+                        upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
+                    if (PQ.entry[PQ.head].fill_l1d)
+                        upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
+                }
+                else
+                {
+                    if (PQ.entry[PQ.head].instruction)
+                        upper_level_icache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
+                    if (PQ.entry[PQ.head].is_data)
+                        upper_level_dcache[prefetch_cpu]->return_data(&PQ.entry[PQ.head]);
+                }
             }
 
             // remove this entry from PQ
@@ -733,17 +761,9 @@ void CACHE::handle_prefetch()
             else // already in-flight miss
             {
                 // no need to update request except fill_level
-                if (PQ.entry[PQ.head].fill_level < mshr_entry->fill_level)
-                    mshr_entry->fill_level = PQ.entry[PQ.head].fill_level;
-
-                if((PQ.entry[PQ.head].fill_l1i) && (mshr_entry->fill_l1i != 1))
-                {
-                    mshr_entry->fill_l1i = 1;
-                }
-                if((PQ.entry[PQ.head].fill_l1d) && (mshr_entry->fill_l1d != 1))
-                {
-                    mshr_entry->fill_l1d = 1;
-                }
+                mshr_entry->fill_level = std::min(mshr_entry->fill_level, PQ.entry[PQ.head].fill_level);
+                mshr_entry->fill_l1i |= PQ.entry[PQ.head].fill_l1i;
+                mshr_entry->fill_l1d |= PQ.entry[PQ.head].fill_l1d;
 
                 DP ( if (warmup_complete[prefetch_cpu]) {
                         cout << "[" << NAME << "] " << __func__ << " mshr merged";
@@ -863,15 +883,25 @@ int CACHE::add_rq(PACKET *packet)
 
             packet->data = WQ.entry[wq_index].data;
 
-		if (packet->instruction)
-		  upper_level_icache[packet->cpu]->return_data(packet);
-		if (packet->is_data)
-		  upper_level_dcache[packet->cpu]->return_data(packet);
+            if(fill_level == FILL_L2)
+            {
+                if (packet->fill_l1i)
+                    upper_level_icache[packet->cpu]->return_data(packet);
+                if (packet->fill_l1d)
+                    upper_level_dcache[packet->cpu]->return_data(packet);
+            }
+            else
+            {
+                if (packet->instruction)
+                    upper_level_icache[packet->cpu]->return_data(packet);
+                if (packet->is_data)
+                    upper_level_dcache[packet->cpu]->return_data(packet);
+            }
         }
 
         assert(cache_type != IS_ITLB);
         assert(cache_type != IS_DTLB);
-        assert(cache_type != IS_STLB);
+        assert(cache_type != IS_L1I);
 
         // update processed packets
         if ((cache_type == IS_L1D) && (packet->type != PREFETCH)) {
@@ -920,14 +950,8 @@ int CACHE::add_rq(PACKET *packet)
             RQ.entry[index].is_data = 1; // add as data type
         }
 
-	if((packet->fill_l1i) && (RQ.entry[index].fill_l1i != 1))
-	  {
-	    RQ.entry[index].fill_l1i = 1;
-	  }
-	if((packet->fill_l1d) && (RQ.entry[index].fill_l1d != 1))
-	  {
-	    RQ.entry[index].fill_l1d = 1;
-	  }
+        RQ.entry[index].fill_l1i |= packet->fill_l1i;
+        RQ.entry[index].fill_l1d |= packet->fill_l1d;
 
         RQ.MERGED++;
         RQ.ACCESS++;
@@ -1230,24 +1254,20 @@ int CACHE::add_pq(PACKET *packet)
 
             packet->data = WQ.entry[wq_index].data;
 
-	    if(fill_level == FILL_L2)
-	      {
-		if(packet->fill_l1i)
-		  {
-		    upper_level_icache[packet->cpu]->return_data(packet);
-		  }
-		if(packet->fill_l1d)
-		  {
-		    upper_level_dcache[packet->cpu]->return_data(packet);
-		  }
-	      }
-	    else
-	      {
-		if (packet->instruction)
-		  upper_level_icache[packet->cpu]->return_data(packet);
-		if (packet->is_data)
-		  upper_level_dcache[packet->cpu]->return_data(packet);
-	      }
+            if(fill_level == FILL_L2)
+            {
+                if (packet->fill_l1i)
+                    upper_level_icache[packet->cpu]->return_data(packet);
+                if (packet->fill_l1d)
+                    upper_level_dcache[packet->cpu]->return_data(packet);
+            }
+            else
+            {
+                if (packet->instruction)
+                    upper_level_icache[packet->cpu]->return_data(packet);
+                if (packet->is_data)
+                    upper_level_dcache[packet->cpu]->return_data(packet);
+            }
         }
 
         WQ.FORWARD++;
@@ -1258,27 +1278,13 @@ int CACHE::add_pq(PACKET *packet)
 
     // check for duplicates in the PQ
     int index = PQ.check_queue(packet);
-    if (index != -1) {
-        if (packet->fill_level < PQ.entry[index].fill_level)
-	  {
-            PQ.entry[index].fill_level = packet->fill_level;
-	  }
-	if((packet->instruction == 1) && (PQ.entry[index].instruction != 1))
-	  {
-	    PQ.entry[index].instruction = 1;
-	  }
-	if((packet->is_data == 1) && (PQ.entry[index].is_data != 1))
-	  {
-	    PQ.entry[index].is_data = 1;
-	  }
-	if((packet->fill_l1i) && (PQ.entry[index].fill_l1i != 1))
-	  {
-	    PQ.entry[index].fill_l1i = 1;
-	  }
-	if((packet->fill_l1d) && (PQ.entry[index].fill_l1d != 1))
-	  {
-	    PQ.entry[index].fill_l1d = 1;
-	  }
+    if (index != -1)
+    {
+        PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
+        PQ.entry[index].instruction |= packet->instruction;
+        PQ.entry[index].is_data     |= packet->is_data;
+        PQ.entry[index].fill_l1i    |= packet->fill_l1i;
+        PQ.entry[index].fill_l1d    |= packet->fill_l1d;
 
         PQ.MERGED++;
         PQ.ACCESS++;
