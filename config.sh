@@ -139,12 +139,18 @@ config_file['ooo_cpu'] = list(itertools.islice(itertools.repeat(*config_file['oo
 # Associate modules with paths
 libfilenames = {}
 for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
-    libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + cpu['L1I']['prefetcher']
-    libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + cpu['L1D']['prefetcher']
-    libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
-    libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
-libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
-libfilenames['llreplacement.a'] = 'replacement/' + config_file['LLC']['replacement']
+    if cpu['L1I']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + cpu['L1I']['prefetcher']
+    if cpu['L1D']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + cpu['L1D']['prefetcher']
+    if cpu['L2C']['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
+    if cpu['branch_predictor'] is not None:
+        libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
+if config_file['LLC']['prefetcher'] is not None:
+    libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
+if config_file['LLC']['replacement'] is not None:
+    libfilenames['llreplacement.a'] = 'replacement/' + config_file['LLC']['replacement']
 
 # Assert module paths exist
 for path in libfilenames.values():
@@ -161,7 +167,7 @@ else:
 
 # Prune modules whose configurations have changed (force make to rebuild it)
 for f in os.listdir('obj'):
-    if f in config_cache and not config_cache[f] == libfilenames[f]:
+    if f in libfilenames and f in config_cache and config_cache[f] != libfilenames[f]:
         os.remove('obj/' + f)
 
 ###
@@ -207,21 +213,21 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('\n')
     for k,v in config_file['ooo_cpu'][0].items():
         if isinstance(v,dict):
-            if k is 'DIB':
+            if k == 'DIB':
                 wfp.write(define_fmtstr.format(name='sets').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='ways').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
             else:
                 wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
             wfp.write('\n')
         else:
-            if k is not 'branch_predictor':
+            if k != 'branch_predictor':
                 wfp.write(define_fmtstr.format(name=k).format(names=const_names['core'], config=config_file['ooo_cpu'][0]))
 
     wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
 
     for k in const_names['physical_memory']:
         wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
-        if k is not 'frequency':
+        if k != 'frequency':
             wfp.write(define_log_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
 
     wfp.write('#endif\n')
