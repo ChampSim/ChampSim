@@ -144,7 +144,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
     {
       for(int i=0; i<L2C_IP_STRIDE_PREFETCH_DEGREE; i++)
 	{
-	  if (MSHR.occupancy < (MSHR.SIZE>>1))
+	  if (get_occupancy(0,0) < (get_size(0,0)>>1))
 	    {
 	      l2c_prefetch_va_or_pa(this, ip, v_addr, (v_cl+((1+i)*current_stride))<<LOG2_BLOCK_SIZE, addr, FILL_L2, 0);
 	    }

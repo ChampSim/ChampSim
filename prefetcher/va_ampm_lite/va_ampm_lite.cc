@@ -263,7 +263,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
 	{
 	  // found something that we should prefetch
 	  int pf_fill_level = FILL_L2;
-	  if (MSHR.occupancy > (MSHR.SIZE>>1))
+	  if (get_occupancy(0,0) > (get_size(0,0)>>1))
 	    {
 	      pf_fill_level = FILL_LLC;
 	    }
@@ -290,7 +290,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
 	{
 	  // found something that we should prefetch
 	  int pf_fill_level = FILL_L2;
-	  if (MSHR.occupancy > (MSHR.SIZE>>1))
+	  if (get_occupancy(0,0) > (get_size(0,0)>>1))
 	    {
 	      pf_fill_level = FILL_LLC;
 	    }

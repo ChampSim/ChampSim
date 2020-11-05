@@ -1951,7 +1951,6 @@ void O3_CPU::retire_rob()
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " L1D WQ is full" << endl; });
 
                 L1D.WQ.FULL++;
-                L1D.STALL[RFO]++;
 
                 return;
             }

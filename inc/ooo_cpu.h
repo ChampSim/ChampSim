@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <functional>
 
 #include "champsim_constants.h"
 #include "instruction.h"
@@ -156,6 +157,29 @@ class O3_CPU {
         RTS1_head = 0;
         RTS0_tail = 0;
         RTS1_tail = 0;
+
+        using namespace std::placeholders;
+
+        ITLB.find_victim = std::bind(&CACHE::lru_victim, &ITLB, _1, _2, _3, _4, _5, _6, _7);
+        DTLB.find_victim = std::bind(&CACHE::lru_victim, &DTLB, _1, _2, _3, _4, _5, _6, _7);
+        STLB.find_victim = std::bind(&CACHE::lru_victim, &STLB, _1, _2, _3, _4, _5, _6, _7);
+        L1I.find_victim = std::bind(&CACHE::lru_victim, &L1I, _1, _2, _3, _4, _5, _6, _7);
+        L1D.find_victim = std::bind(&CACHE::lru_victim, &L1D, _1, _2, _3, _4, _5, _6, _7);
+        L2C.find_victim = std::bind(&CACHE::lru_victim, &L2C, _1, _2, _3, _4, _5, _6, _7);
+
+        ITLB.update_replacement_state = std::bind(&CACHE::lru_update, &ITLB, _2, _3, _7, _8);
+        DTLB.update_replacement_state = std::bind(&CACHE::lru_update, &DTLB, _2, _3, _7, _8);
+        STLB.update_replacement_state = std::bind(&CACHE::lru_update, &STLB, _2, _3, _7, _8);
+        L1I.update_replacement_state = std::bind(&CACHE::lru_update, &L1I, _2, _3, _7, _8);
+        L1D.update_replacement_state = std::bind(&CACHE::lru_update, &L1D, _2, _3, _7, _8);
+        L2C.update_replacement_state = std::bind(&CACHE::lru_update, &L2C, _2, _3, _7, _8);
+
+        ITLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &ITLB);
+        DTLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &DTLB);
+        STLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &STLB);
+        L1I.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1I);
+        L1D.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1D);
+        L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
     }
 
     // functions
