@@ -27,7 +27,8 @@
     ],
 
     "DIB": {
-        "sets": 8,
+        "window_size": 16,
+        "sets": 32,
         "ways": 8
     },
 
