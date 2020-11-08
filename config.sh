@@ -11,7 +11,9 @@ if len(sys.argv) >= 2:
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
     config_file = {}
-def merge_dicts(*dicts): z = dicts[0].copy()
+
+def merge_dicts(*dicts):
+    z = dicts[0].copy()
     for d in dicts[1:]:
         z.update(d)
     return z
