@@ -90,13 +90,8 @@ const_names = {
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-<<<<<<< HEAD
 default_core = { 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
-=======
-default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
-default_dib  = { 'sets': 8, 'ways': 8 }
->>>>>>> develop
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'prefetcher': 'no_l1d' }
 default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'prefetcher': 'no_l2c' }
