@@ -11,9 +11,7 @@ if len(sys.argv) >= 2:
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
     config_file = {}
-
-def merge_dicts(*dicts):
-    z = dicts[0].copy()
+def merge_dicts(*dicts): z = dicts[0].copy()
     for d in dicts[1:]:
         z.update(d)
     return z
@@ -90,7 +88,7 @@ const_names = {
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-default_core = { 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
+default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'prefetcher': 'no_l1d' }
