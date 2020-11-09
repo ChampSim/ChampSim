@@ -6,6 +6,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "set.h"
+#include "util.h"
 #include "vmem.h"
 
 #ifndef SANITY_CHECK
@@ -27,14 +28,13 @@ class min_fill_index
     }
 };
 
-template <typename T>
-struct eq_addr
+template <>
+struct is_valid<PACKET>
 {
-    const decltype(T::address) val;
-    eq_addr(decltype(T::address) val) : val(val) {}
-    bool operator()(const T &test)
+    is_valid() {}
+    bool operator()(const PACKET &test)
     {
-        return test.address == val;
+        return test.address != 0;
     }
 };
 
@@ -235,7 +235,7 @@ void CACHE::handle_writeback()
 
                 // check mshr
                 auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(WQ.entry[WQ.head].address));
-                bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
+                bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
 
                 if (mshr_entry != MSHR.end()) // miss already inflight
                 {
@@ -467,7 +467,7 @@ void CACHE::handle_read()
 
             // check mshr
             auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(RQ.entry[RQ.head].address));
-            bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
+            bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
 
             if (mshr_entry != MSHR.end())
             {
@@ -648,7 +648,7 @@ void CACHE::handle_prefetch()
 
             // check mshr
             auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(PQ.entry[PQ.head].address));
-            bool mshr_full = std::none_of(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
+            bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
 
             if (mshr_entry != MSHR.end())
             {
@@ -1300,7 +1300,7 @@ void CACHE::return_data(PACKET *packet)
 
 void CACHE::add_mshr(PACKET *packet)
 {
-    auto it = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(0));
+    auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
     if (it != MSHR.end())
     {
         *it = *packet;
@@ -1312,7 +1312,7 @@ void CACHE::add_mshr(PACKET *packet)
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
 {
     if (queue_type == 0)
-        return std::count_if(MSHR.begin(), MSHR.end(), [](PACKET x){ return x.address != 0; });
+        return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
     else if (queue_type == 1)
         return RQ.occupancy;
     else if (queue_type == 2)
