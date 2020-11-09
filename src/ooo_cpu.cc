@@ -313,8 +313,8 @@ void O3_CPU::fetch_instruction()
       ooo_model_instr &ifb_entry = IFETCH_BUFFER.entry[index];
 
       // Check DIB to see if we recently fetched this line
-      dib_t::value_type &dib_set = DIB[(ifb_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
-      auto way = std::find_if(dib_set.begin(), dib_set.end(), [ifb_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (ifb_entry.ip >> LOG2_BLOCK_SIZE));});
+      dib_t::value_type &dib_set = DIB[(ifb_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
+      auto way = std::find_if(dib_set.begin(), dib_set.end(), [ifb_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (ifb_entry.ip >> LOG2_DIB_WINDOW_SIZE));});
       if (way != dib_set.end())
       {
           // The cache line is in the L0, so we can mark this as complete
@@ -535,8 +535,8 @@ void O3_CPU::decode_and_dispatch()
         ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
 
 	// Search DIB to see if we need to add this instruction
-	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_BLOCK_SIZE) % DIB_SET];
-	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_BLOCK_SIZE) == (db_entry.ip >> LOG2_BLOCK_SIZE));});
+	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
+	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (db_entry.ip >> LOG2_DIB_WINDOW_SIZE));});
 
     // If we did not find the entry in the DIB, find a victim
     if (way == dib_set.end())
