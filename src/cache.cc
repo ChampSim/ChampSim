@@ -745,12 +745,9 @@ uint32_t CACHE::get_set(uint64_t address)
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
 {
-    for (uint32_t way=0; way<NUM_WAY; way++) {
-        if (block[set][way].valid && (block[set][way].tag == address)) 
-            return way;
-    }
-
-    return NUM_WAY;
+    auto begin = block[set];
+    auto end   = std::next(begin, NUM_WAY);
+    return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address)));
 }
 
 void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)

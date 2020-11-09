@@ -15,9 +15,12 @@ void CACHE::lru_update(uint32_t set, uint32_t way, uint32_t type, uint8_t hit)
     if (hit && type == WRITEBACK)
         return;
 
-    uint32_t hit_lru = block[set][way].lru;
-    std::for_each(block[set], std::next(block[set], NUM_WAY), [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });
-    block[set][way].lru = 0; // promote to the MRU position
+    //auto begin = std::next(block.begin(), set*NUM_WAY);
+    auto begin = block[set];
+    auto end   = std::next(begin, NUM_WAY);
+    uint32_t hit_lru = std::next(begin, way)->lru;
+    std::for_each(begin, end, [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });
+    std::next(begin, way)->lru = 0; // promote to the MRU position
 }
 
 void CACHE::lru_final_stats()
