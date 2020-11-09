@@ -91,6 +91,20 @@ void CACHE::handle_fill()
                 lower_level->add_wq(&writeback_packet);
             }
 
+            // update prefetcher
+            if (cache_type == IS_L1I)
+                l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, ((block[set][way].ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
+            if (cache_type == IS_L1D)
+                l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, block[set][way].address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            if  (cache_type == IS_L2C)
+                fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            if (cache_type == IS_LLC)
+            {
+                cpu = fill_cpu;
+                fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+                cpu = 0;
+            }
+
             fill_cache(set, way, &(*fill_mshr));
 
             // RFO marks cache line dirty
@@ -100,20 +114,6 @@ void CACHE::handle_fill()
 
         if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
             total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
-
-        // update prefetcher
-        if (cache_type == IS_L1I)
-            l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, ((block[set][way].ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
-        if (cache_type == IS_L1D)
-            l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, block[set][way].address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-        if  (cache_type == IS_L2C)
-            fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-        if (cache_type == IS_LLC)
-        {
-            cpu = fill_cpu;
-            fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-            cpu = 0;
-        }
 
 
         // update replacement policy
