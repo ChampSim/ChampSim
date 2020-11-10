@@ -28,7 +28,7 @@ class CACHE : public MEMORY {
     const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY;
-    BLOCK **block;
+    std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     int fill_level;
     uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
@@ -65,16 +65,6 @@ class CACHE : public MEMORY {
 
         LATENCY = 0;
 
-        // cache block
-        block = new BLOCK* [NUM_SET];
-        for (uint32_t i=0; i<NUM_SET; i++) {
-            block[i] = new BLOCK[NUM_WAY]; 
-
-            for (uint32_t j=0; j<NUM_WAY; j++) {
-                block[i][j].lru = j;
-            }
-        }
-
         for (uint32_t i=0; i<NUM_CPUS; i++) {
             upper_level_icache[i] = NULL;
             upper_level_dcache[i] = NULL;
@@ -102,13 +92,6 @@ class CACHE : public MEMORY {
         pf_useful = 0;
         pf_useless = 0;
         pf_fill = 0;
-    };
-
-    // destructor
-    ~CACHE() {
-        for (uint32_t i=0; i<NUM_SET; i++)
-            delete[] block[i];
-        delete[] block;
     };
 
     // functions

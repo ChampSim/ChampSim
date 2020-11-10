@@ -4,6 +4,8 @@
 #include "champsim.h"
 #include "block.h"
 
+#include <limits>
+
 // CACHE ACCESS TYPE
 #define LOAD      0
 #define RFO       1
@@ -41,7 +43,7 @@ class BLOCK {
              instr_id = 0;
 
     // replacement state
-    uint32_t lru = 0;
+    uint32_t lru = std::numeric_limits<uint32_t>::max();
 
     BLOCK() {}
 

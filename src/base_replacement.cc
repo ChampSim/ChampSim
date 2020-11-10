@@ -15,7 +15,7 @@ void CACHE::lru_update(uint32_t set, uint32_t way, uint32_t type, uint8_t hit)
     if (hit && type == WRITEBACK)
         return;
 
-    auto begin = block[set];
+    auto begin = std::next(block.begin(), set*NUM_WAY);
     auto end   = std::next(begin, NUM_WAY);
     uint32_t hit_lru = std::next(begin, way)->lru;
     std::for_each(begin, end, [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });

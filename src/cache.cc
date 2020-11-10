@@ -50,14 +50,14 @@ void CACHE::handle_fill()
 
         // find victim
         uint32_t set = get_set(fill_mshr->address);
-        uint32_t way = find_victim(fill_cpu, fill_mshr->instr_id, set, block[set], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
+        uint32_t way = find_victim(fill_cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
 
         bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
         assert(!bypass);
 #endif
 
-        BLOCK &fill_block = block[set][way];
+        BLOCK &fill_block = block[set*NUM_WAY + way];
         bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
 
         // In the case where we would evict a dirty block, give up and stall if the lower-level WQ is full.
@@ -119,7 +119,9 @@ void CACHE::handle_fill()
             if (fill_mshr->type == PREFETCH)
                 pf_fill++;
 
+            auto lru = fill_block.lru; // preserve LRU state
             fill_block = *fill_mshr; // fill cache
+            fill_block.lru = lru;
 
             // RFO marks cache line dirty
             if (fill_mshr->type == RFO && cache_type == IS_L1D)
@@ -191,7 +193,7 @@ void CACHE::handle_writeback()
         uint32_t set = get_set(WQ.entry[WQ.head].address);
         uint32_t way = get_way(WQ.entry[WQ.head].address, set);
 
-        BLOCK &fill_block = block[set][way];
+        BLOCK &fill_block = block[set*NUM_WAY + way];
 
         if (way < NUM_WAY) // HIT
         {
@@ -290,7 +292,7 @@ void CACHE::handle_writeback()
             else { // Writeback miss
                 // find victim
                 uint32_t set = get_set(WQ.entry[WQ.head].address);
-                uint32_t way = find_victim(writeback_cpu, WQ.entry[WQ.head].instr_id, set, block[set], WQ.entry[WQ.head].ip, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].type);
+                uint32_t way = find_victim(writeback_cpu, WQ.entry[WQ.head].instr_id, set, &block.data()[set*NUM_WAY], WQ.entry[WQ.head].ip, WQ.entry[WQ.head].full_addr, WQ.entry[WQ.head].type);
 
                 assert(way < NUM_WAY);
 
@@ -356,7 +358,9 @@ void CACHE::handle_writeback()
                 if (WQ.entry[WQ.head].type == PREFETCH)
                     pf_fill++;
 
+                auto lru = fill_block.lru; // preserve LRU state
                 fill_block = WQ.entry[WQ.head]; // Fill cache
+                fill_block.lru = lru;
 
                 // mark dirty
                 fill_block.dirty = 1;
@@ -403,7 +407,7 @@ void CACHE::handle_read()
 
         if (way < NUM_WAY) // HIT
         {
-            BLOCK &hit_block = block[set][way];
+            BLOCK &hit_block = block[set*NUM_WAY + way];
 
             if (cache_type == IS_ITLB) {
                 RQ.entry[RQ.head].instruction_pa = hit_block.data;
@@ -615,7 +619,7 @@ void CACHE::handle_prefetch()
 
         if (way < NUM_WAY) // HIT
         {
-            BLOCK &hit_block = block[set][way];
+            BLOCK &hit_block = block[set*NUM_WAY + way];
 
             // update replacement policy
             update_replacement_state(prefetch_cpu, set, way, hit_block.full_addr, PQ.entry[PQ.head].ip, 0, PQ.entry[PQ.head].type, 1);
@@ -769,7 +773,7 @@ uint32_t CACHE::get_set(uint64_t address)
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
 {
-    auto begin = block[set];
+    auto begin = std::next(block.begin(), set*NUM_WAY);
     auto end   = std::next(begin, NUM_WAY);
     return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address)));
 }
@@ -780,7 +784,7 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
     uint32_t way = get_way(inval_addr, set);
 
     if (way < NUM_WAY)
-        block[set][way].valid = 0;
+        block[set*NUM_WAY + way].valid = 0;
 
     return way;
 }
