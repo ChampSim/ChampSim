@@ -403,77 +403,7 @@ void CACHE::handle_read()
 
         if (way < NUM_WAY) // HIT
         {
-            BLOCK &hit_block = block[set*NUM_WAY + way];
-
-            if (cache_type == IS_ITLB) {
-                handle_pkt.instruction_pa = hit_block.data;
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&handle_pkt);
-            }
-            else if (cache_type == IS_DTLB) {
-                handle_pkt.data_pa = hit_block.data;
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&handle_pkt);
-            }
-            else if (cache_type == IS_STLB) 
-                handle_pkt.data = hit_block.data;
-            else if (cache_type == IS_L1I) {
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&handle_pkt);
-            }
-            else if ((cache_type == IS_L1D) && (RQ.entry[RQ.head].type != PREFETCH)) {
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&handle_pkt);
-            }
-
-            // update prefetcher on load instruction
-            if (handle_pkt.type == LOAD) {
-                if(cache_type == IS_L1I)
-                    l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 1, hit_block.prefetch);
-                if (cache_type == IS_L1D) 
-                    l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type);
-                else if (cache_type == IS_L2C)
-                    l2c_prefetcher_operate(RQ.entry[RQ.head].v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, RQ.entry[RQ.head].type, 0);
-                else if (cache_type == IS_LLC)
-                {
-                    cpu = handle_pkt.cpu;
-                    llc_prefetcher_operate(RQ.entry[RQ.head].v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
-                    cpu = 0;
-                }
-            }
-
-            // update replacement policy
-            update_replacement_state(handle_pkt.cpu, set, way, hit_block.full_addr, handle_pkt.ip, 0, handle_pkt.type, 1);
-
-            // COLLECT STATS
-            sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-            sim_access[handle_pkt.cpu][handle_pkt.type]++;
-
-            // check fill level
-            if (handle_pkt.fill_level < fill_level)
-            {
-                if(fill_level == FILL_L2)
-                {
-                    if (handle_pkt.fill_l1i)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.fill_l1d)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-                else
-                {
-                    if (handle_pkt.instruction)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.is_data)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-            }
-
-            // update prefetch stats and reset prefetch bit
-            if (hit_block.prefetch) {
-                pf_useful++;
-                hit_block.prefetch = 0;
-            }
-            hit_block.used = 1;
+            readlike_hit(set, way, handle_pkt);
         }
         else { // read miss
 
@@ -609,48 +539,7 @@ void CACHE::handle_prefetch()
 
         if (way < NUM_WAY) // HIT
         {
-            BLOCK &hit_block = block[set*NUM_WAY + way];
-
-            // update replacement policy
-            update_replacement_state(handle_pkt.cpu, set, way, hit_block.full_addr, handle_pkt.ip, 0, handle_pkt.type, 1);
-
-            // COLLECT STATS
-            sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-            sim_access[handle_pkt.cpu][handle_pkt.type]++;
-
-            // run prefetcher on prefetches from higher caches
-            if(handle_pkt.pf_origin_level < fill_level)
-            {
-                if (cache_type == IS_L1D)
-                    l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 1, PREFETCH);
-                else if (cache_type == IS_L2C)
-                    handle_pkt.pf_metadata = l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, PREFETCH, handle_pkt.pf_metadata);
-                else if (cache_type == IS_LLC)
-                {
-                    cpu = handle_pkt.cpu;
-                    handle_pkt.pf_metadata = llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, PREFETCH, handle_pkt.pf_metadata);
-                    cpu = 0;
-                }
-            }
-
-            // check fill level
-            if (handle_pkt.fill_level < fill_level)
-            {
-                if(fill_level == FILL_L2)
-                {
-                    if (handle_pkt.fill_l1i)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.fill_l1d)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-                else
-                {
-                    if (handle_pkt.instruction)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.is_data)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-            }
+            readlike_hit(set, way, handle_pkt);
         }
         else { // prefetch miss
 
@@ -730,6 +619,82 @@ void CACHE::handle_prefetch()
         PQ.remove_queue(&handle_pkt);
         reads_available_this_cycle--;
     }
+}
+
+void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
+{
+    BLOCK &hit_block = block[set*NUM_WAY + way];
+
+    if (cache_type == IS_ITLB) {
+        handle_pkt.instruction_pa = hit_block.data;
+        if (PROCESSED.occupancy < PROCESSED.SIZE)
+            PROCESSED.add_queue(&handle_pkt);
+    }
+    else if (cache_type == IS_DTLB) {
+        handle_pkt.data_pa = hit_block.data;
+        if (PROCESSED.occupancy < PROCESSED.SIZE)
+            PROCESSED.add_queue(&handle_pkt);
+    }
+    else if (cache_type == IS_STLB)
+        handle_pkt.data = hit_block.data;
+    else if (cache_type == IS_L1I) {
+        if (PROCESSED.occupancy < PROCESSED.SIZE)
+            PROCESSED.add_queue(&handle_pkt);
+    }
+    else if ((cache_type == IS_L1D) && (handle_pkt.type != PREFETCH)) {
+        if (PROCESSED.occupancy < PROCESSED.SIZE)
+            PROCESSED.add_queue(&handle_pkt);
+    }
+
+    // update prefetcher on load instruction
+    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    {
+        if(cache_type == IS_L1I)
+            l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 1, hit_block.prefetch);
+        if (cache_type == IS_L1D)
+            l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type);
+        else if (cache_type == IS_L2C)
+            l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
+        else if (cache_type == IS_LLC)
+        {
+            cpu = handle_pkt.cpu;
+            llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
+            cpu = 0;
+        }
+    }
+
+    // update replacement policy
+    update_replacement_state(handle_pkt.cpu, set, way, hit_block.full_addr, handle_pkt.ip, 0, handle_pkt.type, 1);
+
+    // COLLECT STATS
+    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+    sim_access[handle_pkt.cpu][handle_pkt.type]++;
+
+    // check fill level
+    if (handle_pkt.fill_level < fill_level)
+    {
+        if(fill_level == FILL_L2)
+        {
+            if (handle_pkt.fill_l1i)
+                upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
+            if (handle_pkt.fill_l1d)
+                upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
+        }
+        else
+        {
+            if (handle_pkt.instruction)
+                upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
+            if (handle_pkt.is_data)
+                upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
+        }
+    }
+
+    // update prefetch stats and reset prefetch bit
+    if (hit_block.prefetch) {
+        pf_useful++;
+        hit_block.prefetch = 0;
+    }
+    hit_block.used = 1;
 }
 
 void CACHE::operate()
@@ -1313,3 +1278,4 @@ void CACHE::increment_WQ_FULL(uint64_t address)
 {
     WQ.FULL++;
 }
+

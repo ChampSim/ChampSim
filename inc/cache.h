@@ -122,6 +122,8 @@ class CACHE : public MEMORY {
          handle_read(),
          handle_prefetch();
 
+    void readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt);
+
     void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),
          l1d_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
