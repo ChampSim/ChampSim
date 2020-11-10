@@ -57,7 +57,9 @@ void CACHE::handle_fill()
         assert(!bypass);
 #endif
 
-        bool evicting_dirty = (lower_level != NULL) && block[set][way].dirty;
+        bool evicting_dirty = bypass ? false : (lower_level != NULL) && block[set][way].dirty;
+        auto evicting_l1i_v_addr = bypass ? 0 : block[set][way].ip;
+	auto evicting_address = bypass ? 0 : block[set][way].address;
 
         // In the case where we would evict a dirty block, give up and stall if the lower-level WQ is full.
         if (!bypass && evicting_dirty && (lower_level->get_occupancy(2, block[set][way].address) == lower_level->get_size(2, block[set][way].address)))
@@ -103,15 +105,15 @@ void CACHE::handle_fill()
 
         // update prefetcher
         if (cache_type == IS_L1I)
-            l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, ((block[set][way].ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
+            l1i_prefetcher_cache_fill(fill_cpu, ((fill_mshr->ip)>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (evicting_l1i_v_addr>>LOG2_BLOCK_SIZE)<<LOG2_BLOCK_SIZE);
         if (cache_type == IS_L1D)
-            l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, block[set][way].address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, evicting_address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
         if  (cache_type == IS_L2C)
-            fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            fill_mshr->pf_metadata = l2c_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, evicting_address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
         if (cache_type == IS_LLC)
         {
             cpu = fill_cpu;
-            fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, (block[set][way].address)<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            fill_mshr->pf_metadata = llc_prefetcher_cache_fill((fill_mshr->v_address)<<LOG2_BLOCK_SIZE, (fill_mshr->address)<<LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, evicting_address<<LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
             cpu = 0;
         }
 
