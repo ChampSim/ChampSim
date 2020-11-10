@@ -5,64 +5,6 @@
 #include "instruction.h"
 #include "set.h"
 
-// CACHE BLOCK
-class BLOCK {
-  public:
-    uint8_t valid,
-            prefetch,
-            dirty,
-            used;
-
-    int delta,
-        depth,
-        signature,
-        confidence;
-
-    uint64_t address,
-             full_addr,
-             v_address,
-             full_v_addr,
-             tag,
-             data,
-             ip,
-             cpu,
-             instr_id;
-
-    // replacement state
-    uint32_t lru;
-
-    BLOCK() {
-        valid = 0;
-        prefetch = 0;
-        dirty = 0;
-        used = 0;
-
-        delta = 0;
-        depth = 0;
-        signature = 0;
-        confidence = 0;
-
-        address = 0;
-        full_addr = 0;
-        tag = 0;
-        data = 0;
-        cpu = 0;
-        instr_id = 0;
-
-        lru = 0;
-    };
-};
-
-// DRAM CACHE BLOCK
-class DRAM_ARRAY {
-  public:
-    BLOCK **block;
-
-    DRAM_ARRAY() {
-        block = NULL;
-    };
-};
-
 // message packet
 class PACKET {
   public:

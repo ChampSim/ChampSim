@@ -132,7 +132,6 @@ class CACHE : public MEMORY {
          va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);
 
     void add_mshr(PACKET *packet),
-         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
          va_translate_prefetches();
 
     void handle_fill(),

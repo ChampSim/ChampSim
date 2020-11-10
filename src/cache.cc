@@ -105,7 +105,20 @@ void CACHE::handle_fill()
                 cpu = 0;
             }
 
-            fill_cache(set, way, &(*fill_mshr));
+            // update replacement policy
+            update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
+
+            assert(cache_type != IS_ITLB || fill_mshr->data != 0);
+            assert(cache_type != IS_DTLB || fill_mshr->data != 0);
+            assert(cache_type != IS_STLB || fill_mshr->data != 0);
+
+            if (block[set][way].prefetch && !block[set][way].used)
+                pf_useless++;
+
+            if (fill_mshr->type == PREFETCH)
+                pf_fill++;
+
+            block[set][way] = *fill_mshr; // Fill cache
 
             // RFO marks cache line dirty
             if (fill_mshr->type == RFO && cache_type == IS_L1D)
@@ -114,10 +127,6 @@ void CACHE::handle_fill()
 
         if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
             total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
-
-
-        // update replacement policy
-        update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
 
         // check fill level
         if (fill_mshr->fill_level < fill_level) {
@@ -336,7 +345,17 @@ void CACHE::handle_writeback()
                 sim_miss[writeback_cpu][WQ.entry[WQ.head].type]++;
                 sim_access[writeback_cpu][WQ.entry[WQ.head].type]++;
 
-                fill_cache(set, way, &WQ.entry[WQ.head]);
+                assert(cache_type != IS_ITLB || WQ.entry[WQ.head].data != 0);
+                assert(cache_type != IS_DTLB || WQ.entry[WQ.head].data != 0);
+                assert(cache_type != IS_STLB || WQ.entry[WQ.head].data != 0);
+
+                if (block[set][way].prefetch && !block[set][way].used)
+                    pf_useless++;
+
+                if (WQ.entry[WQ.head].type == PREFETCH)
+                    pf_fill++;
+
+                block[set][way] = WQ.entry[WQ.head]; // Fill cache
 
                 // mark dirty
                 block[set][way].dirty = 1; 
@@ -748,44 +767,6 @@ uint32_t CACHE::get_way(uint64_t address, uint32_t set)
     auto begin = block[set];
     auto end   = std::next(begin, NUM_WAY);
     return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address)));
-}
-
-void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
-{
-    assert(cache_type != IS_ITLB || packet->data != 0);
-    assert(cache_type != IS_DTLB || packet->data != 0);
-    assert(cache_type != IS_STLB || packet->data != 0);
-
-    if (block[set][way].prefetch && (block[set][way].used == 0))
-        pf_useless++;
-
-    block[set][way].valid = 1;
-    block[set][way].dirty = 0;
-    block[set][way].prefetch = (packet->type == PREFETCH) ? 1 : 0;
-    block[set][way].used = 0;
-
-    if (block[set][way].prefetch)
-        pf_fill++;
-
-    block[set][way].delta = packet->delta;
-    block[set][way].depth = packet->depth;
-    block[set][way].signature = packet->signature;
-    block[set][way].confidence = packet->confidence;
-
-    block[set][way].tag = packet->address;
-    block[set][way].address = packet->address;
-    block[set][way].full_addr = packet->full_addr;
-    block[set][way].v_address = packet->v_address;
-    block[set][way].full_v_addr = packet->full_v_addr;
-    block[set][way].data = packet->data;
-    block[set][way].ip = packet->ip;
-    block[set][way].cpu = packet->cpu;
-    block[set][way].instr_id = packet->instr_id;
-
-    DP ( if (warmup_complete[packet->cpu]) {
-    cout << "[" << NAME << "] " << __func__ << " set: " << set << " way: " << way;
-    cout << " lru: " << block[set][way].lru << " tag: " << hex << block[set][way].tag << " full_addr: " << block[set][way].full_addr;
-    cout << " data: " << block[set][way].data << dec << endl; });
 }
 
 int CACHE::invalidate_entry(uint64_t inval_addr)

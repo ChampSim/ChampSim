@@ -17,6 +17,55 @@ extern uint32_t tRP,  // Row Precharge (RP) latency
 
 extern uint64_t l2pf_access;
 
+// CACHE BLOCK
+class BLOCK {
+  public:
+    uint8_t valid = 0,
+            prefetch = 0,
+            dirty = 0,
+            used = 0;
+
+    int delta = 0,
+        depth = 0,
+        signature = 0,
+        confidence = 0;
+
+    uint64_t address = 0,
+             full_addr = 0,
+             v_address,
+             full_v_addr,
+             tag = 0,
+             data = 0,
+             ip,
+             cpu = 0,
+             instr_id = 0;
+
+    // replacement state
+    uint32_t lru = 0;
+
+    BLOCK() {}
+
+    BLOCK(const PACKET &packet) :
+        valid(1),
+        prefetch(packet.type == PREFETCH),
+        dirty(0),
+        used(0),
+        delta(packet.delta),
+        depth(packet.depth),
+        signature(packet.signature),
+        confidence(packet.confidence),
+        address(packet.address),
+        full_addr(packet.full_addr),
+        v_address(packet.v_address),
+        full_v_addr(packet.full_v_addr),
+        tag(packet.address),
+        data(packet.data),
+        ip(packet.ip),
+        cpu(packet.cpu),
+        instr_id(packet.instr_id)
+    {}
+};
+
 class MEMORY {
   public:
     // memory interface
@@ -36,6 +85,16 @@ class MEMORY {
     virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
     MEMORY() {}
+};
+
+// DRAM CACHE BLOCK
+class DRAM_ARRAY {
+  public:
+    BLOCK **block;
+
+    DRAM_ARRAY() {
+        block = NULL;
+    };
 };
 
 class BANK_REQUEST {
