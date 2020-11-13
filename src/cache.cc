@@ -206,32 +206,6 @@ void CACHE::handle_writeback()
 
             // mark dirty
             fill_block.dirty = 1;
-
-            if (cache_type == IS_ITLB)
-                handle_pkt.instruction_pa = fill_block.data;
-            else if (cache_type == IS_DTLB)
-                handle_pkt.data_pa = fill_block.data;
-            else if (cache_type == IS_STLB)
-                handle_pkt.data = fill_block.data;
-
-            // check fill level
-            if (handle_pkt.fill_level < fill_level)
-            {
-                if(fill_level == FILL_L2)
-                {
-                    if (handle_pkt.fill_l1i)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.fill_l1d)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-                else
-                {
-                    if (handle_pkt.instruction)
-                        upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-                    if (handle_pkt.is_data)
-                        upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-                }
-            }
         }
         else // MISS
         {
@@ -277,10 +251,6 @@ void CACHE::handle_writeback()
                     if (mshr_full) // not enough MSHR resource
                         return;
 
-                    // check to make sure the lower level RQ has room for this RFO miss
-                    if (cache_type == IS_LLC && lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address))
-                        return;
-
                     add_mshr(&handle_pkt);
                     lower_level->add_rq(&handle_pkt);
                 }
@@ -324,13 +294,9 @@ void CACHE::handle_writeback()
                 }
 
                 // update prefetcher
-                if (cache_type == IS_L1I)
-                    l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~(BLOCK_SIZE - 1), set, way, 0, fill_block.ip & ~(BLOCK_SIZE - 1));
-                if (cache_type == IS_L1D)
-                    l1d_prefetcher_cache_fill(handle_pkt.full_v_addr, handle_pkt.full_addr, set, way, 0, fill_block.address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
-                else if (cache_type == IS_L2C)
+                if (cache_type == IS_L2C)
                     handle_pkt.pf_metadata = l2c_prefetcher_cache_fill(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, set, way, 0, fill_block.address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
-                if (cache_type == IS_LLC)
+                else if (cache_type == IS_LLC)
                 {
                     cpu = handle_pkt.cpu;
                     handle_pkt.pf_metadata = llc_prefetcher_cache_fill(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, set, way, 0, fill_block.address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
@@ -344,15 +310,12 @@ void CACHE::handle_writeback()
                 sim_miss[handle_pkt.cpu][handle_pkt.type]++;
                 sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
-                assert(cache_type != IS_ITLB || handle_pkt.data != 0);
-                assert(cache_type != IS_DTLB || handle_pkt.data != 0);
-                assert(cache_type != IS_STLB || handle_pkt.data != 0);
+                assert(cache_type != IS_ITLB);
+                assert(cache_type != IS_DTLB);
+                assert(cache_type != IS_STLB);
 
                 if (fill_block.prefetch && !fill_block.used)
                     pf_useless++;
-
-                if (handle_pkt.type == PREFETCH)
-                    pf_fill++;
 
                 auto lru = fill_block.lru; // preserve LRU state
                 fill_block = handle_pkt; // Fill cache
