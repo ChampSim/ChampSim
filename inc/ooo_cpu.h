@@ -25,7 +25,6 @@ class O3_CPU {
     char gunzip_command[1024];
 
     // instruction
-    input_instr next_instr;
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id, completed_executions, 
@@ -219,10 +218,15 @@ class O3_CPU {
 
     uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
-    // branch predictor
-    uint8_t predict_branch(uint64_t ip);
-    void    initialize_branch_predictor(),
-            last_branch_result(uint64_t ip, uint8_t taken);
+  // branch predictor
+  uint64_t predict_branch(uint64_t ip, uint8_t branch_type);
+  void initialize_branch_predictor(),
+    last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+
+  // btb
+  uint64_t btb_prediction(uint64_t ip, uint8_t branch_type, uint8_t &always_taken);
+  void initialize_btb(),
+    update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
 
   // code prefetching
   void l1i_prefetcher_initialize();

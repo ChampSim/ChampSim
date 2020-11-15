@@ -90,7 +90,7 @@ const_names = {
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
+default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'prefetcher': 'no_l1d' }
@@ -117,6 +117,7 @@ os.makedirs('obj', exist_ok=True)
 
 for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
+    config_file['ooo_cpu'][i] = merge_dicts(default_core, {'btb': config_file['btb']} if 'btb' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
     config_file['ooo_cpu'][i]['L1I'] = merge_dicts(default_l1i, config_file.get('L1I', {}), config_file['ooo_cpu'][i].get('L1I',{}))
     config_file['ooo_cpu'][i]['L1D'] = merge_dicts(default_l1d, config_file.get('L1D', {}), config_file['ooo_cpu'][i].get('L1D',{}))
@@ -150,6 +151,8 @@ for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
         libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
     if cpu['branch_predictor'] is not None:
         libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
+    if cpu['btb'] is not None:
+        libfilenames['cpu' + str(i) + 'btb.a'] = 'btb/' + cpu['btb']
 if config_file['LLC']['prefetcher'] is not None:
     libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
 if config_file['LLC']['replacement'] is not None:
@@ -225,7 +228,7 @@ with open(constants_header_name, 'wt') as wfp:
                 wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
             wfp.write('\n')
         else:
-            if k != 'branch_predictor':
+            if k != 'branch_predictor' and k != 'btb':
                 wfp.write(define_fmtstr.format(name=k).format(names=const_names['core'], config=config_file['ooo_cpu'][0]))
 
     wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
@@ -266,6 +269,7 @@ with open('Makefile', 'wt') as wfp:
 
     wfp.write('-include $(wildcard prefetcher/*/*.d)\n')
     wfp.write('-include $(wildcard branch/*/*.d)\n')
+    wfp.write('-include $(wildcard btb/*/*.d)\n')
     wfp.write('-include $(wildcard replacement/*/*.d)\n')
     wfp.write('-include $(wildcard src/*.d)\n')
 

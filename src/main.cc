@@ -440,8 +440,9 @@ int main(int argc, char** argv)
         // ROB
         ooo_cpu[i].ROB.cpu = i;
 
-        // BRANCH PREDICTOR
+        // BRANCH PREDICTOR & BTB
         ooo_cpu[i].initialize_branch_predictor();
+        ooo_cpu[i].initialize_btb();
 
         // TLBs
         ooo_cpu[i].ITLB.cpu = i;

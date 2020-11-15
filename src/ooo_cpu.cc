@@ -180,10 +180,11 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     total_branch_types[arch_instr.branch_type]++;
 
-    if((arch_instr.is_branch == 1) && (arch_instr.branch_taken == 1))
-    {
-        arch_instr.branch_target = next_instr.ip;
-    }
+    if((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1))
+      {
+	// clear the branch target for this instruction
+	arch_instr.branch_target = 0;
+      }
 
     // add this instruction to the IFETCH_BUFFER
 
@@ -195,17 +196,12 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         num_branch++;
 
-        // handle branch prediction & branch predictor update
-        uint8_t branch_prediction = predict_branch(arch_instr.ip);
-        uint64_t predicted_branch_target = arch_instr.branch_target;
-        if(branch_prediction == 0)
-        {
-            predicted_branch_target = 0;
-        }
+	uint64_t predicted_branch_target = predict_branch(arch_instr.ip, arch_instr.branch_type);
+
         // call code prefetcher every time the branch predictor is used
         l1i_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
-        if(arch_instr.branch_taken != branch_prediction)
+        if(predicted_branch_target != arch_instr.branch_target)
         {
             branch_mispredictions++;
             total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
@@ -225,7 +221,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
             }
         }
 
-        last_branch_result(arch_instr.ip, arch_instr.branch_taken);
+        last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 
     arch_instr.event_cycle = current_core_cycle[cpu];
