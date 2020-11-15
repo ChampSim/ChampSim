@@ -205,6 +205,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
         {
             branch_mispredictions++;
             total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
+	    branch_type_misses[arch_instr.branch_type]++;
             if(warmup_complete[cpu])
             {
                 fetch_stall = 1;
