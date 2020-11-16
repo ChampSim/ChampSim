@@ -111,7 +111,7 @@ void print_branch_stats()
         cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
         cout << (100.0*(ooo_cpu[i].num_branch - ooo_cpu[i].branch_mispredictions)) / ooo_cpu[i].num_branch;
         cout << "% MPKI: " << (1000.0*ooo_cpu[i].branch_mispredictions)/(ooo_cpu[i].num_retired - ooo_cpu[i].warmup_instructions);
-	cout << " Average ROB Occupancy at Mispredict: " << (1.0*ooo_cpu[i].total_rob_occupancy_at_branch_mispredict)/ooo_cpu[i].branch_mispredictions << endl << endl;
+	cout << " Average ROB Occupancy at Mispredict: " << (1.0*ooo_cpu[i].total_rob_occupancy_at_branch_mispredict)/ooo_cpu[i].branch_mispredictions << endl;
 
 	/*
 	cout << "Branch types" << endl;
@@ -125,7 +125,7 @@ void print_branch_stats()
 	cout << "BRANCH_OTHER: " << ooo_cpu[i].total_branch_types[7] << " " << (100.0*ooo_cpu[i].total_branch_types[7])/(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr) << "%" << endl << endl;
 	*/
 
-	cout << "Branch type misses per kilo-instruction" << endl;
+	cout << "Branch type MPKI" << endl;
 	cout << "BRANCH_DIRECT_JUMP: " << (1000.0*ooo_cpu[i].branch_type_misses[1]/(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr)) << endl;
 	cout << "BRANCH_INDIRECT: " << (1000.0*ooo_cpu[i].branch_type_misses[2]/(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr)) << endl;
 	cout << "BRANCH_CONDITIONAL: " << (1000.0*ooo_cpu[i].branch_type_misses[3]/(ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr)) << endl;

@@ -196,7 +196,13 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         num_branch++;
 
-	uint64_t predicted_branch_target = predict_branch(arch_instr.ip, arch_instr.branch_type);
+	uint8_t always_taken;
+	uint64_t predicted_branch_target = btb_prediction(arch_instr.ip, arch_instr.branch_type, always_taken);
+	uint8_t branch_prediction = predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+	if((branch_prediction == 0) && (always_taken == 0))
+	  {
+	    predicted_branch_target = 0;
+	  }
 
         // call code prefetcher every time the branch predictor is used
         l1i_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
@@ -222,6 +228,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
             }
         }
 
+	update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
         last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 

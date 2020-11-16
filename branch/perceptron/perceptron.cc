@@ -167,11 +167,8 @@ void O3_CPU::initialize_branch_predictor()
         initialize_perceptron (&perceptrons[cpu][i]);
 }
 
-uint64_t O3_CPU::predict_branch(uint64_t ip, uint8_t branch_type)
+uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
-  uint8_t always_taken;
-  uint64_t target = btb_prediction(ip, branch_type, always_taken);
-
     uint64_t address = ip;
 
     int	
@@ -234,18 +231,11 @@ uint64_t O3_CPU::predict_branch(uint64_t ip, uint8_t branch_type)
 
     spec_global_history[cpu] <<= 1;
     spec_global_history[cpu] |= u[cpu]->prediction;
-
-    if(u[cpu]->prediction == 0)
-      {
-	return 0;
-      }
-    return target;
+    return u[cpu]->prediction;
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  update_btb(ip, branch_target, taken, branch_type);
-
     int	
         i,
         y, 

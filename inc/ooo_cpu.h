@@ -221,7 +221,7 @@ class O3_CPU {
     uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
   // branch predictor
-  uint64_t predict_branch(uint64_t ip, uint8_t branch_type);
+  uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
   void initialize_branch_predictor(),
     last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
 
