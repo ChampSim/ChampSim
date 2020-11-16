@@ -14,7 +14,7 @@ void O3_CPU::l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
 {
   //cout << "access v_addr: 0x" << hex << v_addr << dec << endl;
   
-  if((cache_hit == 0) && (L1I.MSHR.occupancy < (L1I.MSHR.SIZE>>1)))
+  if((cache_hit == 0) && (L1I.get_occupancy(0,0) < (L1I.get_size(0,0)>>1)))
     {
       uint64_t pf_addr = v_addr + (1<<LOG2_BLOCK_SIZE);
       prefetch_code_line(pf_addr);

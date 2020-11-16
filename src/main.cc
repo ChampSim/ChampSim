@@ -150,12 +150,6 @@ void print_dram_stats()
 void reset_cache_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->ACCESS[i] = 0;
-        cache->HIT[i] = 0;
-        cache->MISS[i] = 0;
-        cache->MSHR_MERGED[i] = 0;
-        cache->STALL[i] = 0;
-
         cache->sim_access[cpu][i] = 0;
         cache->sim_hit[cpu][i] = 0;
         cache->sim_miss[cpu][i] = 0;
@@ -264,13 +258,12 @@ void print_deadlock(uint32_t i)
     }
 
     // print L1D MSHR entry
-    PACKET_QUEUE *queue;
-    queue = &ooo_cpu[i].L1D.MSHR;
-    cout << endl << queue->NAME << " Entry" << endl;
-    for (uint32_t j=0; j<queue->SIZE; j++) {
-        cout << "[" << queue->NAME << "] entry: " << j << " instr_id: " << queue->entry[j].instr_id << " rob_index: " << queue->entry[j].rob_index;
-        cout << " address: " << hex << queue->entry[j].address << " full_addr: " << queue->entry[j].full_addr << dec << " type: " << +queue->entry[j].type;
-        cout << " fill_level: " << queue->entry[j].fill_level << " lq_index: " << queue->entry[j].lq_index << " sq_index: " << queue->entry[j].sq_index << endl; 
+    std::cout << std::endl << "L1D MSHR Entry" << std::endl;
+    for (uint32_t j=0; j<ooo_cpu[i].L1D.MSHR.size(); j++) {
+        PACKET &entry = ooo_cpu[i].L1D.MSHR[j];
+        std::cout << "[L1D MSHR] entry: " << j << " instr_id: " << entry.instr_id << " rob_index: " << entry.rob_index;
+        std::cout << " address: " << std::hex << entry.address << " full_addr: " << entry.full_addr << std::dec << " type: " << +entry.type;
+        std::cout << " fill_level: " << entry.fill_level << " lq_index: " << entry.lq_index << " sq_index: " << entry.sq_index << " event_cycle: " << entry.event_cycle << std::endl;
     }
 
     assert(0);
@@ -449,6 +442,11 @@ int main(int argc, char** argv)
         LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
         LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
         LLC.lower_level = &DRAM;
+
+        using namespace std::placeholders;
+        LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
+        LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &LLC, _1, _2, _3, _4, _5, _6, _7, _8);
+        LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &LLC);
 
         // OFF-CHIP DRAM
         DRAM.fill_level = FILL_DRAM;

@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <functional>
 
 #include "champsim_constants.h"
 #include "instruction.h"
@@ -49,8 +50,8 @@ class O3_CPU {
     dib_t DIB;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
-    CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
+    CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", IFETCH_BUFFER_SIZE};
+    CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_BUFFER_SIZE};
     CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
     CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
@@ -163,6 +164,29 @@ class O3_CPU {
         l1i_prefetcher_initialize();
         L1D.l1d_prefetcher_initialize();
         L2C.l2c_prefetcher_initialize();
+
+        using namespace std::placeholders;
+
+        ITLB.find_victim = std::bind(&CACHE::lru_victim, &ITLB, _1, _2, _3, _4, _5, _6, _7);
+        DTLB.find_victim = std::bind(&CACHE::lru_victim, &DTLB, _1, _2, _3, _4, _5, _6, _7);
+        STLB.find_victim = std::bind(&CACHE::lru_victim, &STLB, _1, _2, _3, _4, _5, _6, _7);
+        L1I.find_victim = std::bind(&CACHE::lru_victim, &L1I, _1, _2, _3, _4, _5, _6, _7);
+        L1D.find_victim = std::bind(&CACHE::lru_victim, &L1D, _1, _2, _3, _4, _5, _6, _7);
+        L2C.find_victim = std::bind(&CACHE::lru_victim, &L2C, _1, _2, _3, _4, _5, _6, _7);
+
+        ITLB.update_replacement_state = std::bind(&CACHE::lru_update, &ITLB, _2, _3, _7, _8);
+        DTLB.update_replacement_state = std::bind(&CACHE::lru_update, &DTLB, _2, _3, _7, _8);
+        STLB.update_replacement_state = std::bind(&CACHE::lru_update, &STLB, _2, _3, _7, _8);
+        L1I.update_replacement_state = std::bind(&CACHE::lru_update, &L1I, _2, _3, _7, _8);
+        L1D.update_replacement_state = std::bind(&CACHE::lru_update, &L1D, _2, _3, _7, _8);
+        L2C.update_replacement_state = std::bind(&CACHE::lru_update, &L2C, _2, _3, _7, _8);
+
+        ITLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &ITLB);
+        DTLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &DTLB);
+        STLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &STLB);
+        L1I.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1I);
+        L1D.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1D);
+        L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
     }
 
     // functions

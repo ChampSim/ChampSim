@@ -448,9 +448,6 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
         cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
         cout << hex << " read: " << packet->address << " writeback: " << WQ[channel].entry[wq_index].address << dec << endl; });
 
-        ACCESS[1]++;
-        HIT[1]++;
-
         WQ[channel].FORWARD++;
         RQ[channel].ACCESS++;
         //assert(0);

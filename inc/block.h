@@ -98,12 +98,10 @@ struct PACKET_QUEUE {
              tail = 0,
              occupancy = 0,
              num_returned = 0,
-             next_fill_index = 0,
              next_schedule_index = 0,
              next_process_index = 0;
 
-    uint64_t next_fill_cycle = std::numeric_limits<uint64_t>::max(),
-             next_schedule_cycle = std::numeric_limits<uint64_t>::max(),
+    uint64_t next_schedule_cycle = std::numeric_limits<uint64_t>::max(),
              next_process_cycle = std::numeric_limits<uint64_t>::max(),
              ACCESS = 0,
              FORWARD = 0,

@@ -36,9 +36,6 @@ class MEMORY {
     virtual void increment_WQ_FULL(uint64_t address) = 0;
     virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
     virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
-
-    // stats
-    uint64_t ACCESS[NUM_TYPES] = {}, HIT[NUM_TYPES] = {}, MISS[NUM_TYPES] = {}, MSHR_MERGED[NUM_TYPES] = {}, STALL[NUM_TYPES] = {};
 };
 
 struct BANK_REQUEST {
