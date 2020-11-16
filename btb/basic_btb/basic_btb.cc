@@ -8,8 +8,9 @@
 
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 1024
+#define BASIC_BTB_SETS 256
 #define BASIC_BTB_WAYS 8
+#define BASIC_BTB_INDIRECT_SIZE 1024
 #define BASIC_BTB_RAS_SIZE 32
 
 struct BASIC_BTB_ENTRY {
@@ -21,6 +22,9 @@ struct BASIC_BTB_ENTRY {
 
 BASIC_BTB_ENTRY basic_btb[NUM_CPUS][BASIC_BTB_SETS][BASIC_BTB_WAYS];
 uint64_t basic_btb_lru_counter[NUM_CPUS];
+
+uint64_t basic_btb_indirect[NUM_CPUS][BASIC_BTB_INDIRECT_SIZE];
+uint64_t basic_btb_conditional_history[NUM_CPUS];
 
 uint64_t basic_btb_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
 int basic_btb_ras_index[NUM_CPUS];
@@ -68,6 +72,11 @@ void basic_btb_update_lru(uint8_t cpu, BASIC_BTB_ENTRY *btb_entry) {
   basic_btb_lru_counter[cpu]++;
 }
 
+uint64_t basic_btb_indirect_hash(uint8_t cpu, uint64_t ip) {
+  uint64_t hash = (ip >> 2) ^ (basic_btb_conditional_history[cpu]);
+  return hash % BASIC_BTB_INDIRECT_SIZE;
+}
+
 void push_basic_btb_ras(uint8_t cpu, uint64_t ip) {
   basic_btb_ras[cpu][basic_btb_ras_index[cpu]] =
       ip + basic_btb_ras_call_return_offset[cpu];
@@ -92,6 +101,7 @@ uint64_t pop_basic_btb_ras(uint8_t cpu) {
 void O3_CPU::initialize_btb() {
   std::cout << "Basic BTB sets: " << BASIC_BTB_SETS
             << " ways: " << BASIC_BTB_WAYS
+            << " indirect buffer size: " << BASIC_BTB_INDIRECT_SIZE
             << " RAS size: " << BASIC_BTB_RAS_SIZE << std::endl;
 
   for (uint32_t i = 0; i < BASIC_BTB_SETS; i++) {
@@ -103,6 +113,11 @@ void O3_CPU::initialize_btb() {
     }
   }
   basic_btb_lru_counter[cpu] = 0;
+
+  for (uint32_t i = 0; i < BASIC_BTB_INDIRECT_SIZE; i++) {
+    basic_btb_indirect[cpu][i] = 0;
+  }
+  basic_btb_conditional_history[cpu] = 0;
 
   for (uint32_t i = 0; i < BASIC_BTB_RAS_SIZE; i++) {
     basic_btb_ras[cpu][i] = 0;
@@ -131,8 +146,11 @@ uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
     basic_btb_last_return_target[cpu] = target;
 
     return target;
+  } else if ((branch_type == BRANCH_INDIRECT) ||
+             (branch_type == BRANCH_INDIRECT_CALL)) {
+    return basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)];
   } else {
-    // use BTB for all branches + calls
+    // use BTB for all other branches + direct calls
     auto btb_entry = basic_btb_find_entry(cpu, ip);
 
     if (btb_entry == NULL) {
@@ -152,6 +170,18 @@ uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken,
                         uint8_t branch_type) {
+  // updates for indirect branches
+  if ((branch_type == BRANCH_INDIRECT) ||
+      (branch_type == BRANCH_INDIRECT_CALL)) {
+    basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;
+  }
+  if (branch_type == BRANCH_CONDITIONAL) {
+    basic_btb_conditional_history[cpu] <<= 1;
+    if (taken) {
+      basic_btb_conditional_history[cpu] |= 1;
+    }
+  }
+
   if (branch_type == BRANCH_RETURN) {
     // recalibrate call-return offset
     // if our return prediction got us into the right cache line, but not the
