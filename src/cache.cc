@@ -217,45 +217,10 @@ void CACHE::handle_writeback()
                     std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
                     std::cout << " cycle: " << handle_pkt.event_cycle << std::endl; });
 
-            if (cache_type == IS_L1D) { // RFO miss
-
-                // check mshr
-                auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-                bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-
-                if (mshr_entry != MSHR.end()) // miss already inflight
-                {
-                    // update fill_level
-                    mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-                    mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
-                    mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
-
-                    // update request
-                    if (mshr_entry->type == PREFETCH) {
-                        uint8_t  prior_returned = mshr_entry->returned;
-                        uint64_t prior_event_cycle = mshr_entry->event_cycle;
-                        *mshr_entry = handle_pkt;
-
-                        // in case request is already returned, we should keep event_cycle and retunred variables
-                        mshr_entry->returned = prior_returned;
-                        mshr_entry->event_cycle = prior_event_cycle;
-                    }
-
-                    DP ( if (warmup_complete[handle_pkt.cpu]) {
-                            std::cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                            std::cout << " instr_id: " << handle_pkt.instr_id << " prior_id: " << mshr_entry->instr_id;
-                            std::cout << " address: " << std::hex << handle_pkt.address;
-                            std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
-                            std::cout << " cycle: " << handle_pkt.event_cycle << std::endl; });
-                }
-                else
-                {
-                    if (mshr_full) // not enough MSHR resource
-                        return;
-
-                    add_mshr(&handle_pkt);
-                    lower_level->add_rq(&handle_pkt);
-                }
+            if (cache_type == IS_L1D) {
+                bool success = readlike_miss(handle_pkt);
+                if (!success)
+                    return;
             }
             else { // Writeback miss
                 // find victim
@@ -370,19 +335,11 @@ void CACHE::handle_read()
         {
             readlike_hit(set, way, handle_pkt);
         }
-        else { // read miss
-
-            DP ( if (warmup_complete[handle_pkt.cpu]) {
-                    cout << "[" << NAME << "] " << __func__ << " read miss";
-                    cout << " instr_id: " << handle_pkt.instr_id << " address: " << hex << handle_pkt.address;
-                    cout << " full_addr: " << handle_pkt.full_addr << dec;
-                    cout << " cycle: " << handle_pkt.event_cycle << endl; });
-
+        else {
             // check mshr
             auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-            bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
 
-            if (mshr_entry != MSHR.end())
+            if (mshr_entry != std::end(MSHR))
             {
                 // mark merged consumer
                 if (handle_pkt.type == RFO) {
@@ -415,72 +372,11 @@ void CACHE::handle_read()
                         mshr_entry->sq_index_depend_on_me.join (handle_pkt.sq_index_depend_on_me, SQ_SIZE);
                     }
                 }
-
-                // update fill_level
-                mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-                mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
-                mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
-
-                // update request
-                if (mshr_entry->type == PREFETCH) {
-                    // in case request is already returned, we should keep event_cycle and retunred variables
-                    handle_pkt.returned = mshr_entry->returned;
-                    handle_pkt.event_cycle = mshr_entry->event_cycle;
-
-                    *mshr_entry = handle_pkt;
-                }
-
-                DP ( if (warmup_complete[handle_pkt.cpu]) {
-                        cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                        cout << " instr_id: " << handle_pkt.instr_id << " prior_id: " << mshr_entry->instr_id; 
-                        cout << " address: " << hex << handle_pkt.address;
-                        cout << " full_addr: " << handle_pkt.full_addr << dec;
-                        cout << " cycle: " << handle_pkt.event_cycle << endl; });
-            }
-            else
-            {
-                if (mshr_full) // not enough MSHR resources
-                    return;
-
-                // add it to the next level's read queue
-                if (lower_level)
-                {
-                    // check to make sure the lower level RQ has room for this read miss
-                    if (cache_type == IS_LLC && lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address))
-                        return;
-
-                    add_mshr(&handle_pkt);
-                    lower_level->add_rq(&handle_pkt);
-                }
-                else // This is the STLB
-                {
-                    // TODO: need to differentiate page table walk and actual swap
-                    add_mshr(&handle_pkt);
-
-                    // emulate page table walk
-                    uint64_t pa = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr);
-
-                    handle_pkt.data = pa >> LOG2_PAGE_SIZE; 
-                    handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
-                    return_data(&handle_pkt);
-                }
             }
 
-            // update prefetcher on load instruction
-            if (handle_pkt.type == LOAD) {
-                if(cache_type == IS_L1I)
-                    l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 0, 0);
-                if (cache_type == IS_L1D) 
-                    l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type);
-                if (cache_type == IS_L2C)
-                    l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
-                if (cache_type == IS_LLC)
-                {
-                    cpu = handle_pkt.cpu;
-                    llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
-                    cpu = 0;
-                }
-            }
+            bool success = readlike_miss(handle_pkt);
+            if (!success)
+                return;
         }
 
         // remove this entry from RQ
@@ -506,78 +402,10 @@ void CACHE::handle_prefetch()
         {
             readlike_hit(set, way, handle_pkt);
         }
-        else { // prefetch miss
-
-            DP ( if (warmup_complete[handle_pkt.cpu]) {
-                    std::cout << "[" << NAME << "] " << __func__ << " prefetch miss";
-                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
-                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec << " fill_level: " << handle_pkt.fill_level;
-                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl; });
-
-            // check mshr
-            auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-            bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-
-            if (mshr_entry != MSHR.end())
-            {
-                // no need to update request except fill_level
-                mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-                mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
-                mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
-
-                DP ( if (warmup_complete[handle_pkt.cpu]) {
-                        std::cout << "[" << NAME << "] " << __func__ << " mshr merged";
-                        std::cout << " instr_id: " << handle_pkt.instr_id << " prior_id: " << mshr_entry->instr_id; 
-                        std::cout << " address: " << std::hex << handle_pkt.address;
-                        std::cout << " full_addr: " << handle_pkt.full_addr << std::dec << " fill_level: " << mshr_entry->fill_level;
-                        std::cout << " cycle: " << mshr_entry->event_cycle << std::endl; });
-            }
-            else
-            {
-                if (mshr_full) // Not enough MSHR resource
-                    return; // TODO should we allow prefetches anyway if they will not be filled to this level?
-
-                assert(lower_level != NULL);
-
-                // Check lower level queue occupancy
-                // LLC prefetches are reads to DRAM
-                if (cache_type == IS_LLC && (lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address)))
-                    return;
-
-                // Non-LLC prefetches are prefetch requests to lower level
-                if (cache_type != IS_LLC && (lower_level->get_occupancy(3, handle_pkt.address) == lower_level->get_size(3, handle_pkt.address)))
-                    return;
-
-                // run prefetcher on prefetches from higher caches
-                if(handle_pkt.pf_origin_level < fill_level)
-                {
-                    if (cache_type == IS_L1D)
-                        l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 0, PREFETCH);
-                    if (cache_type == IS_L2C)
-                        handle_pkt.pf_metadata = l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, PREFETCH, handle_pkt.pf_metadata);
-                    if (cache_type == IS_LLC)
-                    {
-                        cpu = handle_pkt.cpu;
-                        handle_pkt.pf_metadata = llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, PREFETCH, handle_pkt.pf_metadata);
-                        cpu = 0;
-                    }
-                }
-
-                // add it to MSHRs if this prefetch miss will be filled to this cache level
-                if (handle_pkt.fill_level <= fill_level)
-                    add_mshr(&handle_pkt);
-
-                if (cache_type == IS_LLC)
-                    lower_level->add_rq(&handle_pkt); // add it to the DRAM RQ
-                else
-                    lower_level->add_pq(&handle_pkt); // add it to the lower level PQ
-            }
-
-            DP ( if (warmup_complete[handle_pkt.cpu]) {
-                    std::cout << "[" << NAME << "] " << __func__ << " prefetch miss handled";
-                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
-                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec << " fill_level: " << handle_pkt.fill_level;
-                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl; });
+        else {
+            bool success = readlike_miss(handle_pkt);
+            if (!success)
+                return;
         }
 
         // remove this entry from PQ
@@ -660,6 +488,92 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
         hit_block.prefetch = 0;
     }
     hit_block.used = 1;
+}
+
+bool CACHE::readlike_miss(PACKET handle_pkt)
+{
+    // check mshr
+    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
+    bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+
+    if (mshr_entry != MSHR.end()) // miss already inflight
+    {
+        // update fill location
+        mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
+        mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
+        mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
+
+        if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
+        {
+            uint8_t  prior_returned = mshr_entry->returned;
+            uint64_t prior_event_cycle = mshr_entry->event_cycle;
+            *mshr_entry = handle_pkt;
+
+            // in case request is already returned, we should keep event_cycle and retunred variables
+            mshr_entry->returned = prior_returned;
+            mshr_entry->event_cycle = prior_event_cycle;
+        }
+    }
+    else
+    {
+        if (mshr_full) // not enough MSHR resource
+            return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
+
+        // check to make sure the lower level RQ has room for this read miss
+        if (cache_type == IS_LLC && lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address))
+            return false;
+
+        // Non-LLC prefetches are prefetch requests to lower level
+        if (cache_type != IS_LLC && handle_pkt.type == PREFETCH && lower_level->get_occupancy(3, handle_pkt.address) == lower_level->get_size(3, handle_pkt.address))
+            return false;
+
+        // Allocate an MSHR
+        if (handle_pkt.fill_level <= fill_level)
+        {
+            auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+            assert(it != std::end(MSHR));
+            *it = handle_pkt;
+            it->returned = INFLIGHT;
+            it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
+        }
+
+        // Send to the lower level
+        if (cache_type != IS_STLB)
+        {
+            if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
+                lower_level->add_pq(&handle_pkt);
+            else
+                lower_level->add_rq(&handle_pkt);
+        }
+        else
+        {
+            // TODO: need to differentiate page table walk and actual swap
+            uint64_t pa = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr);
+
+            handle_pkt.data = pa >> LOG2_PAGE_SIZE;
+            handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
+            return_data(&handle_pkt);
+        }
+    }
+
+    // update prefetcher on load instructions and prefetches from upper levels
+    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    {
+        if(cache_type == IS_L1I)
+            l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 0, 0);
+        if (cache_type == IS_L1D)
+            l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type);
+        if (cache_type == IS_L2C)
+            l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
+        if (cache_type == IS_LLC)
+        {
+            cpu = handle_pkt.cpu;
+            llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
+            cpu = 0;
+        }
+    }
+
+    return true;
 }
 
 void CACHE::operate()
@@ -1198,17 +1112,6 @@ void CACHE::return_data(PACKET *packet)
             std::cout << " data: " << mshr_entry->data << std::dec;
             std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
             std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
-}
-
-void CACHE::add_mshr(PACKET *packet)
-{
-    auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-    if (it != MSHR.end())
-    {
-        *it = *packet;
-        it->returned = INFLIGHT;
-        it->cycle_enqueued = current_core_cycle[packet->cpu];
-    }
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
