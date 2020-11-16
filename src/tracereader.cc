@@ -93,7 +93,7 @@ void tracereader::close()
 class cloudsuite_tracereader : public tracereader
 {
     ooo_model_instr last_instr;
-    bool initialized;
+    bool initialized = false;
 
     public:
     cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
@@ -119,7 +119,7 @@ class cloudsuite_tracereader : public tracereader
 class input_tracereader : public tracereader
 {
     ooo_model_instr last_instr;
-    bool initialized;
+    bool initialized = false;
 
     public:
     input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}

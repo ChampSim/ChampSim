@@ -28,7 +28,7 @@ config_cache_name = '.champsimconfig_cache'
 
 llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[latency]});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][window_size]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
@@ -50,6 +50,8 @@ const_names = {
     'cpu_clock_freq': 'CPU_FREQ',
     'num_cores': 'NUM_CPUS',
     'core': {
+        'ifetch_buffer_size': 'IFETCH_BUFFER_SIZE',
+        'decode_buffer_size': 'DECODE_BUFFER_SIZE',
         'rob_size': 'ROB_SIZE',
         'lq_size': 'LQ_SIZE',
         'sq_size': 'SQ_SIZE',
@@ -65,6 +67,7 @@ const_names = {
         'schedule_latency' : 'SCHEDULING_LATENCY',
         'execute_latency' : 'EXEC_LATENCY',
         'DIB' : {
+            'window_size' : 'DIB_WINDOW_SIZE',
             'sets' : 'DIB_SET',
             'ways' : 'DIB_WAY'
         }
@@ -87,8 +90,8 @@ const_names = {
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-default_core = { 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
-default_dib  = { 'sets': 8, 'ways': 8 }
+default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
+default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'prefetcher': 'no_l1d' }
 default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'prefetcher': 'no_l2c' }
@@ -214,6 +217,8 @@ with open(constants_header_name, 'wt') as wfp:
     for k,v in config_file['ooo_cpu'][0].items():
         if isinstance(v,dict):
             if k == 'DIB':
+                wfp.write(define_fmtstr.format(name='window_size').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
+                wfp.write(define_log_fmtstr.format(name='window_size').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='sets').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='ways').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
             else:

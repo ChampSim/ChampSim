@@ -58,7 +58,9 @@ void CACHE::handle_fill()
 #endif
 
         BLOCK &fill_block = block[set*NUM_WAY + way];
-        bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
+        bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
+        auto evicting_l1i_v_addr = bypass ? 0 : fill_block.ip;
+        auto evicting_address = bypass ? 0 : fill_block.address;
 
         // In the case where we would evict a dirty block, give up and stall if the lower-level WQ is full.
         if (!bypass && evicting_dirty && (lower_level->get_occupancy(2, fill_block.address) == lower_level->get_size(2, fill_block.address)))
@@ -92,23 +94,6 @@ void CACHE::handle_fill()
                 lower_level->add_wq(&writeback_packet);
             }
 
-            // update prefetcher
-            if (cache_type == IS_L1I)
-                l1i_prefetcher_cache_fill(fill_cpu, fill_mshr->ip & ~(BLOCK_SIZE-1), set, way, fill_mshr->type == PREFETCH, fill_block.ip & ~(BLOCK_SIZE-1));
-            if (cache_type == IS_L1D)
-                l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, fill_block.address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-            if (cache_type == IS_L2C)
-                fill_mshr->pf_metadata = l2c_prefetcher_cache_fill(fill_mshr->v_address << LOG2_BLOCK_SIZE, fill_mshr->address << LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, fill_block.address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-            if (cache_type == IS_LLC)
-            {
-                cpu = fill_cpu;
-                fill_mshr->pf_metadata = llc_prefetcher_cache_fill(fill_mshr->v_address << LOG2_BLOCK_SIZE, fill_mshr->address << LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, fill_block.address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
-                cpu = 0;
-            }
-
-            // update replacement policy
-            update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
-
             assert(cache_type != IS_ITLB || fill_mshr->data != 0);
             assert(cache_type != IS_DTLB || fill_mshr->data != 0);
             assert(cache_type != IS_STLB || fill_mshr->data != 0);
@@ -130,6 +115,23 @@ void CACHE::handle_fill()
 
         if(warmup_complete[fill_cpu] && (fill_mshr->cycle_enqueued != 0))
             total_miss_latency += current_core_cycle[fill_cpu] - fill_mshr->cycle_enqueued;
+
+        // update prefetcher
+        if (cache_type == IS_L1I)
+            l1i_prefetcher_cache_fill(fill_cpu, fill_mshr->ip & ~(BLOCK_SIZE-1), set, way, fill_mshr->type == PREFETCH, evicting_l1i_v_addr & ~(BLOCK_SIZE-1));
+        if (cache_type == IS_L1D)
+            l1d_prefetcher_cache_fill(fill_mshr->full_v_addr, fill_mshr->full_addr, set, way, fill_mshr->type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+        if  (cache_type == IS_L2C)
+            fill_mshr->pf_metadata = l2c_prefetcher_cache_fill(fill_mshr->v_address << LOG2_BLOCK_SIZE, fill_mshr->address << LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+        if (cache_type == IS_LLC)
+        {
+            cpu = fill_cpu;
+            fill_mshr->pf_metadata = llc_prefetcher_cache_fill(fill_mshr->v_address << LOG2_BLOCK_SIZE, fill_mshr->address << LOG2_BLOCK_SIZE, set, way, fill_mshr->type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, fill_mshr->pf_metadata);
+            cpu = 0;
+        }
+
+        // update replacement policy
+        update_replacement_state(fill_cpu, set, way, fill_mshr->full_addr, fill_mshr->ip, 0, fill_mshr->type, 0);
 
         // check fill level
         if (fill_mshr->fill_level < fill_level) {
