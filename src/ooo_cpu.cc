@@ -388,8 +388,9 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.asid[0] = 0;
 	  trace_packet.asid[1] = 0;
 	  trace_packet.event_cycle = current_core_cycle[cpu];
+      trace_packet.to_return = {&ITLB_bus};
 	  
-	  int rq_index = ITLB.add_rq(&trace_packet);
+	  int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
 
 	  if(rq_index != -2)
 	    {
@@ -440,6 +441,7 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
+      fetch_packet.to_return = {&L1I_bus};
 
 	  /*
 	  // invoke code prefetcher -- THIS HAS BEEN MOVED TO cache.cc !!!
@@ -452,7 +454,7 @@ void O3_CPU::fetch_instruction()
 	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1), prefetch_hit);
 	  */
 	  
-	  int rq_index = L1I.add_rq(&fetch_packet);
+	  int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
 	  if(rq_index != -2)
 	    {
@@ -629,8 +631,9 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
       pf_packet.ip = pf_v_addr;
       pf_packet.type = PREFETCH;
       pf_packet.event_cycle = current_core_cycle[cpu];
+      pf_packet.to_return = {};
 
-      L1I.add_pq(&pf_packet);    
+      L1I_bus.lower_level->add_pq(&pf_packet);
       L1I.pf_issued++;
     
       return 1;
@@ -1250,7 +1253,7 @@ void O3_CPU::operate_lsq()
 
                 data_packet.tlb_access = 1;
                 data_packet.fill_level = FILL_L1;
-                data_packet.fill_l1d = 1;
+                //data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = SQ.entry[sq_index].data_index;
                 data_packet.sq_index = sq_index;
@@ -1266,12 +1269,13 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                 data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                 data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
+                data_packet.to_return = {&DTLB_bus};
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
                 cout << " head: " << RTS0_head << " tail: " << RTS0_tail << endl; }); 
 
-                int rq_index = DTLB.add_rq(&data_packet);
+                int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
 
                 if (rq_index == -2)
                     break; 
@@ -1333,7 +1337,7 @@ void O3_CPU::operate_lsq()
                 // add it to DTLB
                 PACKET data_packet;
                 data_packet.fill_level = FILL_L1;
-                data_packet.fill_l1d = 1;
+                //data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = LQ.entry[lq_index].data_index;
                 data_packet.lq_index = lq_index;
@@ -1349,12 +1353,13 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[0] = LQ.entry[lq_index].asid[0];
                 data_packet.asid[1] = LQ.entry[lq_index].asid[1];
                 data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+                data_packet.to_return = {&DTLB_bus};
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
                 cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
 
-                int rq_index = DTLB.add_rq(&data_packet);
+                int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
 
                 if (rq_index == -2)
                     break; // break here
@@ -1488,7 +1493,7 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     // add it to L1D
     PACKET data_packet;
     data_packet.fill_level = FILL_L1;
-    data_packet.fill_l1d = 1;
+    //data_packet.fill_l1d = 1;
     data_packet.cpu = cpu;
     data_packet.data_index = LQ.entry[lq_index].data_index;
     data_packet.lq_index = lq_index;
@@ -1503,8 +1508,9 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.asid[0] = LQ.entry[lq_index].asid[0];
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
     data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+    data_packet.to_return = {&L1D_bus};
 
-    int rq_index = L1D.add_rq(&data_packet);
+    int rq_index = L1D_bus.lower_level->add_rq(&data_packet);
 
     if (rq_index == -2)
         return rq_index;
@@ -1625,9 +1631,9 @@ void O3_CPU::operate_cache()
 
 void O3_CPU::update_rob()
 {
-    if (ITLB.PROCESSED.occupancy && (ITLB.PROCESSED.entry[ITLB.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+    if (ITLB_bus.PROCESSED.occupancy && (ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     {
-        PACKET itlb_entry = ITLB.PROCESSED.entry[ITLB.PROCESSED.head];
+        PACKET itlb_entry = ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head];
 
 	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
 
@@ -1669,12 +1675,12 @@ void O3_CPU::update_rob()
         }
 
         // remove this entry
-        ITLB.PROCESSED.remove_queue(&ITLB.PROCESSED.entry[ITLB.PROCESSED.head]);
+        ITLB_bus.PROCESSED.remove_queue(&ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head]);
     }
 
-    if (L1I.PROCESSED.occupancy && (L1I.PROCESSED.entry[L1I.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+    if (L1I_bus.PROCESSED.occupancy && (L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     {
-        PACKET &l1i_entry = L1I.PROCESSED.entry[L1I.PROCESSED.head];
+        PACKET &l1i_entry = L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head];
 
 	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
 
@@ -1717,12 +1723,12 @@ void O3_CPU::update_rob()
         }
 
         // remove this entry
-        L1I.PROCESSED.remove_queue(&L1I.PROCESSED.entry[L1I.PROCESSED.head]);
+        L1I_bus.PROCESSED.remove_queue(&L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head]);
     }
 
-    if (DTLB.PROCESSED.occupancy && (DTLB.PROCESSED.entry[DTLB.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+    if (DTLB_bus.PROCESSED.occupancy && (DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     { // DTLB
-        PACKET &dtlb_entry = DTLB.PROCESSED.entry[DTLB.PROCESSED.head];
+        PACKET &dtlb_entry = DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head];
         if (dtlb_entry.type == RFO)
         {
             SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
@@ -1746,17 +1752,17 @@ void O3_CPU::update_rob()
                 RTL1_tail = 0;
         }
 
-        handle_merged_translation(&DTLB.PROCESSED.entry[DTLB.PROCESSED.head]);
+        handle_merged_translation(&DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head]);
 
         ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
 
         // remove this entry
-        DTLB.PROCESSED.remove_queue(&DTLB.PROCESSED.entry[DTLB.PROCESSED.head]);
+        DTLB_bus.PROCESSED.remove_queue(&DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head]);
     }
 
-    if (L1D.PROCESSED.occupancy && (L1D.PROCESSED.entry[L1D.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+    if (L1D_bus.PROCESSED.occupancy && (L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
     { // L1D
-        PACKET &l1d_entry = L1D.PROCESSED.entry[L1D.PROCESSED.head];
+        PACKET &l1d_entry = L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head];
         if (l1d_entry.type != RFO)
         {
             LQ.entry[l1d_entry.lq_index].fetched = COMPLETED;
@@ -1770,10 +1776,10 @@ void O3_CPU::update_rob()
             release_load_queue(l1d_entry.lq_index);
         }
 
-        handle_merged_load(&L1D.PROCESSED.entry[L1D.PROCESSED.head]);
+        handle_merged_load(&L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head]);
 
         // remove this entry
-        L1D.PROCESSED.remove_queue(&L1D.PROCESSED.entry[L1D.PROCESSED.head]);
+        L1D_bus.PROCESSED.remove_queue(&L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head]);
     }
 
     // update ROB entries with completed executions
@@ -1926,7 +1932,7 @@ void O3_CPU::retire_rob()
                         // sq_index and rob_index are no longer available after retirement
                         // but we pass this information to avoid segmentation fault
                         data_packet.fill_level = FILL_L1;
-                        data_packet.fill_l1d = 1;
+                        //data_packet.fill_l1d = 1;
                         data_packet.cpu = cpu;
                         data_packet.data_index = SQ.entry[sq_index].data_index;
                         data_packet.sq_index = sq_index;
@@ -1941,8 +1947,9 @@ void O3_CPU::retire_rob()
                         data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                         data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                         data_packet.event_cycle = current_core_cycle[cpu];
+                        data_packet.to_return = {};
 
-                        L1D.add_wq(&data_packet);
+                        L1D_bus.lower_level->add_wq(&data_packet);
                     }
                 }
             }
@@ -1991,3 +1998,13 @@ void O3_CPU::retire_rob()
         num_retired++;
     }
 }
+
+void CacheBus::return_data(PACKET *packet)
+{
+    if (packet->type != PREFETCH)
+    {
+        //std::cout << "add to processed" << std::endl;
+        PROCESSED.add_queue(packet);
+    }
+}
+

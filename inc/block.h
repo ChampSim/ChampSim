@@ -5,10 +5,14 @@
 #include "instruction.h"
 #include "set.h"
 
+#include <set>
+
+class MemoryRequestProducer;
+
 // message packet
 class PACKET {
   public:
-    uint8_t instruction, 
+    uint8_t instruction,
             is_data,
             fill_l1i,
             fill_l1d,
@@ -55,6 +59,8 @@ class PACKET {
              ip, 
              event_cycle,
              cycle_enqueued;
+
+    std::set<MemoryRequestProducer*> to_return;
 
     PACKET() {
         instruction = 0;

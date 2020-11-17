@@ -14,6 +14,14 @@ using namespace std;
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
+class CacheBus : public MemoryRequestProducer
+{
+    public:
+        PACKET_QUEUE PROCESSED{"", ROB_SIZE};
+        explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
+        void return_data(PACKET *packet);
+};
+
 // cpu
 class O3_CPU {
   public:
@@ -85,7 +93,7 @@ class O3_CPU {
           L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
-  // trace cache for previously decoded instructions
+    CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
     // constructor
     O3_CPU() {
