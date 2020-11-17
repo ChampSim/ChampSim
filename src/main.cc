@@ -449,7 +449,6 @@ int main(int argc, char** argv)
 	ooo_cpu[i].ITLB.MAX_READ = 2;
 	ooo_cpu[i].ITLB.MAX_WRITE = 2;
         ooo_cpu[i].ITLB.fill_level = FILL_L1;
-        ooo_cpu[i].ITLB.extra_interface = &ooo_cpu[i].L1I;
         ooo_cpu[i].ITLB.lower_level = &ooo_cpu[i].STLB; 
 
         ooo_cpu[i].DTLB.cpu = i;
@@ -457,7 +456,6 @@ int main(int argc, char** argv)
         ooo_cpu[i].DTLB.MAX_READ = 2;
         ooo_cpu[i].DTLB.MAX_WRITE = 2;
         ooo_cpu[i].DTLB.fill_level = FILL_L1;
-        ooo_cpu[i].DTLB.extra_interface = &ooo_cpu[i].L1D;
         ooo_cpu[i].DTLB.lower_level = &ooo_cpu[i].STLB;
 
         ooo_cpu[i].STLB.cpu = i;
@@ -465,8 +463,6 @@ int main(int argc, char** argv)
         ooo_cpu[i].STLB.MAX_READ = 1;
         ooo_cpu[i].STLB.MAX_WRITE = 1;
         ooo_cpu[i].STLB.fill_level = FILL_L2;
-        ooo_cpu[i].STLB.upper_level_icache[i] = &ooo_cpu[i].ITLB;
-        ooo_cpu[i].STLB.upper_level_dcache[i] = &ooo_cpu[i].DTLB;
 
         // PRIVATE CACHE
         ooo_cpu[i].L1I.cpu = i;
@@ -492,8 +488,6 @@ int main(int argc, char** argv)
         ooo_cpu[i].L2C.MAX_READ = 1;
         ooo_cpu[i].L2C.MAX_WRITE = 1;
         ooo_cpu[i].L2C.fill_level = FILL_L2;
-        ooo_cpu[i].L2C.upper_level_icache[i] = &ooo_cpu[i].L1I;
-        ooo_cpu[i].L2C.upper_level_dcache[i] = &ooo_cpu[i].L1D;
         ooo_cpu[i].L2C.lower_level = &LLC;
         ooo_cpu[i].L2C.l2c_prefetcher_initialize();
 
@@ -502,8 +496,6 @@ int main(int argc, char** argv)
         LLC.fill_level = FILL_LLC;
         LLC.MAX_READ = NUM_CPUS;
         LLC.MAX_WRITE = NUM_CPUS;
-        LLC.upper_level_icache[i] = &ooo_cpu[i].L2C;
-        LLC.upper_level_dcache[i] = &ooo_cpu[i].L2C;
         LLC.lower_level = &DRAM;
 
         using namespace std::placeholders;
@@ -513,8 +505,6 @@ int main(int argc, char** argv)
 
         // OFF-CHIP DRAM
         DRAM.fill_level = FILL_DRAM;
-        DRAM.upper_level_icache[i] = &LLC;
-        DRAM.upper_level_dcache[i] = &LLC;
         for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
             DRAM.RQ[i].is_RQ = 1;
             DRAM.WQ[i].is_WQ = 1;

@@ -68,25 +68,25 @@ class BLOCK {
     {}
 };
 
-class MEMORY {
-  public:
-    // memory interface
-    MEMORY *upper_level_icache[NUM_CPUS], *upper_level_dcache[NUM_CPUS], *lower_level, *extra_interface;
+class MemoryRequestConsumer
+{
+    public:
+        virtual int  add_rq(PACKET *packet) = 0;
+        virtual int  add_wq(PACKET *packet) = 0;
+        virtual int  add_pq(PACKET *packet) = 0;
+        virtual void increment_WQ_FULL(uint64_t address) = 0;
+        virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
+        virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+};
 
-    // empty queues
-    PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
-
-    // functions
-    virtual int  add_rq(PACKET *packet) = 0;
-    virtual int  add_wq(PACKET *packet) = 0;
-    virtual int  add_pq(PACKET *packet) = 0;
-    virtual void return_data(PACKET *packet) = 0;
-    virtual void operate() = 0;
-    virtual void increment_WQ_FULL(uint64_t address) = 0;
-    virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-    virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
-
-    MEMORY() {}
+class MemoryRequestProducer
+{
+    public:
+        MemoryRequestConsumer *lower_level;
+        virtual void return_data(PACKET *packet) = 0;
+    protected:
+        MemoryRequestProducer() {}
+        explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
 };
 
 // DRAM CACHE BLOCK

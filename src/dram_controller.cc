@@ -335,7 +335,8 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
                 cout << " current_cycle: " << current_core_cycle[op_cpu] << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
 
                 // send data back to the core cache hierarchy
-                upper_level_dcache[op_cpu]->return_data(&queue->entry[request_index]);
+                for (auto ret : queue->entry[request_index].to_return)
+                    ret->return_data(&queue->entry[request_index]);
 
                 if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
                     queue->ROW_BUFFER_HIT++;
@@ -376,7 +377,8 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
                 */
 
                 // send data back to the core cache hierarchy
-                upper_level_dcache[op_cpu]->return_data(&queue->entry[request_index]);
+                for (auto ret : queue->entry[request_index].to_return)
+                    ret->return_data(&queue->entry[request_index]);
 
                 if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
                     queue->ROW_BUFFER_HIT++;
@@ -421,10 +423,8 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
     // simply return read requests with dummy response before the warmup
     if (all_warmup_complete < NUM_CPUS) {
-        if (packet->instruction) 
-            upper_level_icache[packet->cpu]->return_data(packet);
-        if (packet->is_data)
-            upper_level_dcache[packet->cpu]->return_data(packet);
+        for (auto ret : packet->to_return)
+            ret->return_data(packet);
 
         return -1;
     }
@@ -434,15 +434,9 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     int wq_index = check_dram_queue(&WQ[channel], packet);
     if (wq_index != -1) {
         
-        // no need to check fill level
-        //if (packet->fill_level < fill_level) {
-
-            packet->data = WQ[channel].entry[wq_index].data;
-            if (packet->instruction) 
-                upper_level_icache[packet->cpu]->return_data(packet);
-            if (packet->is_data) 
-                upper_level_dcache[packet->cpu]->return_data(packet);
-        //}
+        packet->data = WQ[channel].entry[wq_index].data;
+        for (auto ret : packet->to_return)
+            ret->return_data(packet);
 
         DP ( if (packet->cpu) {
         cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
@@ -535,11 +529,6 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 int MEMORY_CONTROLLER::add_pq(PACKET *packet)
 {
     return -1;
-}
-
-void MEMORY_CONTROLLER::return_data(PACKET *packet)
-{
-
 }
 
 void MEMORY_CONTROLLER::update_schedule_cycle(PACKET_QUEUE *queue)

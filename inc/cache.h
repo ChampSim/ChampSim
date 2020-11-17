@@ -22,7 +22,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-class CACHE : public MEMORY {
+class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
@@ -45,8 +45,7 @@ class CACHE : public MEMORY {
     PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
                  RQ{NAME + "_RQ", RQ_SIZE}, // read queue
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 VAPQ{NAME + "_VAPQ", PQ_SIZE}, // virtual address prefetch queue
-                 PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+                 VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
 
     std::vector<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
@@ -66,9 +65,6 @@ class CACHE : public MEMORY {
         LATENCY = 0;
 
         for (uint32_t i=0; i<NUM_CPUS; i++) {
-            upper_level_icache[i] = NULL;
-            upper_level_dcache[i] = NULL;
-
             for (uint32_t j=0; j<NUM_TYPES; j++) {
                 sim_access[i][j] = 0;
                 sim_hit[i][j] = 0;
@@ -82,7 +78,6 @@ class CACHE : public MEMORY {
 	total_miss_latency = 0;
 
         lower_level = NULL;
-        extra_interface = NULL;
         fill_level = -1;
         MAX_READ = 8;
         MAX_WRITE = 8;

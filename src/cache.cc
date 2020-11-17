@@ -56,43 +56,14 @@ void CACHE::handle_fill()
 
         if (way != NUM_WAY)
         {
-            // check fill level
-            if (fill_mshr->fill_level < fill_level) {
-                if(fill_level == FILL_L2)
-                {
-                    if (fill_mshr->fill_l1i)
-                        upper_level_icache[fill_mshr->cpu]->return_data(&(*fill_mshr));
-                    if (fill_mshr->fill_l1d)
-                        upper_level_dcache[fill_mshr->cpu]->return_data(&(*fill_mshr));
-                }
-                else
-                {
-                    if (fill_mshr->instruction)
-                        upper_level_icache[fill_mshr->cpu]->return_data(&(*fill_mshr));
-                    if (fill_mshr->is_data)
-                        upper_level_dcache[fill_mshr->cpu]->return_data(&(*fill_mshr));
-                }
-            }
-
             // update processed packets
-            if (cache_type == IS_ITLB) {
+            if (cache_type == IS_ITLB)
                 fill_mshr->instruction_pa = block[set*NUM_WAY + way].data;
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&(*fill_mshr));
-            }
-            else if (cache_type == IS_DTLB) {
+            else if (cache_type == IS_DTLB)
                 fill_mshr->data_pa = block[set*NUM_WAY + way].data;
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&(*fill_mshr));
-            }
-            else if (cache_type == IS_L1I) {
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&(*fill_mshr));
-            }
-            else if ((cache_type == IS_L1D) && (fill_mshr->type != PREFETCH)) {
-                if (PROCESSED.occupancy < PROCESSED.SIZE)
-                    PROCESSED.add_queue(&(*fill_mshr));
-            }
+
+            for (auto ret : fill_mshr->to_return)
+                ret->return_data(&(*fill_mshr));
         }
 
         PACKET empty;
@@ -259,26 +230,12 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
 {
     BLOCK &hit_block = block[set*NUM_WAY + way];
 
-    if (cache_type == IS_ITLB) {
+    if (cache_type == IS_ITLB)
         handle_pkt.instruction_pa = hit_block.data;
-        if (PROCESSED.occupancy < PROCESSED.SIZE)
-            PROCESSED.add_queue(&handle_pkt);
-    }
-    else if (cache_type == IS_DTLB) {
+    else if (cache_type == IS_DTLB)
         handle_pkt.data_pa = hit_block.data;
-        if (PROCESSED.occupancy < PROCESSED.SIZE)
-            PROCESSED.add_queue(&handle_pkt);
-    }
     else if (cache_type == IS_STLB)
         handle_pkt.data = hit_block.data;
-    else if (cache_type == IS_L1I) {
-        if (PROCESSED.occupancy < PROCESSED.SIZE)
-            PROCESSED.add_queue(&handle_pkt);
-    }
-    else if ((cache_type == IS_L1D) && (handle_pkt.type != PREFETCH)) {
-        if (PROCESSED.occupancy < PROCESSED.SIZE)
-            PROCESSED.add_queue(&handle_pkt);
-    }
 
     // update prefetcher on load instruction
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
@@ -304,24 +261,8 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     sim_hit[handle_pkt.cpu][handle_pkt.type]++;
     sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
-    // check fill level
-    if (handle_pkt.fill_level < fill_level)
-    {
-        if(fill_level == FILL_L2)
-        {
-            if (handle_pkt.fill_l1i)
-                upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-            if (handle_pkt.fill_l1d)
-                upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-        }
-        else
-        {
-            if (handle_pkt.instruction)
-                upper_level_icache[handle_pkt.cpu]->return_data(&handle_pkt);
-            if (handle_pkt.is_data)
-                upper_level_dcache[handle_pkt.cpu]->return_data(&handle_pkt);
-        }
-    }
+    for (auto ret : handle_pkt.to_return)
+        ret->return_data(&handle_pkt);
 
     // update prefetch stats and reset prefetch bit
     if (hit_block.prefetch) {
@@ -343,6 +284,7 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
         mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
         mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
+        mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
@@ -381,10 +323,16 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
         // Send to the lower level
         if (cache_type != IS_STLB)
         {
-            if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
-                lower_level->add_pq(&handle_pkt);
+            PACKET fwd_pkt = handle_pkt;
+            if (handle_pkt.fill_level <= fill_level)
+                fwd_pkt.to_return = {this};
             else
-                lower_level->add_rq(&handle_pkt);
+                fwd_pkt.to_return = {};
+
+            if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
+                lower_level->add_pq(&fwd_pkt);
+            else
+                lower_level->add_rq(&fwd_pkt);
         }
         else
         {
@@ -457,6 +405,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET handle_pkt)
             writeback_packet.ip = 0;
             writeback_packet.type = WRITEBACK;
             writeback_packet.event_cycle = current_core_cycle[handle_pkt.cpu];
+            writeback_packet.to_return = {};
 
             lower_level->add_wq(&writeback_packet);
         }
@@ -553,42 +502,10 @@ int CACHE::add_rq(PACKET *packet)
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
-        
-        // check fill level
-        if (packet->fill_level < fill_level) {
 
-            packet->data = WQ.entry[wq_index].data;
-
-            if(fill_level == FILL_L2)
-            {
-                if (packet->fill_l1i)
-                    upper_level_icache[packet->cpu]->return_data(packet);
-                if (packet->fill_l1d)
-                    upper_level_dcache[packet->cpu]->return_data(packet);
-            }
-            else
-            {
-                if (packet->instruction)
-                    upper_level_icache[packet->cpu]->return_data(packet);
-                if (packet->is_data)
-                    upper_level_dcache[packet->cpu]->return_data(packet);
-            }
-        }
-
-        assert(cache_type != IS_ITLB);
-        assert(cache_type != IS_DTLB);
-        assert(cache_type != IS_L1I);
-
-        // update processed packets
-        if ((cache_type == IS_L1D) && (packet->type != PREFETCH)) {
-            if (PROCESSED.occupancy < PROCESSED.SIZE)
-                PROCESSED.add_queue(packet);
-
-            DP ( if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
-            cout << hex << " read: " << packet->address << " writeback: " << WQ.entry[wq_index].address << dec;
-            cout << " index: " << MAX_READ << " rob_signal: " << packet->rob_signal << endl; });
-        }
+        packet->data = WQ.entry[wq_index].data;
+        for (auto ret : packet->to_return)
+            ret->return_data(packet);
 
         WQ.FORWARD++;
         RQ.ACCESS++;
@@ -628,6 +545,7 @@ int CACHE::add_rq(PACKET *packet)
 
         RQ.entry[index].fill_l1i |= packet->fill_l1i;
         RQ.entry[index].fill_l1d |= packet->fill_l1d;
+        RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         RQ.MERGED++;
         RQ.ACCESS++;
@@ -834,6 +752,7 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
       pf_packet.ip = ip;
       pf_packet.type = PREFETCH;
       pf_packet.event_cycle = 0;
+      pf_packet.to_return = {this};
 
       int vapq_index = VAPQ.check_queue(&pf_packet);
       if(vapq_index != -1)
@@ -925,26 +844,10 @@ int CACHE::add_pq(PACKET *packet)
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
         
-        // check fill level
-        if (packet->fill_level < fill_level) {
+        packet->data = WQ.entry[wq_index].data;
 
-            packet->data = WQ.entry[wq_index].data;
-
-            if(fill_level == FILL_L2)
-            {
-                if (packet->fill_l1i)
-                    upper_level_icache[packet->cpu]->return_data(packet);
-                if (packet->fill_l1d)
-                    upper_level_dcache[packet->cpu]->return_data(packet);
-            }
-            else
-            {
-                if (packet->instruction)
-                    upper_level_icache[packet->cpu]->return_data(packet);
-                if (packet->is_data)
-                    upper_level_dcache[packet->cpu]->return_data(packet);
-            }
-        }
+        for (auto ret : packet->to_return)
+            ret->return_data(packet);
 
         WQ.FORWARD++;
         PQ.ACCESS++;
@@ -961,6 +864,7 @@ int CACHE::add_pq(PACKET *packet)
         PQ.entry[index].is_data     |= packet->is_data;
         PQ.entry[index].fill_l1i    |= packet->fill_l1i;
         PQ.entry[index].fill_l1d    |= packet->fill_l1d;
+        PQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         PQ.MERGED++;
         PQ.ACCESS++;

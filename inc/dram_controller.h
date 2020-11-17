@@ -22,7 +22,7 @@ extern uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME;
 #define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
 
 // DRAM
-class MEMORY_CONTROLLER : public MEMORY {
+class MEMORY_CONTROLLER : public MemoryRequestConsumer {
   public:
     const string NAME;
 
@@ -71,18 +71,12 @@ class MEMORY_CONTROLLER : public MEMORY {
         fill_level = FILL_DRAM;
     };
 
-    // destructor
-    ~MEMORY_CONTROLLER() {
-
-    };
-
     // functions
     int  add_rq(PACKET *packet),
          add_wq(PACKET *packet),
          add_pq(PACKET *packet);
 
-    void return_data(PACKET *packet),
-         operate(),
+    void operate(),
          increment_WQ_FULL(uint64_t address);
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
