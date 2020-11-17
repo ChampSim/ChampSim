@@ -8,10 +8,11 @@
 
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 256
+#define BASIC_BTB_SETS 1024
 #define BASIC_BTB_WAYS 8
-#define BASIC_BTB_INDIRECT_SIZE 1024
-#define BASIC_BTB_RAS_SIZE 32
+#define BASIC_BTB_INDIRECT_SIZE 4096
+#define BASIC_BTB_RAS_SIZE 64
+#define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 
 struct BASIC_BTB_ENTRY {
   uint64_t ip_tag;
@@ -33,13 +34,18 @@ int basic_btb_ras_index[NUM_CPUS];
  * size of call instructions, in bytes, which tells us the appropriate
  * target for a call's corresponding return.
  * They exist because ChampSim does not model a specific ISA, and
- * different ISAs could use different sizes for call instructions.
- * Furthermore, if the ISA you're looking at has variable-sized call
- * instructions, then the following solution would be insufficient
- * to always get it right.
+ * different ISAs could use different sizes for call instructions,
+ * and even within the same ISA, calls can have different sizes.
  */
-uint64_t basic_btb_last_return_target[NUM_CPUS];
-uint64_t basic_btb_ras_call_return_offset[NUM_CPUS];
+uint64_t basic_btb_call_instr_sizes[NUM_CPUS][BASIC_BTB_CALL_INSTR_SIZE_TRACKERS];
+
+uint64_t basic_btb_abs_addr_dist(uint64_t addr1, uint64_t addr2) {
+  if(addr1 > addr2) {
+    return addr1 - addr2;
+  }
+
+  return addr2 - addr1;
+}
 
 uint64_t basic_btb_set_index(uint64_t ip) { return (ip >> 2) % BASIC_BTB_SETS; }
 
@@ -78,24 +84,38 @@ uint64_t basic_btb_indirect_hash(uint8_t cpu, uint64_t ip) {
 }
 
 void push_basic_btb_ras(uint8_t cpu, uint64_t ip) {
-  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] =
-      ip + basic_btb_ras_call_return_offset[cpu];
   basic_btb_ras_index[cpu]++;
   if (basic_btb_ras_index[cpu] == BASIC_BTB_RAS_SIZE) {
     basic_btb_ras_index[cpu] = 0;
   }
+
+  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = ip;
+}
+
+uint64_t peek_basic_btb_ras(uint8_t cpu) {
+  return basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
 }
 
 uint64_t pop_basic_btb_ras(uint8_t cpu) {
+  uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
+  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
+
   basic_btb_ras_index[cpu]--;
   if (basic_btb_ras_index[cpu] == -1) {
     basic_btb_ras_index[cpu] += BASIC_BTB_RAS_SIZE;
   }
 
-  uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
-  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
-
   return target;
+}
+
+uint64_t basic_btb_call_size_tracker_hash(uint64_t ip) {
+  return ip%BASIC_BTB_CALL_INSTR_SIZE_TRACKERS;
+}
+
+uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip) {
+  uint64_t size = basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(ip)];
+
+  return size;
 }
 
 void O3_CPU::initialize_btb() {
@@ -123,8 +143,9 @@ void O3_CPU::initialize_btb() {
     basic_btb_ras[cpu][i] = 0;
   }
   basic_btb_ras_index[cpu] = 0;
-  basic_btb_last_return_target[cpu] = 0;
-  basic_btb_ras_call_return_offset[cpu] = 0;
+  for (uint32_t i=0; i<BASIC_BTB_CALL_INSTR_SIZE_TRACKERS; i++) {
+    basic_btb_call_instr_sizes[cpu][i] = 4;
+  }
 }
 
 uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
@@ -140,10 +161,10 @@ uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
   }
 
   if (branch_type == BRANCH_RETURN) {
-    // pop something off the RAS
-    uint64_t target = pop_basic_btb_ras(cpu);
-    // record the latest prediction from the RAS
-    basic_btb_last_return_target[cpu] = target;
+    // peek at the top of the RAS
+    uint64_t target = peek_basic_btb_ras(cpu);
+    // and adjust for the size of the call instr
+    target += basic_btb_get_call_size(cpu, target);
 
     return target;
   } else if ((branch_type == BRANCH_INDIRECT) ||
@@ -184,18 +205,15 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken,
 
   if (branch_type == BRANCH_RETURN) {
     // recalibrate call-return offset
-    // if our return prediction got us into the right cache line, but not the
-    // right byte target, then adjust our offset up or down, accordingly
-    if ((basic_btb_last_return_target[cpu] >> 6) == (branch_target >> 6)) {
-      if (basic_btb_last_return_target[cpu] > branch_target) {
-        // current offset is too high, so lower it
-        basic_btb_ras_call_return_offset[cpu]--;
-      } else if (basic_btb_last_return_target[cpu] < branch_target) {
-        // current offset is too low, so increase it
-        basic_btb_ras_call_return_offset[cpu]++;
-      }
+    // if our return prediction got us into the right ball park, but not the
+    // exactly correct byte target, then adjust our call instr size tracker
+    uint64_t call_ip = pop_basic_btb_ras(cpu);
+    uint64_t estimated_call_instr_size = basic_btb_abs_addr_dist(call_ip, branch_target);
+    if (estimated_call_instr_size <= 10) {
+      basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(call_ip)] = estimated_call_instr_size;
     }
-  } else {
+  } else if ((branch_type != BRANCH_INDIRECT) &&
+	     (branch_type != BRANCH_INDIRECT_CALL)) {
     // use BTB
     auto btb_entry = basic_btb_find_entry(cpu, ip);
 
