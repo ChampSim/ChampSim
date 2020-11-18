@@ -230,6 +230,21 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     arch_instr.event_cycle = current_core_cycle[cpu];
 
+    // fast warmup eliminates register dependencies between instructions
+    // branch predictor, cache contents, and prefetchers are still warmed up
+    if(!warmup_complete[cpu])
+      {
+	for (int i=0; i<NUM_INSTR_SOURCES; i++)
+	  {
+	    arch_instr.source_registers[i] = 0;
+	  }
+	for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
+	  {
+	    arch_instr.destination_registers[i] = 0;
+	  }
+	arch_instr.num_reg_ops = 0;
+      }
+
     // Add to IFETCH_BUFFER
     assert(IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE);
     IFETCH_BUFFER.entry[IFETCH_BUFFER.tail] = arch_instr;
