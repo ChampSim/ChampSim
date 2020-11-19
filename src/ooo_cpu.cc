@@ -387,7 +387,6 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.is_data = 0;
 	  trace_packet.tlb_access = 1;
 	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.fill_l1i = 1;
 	  trace_packet.cpu = cpu;
           trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
 	  if (knob_cloudsuite)
@@ -441,10 +440,9 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.instruction = 1;
 	  fetch_packet.is_data = 0;
 	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.fill_l1i = 1;
 	  fetch_packet.cpu = cpu;
           fetch_packet.address = ifb_entry.instruction_pa >> LOG2_BLOCK_SIZE;
-          fetch_packet.instruction_pa = ifb_entry.instruction_pa;
+          fetch_packet.data = ifb_entry.instruction_pa;
           fetch_packet.full_addr = ifb_entry.instruction_pa;
           fetch_packet.v_address = ifb_entry.ip >> LOG2_PAGE_SIZE;
           fetch_packet.full_v_addr = ifb_entry.ip;
@@ -636,7 +634,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
       pf_packet.instruction = 1; // this is a code prefetch
       pf_packet.is_data = 0;
       pf_packet.fill_level = FILL_L1;
-      pf_packet.fill_l1i = 1;
       pf_packet.pf_origin_level = FILL_L1;
       pf_packet.cpu = cpu;
 
@@ -1285,7 +1282,6 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                 data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
                 data_packet.to_return = {&DTLB_bus};
-                data_packet.sq_index_depend_on_me.insert(sq_index);
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
@@ -1370,7 +1366,6 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[1] = LQ.entry[lq_index].asid[1];
                 data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
                 data_packet.to_return = {&DTLB_bus};
-                data_packet.lq_index_depend_on_me.insert(lq_index);
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
@@ -1526,7 +1521,6 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
     data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
     data_packet.to_return = {&L1D_bus};
-    data_packet.lq_index_depend_on_me.insert(lq_index);
 
     int rq_index = L1D_bus.lower_level->add_rq(&data_packet);
 
@@ -1673,7 +1667,7 @@ void O3_CPU::update_rob()
 		      // we did not fetch this instruction's cache line, but we did translated it
 		      IFETCH_BUFFER.entry[index].fetched = 0;
 		      // recalculate a physical address for this cache line based on the translated physical page address
-		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
 
 		      available_fetch_bandwidth--;
 		    }
@@ -1749,7 +1743,7 @@ void O3_CPU::update_rob()
         PACKET &dtlb_entry = DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head];
         if (dtlb_entry.type == RFO)
         {
-            SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             SQ.entry[dtlb_entry.sq_index].translated = COMPLETED;
             SQ.entry[dtlb_entry.sq_index].event_cycle = current_core_cycle[cpu];
 
@@ -1760,7 +1754,7 @@ void O3_CPU::update_rob()
         }
         else
         {
-            LQ.entry[dtlb_entry.lq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (LQ.entry[dtlb_entry.lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            LQ.entry[dtlb_entry.lq_index].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (LQ.entry[dtlb_entry.lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             LQ.entry[dtlb_entry.lq_index].translated = COMPLETED;
             LQ.entry[dtlb_entry.lq_index].event_cycle = current_core_cycle[cpu];
 
@@ -1841,7 +1835,7 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
     ITERATE_SET(sq_merged, provider->sq_index_depend_on_me, SQ.SIZE)
     {
         SQ.entry[sq_merged].translated = COMPLETED;
-        SQ.entry[sq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        SQ.entry[sq_merged].physical_address = (provider->data << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
         SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
 
         RTS1[RTS1_tail] = sq_merged;
@@ -1858,7 +1852,7 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
     ITERATE_SET(lq_merged, provider->lq_index_depend_on_me, LQ.SIZE)
     {
         LQ.entry[lq_merged].translated = COMPLETED;
-        LQ.entry[lq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        LQ.entry[lq_merged].physical_address = (provider->data << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
         LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
 
         RTL1[RTL1_tail] = lq_merged;

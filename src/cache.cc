@@ -57,10 +57,7 @@ void CACHE::handle_fill()
         if (way != NUM_WAY)
         {
             // update processed packets
-            if (cache_type == IS_ITLB)
-                fill_mshr->instruction_pa = block[set*NUM_WAY + way].data;
-            else if (cache_type == IS_DTLB)
-                fill_mshr->data_pa = block[set*NUM_WAY + way].data;
+            fill_mshr->data = block[set*NUM_WAY + way].data;
 
             for (auto ret : fill_mshr->to_return)
                 ret->return_data(&(*fill_mshr));
@@ -230,12 +227,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
 {
     BLOCK &hit_block = block[set*NUM_WAY + way];
 
-    if (cache_type == IS_ITLB)
-        handle_pkt.instruction_pa = hit_block.data;
-    else if (cache_type == IS_DTLB)
-        handle_pkt.data_pa = hit_block.data;
-    else if (cache_type == IS_STLB)
-        handle_pkt.data = hit_block.data;
+    handle_pkt.data = hit_block.data;
 
     // update prefetcher on load instruction
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
@@ -282,8 +274,6 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
     {
         // update fill location
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-        mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
-        mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
         mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -337,9 +327,7 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
         else
         {
             // TODO: need to differentiate page table walk and actual swap
-            uint64_t pa = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr);
-
-            handle_pkt.data = pa >> LOG2_PAGE_SIZE;
+            handle_pkt.data = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr) >> LOG2_PAGE_SIZE;
             handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
             return_data(&handle_pkt);
         }
@@ -543,8 +531,6 @@ int CACHE::add_rq(PACKET *packet)
             RQ.entry[index].is_data = 1; // add as data type
         }
 
-        RQ.entry[index].fill_l1i |= packet->fill_l1i;
-        RQ.entry[index].fill_l1d |= packet->fill_l1d;
         RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         RQ.MERGED++;
@@ -654,10 +640,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
-	    if(pf_fill_level == FILL_L1)
-	      {
-		pf_packet.fill_l1d = 1;
-	      }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -691,10 +673,6 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
-	    if(pf_fill_level == FILL_L1)
-              {
-                pf_packet.fill_l1d = 1;
-              }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -739,10 +717,6 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
       PACKET pf_packet;
       pf_packet.fill_level = pf_fill_level;
       pf_packet.pf_origin_level = fill_level;
-      if(pf_fill_level == FILL_L1)
-	{
-	  pf_packet.fill_l1d = 1;
-	}
       pf_packet.pf_metadata = prefetch_metadata;
       pf_packet.cpu = cpu;
       pf_packet.v_address = pf_addr >> LOG2_BLOCK_SIZE;
@@ -862,8 +836,6 @@ int CACHE::add_pq(PACKET *packet)
         PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
         PQ.entry[index].instruction |= packet->instruction;
         PQ.entry[index].is_data     |= packet->is_data;
-        PQ.entry[index].fill_l1i    |= packet->fill_l1i;
-        PQ.entry[index].fill_l1d    |= packet->fill_l1d;
         PQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         PQ.MERGED++;

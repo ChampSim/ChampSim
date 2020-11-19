@@ -14,8 +14,6 @@ class PACKET {
   public:
     uint8_t instruction,
             is_data,
-            fill_l1i,
-            fill_l1d,
             tlb_access,
             scheduled,
             translated,
@@ -52,8 +50,6 @@ class PACKET {
              full_addr,
              v_address,
              full_v_addr,
-             instruction_pa,
-             data_pa,
              data,
              instr_id,
              ip, 
@@ -65,8 +61,6 @@ class PACKET {
     PACKET() {
         instruction = 0;
         is_data = 1;
-	fill_l1i = 0;
-	fill_l1d = 0;
         tlb_access = 0;
         scheduled = 0;
         translated = 0;
@@ -103,7 +97,6 @@ class PACKET {
 
         address = 0;
         full_addr = 0;
-        instruction_pa = 0;
         data = 0;
         instr_id = 0;
         ip = 0;
