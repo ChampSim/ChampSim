@@ -372,7 +372,6 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.is_data = 0;
 	  trace_packet.tlb_access = 1;
 	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.fill_l1i = 1;
 	  trace_packet.cpu = cpu;
           trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
 	  if (knob_cloudsuite)
@@ -426,7 +425,6 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.instruction = 1;
 	  fetch_packet.is_data = 0;
 	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.fill_l1i = 1;
 	  fetch_packet.cpu = cpu;
           fetch_packet.address = ifb_entry.instruction_pa >> LOG2_BLOCK_SIZE;
           fetch_packet.data = ifb_entry.instruction_pa;
@@ -621,7 +619,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
       pf_packet.instruction = 1; // this is a code prefetch
       pf_packet.is_data = 0;
       pf_packet.fill_level = FILL_L1;
-      pf_packet.fill_l1i = 1;
       pf_packet.pf_origin_level = FILL_L1;
       pf_packet.cpu = cpu;
 

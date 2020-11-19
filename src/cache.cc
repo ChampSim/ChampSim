@@ -274,8 +274,6 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
     {
         // update fill location
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-        mshr_entry->fill_l1i |= handle_pkt.fill_l1i;
-        mshr_entry->fill_l1d |= handle_pkt.fill_l1d;
         mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -533,8 +531,6 @@ int CACHE::add_rq(PACKET *packet)
             RQ.entry[index].is_data = 1; // add as data type
         }
 
-        RQ.entry[index].fill_l1i |= packet->fill_l1i;
-        RQ.entry[index].fill_l1d |= packet->fill_l1d;
         RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         RQ.MERGED++;
@@ -644,10 +640,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
-	    if(pf_fill_level == FILL_L1)
-	      {
-		pf_packet.fill_l1d = 1;
-	      }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -681,10 +673,6 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             PACKET pf_packet;
             pf_packet.fill_level = pf_fill_level;
 	    pf_packet.pf_origin_level = fill_level;
-	    if(pf_fill_level == FILL_L1)
-              {
-                pf_packet.fill_l1d = 1;
-              }
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
             //pf_packet.data_index = LQ.entry[lq_index].data_index;
@@ -729,10 +717,6 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
       PACKET pf_packet;
       pf_packet.fill_level = pf_fill_level;
       pf_packet.pf_origin_level = fill_level;
-      if(pf_fill_level == FILL_L1)
-	{
-	  pf_packet.fill_l1d = 1;
-	}
       pf_packet.pf_metadata = prefetch_metadata;
       pf_packet.cpu = cpu;
       pf_packet.v_address = pf_addr >> LOG2_BLOCK_SIZE;
@@ -852,8 +836,6 @@ int CACHE::add_pq(PACKET *packet)
         PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
         PQ.entry[index].instruction |= packet->instruction;
         PQ.entry[index].is_data     |= packet->is_data;
-        PQ.entry[index].fill_l1i    |= packet->fill_l1i;
-        PQ.entry[index].fill_l1d    |= packet->fill_l1d;
         PQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         PQ.MERGED++;
