@@ -57,10 +57,7 @@ void CACHE::handle_fill()
         if (way != NUM_WAY)
         {
             // update processed packets
-            if (cache_type == IS_ITLB)
-                fill_mshr->instruction_pa = block[set*NUM_WAY + way].data;
-            else if (cache_type == IS_DTLB)
-                fill_mshr->data_pa = block[set*NUM_WAY + way].data;
+            fill_mshr->data = block[set*NUM_WAY + way].data;
 
             for (auto ret : fill_mshr->to_return)
                 ret->return_data(&(*fill_mshr));
@@ -230,12 +227,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
 {
     BLOCK &hit_block = block[set*NUM_WAY + way];
 
-    if (cache_type == IS_ITLB)
-        handle_pkt.instruction_pa = hit_block.data;
-    else if (cache_type == IS_DTLB)
-        handle_pkt.data_pa = hit_block.data;
-    else if (cache_type == IS_STLB)
-        handle_pkt.data = hit_block.data;
+    handle_pkt.data = hit_block.data;
 
     // update prefetcher on load instruction
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
@@ -337,9 +329,7 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
         else
         {
             // TODO: need to differentiate page table walk and actual swap
-            uint64_t pa = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr);
-
-            handle_pkt.data = pa >> LOG2_PAGE_SIZE;
+            handle_pkt.data = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr) >> LOG2_PAGE_SIZE;
             handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
             return_data(&handle_pkt);
         }

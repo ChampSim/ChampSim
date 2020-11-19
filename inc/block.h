@@ -52,8 +52,6 @@ class PACKET {
              full_addr,
              v_address,
              full_v_addr,
-             instruction_pa,
-             data_pa,
              data,
              instr_id,
              ip, 
@@ -103,7 +101,6 @@ class PACKET {
 
         address = 0;
         full_addr = 0;
-        instruction_pa = 0;
         data = 0;
         instr_id = 0;
         ip = 0;

@@ -429,7 +429,7 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.fill_l1i = 1;
 	  fetch_packet.cpu = cpu;
           fetch_packet.address = ifb_entry.instruction_pa >> LOG2_BLOCK_SIZE;
-          fetch_packet.instruction_pa = ifb_entry.instruction_pa;
+          fetch_packet.data = ifb_entry.instruction_pa;
           fetch_packet.full_addr = ifb_entry.instruction_pa;
           fetch_packet.v_address = ifb_entry.ip >> LOG2_PAGE_SIZE;
           fetch_packet.full_v_addr = ifb_entry.ip;
@@ -1655,7 +1655,7 @@ void O3_CPU::update_rob()
 		      // we did not fetch this instruction's cache line, but we did translated it
 		      IFETCH_BUFFER.entry[index].fetched = 0;
 		      // recalculate a physical address for this cache line based on the translated physical page address
-		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
 
 		      available_fetch_bandwidth--;
 		    }
@@ -1731,7 +1731,7 @@ void O3_CPU::update_rob()
         PACKET &dtlb_entry = DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head];
         if (dtlb_entry.type == RFO)
         {
-            SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            SQ.entry[dtlb_entry.sq_index].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (SQ.entry[dtlb_entry.sq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             SQ.entry[dtlb_entry.sq_index].translated = COMPLETED;
             SQ.entry[dtlb_entry.sq_index].event_cycle = current_core_cycle[cpu];
 
@@ -1742,7 +1742,7 @@ void O3_CPU::update_rob()
         }
         else
         {
-            LQ.entry[dtlb_entry.lq_index].physical_address = (dtlb_entry.data_pa << LOG2_PAGE_SIZE) | (LQ.entry[dtlb_entry.lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+            LQ.entry[dtlb_entry.lq_index].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (LQ.entry[dtlb_entry.lq_index].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
             LQ.entry[dtlb_entry.lq_index].translated = COMPLETED;
             LQ.entry[dtlb_entry.lq_index].event_cycle = current_core_cycle[cpu];
 
@@ -1823,7 +1823,7 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
     ITERATE_SET(sq_merged, provider->sq_index_depend_on_me, SQ.SIZE)
     {
         SQ.entry[sq_merged].translated = COMPLETED;
-        SQ.entry[sq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        SQ.entry[sq_merged].physical_address = (provider->data << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
         SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
 
         RTS1[RTS1_tail] = sq_merged;
@@ -1840,7 +1840,7 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
     ITERATE_SET(lq_merged, provider->lq_index_depend_on_me, LQ.SIZE)
     {
         LQ.entry[lq_merged].translated = COMPLETED;
-        LQ.entry[lq_merged].physical_address = (provider->data_pa << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+        LQ.entry[lq_merged].physical_address = (provider->data << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
         LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
 
         RTL1[RTL1_tail] = lq_merged;
