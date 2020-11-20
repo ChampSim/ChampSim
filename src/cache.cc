@@ -111,8 +111,7 @@ void CACHE::handle_writeback()
             }
             else {
                 // find victim
-                uint32_t set = get_set(handle_pkt.address);
-                uint32_t way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
+                way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
 
                 success = filllike_miss(set, way, handle_pkt);
             }
@@ -145,44 +144,6 @@ void CACHE::handle_read()
             readlike_hit(set, way, handle_pkt);
         }
         else {
-            // check mshr
-            auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-
-            if (mshr_entry != std::end(MSHR))
-            {
-                // mark merged consumer
-                if (handle_pkt.type == RFO) {
-
-                    if (handle_pkt.tlb_access) {
-                        mshr_entry->sq_index_depend_on_me.insert (handle_pkt.sq_index);
-                        mshr_entry->sq_index_depend_on_me.join (handle_pkt.sq_index_depend_on_me, SQ_SIZE);
-                    }
-
-                    mshr_entry->lq_index_depend_on_me.join (handle_pkt.lq_index_depend_on_me, LQ_SIZE);
-                }
-                else {
-                    if (handle_pkt.instruction) {
-                        mshr_entry->instruction = 1; // add as instruction type
-
-                        DP (if (warmup_complete[mshr_entry->cpu]) {
-                                cout << "[INSTR_MERGED] " << __func__ << " cpu: " << mshr_entry->cpu << " instr_id: " << mshr_entry->instr_id;
-                                cout << " merged rob_index: " << handle_pkt.rob_index << " instr_id: " << handle_pkt.instr_id << endl; });
-                    }
-                    else
-                    {
-                        uint32_t lq_index = handle_pkt.lq_index;
-                        mshr_entry->is_data = 1; // add as data type
-                        mshr_entry->lq_index_depend_on_me.insert (lq_index);
-
-                        DP (if (warmup_complete[handle_pkt.cpu]) {
-                                cout << "[DATA_MERGED] " << __func__ << " cpu: " << handle_pkt.cpu << " instr_id: " << handle_pkt.instr_id;
-                                cout << " merged rob_index: " << handle_pkt.rob_index << " instr_id: " << handle_pkt.instr_id << " lq_index: " << handle_pkt.lq_index << endl; });
-                        mshr_entry->lq_index_depend_on_me.join (handle_pkt.lq_index_depend_on_me, LQ_SIZE);
-                        mshr_entry->sq_index_depend_on_me.join (handle_pkt.sq_index_depend_on_me, SQ_SIZE);
-                    }
-                }
-            }
-
             bool success = readlike_miss(handle_pkt);
             if (!success)
                 return;
@@ -274,6 +235,10 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
     {
         // update fill location
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
+        mshr_entry->sq_index_depend_on_me.insert(handle_pkt.sq_index_depend_on_me.begin(), handle_pkt.sq_index_depend_on_me.end());
+        mshr_entry->lq_index_depend_on_me.insert(handle_pkt.lq_index_depend_on_me.begin(), handle_pkt.lq_index_depend_on_me.end());
+        mshr_entry->instruction |= handle_pkt.instruction;
+        mshr_entry->is_data |= handle_pkt.is_data;
         mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -505,32 +470,10 @@ int CACHE::add_rq(PACKET *packet)
     int index = RQ.check_queue(packet);
     if (index != -1) {
         
-        if (packet->instruction) {
-            RQ.entry[index].instruction = 1; // add as instruction type
-
-            DP (if (warmup_complete[packet->cpu]) {
-                    std::cout << "[INSTR_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
-                    std::cout << " merged rob_index: " << packet->rob_index << " instr_id: " << packet->instr_id << std::endl; });
-        }
-        else 
-        {
-            // mark merged consumer
-            if (packet->type == RFO) {
-
-                uint32_t sq_index = packet->sq_index;
-                RQ.entry[index].sq_index_depend_on_me.insert (sq_index);
-            }
-            else {
-                uint32_t lq_index = packet->lq_index; 
-                RQ.entry[index].lq_index_depend_on_me.insert (lq_index);
-
-                DP (if (warmup_complete[packet->cpu]) {
-                cout << "[DATA_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
-                cout << " merged rob_index: " << packet->rob_index << " instr_id: " << packet->instr_id << " lq_index: " << packet->lq_index << endl; });
-            }
-            RQ.entry[index].is_data = 1; // add as data type
-        }
-
+        RQ.entry[index].sq_index_depend_on_me.insert(packet->sq_index_depend_on_me.begin(), packet->sq_index_depend_on_me.end());
+        RQ.entry[index].lq_index_depend_on_me.insert(packet->lq_index_depend_on_me.begin(), packet->lq_index_depend_on_me.end());
+        RQ.entry[index].instruction |= packet->instruction;
+        RQ.entry[index].is_data |= packet->is_data;
         RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         RQ.MERGED++;

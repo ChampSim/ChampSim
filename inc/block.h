@@ -14,7 +14,6 @@ class PACKET {
   public:
     uint8_t instruction,
             is_data,
-            tlb_access,
             scheduled,
             translated,
             fetched,
@@ -40,9 +39,7 @@ class PACKET {
              asid[2],
              type;
 
-    fastset
-             lq_index_depend_on_me, 
-             sq_index_depend_on_me;
+    std::set<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
 
     uint32_t cpu, data_index, lq_index, sq_index;
 
@@ -61,7 +58,6 @@ class PACKET {
     PACKET() {
         instruction = 0;
         is_data = 1;
-        tlb_access = 0;
         scheduled = 0;
         translated = 0;
         fetched = 0;
