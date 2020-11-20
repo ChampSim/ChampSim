@@ -237,8 +237,6 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
         mshr_entry->sq_index_depend_on_me.insert(handle_pkt.sq_index_depend_on_me.begin(), handle_pkt.sq_index_depend_on_me.end());
         mshr_entry->lq_index_depend_on_me.insert(handle_pkt.lq_index_depend_on_me.begin(), handle_pkt.lq_index_depend_on_me.end());
-        mshr_entry->instruction |= handle_pkt.instruction;
-        mshr_entry->is_data |= handle_pkt.is_data;
         mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -472,8 +470,6 @@ int CACHE::add_rq(PACKET *packet)
         
         RQ.entry[index].sq_index_depend_on_me.insert(packet->sq_index_depend_on_me.begin(), packet->sq_index_depend_on_me.end());
         RQ.entry[index].lq_index_depend_on_me.insert(packet->lq_index_depend_on_me.begin(), packet->lq_index_depend_on_me.end());
-        RQ.entry[index].instruction |= packet->instruction;
-        RQ.entry[index].is_data |= packet->is_data;
         RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         RQ.MERGED++;
@@ -777,8 +773,6 @@ int CACHE::add_pq(PACKET *packet)
     if (index != -1)
     {
         PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
-        PQ.entry[index].instruction |= packet->instruction;
-        PQ.entry[index].is_data     |= packet->is_data;
         PQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
 
         PQ.MERGED++;

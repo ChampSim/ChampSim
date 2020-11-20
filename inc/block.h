@@ -12,17 +12,13 @@ class MemoryRequestProducer;
 // message packet
 class PACKET {
   public:
-    uint8_t instruction,
-            is_data,
-            scheduled,
+    uint8_t scheduled,
             translated,
             fetched,
-            prefetched,
-            drc_tag_read;
+            prefetched;
 
     int fill_level, 
         pf_origin_level,
-        rob_signal, 
         rob_index, 
         producer,
         delta,
@@ -56,13 +52,10 @@ class PACKET {
     std::set<MemoryRequestProducer*> to_return;
 
     PACKET() {
-        instruction = 0;
-        is_data = 1;
         scheduled = 0;
         translated = 0;
         fetched = 0;
         prefetched = 0;
-        drc_tag_read = 0;
 
         returned = 0;
         asid[0] = UINT8_MAX;
@@ -70,7 +63,6 @@ class PACKET {
         type = 0;
 
         fill_level = -1; 
-        rob_signal = -1;
         rob_index = -1;
         producer = -1;
         delta = 0;
@@ -78,12 +70,6 @@ class PACKET {
         signature = 0;
         confidence = 0;
 
-#if 0
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-            lq_index_depend_on_me[i] = 0;
-            sq_index_depend_on_me[i] = 0;
-        }
-#endif
         is_producer = 0;
 
         cpu = NUM_CPUS;

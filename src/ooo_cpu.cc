@@ -383,8 +383,6 @@ void O3_CPU::fetch_instruction()
 	  // begin process of fetching this instruction by sending it to the ITLB
 	  // add it to the ITLB's read queue
 	  PACKET trace_packet;
-	  trace_packet.instruction = 1;
-	  trace_packet.is_data = 0;
 	  trace_packet.fill_level = FILL_L1;
 	  trace_packet.cpu = cpu;
           trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
@@ -436,8 +434,6 @@ void O3_CPU::fetch_instruction()
 	{
 	  // add it to the L1-I's read queue
 	  PACKET fetch_packet;
-	  fetch_packet.instruction = 1;
-	  fetch_packet.is_data = 0;
 	  fetch_packet.fill_level = FILL_L1;
 	  fetch_packet.cpu = cpu;
           fetch_packet.address = ifb_entry.instruction_pa >> LOG2_BLOCK_SIZE;
@@ -630,8 +626,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
       uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
 
       PACKET pf_packet;
-      pf_packet.instruction = 1; // this is a code prefetch
-      pf_packet.is_data = 0;
       pf_packet.fill_level = FILL_L1;
       pf_packet.pf_origin_level = FILL_L1;
       pf_packet.cpu = cpu;
@@ -1870,7 +1864,6 @@ void O3_CPU::retire_rob()
                         // sq_index and rob_index are no longer available after retirement
                         // but we pass this information to avoid segmentation fault
                         data_packet.fill_level = FILL_L1;
-                        //data_packet.fill_l1d = 1;
                         data_packet.cpu = cpu;
                         data_packet.data_index = SQ.entry[sq_index].data_index;
                         data_packet.sq_index = sq_index;
