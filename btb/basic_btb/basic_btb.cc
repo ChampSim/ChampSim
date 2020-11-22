@@ -47,7 +47,7 @@ uint64_t basic_btb_abs_addr_dist(uint64_t addr1, uint64_t addr2) {
   return addr2 - addr1;
 }
 
-uint64_t basic_btb_set_index(uint64_t ip) { return (ip >> 2) % BASIC_BTB_SETS; }
+uint64_t basic_btb_set_index(uint64_t ip) { return ((ip >> 2) & (BASIC_BTB_SETS-1)); }
 
 BASIC_BTB_ENTRY *basic_btb_find_entry(uint8_t cpu, uint64_t ip) {
   uint64_t set = basic_btb_set_index(ip);
@@ -80,7 +80,7 @@ void basic_btb_update_lru(uint8_t cpu, BASIC_BTB_ENTRY *btb_entry) {
 
 uint64_t basic_btb_indirect_hash(uint8_t cpu, uint64_t ip) {
   uint64_t hash = (ip >> 2) ^ (basic_btb_conditional_history[cpu]);
-  return hash % BASIC_BTB_INDIRECT_SIZE;
+  return (hash & (BASIC_BTB_INDIRECT_SIZE-1));
 }
 
 void push_basic_btb_ras(uint8_t cpu, uint64_t ip) {
@@ -109,7 +109,7 @@ uint64_t pop_basic_btb_ras(uint8_t cpu) {
 }
 
 uint64_t basic_btb_call_size_tracker_hash(uint64_t ip) {
-  return ip%BASIC_BTB_CALL_INSTR_SIZE_TRACKERS;
+  return (ip & (BASIC_BTB_CALL_INSTR_SIZE_TRACKERS-1));
 }
 
 uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip) {
