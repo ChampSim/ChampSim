@@ -562,6 +562,18 @@ void O3_CPU::decode_and_dispatch()
         ROB.entry[ROB.tail] = db_entry;
         ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
 
+	if (ROB.entry[ROB.tail].branch_mispredicted)
+	  {
+	    // if we're adding a mispredicted branch to the ROB, and its misprediction could have been cleared up at decode, then resume fetch
+	    if ((ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_JUMP) || (ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_CALL))
+	      {
+		// clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
+		ROB.entry[ROB.tail].branch_mispredicted = 0;
+		// pay misprediction penalty
+		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+	      }
+	  }
+
         ROB.tail++;
         if (ROB.tail >= ROB.SIZE)
             ROB.tail = 0;
