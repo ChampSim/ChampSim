@@ -266,7 +266,7 @@ uint32_t O3_CPU::check_rob(uint64_t instr_id)
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
         return ROB.SIZE;
 
-    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1)%ROB.SIZE, count++) {
+    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
         if (ROB.entry[i].instr_id == instr_id) {
             DP ( if (warmup_complete[ROB.cpu]) {
             cout << "[ROB] " << __func__ << " same instr_id: " << ROB.entry[i].instr_id;
@@ -644,7 +644,7 @@ void O3_CPU::schedule_instruction()
         return;
 
     num_searched = 0;
-    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1)%ROB.SIZE, count++) {
+    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
         if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
             return;
 
@@ -853,7 +853,7 @@ void O3_CPU::schedule_memory_instruction()
 
     // execution is out-of-order but we have an in-order scheduling algorithm to detect all RAW dependencies
     num_searched = 0;
-    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1)%ROB.SIZE, count++) {
+    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
         if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
             break;
 
@@ -1721,7 +1721,7 @@ void O3_CPU::update_rob()
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
         uint32_t instrs_executed = 0;
-        for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1)%ROB.SIZE, count++) {
+        for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
 	    if(instrs_executed >= EXEC_WIDTH)
 	    {
 	        break;
