@@ -509,10 +509,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].update_rob();
 
 	      // decode
-	      if(ooo_cpu[i].DECODE_BUFFER.occupancy > 0)
-		{
-		  ooo_cpu[i].decode_and_dispatch();
-		}
+	      ooo_cpu[i].decode_and_dispatch();
 	      
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
