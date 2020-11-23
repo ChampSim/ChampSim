@@ -7,6 +7,7 @@
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "cache.h"
+#include "instruction.h"
 
 #define DEADLOCK_CYCLE 1000000
 
@@ -17,10 +18,10 @@ using namespace std;
 // cpu
 class O3_CPU {
   public:
-    uint32_t cpu;
+    uint32_t cpu = 0;
 
     // trace
-    FILE *trace_file;
+    FILE *trace_file = NULL;
     char trace_string[1024];
     char gunzip_command[1024];
 
@@ -28,14 +29,14 @@ class O3_CPU {
     input_instr next_instr;
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
-    uint64_t instr_unique_id, completed_executions, 
-             begin_sim_cycle, begin_sim_instr, 
-             last_sim_cycle, last_sim_instr,
-             finish_sim_cycle, finish_sim_instr,
-             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle, instrs_to_fetch_this_cycle,
-             next_print_instruction, num_retired;
-    uint32_t inflight_reg_executions, inflight_mem_executions, num_searched;
-    uint32_t next_ITLB_fetch;
+    uint64_t instr_unique_id = 0, completed_executions = 0,
+             begin_sim_cycle = 0, begin_sim_instr,
+             last_sim_cycle = 0, last_sim_instr = 0,
+             finish_sim_cycle = 0, finish_sim_instr = 0,
+             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+             next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
+    uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0, num_searched = 0;
+    uint32_t next_ITLB_fetch = 0;
 
     struct dib_entry_t
     {
@@ -49,90 +50,49 @@ class O3_CPU {
     dib_t DIB;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", IFETCH_BUFFER_SIZE};
-    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_BUFFER_SIZE};
-    CORE_BUFFER ROB{"ROB", ROB_SIZE};
-    LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+    CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", IFETCH_BUFFER_SIZE};
+    CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_BUFFER_SIZE};
+    CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
+    CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
     // store array, this structure is required to properly handle store instructions
-    uint64_t STA[STA_SIZE], STA_head, STA_tail; 
+    uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
 
     // Ready-To-Execute
     uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head, RTL0_tail, 
-             RTL1[LQ_SIZE], RTL1_head, RTL1_tail;  
+    uint32_t RTL0[LQ_SIZE], RTL0_head = 0, RTL0_tail = 0,
+             RTL1[LQ_SIZE], RTL1_head = 0, RTL1_tail = 0;
 
     // Ready-To-Store
-    uint32_t RTS0[SQ_SIZE], RTS0_head, RTS0_tail,
-             RTS1[SQ_SIZE], RTS1_head, RTS1_tail;
+    uint32_t RTS0[SQ_SIZE], RTS0_head = 0, RTS0_tail = 0,
+             RTS1[SQ_SIZE], RTS1_head = 0, RTS1_tail = 0;
 
     // branch
-    int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
-    int mispredicted_branch_iw_index; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
-    uint8_t  fetch_stall;
-    uint64_t fetch_resume_cycle;
-    uint64_t num_branch, branch_mispredictions;
+    int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
+    int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
+    uint8_t  fetch_stall = 0;
+    uint64_t fetch_resume_cycle = 0;
+    uint64_t num_branch = 0, branch_mispredictions = 0;
     uint64_t total_rob_occupancy_at_branch_mispredict;
-  uint64_t total_branch_types[8];
+    uint64_t total_branch_types[8] = {};
 
     // TLBs and caches
-    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_SET*ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
-          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_SET*DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
-          STLB{"STLB", STLB_SET, STLB_WAY, STLB_SET*STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
-          L1I{"L1I", L1I_SET, L1I_WAY, L1I_SET*L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
-          L1D{"L1D", L1D_SET, L1D_WAY, L1D_SET*L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
-          L2C{"L2C", L2C_SET, L2C_WAY, L2C_SET*L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
+    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
+          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
+          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
+          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
+          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
+          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
   // trace cache for previously decoded instructions
   
     // constructor
-    O3_CPU() {
-        cpu = 0;
-
-        // trace
-        trace_file = NULL;
-
-        // instruction
-        instr_unique_id = 0;
-        completed_executions = 0;
-        begin_sim_cycle = 0;
-        begin_sim_instr = 0;
-        last_sim_cycle = 0;
-        last_sim_instr = 0;
-        finish_sim_cycle = 0;
-        finish_sim_instr = 0;
-        warmup_instructions = 0;
-        simulation_instructions = 0;
-        instrs_to_read_this_cycle = 0;
-        instrs_to_fetch_this_cycle = 0;
-
-        next_print_instruction = STAT_PRINTING_PERIOD;
-        num_retired = 0;
-
-        inflight_reg_executions = 0;
-        inflight_mem_executions = 0;
-        num_searched = 0;
-
-        next_ITLB_fetch = 0;
-
-        // branch
-        branch_mispredict_stall_fetch = 0;
-        mispredicted_branch_iw_index = 0;
-        fetch_stall = 0;
-	fetch_resume_cycle = 0;
-        num_branch = 0;
-        branch_mispredictions = 0;
-	for(uint32_t i=0; i<8; i++)
-	  {
-	    total_branch_types[i] = 0;
-	  }
-	
+    O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
+    {
         for (uint32_t i=0; i<STA_SIZE; i++)
 	  STA[i] = UINT64_MAX;
-        STA_head = 0;
-        STA_tail = 0;
 
         for (uint32_t i=0; i<ROB_SIZE; i++) {
 	  ready_to_execute[i] = ROB_SIZE;
@@ -144,19 +104,66 @@ class O3_CPU {
 	  RTL0[i] = LQ_SIZE;
 	  RTL1[i] = LQ_SIZE;
         }
-        RTL0_head = 0;
-        RTL1_head = 0;
-        RTL0_tail = 0;
-        RTL1_tail = 0;
 
         for (uint32_t i=0; i<SQ_SIZE; i++) {
 	  RTS0[i] = SQ_SIZE;
 	  RTS1[i] = SQ_SIZE;
         }
-        RTS0_head = 0;
-        RTS1_head = 0;
-        RTS0_tail = 0;
-        RTS1_tail = 0;
+
+        // BRANCH PREDICTOR
+        initialize_branch_predictor();
+
+        // TLBs
+        ITLB.cpu = this->cpu;
+        ITLB.cache_type = IS_ITLB;
+        ITLB.MAX_READ = 2;
+        ITLB.MAX_WRITE = 2;
+        ITLB.fill_level = FILL_L1;
+        ITLB.extra_interface = &L1I;
+        ITLB.lower_level = &STLB;
+
+        DTLB.cpu = this->cpu;
+        DTLB.cache_type = IS_DTLB;
+        DTLB.MAX_READ = 2;
+        DTLB.MAX_WRITE = 2;
+        DTLB.fill_level = FILL_L1;
+        DTLB.extra_interface = &L1D;
+        DTLB.lower_level = &STLB;
+
+        STLB.cpu = this->cpu;
+        STLB.cache_type = IS_STLB;
+        STLB.MAX_READ = 1;
+        STLB.MAX_WRITE = 1;
+        STLB.fill_level = FILL_L2;
+        STLB.upper_level_icache[this->cpu] = &ITLB;
+        STLB.upper_level_dcache[this->cpu] = &DTLB;
+
+        // PRIVATE CACHE
+        L1I.cpu = this->cpu;
+        L1I.cache_type = IS_L1I;
+        L1I.MAX_READ = 2;
+        L1I.MAX_WRITE = 2;
+        L1I.fill_level = FILL_L1;
+        L1I.lower_level = &L2C;
+
+        L1D.cpu = this->cpu;
+        L1D.cache_type = IS_L1D;
+        L1D.MAX_READ = 2;
+        L1D.MAX_WRITE = 2;
+        L1D.fill_level = FILL_L1;
+        L1D.lower_level = &L2C;
+
+        L2C.cpu = this->cpu;
+        L2C.cache_type = IS_L2C;
+        L2C.MAX_READ = 1;
+        L2C.MAX_WRITE = 1;
+        L2C.fill_level = FILL_L2;
+        L2C.upper_level_icache[this->cpu] = &L1I;
+        L2C.upper_level_dcache[this->cpu] = &L1D;
+
+        l1i_prefetcher_initialize();
+        L1D.l1d_prefetcher_initialize();
+        L2C.l2c_prefetcher_initialize();
 
         using namespace std::placeholders;
 

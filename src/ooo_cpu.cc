@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <array>
+#include <vector>
 
 #include "ooo_cpu.h"
 #include "instruction.h"
@@ -7,7 +7,7 @@
 #include "vmem.h"
 
 // out-of-order core
-extern std::array<O3_CPU, NUM_CPUS> ooo_cpu;
+extern std::vector<O3_CPU> ooo_cpu;
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 
 extern uint8_t warmup_complete[NUM_CPUS];
@@ -377,7 +377,6 @@ void O3_CPU::fetch_instruction()
           trace_packet.full_addr = ifb_entry.ip;
 	  trace_packet.instr_id = 0;
 	  trace_packet.rob_index = i;
-	  trace_packet.producer = 0; // TODO: check if this guy gets used or not
           trace_packet.ip = ifb_entry.ip;
 	  trace_packet.type = LOAD; 
 	  trace_packet.asid[0] = 0;
@@ -429,7 +428,6 @@ void O3_CPU::fetch_instruction()
           fetch_packet.full_v_addr = ifb_entry.ip;
 	  fetch_packet.instr_id = 0;
 	  fetch_packet.rob_index = 0;
-	  fetch_packet.producer = 0;
           fetch_packet.ip = ifb_entry.ip;
 	  fetch_packet.type = LOAD; 
 	  fetch_packet.asid[0] = 0;
