@@ -119,7 +119,7 @@ void O3_CPU::initialize_branch_predictor () {
 	for (int i=0; i<NUM_CPUS; i++) theta[i] = 10;
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t pc) {
+uint8_t O3_CPU::predict_branch(uint64_t pc, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type) {
 
 	// initialize perceptron sum
 
@@ -173,7 +173,7 @@ uint8_t O3_CPU::predict_branch(uint64_t pc) {
 	return yout[cpu] >= 1;
 }
 
-void O3_CPU::last_branch_result(uint64_t pc, uint8_t taken) {
+void O3_CPU::last_branch_result(uint64_t pc, uint64_t branch_target, uint8_t taken, uint8_t branch_type) {
 
 	// was this prediction correct?
 

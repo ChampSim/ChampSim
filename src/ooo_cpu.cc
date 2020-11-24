@@ -180,10 +180,11 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     total_branch_types[arch_instr.branch_type]++;
 
-    if((arch_instr.is_branch == 1) && (arch_instr.branch_taken == 1))
-    {
-        arch_instr.branch_target = next_instr.ip;
-    }
+    if((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1))
+      {
+	// clear the branch target for this instruction
+	arch_instr.branch_target = 0;
+      }
 
     // add this instruction to the IFETCH_BUFFER
 
@@ -195,20 +196,22 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         num_branch++;
 
-        // handle branch prediction & branch predictor update
-        uint8_t branch_prediction = predict_branch(arch_instr.ip);
-        uint64_t predicted_branch_target = arch_instr.branch_target;
-        if(branch_prediction == 0)
-        {
-            predicted_branch_target = 0;
-        }
+	uint8_t always_taken;
+	uint64_t predicted_branch_target = btb_prediction(arch_instr.ip, arch_instr.branch_type, always_taken);
+	uint8_t branch_prediction = predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+	if((branch_prediction == 0) && (always_taken == 0))
+	  {
+	    predicted_branch_target = 0;
+	  }
+
         // call code prefetcher every time the branch predictor is used
         l1i_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
-        if(arch_instr.branch_taken != branch_prediction)
+        if(predicted_branch_target != arch_instr.branch_target)
         {
             branch_mispredictions++;
             total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
+	    branch_type_misses[arch_instr.branch_type]++;
             if(warmup_complete[cpu])
             {
                 fetch_stall = 1;
@@ -225,7 +228,8 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
             }
         }
 
-        last_branch_result(arch_instr.ip, arch_instr.branch_taken);
+	update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+        last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 
     arch_instr.event_cycle = current_core_cycle[cpu];
@@ -550,6 +554,18 @@ void O3_CPU::decode_and_dispatch()
         // Add to ROB
         ROB.entry[ROB.tail] = db_entry;
         ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
+
+	if (ROB.entry[ROB.tail].branch_mispredicted)
+	  {
+	    // if we're adding a mispredicted branch to the ROB, and its misprediction could have been cleared up at decode, then resume fetch
+	    if ((ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_JUMP) || (ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_CALL))
+	      {
+		// clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
+		ROB.entry[ROB.tail].branch_mispredicted = 0;
+		// pay misprediction penalty
+		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+	      }
+	  }
 
         ROB.tail++;
         if (ROB.tail >= ROB.SIZE)

@@ -26,7 +26,6 @@ class O3_CPU {
     char gunzip_command[1024];
 
     // instruction
-    input_instr next_instr;
     input_instr current_instr;
     cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id = 0, completed_executions = 0,
@@ -76,7 +75,9 @@ class O3_CPU {
     uint64_t fetch_resume_cycle = 0;
     uint64_t num_branch = 0, branch_mispredictions = 0;
     uint64_t total_rob_occupancy_at_branch_mispredict;
+
     uint64_t total_branch_types[8] = {};
+    uint64_t branch_type_misses[8] = {};
 
     // TLBs and caches
     CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
@@ -110,8 +111,9 @@ class O3_CPU {
 	  RTS1[i] = SQ_SIZE;
         }
 
-        // BRANCH PREDICTOR
+        // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();
+	initialize_btb();
 
         // TLBs
         ITLB.cpu = this->cpu;
@@ -226,10 +228,15 @@ class O3_CPU {
 
     uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
-    // branch predictor
-    uint8_t predict_branch(uint64_t ip);
-    void    initialize_branch_predictor(),
-            last_branch_result(uint64_t ip, uint8_t taken);
+  // branch predictor
+  uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
+  void initialize_branch_predictor(),
+    last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+
+  // btb
+  uint64_t btb_prediction(uint64_t ip, uint8_t branch_type, uint8_t &always_taken);
+  void initialize_btb(),
+    update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
 
   // code prefetching
   void l1i_prefetcher_initialize();

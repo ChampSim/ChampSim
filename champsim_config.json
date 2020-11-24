@@ -24,7 +24,8 @@
             "decode_latency": 2,
             "schedule_latency": 0,
             "execute_latency": 0,
-            "branch_predictor": "bimodal"
+            "branch_predictor": "bimodal",
+            "btb": "basic_btb"
         }
     ],
 
