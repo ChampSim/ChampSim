@@ -234,7 +234,7 @@ class O3_CPU {
     last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
 
   // btb
-  uint64_t btb_prediction(uint64_t ip, uint8_t branch_type, uint8_t &always_taken);
+  std::pair<uint64_t, uint8_t> btb_prediction(uint64_t ip, uint8_t branch_type);
   void initialize_btb(),
     update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
 
