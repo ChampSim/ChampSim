@@ -772,11 +772,6 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     if (block[set][way].prefetch)
         pf_fill++;
 
-    block[set][way].delta = packet->delta;
-    block[set][way].depth = packet->depth;
-    block[set][way].signature = packet->signature;
-    block[set][way].confidence = packet->confidence;
-
     block[set][way].tag = packet->address;
     block[set][way].address = packet->address;
     block[set][way].full_addr = packet->full_addr;
@@ -843,7 +838,7 @@ int CACHE::add_rq(PACKET *packet)
             DP ( if (warmup_complete[packet->cpu]) {
             cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
             cout << hex << " read: " << packet->address << " writeback: " << WQ.entry[wq_index].address << dec;
-            cout << " index: " << MAX_READ << " rob_signal: " << packet->rob_signal << endl; });
+            cout << " index: " << MAX_READ <<  endl; });
         }
 
         WQ.FORWARD++;
@@ -1044,10 +1039,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
             pf_packet.ip = 0;
             pf_packet.type = PREFETCH;
-            pf_packet.delta = delta;
-            pf_packet.depth = depth;
-            pf_packet.signature = signature;
-            pf_packet.confidence = confidence;
+            //pf_packet.delta = delta;
+            //pf_packet.depth = depth;
+            //pf_packet.signature = signature;
+            //pf_packet.confidence = confidence;
             pf_packet.event_cycle = current_core_cycle[cpu];
 
             // give a dummy 0 as the IP of a prefetch

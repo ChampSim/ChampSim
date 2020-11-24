@@ -27,103 +27,61 @@
 
 #include "set.h"
 
-class input_instr {
-  public:
+#include <limits>
 
+struct input_instr {
     // instruction pointer or PC (Program Counter)
-    uint64_t ip;
+    uint64_t ip = 0;
 
     // branch info
-    uint8_t is_branch;
-    uint8_t branch_taken;
+    uint8_t is_branch = 0;
+    uint8_t branch_taken = 0;
 
-    uint8_t destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
-    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
+    uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers
 
-    uint64_t destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
-    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
-
-    input_instr() {
-        ip = 0;
-        is_branch = 0;
-        branch_taken = 0;
-
-        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-            source_registers[i] = 0;
-            source_memory[i] = 0;
-        }
-
-        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++) {
-            destination_registers[i] = 0;
-            destination_memory[i] = 0;
-        }
-    };
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
 };
 
-class cloudsuite_instr {
-  public:
-
+struct cloudsuite_instr {
     // instruction pointer or PC (Program Counter)
-    uint64_t ip;
+    uint64_t ip = 0;
 
     // branch info
-    uint8_t is_branch;
-    uint8_t branch_taken;
+    uint8_t is_branch = 0;
+    uint8_t branch_taken = 0;
 
-    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
-    uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
+    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
+    uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers
 
-    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
-    uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
+    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
+    uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
 
-    uint8_t asid[2];
-
-    cloudsuite_instr() {
-        ip = 0;
-        is_branch = 0;
-        branch_taken = 0;
-
-        for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-            source_registers[i] = 0;
-            source_memory[i] = 0;
-        }
-
-        for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS_SPARC; i++) {
-            destination_registers[i] = 0;
-            destination_memory[i] = 0;
-        }
-
-        asid[0] = UINT8_MAX;
-        asid[1] = UINT8_MAX;
-    };
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 };
 
-class ooo_model_instr {
-  public:
+struct ooo_model_instr {
     uint64_t instr_id = 0,
              ip = 0,
              fetch_producer = 0,
              producer_id = 0,
-             translated_cycle = 0,
-             fetched_cycle = 0,
-             execute_begin_cycle = 0,
-             retired_cycle = 0,
              event_cycle = 0;
 
-    uint8_t is_branch = 0,
-            is_memory = 0,
-            branch_taken = 0,
-            branch_mispredicted = 0,
-            branch_prediction_made = 0,
-            source_added[NUM_INSTR_SOURCES] = {},
-            destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
-            is_producer = 0,
-            is_consumer = 0,
-            reg_RAW_producer = 0,
-            reg_ready = 0,
-            mem_ready = 0,
-            asid[2] = {},
-            reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+    bool is_branch = 0,
+         is_memory = 0,
+         branch_taken = 0,
+         branch_mispredicted = 0,
+         source_added[NUM_INSTR_SOURCES] = {},
+         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
+         is_producer = 0,
+         is_consumer = 0,
+         reg_RAW_producer = 0,
+         reg_ready = 0,
+         mem_ready = 0,
+         reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint8_t branch_type = NOT_BRANCH;
     uint64_t branch_target = 0;
@@ -227,3 +185,4 @@ class ooo_model_instr {
 };
 
 #endif
+

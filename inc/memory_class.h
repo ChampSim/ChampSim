@@ -4,6 +4,8 @@
 #include "champsim.h"
 #include "block.h"
 
+#include <limits>
+
 // CACHE ACCESS TYPE
 #define LOAD      0
 #define RFO       1
@@ -20,7 +22,7 @@ extern uint64_t l2pf_access;
 class MEMORY {
   public:
     // memory interface
-    MEMORY *upper_level_icache[NUM_CPUS], *upper_level_dcache[NUM_CPUS], *lower_level, *extra_interface;
+    MEMORY *upper_level_icache[NUM_CPUS] = {}, *upper_level_dcache[NUM_CPUS] = {}, *lower_level = NULL, *extra_interface = NULL;
 
     // empty queues
     PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
@@ -34,43 +36,24 @@ class MEMORY {
     virtual void increment_WQ_FULL(uint64_t address) = 0;
     virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
     virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
-
-    MEMORY() {}
 };
 
-class BANK_REQUEST {
-  public:
-    uint64_t cycle_available,
-             address,
-             full_addr;
+struct BANK_REQUEST {
+    uint64_t cycle_available = 0,
+             address = 0,
+             full_addr = 0;
 
-    uint32_t open_row;
+    uint32_t open_row = std::numeric_limits<uint32_t>::max();
 
-    uint8_t working,
-            working_type,
-            row_buffer_hit,
-            drc_hit,
-            is_write,
-            is_read;
+    uint8_t working = 0,
+            working_type = 0,
+            row_buffer_hit = 0,
+            drc_hit = 0,
+            is_write = 0,
+            is_read = 0;
 
-    int request_index;
-
-    BANK_REQUEST() {
-        cycle_available = 0;
-        address = 0;
-        full_addr = 0;
-
-        open_row = UINT32_MAX;
-
-        working = 0;
-        working_type = 0;
-        row_buffer_hit = 0;
-        drc_hit = 0;
-        is_write = 0;
-        is_read = 0;
-
-        request_index = -1;
-    };
+    int request_index = -1;
 };
 
 #endif
+

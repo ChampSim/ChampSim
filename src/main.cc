@@ -30,7 +30,7 @@ time_t start_time;
 extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
-extern std::array<O3_CPU, NUM_CPUS> ooo_cpu;
+extern std::vector<O3_CPU> ooo_cpu;
 
 extern uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 
@@ -437,77 +437,13 @@ int main(int argc, char** argv)
     }
     // end trace file setup
 
-    // TODO: can we initialize these variables from the class constructor?
     srand(seed_number);
     champsim_seed = seed_number;
     for (int i=0; i<NUM_CPUS; i++) {
-
-        ooo_cpu[i].cpu = i; 
-        ooo_cpu[i].warmup_instructions = warmup_instructions;
-        ooo_cpu[i].simulation_instructions = simulation_instructions;
-        ooo_cpu[i].begin_sim_cycle = 0; 
-        ooo_cpu[i].begin_sim_instr = warmup_instructions;
-
-        // ROB
-        ooo_cpu[i].ROB.cpu = i;
-
-        // BRANCH PREDICTOR & BTB
-        ooo_cpu[i].initialize_branch_predictor();
-        ooo_cpu[i].initialize_btb();
-
-        // TLBs
-        ooo_cpu[i].ITLB.cpu = i;
-        ooo_cpu[i].ITLB.cache_type = IS_ITLB;
-	ooo_cpu[i].ITLB.MAX_READ = 2;
-	ooo_cpu[i].ITLB.MAX_WRITE = 2;
-        ooo_cpu[i].ITLB.fill_level = FILL_L1;
-        ooo_cpu[i].ITLB.extra_interface = &ooo_cpu[i].L1I;
-        ooo_cpu[i].ITLB.lower_level = &ooo_cpu[i].STLB; 
-
-        ooo_cpu[i].DTLB.cpu = i;
-        ooo_cpu[i].DTLB.cache_type = IS_DTLB;
-        ooo_cpu[i].DTLB.MAX_READ = 2;
-        ooo_cpu[i].DTLB.MAX_WRITE = 2;
-        ooo_cpu[i].DTLB.fill_level = FILL_L1;
-        ooo_cpu[i].DTLB.extra_interface = &ooo_cpu[i].L1D;
-        ooo_cpu[i].DTLB.lower_level = &ooo_cpu[i].STLB;
-
-        ooo_cpu[i].STLB.cpu = i;
-        ooo_cpu[i].STLB.cache_type = IS_STLB;
-        ooo_cpu[i].STLB.MAX_READ = 1;
-        ooo_cpu[i].STLB.MAX_WRITE = 1;
-        ooo_cpu[i].STLB.fill_level = FILL_L2;
-        ooo_cpu[i].STLB.upper_level_icache[i] = &ooo_cpu[i].ITLB;
-        ooo_cpu[i].STLB.upper_level_dcache[i] = &ooo_cpu[i].DTLB;
-
-        // PRIVATE CACHE
-        ooo_cpu[i].L1I.cpu = i;
-        ooo_cpu[i].L1I.cache_type = IS_L1I;
-        ooo_cpu[i].L1I.MAX_READ = 2;
-        ooo_cpu[i].L1I.MAX_WRITE = 2;
-        ooo_cpu[i].L1I.fill_level = FILL_L1;
-        ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
-        ooo_cpu[i].l1i_prefetcher_initialize();
-	ooo_cpu[i].L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-	ooo_cpu[i].L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-
-        ooo_cpu[i].L1D.cpu = i;
-        ooo_cpu[i].L1D.cache_type = IS_L1D;
-        ooo_cpu[i].L1D.MAX_READ = 2;
-        ooo_cpu[i].L1D.MAX_WRITE = 2;
-        ooo_cpu[i].L1D.fill_level = FILL_L1;
-        ooo_cpu[i].L1D.lower_level = &ooo_cpu[i].L2C; 
-        ooo_cpu[i].L1D.l1d_prefetcher_initialize();
-
-        ooo_cpu[i].L2C.cpu = i;
-        ooo_cpu[i].L2C.cache_type = IS_L2C;
-        ooo_cpu[i].L2C.MAX_READ = 1;
-        ooo_cpu[i].L2C.MAX_WRITE = 1;
-        ooo_cpu[i].L2C.fill_level = FILL_L2;
-        ooo_cpu[i].L2C.upper_level_icache[i] = &ooo_cpu[i].L1I;
-        ooo_cpu[i].L2C.upper_level_dcache[i] = &ooo_cpu[i].L1D;
-        ooo_cpu[i].L2C.lower_level = &LLC;
-        ooo_cpu[i].L2C.l2c_prefetcher_initialize();
+        ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
+        ooo_cpu.at(i).L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
+        ooo_cpu.at(i).L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
+        ooo_cpu.at(i).L2C.lower_level = &LLC;
 
         // SHARED CACHE
         LLC.cache_type = IS_LLC;
@@ -584,10 +520,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].update_rob();
 
 	      // decode
-	      if(ooo_cpu[i].DECODE_BUFFER.occupancy > 0)
-		{
-		  ooo_cpu[i].decode_and_dispatch();
-		}
+	      ooo_cpu[i].decode_and_dispatch();
 	      
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
