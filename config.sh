@@ -253,7 +253,7 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('.phony: all clean\n\n')
     wfp.write('all: ' + config_file['executable_name'] + '\n\n')
     wfp.write('clean: \n\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n\n')
-    wfp.write(config_file['executable_name'] + ': $(patsubst %.cc,%.o,$(wildcard src/*.cc)) ' + ' '.join('obj/' + k for k in libfilenames) + '\n')
+    wfp.write(config_file['executable_name'] + ': $(patsubst src/%.cc,obj/%.o,$(wildcard src/*.cc)) ' + ' '.join('obj/' + k for k in libfilenames) + '\n')
     wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
 
     for kv in libfilenames.items():
