@@ -148,8 +148,8 @@ void O3_CPU::initialize_btb() {
   }
 }
 
-uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
-                                uint8_t &always_taken) {
+std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type) {
+  uint8_t always_taken = false;
   if (branch_type != BRANCH_CONDITIONAL) {
     always_taken = true;
   }
@@ -166,27 +166,27 @@ uint64_t O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type,
     // and adjust for the size of the call instr
     target += basic_btb_get_call_size(cpu, target);
 
-    return target;
+    return std::make_pair(target, always_taken);
   } else if ((branch_type == BRANCH_INDIRECT) ||
              (branch_type == BRANCH_INDIRECT_CALL)) {
-    return basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)];
+    return std::make_pair(basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], always_taken);
   } else {
     // use BTB for all other branches + direct calls
     auto btb_entry = basic_btb_find_entry(cpu, ip);
 
     if (btb_entry == NULL) {
       // no prediction for this IP
-      always_taken = 1;
-      return 0;
+      always_taken = true;
+      return std::make_pair(0, always_taken);
     }
 
     always_taken = btb_entry->always_taken;
     basic_btb_update_lru(cpu, btb_entry);
 
-    return btb_entry->target;
+    return std::make_pair(btb_entry->target, always_taken);
   }
 
-  return 0;
+  return std::make_pair(0, always_taken);
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken,
