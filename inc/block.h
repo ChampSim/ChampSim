@@ -5,7 +5,7 @@
 #include "instruction.h"
 #include "set.h"
 
-#include <set>
+#include <vector>
 
 class MemoryRequestProducer;
 
@@ -29,13 +29,11 @@ class PACKET {
     uint32_t pf_metadata;
 
     uint8_t  is_producer, 
-             //lq_index_depend_on_me[ROB_SIZE], 
-             //sq_index_depend_on_me[ROB_SIZE], 
              returned,
              asid[2],
              type;
 
-    std::set<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::vector<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
 
     uint32_t cpu, data_index, lq_index, sq_index;
 
@@ -49,7 +47,7 @@ class PACKET {
              event_cycle,
              cycle_enqueued;
 
-    std::set<MemoryRequestProducer*> to_return;
+    std::vector<MemoryRequestProducer*> to_return;
 
     PACKET() {
         scheduled = 0;

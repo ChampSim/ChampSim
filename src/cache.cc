@@ -225,7 +225,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     hit_block.used = 1;
 }
 
-bool CACHE::readlike_miss(PACKET handle_pkt)
+bool CACHE::readlike_miss(PACKET &handle_pkt)
 {
     // check mshr
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
@@ -235,9 +235,24 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
     {
         // update fill location
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-        mshr_entry->sq_index_depend_on_me.insert(handle_pkt.sq_index_depend_on_me.begin(), handle_pkt.sq_index_depend_on_me.end());
-        mshr_entry->lq_index_depend_on_me.insert(handle_pkt.lq_index_depend_on_me.begin(), handle_pkt.lq_index_depend_on_me.end());
-        mshr_entry->to_return.insert(handle_pkt.to_return.begin(), handle_pkt.to_return.end());
+
+        std::vector<std::size_t> temp_lqdepend(std::move(mshr_entry->lq_index_depend_on_me));
+        mshr_entry->lq_index_depend_on_me.clear();
+        std::set_union(std::begin(handle_pkt.lq_index_depend_on_me), std::end(handle_pkt.lq_index_depend_on_me),
+                std::begin(temp_lqdepend), std::end(temp_lqdepend),
+                std::back_inserter(mshr_entry->lq_index_depend_on_me));
+
+        std::vector<std::size_t> temp_sqdepend(std::move(mshr_entry->sq_index_depend_on_me));
+        mshr_entry->sq_index_depend_on_me.clear();
+        std::set_union(std::begin(handle_pkt.sq_index_depend_on_me), std::end(handle_pkt.sq_index_depend_on_me),
+                std::begin(temp_sqdepend), std::end(temp_sqdepend),
+                std::back_inserter(mshr_entry->sq_index_depend_on_me));
+
+        std::vector<MemoryRequestProducer*> temp_return(std::move(mshr_entry->to_return));
+        mshr_entry->to_return.clear();
+        std::set_union(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
+                std::begin(temp_return), std::end(temp_return),
+                std::back_inserter(mshr_entry->to_return));
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
@@ -316,7 +331,7 @@ bool CACHE::readlike_miss(PACKET handle_pkt)
     return true;
 }
 
-bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET handle_pkt)
+bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 {
     bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
@@ -467,10 +482,24 @@ int CACHE::add_rq(PACKET *packet)
     // check for duplicates in the read queue
     int index = RQ.check_queue(packet);
     if (index != -1) {
-        
-        RQ.entry[index].sq_index_depend_on_me.insert(packet->sq_index_depend_on_me.begin(), packet->sq_index_depend_on_me.end());
-        RQ.entry[index].lq_index_depend_on_me.insert(packet->lq_index_depend_on_me.begin(), packet->lq_index_depend_on_me.end());
-        RQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
+
+        std::vector<std::size_t> temp_lqdepend(std::move(RQ.entry[index].lq_index_depend_on_me));
+        RQ.entry[index].lq_index_depend_on_me.clear();
+        std::set_union(std::begin(temp_lqdepend), std::end(temp_lqdepend),
+                std::begin(packet->lq_index_depend_on_me), std::end(packet->lq_index_depend_on_me),
+                std::back_inserter(RQ.entry[index].lq_index_depend_on_me));
+
+        std::vector<std::size_t> temp_sqdepend(std::move(RQ.entry[index].sq_index_depend_on_me));
+        RQ.entry[index].sq_index_depend_on_me.clear();
+        std::set_union(std::begin(temp_sqdepend), std::end(temp_sqdepend),
+                std::begin(packet->sq_index_depend_on_me), std::end(packet->sq_index_depend_on_me),
+                std::back_inserter(RQ.entry[index].sq_index_depend_on_me));
+
+        std::vector<MemoryRequestProducer*> temp_return(std::move(RQ.entry[index].to_return));
+        RQ.entry[index].to_return.clear();
+        std::set_union(std::begin(temp_return), std::end(temp_return),
+                std::begin(packet->to_return), std::end(packet->to_return),
+                std::back_inserter(RQ.entry[index].to_return));
 
         RQ.MERGED++;
         RQ.ACCESS++;
@@ -773,7 +802,12 @@ int CACHE::add_pq(PACKET *packet)
     if (index != -1)
     {
         PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
-        PQ.entry[index].to_return.insert(packet->to_return.begin(), packet->to_return.end());
+
+        std::vector<MemoryRequestProducer*> temp(std::move(PQ.entry[index].to_return));
+        PQ.entry[index].to_return.clear();
+        std::set_union(std::begin(temp), std::end(temp),
+                std::begin(packet->to_return), std::end(packet->to_return),
+                std::back_inserter(PQ.entry[index].to_return));
 
         PQ.MERGED++;
         PQ.ACCESS++;
