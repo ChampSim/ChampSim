@@ -236,23 +236,9 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         // update fill location
         mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
 
-        std::vector<std::size_t> temp_lqdepend(std::move(mshr_entry->lq_index_depend_on_me));
-        mshr_entry->lq_index_depend_on_me.clear();
-        std::set_union(std::begin(handle_pkt.lq_index_depend_on_me), std::end(handle_pkt.lq_index_depend_on_me),
-                std::begin(temp_lqdepend), std::end(temp_lqdepend),
-                std::back_inserter(mshr_entry->lq_index_depend_on_me));
-
-        std::vector<std::size_t> temp_sqdepend(std::move(mshr_entry->sq_index_depend_on_me));
-        mshr_entry->sq_index_depend_on_me.clear();
-        std::set_union(std::begin(handle_pkt.sq_index_depend_on_me), std::end(handle_pkt.sq_index_depend_on_me),
-                std::begin(temp_sqdepend), std::end(temp_sqdepend),
-                std::back_inserter(mshr_entry->sq_index_depend_on_me));
-
-        std::vector<MemoryRequestProducer*> temp_return(std::move(mshr_entry->to_return));
-        mshr_entry->to_return.clear();
-        std::set_union(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
-                std::begin(temp_return), std::end(temp_return),
-                std::back_inserter(mshr_entry->to_return));
+        packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
+        packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
+        packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
@@ -291,16 +277,15 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         // Send to the lower level
         if (cache_type != IS_STLB)
         {
-            PACKET fwd_pkt = handle_pkt;
             if (handle_pkt.fill_level <= fill_level)
-                fwd_pkt.to_return = {this};
+                handle_pkt.to_return = {this};
             else
-                fwd_pkt.to_return = {};
+                handle_pkt.to_return.clear();
 
             if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
-                lower_level->add_pq(&fwd_pkt);
+                lower_level->add_pq(&handle_pkt);
             else
-                lower_level->add_rq(&fwd_pkt);
+                lower_level->add_rq(&handle_pkt);
         }
         else
         {
@@ -371,7 +356,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             writeback_packet.ip = 0;
             writeback_packet.type = WRITEBACK;
             writeback_packet.event_cycle = current_core_cycle[handle_pkt.cpu];
-            writeback_packet.to_return = {};
 
             lower_level->add_wq(&writeback_packet);
         }
@@ -483,23 +467,9 @@ int CACHE::add_rq(PACKET *packet)
     int index = RQ.check_queue(packet);
     if (index != -1) {
 
-        std::vector<std::size_t> temp_lqdepend(std::move(RQ.entry[index].lq_index_depend_on_me));
-        RQ.entry[index].lq_index_depend_on_me.clear();
-        std::set_union(std::begin(temp_lqdepend), std::end(temp_lqdepend),
-                std::begin(packet->lq_index_depend_on_me), std::end(packet->lq_index_depend_on_me),
-                std::back_inserter(RQ.entry[index].lq_index_depend_on_me));
-
-        std::vector<std::size_t> temp_sqdepend(std::move(RQ.entry[index].sq_index_depend_on_me));
-        RQ.entry[index].sq_index_depend_on_me.clear();
-        std::set_union(std::begin(temp_sqdepend), std::end(temp_sqdepend),
-                std::begin(packet->sq_index_depend_on_me), std::end(packet->sq_index_depend_on_me),
-                std::back_inserter(RQ.entry[index].sq_index_depend_on_me));
-
-        std::vector<MemoryRequestProducer*> temp_return(std::move(RQ.entry[index].to_return));
-        RQ.entry[index].to_return.clear();
-        std::set_union(std::begin(temp_return), std::end(temp_return),
-                std::begin(packet->to_return), std::end(packet->to_return),
-                std::back_inserter(RQ.entry[index].to_return));
+        packet_dep_merge(RQ.entry[index].lq_index_depend_on_me, packet->lq_index_depend_on_me);
+        packet_dep_merge(RQ.entry[index].sq_index_depend_on_me, packet->sq_index_depend_on_me);
+        packet_dep_merge(RQ.entry[index].to_return, packet->to_return);
 
         RQ.MERGED++;
         RQ.ACCESS++;
@@ -803,11 +773,7 @@ int CACHE::add_pq(PACKET *packet)
     {
         PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
 
-        std::vector<MemoryRequestProducer*> temp(std::move(PQ.entry[index].to_return));
-        PQ.entry[index].to_return.clear();
-        std::set_union(std::begin(temp), std::end(temp),
-                std::begin(packet->to_return), std::end(packet->to_return),
-                std::back_inserter(PQ.entry[index].to_return));
+        packet_dep_merge(PQ.entry[index].to_return, packet->to_return);
 
         PQ.MERGED++;
         PQ.ACCESS++;

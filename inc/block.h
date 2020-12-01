@@ -5,7 +5,7 @@
 #include "instruction.h"
 #include "set.h"
 
-#include <vector>
+#include <list>
 
 class MemoryRequestProducer;
 
@@ -33,7 +33,7 @@ class PACKET {
              asid[2],
              type;
 
-    std::vector<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
 
     uint32_t cpu, data_index, lq_index, sq_index;
 
@@ -47,7 +47,7 @@ class PACKET {
              event_cycle,
              cycle_enqueued;
 
-    std::vector<MemoryRequestProducer*> to_return;
+    std::list<MemoryRequestProducer*> to_return;
 
     PACKET() {
         scheduled = 0;
@@ -84,6 +84,43 @@ class PACKET {
 	cycle_enqueued = 0;
     };
 };
+
+template <typename LIST>
+void packet_dep_merge(LIST &dest, LIST &src)
+{
+    if (src.empty())
+        return;
+
+    if (dest.empty())
+    {
+        dest = src;
+        return;
+    }
+
+    auto s_begin = src.begin();
+    auto s_end   = src.end();
+    auto d_begin = dest.begin();
+    auto d_end   = dest.end();
+
+    while (s_begin != s_end && d_begin != d_end)
+    {
+        if (*s_begin > *d_begin)
+        {
+            ++d_begin;
+        }
+        else if (*s_begin == *d_begin)
+        {
+            ++s_begin;
+        }
+        else
+        {
+            dest.insert(d_begin, *s_begin);
+            ++s_begin;
+        }
+    }
+
+    dest.insert(d_begin, s_begin, s_end);
+}
 
 // packet queue
 class PACKET_QUEUE {

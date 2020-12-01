@@ -636,7 +636,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
       pf_packet.ip = pf_v_addr;
       pf_packet.type = PREFETCH;
       pf_packet.event_cycle = current_core_cycle[cpu];
-      pf_packet.to_return = {};
 
       L1I_bus.lower_level->add_pq(&pf_packet);
       L1I.pf_issued++;
@@ -1878,7 +1877,6 @@ void O3_CPU::retire_rob()
                         data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                         data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                         data_packet.event_cycle = current_core_cycle[cpu];
-                        data_packet.to_return = {};
 
                         L1D_bus.lower_level->add_wq(&data_packet);
                     }
