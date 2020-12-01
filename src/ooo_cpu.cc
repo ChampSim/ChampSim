@@ -1080,7 +1080,8 @@ void O3_CPU::execute_instruction() {
 
 void O3_CPU::do_execution(uint32_t rob_index) {
   // if (ROB.entry[rob_index].reg_ready && (ROB.entry[rob_index].scheduled ==
-  // COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu]))
+  // COMPLETED) && (ROB.entry[rob_index].event_cycle <=
+  // current_core_cycle[cpu]))
   // {
 
   // cout << "do_execution() rob_index: " << rob_index << " cycle: " <<
