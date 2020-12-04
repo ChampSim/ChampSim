@@ -623,10 +623,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
             pf_packet.ip = 0;
             pf_packet.type = PREFETCH;
-            pf_packet.delta = delta;
-            pf_packet.depth = depth;
-            pf_packet.signature = signature;
-            pf_packet.confidence = confidence;
+            //pf_packet.delta = delta;
+            //pf_packet.depth = depth;
+            //pf_packet.signature = signature;
+            //pf_packet.confidence = confidence;
             pf_packet.event_cycle = current_core_cycle[cpu];
 
             // give a dummy 0 as the IP of a prefetch

@@ -26,7 +26,7 @@ config_cache_name = '.champsimconfig_cache'
 # Begin format strings
 ###
 
-llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[latency]});\n'
+llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][window_size]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
 
@@ -90,7 +90,7 @@ const_names = {
 default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal' }
+default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 2, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'prefetcher': 'no_l1d' }
@@ -117,6 +117,7 @@ os.makedirs('obj', exist_ok=True)
 
 for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
+    config_file['ooo_cpu'][i] = merge_dicts(default_core, {'btb': config_file['btb']} if 'btb' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
     config_file['ooo_cpu'][i]['L1I'] = merge_dicts(default_l1i, config_file.get('L1I', {}), config_file['ooo_cpu'][i].get('L1I',{}))
     config_file['ooo_cpu'][i]['L1D'] = merge_dicts(default_l1d, config_file.get('L1D', {}), config_file['ooo_cpu'][i].get('L1D',{}))
@@ -150,6 +151,8 @@ for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
         libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + cpu['L2C']['prefetcher']
     if cpu['branch_predictor'] is not None:
         libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
+    if cpu['btb'] is not None:
+        libfilenames['cpu' + str(i) + 'btb.a'] = 'btb/' + cpu['btb']
 if config_file['LLC']['prefetcher'] is not None:
     libfilenames['llprefetcher.a'] = 'prefetcher/' + config_file['LLC']['prefetcher']
 if config_file['LLC']['replacement'] is not None:
@@ -186,11 +189,11 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "ooo_cpu.h"\n')
     wfp.write('#include "vmem.h"\n')
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')
-    wfp.write('#include <array>\n')
+    wfp.write('#include <vector>\n')
 
     wfp.write(llc_fmtstr.format(cpu='', name='LLC', attrs=config_file['LLC']))
 
-    wfp.write('std::array<O3_CPU, NUM_CPUS> ooo_cpu { ')
+    wfp.write('std::vector<O3_CPU> ooo_cpu { ')
     wfp.write(' };\n')
 
     wfp.write(pmem_fmtstr.format(attrs=config_file['physical_memory']))
@@ -225,7 +228,7 @@ with open(constants_header_name, 'wt') as wfp:
                 wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
             wfp.write('\n')
         else:
-            if k != 'branch_predictor':
+            if k != 'branch_predictor' and k != 'btb':
                 wfp.write(define_fmtstr.format(name=k).format(names=const_names['core'], config=config_file['ooo_cpu'][0]))
 
     wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
@@ -266,6 +269,7 @@ with open('Makefile', 'wt') as wfp:
 
     wfp.write('-include $(wildcard prefetcher/*/*.d)\n')
     wfp.write('-include $(wildcard branch/*/*.d)\n')
+    wfp.write('-include $(wildcard btb/*/*.d)\n')
     wfp.write('-include $(wildcard replacement/*/*.d)\n')
     wfp.write('-include $(wildcard src/*.d)\n')
 

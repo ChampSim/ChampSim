@@ -29,7 +29,7 @@ unsigned int gs_table_hash(uint64_t ip, int bh_vector)
     return hash;
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t ip)
+uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
     int prediction = 1;
 
@@ -45,7 +45,7 @@ uint8_t O3_CPU::predict_branch(uint64_t ip)
     return prediction;
 }
 
-void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
     int gs_hash = gs_table_hash(ip, branch_history_vector[cpu]);
 

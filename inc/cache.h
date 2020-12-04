@@ -27,20 +27,20 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
-    const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-    uint32_t LATENCY;
+    const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
+    uint32_t LATENCY = 0;
     std::vector<BLOCK> block{NUM_SET*NUM_WAY};
-    int fill_level;
-    uint32_t MAX_READ, MAX_WRITE;
+    int fill_level = -1;
+    uint32_t MAX_READ = 1, MAX_WRITE = 1;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
 
     // prefetch stats
-    uint64_t pf_requested,
-             pf_issued,
-             pf_useful,
-             pf_useless,
-             pf_fill;
+    uint64_t pf_requested = 0,
+             pf_issued = 0,
+             pf_useful = 0,
+             pf_useless = 0,
+             pf_fill = 0;
 
     // queues
     PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
@@ -50,45 +50,19 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
-    uint64_t sim_access[NUM_CPUS][NUM_TYPES],
-             sim_hit[NUM_CPUS][NUM_TYPES],
-             sim_miss[NUM_CPUS][NUM_TYPES],
-             roi_access[NUM_CPUS][NUM_TYPES],
-             roi_hit[NUM_CPUS][NUM_TYPES],
-             roi_miss[NUM_CPUS][NUM_TYPES];
+    uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
+             sim_hit[NUM_CPUS][NUM_TYPES] = {},
+             sim_miss[NUM_CPUS][NUM_TYPES] = {},
+             roi_access[NUM_CPUS][NUM_TYPES] = {},
+             roi_hit[NUM_CPUS][NUM_TYPES] = {},
+             roi_miss[NUM_CPUS][NUM_TYPES] = {};
 
-    uint64_t total_miss_latency;
+    uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8) 
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), NUM_LINE(v4), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
-
-        LATENCY = 0;
-
-        for (uint32_t i=0; i<NUM_CPUS; i++) {
-            for (uint32_t j=0; j<NUM_TYPES; j++) {
-                sim_access[i][j] = 0;
-                sim_hit[i][j] = 0;
-                sim_miss[i][j] = 0;
-                roi_access[i][j] = 0;
-                roi_hit[i][j] = 0;
-                roi_miss[i][j] = 0;
-            }
-        }
-
-	total_miss_latency = 0;
-
-        lower_level = NULL;
-        fill_level = -1;
-        MAX_READ = 8;
-        MAX_WRITE = 8;
-
-        pf_requested = 0;
-        pf_issued = 0;
-        pf_useful = 0;
-        pf_useless = 0;
-        pf_fill = 0;
-    };
+    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8)
+        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
+    }
 
     // functions
     int  add_rq(PACKET *packet),
