@@ -259,11 +259,12 @@ void print_deadlock(uint32_t i)
 
     // print L1D MSHR entry
     std::cout << std::endl << "L1D MSHR Entry" << std::endl;
-    for (uint32_t j=0; j<ooo_cpu[i].L1D.MSHR.size(); j++) {
-        PACKET &entry = ooo_cpu[i].L1D.MSHR[j];
+    std::size_t j = 0;
+    for (PACKET &entry : ooo_cpu[i].L1D.MSHR) {
         std::cout << "[L1D MSHR] entry: " << j << " instr_id: " << entry.instr_id << " rob_index: " << entry.rob_index;
         std::cout << " address: " << std::hex << entry.address << " full_addr: " << entry.full_addr << std::dec << " type: " << +entry.type;
         std::cout << " fill_level: " << entry.fill_level << " lq_index: " << entry.lq_index << " sq_index: " << entry.sq_index << " event_cycle: " << entry.event_cycle << std::endl;
+        ++j;
     }
 
     assert(0);

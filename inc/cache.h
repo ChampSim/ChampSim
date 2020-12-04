@@ -3,6 +3,7 @@
 
 #include <string>
 #include <functional>
+#include <list>
 #include <vector>
 
 #include "memory_class.h"
@@ -47,7 +48,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
                  VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
 
-    std::vector<PACKET> MSHR{MSHR_SIZE}; // MSHR
+    std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES],
              sim_hit[NUM_CPUS][NUM_TYPES],
