@@ -3,6 +3,7 @@
 
 #include <string>
 #include <functional>
+#include <list>
 #include <vector>
 
 #include "memory_class.h"
@@ -22,13 +23,13 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-class CACHE : public MEMORY {
+class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     uint32_t LATENCY = 0;
-    BLOCK **block;
+    std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     int fill_level = -1;
     uint32_t MAX_READ = 1, MAX_WRITE = 1;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
@@ -45,10 +46,9 @@ class CACHE : public MEMORY {
     PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
                  RQ{NAME + "_RQ", RQ_SIZE}, // read queue
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 VAPQ{NAME + "_VAPQ", PQ_SIZE}, // virtual address prefetch queue
-                 PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+                 VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
 
-    std::vector<PACKET> MSHR{MSHR_SIZE}; // MSHR
+    std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
              sim_hit[NUM_CPUS][NUM_TYPES] = {},
@@ -62,24 +62,7 @@ class CACHE : public MEMORY {
     // constructor
     CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8)
         : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
-
-        // cache block
-        block = new BLOCK* [NUM_SET];
-        for (uint32_t i=0; i<NUM_SET; i++) {
-            block[i] = new BLOCK[NUM_WAY]; 
-
-            for (uint32_t j=0; j<NUM_WAY; j++) {
-                block[i][j].lru = j;
-            }
-        }
-    };
-
-    // destructor
-    ~CACHE() {
-        for (uint32_t i=0; i<NUM_SET; i++)
-            delete[] block[i];
-        delete[] block;
-    };
+    }
 
     // functions
     int  add_rq(PACKET *packet),
@@ -102,13 +85,16 @@ class CACHE : public MEMORY {
          va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);
 
     void add_mshr(PACKET *packet),
-         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
          va_translate_prefetches();
 
     void handle_fill(),
          handle_writeback(),
          handle_read(),
          handle_prefetch();
+
+    void readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt);
+    bool readlike_miss(PACKET &handle_pkt);
+    bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
 
     void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),

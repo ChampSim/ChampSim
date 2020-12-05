@@ -19,23 +19,84 @@ extern uint32_t tRP,  // Row Precharge (RP) latency
 
 extern uint64_t l2pf_access;
 
-class MEMORY {
+// CACHE BLOCK
+class BLOCK {
   public:
-    // memory interface
-    MEMORY *upper_level_icache[NUM_CPUS] = {}, *upper_level_dcache[NUM_CPUS] = {}, *lower_level = NULL, *extra_interface = NULL;
+    uint8_t valid = 0,
+            prefetch = 0,
+            dirty = 0,
+            used = 0;
 
-    // empty queues
-    PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
+    int delta = 0,
+        depth = 0,
+        signature = 0,
+        confidence = 0;
 
-    // functions
-    virtual int  add_rq(PACKET *packet) = 0;
-    virtual int  add_wq(PACKET *packet) = 0;
-    virtual int  add_pq(PACKET *packet) = 0;
-    virtual void return_data(PACKET *packet) = 0;
-    virtual void operate() = 0;
-    virtual void increment_WQ_FULL(uint64_t address) = 0;
-    virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-    virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+    uint64_t address = 0,
+             full_addr = 0,
+             v_address,
+             full_v_addr,
+             tag = 0,
+             data = 0,
+             ip,
+             cpu = 0,
+             instr_id = 0;
+
+    // replacement state
+    uint32_t lru = std::numeric_limits<uint32_t>::max();
+
+    BLOCK() {}
+
+    BLOCK(const PACKET &packet) :
+        valid(1),
+        prefetch(packet.type == PREFETCH),
+        dirty(0),
+        used(0),
+        delta(packet.delta),
+        depth(packet.depth),
+        signature(packet.signature),
+        confidence(packet.confidence),
+        address(packet.address),
+        full_addr(packet.full_addr),
+        v_address(packet.v_address),
+        full_v_addr(packet.full_v_addr),
+        tag(packet.address),
+        data(packet.data),
+        ip(packet.ip),
+        cpu(packet.cpu),
+        instr_id(packet.instr_id)
+    {}
+};
+
+class MemoryRequestConsumer
+{
+    public:
+        virtual int  add_rq(PACKET *packet) = 0;
+        virtual int  add_wq(PACKET *packet) = 0;
+        virtual int  add_pq(PACKET *packet) = 0;
+        virtual void increment_WQ_FULL(uint64_t address) = 0;
+        virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
+        virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+};
+
+class MemoryRequestProducer
+{
+    public:
+        MemoryRequestConsumer *lower_level;
+        virtual void return_data(PACKET *packet) = 0;
+    protected:
+        MemoryRequestProducer() {}
+        explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
+};
+
+// DRAM CACHE BLOCK
+class DRAM_ARRAY {
+  public:
+    BLOCK **block;
+
+    DRAM_ARRAY() {
+        block = NULL;
+    };
 };
 
 struct BANK_REQUEST {

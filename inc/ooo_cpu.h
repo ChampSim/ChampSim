@@ -15,6 +15,14 @@ using namespace std;
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
+class CacheBus : public MemoryRequestProducer
+{
+    public:
+        PACKET_QUEUE PROCESSED{"", ROB_SIZE};
+        explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
+        void return_data(PACKET *packet);
+};
+
 // cpu
 class O3_CPU {
   public:
@@ -87,7 +95,7 @@ class O3_CPU {
           L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
 
-  // trace cache for previously decoded instructions
+    CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
     // constructor
     O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
@@ -121,7 +129,6 @@ class O3_CPU {
         ITLB.MAX_READ = 2;
         ITLB.MAX_WRITE = 2;
         ITLB.fill_level = FILL_L1;
-        ITLB.extra_interface = &L1I;
         ITLB.lower_level = &STLB;
 
         DTLB.cpu = this->cpu;
@@ -129,7 +136,6 @@ class O3_CPU {
         DTLB.MAX_READ = 2;
         DTLB.MAX_WRITE = 2;
         DTLB.fill_level = FILL_L1;
-        DTLB.extra_interface = &L1D;
         DTLB.lower_level = &STLB;
 
         STLB.cpu = this->cpu;
@@ -137,8 +143,6 @@ class O3_CPU {
         STLB.MAX_READ = 1;
         STLB.MAX_WRITE = 1;
         STLB.fill_level = FILL_L2;
-        STLB.upper_level_icache[this->cpu] = &ITLB;
-        STLB.upper_level_dcache[this->cpu] = &DTLB;
 
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
@@ -160,8 +164,6 @@ class O3_CPU {
         L2C.MAX_READ = 1;
         L2C.MAX_WRITE = 1;
         L2C.fill_level = FILL_L2;
-        L2C.upper_level_icache[this->cpu] = &L1I;
-        L2C.upper_level_dcache[this->cpu] = &L1D;
 
         l1i_prefetcher_initialize();
         L1D.l1d_prefetcher_initialize();
@@ -208,8 +210,6 @@ class O3_CPU {
     void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
          reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
-         handle_merged_translation(PACKET *provider),
-         handle_merged_load(PACKET *provider),
          release_load_queue(uint32_t lq_index);
 
     void initialize_core();

@@ -3,86 +3,91 @@
 
 #include "champsim.h"
 #include "instruction.h"
-#include "set.h"
 
-#include <limits>
+#include <list>
 
-// CACHE BLOCK
-struct BLOCK {
-    uint8_t valid = 0,
-            prefetch = 0,
-            dirty = 0,
-            used = 0;
-
-    int delta = 0,
-        depth = 0,
-        signature = 0,
-        confidence = 0;
-
-    uint64_t address = 0,
-             full_addr = 0,
-             v_address = 0,
-             full_v_addr = 0,
-             tag = 0,
-             data = 0,
-             ip = 0,
-             cpu = 0,
-             instr_id = 0;
-
-    // replacement state
-    uint32_t lru = 0;
-};
-
-// DRAM CACHE BLOCK
-struct DRAM_ARRAY {
-    BLOCK **block = NULL;
-};
+class MemoryRequestProducer;
 
 // message packet
-struct PACKET {
-    bool instruction = 0,
-         is_data = 1,
-         fill_l1i = 0,
-         fill_l1d = 0,
-         tlb_access = 0;
-
+class PACKET {
+  public:
     uint8_t scheduled = 0,
             translated = 0,
             fetched = 0,
             prefetched = 0;
 
     int fill_level = -1,
-        pf_origin_level = -1,
-        rob_index = -1;
+        pf_origin_level,
+        rob_index = -1,
+        producer = -1,
+        delta = 0,
+        depth = 0,
+        signature = 0,
+        confidence = 0;
 
     uint32_t pf_metadata;
 
-    uint8_t  is_producer = 0,
-             instr_merged = 0,
-             load_merged = 0,
-             store_merged = 0,
+    uint8_t  is_producer = 0, 
              returned = 0,
              asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
              type = 0;
 
-    fastset rob_index_depend_on_me,
-            lq_index_depend_on_me,
-            sq_index_depend_on_me;
+    std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
 
-    uint32_t cpu = NUM_CPUS, data_index = 0, lq_index = 0, sq_index = 0;
+    uint32_t cpu = NUM_CPUS,
+             data_index = 0,
+             lq_index = 0,
+             sq_index = 0;
 
     uint64_t address = 0,
              full_addr = 0,
-             instruction_pa = 0,
              v_address = 0,
              full_v_addr = 0,
-             data_pa = 0,
              data = 0,
              instr_id = 0,
              ip = 0,
              event_cycle = std::numeric_limits<uint64_t>::max(),
              cycle_enqueued = 0;
+
+    std::list<MemoryRequestProducer*> to_return;
 };
+
+template <typename LIST>
+void packet_dep_merge(LIST &dest, LIST &src)
+{
+    if (src.empty())
+        return;
+
+    if (dest.empty())
+    {
+        dest = src;
+        return;
+    }
+
+    auto s_begin = src.begin();
+    auto s_end   = src.end();
+    auto d_begin = dest.begin();
+    auto d_end   = dest.end();
+
+    while (s_begin != s_end && d_begin != d_end)
+    {
+        if (*s_begin > *d_begin)
+        {
+            ++d_begin;
+        }
+        else if (*s_begin == *d_begin)
+        {
+            ++s_begin;
+        }
+        else
+        {
+            dest.insert(d_begin, *s_begin);
+            ++s_begin;
+        }
+    }
+
+    dest.insert(d_begin, s_begin, s_end);
+}
 
 // packet queue
 struct PACKET_QUEUE {
