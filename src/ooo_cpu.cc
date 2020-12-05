@@ -552,9 +552,25 @@ void O3_CPU::decode_and_dispatch()
 	    way->lru = 0;
 	    way->addr = db_entry.ip;
 
-        // Add to ROB
-        ROB.entry[ROB.tail] = db_entry;
-        ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
+	    // Stack Pointer Folding
+	    if(db_entry.is_branch == 0)
+	      {
+		// the exact, true value of the stack pointer for any given instruction can
+		// be determined immediately after the instruction is decoded without
+		// waiting for the stack pointer's dependency chain to be resolved
+		for (int i=0; i<NUM_INSTR_SOURCES; i++)
+		  {
+		    if(db_entry.source_registers[i] == REG_STACK_POINTER)
+		      {
+			db_entry.source_registers[i] = 0;
+			db_entry.num_reg_ops--;
+		      }
+		  }
+	      }
+
+	    // Add to ROB
+	    ROB.entry[ROB.tail] = db_entry;
+	    ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
 
 	if (ROB.entry[ROB.tail].branch_mispredicted)
 	  {
