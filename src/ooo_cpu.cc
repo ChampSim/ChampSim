@@ -8,7 +8,7 @@
 
 // out-of-order core
 extern std::vector<O3_CPU> ooo_cpu;
-uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
+uint64_t current_core_cycle[NUM_CPUS];
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
@@ -383,7 +383,7 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.asid[0] = 0;
 	  trace_packet.asid[1] = 0;
 	  trace_packet.event_cycle = current_core_cycle[cpu];
-      trace_packet.to_return = {&ITLB_bus};
+	  trace_packet.to_return = {&ITLB_bus};
 	  
 	  int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
 
@@ -432,7 +432,7 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
-      fetch_packet.to_return = {&L1I_bus};
+	  fetch_packet.to_return = {&L1I_bus};
 
 	  /*
 	  // invoke code prefetcher -- THIS HAS BEEN MOVED TO cache.cc !!!
@@ -1574,158 +1574,8 @@ void O3_CPU::operate_cache()
     l1i_prefetcher_cycle_operate();
 }
 
-void O3_CPU::update_rob()
+void O3_CPU::identify_completed_instructions()
 {
-    if (ITLB_bus.PROCESSED.occupancy && (ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-    {
-        PACKET itlb_entry = ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head];
-
-	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
-
-        // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
-	uint32_t index = IFETCH_BUFFER.head;
-        for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
-        {
-	    if(IFETCH_BUFFER.entry[index].ip == 0)
-	      {
-		break;
-	      }
-            if((IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
-            {
-	      if(IFETCH_BUFFER.entry[index].translated == INFLIGHT)
-		{
-		  if(available_fetch_bandwidth)
-		    {
-		      IFETCH_BUFFER.entry[index].translated = COMPLETED;
-		      // we did not fetch this instruction's cache line, but we did translated it
-		      IFETCH_BUFFER.entry[index].fetched = 0;
-		      // recalculate a physical address for this cache line based on the translated physical page address
-		      IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
-
-		      available_fetch_bandwidth--;
-		    }
-		  else
-		    {
-		      // not enough fetch bandwidth to translate this instruction this time, so try reading the ITLB again
-		      IFETCH_BUFFER.entry[index].translated = 0;
-		    }
-		}
-            }
-
-	    index++;
-	    if(index >= IFETCH_BUFFER.SIZE)
-	      {
-		index = 0;
-	      }
-        }
-
-        // remove this entry
-        ITLB_bus.PROCESSED.remove_queue(&ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head]);
-    }
-
-    if (L1I_bus.PROCESSED.occupancy && (L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-    {
-        PACKET &l1i_entry = L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head];
-
-	std::size_t available_fetch_bandwidth = FETCH_WIDTH;
-
-        // this is the L1I cache, so instructions are now fully fetched, so mark them as such
-	uint32_t index = IFETCH_BUFFER.head;
-        for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
-        {
-	    if(IFETCH_BUFFER.entry[index].ip == 0)
-              {
-                break;
-              }
-            if((IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
-            {
-	      if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == INFLIGHT))
-		{
-		  if(available_fetch_bandwidth)
-		    {
-		      IFETCH_BUFFER.entry[index].fetched = COMPLETED;
-
-		      available_fetch_bandwidth--;
-		    }
-		  else
-		    {
-		      // not enough fetch bandwidth to get this instruction this time, so try reading the L1I again
-		      IFETCH_BUFFER.entry[index].fetched = 0;
-		    }
-		}
-            }
-
-	    index++;
-            if(index >= IFETCH_BUFFER.SIZE)
-              {
-                index = 0;
-              }
-
-	    if(j >= IFETCH_BUFFER.occupancy)
-	      {
-		break;
-	      }
-        }
-
-        // remove this entry
-        L1I_bus.PROCESSED.remove_queue(&L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head]);
-    }
-
-    if (DTLB_bus.PROCESSED.occupancy && (DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-    { // DTLB
-        PACKET &dtlb_entry = DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head];
-
-        for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
-        {
-            SQ.entry[sq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            SQ.entry[sq_merged].translated = COMPLETED;
-            SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
-
-            RTS1[RTS1_tail] = sq_merged;
-            RTS1_tail++;
-            if (RTS1_tail == SQ_SIZE)
-                RTS1_tail = 0;
-        }
-
-        for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
-        {
-            LQ.entry[lq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
-            LQ.entry[lq_merged].translated = COMPLETED;
-            LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
-
-            RTL1[RTL1_tail] = lq_merged;
-            RTL1_tail++;
-            if (RTL1_tail == LQ_SIZE)
-                RTL1_tail = 0;
-        }
-
-        ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
-
-        // remove this entry
-        DTLB_bus.PROCESSED.remove_queue(&DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head]);
-    }
-
-    if (L1D_bus.PROCESSED.occupancy && (L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
-    { // L1D
-        PACKET &l1d_entry = L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head];
-
-        for (auto merged : l1d_entry.lq_index_depend_on_me)
-        {
-            LQ.entry[merged].fetched = COMPLETED;
-            LQ.entry[merged].event_cycle = current_core_cycle[cpu];
-            ROB.entry[LQ.entry[merged].rob_index].num_mem_ops--;
-            ROB.entry[LQ.entry[merged].rob_index].event_cycle = l1d_entry.event_cycle;
-
-            if (ROB.entry[LQ.entry[merged].rob_index].num_mem_ops == 0)
-                inflight_mem_executions++;
-
-            release_load_queue(merged);
-        }
-
-        // remove this entry
-        L1D_bus.PROCESSED.remove_queue(&L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head]);
-    }
-
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
         uint32_t instrs_executed = 0;
@@ -1735,6 +1585,175 @@ void O3_CPU::update_rob()
 	        break;
 	    }
 	    instrs_executed += complete_execution(i);
+	}
+    }
+}
+
+void O3_CPU::handle_memory_return()
+{
+  // Instruction Memory
+
+  std::size_t available_fetch_bandwidth = FETCH_WIDTH;
+
+  for(uint32_t i=0; i<L1I.MAX_READ; i++)
+    {
+      if (ITLB_bus.PROCESSED.occupancy && (ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+	{
+	  PACKET itlb_entry = ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head];
+
+	  // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
+	  uint32_t index = IFETCH_BUFFER.head;
+	  for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+	    {
+	      if(IFETCH_BUFFER.entry[index].ip == 0)
+		{
+		  break;
+		}
+	      if((IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE))
+		{
+		  if(IFETCH_BUFFER.entry[index].translated == INFLIGHT)
+		    {
+		      if(available_fetch_bandwidth)
+			{
+			  IFETCH_BUFFER.entry[index].translated = COMPLETED;
+			  // we did not fetch this instruction's cache line, but we did translated it
+			  IFETCH_BUFFER.entry[index].fetched = 0;
+			  // recalculate a physical address for this cache line based on the translated physical page address
+			  IFETCH_BUFFER.entry[index].instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[index].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
+
+			  available_fetch_bandwidth--;
+			}
+		      else
+			{
+			  // not enough fetch bandwidth to translate this instruction this time, so try reading the ITLB again
+			  IFETCH_BUFFER.entry[index].translated = 0;
+			}
+		    }
+		}
+
+	      index++;
+	      if(index >= IFETCH_BUFFER.SIZE)
+		{
+		  index = 0;
+		}
+	    }
+
+	  // remove this entry
+	  ITLB_bus.PROCESSED.remove_queue(&ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head]);
+	}
+    }
+
+  available_fetch_bandwidth = FETCH_WIDTH;
+
+  for(uint32_t i=0; i<L1I.MAX_READ; i++)
+    {
+      if (L1I_bus.PROCESSED.occupancy && (L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+	{
+	  PACKET &l1i_entry = L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head];
+
+	  // this is the L1I cache, so instructions are now fully fetched, so mark them as such
+	  uint32_t index = IFETCH_BUFFER.head;
+	  for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+	    {
+	      if(IFETCH_BUFFER.entry[index].ip == 0)
+		{
+		  break;
+		}
+	      if((IFETCH_BUFFER.entry[index].ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE))
+		{
+		  if((IFETCH_BUFFER.entry[index].translated == COMPLETED) && (IFETCH_BUFFER.entry[index].fetched == INFLIGHT))
+		    {
+		      if(available_fetch_bandwidth)
+			{
+			  IFETCH_BUFFER.entry[index].fetched = COMPLETED;
+
+			  available_fetch_bandwidth--;
+			}
+		      else
+			{
+			  // not enough fetch bandwidth to get this instruction this time, so try reading the L1I again
+			  IFETCH_BUFFER.entry[index].fetched = 0;
+			}
+		    }
+		}
+
+	      index++;
+	      if(index >= IFETCH_BUFFER.SIZE)
+		{
+		  index = 0;
+		}
+
+	      if(j >= IFETCH_BUFFER.occupancy)
+		{
+		  break;
+		}
+	    }
+
+	  // remove this entry
+	  L1I_bus.PROCESSED.remove_queue(&L1I_bus.PROCESSED.entry[L1I_bus.PROCESSED.head]);
+	}
+    }
+
+  // Data Memory
+
+  for(uint32_t i=0; i<L1D.MAX_READ; i++)
+    {
+      if (DTLB_bus.PROCESSED.occupancy && (DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+	{ // DTLB
+	  PACKET &dtlb_entry = DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head];
+
+	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
+	    {
+	      SQ.entry[sq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+	      SQ.entry[sq_merged].translated = COMPLETED;
+	      SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
+
+	      RTS1[RTS1_tail] = sq_merged;
+	      RTS1_tail++;
+	      if (RTS1_tail == SQ_SIZE)
+		RTS1_tail = 0;
+	    }
+
+	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
+	    {
+	      LQ.entry[lq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+	      LQ.entry[lq_merged].translated = COMPLETED;
+	      LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
+
+	      RTL1[RTL1_tail] = lq_merged;
+	      RTL1_tail++;
+	      if (RTL1_tail == LQ_SIZE)
+		RTL1_tail = 0;
+	    }
+
+	  ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
+
+	  // remove this entry
+	  DTLB_bus.PROCESSED.remove_queue(&DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head]);
+	}
+    }
+
+  for(uint32_t i=0; i<L1D.MAX_READ; i++)
+    {
+      if (L1D_bus.PROCESSED.occupancy && (L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
+	{ // L1D
+	  PACKET &l1d_entry = L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head];
+
+	  for (auto merged : l1d_entry.lq_index_depend_on_me)
+	    {
+	      LQ.entry[merged].fetched = COMPLETED;
+	      LQ.entry[merged].event_cycle = current_core_cycle[cpu];
+	      ROB.entry[LQ.entry[merged].rob_index].num_mem_ops--;
+	      ROB.entry[LQ.entry[merged].rob_index].event_cycle = l1d_entry.event_cycle;
+
+	      if (ROB.entry[LQ.entry[merged].rob_index].num_mem_ops == 0)
+		inflight_mem_executions++;
+
+	      release_load_queue(merged);
+	    }
+
+	  // remove this entry
+	  L1D_bus.PROCESSED.remove_queue(&L1D_bus.PROCESSED.entry[L1D_bus.PROCESSED.head]);
 	}
     }
 }
@@ -1753,6 +1772,11 @@ void O3_CPU::release_load_queue(uint32_t lq_index)
 
 void O3_CPU::retire_rob()
 {
+  if ((ROB.entry[ROB.head].executed != COMPLETED) || (ROB.entry[ROB.head].event_cycle > current_core_cycle[cpu]))
+    {
+      return;
+    }
+
     for (uint32_t n=0; n<RETIRE_WIDTH; n++) {
         if (ROB.entry[ROB.head].ip == 0)
             return;
