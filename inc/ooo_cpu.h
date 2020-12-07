@@ -219,7 +219,7 @@ class O3_CPU {
     int  execute_load(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
     void check_dependency(int prior, int current);
     void operate_cache();
-    void identify_completed_instructions();
+    void complete_inflight_instruction();
     void handle_memory_return();
     void retire_rob();
 

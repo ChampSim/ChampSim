@@ -1574,7 +1574,7 @@ void O3_CPU::operate_cache()
     l1i_prefetcher_cycle_operate();
 }
 
-void O3_CPU::identify_completed_instructions()
+void O3_CPU::complete_inflight_instruction()
 {
     // update ROB entries with completed executions
     if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {

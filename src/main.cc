@@ -494,7 +494,7 @@ int main(int argc, char** argv)
 	      // retire
 	      ooo_cpu[i].retire_rob();
 	      // finalize execution
-	      ooo_cpu[i].identify_completed_instructions();
+	      ooo_cpu[i].complete_inflight_instruction();
 	      // execute instructions
 	      ooo_cpu[i].execute_instruction();
 	      // schedule instructions
