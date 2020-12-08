@@ -1602,7 +1602,7 @@ void O3_CPU::handle_memory_return()
 
   std::size_t available_fetch_bandwidth = FETCH_WIDTH;
 
-  for(uint32_t i=0; i<L1I.MAX_READ; i++)
+  for(uint32_t i=0; i<ITLB.MAX_READ; i++)
     {
       if (ITLB_bus.PROCESSED.occupancy && (ITLB_bus.PROCESSED.entry[ITLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
 	{
@@ -1703,7 +1703,7 @@ void O3_CPU::handle_memory_return()
 
   // Data Memory
 
-  for(uint32_t i=0; i<L1D.MAX_READ; i++)
+  for(uint32_t i=0; i<DTLB.MAX_READ; i++)
     {
       if (DTLB_bus.PROCESSED.occupancy && (DTLB_bus.PROCESSED.entry[DTLB_bus.PROCESSED.head].event_cycle <= current_core_cycle[cpu]))
 	{ // DTLB

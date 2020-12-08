@@ -133,8 +133,8 @@ class O3_CPU {
 
         DTLB.cpu = this->cpu;
         DTLB.cache_type = IS_DTLB;
-        DTLB.MAX_READ = 2;
-        DTLB.MAX_WRITE = 2;
+        DTLB.MAX_READ = LQ_WIDTH;
+        DTLB.MAX_WRITE = LQ_WIDTH;
         DTLB.fill_level = FILL_L1;
         DTLB.lower_level = &STLB;
 
@@ -154,8 +154,8 @@ class O3_CPU {
 
         L1D.cpu = this->cpu;
         L1D.cache_type = IS_L1D;
-        L1D.MAX_READ = 2;
-        L1D.MAX_WRITE = 2;
+        L1D.MAX_READ = LQ_WIDTH;
+        L1D.MAX_WRITE = SQ_WIDTH;
         L1D.fill_level = FILL_L1;
         L1D.lower_level = &L2C;
 
