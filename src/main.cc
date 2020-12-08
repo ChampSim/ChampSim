@@ -440,6 +440,9 @@ int main(int argc, char** argv)
 
     srand(seed_number);
     champsim_seed = seed_number;
+
+    ooo_cpu.reserve(NUM_CPUS);
+
     for (int i=0; i<NUM_CPUS; i++) {
         ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
         ooo_cpu.at(i).L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
