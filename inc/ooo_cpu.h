@@ -58,6 +58,7 @@ class O3_CPU {
 
     // reorder buffer, load/store queue, register file
     CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", IFETCH_BUFFER_SIZE};
+    CORE_BUFFER<ooo_model_instr> DISPATCH_BUFFER{"DISPATCH_BUFFER", DISPATCH_BUFFER_SIZE};
     CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_BUFFER_SIZE};
     CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
     CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
@@ -196,7 +197,8 @@ class O3_CPU {
     // functions
     uint32_t init_instruction(ooo_model_instr instr);
     void fetch_instruction(),
-         decode_and_dispatch(),
+         decode_instruction(),
+         dispatch_instruction(),
          schedule_instruction(),
          execute_instruction(),
          schedule_memory_instruction(),

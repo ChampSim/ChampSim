@@ -505,8 +505,10 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].execute_memory_instruction();
 	      // schedule memory transactions
 	      ooo_cpu[i].schedule_memory_instruction();
+	      // dispatch
+	      ooo_cpu[i].dispatch_instruction();
 	      // decode
-	      ooo_cpu[i].decode_and_dispatch();
+	      ooo_cpu[i].decode_instruction();
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
 	      

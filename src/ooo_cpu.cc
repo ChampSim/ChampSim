@@ -514,15 +514,16 @@ void O3_CPU::fetch_instruction()
     }
 }
 
-void O3_CPU::decode_and_dispatch()
+
+void O3_CPU::decode_instruction()
 {
     if (DECODE_BUFFER.occupancy == 0)
         return;
-
+    
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
-    // dispatch DECODE_WIDTH instructions that have decoded into the ROB
-    while (available_decode_bandwidth > 0 && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
+    // Send decoded instructions to dispatch
+    while (available_decode_bandwidth > 0 && DECODE_BUFFER.occupancy > 0 && DISPATCH_BUFFER.occupancy < DISPATCH_BUFFER.SIZE &&
             (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
     {
         ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
@@ -530,43 +531,44 @@ void O3_CPU::decode_and_dispatch()
 	// Search DIB to see if we need to add this instruction
 	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
 	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (db_entry.ip >> LOG2_DIB_WINDOW_SIZE));});
-
-    // If we did not find the entry in the DIB, find a victim
-    if (way == dib_set.end())
-    {
-        way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
-        assert(way != dib_set.end());
-    }
-
-	    // update LRU in DIB
-	    unsigned hit_lru = way->lru;
-	    std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
-
+	
+	// If we did not find the entry in the DIB, find a victim
+	if (way == dib_set.end())
+	{
+	  way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
+	  assert(way != dib_set.end());
+	}
+	
+	// update LRU in DIB
+	unsigned hit_lru = way->lru;
+	std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+	
         // update way
-	    way->valid = true;
-	    way->lru = 0;
-	    way->addr = db_entry.ip;
+	way->valid = true;
+	way->lru = 0;
+	way->addr = db_entry.ip;
 
-        // Add to ROB
-        ROB.entry[ROB.tail] = db_entry;
-        ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
-
-	if (ROB.entry[ROB.tail].branch_mispredicted)
+	// Resume fetch 
+	if (db_entry.branch_mispredicted)
 	  {
-	    // if we're adding a mispredicted branch to the ROB, and its misprediction could have been cleared up at decode, then resume fetch
-	    if ((ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_JUMP) || (ROB.entry[ROB.tail].branch_type == BRANCH_DIRECT_CALL))
+	    // These branches detect the misprediction at decode
+	    if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL))
 	      {
 		// clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
-		ROB.entry[ROB.tail].branch_mispredicted = 0;
+		db_entry.branch_mispredicted = 0;
 		// pay misprediction penalty
 		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
 	      }
 	  }
+	
+        // Add to dispatch
+        DISPATCH_BUFFER.entry[DISPATCH_BUFFER.tail] = db_entry;
+        DISPATCH_BUFFER.entry[DISPATCH_BUFFER.tail].event_cycle = current_core_cycle[cpu] + DISPATCH_LATENCY;
 
-        ROB.tail++;
-        if (ROB.tail >= ROB.SIZE)
-            ROB.tail = 0;
-        ROB.occupancy++;
+        DISPATCH_BUFFER.tail++;
+        if (DISPATCH_BUFFER.tail >= DISPATCH_BUFFER.SIZE)
+            DISPATCH_BUFFER.tail = 0;
+        DISPATCH_BUFFER.occupancy++;
 
         ooo_model_instr empty_entry;
         db_entry = empty_entry;
@@ -602,6 +604,42 @@ void O3_CPU::decode_and_dispatch()
         {
             decode_index = 0;
         }
+    }
+}
+
+void O3_CPU::dispatch_instruction()
+{
+    if (DISPATCH_BUFFER.occupancy == 0)
+        return;
+
+    std::size_t available_dispatch_bandwidth = DISPATCH_WIDTH;
+
+    // dispatch DISPATCH_WIDTH instructions into the ROB
+    while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
+            (!warmup_complete[cpu] || (DISPATCH_BUFFER.entry[DISPATCH_BUFFER.head].event_cycle < current_core_cycle[cpu])))
+    {
+        ooo_model_instr &db_entry = DISPATCH_BUFFER.entry[DISPATCH_BUFFER.head];
+
+        // Add to ROB
+        ROB.entry[ROB.tail] = db_entry;
+        ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
+
+        ROB.tail++;
+        if (ROB.tail >= ROB.SIZE)
+            ROB.tail = 0;
+        ROB.occupancy++;
+
+        ooo_model_instr empty_entry;
+        db_entry = empty_entry;
+
+        DISPATCH_BUFFER.head++;
+        if(DISPATCH_BUFFER.head >= DISPATCH_BUFFER.SIZE)
+        {
+            DISPATCH_BUFFER.head = 0;
+        }
+        DISPATCH_BUFFER.occupancy--;
+
+	available_dispatch_bandwidth--;
     }
 }
 
