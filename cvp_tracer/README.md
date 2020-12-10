@@ -3,6 +3,9 @@ The cvp2champsim tracer comes as is with no guarantee that it covers every conve
 The tracer is used to convert the traces from the 2nd Championship Value 
 Prediction (CVP) to a ChampSim-friendly format. 
 
+CVP-1 Site: https://www.microarch.org/cvp1/
+CVP-2 Site: https://www.microarch.org/cvp1/cvp2/rules.html
+
 To use the tracer first compile it using g++:
 
 g++ cvp2champsim.cc -o cvp_tracer
