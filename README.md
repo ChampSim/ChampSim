@@ -35,7 +35,7 @@ Execute `run_champsim.sh` with proper input arguments. The default `TRACE_DIR` i
 
 ```
 Usage: ./run_champsim.sh [BINARY] [N_WARM] [N_SIM] [TRACE] [OPTION]
-$ ./run_champsim.sh bimodal-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
+$ ./run_champsim.sh bimodal-no-no-no-no-lru-1core 1 10 400.perlbench-41B.champsimtrace.xz
 
 ${BINARY}: ChampSim binary compiled by "build_champsim.sh" (bimodal-no-no-lru-1core)
 ${N_WARM}: number of instructions for warmup (1 million)
