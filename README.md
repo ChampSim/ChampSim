@@ -98,6 +98,9 @@ Get this version of Pin:
 wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.2-81205-gcc-linux.tar.gz
 ```
 
+Once downloaded, open tracer/make_tracer.sh and change PIN_ROOT to Pin's location.
+Run ./make_tracer.sh to generate champsim_tracer.so.
+
 **Use the Pin tool like this**
 ```
 pin -t obj-intel64/champsim_tracer.so -- <your program here>
