@@ -637,6 +637,14 @@ int main(int argc, char** argv)
 #endif
         print_roi_stats(i, &LLC);
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
+#ifdef LOAD_TO_USE_LATENCY_PRINT
+	// print load-to-use statistics
+	cout << endl << "Load-to-use histogram" << endl;
+	for (uint32_t idx=0; idx<(LOAD_TO_USE_HISTO_SIZE-1); idx++) {
+	  cout << idx << " cycles: " << ooo_cpu[i].load_to_use_histo[idx] << endl;
+	}
+	cout << (LOAD_TO_USE_HISTO_SIZE-1) << "+ cycles: " << ooo_cpu[i].load_to_use_histo[LOAD_TO_USE_HISTO_SIZE-1] << endl;
+#endif
     }
 
     for (uint32_t i=0; i<NUM_CPUS; i++) {

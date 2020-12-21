@@ -15,6 +15,8 @@ using namespace std;
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
+#define LOAD_TO_USE_HISTO_SIZE 50
+
 class CacheBus : public MemoryRequestProducer
 {
     public:
@@ -76,6 +78,9 @@ class O3_CPU {
     uint32_t RTS0[SQ_SIZE], RTS0_head = 0, RTS0_tail = 0,
              RTS1[SQ_SIZE], RTS1_head = 0, RTS1_tail = 0;
 
+    // load-to-use histogram
+    uint64_t load_to_use_histo[LOAD_TO_USE_HISTO_SIZE];
+
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
     int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
@@ -118,6 +123,10 @@ class O3_CPU {
 	  RTS0[i] = SQ_SIZE;
 	  RTS1[i] = SQ_SIZE;
         }
+
+	for (uint32_t i=0; i<LOAD_TO_USE_HISTO_SIZE; i++) {
+	  load_to_use_histo[i] = 0;
+	}
 
         // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();

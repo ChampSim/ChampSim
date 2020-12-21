@@ -11,6 +11,7 @@
 #define LLC_BYPASS
 #define DRC_BYPASS
 #define NO_CRC2_COMPILE
+#define LOAD_TO_USE_LATENCY_PRINT
 
 #ifdef DEBUG_PRINT
 #define DP(x) x
