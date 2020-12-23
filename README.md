@@ -10,12 +10,14 @@ git clone https://github.com/ChampSim/ChampSim.git
 
 # Compile
 
-ChampSim takes a JSON configuration script. Examine `champsim_config.json` for a fully-specified example. All options described in this file are optional and will be replaced with defaults if not specified. The configuration scrip can also be run without input, in which case an empty file is assumed.
+ChampSim takes a JSON configuration file. The configuration script can also be run without input, in which case an empty file is assumed.
 ```
 $ ./config.sh <configuration file>
 $ make clean
 $ make
 ```
+
+The configuration script can be run with the `--dump-config` option, causing the configuration, including any defaulted elements, to be printed instead of performing configuration. This can be useful with an empty input to display all possible configuration options.
 
 # Download DPC-3 trace
 
