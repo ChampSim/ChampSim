@@ -152,6 +152,12 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
 
     cache->total_miss_latency = 0;
 
+    cache->pf_requested = 0;
+    cache->pf_issued = 0;
+    cache->pf_useful = 0;
+    cache->pf_useless = 0;
+    cache->pf_fill = 0;
+
     cache->RQ.ACCESS = 0;
     cache->RQ.MERGED = 0;
     cache->RQ.TO_CACHE = 0;
