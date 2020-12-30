@@ -486,19 +486,11 @@ void O3_CPU::fetch_instruction()
 
     // send to DECODE stage
     available_fetch_bandwidth = FETCH_WIDTH;
-    while (available_fetch_bandwidth > 0 && IFETCH_BUFFER.occupancy > 0 && DECODE_BUFFER.occupancy < DECODE_BUFFER.SIZE &&
+    while (available_fetch_bandwidth > 0 && IFETCH_BUFFER.occupancy > 0 && !DECODE_BUFFER.full() &&
             IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED && IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED)
     {
         // ADD to decode buffer
-        DECODE_BUFFER.entry[DECODE_BUFFER.tail] = IFETCH_BUFFER.entry[IFETCH_BUFFER.head];
-        DECODE_BUFFER.entry[DECODE_BUFFER.tail].event_cycle = current_core_cycle[cpu];
-
-        DECODE_BUFFER.tail++;
-        if(DECODE_BUFFER.tail >= DECODE_BUFFER.SIZE)
-        {
-            DECODE_BUFFER.tail = 0;
-        }
-        DECODE_BUFFER.occupancy++;
+        DECODE_BUFFER.push_back(IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
 
         ooo_model_instr empty_entry;
         IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
@@ -512,20 +504,27 @@ void O3_CPU::fetch_instruction()
 
 	available_fetch_bandwidth--;
     }
+    if (warmup_complete[cpu]) std::cout << "Added " << FETCH_WIDTH - available_fetch_bandwidth << " to decode buffer.";
+    if (warmup_complete[cpu] && DECODE_BUFFER.full()) std::cout << " (full, occupancy " << DECODE_BUFFER.occupancy() << ")";
+    if (warmup_complete[cpu]) std::cout << std::endl;
 }
 
 void O3_CPU::decode_and_dispatch()
 {
-    if (DECODE_BUFFER.occupancy == 0)
+    DECODE_BUFFER.operate();
+    if (DECODE_BUFFER.empty())
         return;
 
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
+     std::cout << "Head: " << DECODE_BUFFER.begin().pos;
+     std::cout << " RDYTail: " << DECODE_BUFFER.end_ready().pos;
+     std::cout << " Tail: " << DECODE_BUFFER.end().pos;
+     std::cout << " Waiting: " << std::distance(DECODE_BUFFER.end_ready(), DECODE_BUFFER.end());
 
     // dispatch DECODE_WIDTH instructions that have decoded into the ROB
-    while (available_decode_bandwidth > 0 && DECODE_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
-            (!warmup_complete[cpu] || ((DECODE_BUFFER.entry[DECODE_BUFFER.head].decoded) && (DECODE_BUFFER.entry[DECODE_BUFFER.head].event_cycle < current_core_cycle[cpu]))))
+    while (available_decode_bandwidth > 0 && ((!warmup_complete[cpu] && !DECODE_BUFFER.empty()) || (warmup_complete[cpu] && DECODE_BUFFER.has_ready())) && ROB.occupancy < ROB.SIZE)
     {
-        ooo_model_instr &db_entry = DECODE_BUFFER.entry[DECODE_BUFFER.head];
+        ooo_model_instr &db_entry = DECODE_BUFFER.front();
 
 	// Search DIB to see if we need to add this instruction
 	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
@@ -568,41 +567,12 @@ void O3_CPU::decode_and_dispatch()
             ROB.tail = 0;
         ROB.occupancy++;
 
-        ooo_model_instr empty_entry;
-        db_entry = empty_entry;
-
-        DECODE_BUFFER.head++;
-        if(DECODE_BUFFER.head >= DECODE_BUFFER.SIZE)
-        {
-            DECODE_BUFFER.head = 0;
-        }
-        DECODE_BUFFER.occupancy--;
+        DECODE_BUFFER.pop_front();
 
 	available_decode_bandwidth--;
     }
 
-    // make new instructions pay decode penalty if they miss in the decoded instruction cache
-    uint32_t decode_index = DECODE_BUFFER.head;
-    available_decode_bandwidth = DECODE_WIDTH;
-    while (available_decode_bandwidth > 0 && decode_index != DECODE_BUFFER.tail)
-    {
-        if (!DECODE_BUFFER.entry[decode_index].decoded)
-        {
-            // apply decode latency
-            DECODE_BUFFER.entry[decode_index].decoded = COMPLETED;
-            if (warmup_complete[cpu])
-                DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu] + DECODE_LATENCY;
-            else
-                DECODE_BUFFER.entry[decode_index].event_cycle = current_core_cycle[cpu];
-	    available_decode_bandwidth--;
-        }
-
-        decode_index++;
-        if(decode_index >= DECODE_BUFFER.SIZE)
-        {
-            decode_index = 0;
-        }
-    }
+    std::cout << " Advanced: " << DECODE_WIDTH - available_decode_bandwidth << std::endl;
 }
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
