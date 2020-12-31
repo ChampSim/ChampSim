@@ -32,7 +32,7 @@ extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::vector<O3_CPU> ooo_cpu;
 
-extern uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
+extern uint64_t current_core_cycle[NUM_CPUS];
 
 std::vector<tracereader*> traces;
 
@@ -440,6 +440,9 @@ int main(int argc, char** argv)
 
     srand(seed_number);
     champsim_seed = seed_number;
+
+    ooo_cpu.reserve(NUM_CPUS);
+
     for (int i=0; i<NUM_CPUS; i++) {
         ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
         ooo_cpu.at(i).L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
@@ -469,7 +472,6 @@ int main(int argc, char** argv)
         //all_warmup_complete = NUM_CPUS;
         simulation_complete[i] = 0;
         current_core_cycle[i] = 0;
-        stall_cycle[i] = 0;
     }
 
     LLC.llc_initialize_replacement();
@@ -491,43 +493,33 @@ int main(int argc, char** argv)
             current_core_cycle[i]++;
 
             //cout << "Trying to process instr_id: " << ooo_cpu[i].instr_unique_id << " fetch_stall: " << +ooo_cpu[i].fetch_stall;
-            //cout << " stall_cycle: " << stall_cycle[i] << " current: " << current_core_cycle[i] << endl;
-
-            // core might be stalled due to page fault or branch misprediction
-            if (stall_cycle[i] <= current_core_cycle[i]) {
 
 	      // retire
-	      if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
-		ooo_cpu[i].retire_rob();
-
-	      // complete 
-	      ooo_cpu[i].update_rob();
-
-	      // schedule
-	      ooo_cpu[i].schedule_instruction();
-	      // execute
+	      ooo_cpu[i].retire_rob();
+	      // finalize execution
+	      ooo_cpu[i].complete_inflight_instruction();
+	      // execute instructions
 	      ooo_cpu[i].execute_instruction();
-
-	      ooo_cpu[i].update_rob();
-
-	      // memory operation
-	      ooo_cpu[i].schedule_memory_instruction();
+	      // schedule instructions
+	      ooo_cpu[i].schedule_instruction();
+	      // finalize memory transactions
+	      ooo_cpu[i].handle_memory_return();
+	      // execute memory transactions
 	      ooo_cpu[i].execute_memory_instruction();
-
-	      ooo_cpu[i].update_rob();
-
+	      // schedule memory transactions
+	      ooo_cpu[i].schedule_memory_instruction();
+	      // dispatch
+	      ooo_cpu[i].dispatch_instruction();
 	      // decode
-	      ooo_cpu[i].decode_and_dispatch();
-	      
+	      ooo_cpu[i].decode_instruction();
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
 	      
-                // read from trace
-                if ((ooo_cpu[i].IFETCH_BUFFER.occupancy < ooo_cpu[i].IFETCH_BUFFER.SIZE) && (ooo_cpu[i].fetch_stall == 0))
+	      // read from trace
+	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy < ooo_cpu[i].IFETCH_BUFFER.SIZE) && (ooo_cpu[i].fetch_stall == 0))
                 {
-                    while(ooo_cpu[i].init_instruction(traces[i]->get()));
+		  while(ooo_cpu[i].init_instruction(traces[i]->get()));
                 }
-	    }
 
             // heartbeat information
             if (show_heartbeat && (ooo_cpu[i].num_retired >= ooo_cpu[i].next_print_instruction)) {

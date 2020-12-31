@@ -408,11 +408,20 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
 void CACHE::operate()
 {
+  operate_writes();
+  operate_reads();
+}
+
+void CACHE::operate_writes()
+{
     // perform all writes
     writes_available_this_cycle = MAX_WRITE;
     handle_fill();
     handle_writeback();
+}
 
+void CACHE::operate_reads()
+{
     // perform all reads
     reads_available_this_cycle = MAX_READ;
     handle_read();
