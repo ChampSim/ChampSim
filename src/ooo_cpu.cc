@@ -543,7 +543,7 @@ void O3_CPU::decode_instruction()
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
     // Send decoded instructions to dispatch
-    while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && DISPATCH_BUFFER.occupancy < DISPATCH_BUFFER.SIZE)
+    while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && !DISPATCH_BUFFER.full())
     {
         ooo_model_instr &db_entry = DECODE_BUFFER.front();
 
@@ -581,14 +581,10 @@ void O3_CPU::decode_instruction()
 	  }
 	
         // Add to dispatch
-        DISPATCH_BUFFER.entry[DISPATCH_BUFFER.tail] = db_entry;
-        DISPATCH_BUFFER.entry[DISPATCH_BUFFER.tail].event_cycle = current_core_cycle[cpu] + DISPATCH_LATENCY;
-
-        DISPATCH_BUFFER.tail++;
-        if (DISPATCH_BUFFER.tail >= DISPATCH_BUFFER.SIZE)
-            DISPATCH_BUFFER.tail = 0;
-        DISPATCH_BUFFER.occupancy++;
-
+        if (warmup_complete[cpu])
+            DISPATCH_BUFFER.push_back(db_entry);
+        else
+            DISPATCH_BUFFER.push_back_ready(db_entry);
         DECODE_BUFFER.pop_front();
 
 	available_decode_bandwidth--;
@@ -599,19 +595,16 @@ void O3_CPU::decode_instruction()
 
 void O3_CPU::dispatch_instruction()
 {
-    if (DISPATCH_BUFFER.occupancy == 0)
+    if (DISPATCH_BUFFER.empty())
         return;
 
     std::size_t available_dispatch_bandwidth = DISPATCH_WIDTH;
 
     // dispatch DISPATCH_WIDTH instructions into the ROB
-    while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.occupancy > 0 && ROB.occupancy < ROB.SIZE &&
-            (!warmup_complete[cpu] || (DISPATCH_BUFFER.entry[DISPATCH_BUFFER.head].event_cycle < current_core_cycle[cpu])))
+    while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.has_ready() && ROB.occupancy < ROB.SIZE)
     {
-        ooo_model_instr &db_entry = DISPATCH_BUFFER.entry[DISPATCH_BUFFER.head];
-
         // Add to ROB
-        ROB.entry[ROB.tail] = db_entry;
+        ROB.entry[ROB.tail] = DISPATCH_BUFFER.front();
         ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
 
         ROB.tail++;
@@ -619,18 +612,11 @@ void O3_CPU::dispatch_instruction()
             ROB.tail = 0;
         ROB.occupancy++;
 
-        ooo_model_instr empty_entry;
-        db_entry = empty_entry;
-
-        DISPATCH_BUFFER.head++;
-        if(DISPATCH_BUFFER.head >= DISPATCH_BUFFER.SIZE)
-        {
-            DISPATCH_BUFFER.head = 0;
-        }
-        DISPATCH_BUFFER.occupancy--;
-
+        DISPATCH_BUFFER.pop_front();
 	available_dispatch_bandwidth--;
     }
+
+    DISPATCH_BUFFER.operate();
 }
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
