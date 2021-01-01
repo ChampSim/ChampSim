@@ -174,9 +174,9 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
 
     cache->total_miss_latency = 0;
 
-    cache->RQ.ACCESS = 0;
-    cache->RQ.MERGED = 0;
-    cache->RQ.TO_CACHE = 0;
+    cache->RQ_ACCESS = 0;
+    cache->RQ_MERGED = 0;
+    cache->RQ_TO_CACHE = 0;
 
     cache->WQ.ACCESS = 0;
     cache->WQ.MERGED = 0;

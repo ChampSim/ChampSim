@@ -131,10 +131,10 @@ void CACHE::handle_read()
 {
     while (reads_available_this_cycle > 0) {
 
-        PACKET &handle_pkt = RQ.entry[RQ.head];
+        PACKET &handle_pkt = RQ.front();
 
         // handle the oldest entry
-        if ((RQ.occupancy == 0) || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
+        if (!RQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
             return;
 
         uint32_t set = get_set(handle_pkt.address);
@@ -151,7 +151,7 @@ void CACHE::handle_read()
         }
 
         // remove this entry from RQ
-        RQ.remove_queue(&handle_pkt);
+        RQ.pop_front();
         reads_available_this_cycle--;
     }
 }
@@ -432,6 +432,8 @@ void CACHE::operate_reads()
       }
 
     handle_prefetch();
+
+    RQ.operate();
 }
 
 uint32_t CACHE::get_set(uint64_t address)
@@ -459,6 +461,9 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 int CACHE::add_rq(PACKET *packet)
 {
+    assert(packet->address != 0);
+    RQ_ACCESS++;
+
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
@@ -468,62 +473,39 @@ int CACHE::add_rq(PACKET *packet)
             ret->return_data(packet);
 
         WQ.FORWARD++;
-        RQ.ACCESS++;
 
         return -1;
     }
 
     // check for duplicates in the read queue
-    int index = RQ.check_queue(packet);
-    if (index != -1) {
+    auto find_addr = packet->address;
+    auto found = std::find_if(RQ.begin(), RQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    if (found != RQ.end()) {
 
-        packet_dep_merge(RQ.entry[index].lq_index_depend_on_me, packet->lq_index_depend_on_me);
-        packet_dep_merge(RQ.entry[index].sq_index_depend_on_me, packet->sq_index_depend_on_me);
-        packet_dep_merge(RQ.entry[index].to_return, packet->to_return);
+        packet_dep_merge(found->lq_index_depend_on_me, packet->lq_index_depend_on_me);
+        packet_dep_merge(found->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+        packet_dep_merge(found->to_return, packet->to_return);
 
-        RQ.MERGED++;
-        RQ.ACCESS++;
+        RQ_MERGED++;
 
-        return index; // merged index
+        return 1; // merged index
     }
 
     // check occupancy
-    if (RQ.occupancy == RQ_SIZE) {
-        RQ.FULL++;
+    if (RQ.full()) {
+        RQ_FULL++;
 
         return -2; // cannot handle this request
     }
 
     // if there is no duplicate, add it to RQ
-    index = RQ.tail;
+    RQ.push_back(*packet);
 
-    assert(RQ.entry[index].address == 0);
+    DP ( if (warmup_complete[packet->cpu]) {
+            std::cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
+            std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
-    RQ.entry[index] = *packet;
-
-    // ADD LATENCY
-    if (RQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
-        RQ.entry[index].event_cycle = current_core_cycle[packet->cpu] + LATENCY;
-    else
-        RQ.entry[index].event_cycle += LATENCY;
-
-    RQ.occupancy++;
-    RQ.tail++;
-    if (RQ.tail >= RQ.SIZE)
-        RQ.tail = 0;
-
-    DP ( if (warmup_complete[RQ.entry[index].cpu]) {
-    cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << RQ.entry[index].instr_id << " address: " << hex << RQ.entry[index].address;
-    cout << " full_addr: " << RQ.entry[index].full_addr << dec;
-    cout << " type: " << +RQ.entry[index].type << " head: " << RQ.head << " tail: " << RQ.tail << " occupancy: " << RQ.occupancy;
-    cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << endl; });
-
-    if (packet->address == 0)
-        assert(0);
-
-    RQ.TO_CACHE++;
-    RQ.ACCESS++;
-
+    RQ_TO_CACHE++;
     return -1;
 }
 
@@ -874,7 +856,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
     if (queue_type == 0)
         return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
     else if (queue_type == 1)
-        return RQ.occupancy;
+        return RQ.occupancy();
     else if (queue_type == 2)
         return WQ.occupancy;
     else if (queue_type == 3)
@@ -888,7 +870,7 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
     if (queue_type == 0)
         return MSHR_SIZE;
     else if (queue_type == 1)
-        return RQ.SIZE;
+        return RQ.size();
     else if (queue_type == 2)
         return WQ.SIZE;
     else if (queue_type == 3)

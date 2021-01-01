@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 
+#include "delay_queue.hpp"
 #include "memory_class.h"
 
 // CACHE TYPE
@@ -43,8 +44,8 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              pf_fill = 0;
 
     // queues
+    champsim::delay_queue<PACKET> RQ{RQ_SIZE, LATENCY}; // read queue
     PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 RQ{NAME + "_RQ", RQ_SIZE}, // read queue
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
                  VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
 
@@ -56,6 +57,11 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              roi_access[NUM_CPUS][NUM_TYPES] = {},
              roi_hit[NUM_CPUS][NUM_TYPES] = {},
              roi_miss[NUM_CPUS][NUM_TYPES] = {};
+
+    uint64_t RQ_ACCESS = 0,
+             RQ_MERGED = 0,
+             RQ_FULL = 0,
+             RQ_TO_CACHE = 0;
 
     uint64_t total_miss_latency = 0;
     
