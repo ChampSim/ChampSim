@@ -6,7 +6,7 @@
 #include <iterator>
 #include <type_traits>
 
-#include "circular_buffer.h"
+#include "circular_buffer.hpp"
 
 namespace champsim {
 
@@ -61,7 +61,7 @@ namespace champsim {
             //size_type occupancy() const noexcept          { return _buf.size(); };
             bool empty() const noexcept                   { return occupancy() == 0; }
             bool full()  const noexcept                   { return _buf.full(); }
-            bool has_ready() const noexcept               { return _delays.front() <= 0; }
+            bool has_ready() const noexcept               { return begin() != end_ready(); }
             constexpr size_type max_size() const noexcept { return _buf.max_size(); }
 
             /***
@@ -78,13 +78,13 @@ namespace champsim {
              ***/
             iterator begin() noexcept                  { return _buf.begin(); }
             iterator end() noexcept                    { return _buf.end(); }
+            iterator end_ready() noexcept              { return _end_ready; }
             const_iterator begin() const noexcept      { return _buf.begin(); }
             const_iterator end() const noexcept        { return _buf.end(); }
+            const_iterator end_ready() const noexcept  { return _end_ready; }
             const_iterator cbegin() const noexcept     { return _buf.cbegin(); }
             const_iterator cend() const noexcept       { return _buf.cend(); }
-            iterator end_ready() noexcept;
-            const_iterator end_ready() const noexcept;
-            const_iterator cend_ready() const noexcept;
+            const_iterator cend_ready() const noexcept { return _end_ready; }
 
             reverse_iterator rbegin() noexcept                  { return _buf.rbegin(); }
             reverse_iterator rend() noexcept                    { return _buf.rend(); }
@@ -97,9 +97,24 @@ namespace champsim {
             const_reverse_iterator crend_ready() const noexcept { return reverse_iterator(end_ready()); }
 
             void clear() { _buf.clear(); }
+
+            /***
+             * Push an element into the queue, delayed by the fixed amount.
+             ***/
             void push_back(const T& item) { _buf.push_back(item); _delays.push_back(_latency); }
             void push_back(const T&& item) { _buf.push_back(item); _delays.push_back(_latency); }
-            void pop_front() { if (!has_ready()) _end_ready++; _buf.pop_front(); _delays.pop_front(); }
+
+            /***
+             * Pops the element off of the front.
+             * Note, no checking is performed. Guard all accesses with calls to has_ready()
+             ***/
+            void pop_front() { _buf.pop_front(); _delays.pop_front(); }
+
+            /***
+             * These functions add an element that is immediately ready. Elements are still popped in order.
+             ***/
+            void push_back_ready(const T& item) { _buf.push_back(item); _delays.push_back(0); }
+            void push_back_ready(const T&& item) { _buf.push_back(item); _delays.push_back(0); }
 
             /***
              * This function must be called once every cycle.
@@ -110,12 +125,6 @@ namespace champsim {
 
                 auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x){ return x <= 0; });
                 _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
-                //std::cout << _end_ready - _buf.begin() << " ";
-                //std::cout << _buf.end() - _end_ready << " ";
-                //std::cout << _buf.end() - _buf.begin() << " ";
-                std::cout << std::distance(_buf.begin(), _end_ready) << " ";
-                std::cout << std::distance(_end_ready, _buf.end()) << " ";
-                std::cout << std::distance(_buf.begin(), _buf.end()) << std::endl;
             }
 
         private:
@@ -127,21 +136,6 @@ namespace champsim {
     };
 
 } // namespace champsim
-
-template <typename T>
-auto champsim::delay_queue<T>::end_ready() noexcept -> iterator {
-    return _end_ready;
-}
-
-template <typename T>
-auto champsim::delay_queue<T>::end_ready() const noexcept -> const_iterator {
-    return _end_ready;
-}
-
-template <typename T>
-auto champsim::delay_queue<T>::cend_ready() const noexcept -> const_iterator {
-    return _end_ready;
-}
 
 #endif
 

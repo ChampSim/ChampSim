@@ -16,8 +16,8 @@ class circular_buffer_iterator
         using cbuf_type = T;
         using self_type = circular_buffer_iterator<T>;
 
-        cbuf_type*                    buf;
     public:
+        cbuf_type*                    buf;
         typename cbuf_type::size_type pos;
 
         using difference_type   = typename cbuf_type::difference_type;
@@ -38,20 +38,20 @@ class circular_buffer_iterator
         reference operator*()  { return (*buf)[pos]; }
         pointer   operator->() { return &(operator*()); }
 
-        self_type& operator+=(difference_type n);
-        self_type  operator+(difference_type n);
-        self_type& operator-=(difference_type n);
-        self_type  operator-(difference_type n);
+        self_type& operator+=(difference_type n) { pos += n; return *this; }
+        self_type  operator+(difference_type n)  { self_type r(*this); r += n; return r; }
+        self_type& operator-=(difference_type n) { pos -= n; return *this; }
+        self_type  operator-(difference_type n)  { self_type r(*this); r -= n; return r; }
 
         self_type& operator++()    { return operator+=(1); }
         self_type  operator++(int) { self_type r(*this); operator++(); return r; }
         self_type& operator--()    { return operator-=(1); }
         self_type  operator--(int) { self_type r(*this); operator--(); return r; }
 
-        difference_type operator-(const self_type& other) const;
+        difference_type operator-(const self_type& other) const { return pos - other.pos; }
         reference operator[](difference_type n) { return *(*this + n); }
 
-        bool operator<(const self_type& other) const;
+        bool operator<(const self_type& other) const { return buf == other.buf && (other - *this) > 0; }
         bool operator>(const self_type& other) const { return other.operator<(*this); }
         bool operator>=(const self_type& other) const { return !operator<(other); }
         bool operator<=(const self_type& other) const { return !operator>(other); }
@@ -94,8 +94,8 @@ class circular_buffer
         size_type head_      = 0;
         size_type tail_      = 0;
 
-        reference operator[](size_type n)             { return entry_[n % entry_.size()]; }
-        const_reference operator[](size_type n) const { return entry_[n % entry_.size()]; }
+        reference operator[](size_type n)             { return entry_[n % size()]; }
+        const_reference operator[](size_type n) const { return entry_[n % size()]; }
 
     public:
         explicit circular_buffer(std::size_t N) : entry_(N) {}
@@ -106,10 +106,10 @@ class circular_buffer
         bool full()  const noexcept                   { return occupancy() == size(); }
         constexpr size_type max_size() const noexcept { return entry_.max_size(); }
 
-        reference front()             { return this->operator[](head_); }
-        reference back()              { return this->operator[](tail_-1); }
-        const_reference front() const { return this->operator[](head_); }
-        const_reference back() const  { return this->operator[](tail_-1); }
+        reference front()             { return operator[](head_); }
+        reference back()              { return operator[](tail_-1); }
+        const_reference front() const { return operator[](head_); }
+        const_reference back() const  { return operator[](tail_-1); }
 
         iterator begin() noexcept              { return iterator(this, head_); }
         iterator end() noexcept                { return iterator(this, tail_); }
@@ -125,86 +125,11 @@ class circular_buffer
         const_iterator crbegin() const noexcept { return const_reverse_iterator(this, head_); }
         const_iterator crend() const noexcept   { return const_reverse_iterator(this, tail_); }
 
-        void clear() { head_ = tail_ = 0; }
-        void push_back(const T& item);
-        void push_back(const T&& item);
-        void pop_front();
+        void clear()                   { head_ = tail_ = 0; }
+        void push_back(const T& item)  { assert(!full()); operator[](tail_) = item; ++tail_; }
+        void push_back(const T&& item) { assert(!full()); operator[](tail_) = item; ++tail_; }
+        void pop_front()               { assert(!empty()); ++head_; }
 };
-
-template<typename T>
-auto circular_buffer_iterator<T>::operator+=(difference_type n) -> self_type&
-{
-    pos += n;
-    //if (pos >= buf->entry_.size())
-        //pos -= buf->entry_.size();
-    return *this;
-}
-
-template<typename T>
-auto circular_buffer_iterator<T>::operator+(difference_type n) -> self_type
-{
-    self_type r(*this);
-    r += n;
-    return r;
-}
-
-template<typename T>
-auto circular_buffer_iterator<T>::operator-=(difference_type n) -> self_type&
-{
-    //if (pos < n)
-        //pos += buf->entry_.size();
-    pos -= n;
-    return *this;
-}
-
-template<typename T>
-auto circular_buffer_iterator<T>::operator-(difference_type n) -> self_type
-{
-    self_type r(*this);
-    r -= n;
-    return r;
-}
-
-template <typename T>
-bool circular_buffer_iterator<T>::operator<(const self_type& other) const
-{
-    return buf == other.buf && (other - *this) > 0;
-}
-
-template<typename T>
-auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> difference_type
-{
-    difference_type d = pos - other.pos;
-    //if (other.pos <= buf->tail_ && buf->head_ <= pos && buf->tail_ < buf->head_)
-    //{
-        //d += buf->entry_.size();
-    //}
-
-    return d;
-}
-
-template<typename T>
-void circular_buffer<T>::push_back(const T& item)
-{
-    assert(!full());
-    entry_[tail_] = item;
-    ++tail_;
-}
-
-template<typename T>
-void circular_buffer<T>::push_back(const T&& item)
-{
-    assert(!full());
-    entry_[tail_] = item;
-    ++tail_;
-}
-
-template<typename T>
-void circular_buffer<T>::pop_front()
-{
-    assert(!empty());
-    ++head_;
-}
 
 } //namespace champsim
 

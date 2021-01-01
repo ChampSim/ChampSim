@@ -515,7 +515,10 @@ void O3_CPU::fetch_instruction()
             IFETCH_BUFFER.entry[IFETCH_BUFFER.head].translated == COMPLETED && IFETCH_BUFFER.entry[IFETCH_BUFFER.head].fetched == COMPLETED)
     {
         // ADD to decode buffer
-        DECODE_BUFFER.push_back(IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+        if (!warmup_complete[cpu] || IFETCH_BUFFER.entry[IFETCH_BUFFER.head].decoded)
+            DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
+        else
+            DECODE_BUFFER.push_back(IFETCH_BUFFER.entry[IFETCH_BUFFER.head]);
 
         ooo_model_instr empty_entry;
         IFETCH_BUFFER.entry[IFETCH_BUFFER.head] = empty_entry;
@@ -529,26 +532,18 @@ void O3_CPU::fetch_instruction()
 
 	available_fetch_bandwidth--;
     }
-    if (warmup_complete[cpu]) std::cout << "Added " << FETCH_WIDTH - available_fetch_bandwidth << " to decode buffer.";
-    if (warmup_complete[cpu] && DECODE_BUFFER.full()) std::cout << " (full, occupancy " << DECODE_BUFFER.occupancy() << ")";
-    if (warmup_complete[cpu]) std::cout << std::endl;
 }
 
 
 void O3_CPU::decode_instruction()
 {
-    DECODE_BUFFER.operate();
     if (DECODE_BUFFER.empty())
         return;
     
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
-     std::cout << "Head: " << DECODE_BUFFER.begin().pos;
-     std::cout << " RDYTail: " << DECODE_BUFFER.end_ready().pos;
-     std::cout << " Tail: " << DECODE_BUFFER.end().pos;
-     std::cout << " Waiting: " << std::distance(DECODE_BUFFER.end_ready(), DECODE_BUFFER.end());
 
     // Send decoded instructions to dispatch
-    while (available_decode_bandwidth > 0 && ((!warmup_complete[cpu] && !DECODE_BUFFER.empty()) || (warmup_complete[cpu] && DECODE_BUFFER.has_ready())) && DISPATCH_BUFFER.occupancy < DISPATCH_BUFFER.SIZE)
+    while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && DISPATCH_BUFFER.occupancy < DISPATCH_BUFFER.SIZE)
     {
         ooo_model_instr &db_entry = DECODE_BUFFER.front();
 
@@ -599,7 +594,7 @@ void O3_CPU::decode_instruction()
 	available_decode_bandwidth--;
     }
 
-    std::cout << " Advanced: " << DECODE_WIDTH - available_decode_bandwidth << std::endl;
+    DECODE_BUFFER.operate();
 }
 
 void O3_CPU::dispatch_instruction()
