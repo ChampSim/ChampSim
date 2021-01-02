@@ -629,7 +629,7 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
   
   L1I.pf_requested++;
 
-  if (L1I.PQ.occupancy < L1I.PQ.SIZE)
+  if (!L1I.PQ.full())
     {
       // magically translate prefetches
       uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));

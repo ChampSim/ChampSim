@@ -160,10 +160,10 @@ void CACHE::handle_prefetch()
 {
     while (reads_available_this_cycle > 0)
     {
-        PACKET &handle_pkt = PQ.entry[PQ.head];
+        PACKET &handle_pkt = PQ.front();
 
         // handle the oldest entry
-        if ((PQ.occupancy == 0) || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
+        if (!PQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
             return;
 
         uint32_t set = get_set(handle_pkt.address);
@@ -180,7 +180,7 @@ void CACHE::handle_prefetch()
         }
 
         // remove this entry from PQ
-        PQ.remove_queue(&handle_pkt);
+        PQ.pop_front();
         reads_available_this_cycle--;
     }
 }
@@ -434,6 +434,7 @@ void CACHE::operate_reads()
     handle_prefetch();
 
     RQ.operate();
+    PQ.operate();
 }
 
 uint32_t CACHE::get_set(uint64_t address)
@@ -564,7 +565,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
 {
     pf_requested++;
 
-    if (PQ.occupancy < PQ.SIZE) {
+    if (!PQ.full()) {
         if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
             
             PACKET pf_packet;
@@ -597,7 +598,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
 
 int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
 {
-    if (PQ.occupancy < PQ.SIZE) {
+    if (!PQ.full()) {
         if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
             
             PACKET pf_packet;
@@ -685,7 +686,7 @@ void CACHE::va_translate_prefetches()
 {
   // move translated prefetches from the VAPQ to the regular PQ
   uint32_t vapq_index = VAPQ.head;
-  if (PQ.occupancy < PQ.SIZE)
+  if (!PQ.full())
     {
       for(uint32_t i=0; i<VAPQ.SIZE; i++)
 	{
@@ -744,6 +745,9 @@ void CACHE::va_translate_prefetches()
 
 int CACHE::add_pq(PACKET *packet)
 {
+    assert(packet->address != 0);
+    PQ_ACCESS++;
+
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
@@ -754,28 +758,25 @@ int CACHE::add_pq(PACKET *packet)
             ret->return_data(packet);
 
         WQ.FORWARD++;
-        PQ.ACCESS++;
 
         return -1;
     }
 
     // check for duplicates in the PQ
-    int index = PQ.check_queue(packet);
-    if (index != -1)
+    auto find_addr = packet->address;
+    auto found = std::find_if(PQ.begin(), PQ.end(), [find_addr](PACKET x) { return x.address == find_addr; });
+    if (found != PQ.end())
     {
-        PQ.entry[index].fill_level   = std::min(PQ.entry[index].fill_level, packet->fill_level);
+        found->fill_level = std::min(found->fill_level, packet->fill_level);
+        packet_dep_merge(found->to_return, packet->to_return);
 
-        packet_dep_merge(PQ.entry[index].to_return, packet->to_return);
-
-        PQ.MERGED++;
-        PQ.ACCESS++;
-
-        return index; // merged index
+        PQ_MERGED++;
+        return 1; // merged index
     }
 
     // check occupancy
-    if (PQ.occupancy == PQ_SIZE) {
-        PQ.FULL++;
+    if (PQ.full()) {
+        PQ_FULL++;
 
         DP ( if (warmup_complete[packet->cpu]) {
         cout << "[" << NAME << "] cannot process add_pq since it is full" << endl; });
@@ -783,35 +784,13 @@ int CACHE::add_pq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to PQ
-    index = PQ.tail;
+    PQ.push_back(*packet);
 
-    assert(PQ.entry[index].address == 0);
+    DP ( if (warmup_complete[packet->cpu]) {
+            std::cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
+            std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
-    PQ.entry[index] = *packet;
-
-    // ADD LATENCY
-    if (PQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
-        PQ.entry[index].event_cycle = current_core_cycle[packet->cpu] + LATENCY;
-    else
-        PQ.entry[index].event_cycle += LATENCY;
-
-    PQ.occupancy++;
-    PQ.tail++;
-    if (PQ.tail >= PQ.SIZE)
-        PQ.tail = 0;
-
-    DP ( if (warmup_complete[PQ.entry[index].cpu]) {
-    cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << PQ.entry[index].instr_id << " address: " << hex << PQ.entry[index].address;
-    cout << " full_addr: " << PQ.entry[index].full_addr << dec;
-    cout << " type: " << +PQ.entry[index].type << " head: " << PQ.head << " tail: " << PQ.tail << " occupancy: " << PQ.occupancy;
-    cout << " event: " << PQ.entry[index].event_cycle << " current: " << current_core_cycle[PQ.entry[index].cpu] << endl; });
-
-    if (packet->address == 0)
-        assert(0);
-
-    PQ.TO_CACHE++;
-    PQ.ACCESS++;
-
+    PQ_TO_CACHE++;
     return -1;
 }
 
@@ -860,7 +839,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
     else if (queue_type == 2)
         return WQ.occupancy;
     else if (queue_type == 3)
-        return PQ.occupancy;
+        return PQ.occupancy();
 
     return 0;
 }
@@ -874,7 +853,7 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
     else if (queue_type == 2)
         return WQ.SIZE;
     else if (queue_type == 3)
-        return PQ.SIZE;
+        return PQ.size();
 
     return 0;
 }
