@@ -75,10 +75,10 @@ void CACHE::handle_writeback()
 {
     while (writes_available_this_cycle > 0)
     {
-        PACKET &handle_pkt = WQ.entry[WQ.head];
+        PACKET &handle_pkt = WQ.front();
 
         // handle the oldest entry
-        if ((WQ.occupancy == 0) || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
+        if (!WQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
             return;
 
         // access cache
@@ -123,7 +123,7 @@ void CACHE::handle_writeback()
 
         // remove this entry from WQ
         writes_available_this_cycle--;
-        WQ.remove_queue(&handle_pkt);
+        WQ.pop_front();
     }
 }
 
@@ -418,6 +418,8 @@ void CACHE::operate_writes()
     writes_available_this_cycle = MAX_WRITE;
     handle_fill();
     handle_writeback();
+
+    WQ.operate();
 }
 
 void CACHE::operate_reads()
@@ -462,26 +464,31 @@ int CACHE::add_rq(PACKET *packet)
     RQ_ACCESS++;
 
     // check for the latest wirtebacks in the write queue
-    int wq_index = WQ.check_queue(packet);
-    if (wq_index != -1) {
+    auto find_addr = packet->address;
+    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    if (cache_type == IS_L1D)
+    {
+        auto find_full_addr = packet->full_addr;
+        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    }
 
-        packet->data = WQ.entry[wq_index].data;
+    if (found_wq != WQ.end()) {
+
+        packet->data = found_wq->data;
         for (auto ret : packet->to_return)
             ret->return_data(packet);
 
-        WQ.FORWARD++;
-
+        WQ_FORWARD++;
         return -1;
     }
 
     // check for duplicates in the read queue
-    auto find_addr = packet->address;
-    auto found = std::find_if(RQ.begin(), RQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
-    if (found != RQ.end()) {
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    if (found_rq != RQ.end()) {
 
-        packet_dep_merge(found->lq_index_depend_on_me, packet->lq_index_depend_on_me);
-        packet_dep_merge(found->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-        packet_dep_merge(found->to_return, packet->to_return);
+        packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
+        packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+        packet_dep_merge(found_rq->to_return, packet->to_return);
 
         RQ_MERGED++;
 
@@ -508,51 +515,36 @@ int CACHE::add_rq(PACKET *packet)
 
 int CACHE::add_wq(PACKET *packet)
 {
+    WQ_ACCESS++;
+
     // check for duplicates in the write queue
-    int index = WQ.check_queue(packet);
-    if (index != -1) {
+    auto find_addr = packet->address;
+    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    if (cache_type == IS_L1D)
+    {
+        auto find_full_addr = packet->full_addr;
+        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    }
 
-        WQ.MERGED++;
-        WQ.ACCESS++;
+    if (found_wq != WQ.end()) {
 
-        return index; // merged index
+        WQ_MERGED++;
+        return 1; // merged index
     }
 
     // sanity check
-    if (WQ.occupancy >= WQ.SIZE)
-        assert(0);
+    assert(!WQ.full());
 
     // if there is no duplicate, add it to the write queue
-    index = WQ.tail;
-    if (WQ.entry[index].address != 0) {
-        std::cerr << "[" << NAME << "_ERROR] " << __func__ << " is not empty index: " << index;
-        std::cerr << " address: " << std::hex << WQ.entry[index].address;
-        std::cerr << " full_addr: " << WQ.entry[index].full_addr << std::dec << std::endl;
-        assert(0);
-    }
-
-    WQ.entry[index] = *packet;
-
-    // ADD LATENCY
-    if (WQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
-        WQ.entry[index].event_cycle = current_core_cycle[packet->cpu] + LATENCY;
-    else
-        WQ.entry[index].event_cycle += LATENCY;
-
-    WQ.occupancy++;
-    WQ.tail++;
-    if (WQ.tail >= WQ.SIZE)
-        WQ.tail = 0;
+    WQ.push_back(*packet);
 
     DP (if (warmup_complete[WQ.entry[index].cpu]) {
-    cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << WQ.entry[index].instr_id << " address: " << hex << WQ.entry[index].address;
-    cout << " full_addr: " << WQ.entry[index].full_addr << dec;
-    cout << " head: " << WQ.head << " tail: " << WQ.tail << " occupancy: " << WQ.occupancy;
-    cout << " data: " << hex << WQ.entry[index].data << dec;
-    cout << " event: " << WQ.entry[index].event_cycle << " current: " << current_core_cycle[WQ.entry[index].cpu] << endl; });
+            std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
+            std::cout << " full_addr: " << packet->full_addr << std::dec << " occupancy: " << WQ.occupancy();
+            std::cout << " data: " << std::hex << packet->data << std::dec << std::endl; })
 
-    WQ.TO_CACHE++;
-    WQ.ACCESS++;
+    WQ_TO_CACHE++;
+    WQ_ACCESS++;
 
     return -1;
 }
@@ -692,21 +684,25 @@ int CACHE::add_pq(PACKET *packet)
     PQ_ACCESS++;
 
     // check for the latest wirtebacks in the write queue
-    int wq_index = WQ.check_queue(packet);
-    if (wq_index != -1) {
-        
-        packet->data = WQ.entry[wq_index].data;
+    auto find_addr = packet->address;
+    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    if (cache_type == IS_L1D)
+    {
+        auto find_full_addr = packet->full_addr;
+        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    }
 
+    if (found_wq != WQ.end()) {
+        
+        packet->data = found_wq->data;
         for (auto ret : packet->to_return)
             ret->return_data(packet);
 
-        WQ.FORWARD++;
-
+        WQ_FORWARD++;
         return -1;
     }
 
     // check for duplicates in the PQ
-    auto find_addr = packet->address;
     auto found = std::find_if(PQ.begin(), PQ.end(), [find_addr](PACKET x) { return x.address == find_addr; });
     if (found != PQ.end())
     {
@@ -780,7 +776,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
     else if (queue_type == 1)
         return RQ.occupancy();
     else if (queue_type == 2)
-        return WQ.occupancy;
+        return WQ.occupancy();
     else if (queue_type == 3)
         return PQ.occupancy();
 
@@ -794,7 +790,7 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
     else if (queue_type == 1)
         return RQ.size();
     else if (queue_type == 2)
-        return WQ.SIZE;
+        return WQ.size();
     else if (queue_type == 3)
         return PQ.size();
 
@@ -803,6 +799,6 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 
 void CACHE::increment_WQ_FULL(uint64_t address)
 {
-    WQ.FULL++;
+    WQ_FULL++;
 }
 

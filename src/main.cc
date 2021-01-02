@@ -178,11 +178,11 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
     cache->RQ_MERGED = 0;
     cache->RQ_TO_CACHE = 0;
 
-    cache->WQ.ACCESS = 0;
-    cache->WQ.MERGED = 0;
-    cache->WQ.TO_CACHE = 0;
-    cache->WQ.FORWARD = 0;
-    cache->WQ.FULL = 0;
+    cache->WQ_ACCESS = 0;
+    cache->WQ_MERGED = 0;
+    cache->WQ_TO_CACHE = 0;
+    cache->WQ_FORWARD = 0;
+    cache->WQ_FULL = 0;
 }
 
 void finish_warmup()

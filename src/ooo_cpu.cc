@@ -1817,7 +1817,7 @@ void O3_CPU::retire_rob()
         }
 
         if (num_store) {
-            if ((L1D.WQ.occupancy + num_store) <= L1D.WQ.SIZE) {
+            if ((L1D.WQ.occupancy() + num_store) <= L1D.WQ.size()) {
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     if (ROB.entry[ROB.head].destination_memory[i]) {
 
@@ -1850,7 +1850,7 @@ void O3_CPU::retire_rob()
                 DP ( if (warmup_complete[cpu]) {
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " L1D WQ is full" << endl; });
 
-                L1D.WQ.FULL++;
+                L1D.WQ_FULL++;
 
                 return;
             }
