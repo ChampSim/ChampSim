@@ -38,6 +38,19 @@ struct is_valid<PACKET>
     }
 };
 
+template <typename T>
+struct eq_full_addr
+{
+    using argument_type = T;
+    const decltype(argument_type::address) val;
+    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
+    bool operator()(const argument_type &test)
+    {
+        is_valid<argument_type> validtest;
+        return validtest(test) && test.full_addr == val;
+    }
+};
+
 void CACHE::handle_fill()
 {
     while (writes_available_this_cycle > 0)
@@ -463,13 +476,13 @@ int CACHE::add_rq(PACKET *packet)
     assert(packet->address != 0);
     RQ_ACCESS++;
 
-    // check for the latest wirtebacks in the write queue
-    auto find_addr = packet->address;
-    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
-    if (cache_type == IS_L1D)
-    {
-        auto find_full_addr = packet->full_addr;
-        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    // check for the latest writebacks in the write queue
+    champsim::delay_queue<PACKET>::iterator found_wq;
+    if (cache_type == IS_L1D) {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
+    }
+    else {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address));
     }
 
     if (found_wq != WQ.end()) {
@@ -483,7 +496,7 @@ int CACHE::add_rq(PACKET *packet)
     }
 
     // check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address));
     if (found_rq != RQ.end()) {
 
         packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
@@ -518,12 +531,12 @@ int CACHE::add_wq(PACKET *packet)
     WQ_ACCESS++;
 
     // check for duplicates in the write queue
-    auto find_addr = packet->address;
-    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
-    if (cache_type == IS_L1D)
-    {
-        auto find_full_addr = packet->full_addr;
-        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    champsim::delay_queue<PACKET>::iterator found_wq;
+    if (cache_type == IS_L1D) {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
+    }
+    else {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address));
     }
 
     if (found_wq != WQ.end()) {
@@ -647,7 +660,7 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
       pf_packet.event_cycle = 0;
       pf_packet.to_return = {this};
 
-      auto vapq_entry = std::find_if(VAPQ.begin(), VAPQ.end(), [pf_addr](PACKET x){ return x.address == (pf_addr >> LOG2_BLOCK_SIZE); });
+      auto vapq_entry = std::find_if(VAPQ.begin(), VAPQ.end(), eq_addr<PACKET>(pf_addr >> LOG2_BLOCK_SIZE));
       if(vapq_entry != VAPQ.end())
 	{
 	  // there's already a VA prefetch to this cache line
@@ -684,12 +697,12 @@ int CACHE::add_pq(PACKET *packet)
     PQ_ACCESS++;
 
     // check for the latest wirtebacks in the write queue
-    auto find_addr = packet->address;
-    auto found_wq = std::find_if(WQ.begin(), WQ.end(), [find_addr](PACKET x){ return x.address == find_addr; });
-    if (cache_type == IS_L1D)
-    {
-        auto find_full_addr = packet->full_addr;
-        found_wq = std::find_if(WQ.begin(), WQ.end(), [find_full_addr](PACKET x){ return x.full_addr == find_full_addr; });
+    champsim::delay_queue<PACKET>::iterator found_wq;
+    if (cache_type == IS_L1D) {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
+    }
+    else {
+        found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address));
     }
 
     if (found_wq != WQ.end()) {
@@ -703,7 +716,7 @@ int CACHE::add_pq(PACKET *packet)
     }
 
     // check for duplicates in the PQ
-    auto found = std::find_if(PQ.begin(), PQ.end(), [find_addr](PACKET x) { return x.address == find_addr; });
+    auto found = std::find_if(PQ.begin(), PQ.end(), eq_addr<PACKET>(packet->address));
     if (found != PQ.end())
     {
         found->fill_level = std::min(found->fill_level, packet->fill_level);
