@@ -45,9 +45,9 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     // queues
     champsim::delay_queue<PACKET> RQ{RQ_SIZE, LATENCY}, // read queue
-                                  PQ{PQ_SIZE, LATENCY}; // prefetch queue
-    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
+                                  PQ{PQ_SIZE, LATENCY}, // prefetch queue
+                                  VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}; // virtual address prefetch queue
+    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}; // write queue
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 

@@ -425,16 +425,12 @@ void CACHE::operate_reads()
     // perform all reads
     reads_available_this_cycle = MAX_READ;
     handle_read();
-
-    if(VAPQ.occupancy > 0)
-      {
-	va_translate_prefetches();
-      }
-
+    va_translate_prefetches();
     handle_prefetch();
 
     RQ.operate();
     PQ.operate();
+    VAPQ.operate();
 }
 
 uint32_t CACHE::get_set(uint64_t address)
@@ -642,7 +638,7 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
   }
 
   pf_requested++;
-  if(VAPQ.occupancy < VAPQ.SIZE)
+  if(!VAPQ.full())
     {
       // generate new prefetch request packet
       PACKET pf_packet;
@@ -659,23 +655,15 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
       pf_packet.event_cycle = 0;
       pf_packet.to_return = {this};
 
-      int vapq_index = VAPQ.check_queue(&pf_packet);
-      if(vapq_index != -1)
+      auto vapq_entry = std::find_if(VAPQ.begin(), VAPQ.end(), [pf_addr](PACKET x){ return x.address == (pf_addr >> LOG2_BLOCK_SIZE); });
+      if(vapq_entry != VAPQ.end())
 	{
 	  // there's already a VA prefetch to this cache line
 	  return 1;
 	}
 
       // add the packet to the virtual address space prefetching queue
-      int index = VAPQ.tail;
-      VAPQ.entry[index] = pf_packet;
-      VAPQ.occupancy++;
-      VAPQ.tail++;
-      if (VAPQ.tail >= VAPQ.SIZE)
-	{
-	  VAPQ.tail = 0;
-	}
-
+      VAPQ.push_back(pf_packet);
       return 1;
     }
 
@@ -684,62 +672,17 @@ int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, ui
 
 void CACHE::va_translate_prefetches()
 {
-  // move translated prefetches from the VAPQ to the regular PQ
-  uint32_t vapq_index = VAPQ.head;
-  if (!PQ.full())
+    // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
+    if (!PQ.full() && VAPQ.has_ready())
     {
-      for(uint32_t i=0; i<VAPQ.SIZE; i++)
-	{
-	  // identify a VA prefetch that is fully translated
-	  if((VAPQ.entry[vapq_index].address != 0) && (VAPQ.entry[vapq_index].address != VAPQ.entry[vapq_index].v_address))
-	    {
-	      // move the translated prefetch over to the regular PQ
-	      add_pq(&VAPQ.entry[vapq_index]);
+        VAPQ.front().full_addr = vmem.va_to_pa(cpu, VAPQ.front().full_v_addr);
+        VAPQ.front().address   = VAPQ.front().full_addr >> LOG2_BLOCK_SIZE;
 
-	      // remove the prefetch from the VAPQ
-	      VAPQ.remove_queue(&VAPQ.entry[vapq_index]);
+        // move the translated prefetch over to the regular PQ
+        add_pq(&VAPQ.front());
 
-	      break;
-	    }
-	  vapq_index++;
-	  if(vapq_index >= VAPQ.SIZE)
-	    {
-	      vapq_index = 0;
-	    }
-	}
-    }
-
-  // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-  vapq_index = VAPQ.head;
-  for(uint32_t i=0; i<VAPQ.SIZE; i++)
-    {
-      if((VAPQ.entry[vapq_index].address == VAPQ.entry[vapq_index].v_address) && (VAPQ.entry[vapq_index].event_cycle <= current_core_cycle[cpu]))
-        {
-	  VAPQ.entry[vapq_index].full_addr = vmem.va_to_pa(cpu, VAPQ.entry[vapq_index].full_v_addr);
-	  VAPQ.entry[vapq_index].address = (VAPQ.entry[vapq_index].full_addr)>>LOG2_BLOCK_SIZE;
-          break;
-        }
-      vapq_index++;
-      if(vapq_index >= VAPQ.SIZE)
-        {
-          vapq_index = 0;
-        }
-    }
-
-  // initiate translation of new items in VAPQ
-  vapq_index = VAPQ.head;
-  for(uint32_t i=0; i<VAPQ.SIZE; i++)
-    {
-      if((VAPQ.entry[vapq_index].address == VAPQ.entry[vapq_index].v_address) && (VAPQ.entry[vapq_index].event_cycle == 0))
-	{
-	  VAPQ.entry[vapq_index].event_cycle = current_core_cycle[cpu] + VA_PREFETCH_TRANSLATION_LATENCY;
-	  break;
-	}
-      vapq_index++;
-      if(vapq_index >= VAPQ.SIZE)
-	{
-	  vapq_index = 0;
-	}
+        // remove the prefetch from the VAPQ
+        VAPQ.pop_front();
     }
 }
 
