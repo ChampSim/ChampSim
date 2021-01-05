@@ -516,7 +516,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].fetch_instruction();
 	      
 	      // read from trace
-	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy < ooo_cpu[i].IFETCH_BUFFER.SIZE) && (ooo_cpu[i].fetch_stall == 0))
+	      if (!ooo_cpu[i].IFETCH_BUFFER.full() && (ooo_cpu[i].fetch_stall == 0))
                 {
 		  while(ooo_cpu[i].init_instruction(traces[i]->get()));
                 }
