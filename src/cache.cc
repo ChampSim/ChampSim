@@ -88,11 +88,11 @@ void CACHE::handle_writeback()
 {
     while (writes_available_this_cycle > 0)
     {
-        PACKET &handle_pkt = WQ.front();
+        if (!WQ.has_ready() || (WQ.front().cpu >= NUM_CPUS) || (WQ.front().event_cycle > current_core_cycle[WQ.front().cpu]))
+            return;
 
         // handle the oldest entry
-        if (!WQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
-            return;
+        PACKET &handle_pkt = WQ.front();
 
         // access cache
         uint32_t set = get_set(handle_pkt.address);
@@ -144,11 +144,11 @@ void CACHE::handle_read()
 {
     while (reads_available_this_cycle > 0) {
 
-        PACKET &handle_pkt = RQ.front();
+        if (!RQ.has_ready() || (RQ.front().cpu >= NUM_CPUS) || (RQ.front().event_cycle > current_core_cycle[RQ.front().cpu]))
+            return;
 
         // handle the oldest entry
-        if (!RQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
-            return;
+        PACKET &handle_pkt = RQ.front();
 
         uint32_t set = get_set(handle_pkt.address);
         uint32_t way = get_way(handle_pkt.address, set);
@@ -173,11 +173,11 @@ void CACHE::handle_prefetch()
 {
     while (reads_available_this_cycle > 0)
     {
-        PACKET &handle_pkt = PQ.front();
+        if (!PQ.has_ready() || (PQ.front().cpu >= NUM_CPUS) || (PQ.front().event_cycle > current_core_cycle[PQ.front().cpu]))
+            return;
 
         // handle the oldest entry
-        if (!PQ.has_ready() || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
-            return;
+        PACKET &handle_pkt = PQ.front();
 
         uint32_t set = get_set(handle_pkt.address);
         uint32_t way = get_way(handle_pkt.address, set);
