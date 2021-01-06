@@ -24,11 +24,15 @@ struct eq_addr
 {
     using argument_type = T;
     const decltype(argument_type::address) val;
-    eq_addr(decltype(argument_type::address) val) : val(val) {}
+    const std::size_t shamt = 0;
+
+    explicit eq_addr(decltype(argument_type::address) val) : val(val) {}
+    eq_addr(decltype(argument_type::address) val, std::size_t shamt) : val(val), shamt(shamt) {}
+
     bool operator()(const argument_type &test)
     {
         is_valid<argument_type> validtest;
-        return validtest(test) && test.address == val;
+        return validtest(test) && (test.address >> shamt) == (val >> shamt);
     }
 };
 

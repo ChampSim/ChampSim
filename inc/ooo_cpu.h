@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <queue>
 #include <functional>
 
 #include "champsim_constants.h"
@@ -14,13 +15,11 @@
 
 using namespace std;
 
-#define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
-
 class CacheBus : public MemoryRequestProducer
 {
     public:
-        champsim::circular_buffer<PACKET> PROCESSED{ROB_SIZE};
-        explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
+        champsim::circular_buffer<PACKET> PROCESSED;
+        CacheBus(std::size_t q_size, MemoryRequestConsumer *ll) : MemoryRequestProducer(ll), PROCESSED(q_size) {}
         void return_data(PACKET *packet);
 };
 
@@ -29,54 +28,45 @@ class O3_CPU {
   public:
     uint32_t cpu = 0;
 
-    // trace
-    FILE *trace_file = NULL;
-    char trace_string[1024];
-    char gunzip_command[1024];
-
     // instruction
-    input_instr current_instr;
-    cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id = 0, completed_executions = 0,
              begin_sim_cycle = 0, begin_sim_instr,
              last_sim_cycle = 0, last_sim_instr = 0,
              finish_sim_cycle = 0, finish_sim_instr = 0,
-             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+             instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
              next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0, num_searched = 0;
-    uint32_t next_ITLB_fetch = 0;
 
     struct dib_entry_t
     {
         bool valid = false;
         unsigned lru = DIB_WAY;
-        uint64_t addr = 0;
+        uint64_t address = 0;
     };
 
     // instruction buffer
-    using dib_t= std::array<std::array<dib_entry_t, DIB_WAY>, DIB_SET>;
-    dib_t DIB;
+    using dib_t= std::vector<dib_entry_t>;
+    const std::size_t dib_set, dib_way, dib_window;
+    dib_t DIB{dib_set*dib_way};
 
     // reorder buffer, load/store queue, register file
-    champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER{IFETCH_BUFFER_SIZE};
-    champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER{DISPATCH_BUFFER_SIZE, DISPATCH_LATENCY};
-    champsim::delay_queue<ooo_model_instr> DECODE_BUFFER{DECODE_BUFFER_SIZE, DECODE_LATENCY};
-    CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
-    CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+    champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
+    champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER;
+    champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
+    CORE_BUFFER<ooo_model_instr> ROB;
+    CORE_BUFFER<LSQ_ENTRY> LQ, SQ;
 
     // store array, this structure is required to properly handle store instructions
-    uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
+    std::queue<uint64_t> STA;
 
     // Ready-To-Execute
-    uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
+    std::queue<uint32_t> ready_to_execute;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head = 0, RTL0_tail = 0,
-             RTL1[LQ_SIZE], RTL1_head = 0, RTL1_tail = 0;
+    std::queue<uint32_t> RTL0, RTL1;
 
     // Ready-To-Store
-    uint32_t RTS0[SQ_SIZE], RTS0_head = 0, RTS0_tail = 0,
-             RTS1[SQ_SIZE], RTS1_head = 0, RTS1_tail = 0;
+    std::queue<uint32_t> RTS0, RTS1;
 
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
@@ -97,30 +87,16 @@ class O3_CPU {
           L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE, L1D_MAX_READ, L1D_MAX_WRITE},
           L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE, L2C_MAX_READ, L2C_MAX_WRITE};
 
-    CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
+    CacheBus ITLB_bus{ROB.SIZE, &ITLB}, DTLB_bus{ROB.SIZE, &DTLB}, L1I_bus{ROB.SIZE, &L1I}, L1D_bus{ROB.SIZE, &L1D};
   
     // constructor
-    O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
+    O3_CPU(uint32_t cpu, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
+            std::size_t ifetch_buffer_size, std::size_t dispatch_buffer_size, std::size_t decode_buffer_size,
+            std::size_t rob_size, std::size_t lq_size, std::size_t sq_size) :
+        cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
+        IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, DISPATCH_LATENCY), DECODE_BUFFER(decode_buffer_size, DECODE_LATENCY),
+        ROB("ROB", rob_size), LQ("LQ", lq_size), SQ("SQ", sq_size)
     {
-        for (uint32_t i=0; i<STA_SIZE; i++)
-	  STA[i] = UINT64_MAX;
-
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  ready_to_execute[i] = ROB_SIZE;
-        }
-        ready_to_execute_head = 0;
-        ready_to_execute_head = 0;
-
-        for (uint32_t i=0; i<LQ_SIZE; i++) {
-	  RTL0[i] = LQ_SIZE;
-	  RTL1[i] = LQ_SIZE;
-        }
-
-        for (uint32_t i=0; i<SQ_SIZE; i++) {
-	  RTS0[i] = SQ_SIZE;
-	  RTS1[i] = SQ_SIZE;
-        }
-
         // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();
 	initialize_btb();

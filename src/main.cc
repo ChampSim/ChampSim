@@ -110,7 +110,7 @@ void print_branch_stats()
     for (uint32_t i=0; i<NUM_CPUS; i++) {
         cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
         cout << (100.0*(ooo_cpu[i].num_branch - ooo_cpu[i].branch_mispredictions)) / ooo_cpu[i].num_branch;
-        cout << "% MPKI: " << (1000.0*ooo_cpu[i].branch_mispredictions)/(ooo_cpu[i].num_retired - ooo_cpu[i].warmup_instructions);
+        cout << "% MPKI: " << (1000.0*ooo_cpu[i].branch_mispredictions)/(ooo_cpu[i].num_retired - warmup_instructions);
 	cout << " Average ROB Occupancy at Mispredict: " << (1.0*ooo_cpu[i].total_rob_occupancy_at_branch_mispredict)/ooo_cpu[i].branch_mispredictions << endl;
 
 	/*
@@ -444,7 +444,7 @@ int main(int argc, char** argv)
     ooo_cpu.reserve(NUM_CPUS);
 
     for (int i=0; i<NUM_CPUS; i++) {
-        ooo_cpu.emplace_back(i, warmup_instructions, simulation_instructions);
+        ooo_cpu.emplace_back(i, DIB_SET, DIB_WAY, DIB_WINDOW_SIZE, IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, LQ_SIZE, SQ_SIZE);
         ooo_cpu.at(i).L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
         ooo_cpu.at(i).L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
         ooo_cpu.at(i).L2C.lower_level = &LLC;
@@ -562,7 +562,7 @@ int main(int argc, char** argv)
             */
             
             // simulation complete
-            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i].num_retired >= (ooo_cpu[i].begin_sim_instr + ooo_cpu[i].simulation_instructions))) {
+            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i].num_retired >= (ooo_cpu[i].begin_sim_instr + simulation_instructions))) {
                 simulation_complete[i] = 1;
                 ooo_cpu[i].finish_sim_instr = ooo_cpu[i].num_retired - ooo_cpu[i].begin_sim_instr;
                 ooo_cpu[i].finish_sim_cycle = current_core_cycle[i] - ooo_cpu[i].begin_sim_cycle;

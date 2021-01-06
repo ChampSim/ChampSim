@@ -76,17 +76,9 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
             if (arch_instr.num_mem_ops > 0)
             {
 #ifdef SANITY_CHECK
-                if (STA[STA_tail] < UINT64_MAX)
-                {
-                    if (STA_head != STA_tail)
-                        assert(0);
-                }
+                assert(STA.size() < ROB.SIZE*NUM_INSTR_DESTINATIONS_SPARC);
 #endif
-                STA[STA_tail] = instr_unique_id;
-                STA_tail++;
-
-                if (STA_tail == STA_SIZE)
-                    STA_tail = 0;
+                STA.push(instr_unique_id);
             }
         }
     }
@@ -324,10 +316,10 @@ void O3_CPU::fetch_instruction()
   for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
   {
       // Check DIB to see if we recently fetched this line
-      dib_t::value_type &dib_set = DIB[(it->ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
-      auto to_find = it->ip;
-      auto way = std::find_if(dib_set.begin(), dib_set.end(), [to_find](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (to_find >> LOG2_DIB_WINDOW_SIZE));});
-      if (way != dib_set.end())
+      auto dib_set_begin = std::next(DIB.begin(), ((it->ip >> lg2(dib_window)) % dib_set) * dib_way);
+      auto dib_set_end   = std::next(dib_set_begin, dib_way);
+      auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(it->ip, lg2(dib_window)));
+      if (way != dib_set_end)
       {
           // The cache line is in the L0, so we can mark this as complete
           it->translated = COMPLETED;
@@ -341,7 +333,7 @@ void O3_CPU::fetch_instruction()
 
           // Update LRU
           unsigned hit_lru = way->lru;
-          std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+          std::for_each(dib_set_begin, dib_set_end, [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
           way->lru = 0;
       }
   }
@@ -452,24 +444,25 @@ void O3_CPU::decode_instruction()
         ooo_model_instr &db_entry = DECODE_BUFFER.front();
 
 	// Search DIB to see if we need to add this instruction
-	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
-	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (db_entry.ip >> LOG2_DIB_WINDOW_SIZE));});
+      auto dib_set_begin = std::next(DIB.begin(), ((db_entry.ip >> lg2(dib_window)) % dib_set) * dib_way);
+      auto dib_set_end   = std::next(dib_set_begin, dib_way);
+      auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(db_entry.ip, lg2(dib_window)));
 	
 	// If we did not find the entry in the DIB, find a victim
-	if (way == dib_set.end())
+	if (way == dib_set_end)
 	{
-	  way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
-	  assert(way != dib_set.end());
+	  way = std::max_element(dib_set_begin, dib_set_end, [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
+	  assert(way != dib_set_end);
 	}
 	
 	// update LRU in DIB
 	unsigned hit_lru = way->lru;
-	std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+	std::for_each(dib_set_begin, dib_set_end, [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
 	
         // update way
 	way->valid = true;
 	way->lru = 0;
-	way->addr = db_entry.ip;
+	way->address = db_entry.ip;
 
 	// Resume fetch 
 	if (db_entry.branch_mispredicted)
@@ -609,19 +602,12 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         if (ROB.entry[rob_index].reg_ready) {
 
 #ifdef SANITY_CHECK
-            if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
-                assert(0);
+            assert(ready_to_execute.size() <= ROB_SIZE);
 #endif
-            // remember this rob_index in the Ready-To-Execute array 1
-            ready_to_execute[ready_to_execute_tail] = rob_index;
+            ready_to_execute.push(rob_index);
 
             DP (if (warmup_complete[cpu]) {
-            cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
-            cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
-
-            ready_to_execute_tail++;
-            if (ready_to_execute_tail == ROB_SIZE)
-                ready_to_execute_tail = 0;
+                    std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index << " is added to ready_to_execute" << std::endl; });
         }
     }
 }
@@ -711,21 +697,16 @@ void O3_CPU::execute_instruction()
     uint32_t exec_issued = 0, num_iteration = 0;
     
     while (exec_issued < EXEC_WIDTH) {
-        if (ready_to_execute[ready_to_execute_head] < ROB_SIZE) {
-            uint32_t exec_index = ready_to_execute[ready_to_execute_head];
+        if (!ready_to_execute.empty()) {
+            uint32_t exec_index = ready_to_execute.front();
             if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
                 do_execution(exec_index);
 
-                ready_to_execute[ready_to_execute_head] = ROB_SIZE;
-                ready_to_execute_head++;
-                if (ready_to_execute_head == ROB_SIZE)
-                    ready_to_execute_head = 0;
+                ready_to_execute.pop();
                 exec_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[ready_to_execute] is empty head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; });
             break;
         }
 
@@ -839,7 +820,7 @@ uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index)
             if (ROB.entry[rob_index].destination_added[i])
                 num_added++;
             else if (SQ.occupancy < SQ.SIZE) {
-                if (STA[STA_head] == ROB.entry[rob_index].instr_id) {
+                if (STA.front() == ROB.entry[rob_index].instr_id) {
                     add_store_queue(rob_index, i);
                     num_added++;
                 }
@@ -1003,14 +984,10 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     ROB.entry[rob_index].source_added[data_index] = 1;
 
     if (LQ.entry[lq_index].virtual_address && (LQ.entry[lq_index].producer_id == UINT64_MAX)) { // not released and no forwarding
-        RTL0[RTL0_tail] = lq_index;
-        RTL0_tail++;
-        if (RTL0_tail == LQ_SIZE)
-            RTL0_tail = 0;
+        RTL0.push(lq_index);
 
         DP (if (warmup_complete[cpu]) {
-        cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is added to RTL0";
-        cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
+                std::cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is added to RTL0" << std::endl; });
     }
 
     DP(if(warmup_complete[cpu]) {
@@ -1085,16 +1062,10 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
 
     // succesfully added to the store queue
     ROB.entry[rob_index].destination_added[data_index] = 1;
-    
-    STA[STA_head] = UINT64_MAX;
-    STA_head++;
-    if (STA_head == STA_SIZE)
-        STA_head = 0;
 
-    RTS0[RTS0_tail] = sq_index;
-    RTS0_tail++;
-    if (RTS0_tail == SQ_SIZE)
-        RTS0_tail = 0;
+    STA.pop();
+
+    RTS0.push(sq_index);
 
     DP(if(warmup_complete[cpu]) {
     cout << "[SQ] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id;
@@ -1108,8 +1079,8 @@ void O3_CPU::operate_lsq()
     uint32_t store_issued = 0, num_iteration = 0;
 
     while (store_issued < SQ_WIDTH) {
-        if (RTS0[RTS0_head] < SQ_SIZE) {
-            uint32_t sq_index = RTS0[RTS0_head];
+        if (!RTS0.empty()) {
+            uint32_t sq_index = RTS0.front();
             if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
 
                 // add it to DTLB
@@ -1135,8 +1106,7 @@ void O3_CPU::operate_lsq()
                 data_packet.sq_index_depend_on_me = {sq_index};
 
                 DP (if (warmup_complete[cpu]) {
-                cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
-                cout << " head: " << RTS0_head << " tail: " << RTS0_tail << endl; }); 
+                        std::cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0" << std::endl; });
 
                 int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
 
@@ -1145,17 +1115,12 @@ void O3_CPU::operate_lsq()
                 else 
                     SQ.entry[sq_index].translated = INFLIGHT;
 
-                RTS0[RTS0_head] = SQ_SIZE;
-                RTS0_head++;
-                if (RTS0_head == SQ_SIZE)
-                    RTS0_head = 0;
+                RTS0.pop();
 
                 store_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS0] is empty head: " << RTS0_head << " tail: " << RTS0_tail << endl; });
             break;
         }
 
@@ -1166,22 +1131,17 @@ void O3_CPU::operate_lsq()
 
     num_iteration = 0;
     while (store_issued < SQ_WIDTH) {
-        if (RTS1[RTS1_head] < SQ_SIZE) {
-            uint32_t sq_index = RTS1[RTS1_head];
+        if (!RTS1.empty()) {
+            uint32_t sq_index = RTS1.front();
             if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
                 execute_store(SQ.entry[sq_index].rob_index, sq_index, SQ.entry[sq_index].data_index);
 
-                RTS1[RTS1_head] = SQ_SIZE;
-                RTS1_head++;
-                if (RTS1_head == SQ_SIZE)
-                    RTS1_head = 0;
+                RTS1.pop();
 
                 store_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS1] is empty head: " << RTS1_head << " tail: " << RTS1_tail << endl; });
             break;
         }
 
@@ -1193,8 +1153,8 @@ void O3_CPU::operate_lsq()
     unsigned load_issued = 0;
     num_iteration = 0;
     while (load_issued < LQ_WIDTH) {
-        if (RTL0[RTL0_head] < LQ_SIZE) {
-            uint32_t lq_index = RTL0[RTL0_head];
+        if (!RTL0.empty()) {
+            uint32_t lq_index = RTL0.front();
             if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
 
                 // add it to DTLB
@@ -1219,8 +1179,7 @@ void O3_CPU::operate_lsq()
                 data_packet.lq_index_depend_on_me = {lq_index};
 
                 DP (if (warmup_complete[cpu]) {
-                cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
-                cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
+                        std::cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0" << std::endl; });
 
                 int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
 
@@ -1229,17 +1188,12 @@ void O3_CPU::operate_lsq()
                 else  
                     LQ.entry[lq_index].translated = INFLIGHT;
 
-                RTL0[RTL0_head] = LQ_SIZE;
-                RTL0_head++;
-                if (RTL0_head == LQ_SIZE)
-                    RTL0_head = 0;
+                RTL0.pop();
 
                 load_issued++;
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL0] is empty head: " << RTL0_head << " tail: " << RTL0_tail << endl; });
             break;
         }
 
@@ -1250,24 +1204,19 @@ void O3_CPU::operate_lsq()
 
     num_iteration = 0;
     while (load_issued < LQ_WIDTH) {
-        if (RTL1[RTL1_head] < LQ_SIZE) {
-            uint32_t lq_index = RTL1[RTL1_head];
+        if (!RTL1.empty()) {
+            uint32_t lq_index = RTL1.front();
             if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
                 int rq_index = execute_load(LQ.entry[lq_index].rob_index, lq_index, LQ.entry[lq_index].data_index);
 
                 if (rq_index != -2) {
-                    RTL1[RTL1_head] = LQ_SIZE;
-                    RTL1_head++;
-                    if (RTL1_head == LQ_SIZE)
-                        RTL1_head = 0;
+                    RTL1.pop();
 
                     load_issued++;
                 }
             }
         }
         else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL1] is empty head: " << RTL1_head << " tail: " << RTL1_tail << endl; });
             break;
         }
 
@@ -1454,19 +1403,13 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                         ROB.entry[i].scheduled = COMPLETED;
 
 #ifdef SANITY_CHECK
-                        if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
-                            assert(0);
+                        assert(ready_to_execute.size() <= ROB_SIZE);
 #endif
                         // remember this rob_index in the Ready-To-Execute array 0
-                        ready_to_execute[ready_to_execute_tail] = i;
+                        ready_to_execute.push(i);
 
                         DP (if (warmup_complete[cpu]) {
-                        cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to ready_to_execute";
-                        cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
-
-                        ready_to_execute_tail++;
-                        if (ready_to_execute_tail == ROB_SIZE)
-                            ready_to_execute_tail = 0;
+                                std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to ready_to_execute" << std::endl; });
 
                     }
                 }
@@ -1602,10 +1545,7 @@ void O3_CPU::handle_memory_return()
 	      SQ.entry[sq_merged].translated = COMPLETED;
 	      SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
 
-	      RTS1[RTS1_tail] = sq_merged;
-	      RTS1_tail++;
-	      if (RTS1_tail == SQ_SIZE)
-		RTS1_tail = 0;
+          RTS1.push(sq_merged);
 	    }
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
@@ -1614,10 +1554,7 @@ void O3_CPU::handle_memory_return()
 	      LQ.entry[lq_merged].translated = COMPLETED;
 	      LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
 
-	      RTL1[RTL1_tail] = lq_merged;
-	      RTL1_tail++;
-	      if (RTL1_tail == LQ_SIZE)
-		RTL1_tail = 0;
+          RTL1.push(lq_merged);
 	    }
 
 	  ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
