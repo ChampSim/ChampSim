@@ -89,12 +89,12 @@ class O3_CPU {
     uint64_t branch_type_misses[8] = {};
 
     // TLBs and caches
-    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE},
-          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE},
-          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE},
-          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE},
-          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE},
-          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE};
+    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE, ITLB_MAX_READ, ITLB_MAX_WRITE},
+          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE, DTLB_MAX_READ, DTLB_MAX_WRITE},
+          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE, STLB_MAX_READ, STLB_MAX_WRITE},
+          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE, L1I_MAX_READ, L1I_MAX_WRITE},
+          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE, L1D_MAX_READ, L1D_MAX_WRITE},
+          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE, L2C_MAX_READ, L2C_MAX_WRITE};
 
     CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
@@ -127,43 +127,31 @@ class O3_CPU {
         // TLBs
         ITLB.cpu = this->cpu;
         ITLB.cache_type = IS_ITLB;
-        ITLB.MAX_READ = 2;
-        ITLB.MAX_WRITE = 2;
         ITLB.fill_level = FILL_L1;
         ITLB.lower_level = &STLB;
 
         DTLB.cpu = this->cpu;
         DTLB.cache_type = IS_DTLB;
-        DTLB.MAX_READ = LQ_WIDTH;
-        DTLB.MAX_WRITE = LQ_WIDTH;
         DTLB.fill_level = FILL_L1;
         DTLB.lower_level = &STLB;
 
         STLB.cpu = this->cpu;
         STLB.cache_type = IS_STLB;
-        STLB.MAX_READ = 1;
-        STLB.MAX_WRITE = 1;
         STLB.fill_level = FILL_L2;
 
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
         L1I.cache_type = IS_L1I;
-        L1I.MAX_READ = 2;
-        L1I.MAX_WRITE = 2;
         L1I.fill_level = FILL_L1;
         L1I.lower_level = &L2C;
 
         L1D.cpu = this->cpu;
         L1D.cache_type = IS_L1D;
-        L1D.MAX_READ = LQ_WIDTH;
-        L1D.MAX_WRITE = SQ_WIDTH;
         L1D.fill_level = FILL_L1;
         L1D.lower_level = &L2C;
 
         L2C.cpu = this->cpu;
         L2C.cache_type = IS_L2C;
-        L2C.MAX_READ = 1;
-        L2C.MAX_WRITE = 1;
         L2C.fill_level = FILL_L2;
 
         l1i_prefetcher_initialize();

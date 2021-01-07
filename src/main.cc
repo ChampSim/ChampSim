@@ -452,8 +452,6 @@ int main(int argc, char** argv)
         // SHARED CACHE
         LLC.cache_type = IS_LLC;
         LLC.fill_level = FILL_LLC;
-        LLC.MAX_READ = NUM_CPUS;
-        LLC.MAX_WRITE = NUM_CPUS;
         LLC.lower_level = &DRAM;
 
         using namespace std::placeholders;
