@@ -118,7 +118,7 @@ config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtu
 # Copy or trim cores as necessary to fill out the specified number of cores
 ###
 
-config_file['ooo_cpu'] = list(itertools.islice(itertools.repeat(*config_file['ooo_cpu']), config_file['num_cores']))
+config_file['ooo_cpu'] = list(itertools.islice(itertools.cycle(config_file['ooo_cpu']), config_file['num_cores']))
 
 ###
 # Check to make sure modules exist and they correspond to any already-built modules.
