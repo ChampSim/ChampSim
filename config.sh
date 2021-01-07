@@ -28,7 +28,7 @@ config_cache_name = '.champsimconfig_cache'
 
 llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[max_read]}, {attrs[max_write]});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][window_size]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
@@ -38,7 +38,7 @@ module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
-cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n#define {name}_MAX_READ {attrs[max_read]}\n#define {name}_MAX_WRITE {attrs[max_write]}'
+cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n#define {name}_MAX_READ {attrs[max_read]}\n#define {name}_MAX_WRITE {attrs[max_write]}\n'
 
 ###
 # Begin named constants
@@ -50,32 +50,6 @@ const_names = {
     'heartbeat_frequency': 'STAT_PRINTING_PERIOD',
     'cpu_clock_freq': 'CPU_FREQ',
     'num_cores': 'NUM_CPUS',
-    'core': {
-        'ifetch_buffer_size': 'IFETCH_BUFFER_SIZE',
-        'decode_buffer_size': 'DECODE_BUFFER_SIZE',
-        'dispatch_buffer_size': 'DISPATCH_BUFFER_SIZE',
-        'rob_size': 'ROB_SIZE',
-        'lq_size': 'LQ_SIZE',
-        'sq_size': 'SQ_SIZE',
-        'fetch_width' : 'FETCH_WIDTH',
-        'decode_width' : 'DECODE_WIDTH',
-        'dispatch_width' : 'DISPATCH_WIDTH',
-        'execute_width' : 'EXEC_WIDTH',
-        'lq_width' : 'LQ_WIDTH',
-        'sq_width' : 'SQ_WIDTH',
-        'retire_width' : 'RETIRE_WIDTH',
-        'mispredict_penalty' : 'BRANCH_MISPREDICT_PENALTY',
-        'scheduler_size' : 'SCHEDULER_SIZE',
-        'decode_latency' : 'DECODE_LATENCY',
-        'dispatch_latency' : 'DISPATCH_LATENCY',
-        'schedule_latency' : 'SCHEDULING_LATENCY',
-        'execute_latency' : 'EXEC_LATENCY',
-        'DIB' : {
-            'window_size' : 'DIB_WINDOW_SIZE',
-            'sets' : 'DIB_SET',
-            'ways' : 'DIB_WAY'
-        }
-    },
     'physical_memory': {
         'frequency': 'DRAM_IO_FREQ',
         'channels': 'DRAM_CHANNELS',
@@ -203,8 +177,15 @@ with open(instantiation_file_name, 'wt') as wfp:
 
     wfp.write(llc_fmtstr.format(cpu='', name='LLC', attrs=config_file['LLC']))
 
-    wfp.write('std::vector<O3_CPU> ooo_cpu { ')
-    wfp.write(' };\n')
+    for i,cpu in enumerate(config_file['ooo_cpu']):
+        wfp.write(cpu_fmtstr.format(cpu=i, attrs=cpu))
+
+    wfp.write('std::vector<O3_CPU*> ooo_cpu {\n')
+    for i in range(len(config_file['ooo_cpu'])):
+        if i > 0:
+            wfp.write(',\n')
+        wfp.write('&cpu{}_inst'.format(i))
+    wfp.write('\n};\n')
 
     wfp.write(pmem_fmtstr.format(attrs=config_file['physical_memory']))
     wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
@@ -227,21 +208,15 @@ with open(constants_header_name, 'wt') as wfp:
     # As a temporary measure, I am duplicating the existing setup that uses preprocessor defines.
     # Eventually, I would like to pass this information into the constructors.
     wfp.write('\n')
-    for k,v in config_file['ooo_cpu'][0].items():
-        if isinstance(v,dict):
-            if k == 'DIB':
-                wfp.write(define_fmtstr.format(name='window_size').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
-                wfp.write(define_log_fmtstr.format(name='window_size').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
-                wfp.write(define_fmtstr.format(name='sets').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
-                wfp.write(define_fmtstr.format(name='ways').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
-            else:
-                wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
-            wfp.write('\n')
-        else:
-            if k != 'branch_predictor' and k != 'btb':
-                wfp.write(define_fmtstr.format(name=k).format(names=const_names['core'], config=config_file['ooo_cpu'][0]))
+    wfp.write(cache_define_fmtstr.format(name='L1I', attrs=config_file['ooo_cpu'][0]['L1I']))
+    wfp.write(cache_define_fmtstr.format(name='L1D', attrs=config_file['ooo_cpu'][0]['L1D']))
+    wfp.write(cache_define_fmtstr.format(name='L2C', attrs=config_file['ooo_cpu'][0]['L2C']))
+    wfp.write(cache_define_fmtstr.format(name='ITLB', attrs=config_file['ooo_cpu'][0]['ITLB']))
+    wfp.write(cache_define_fmtstr.format(name='DTLB', attrs=config_file['ooo_cpu'][0]['DTLB']))
+    wfp.write(cache_define_fmtstr.format(name='STLB', attrs=config_file['ooo_cpu'][0]['STLB']))
+    wfp.write('\n')
 
-    wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
+    wfp.write('#define LLC_LATENCY {}u\n\n'.format(config_file['LLC']['latency']))
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS']:

@@ -6,10 +6,7 @@
 #include "set.h"
 #include "vmem.h"
 
-// out-of-order core
-extern std::vector<O3_CPU> ooo_cpu;
 uint64_t current_core_cycle[NUM_CPUS];
-
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
@@ -602,7 +599,7 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         if (ROB.entry[rob_index].reg_ready) {
 
 #ifdef SANITY_CHECK
-            assert(ready_to_execute.size() <= ROB_SIZE);
+            assert(ready_to_execute.size() <= ROB.SIZE);
 #endif
             ready_to_execute.push(rob_index);
 
@@ -711,7 +708,7 @@ void O3_CPU::execute_instruction()
         }
 
         num_iteration++;
-        if (num_iteration == (ROB_SIZE-1))
+        if (num_iteration == (ROB.SIZE-1))
             break;
     }
 }
@@ -1125,7 +1122,7 @@ void O3_CPU::operate_lsq()
         }
 
         num_iteration++;
-        if (num_iteration == (SQ_SIZE-1))
+        if (num_iteration == (SQ.SIZE-1))
             break;
     }
 
@@ -1146,7 +1143,7 @@ void O3_CPU::operate_lsq()
         }
 
         num_iteration++;
-        if (num_iteration == (SQ_SIZE-1))
+        if (num_iteration == (SQ.SIZE-1))
             break;
     }
 
@@ -1198,7 +1195,7 @@ void O3_CPU::operate_lsq()
         }
 
         num_iteration++;
-        if (num_iteration == (LQ_SIZE-1))
+        if (num_iteration == (LQ.SIZE-1))
             break;
     }
 
@@ -1221,7 +1218,7 @@ void O3_CPU::operate_lsq()
         }
 
         num_iteration++;
-        if (num_iteration == (LQ_SIZE-1))
+        if (num_iteration == (LQ.SIZE-1))
             break;
     }
 }
@@ -1248,7 +1245,7 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
     // resolve RAW dependency after DTLB access
     // check if this store has dependent loads
     if (ROB.entry[rob_index].is_producer) {
-	ITERATE_SET(dependent,ROB.entry[rob_index].memory_instrs_depend_on_me, ROB_SIZE) {
+	ITERATE_SET(dependent,ROB.entry[rob_index].memory_instrs_depend_on_me, ROB.SIZE) {
             // check if dependent loads are already added in the load queue
             for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) { // which one is dependent?
                 if (ROB.entry[dependent].source_memory[j] && ROB.entry[dependent].source_added[j]) {
@@ -1390,7 +1387,7 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
 {
     // if (!ROB.entry[rob_index].registers_instrs_depend_on_me.empty()) 
 
-    ITERATE_SET(i,ROB.entry[rob_index].registers_instrs_depend_on_me, ROB_SIZE) {
+    ITERATE_SET(i,ROB.entry[rob_index].registers_instrs_depend_on_me, ROB.SIZE) {
         for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
             if (ROB.entry[rob_index].registers_index_depend_on_me[j].search (i)) {
                 ROB.entry[i].num_reg_dependent--;
@@ -1403,7 +1400,7 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                         ROB.entry[i].scheduled = COMPLETED;
 
 #ifdef SANITY_CHECK
-                        assert(ready_to_execute.size() <= ROB_SIZE);
+                        assert(ready_to_execute.size() <= ROB.SIZE);
 #endif
                         // remember this rob_index in the Ready-To-Execute array 0
                         ready_to_execute.push(i);
