@@ -36,6 +36,7 @@ vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num
 module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
+define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
 cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n'
 
@@ -82,7 +83,13 @@ const_names = {
         'banks': 'DRAM_BANKS',
         'rows': 'DRAM_ROWS',
         'columns': 'DRAM_COLUMNS',
-        'row_size': 'DRAM_ROW_SIZE'
+        'row_size': 'DRAM_ROW_SIZE',
+        'channel_width': 'DRAM_CHANNEL_WIDTH',
+        'wq_size': 'DRAM_WQ_SIZE',
+        'rq_size': 'DRAM_RQ_SIZE',
+        'tRP': 'tRP_DRAM_NANOSECONDS',
+        'tRCD': 'tRCD_DRAM_NANOSECONDS',
+        'tCAS': 'tCAS_DRAM_NANOSECONDS'
     }
 }
 
@@ -102,7 +109,7 @@ default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size':
 default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1 }
 default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8 }
 default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
-default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8 }
+default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
 
 ###
@@ -237,8 +244,11 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(cache_define_fmtstr.format(name='LLC', attrs=config_file['LLC']) + '\n')
 
     for k in const_names['physical_memory']:
-        wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
-        if k != 'frequency':
+        if k in ['tRP', 'tRCD', 'tCAS']:
+            wfp.write(define_nonint_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
+        else:
+            wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
+        if k in ['channels', 'ranks', 'banks', 'rows', 'columns']:
             wfp.write(define_log_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
 
     wfp.write('#endif\n')
