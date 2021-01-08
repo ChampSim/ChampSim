@@ -19,7 +19,7 @@ using namespace std;
 class CacheBus : public MemoryRequestProducer
 {
     public:
-        PACKET_QUEUE PROCESSED{"", ROB_SIZE};
+        champsim::circular_buffer<PACKET> PROCESSED{ROB_SIZE};
         explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
         void return_data(PACKET *packet);
 };
