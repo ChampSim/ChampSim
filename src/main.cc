@@ -218,9 +218,9 @@ void finish_warmup()
 	    ooo_cpu[i]->branch_type_misses[j] = 0;
 	  }
 	
-        reset_cache_stats(i, &ooo_cpu[i]->L1I);
-        reset_cache_stats(i, &ooo_cpu[i]->L1D);
-        reset_cache_stats(i, &ooo_cpu[i]->L2C);
+        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
+        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
+        reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)); //L2C
         reset_cache_stats(i, &LLC);
     }
     cout << endl;
@@ -260,7 +260,7 @@ void print_deadlock(uint32_t i)
     // print L1D MSHR entry
     std::cout << std::endl << "L1D MSHR Entry" << std::endl;
     std::size_t j = 0;
-    for (PACKET &entry : ooo_cpu[i]->L1D.MSHR) {
+    for (PACKET &entry : static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->MSHR) {
         std::cout << "[L1D MSHR] entry: " << j << " instr_id: " << entry.instr_id << " rob_index: " << entry.rob_index;
         std::cout << " address: " << std::hex << entry.address << " full_addr: " << entry.full_addr << std::dec << " type: " << +entry.type;
         std::cout << " fill_level: " << entry.fill_level << " lq_index: " << entry.lq_index << " sq_index: " << entry.sq_index << " event_cycle: " << entry.event_cycle << std::endl;
@@ -431,12 +431,10 @@ int main(int argc, char** argv)
     champsim_seed = seed_number;
 
     for (int i=0; i<NUM_CPUS; i++) {
-        ooo_cpu.at(i)->L1I.l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-        ooo_cpu.at(i)->L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-        ooo_cpu.at(i)->L2C.lower_level = &LLC;
+        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
+        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
 
         // OFF-CHIP DRAM
-        DRAM.fill_level = FILL_DRAM;
         for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
             DRAM.RQ[i].is_RQ = 1;
             DRAM.WQ[i].is_WQ = 1;
@@ -451,7 +449,6 @@ int main(int argc, char** argv)
     // SHARED CACHE
     LLC.cache_type = IS_LLC;
     LLC.fill_level = FILL_LLC;
-    LLC.lower_level = &DRAM;
 
     using namespace std::placeholders;
     LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
@@ -557,9 +554,9 @@ int main(int argc, char** argv)
                 cout << " cumulative IPC: " << ((float) ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
                 cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
 
-                record_roi_stats(i, &ooo_cpu[i]->L1D);
-                record_roi_stats(i, &ooo_cpu[i]->L1I);
-                record_roi_stats(i, &ooo_cpu[i]->L2C);
+                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
+                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
+                record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
                 record_roi_stats(i, &LLC);
 
                 all_simulation_complete++;
@@ -587,12 +584,12 @@ int main(int argc, char** argv)
             cout << endl << "CPU " << i << " cumulative IPC: " << (float) (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle); 
             cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr << " cycles: " << current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle << endl;
 #ifndef CRC2_COMPILE
-            print_sim_stats(i, &ooo_cpu[i]->L1D);
-            print_sim_stats(i, &ooo_cpu[i]->L1I);
-            print_sim_stats(i, &ooo_cpu[i]->L2C);
+            print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
+            print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
+            print_sim_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
 	    ooo_cpu[i]->l1i_prefetcher_final_stats();
-            ooo_cpu[i]->L1D.l1d_prefetcher_final_stats();
-	    ooo_cpu[i]->L2C.l2c_prefetcher_final_stats();
+            static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
+	    static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
 #endif
             print_sim_stats(i, &LLC);
         }
@@ -604,9 +601,9 @@ int main(int argc, char** argv)
         cout << endl << "CPU " << i << " cumulative IPC: " << ((float) ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle); 
         cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
 #ifndef CRC2_COMPILE
-        print_roi_stats(i, &ooo_cpu[i]->L1D);
-        print_roi_stats(i, &ooo_cpu[i]->L1I);
-        print_roi_stats(i, &ooo_cpu[i]->L2C);
+        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
+        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
+        print_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
 #endif
         print_roi_stats(i, &LLC);
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
@@ -614,8 +611,8 @@ int main(int argc, char** argv)
 
     for (uint32_t i=0; i<NUM_CPUS; i++) {
         ooo_cpu[i]->l1i_prefetcher_final_stats();
-        ooo_cpu[i]->L1D.l1d_prefetcher_final_stats();
-        ooo_cpu[i]->L2C.l2c_prefetcher_final_stats();
+        static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
+        static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
     }
 
     LLC.llc_prefetcher_final_stats();

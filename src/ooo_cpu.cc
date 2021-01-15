@@ -515,38 +515,7 @@ void O3_CPU::dispatch_instruction()
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
 {
-  if(pf_v_addr == 0)
-    {
-      cerr << "Cannot prefetch code line 0x0 !!!" << endl;
-      assert(0);
-    }
-  
-  L1I.pf_requested++;
-
-  if (!L1I.PQ.full())
-    {
-      // magically translate prefetches
-      uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
-
-      PACKET pf_packet;
-      pf_packet.fill_level = FILL_L1;
-      pf_packet.pf_origin_level = FILL_L1;
-      pf_packet.cpu = cpu;
-
-      pf_packet.address = pf_pa >> LOG2_BLOCK_SIZE;
-      pf_packet.full_addr = pf_pa;
-
-      pf_packet.ip = pf_v_addr;
-      pf_packet.type = PREFETCH;
-      pf_packet.event_cycle = current_core_cycle[cpu];
-
-      L1I_bus.lower_level->add_pq(&pf_packet);
-      L1I.pf_issued++;
-    
-      return 1;
-    }
-  
- return 0;
+    return static_cast<CACHE*>(L1I_bus.lower_level)->va_prefetch_line(pf_v_addr, pf_v_addr, FILL_L1, 0);
 }
 
 // TODO: When should we update ROB.schedule_event_cycle?
@@ -1421,19 +1390,19 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
 
 void O3_CPU::operate_cache()
 {
-    ITLB.operate_writes();
-    DTLB.operate_writes();
-    STLB.operate_writes();
-    L1I.operate_writes();
-    L1D.operate_writes();
-    L2C.operate_writes();
+    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_writes();
+    static_cast<CACHE*>(L1I_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(L1D_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_writes();
 
-    L2C.operate_reads();
-    L1D.operate_reads();
-    L1I.operate_reads();
-    STLB.operate_reads();
-    DTLB.operate_reads();
-    ITLB.operate_reads();
+    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_reads();
+    static_cast<CACHE*>(L1D_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(L1I_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_reads();
+    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_reads();
 
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();
