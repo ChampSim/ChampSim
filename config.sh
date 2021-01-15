@@ -26,7 +26,7 @@ config_cache_name = '.champsimconfig_cache'
 # Begin format strings
 ###
 
-llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[max_read]}, {attrs[max_write]});\n'
+llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[max_read]}, {attrs[max_write]}, {attrs[latency]});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]});\n'
 
@@ -215,8 +215,6 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(cache_define_fmtstr.format(name='DTLB', attrs=config_file['ooo_cpu'][0]['DTLB']))
     wfp.write(cache_define_fmtstr.format(name='STLB', attrs=config_file['ooo_cpu'][0]['STLB']))
     wfp.write('\n')
-
-    wfp.write('#define LLC_LATENCY {}u\n\n'.format(config_file['LLC']['latency']))
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS']:

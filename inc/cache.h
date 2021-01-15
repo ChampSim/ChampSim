@@ -28,8 +28,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
-    const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-    uint32_t LATENCY = 0;
+    const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE, LATENCY;
     std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     int fill_level = -1;
     const uint32_t MAX_READ, MAX_WRITE;
@@ -75,8 +74,8 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t max_read, uint32_t max_write)
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), MAX_READ(max_read), MAX_WRITE(max_write) {
+    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t max_read, uint32_t max_write, uint32_t latency)
+        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), LATENCY(latency), MAX_READ(max_read), MAX_WRITE(max_write) {
     }
 
     // functions

@@ -232,17 +232,6 @@ void finish_warmup()
         DRAM.WQ[i].ROW_BUFFER_HIT = 0;
         DRAM.WQ[i].ROW_BUFFER_MISS = 0;
     }
-
-    // set actual cache latency
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        ooo_cpu[i]->ITLB.LATENCY = ITLB_LATENCY;
-        ooo_cpu[i]->DTLB.LATENCY = DTLB_LATENCY;
-        ooo_cpu[i]->STLB.LATENCY = STLB_LATENCY;
-        ooo_cpu[i]->L1I.LATENCY  = L1I_LATENCY;
-        ooo_cpu[i]->L1D.LATENCY  = L1D_LATENCY;
-        ooo_cpu[i]->L2C.LATENCY  = L2C_LATENCY;
-    }
-    LLC.LATENCY = LLC_LATENCY;
 }
 
 void print_deadlock(uint32_t i)
