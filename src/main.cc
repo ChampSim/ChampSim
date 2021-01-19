@@ -30,7 +30,7 @@ time_t start_time;
 extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
-extern std::vector<O3_CPU*> ooo_cpu;
+extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 extern uint64_t current_core_cycle[NUM_CPUS];
 

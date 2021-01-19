@@ -173,7 +173,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "ooo_cpu.h"\n')
     wfp.write('#include "vmem.h"\n')
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')
-    wfp.write('#include <vector>\n')
+    wfp.write('#include <array>\n')
 
     wfp.write(pmem_fmtstr.format(attrs=config_file['physical_memory']))
     wfp.write(llc_fmtstr.format(name='LLC', attrs=config_file['LLC'], ll='&DRAM'))
@@ -188,7 +188,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     for i,cpu in enumerate(config_file['ooo_cpu']):
         wfp.write(cpu_fmtstr.format(cpu=i, attrs=cpu))
 
-    wfp.write('std::vector<O3_CPU*> ooo_cpu {\n')
+    wfp.write('std::array<O3_CPU*, NUM_CPUS> ooo_cpu {\n')
     for i in range(len(config_file['ooo_cpu'])):
         if i > 0:
             wfp.write(',\n')
