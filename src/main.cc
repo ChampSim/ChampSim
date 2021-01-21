@@ -584,6 +584,15 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L2C);
                 record_roi_stats(i, &LLC);
 
+				record_roi_stats(i, &ooo_cpu[i].ITLB);
+				record_roi_stats(i, &ooo_cpu[i].DTLB);
+				record_roi_stats(i, &ooo_cpu[i].STLB);
+				
+				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
+				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
+				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
+				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
+	
                 all_simulation_complete++;
             }
 

@@ -144,6 +144,21 @@ class O3_CPU {
         STLB.MAX_READ = 1;
         STLB.MAX_WRITE = 1;
         STLB.fill_level = FILL_L2;
+#if defined(INSERT_PAGE_TABLE_WALKER)
+		STLB.lower_level = &PTW;
+
+		PTW.cpu = this->cpu;
+		PTW.cache_type = IS_PTW;
+		PTW.MAX_READ = 1;
+		PTW.MAX_WRITE = 1;
+		PTW.lower_level = &L2C;
+
+		PTW.PSCL5.cache_type = IS_PSCL5;
+		PTW.PSCL4.cache_type = IS_PSCL4;
+		PTW.PSCL3.cache_type = IS_PSCL3;
+		PTW.PSCL2.cache_type = IS_PSCL2;
+#endif
+
 
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
