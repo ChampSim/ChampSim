@@ -8,6 +8,7 @@
 #include "instruction.h"
 #include "cache.h"
 #include "instruction.h"
+#include "ptw.h"
 
 #define DEADLOCK_CYCLE 1000000
 
@@ -98,6 +99,10 @@ class O3_CPU {
 
     CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
+#if defined(INSERT_PAGE_TABLE_WALKER)
+	PageTableWalker PTW{"PTW"};
+#endif
+
     // constructor
     O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
     {
@@ -149,9 +154,7 @@ class O3_CPU {
 
 		PTW.cpu = this->cpu;
 		PTW.cache_type = IS_PTW;
-		PTW.MAX_READ = 1;
-		PTW.MAX_WRITE = 1;
-		PTW.lower_level = &L2C;
+		PTW.lower_level = &L2C; //PTW checks L2 cache for cached translation blocks.
 
 		PTW.PSCL5.cache_type = IS_PSCL5;
 		PTW.PSCL4.cache_type = IS_PSCL4;

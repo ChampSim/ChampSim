@@ -5,6 +5,8 @@
 
 #include "champsim_constants.h"
 
+#define INSERT_PAGE_TABLE_WALKER
+
 // USEFUL MACROS
 //#define DEBUG_PRINT
 #define SANITY_CHECK

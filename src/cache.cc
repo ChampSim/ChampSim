@@ -275,9 +275,13 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
         }
 
+
+#if !defined(INSERT_PAGE_TABLE_WALKER)
         // Send to the lower level
         if (cache_type != IS_STLB)
         {
+#endif
+
             if (handle_pkt.fill_level <= fill_level)
                 handle_pkt.to_return = {this};
             else
@@ -287,6 +291,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
                 lower_level->add_pq(&handle_pkt);
             else
                 lower_level->add_rq(&handle_pkt);
+#if !defined(INSERT_PAGE_TABLE_WALKER)
         }
         else
         {
@@ -295,6 +300,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
             return_data(&handle_pkt);
         }
+#endif
     }
 
     // update prefetcher on load instructions and prefetches from upper levels

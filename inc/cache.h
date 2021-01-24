@@ -17,6 +17,8 @@
 #define IS_L2C  5
 #define IS_LLC  6
 
+#define IS_PTW 7
+
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 

@@ -549,6 +549,9 @@ int main(int argc, char** argv)
             if (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].ip && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
                 print_deadlock(i);
 
+			if(ooo_cpu[i].IFETCH_BUFFER.entry[ooo_cpu[i].IFETCH_BUFFER.head].ip && (ooo_cpu[i].IFETCH_BUFFER.entry[ooo_cpu[i].IFETCH_BUFFER.head].event_cycle) <= current_core_cycle[i])
+				print_deadlock(i);
+
             // check for warmup
             // warmup complete
             if ((warmup_complete[i] == 0) && (ooo_cpu[i].num_retired > warmup_instructions)) {
@@ -587,12 +590,12 @@ int main(int argc, char** argv)
 				record_roi_stats(i, &ooo_cpu[i].ITLB);
 				record_roi_stats(i, &ooo_cpu[i].DTLB);
 				record_roi_stats(i, &ooo_cpu[i].STLB);
-				
+#if defined(INSERT_PAGE_TABLE_WALKER)
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
-	
+#endif
                 all_simulation_complete++;
             }
 

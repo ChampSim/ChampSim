@@ -50,6 +50,8 @@ class PACKET {
              cycle_enqueued = 0;
 
     std::list<MemoryRequestProducer*> to_return;
+
+	uint8_t translation_level = 0, init_translation_level = 0; 
 };
 
 template <typename LIST>
