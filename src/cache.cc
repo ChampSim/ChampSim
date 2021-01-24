@@ -465,6 +465,8 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 int CACHE::add_rq(PACKET *packet)
 {
+	cout << "cycle: " << current_core_cycle[0] << " " << NAME << endl;
+
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
@@ -841,6 +843,9 @@ int CACHE::add_pq(PACKET *packet)
 
 void CACHE::return_data(PACKET *packet)
 {
+	cout << "cycle: " << current_core_cycle[0] << " " << NAME << endl;
+
+
     // check MSHR information
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
 

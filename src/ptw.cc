@@ -10,7 +10,7 @@ extern uint8_t knob_cloudsuite;
 void PageTableWalker::operate()
 {
 
-#if !defined(INSERT_PageTableWalker)
+#if !defined(INSERT_PAGE_TABLE_WALKER)
 	assert(0);
 #endif
 
@@ -193,7 +193,7 @@ void PageTableWalker::operate()
 					uint64_t offset = get_offset(RQ.entry[index].full_v_addr, IS_PTL1);
 					next_level_base_addr = curr_page->next_level_base_addr[offset];
 
-					RQ.entry[index].event_cycle = current_core_cycle[cpu] + PAGE_TABLE_LATENCY;
+					RQ.entry[index].event_cycle = current_core_cycle[cpu]; //No penalty for page table setup
 					RQ.entry[index].data = next_level_base_addr << LOG2_PAGE_SIZE | (RQ.entry[index].full_v_addr & ((1<<LOG2_PAGE_SIZE) - 1));
 					
 					for(auto ret: RQ.entry[index].to_return)

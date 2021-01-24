@@ -401,6 +401,7 @@ void O3_CPU::fetch_instruction()
 	  else
               trace_packet.address = ifb_entry.ip >> LOG2_PAGE_SIZE;
           trace_packet.full_addr = ifb_entry.ip;
+		  trace_packet.full_v_addr = ifb_entry.ip;
 	  trace_packet.instr_id = 0;
 	  trace_packet.rob_index = i;
           trace_packet.ip = ifb_entry.ip;
@@ -1639,6 +1640,8 @@ void O3_CPU::operate_cache()
     STLB.operate_reads();
     DTLB.operate_reads();
     ITLB.operate_reads();
+
+	PTW.operate();
 
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();
