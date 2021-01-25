@@ -316,6 +316,9 @@ void O3_CPU::fetch_instruction()
       fetch_resume_cycle = 0;
     }
 
+  if (IFETCH_BUFFER.empty())
+      return;
+
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
   for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
@@ -344,76 +347,79 @@ void O3_CPU::fetch_instruction()
   }
 
   // scan through IFETCH_BUFFER to find instructions that need to be translated
-  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); ++it)
-    {
-      if(it->translated == 0)
+  auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return !x.translated; });
+  uint64_t find_addr = itlb_req_begin->ip;
+  auto itlb_req_end   = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(), [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE);});
+  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin())
 	{
 	  // begin process of fetching this instruction by sending it to the ITLB
 	  // add it to the ITLB's read queue
 	  PACKET trace_packet;
 	  trace_packet.fill_level = FILL_L1;
 	  trace_packet.cpu = cpu;
-          trace_packet.address = it->ip >> LOG2_PAGE_SIZE;
-          trace_packet.full_addr = it->ip;
-	  trace_packet.instr_id = it->instr_id;
-          trace_packet.ip = it->ip;
+          trace_packet.address = itlb_req_begin->ip >> LOG2_PAGE_SIZE;
+          trace_packet.full_addr = itlb_req_begin->ip;
+	  trace_packet.instr_id = itlb_req_begin->instr_id;
+          trace_packet.ip = itlb_req_begin->ip;
 	  trace_packet.type = LOAD; 
 	  trace_packet.asid[0] = 0;
 	  trace_packet.asid[1] = 0;
 	  trace_packet.event_cycle = current_core_cycle[cpu];
 	  trace_packet.to_return = {&ITLB_bus};
-	  
-	  int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
+      for (auto dep_it = itlb_req_begin; dep_it != itlb_req_end; ++dep_it)
+          trace_packet.instr_depend_on_me.push_back(dep_it);
+
+      int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
 
 	  if(rq_index != -2)
 	    {
 	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
-	      for(auto ahead_it = it; ahead_it != IFETCH_BUFFER.end(); ++ahead_it)
-          {
-              if ((ahead_it->ip >> LOG2_PAGE_SIZE) == (it->ip >> LOG2_PAGE_SIZE) && ahead_it->translated == 0)
-              {
-                  ahead_it->translated = INFLIGHT;
-                  ahead_it->fetched = 0;
-              }
-          }
+            for (auto dep_it : trace_packet.instr_depend_on_me)
+            {
+                dep_it->translated = INFLIGHT;
+            }
 	    }
 	}
 
+
       // fetch cache lines that were part of a translated page but not the cache line that initiated the translation
-      if((it->translated == COMPLETED) && (it->fetched == 0))
+    auto l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(),
+            [](const ooo_model_instr &x){ return x.translated == COMPLETED && !x.fetched; });
+    find_addr = l1i_req_begin->instruction_pa;
+    auto l1i_req_end   = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
+            [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE);});
+    if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin())
 	{
 	  // add it to the L1-I's read queue
 	  PACKET fetch_packet;
 	  fetch_packet.fill_level = FILL_L1;
 	  fetch_packet.cpu = cpu;
-          fetch_packet.address = it->instruction_pa >> LOG2_BLOCK_SIZE;
-          fetch_packet.data = it->instruction_pa;
-          fetch_packet.full_addr = it->instruction_pa;
-          fetch_packet.v_address = it->ip >> LOG2_PAGE_SIZE;
-          fetch_packet.full_v_addr = it->ip;
-	  fetch_packet.instr_id = it->instr_id;
-          fetch_packet.ip = it->ip;
+          fetch_packet.address = l1i_req_begin->instruction_pa >> LOG2_BLOCK_SIZE;
+          fetch_packet.data = l1i_req_begin->instruction_pa;
+          fetch_packet.full_addr = l1i_req_begin->instruction_pa;
+          fetch_packet.v_address = l1i_req_begin->ip >> LOG2_PAGE_SIZE;
+          fetch_packet.full_v_addr = l1i_req_begin->ip;
+	  fetch_packet.instr_id = l1i_req_begin->instr_id;
+          fetch_packet.ip = l1i_req_begin->ip;
 	  fetch_packet.type = LOAD; 
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
 	  fetch_packet.event_cycle = current_core_cycle[cpu];
 	  fetch_packet.to_return = {&L1I_bus};
+      for (auto dep_it = l1i_req_begin; dep_it != l1i_req_end; ++dep_it)
+          fetch_packet.instr_depend_on_me.push_back(dep_it);
 
       int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
 	  if(rq_index != -2)
 	    {
 	      // mark all instructions from this cache line as having been fetched
-	      for(auto ahead_it = it; ahead_it != IFETCH_BUFFER.end(); ++ahead_it)
-          {
-              if ((ahead_it->ip >> LOG2_BLOCK_SIZE) == (it->ip >> LOG2_BLOCK_SIZE) && ahead_it->translated == COMPLETED && ahead_it->fetched == 0)
-              {
-                  ahead_it->fetched = INFLIGHT;
-              }
-          }
+            for (auto dep_it : fetch_packet.instr_depend_on_me)
+            {
+                dep_it->fetched = INFLIGHT;
+            }
 	    }
 	}
-    }
 
     // send to DECODE stage
     unsigned available_fetch_bandwidth = FETCH_WIDTH;
@@ -1515,65 +1521,71 @@ void O3_CPU::handle_memory_return()
   std::size_t available_fetch_bandwidth = FETCH_WIDTH;
   std::size_t to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
 
-  while (to_read > 0 && !ITLB_bus.PROCESSED.empty() && ITLB_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
-    {
-        PACKET itlb_entry = ITLB_bus.PROCESSED.front();
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty() && ITLB_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
+  {
+      PACKET &itlb_entry = ITLB_bus.PROCESSED.front();
 
-	  // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
-      for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); ++it)
+      // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
+      while (!itlb_entry.instr_depend_on_me.empty())
       {
-          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.ip >> LOG2_PAGE_SIZE) && it->translated == INFLIGHT)
+          auto it = itlb_entry.instr_depend_on_me.front();
+          if (available_fetch_bandwidth > 0)
           {
-              if(available_fetch_bandwidth > 0)
+              if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
               {
                   it->translated = COMPLETED;
-                  // we did not fetch this instruction's cache line, but we did translated it
-                  it->fetched = 0;
                   // recalculate a physical address for this cache line based on the translated physical page address
                   it->instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | (it->ip & ((1 << LOG2_PAGE_SIZE) - 1));
 
                   available_fetch_bandwidth--;
               }
-              else
-              {
-                  // not enough fetch bandwidth to translate this instruction this time, so try reading the ITLB again
-                  it->translated = 0;
-              }
+
+              itlb_entry.instr_depend_on_me.pop_front();
+          }
+          else
+          {
+              // not enough fetch bandwidth to translate this instruction this time, so try again next cycle
+              break;
           }
       }
 
-	  // remove this entry
-      ITLB_bus.PROCESSED.pop_front();
+      // remove this entry if we have serviced all of its instructions
+      if (itlb_entry.instr_depend_on_me.empty())
+          ITLB_bus.PROCESSED.pop_front();
       --to_read;
-    }
+  }
 
   available_fetch_bandwidth = FETCH_WIDTH;
   to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
 
-  while (to_read > 0 && !L1I_bus.PROCESSED.empty() && L1I_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty() && L1I_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
   {
       PACKET &l1i_entry = L1I_bus.PROCESSED.front();
 
       // this is the L1I cache, so instructions are now fully fetched, so mark them as such
-      for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); ++it)
+      while (!l1i_entry.instr_depend_on_me.empty())
       {
-          if((it->ip >> LOG2_BLOCK_SIZE) == (l1i_entry.ip >> LOG2_BLOCK_SIZE) && (it->translated == COMPLETED) && (it->fetched == INFLIGHT))
+          auto it = l1i_entry.instr_depend_on_me.front();
+          if (available_fetch_bandwidth > 0)
           {
-              if(available_fetch_bandwidth)
-              {
-                  it->fetched = COMPLETED;
-                  available_fetch_bandwidth--;
-              }
-              else
-              {
-                  // not enough fetch bandwidth to get this instruction this time, so try reading the L1I again
-                  it->fetched = 0;
-              }
+             if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address) && it->fetched != 0 && it->translated == COMPLETED)
+             {
+                 it->fetched = COMPLETED;
+                 available_fetch_bandwidth--;
+             }
+
+             l1i_entry.instr_depend_on_me.pop_front();
+          }
+          else
+          {
+              // not enough fetch bandwidth to mark instructions from this block this time, so try again next cycle
+              break;
           }
       }
 
-      // remove this entry
-      L1I_bus.PROCESSED.pop_front();
+      // remove this entry if we have serviced all of its instructions
+      if (l1i_entry.instr_depend_on_me.empty())
+          L1I_bus.PROCESSED.pop_front();
       --to_read;
   }
 
