@@ -118,16 +118,16 @@ class circular_buffer
         const_iterator cbegin() const noexcept { return const_iterator(this, head_); }
         const_iterator cend() const noexcept   { return const_iterator(this, tail_); }
 
-        iterator rbegin() noexcept              { return reverse_iterator(this, head_); }
-        iterator rend() noexcept                { return reverse_iterator(this, tail_); }
-        const_iterator rbegin() const noexcept  { return const_reverse_iterator(this, head_); }
-        const_iterator rend() const noexcept    { return const_reverse_iterator(this, tail_); }
-        const_iterator crbegin() const noexcept { return const_reverse_iterator(this, head_); }
-        const_iterator crend() const noexcept   { return const_reverse_iterator(this, tail_); }
+        reverse_iterator rbegin() noexcept              { return reverse_iterator(this, head_); }
+        reverse_iterator rend() noexcept                { return reverse_iterator(this, tail_); }
+        const_reverse_iterator rbegin() const noexcept  { return const_reverse_iterator(this, head_); }
+        const_reverse_iterator rend() const noexcept    { return const_reverse_iterator(this, tail_); }
+        const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(this, head_); }
+        const_reverse_iterator crend() const noexcept   { return const_reverse_iterator(this, tail_); }
 
         void clear()                   { head_ = tail_ = 0; }
         void push_back(const T& item)  { assert(!full()); operator[](tail_) = item; ++tail_; }
-        void push_back(const T&& item) { assert(!full()); operator[](tail_) = item; ++tail_; }
+        void push_back(const T&& item) { assert(!full()); operator[](tail_) = std::move(item); ++tail_; }
         void pop_front()               { assert(!empty()); ++head_; }
 };
 

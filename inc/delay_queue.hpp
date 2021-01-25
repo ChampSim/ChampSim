@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iterator>
 #include <type_traits>
+#include <utility>
 
 #include "circular_buffer.hpp"
 
@@ -102,7 +103,7 @@ namespace champsim {
              * Push an element into the queue, delayed by the fixed amount.
              ***/
             void push_back(const T& item) { _buf.push_back(item); _delays.push_back(_latency); }
-            void push_back(const T&& item) { _buf.push_back(item); _delays.push_back(_latency); }
+            void push_back(const T&& item) { _buf.push_back(std::forward<T>(item)); _delays.push_back(_latency); }
 
             /***
              * Pops the element off of the front.
@@ -114,7 +115,7 @@ namespace champsim {
              * These functions add an element that is immediately ready. Elements are still popped in order.
              ***/
             void push_back_ready(const T& item) { _buf.push_back(item); _delays.push_back(0); }
-            void push_back_ready(const T&& item) { _buf.push_back(item); _delays.push_back(0); }
+            void push_back_ready(const T&& item) { _buf.push_back(std::forward<T>(item)); _delays.push_back(0); }
 
             /***
              * This function must be called once every cycle.
