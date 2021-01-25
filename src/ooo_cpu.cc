@@ -1270,6 +1270,7 @@ void O3_CPU::operate_lsq()
                 else
                     data_packet.address = SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE;
                 data_packet.full_addr = SQ.entry[sq_index].virtual_address;
+				data_packet.full_v_addr = SQ.entry[sq_index].virtual_address;
                 data_packet.instr_id = SQ.entry[sq_index].instr_id;
                 data_packet.rob_index = SQ.entry[sq_index].rob_index;
                 data_packet.ip = SQ.entry[sq_index].ip;
@@ -1354,6 +1355,7 @@ void O3_CPU::operate_lsq()
                 else
                     data_packet.address = LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE;
                 data_packet.full_addr = LQ.entry[lq_index].virtual_address;
+				data_packet.full_v_addr = LQ.entry[lq_index].virtual_address;
                 data_packet.instr_id = LQ.entry[lq_index].instr_id;
                 data_packet.rob_index = LQ.entry[lq_index].rob_index;
                 data_packet.ip = LQ.entry[lq_index].ip;
@@ -1641,7 +1643,9 @@ void O3_CPU::operate_cache()
     DTLB.operate_reads();
     ITLB.operate_reads();
 
+#if defined(INSERT_PAGE_TABLE_WALKER)
 	PTW.operate();
+#endif
 
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();

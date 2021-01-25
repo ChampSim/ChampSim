@@ -70,6 +70,10 @@ void print_roi_stats(uint32_t cpu, CACHE *cache)
     cout << cache->NAME;
     cout << " WRITEBACK ACCESS: " << setw(10) << cache->roi_access[cpu][3] << "  HIT: " << setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << setw(10) << cache->roi_miss[cpu][3] << endl;
 
+	cout << cache->NAME;
+    cout << " TRANSLATION ACCESS: " << setw(10) << cache->roi_access[cpu][4] << "  HIT: " << setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << setw(10) << cache->roi_miss[cpu][4] << endl;
+
+
     cout << cache->NAME;
     cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
     cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
@@ -227,6 +231,16 @@ void finish_warmup()
         reset_cache_stats(i, &ooo_cpu[i].L1I);
         reset_cache_stats(i, &ooo_cpu[i].L1D);
         reset_cache_stats(i, &ooo_cpu[i].L2C);
+
+		reset_cache_stats(i, &ooo_cpu[i].ITLB);
+		reset_cache_stats(i, &ooo_cpu[i].DTLB);
+		reset_cache_stats(i, &ooo_cpu[i].STLB);
+
+		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL5);
+		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL4);
+		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL3);
+		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL2);
+
         reset_cache_stats(i, &LLC);
     }
     cout << endl;
@@ -641,6 +655,18 @@ int main(int argc, char** argv)
         print_roi_stats(i, &ooo_cpu[i].L1D);
         print_roi_stats(i, &ooo_cpu[i].L1I);
         print_roi_stats(i, &ooo_cpu[i].L2C);
+
+		print_roi_stats(i, &ooo_cpu[i].ITLB);
+		print_roi_stats(i, &ooo_cpu[i].DTLB);
+		print_roi_stats(i, &ooo_cpu[i].STLB);
+	
+#if defined(INSERT_PAGE_TABLE_WALKER)
+		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
+		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
+		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
+		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
+#endif
+
 #endif
         print_roi_stats(i, &LLC);
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;

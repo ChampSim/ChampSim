@@ -81,6 +81,8 @@ void CACHE::handle_writeback()
         if ((WQ.occupancy == 0) || (handle_pkt.cpu >= NUM_CPUS) || (handle_pkt.event_cycle > current_core_cycle[handle_pkt.cpu]))
             return;
 
+		assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
+
         // access cache
         uint32_t set = get_set(handle_pkt.address);
         uint32_t way = get_way(handle_pkt.address, set);
@@ -367,6 +369,15 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             lower_level->add_wq(&writeback_packet);
         }
 
+		/*if(cache_type == IS_STLB)
+		{
+			cout << __func__ << " " << handle_pkt.data << endl;
+                    std::cout << "[" << NAME << "] " << __func__ << " type: " << +handle_pkt.type << " miss";
+                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
+                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
+                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl;
+		}*/
+
         assert(cache_type != IS_ITLB || handle_pkt.data != 0);
         assert(cache_type != IS_DTLB || handle_pkt.data != 0);
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
@@ -382,7 +393,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         fill_block.lru = lru;
 
         if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
+		{
             fill_block.dirty = 1;
+			assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
+		}
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -465,8 +479,6 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 int CACHE::add_rq(PACKET *packet)
 {
-	cout << "cycle: " << current_core_cycle[0] << " " << NAME << endl;
-
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
     if (wq_index != -1) {
@@ -843,8 +855,6 @@ int CACHE::add_pq(PACKET *packet)
 
 void CACHE::return_data(PACKET *packet)
 {
-	cout << "cycle: " << current_core_cycle[0] << " " << NAME << endl;
-
 
     // check MSHR information
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
@@ -860,6 +870,21 @@ void CACHE::return_data(PACKET *packet)
 
     // MSHR holds the most updated information about this request
     // no need to do memcpy
+	
+/*if(cache_type == IS_STLB)
+		{
+			PACKET handle_pkt = *packet;
+			cout << __func__ << " " << handle_pkt.data << endl;
+                    std::cout << "[" << NAME << "] " << __func__ << " type: " << +handle_pkt.type << " miss";
+                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
+                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
+                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl;
+	
+		if(packet->data == 0)
+			assert(0);
+	}
+*/
+
     mshr_entry->returned = COMPLETED;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;

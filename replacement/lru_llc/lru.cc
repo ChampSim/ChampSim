@@ -27,7 +27,9 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
         TYPE_NAME = "PF";
     else if (type == WRITEBACK)
         TYPE_NAME = "WB";
-    else
+    else if (type == TRANSLATION)
+		TYPE_NAME = "TRANSLATION";
+	else
         assert(0);
 
     if (hit)

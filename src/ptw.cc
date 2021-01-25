@@ -75,7 +75,9 @@ void PageTableWalker::operate()
 
 
 				MSHR.entry[index].data = next_level_base_addr << LOG2_PAGE_SIZE | (MSHR.entry[index].full_v_addr & ((1<<LOG2_PAGE_SIZE) - 1)); //Return the translated physical address to STLB
-				
+			
+				//cout << "Data: " << MSHR.entry[index].data << " next_level_base_addr: " << next_level_base_addr <<  " ret size: " << MSHR.entry[index].to_return.size() << endl; 
+	
 				for(auto ret: MSHR.entry[index].to_return)
 					ret->return_data(&MSHR.entry[index]);
 
@@ -93,7 +95,8 @@ void PageTableWalker::operate()
 
 				if((((CACHE*)lower_level)->RQ.occupancy < ((CACHE*)lower_level)->RQ.SIZE)) //Lower level of PTW is L2C. If L2 RQ has space then send the next level of translation.
 				{
-					PACKET packet = MSHR.entry[index]; 
+					PACKET packet = MSHR.entry[index];
+					packet.cpu = cpu; 
 					packet.type = TRANSLATION;
 					packet.event_cycle = current_core_cycle[cpu];
 					packet.full_addr = next_level_base_addr << LOG2_PAGE_SIZE | (get_offset(MSHR.entry[index].full_v_addr, MSHR.entry[index].translation_level) << 3);
@@ -104,7 +107,7 @@ void PageTableWalker::operate()
 
 					MSHR.entry[index].returned = INFLIGHT;
 
-					int rq_index = lower_level->add_rq(&MSHR.entry[index]);
+					int rq_index = lower_level->add_rq(&packet);
 					assert(rq_index == -1); //Since a single request is processed at a time, translation packet cannot merge in RQ.
 				}
 				else
@@ -117,6 +120,7 @@ void PageTableWalker::operate()
 		if((RQ.entry[RQ.head].event_cycle <= current_core_cycle[cpu]) && (((CACHE*)lower_level)->RQ.occupancy < ((CACHE*)lower_level)->RQ.SIZE)) //PTW lower level is L2C.
 		{
 			int index = RQ.head;
+
 			
 			assert((RQ.entry[index].full_addr >> 32) != 0xf000000f); //Page table is stored at this address
 			assert(RQ.entry[index].full_v_addr != 0);
@@ -195,7 +199,11 @@ void PageTableWalker::operate()
 
 					RQ.entry[index].event_cycle = current_core_cycle[cpu]; //No penalty for page table setup
 					RQ.entry[index].data = next_level_base_addr << LOG2_PAGE_SIZE | (RQ.entry[index].full_v_addr & ((1<<LOG2_PAGE_SIZE) - 1));
-					
+				
+					//cout << "Data: " << MSHR.entry[index].data << " next_level_base_addr: " << next_level_base_addr << " ret size: " << RQ.entry[index].to_return.size() << endl; 
+	
+
+	
 					for(auto ret: RQ.entry[index].to_return)
 						ret->return_data(&RQ.entry[index]);
 
@@ -221,6 +229,7 @@ void PageTableWalker::operate()
 			packet.to_return = RQ.entry[index].to_return; //Set the return for MSHR packet same as read packet.` 
 		    packet.address = RQ.entry[index].address;
 			packet.full_addr = RQ.entry[index].full_addr;
+			packet.type = RQ.entry[index].type;
 			add_mshr(&packet);
 
 		    RQ.remove_queue(&RQ.entry[index]);
@@ -229,7 +238,7 @@ void PageTableWalker::operate()
 
 }
 
-uint64_t PageTableWalker::handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level)
+void PageTableWalker::handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level)
 {
 	if(pt_level == 6)
 	{
@@ -297,14 +306,16 @@ void PageTableWalker::fill_mmu_cache(CACHE &cache, uint64_t next_level_base_addr
 	
 	uint32_t set = cache.get_set(address);
 	uint32_t way = cache.find_victim(packet->cpu, packet->instr_id, set, &cache.block.data()[set*cache.NUM_WAY], packet->ip, packet->full_addr, packet->type);
+
+	PACKET new_packet = *packet;
 	
-	packet->address = address;
-	packet->data = next_level_base_addr;
+	new_packet.address = address;
+	new_packet.data = next_level_base_addr;
 
 	BLOCK &fill_block = cache.block[set * cache.NUM_WAY + way];
 	
 	auto lru = fill_block.lru;	
-	fill_block = *packet;	
+	fill_block = new_packet;	
 	fill_block.lru = lru;		
 	
 	 cache.update_replacement_state(packet->cpu, set, way, packet->full_addr, packet->ip, 0, packet->type, 0);
@@ -427,18 +438,6 @@ int  PageTableWalker::add_rq(PACKET *packet)
     cout << " type: " << +RQ.entry[index].type << " head: " << RQ.head << " tail: " << RQ.tail << " occupancy: " << RQ.occupancy;
     cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << endl; });
 
-
-#ifdef PRINT_QUEUE_TRACE
-            if(packet->instr_id == QTRACE_INSTR_ID)
-            {
-                    cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << RQ.entry[index].instr_id << " address: " << hex << RQ.entry[index].address;
-    cout << " full_addr: " << RQ.entry[index].full_addr << dec;
-    cout << " type: " << +RQ.entry[index].type << " head: " << RQ.head << " tail: " << RQ.tail << " occupancy: " << RQ.occupancy;
-    cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << " cpu: "<<cpu<<endl;
-            }
-#endif
-
-
     if (packet->address == 0)
         assert(0);
 
@@ -465,7 +464,7 @@ void PageTableWalker::return_data(PACKET *packet)
 	
 	// search MSHR
     for (uint32_t index=0; index < MSHR.SIZE; index++) {
-		if (MSHR.entry[index].address == packet->address) {
+		if (MSHR.entry[index].full_v_addr == packet->full_v_addr) {
 		    mshr_index = index;
 		    break;
 		}
