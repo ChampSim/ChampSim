@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 
+#include "delay_queue.hpp"
 #include "memory_class.h"
 
 // CACHE TYPE
@@ -31,7 +32,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint32_t LATENCY = 0;
     std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     int fill_level = -1;
-    uint32_t MAX_READ = 1, MAX_WRITE = 1;
+    const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
 
@@ -43,10 +44,10 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              pf_fill = 0;
 
     // queues
-    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 RQ{NAME + "_RQ", RQ_SIZE}, // read queue
-                 PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
+    champsim::delay_queue<PACKET> RQ{RQ_SIZE, LATENCY}, // read queue
+                                  PQ{PQ_SIZE, LATENCY}, // prefetch queue
+                                  VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
+                                  WQ{WQ_SIZE, LATENCY}; // write queue
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
@@ -57,11 +58,25 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              roi_hit[NUM_CPUS][NUM_TYPES] = {},
              roi_miss[NUM_CPUS][NUM_TYPES] = {};
 
+    uint64_t RQ_ACCESS = 0,
+             RQ_MERGED = 0,
+             RQ_FULL = 0,
+             RQ_TO_CACHE = 0,
+             PQ_ACCESS = 0,
+             PQ_MERGED = 0,
+             PQ_FULL = 0,
+             PQ_TO_CACHE = 0,
+             WQ_ACCESS = 0,
+             WQ_MERGED = 0,
+             WQ_FULL = 0,
+             WQ_FORWARD = 0,
+             WQ_TO_CACHE = 0;
+
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8)
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
+    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t max_read, uint32_t max_write)
+        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), MAX_READ(max_read), MAX_WRITE(max_write) {
     }
 
     // functions

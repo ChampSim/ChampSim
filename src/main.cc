@@ -174,15 +174,15 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
 
     cache->total_miss_latency = 0;
 
-    cache->RQ.ACCESS = 0;
-    cache->RQ.MERGED = 0;
-    cache->RQ.TO_CACHE = 0;
+    cache->RQ_ACCESS = 0;
+    cache->RQ_MERGED = 0;
+    cache->RQ_TO_CACHE = 0;
 
-    cache->WQ.ACCESS = 0;
-    cache->WQ.MERGED = 0;
-    cache->WQ.TO_CACHE = 0;
-    cache->WQ.FORWARD = 0;
-    cache->WQ.FULL = 0;
+    cache->WQ_ACCESS = 0;
+    cache->WQ_MERGED = 0;
+    cache->WQ_TO_CACHE = 0;
+    cache->WQ_FORWARD = 0;
+    cache->WQ_FULL = 0;
 }
 
 void finish_warmup()
@@ -452,8 +452,6 @@ int main(int argc, char** argv)
         // SHARED CACHE
         LLC.cache_type = IS_LLC;
         LLC.fill_level = FILL_LLC;
-        LLC.MAX_READ = NUM_CPUS;
-        LLC.MAX_WRITE = NUM_CPUS;
         LLC.lower_level = &DRAM;
 
         using namespace std::placeholders;
@@ -516,7 +514,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].fetch_instruction();
 	      
 	      // read from trace
-	      if ((ooo_cpu[i].IFETCH_BUFFER.occupancy < ooo_cpu[i].IFETCH_BUFFER.SIZE) && (ooo_cpu[i].fetch_stall == 0))
+	      if (!ooo_cpu[i].IFETCH_BUFFER.full() && (ooo_cpu[i].fetch_stall == 0))
                 {
 		  while(ooo_cpu[i].init_instruction(traces[i]->get()));
                 }

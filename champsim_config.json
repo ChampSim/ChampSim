@@ -46,6 +46,8 @@
         "pq_size": 32,
         "mshr_size": 8,
         "latency": 4,
+        "max_read": 2,
+        "max_write": 2,
         "prefetcher": "no_l1i"
     },
 
@@ -57,6 +59,8 @@
         "pq_size": 8,
         "mshr_size": 16,
         "latency": 5,
+        "max_read": 2,
+        "max_write": 2,
         "prefetcher": "no_l1d"
     },
 
@@ -68,6 +72,8 @@
         "pq_size": 16,
         "mshr_size": 32,
         "latency": 10,
+        "max_read": 1,
+        "max_write": 1,
         "prefetcher": "no_l2c"
     },
 
@@ -78,7 +84,9 @@
         "wq_size": 16,
         "pq_size": 0,
         "mshr_size": 8,
-        "latency": 1
+        "latency": 1,
+        "max_read": 2,
+        "max_write": 2
     },
 
     "DTLB": {
@@ -88,7 +96,9 @@
         "wq_size": 16,
         "pq_size": 0,
         "mshr_size": 8,
-        "latency": 1
+        "latency": 1,
+        "max_read": 2,
+        "max_write": 2
     },
 
     "STLB": {
@@ -98,7 +108,9 @@
         "wq_size": 32,
         "pq_size": 0,
         "mshr_size": 16,
-        "latency": 8
+        "latency": 8,
+        "max_read": 1,
+        "max_write": 1
     },
 
     "LLC": {
@@ -109,6 +121,8 @@
         "pq_size": 32,
         "mshr_size": 64,
         "latency": 20,
+        "max_read": 1,
+        "max_write": 1,
         "prefetcher": "no_llc",
         "replacement": "lru_llc"
     },
