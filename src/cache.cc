@@ -372,7 +372,9 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             writeback_packet.type = WRITEBACK;
             writeback_packet.event_cycle = current_core_cycle[handle_pkt.cpu];
 
-            lower_level->add_wq(&writeback_packet);
+            auto result = lower_level->add_wq(&writeback_packet);
+            if (result == -2)
+                return false;
         }
 
         assert(cache_type != IS_ITLB || handle_pkt.data != 0);
@@ -547,8 +549,12 @@ int CACHE::add_wq(PACKET *packet)
         return 1; // merged index
     }
 
-    // sanity check
-    assert(!WQ.full());
+    // Check for room in the queue
+    if (WQ.full())
+    {
+        ++WQ_FULL;
+        return -2;
+    }
 
     // if there is no duplicate, add it to the write queue
     WQ.push_back(*packet);
