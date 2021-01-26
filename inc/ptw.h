@@ -86,10 +86,10 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 					MSHR{NAME+"_MSHR", PTW_MSHR_SIZE},
 					PQ{NAME+"_PQ", PTW_PQ_SIZE};
 
-	CACHE PSCL5{"PSCL5", PSCL5_SET, PSCL5_WAY, 0, 0, 0, 1}, //Translation from L5->L4
-          PSCL4{"PSCL4", PSCL4_SET, PSCL4_WAY, 0, 0, 0, 1}, //Translation from L5->L3
-          PSCL3{"PSCL3", PSCL3_SET, PSCL3_WAY, 0, 0, 0, 1}, //Translation from L5->L2
-          PSCL2{"PSCL2", PSCL2_SET, PSCL2_WAY, 0, 0, 0, 1}; //Translation from L5->L1
+	CACHE PSCL5{"PSCL5", PSCL5_SET, PSCL5_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L4
+          PSCL4{"PSCL4", PSCL4_SET, PSCL4_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L3
+          PSCL3{"PSCL3", PSCL3_SET, PSCL3_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L2
+          PSCL2{"PSCL2", PSCL2_SET, PSCL2_WAY, 0, 0, 0, 0, 0, 0}; //Translation from L5->L1
 
     PageTablePage *L5; //CR3 register points to the base of this page.
     uint64_t CR3_addr; //This address will not have page offset bits.

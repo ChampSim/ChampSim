@@ -91,7 +91,7 @@ void PageTableWalker::operate()
 			{
 				assert(!page_fault); //If page fault was there, then all levels of translation should have be done.
 
-				if((((CACHE*)lower_level)->RQ.occupancy < ((CACHE*)lower_level)->RQ.SIZE)) //Lower level of PTW is L2C. If L2 RQ has space then send the next level of translation.
+				if((((CACHE*)lower_level)->RQ.occupancy() < ((CACHE*)lower_level)->RQ.size())) //Lower level of PTW is L2C. If L2 RQ has space then send the next level of translation.
 				{
 					PACKET packet = MSHR.entry[index];
 					packet.cpu = cpu; 
@@ -115,7 +115,7 @@ void PageTableWalker::operate()
 	}
 	else if(RQ.occupancy > 0) //If there is no pending request which is undergoing translation, then process new request.
 	{
-		if((RQ.entry[RQ.head].event_cycle <= current_core_cycle[cpu]) && (((CACHE*)lower_level)->RQ.occupancy < ((CACHE*)lower_level)->RQ.SIZE)) //PTW lower level is L2C.
+		if((RQ.entry[RQ.head].event_cycle <= current_core_cycle[cpu]) && (((CACHE*)lower_level)->RQ.occupancy() < ((CACHE*)lower_level)->RQ.size())) //PTW lower level is L2C.
 		{
 			int index = RQ.head;
 			
