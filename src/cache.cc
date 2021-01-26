@@ -369,15 +369,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             lower_level->add_wq(&writeback_packet);
         }
 
-		/*if(cache_type == IS_STLB)
-		{
-			cout << __func__ << " " << handle_pkt.data << endl;
-                    std::cout << "[" << NAME << "] " << __func__ << " type: " << +handle_pkt.type << " miss";
-                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
-                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
-                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl;
-		}*/
-
         assert(cache_type != IS_ITLB || handle_pkt.data != 0);
         assert(cache_type != IS_DTLB || handle_pkt.data != 0);
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
@@ -871,20 +862,6 @@ void CACHE::return_data(PACKET *packet)
     // MSHR holds the most updated information about this request
     // no need to do memcpy
 	
-/*if(cache_type == IS_STLB)
-		{
-			PACKET handle_pkt = *packet;
-			cout << __func__ << " " << handle_pkt.data << endl;
-                    std::cout << "[" << NAME << "] " << __func__ << " type: " << +handle_pkt.type << " miss";
-                    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
-                    std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
-                    std::cout << " cycle: " << handle_pkt.event_cycle << std::endl;
-	
-		if(packet->data == 0)
-			assert(0);
-	}
-*/
-
     mshr_entry->returned = COMPLETED;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;

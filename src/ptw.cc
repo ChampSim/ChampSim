@@ -76,8 +76,6 @@ void PageTableWalker::operate()
 
 				MSHR.entry[index].data = next_level_base_addr << LOG2_PAGE_SIZE | (MSHR.entry[index].full_v_addr & ((1<<LOG2_PAGE_SIZE) - 1)); //Return the translated physical address to STLB
 			
-				//cout << "Data: " << MSHR.entry[index].data << " next_level_base_addr: " << next_level_base_addr <<  " ret size: " << MSHR.entry[index].to_return.size() << endl; 
-	
 				for(auto ret: MSHR.entry[index].to_return)
 					ret->return_data(&MSHR.entry[index]);
 
@@ -120,7 +118,6 @@ void PageTableWalker::operate()
 		if((RQ.entry[RQ.head].event_cycle <= current_core_cycle[cpu]) && (((CACHE*)lower_level)->RQ.occupancy < ((CACHE*)lower_level)->RQ.SIZE)) //PTW lower level is L2C.
 		{
 			int index = RQ.head;
-
 			
 			assert((RQ.entry[index].full_addr >> 32) != 0xf000000f); //Page table is stored at this address
 			assert(RQ.entry[index].full_v_addr != 0);
@@ -133,7 +130,7 @@ void PageTableWalker::operate()
 
 			PACKET packet = RQ.entry[index];
 
-            packet.fill_level = FILL_L1; //@Vishal: This packet will be sent from L2 to PTW, TODO: check if this is done or not
+            packet.fill_level = FILL_L1; //This packet will be sent from L2 to PTW.
             packet.cpu = cpu;
 			packet.type = TRANSLATION;
             packet.instr_id = RQ.entry[index].instr_id;
@@ -200,9 +197,6 @@ void PageTableWalker::operate()
 					RQ.entry[index].event_cycle = current_core_cycle[cpu]; //No penalty for page table setup
 					RQ.entry[index].data = next_level_base_addr << LOG2_PAGE_SIZE | (RQ.entry[index].full_v_addr & ((1<<LOG2_PAGE_SIZE) - 1));
 				
-					//cout << "Data: " << MSHR.entry[index].data << " next_level_base_addr: " << next_level_base_addr << " ret size: " << RQ.entry[index].to_return.size() << endl; 
-	
-
 	
 					for(auto ret: RQ.entry[index].to_return)
 						ret->return_data(&RQ.entry[index]);
@@ -286,7 +280,6 @@ uint64_t PageTableWalker::map_data_page(uint64_t instr_id, uint64_t full_v_addr)
 
 void PageTableWalker::write_translation_page(uint64_t next_level_base_addr, PACKET *packet, uint8_t pt_level)
 {
-	//@Vishal: Need to complete it, Problem: If lower level WQ is full, then what to do?
 }
 
 void PageTableWalker::add_mshr(PACKET *packet)
@@ -398,7 +391,7 @@ int  PageTableWalker::add_rq(PACKET *packet)
 {
 	// check for duplicates in the read queue
     int index = RQ.check_queue(packet);
-    assert(index == -1); //@Vishal: Duplicate request should not be sent.
+    assert(index == -1); //Duplicate request should not be sent.
     
     // check occupancy
     if (RQ.occupancy == PTW_RQ_SIZE) {
@@ -431,12 +424,6 @@ int  PageTableWalker::add_rq(PACKET *packet)
     RQ.tail++;
     if (RQ.tail >= RQ.SIZE)
         RQ.tail = 0;
-
-    DP ( if (warmup_complete[RQ.entry[index].cpu]) {
-    cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << RQ.entry[index].instr_id << " address: " << hex << RQ.entry[index].address;
-    cout << " full_addr: " << RQ.entry[index].full_addr << dec;
-    cout << " type: " << +RQ.entry[index].type << " head: " << RQ.head << " tail: " << RQ.tail << " occupancy: " << RQ.occupancy;
-    cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << endl; });
 
     if (packet->address == 0)
         assert(0);
