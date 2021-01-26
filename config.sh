@@ -3,11 +3,20 @@ import json
 import sys,os
 import itertools
 import functools
+import argparse
+
+parser = argparse.ArgumentParser(description='Configures ChampSim for compilation')
+parser.add_argument('config_file', type=argparse.FileType('rt', 0), nargs='?',
+                    help='The configuration file to read')
+parser.add_argument('--dump-config', action='store_true',
+                    help='Do not configure. Instead, print the configuration and exit')
+
+argv = parser.parse_args()
 
 # Read the config file
-if len(sys.argv) >= 2:
-    with open(sys.argv[1]) as rfp:
-        config_file = json.load(rfp)
+if argv.config_file:
+    config_file = json.load(argv.config_file)
+    argv.config_file.close()
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
     config_file = {}
@@ -132,6 +141,11 @@ for i in range(len(config_file['ooo_cpu'])):
 config_file['LLC'] = merge_dicts(default_llc, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
 config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
+
+# Before we do anything with lasting effects, check to see if we should stop early
+if argv.dump_config:
+    print(json.dumps(config_file, indent=2))
+    exit();
 
 ###
 # Copy or trim cores as necessary to fill out the specified number of cores
