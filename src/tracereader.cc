@@ -21,7 +21,7 @@ tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(
             std::cerr << "TRACE FILE NOT FOUND" << std::endl;
             assert(0);
         }
-        cmd_fmtstr = "wget -qO- %2$s | %1$s -dc";
+        cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s -dc";
     }
     else
     {
