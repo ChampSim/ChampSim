@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 
+#include "delay_queue.hpp"
 #include "memory_class.h"
 
 // CACHE TYPE
@@ -43,10 +44,10 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              pf_fill = 0;
 
     // queues
-    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 RQ{NAME + "_RQ", RQ_SIZE}, // read queue
-                 PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 VAPQ{NAME + "_VAPQ", PQ_SIZE}; // virtual address prefetch queue
+    champsim::delay_queue<PACKET> RQ{RQ_SIZE, LATENCY}, // read queue
+                                  PQ{PQ_SIZE, LATENCY}, // prefetch queue
+                                  VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
+                                  WQ{WQ_SIZE, LATENCY}; // write queue
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
@@ -56,6 +57,20 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              roi_access[NUM_CPUS][NUM_TYPES] = {},
              roi_hit[NUM_CPUS][NUM_TYPES] = {},
              roi_miss[NUM_CPUS][NUM_TYPES] = {};
+
+    uint64_t RQ_ACCESS = 0,
+             RQ_MERGED = 0,
+             RQ_FULL = 0,
+             RQ_TO_CACHE = 0,
+             PQ_ACCESS = 0,
+             PQ_MERGED = 0,
+             PQ_FULL = 0,
+             PQ_TO_CACHE = 0,
+             WQ_ACCESS = 0,
+             WQ_MERGED = 0,
+             WQ_FULL = 0,
+             WQ_FORWARD = 0,
+             WQ_TO_CACHE = 0;
 
     uint64_t total_miss_latency = 0;
     

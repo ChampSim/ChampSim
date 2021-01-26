@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "champsim_constants.h"
+#include "delay_queue.hpp"
 #include "instruction.h"
 #include "cache.h"
 #include "instruction.h"
@@ -18,7 +19,7 @@ using namespace std;
 class CacheBus : public MemoryRequestProducer
 {
     public:
-        PACKET_QUEUE PROCESSED{"", ROB_SIZE};
+        champsim::circular_buffer<PACKET> PROCESSED{ROB_SIZE};
         explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
         void return_data(PACKET *packet);
 };
@@ -57,9 +58,9 @@ class O3_CPU {
     dib_t DIB;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER<ooo_model_instr> IFETCH_BUFFER{"IFETCH_BUFFER", IFETCH_BUFFER_SIZE};
-    CORE_BUFFER<ooo_model_instr> DISPATCH_BUFFER{"DISPATCH_BUFFER", DISPATCH_BUFFER_SIZE};
-    CORE_BUFFER<ooo_model_instr> DECODE_BUFFER{"DECODE_BUFFER", DECODE_BUFFER_SIZE};
+    champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER{IFETCH_BUFFER_SIZE};
+    champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER{DISPATCH_BUFFER_SIZE, DISPATCH_LATENCY};
+    champsim::delay_queue<ooo_model_instr> DECODE_BUFFER{DECODE_BUFFER_SIZE, DECODE_LATENCY};
     CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
     CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
 
