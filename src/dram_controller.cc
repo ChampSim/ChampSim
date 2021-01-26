@@ -99,14 +99,12 @@ void MEMORY_CONTROLLER::operate()
         // handle write
         // schedule new entry
         if (write_mode[i] && (WQ[i].next_schedule_index < WQ[i].SIZE)) {
-			if ( WQ[i].entry[WQ[i].next_schedule_index].cpu != NUM_CPUS)
             if (WQ[i].next_schedule_cycle <= current_core_cycle[WQ[i].entry[WQ[i].next_schedule_index].cpu])
                 schedule(&WQ[i]);
         }
 
         // process DRAM requests
         if (write_mode[i] && (WQ[i].next_process_index < WQ[i].SIZE)) {
-			if(WQ[i].entry[WQ[i].next_process_index].cpu != NUM_CPUS)
             if (WQ[i].next_process_cycle <= current_core_cycle[WQ[i].entry[WQ[i].next_process_index].cpu])
                 process(&WQ[i]);
         }
@@ -114,15 +112,13 @@ void MEMORY_CONTROLLER::operate()
         // handle read
         // schedule new entry
         if ((write_mode[i] == 0) && (RQ[i].next_schedule_index < RQ[i].SIZE)) {
-			if(RQ[i].entry[RQ[i].next_schedule_index].cpu != NUM_CPUS)
-   	         if (RQ[i].next_schedule_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_schedule_index].cpu])
+            if (RQ[i].next_schedule_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_schedule_index].cpu])
                 schedule(&RQ[i]);
         }
 
         // process DRAM requests
         if ((write_mode[i] == 0) && (RQ[i].next_process_index < RQ[i].SIZE)) {
-            if(RQ[i].entry[RQ[i].next_process_index].cpu != NUM_CPUS)
-			if (RQ[i].next_process_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_process_index].cpu])
+            if (RQ[i].next_process_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_process_index].cpu])
                 process(&RQ[i]);
         }
     }
