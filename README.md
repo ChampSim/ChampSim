@@ -57,7 +57,7 @@ Note that we need to specify multiple trace files for `run_4core.sh`. `N_MIX` is
 # Add your own branch predictor, data prefetchers, and replacement policy
 **Copy an empty template**
 ```
-$ cp branch/branch_predictor.cc prefetcher/mybranch.bpred
+$ cp branch/branch_predictor.cc branch/mybranch.bpred
 $ cp prefetcher/l1d_prefetcher.cc prefetcher/mypref.l1d_pref
 $ cp prefetcher/l2c_prefetcher.cc prefetcher/mypref.l2c_pref
 $ cp prefetcher/llc_prefetcher.cc prefetcher/mypref.llc_pref
