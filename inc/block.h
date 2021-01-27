@@ -3,6 +3,7 @@
 
 #include "champsim.h"
 #include "instruction.h"
+#include "circular_buffer.hpp"
 
 #include <list>
 
@@ -33,6 +34,7 @@ class PACKET {
              type = 0;
 
     std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
 
     uint32_t cpu = NUM_CPUS,
              data_index = 0,

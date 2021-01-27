@@ -252,6 +252,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
         packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
+        packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
         packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -503,6 +504,7 @@ int CACHE::add_rq(PACKET *packet)
 
         packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
         packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+        packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
         packet_dep_merge(found_rq->to_return, packet->to_return);
 
         RQ_MERGED++;
