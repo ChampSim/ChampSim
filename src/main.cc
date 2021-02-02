@@ -32,8 +32,6 @@ extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
-extern uint64_t current_core_cycle[NUM_CPUS];
-
 std::vector<tracereader*> traces;
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
@@ -201,10 +199,10 @@ void finish_warmup()
 
     cout << endl;
     for (uint32_t i=0; i<NUM_CPUS; i++) {
-        cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << current_core_cycle[i];
+        cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
         cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
 
-        ooo_cpu[i]->begin_sim_cycle = current_core_cycle[i]; 
+        ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle; 
         ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
 
         // reset branch stats
@@ -243,7 +241,7 @@ void print_deadlock(uint32_t i)
     cout << " executed: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].executed;
     cout << " is_memory: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].is_memory;
     cout << " event: " << ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].event_cycle;
-    cout << " current: " << current_core_cycle[i] << endl;
+    cout << " current: " << ooo_cpu[i]->current_cycle << endl;
 
     // print LQ entry
     cout << endl << "Load Queue Entry" << endl;
@@ -311,7 +309,6 @@ int main(int argc, char** argv)
             {"simulation_instructions", required_argument, 0, 'i'},
             {"hide_heartbeat", no_argument, 0, 'h'},
             {"cloudsuite", no_argument, 0, 'c'},
-            {"low_bandwidth",  no_argument, 0, 'b'},
             {"traces",  no_argument, 0, 't'},
             {0, 0, 0, 0}      
         };
@@ -339,9 +336,6 @@ int main(int argc, char** argv)
             case 'c':
                 knob_cloudsuite = 1;
                 MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
-                break;
-            case 'b':
-                knob_low_bandwidth = 1;
                 break;
             case 't':
                 traces_encountered = 1;
@@ -443,7 +437,6 @@ int main(int argc, char** argv)
         warmup_complete[i] = 0;
         //all_warmup_complete = NUM_CPUS;
         simulation_complete[i] = 0;
-        current_core_cycle[i] = 0;
     }
 
     // SHARED CACHE
@@ -470,59 +463,32 @@ int main(int argc, char** argv)
         elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
 
         for (int i=0; i<NUM_CPUS; i++) {
-            // proceed one cycle
-            current_core_cycle[i]++;
 
-            //cout << "Trying to process instr_id: " << ooo_cpu[i]->instr_unique_id << " fetch_stall: " << +ooo_cpu[i]->fetch_stall;
-
-	      // retire
-	      ooo_cpu[i]->retire_rob();
-	      // finalize execution
-	      ooo_cpu[i]->complete_inflight_instruction();
-	      // execute instructions
-	      ooo_cpu[i]->execute_instruction();
-	      // schedule instructions
-	      ooo_cpu[i]->schedule_instruction();
-	      // finalize memory transactions
-	      ooo_cpu[i]->handle_memory_return();
-	      // execute memory transactions
-	      ooo_cpu[i]->execute_memory_instruction();
-	      // schedule memory transactions
-	      ooo_cpu[i]->schedule_memory_instruction();
-	      // dispatch
-	      ooo_cpu[i]->dispatch_instruction();
-	      // decode
-	      ooo_cpu[i]->decode_instruction();
-	      // fetch
-	      ooo_cpu[i]->fetch_instruction();
+            ooo_cpu[i]->_operate();
 	      
-	      // read from trace
-	      if (!ooo_cpu[i]->IFETCH_BUFFER.full() && (ooo_cpu[i]->fetch_stall == 0))
-                {
-		  while(ooo_cpu[i]->init_instruction(traces[i]->get()));
-                }
+            // read from trace
+            while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
+            {
+                ooo_cpu[i]->init_instruction(traces[i]->get());
+            }
 
             // heartbeat information
             if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
                 float cumulative_ipc;
                 if (warmup_complete[i])
-                    cumulative_ipc = (1.0*(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle);
+                    cumulative_ipc = (1.0*(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
                 else
-                    cumulative_ipc = (1.0*ooo_cpu[i]->num_retired) / current_core_cycle[i];
-                float heartbeat_ipc = (1.0*ooo_cpu[i]->num_retired - ooo_cpu[i]->last_sim_instr) / (current_core_cycle[i] - ooo_cpu[i]->last_sim_cycle);
+                    cumulative_ipc = (1.0*ooo_cpu[i]->num_retired) / ooo_cpu[i]->current_cycle;
+                float heartbeat_ipc = (1.0*ooo_cpu[i]->num_retired - ooo_cpu[i]->last_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->last_sim_cycle);
 
-                cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << current_core_cycle[i];
+                cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
                 cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc; 
                 cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
                 ooo_cpu[i]->next_print_instruction += STAT_PRINTING_PERIOD;
 
                 ooo_cpu[i]->last_sim_instr = ooo_cpu[i]->num_retired;
-                ooo_cpu[i]->last_sim_cycle = current_core_cycle[i];
+                ooo_cpu[i]->last_sim_cycle = ooo_cpu[i]->current_cycle;
             }
-
-            // check for deadlock
-            if (ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].ip && (ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
-                print_deadlock(i);
 
             // check for warmup
             // warmup complete
@@ -548,7 +514,7 @@ int main(int argc, char** argv)
             if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
                 simulation_complete[i] = 1;
                 ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
-                ooo_cpu[i]->finish_sim_cycle = current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle;
+                ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
 
                 cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle;
                 cout << " cumulative IPC: " << ((float) ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
@@ -581,8 +547,8 @@ int main(int argc, char** argv)
     if (NUM_CPUS > 1) {
         cout << endl << "Total Simulation Statistics (not including warmup)" << endl;
         for (uint32_t i=0; i<NUM_CPUS; i++) {
-            cout << endl << "CPU " << i << " cumulative IPC: " << (float) (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle); 
-            cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr << " cycles: " << current_core_cycle[i] - ooo_cpu[i]->begin_sim_cycle << endl;
+            cout << endl << "CPU " << i << " cumulative IPC: " << (float) (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle); 
+            cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr << " cycles: " << ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle << endl;
 #ifndef CRC2_COMPILE
             print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
             print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));

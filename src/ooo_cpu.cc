@@ -6,27 +6,64 @@
 #include "set.h"
 #include "vmem.h"
 
-uint64_t current_core_cycle[NUM_CPUS];
+#define DEADLOCK_CYCLE 1000000
+
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
 
 extern VirtualMemory vmem;
 
+void O3_CPU::operate()
+{
+    operated = true;
+    instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
+
+    retire_rob(); // retire
+    complete_inflight_instruction(); // finalize execution
+    execute_instruction(); // execute instructions
+    schedule_instruction(); // schedule instructions
+    handle_memory_return(); // finalize memory transactions
+    operate_lsq(); // execute memory transactions
+
+    // operate caches
+    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_writes();
+    static_cast<CACHE*>(L1I_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(L1D_bus.lower_level)->operate_writes();
+    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_writes();
+
+    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_reads();
+    static_cast<CACHE*>(L1D_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(L1I_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_reads();
+    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_reads();
+    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_reads();
+
+    // also handle per-cycle prefetcher operation
+    l1i_prefetcher_cycle_operate();
+
+    schedule_memory_instruction(); // schedule memory transactions
+    dispatch_instruction(); // dispatch
+    decode_instruction(); // decode
+    fetch_instruction(); // fetch
+
+    // check for deadlock
+    if (ROB.entry[ROB.head].ip && (ROB.entry[ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        print_deadlock(cpu);
+}
+
 void O3_CPU::initialize_core()
 {
 
 }
 
-uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
+void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
     // actual processors do not work like this but for easier implementation,
     // we read instruction traces and virtually add them in the ROB
     // note that these traces are not yet translated and fetched
-
-    if (instrs_to_read_this_cycle == 0)
-        instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
-
     instrs_to_read_this_cycle--;
 
     // first, read PIN trace
@@ -247,7 +284,7 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
         last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 
-    arch_instr.event_cycle = current_core_cycle[cpu];
+    arch_instr.event_cycle = current_cycle;
 
     // fast warmup eliminates register dependencies between instructions
     // branch predictor, cache contents, and prefetchers are still warmed up
@@ -268,29 +305,6 @@ uint32_t O3_CPU::init_instruction(ooo_model_instr arch_instr)
     IFETCH_BUFFER.push_back(arch_instr);
 
     instr_unique_id++;
-
-    return instrs_to_read_this_cycle;
-}
-
-uint32_t O3_CPU::check_rob(uint64_t instr_id)
-{
-    if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
-        return ROB.SIZE;
-
-    for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
-        if (ROB.entry[i].instr_id == instr_id) {
-            DP ( if (warmup_complete[ROB.cpu]) {
-            cout << "[ROB] " << __func__ << " same instr_id: " << ROB.entry[i].instr_id;
-            cout << " rob_index: " << i << endl; });
-            return i;
-        }
-    }
-
-    cerr << "[ROB_ERROR] " << __func__ << " does not have any matching index! ";
-    cerr << " instr_id: " << instr_id << endl;
-    assert(0);
-
-    return ROB.SIZE;
 }
 
 void O3_CPU::fetch_instruction()
@@ -299,7 +313,7 @@ void O3_CPU::fetch_instruction()
   // probalby not
   
   // if we had a branch mispredict, turn fetching back on after the branch mispredict penalty
-  if((fetch_stall == 1) && (current_core_cycle[cpu] >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
+  if((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
     {
       fetch_stall = 0;
       fetch_resume_cycle = 0;
@@ -465,7 +479,7 @@ void O3_CPU::decode_instruction()
 		// clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
 		db_entry.branch_mispredicted = 0;
 		// pay misprediction penalty
-		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+		fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 	      }
 	  }
 	
@@ -494,7 +508,7 @@ void O3_CPU::dispatch_instruction()
     {
         // Add to ROB
         ROB.entry[ROB.tail] = DISPATCH_BUFFER.front();
-        ROB.entry[ROB.tail].event_cycle = current_core_cycle[cpu];
+        ROB.entry[ROB.tail].event_cycle = current_cycle;
 
         ROB.tail++;
         if (ROB.tail >= ROB.SIZE)
@@ -520,7 +534,7 @@ void O3_CPU::schedule_instruction()
 
     num_searched = 0;
     for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
-        if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+        if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_cycle) || (num_searched >= SCHEDULER_SIZE))
             return;
 
         if (ROB.entry[i].scheduled == 0)
@@ -543,7 +557,7 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         ROB.entry[rob_index].scheduled = COMPLETED;
 
         // ADD LATENCY
-        ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
+        ROB.entry[rob_index].event_cycle = current_cycle + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
 
         if (ROB.entry[rob_index].reg_ready) {
 
@@ -645,7 +659,7 @@ void O3_CPU::execute_instruction()
     while (exec_issued < EXEC_WIDTH) {
         if (!ready_to_execute.empty()) {
             uint32_t exec_index = ready_to_execute.front();
-            if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
+            if (ROB.entry[exec_index].event_cycle <= current_cycle) {
                 do_execution(exec_index);
 
                 ready_to_execute.pop();
@@ -664,14 +678,14 @@ void O3_CPU::execute_instruction()
 
 void O3_CPU::do_execution(uint32_t rob_index)
 {
-    //if (ROB.entry[rob_index].reg_ready && (ROB.entry[rob_index].scheduled == COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
+    //if (ROB.entry[rob_index].reg_ready && (ROB.entry[rob_index].scheduled == COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_cycle)) {
 
-  //cout << "do_execution() rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
+  //cout << "do_execution() rob_index: " << rob_index << " cycle: " << current_cycle << endl;
   
         ROB.entry[rob_index].executed = INFLIGHT;
 
         // ADD LATENCY
-        ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
+        ROB.entry[rob_index].event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
         inflight_reg_executions++;
 
@@ -694,7 +708,7 @@ void O3_CPU::schedule_memory_instruction()
     // execution is out-of-order but we have an in-order scheduling algorithm to detect all RAW dependencies
     num_searched = 0;
     for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
-        if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_core_cycle[cpu]) || (num_searched >= SCHEDULER_SIZE))
+        if ((ROB.entry[i].fetched != COMPLETED) || (ROB.entry[i].event_cycle > current_cycle) || (num_searched >= SCHEDULER_SIZE))
             break;
 
         if (ROB.entry[i].is_memory && mem_reg_dependence_resolved(i) && (ROB.entry[i].scheduled == INFLIGHT))
@@ -703,12 +717,6 @@ void O3_CPU::schedule_memory_instruction()
         if (ROB.entry[i].executed == 0)
             num_searched++;
     }
-}
-
-void O3_CPU::execute_memory_instruction()
-{
-    operate_lsq();
-    operate_cache();
 }
 
 void O3_CPU::do_memory_scheduling(uint32_t rob_index)
@@ -742,7 +750,7 @@ uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index)
             else {
                 DP(if(warmup_complete[cpu]) {
                 cout << "[LQ] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " cannot be added in the load queue occupancy: " << LQ.occupancy << " cycle: " << current_core_cycle[cpu] << endl; });
+                cout << " cannot be added in the load queue occupancy: " << LQ.occupancy << " cycle: " << current_cycle << endl; });
             }
         }
     }
@@ -764,7 +772,7 @@ uint32_t O3_CPU::check_and_add_lsq(uint32_t rob_index)
             else {
                 DP(if(warmup_complete[cpu]) {
                 cout << "[SQ] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " cannot be added in the store queue occupancy: " << SQ.occupancy << " cycle: " << current_core_cycle[cpu] << endl; });
+                cout << " cannot be added in the store queue occupancy: " << SQ.occupancy << " cycle: " << current_cycle << endl; });
             }
         }
     }
@@ -807,7 +815,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     LQ.entry[lq_index].rob_index = rob_index;
     LQ.entry[lq_index].asid[0] = ROB.entry[rob_index].asid[0];
     LQ.entry[lq_index].asid[1] = ROB.entry[rob_index].asid[1];
-    LQ.entry[lq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
+    LQ.entry[lq_index].event_cycle = current_cycle + SCHEDULING_LATENCY;
     LQ.occupancy++;
 
     // check RAW dependency
@@ -881,21 +889,21 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
                 
                 DP(if(warmup_complete[cpu]) {
                 cout << "[LQ] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " reset fetched: " << +LQ.entry[lq_index].fetched;
-                cout << " to obey WAR store instr_id: " << SQ.entry[i].instr_id << " cycle: " << current_core_cycle[cpu] << endl; });
+                cout << " to obey WAR store instr_id: " << SQ.entry[i].instr_id << " cycle: " << current_cycle << endl; });
             }
         }
     }
 
     if (forwarding_index != SQ.SIZE) { // we have a store-to-load forwarding
 
-        if ((SQ.entry[forwarding_index].fetched == COMPLETED) && (SQ.entry[forwarding_index].event_cycle <= current_core_cycle[cpu])) {
+        if ((SQ.entry[forwarding_index].fetched == COMPLETED) && (SQ.entry[forwarding_index].event_cycle <= current_cycle)) {
             LQ.entry[lq_index].physical_address = (SQ.entry[forwarding_index].physical_address & ~(uint64_t) ((1 << LOG2_BLOCK_SIZE) - 1)) | (LQ.entry[lq_index].virtual_address & ((1 << LOG2_BLOCK_SIZE) - 1));
             LQ.entry[lq_index].translated = COMPLETED;
             LQ.entry[lq_index].fetched = COMPLETED;
 
             uint32_t fwr_rob_index = LQ.entry[lq_index].rob_index;
             ROB.entry[fwr_rob_index].num_mem_ops--;
-            ROB.entry[fwr_rob_index].event_cycle = current_core_cycle[cpu];
+            ROB.entry[fwr_rob_index].event_cycle = current_cycle;
             if (ROB.entry[fwr_rob_index].num_mem_ops < 0) {
                 cerr << "instr_id: " << ROB.entry[fwr_rob_index].instr_id << endl;
                 assert(0);
@@ -906,7 +914,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
             DP(if(warmup_complete[cpu]) {
             cout << "[LQ] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << hex;
             cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " is forwarded by store instr_id: ";
-            cout << SQ.entry[forwarding_index].instr_id << " remain_num_ops: " << ROB.entry[fwr_rob_index].num_mem_ops << " cycle: " << current_core_cycle[cpu] << endl; });
+            cout << SQ.entry[forwarding_index].instr_id << " remain_num_ops: " << ROB.entry[fwr_rob_index].num_mem_ops << " cycle: " << current_cycle << endl; });
 
             release_load_queue(lq_index);
         }
@@ -927,7 +935,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     DP(if(warmup_complete[cpu]) {
     cout << "[LQ] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id;
     cout << " is added in the LQ address: " << hex << LQ.entry[lq_index].virtual_address << dec << " translated: " << +LQ.entry[lq_index].translated;
-    cout << " fetched: " << +LQ.entry[lq_index].fetched << " index: " << lq_index << " occupancy: " << LQ.occupancy << " cycle: " << current_core_cycle[cpu] << endl; });
+    cout << " fetched: " << +LQ.entry[lq_index].fetched << " index: " << lq_index << " occupancy: " << LQ.occupancy << " cycle: " << current_cycle << endl; });
 }
 
 void O3_CPU::mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index)
@@ -987,7 +995,7 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     SQ.entry[sq_index].rob_index = rob_index;
     SQ.entry[sq_index].asid[0] = ROB.entry[rob_index].asid[0];
     SQ.entry[sq_index].asid[1] = ROB.entry[rob_index].asid[1];
-    SQ.entry[sq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
+    SQ.entry[sq_index].event_cycle = current_cycle + SCHEDULING_LATENCY;
 
     SQ.occupancy++;
     SQ.tail++;
@@ -1002,9 +1010,9 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     RTS0.push(sq_index);
 
     DP(if(warmup_complete[cpu]) {
-    cout << "[SQ] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id;
-    cout << " is added in the SQ translated: " << +SQ.entry[sq_index].translated << " fetched: " << +SQ.entry[sq_index].fetched << " is_producer: " << +ROB.entry[rob_index].is_producer;
-    cout << " cycle: " << current_core_cycle[cpu] << endl; });
+            std::cout << "[SQ] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id;
+            std::cout << " is added in the SQ translated: " << +SQ.entry[sq_index].translated << " fetched: " << +SQ.entry[sq_index].fetched << " is_producer: " << +ROB.entry[rob_index].is_producer;
+            std::cout << " cycle: " << current_cycle << std::endl; });
 }
 
 void O3_CPU::operate_lsq()
@@ -1015,7 +1023,7 @@ void O3_CPU::operate_lsq()
     while (store_issued < SQ_WIDTH) {
         if (!RTS0.empty()) {
             uint32_t sq_index = RTS0.front();
-            if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
+            if (SQ.entry[sq_index].event_cycle <= current_cycle) {
 
                 // add it to DTLB
                 PACKET data_packet;
@@ -1064,7 +1072,7 @@ void O3_CPU::operate_lsq()
     while (store_issued < SQ_WIDTH) {
         if (!RTS1.empty()) {
             uint32_t sq_index = RTS1.front();
-            if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
+            if (SQ.entry[sq_index].event_cycle <= current_cycle) {
                 execute_store(SQ.entry[sq_index].rob_index, sq_index, SQ.entry[sq_index].data_index);
 
                 RTS1.pop();
@@ -1086,7 +1094,7 @@ void O3_CPU::operate_lsq()
     while (load_issued < LQ_WIDTH) {
         if (!RTL0.empty()) {
             uint32_t lq_index = RTL0.front();
-            if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
+            if (LQ.entry[lq_index].event_cycle <= current_cycle) {
 
                 // add it to DTLB
                 PACKET data_packet;
@@ -1134,7 +1142,7 @@ void O3_CPU::operate_lsq()
     while (load_issued < LQ_WIDTH) {
         if (!RTL1.empty()) {
             uint32_t lq_index = RTL1.front();
-            if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
+            if (LQ.entry[lq_index].event_cycle <= current_cycle) {
                 int rq_index = execute_load(LQ.entry[lq_index].rob_index, lq_index, LQ.entry[lq_index].data_index);
 
                 if (rq_index != -2) {
@@ -1159,7 +1167,7 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
     SQ.entry[sq_index].fetched = COMPLETED;
 
     ROB.entry[rob_index].num_mem_ops--;
-    ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+    ROB.entry[rob_index].event_cycle = current_cycle;
     if (ROB.entry[rob_index].num_mem_ops < 0) {
         cerr << "instr_id: " << ROB.entry[rob_index].instr_id << endl;
         assert(0);
@@ -1196,11 +1204,11 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
                         LQ.entry[lq_index].physical_address = (SQ.entry[sq_index].physical_address & ~(uint64_t) ((1 << LOG2_BLOCK_SIZE) - 1)) | (LQ.entry[lq_index].virtual_address & ((1 << LOG2_BLOCK_SIZE) - 1));
                         LQ.entry[lq_index].translated = COMPLETED;
                         LQ.entry[lq_index].fetched = COMPLETED;
-                        LQ.entry[lq_index].event_cycle = current_core_cycle[cpu];
+                        LQ.entry[lq_index].event_cycle = current_cycle;
 
                         uint32_t fwr_rob_index = LQ.entry[lq_index].rob_index;
                         ROB.entry[fwr_rob_index].num_mem_ops--;
-                        ROB.entry[fwr_rob_index].event_cycle = current_core_cycle[cpu];
+                        ROB.entry[fwr_rob_index].event_cycle = current_cycle;
 #ifdef SANITY_CHECK
                         if (ROB.entry[fwr_rob_index].num_mem_ops < 0) {
                             cerr << "instr_id: " << ROB.entry[fwr_rob_index].instr_id << endl;
@@ -1211,9 +1219,9 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
                             inflight_mem_executions++;
 
                         DP(if(warmup_complete[cpu]) {
-                        cout << "[LQ3] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << hex;
-                        cout << " full_addr: " << LQ.entry[lq_index].physical_address << dec << " is forwarded by store instr_id: ";
-                        cout << SQ.entry[sq_index].instr_id << " remain_num_ops: " << ROB.entry[fwr_rob_index].num_mem_ops << " cycle: " << current_core_cycle[cpu] << endl; });
+                                std::cout << "[LQ3] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << std::hex;
+                                std::cout << " full_addr: " << LQ.entry[lq_index].physical_address << std::dec << " is forwarded by store instr_id: ";
+                                std::cout << SQ.entry[sq_index].instr_id << " remain_num_ops: " << ROB.entry[fwr_rob_index].num_mem_ops << " cycle: " << current_cycle << std::endl; });
 
                         release_load_queue(lq_index);
 
@@ -1259,7 +1267,7 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
 uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 {
     if (ROB.entry[rob_index].is_memory == 0) {
-        if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
+        if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_cycle)) {
 
             ROB.entry[rob_index].executed = COMPLETED; 
             inflight_reg_executions--;
@@ -1270,7 +1278,7 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 
             if (ROB.entry[rob_index].branch_mispredicted)
 	      {
-		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+              fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 	      }
 
             DP(if(warmup_complete[cpu]) {
@@ -1283,7 +1291,7 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
     }
     else {
         if (ROB.entry[rob_index].num_mem_ops == 0) {
-            if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
+            if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_cycle)) {
 
 	      ROB.entry[rob_index].executed = COMPLETED;
                 inflight_mem_executions--;
@@ -1294,13 +1302,13 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 
                 if (ROB.entry[rob_index].branch_mispredicted)
 		  {
-		    fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
+              fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 		  }
 
                 DP(if(warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " is_memory: " << +ROB.entry[rob_index].is_memory << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted;
-                cout << " fetch_stall: " << +fetch_stall << " event: " << ROB.entry[rob_index].event_cycle << " current: " << current_core_cycle[cpu] << endl; });
+                        std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
+                        std::cout << " is_memory: " << +ROB.entry[rob_index].is_memory << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted;
+                        std::cout << " fetch_stall: " << +fetch_stall << " event: " << ROB.entry[rob_index].event_cycle << " current: " << current_cycle << std::endl; });
 
 		return 1;
             }
@@ -1339,31 +1347,11 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                 }
 
                 DP (if (warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
-                cout << ROB.entry[i].instr_id << " reg_index: " << +ROB.entry[i].source_registers[j] << " num_reg_dependent: " << ROB.entry[i].num_reg_dependent << " cycle: " << current_core_cycle[cpu] << endl; });
+                        std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
+                        std::cout << ROB.entry[i].instr_id << " reg_index: " << +ROB.entry[i].source_registers[j] << " num_reg_dependent: " << ROB.entry[i].num_reg_dependent << " cycle: " << current_cycle << std::endl; });
             }
         }
     }
-}
-
-void O3_CPU::operate_cache()
-{
-    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_writes();
-    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_writes();
-    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_writes();
-    static_cast<CACHE*>(L1I_bus.lower_level)->operate_writes();
-    static_cast<CACHE*>(L1D_bus.lower_level)->operate_writes();
-    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_writes();
-
-    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->operate_reads();
-    static_cast<CACHE*>(L1D_bus.lower_level)->operate_reads();
-    static_cast<CACHE*>(L1I_bus.lower_level)->operate_reads();
-    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->operate_reads();
-    static_cast<CACHE*>(DTLB_bus.lower_level)->operate_reads();
-    static_cast<CACHE*>(ITLB_bus.lower_level)->operate_reads();
-
-    // also handle per-cycle prefetcher operation
-    l1i_prefetcher_cycle_operate();
 }
 
 void O3_CPU::complete_inflight_instruction()
@@ -1454,7 +1442,7 @@ void O3_CPU::handle_memory_return()
 	    {
 	      SQ.entry[sq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (SQ.entry[sq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
 	      SQ.entry[sq_merged].translated = COMPLETED;
-	      SQ.entry[sq_merged].event_cycle = current_core_cycle[cpu];
+	      SQ.entry[sq_merged].event_cycle = current_cycle;
 
           RTS1.push(sq_merged);
 	    }
@@ -1463,12 +1451,12 @@ void O3_CPU::handle_memory_return()
 	    {
 	      LQ.entry[lq_merged].physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (LQ.entry[lq_merged].virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
 	      LQ.entry[lq_merged].translated = COMPLETED;
-	      LQ.entry[lq_merged].event_cycle = current_core_cycle[cpu];
+	      LQ.entry[lq_merged].event_cycle = current_cycle;
 
           RTL1.push(lq_merged);
 	    }
 
-	  ROB.entry[dtlb_entry.rob_index].event_cycle = current_core_cycle[cpu];
+	  ROB.entry[dtlb_entry.rob_index].event_cycle = current_cycle;
 
 	  // remove this entry
 	  DTLB_bus.PROCESSED.pop_front();
@@ -1483,9 +1471,9 @@ void O3_CPU::handle_memory_return()
 	  for (auto merged : l1d_entry.lq_index_depend_on_me)
 	    {
 	      LQ.entry[merged].fetched = COMPLETED;
-	      LQ.entry[merged].event_cycle = current_core_cycle[cpu];
+	      LQ.entry[merged].event_cycle = current_cycle;
 	      ROB.entry[LQ.entry[merged].rob_index].num_mem_ops--;
-	      ROB.entry[LQ.entry[merged].rob_index].event_cycle = current_core_cycle[cpu];
+	      ROB.entry[LQ.entry[merged].rob_index].event_cycle = current_cycle;
 
 	      if (ROB.entry[LQ.entry[merged].rob_index].num_mem_ops == 0)
 		inflight_mem_executions++;

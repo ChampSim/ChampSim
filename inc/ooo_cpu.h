@@ -10,8 +10,7 @@
 #include "instruction.h"
 #include "cache.h"
 #include "instruction.h"
-
-#define DEADLOCK_CYCLE 1000000
+#include "operable.h"
 
 using namespace std;
 
@@ -24,9 +23,10 @@ class CacheBus : public MemoryRequestProducer
 };
 
 // cpu
-class O3_CPU {
+class O3_CPU : public champsim::operable {
   public:
     uint32_t cpu = 0;
+    bool operated = false;
 
     // instruction
     uint64_t instr_unique_id = 0, completed_executions = 0,
@@ -86,14 +86,14 @@ class O3_CPU {
     CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
   
     // constructor
-    O3_CPU(uint32_t cpu, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
+    O3_CPU(uint32_t cpu, uint64_t freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
             std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
             std::size_t rob_size, std::size_t lq_size, std::size_t sq_size,
             unsigned fetch_width, unsigned decode_width, unsigned dispatch_width, unsigned schedule_width,
             unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
             unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
             CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d) :
-        cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
+        operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
         ROB("ROB", rob_size), LQ("LQ", lq_size), SQ("SQ", sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
@@ -159,8 +159,10 @@ class O3_CPU {
         static_cast<CACHE*>(l1d->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(l1d->lower_level));
     }
 
+    void operate();
+
     // functions
-    uint32_t init_instruction(ooo_model_instr instr);
+    void init_instruction(ooo_model_instr instr);
     void fetch_instruction(),
          decode_instruction(),
          dispatch_instruction(),

@@ -37,10 +37,14 @@ class MEMORY_CONTROLLER : public MemoryRequestConsumer {
             WQ[i].NAME = "DRAM_WQ" + to_string(i);
             WQ[i].SIZE = DRAM_WQ_SIZE;
             WQ[i].entry = new PACKET [DRAM_WQ_SIZE];
+            WQ[i].next_schedule_index = DRAM_WQ_SIZE;
+            WQ[i].next_process_index = DRAM_WQ_SIZE;
 
             RQ[i].NAME = "DRAM_RQ" + to_string(i);
             RQ[i].SIZE = DRAM_RQ_SIZE;
             RQ[i].entry = new PACKET [DRAM_RQ_SIZE];
+            RQ[i].next_schedule_index = DRAM_RQ_SIZE;
+            RQ[i].next_process_index = DRAM_RQ_SIZE;
         }
 
         fill_level = FILL_DRAM;
