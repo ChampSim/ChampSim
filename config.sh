@@ -26,7 +26,7 @@ config_cache_name = '.champsimconfig_cache'
 # Begin format strings
 ###
 
-llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[max_read]}, {attrs[max_write]});\n'
+llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[execute_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, {attrs[DIB][window_size]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}L2C, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}STLB);\n'
 
@@ -38,7 +38,7 @@ module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
-cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_LATENCY {attrs[latency]}u\n#define {name}_MAX_READ {attrs[max_read]}\n#define {name}_MAX_WRITE {attrs[max_write]}'
+cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_HIT_LATENCY {attrs[hit_latency]}u\n#define {name}_FILL_LATENCY {attrs[fill_latency]}u\n#define {name}_MAX_READ {attrs[max_read]}\n#define {name}_MAX_WRITE {attrs[max_write]}'
 
 ###
 # Begin named constants
@@ -139,6 +139,26 @@ for i in range(len(config_file['ooo_cpu'])):
 config_file['LLC'] = merge_dicts(default_llc, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
 config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
+
+# Establish latencies in caches
+# If not specified, hit and fill latencies are half of the total latency, where fill takes longer if the sum is odd.
+for cpu in config_file['ooo_cpu']:
+    cpu['L1I']['hit_latency'] = cpu['L1I'].get('hit_latency', cpu['L1I']['latency']//2)
+    cpu['L1D']['hit_latency'] = cpu['L1D'].get('hit_latency', cpu['L1D']['latency']//2)
+    cpu['L2C']['hit_latency'] = cpu['L2C'].get('hit_latency', cpu['L2C']['latency']//2)
+    cpu['ITLB']['hit_latency'] = cpu['ITLB'].get('hit_latency', cpu['ITLB']['latency']//2)
+    cpu['DTLB']['hit_latency'] = cpu['DTLB'].get('hit_latency', cpu['DTLB']['latency']//2)
+    cpu['STLB']['hit_latency'] = cpu['STLB'].get('hit_latency', cpu['STLB']['latency']//2)
+
+    cpu['L1I']['fill_latency'] = cpu['L1I'].get('fill_latency', cpu['L1I']['latency'] - cpu['L1I']['hit_latency'])
+    cpu['L1D']['fill_latency'] = cpu['L1D'].get('fill_latency', cpu['L1D']['latency'] - cpu['L1D']['hit_latency'])
+    cpu['L2C']['fill_latency'] = cpu['L2C'].get('fill_latency', cpu['L2C']['latency'] - cpu['L2C']['hit_latency'])
+    cpu['ITLB']['fill_latency'] = cpu['ITLB'].get('fill_latency', cpu['ITLB']['latency'] - cpu['ITLB']['hit_latency'])
+    cpu['DTLB']['fill_latency'] = cpu['DTLB'].get('fill_latency', cpu['DTLB']['latency'] - cpu['DTLB']['hit_latency'])
+    cpu['STLB']['fill_latency'] = cpu['STLB'].get('fill_latency', cpu['STLB']['latency'] - cpu['STLB']['hit_latency'])
+
+config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency']//2)
+config_file['LLC']['fill_latency'] = config_file['LLC'].get('fill_latency', config_file['LLC']['latency'] + config_file['LLC']['hit_latency'])
 
 ###
 # Copy or trim cores as necessary to fill out the specified number of cores

@@ -520,7 +520,10 @@ int CACHE::add_rq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to RQ
-    RQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        RQ.push_back(*packet);
+    else
+        RQ.push_back_ready(*packet);
 
     DP ( if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -557,7 +560,10 @@ int CACHE::add_wq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to the write queue
-    WQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        WQ.push_back(*packet);
+    else
+        WQ.push_back_ready(*packet);
 
     DP (if (warmup_complete[WQ.entry[index].cpu]) {
             std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -744,7 +750,10 @@ int CACHE::add_pq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to PQ
-    PQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        PQ.push_back(*packet);
+    else
+        PQ.push_back_ready(*packet);
 
     DP ( if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -775,10 +784,17 @@ void CACHE::return_data(PACKET *packet)
     mshr_entry->pf_metadata = packet->pf_metadata;
 
     // ADD LATENCY
-    if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
-        mshr_entry->event_cycle = current_core_cycle[packet->cpu] + LATENCY;
+    if (warmup_complete[cpu])
+    {
+        if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
+            mshr_entry->event_cycle = current_core_cycle[packet->cpu] + FILL_LATENCY;
+        else
+            mshr_entry->event_cycle += FILL_LATENCY;
+    }
     else
-        mshr_entry->event_cycle += LATENCY;
+    {
+        mshr_entry->event_cycle = current_core_cycle[cpu];
+    }
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
