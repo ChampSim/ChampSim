@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "dram_controller.h"
 #include "champsim_constants.h"
 
@@ -70,6 +71,14 @@ void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t chan
 #endif
 }
 
+struct first_completed
+{
+    bool operator() (const PACKET &lhs, const PACKET &rhs)
+    {
+        return !rhs.processed || (lhs.processed && lhs.event_cycle < rhs.event_cycle);
+    }
+};
+
 void MEMORY_CONTROLLER::operate()
 {
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
@@ -120,6 +129,17 @@ void MEMORY_CONTROLLER::operate()
         if ((write_mode[i] == 0) && (RQ[i].next_process_index < RQ[i].SIZE)) {
             if (RQ[i].next_process_cycle <= current_core_cycle[RQ[i].entry[RQ[i].next_process_index].cpu])
                 process(&RQ[i]);
+        }
+
+        // send data back to the core cache hierarchy
+        auto complete = std::min_element(RQ[i].entry, std::next(RQ[i].entry, RQ[i].SIZE), first_completed());
+        if ((write_mode[i] == 0) && complete->processed && complete->event_cycle <= current_core_cycle[complete->cpu])
+        {
+            for (auto ret : complete->to_return)
+                ret->return_data(&(*complete));
+
+            // remove the oldest entry
+            RQ[i].remove_queue(&(*complete));
         }
     }
 }
@@ -305,26 +325,28 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
         // check if data bus is available
         if (dbus_cycle_available[op_channel] <= current_core_cycle[op_cpu]) {
 
+            // update data bus cycle time
+            dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
+
+            if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
+                queue->ROW_BUFFER_HIT++;
+            else
+                queue->ROW_BUFFER_MISS++;
+
+            // this bank is ready for another DRAM request
+            bank_request[op_channel][op_rank][op_bank].request_index = -1;
+            bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
+            bank_request[op_channel][op_rank][op_bank].working = false;
+            bank_request[op_channel][op_rank][op_bank].is_write = 0;
+            bank_request[op_channel][op_rank][op_bank].is_read = 0;
+
             if (queue->is_WQ) {
-                // update data bus cycle time
-                dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
-
-                if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
-                    queue->ROW_BUFFER_HIT++;
-                else
-                    queue->ROW_BUFFER_MISS++;
-
-                // this bank is ready for another DRAM request
-                bank_request[op_channel][op_rank][op_bank].request_index = -1;
-                bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
-                bank_request[op_channel][op_rank][op_bank].working = false;
-                bank_request[op_channel][op_rank][op_bank].is_write = 0;
-                bank_request[op_channel][op_rank][op_bank].is_read = 0;
 
                 scheduled_writes[op_channel]--;
+
+                // remove the oldest entry
+                queue->remove_queue(&queue->entry[request_index]);
             } else {
-                // update data bus cycle time
-                dbus_cycle_available[op_channel] = current_core_cycle[op_cpu] + DRAM_DBUS_RETURN_TIME;
                 queue->entry[request_index].event_cycle = dbus_cycle_available[op_channel]; 
 
                 DP ( if (warmup_complete[op_cpu]) {
@@ -334,27 +356,11 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
                 cout << " row: " << op_row << " column: " << op_column;
                 cout << " current_cycle: " << current_core_cycle[op_cpu] << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
 
-                // send data back to the core cache hierarchy
-                for (auto ret : queue->entry[request_index].to_return)
-                    ret->return_data(&queue->entry[request_index]);
-
-                if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
-                    queue->ROW_BUFFER_HIT++;
-                else
-                    queue->ROW_BUFFER_MISS++;
-
-                // this bank is ready for another DRAM request
-                bank_request[op_channel][op_rank][op_bank].request_index = -1;
-                bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
-                bank_request[op_channel][op_rank][op_bank].working = false;
-                bank_request[op_channel][op_rank][op_bank].is_write = 0;
-                bank_request[op_channel][op_rank][op_bank].is_read = 0;
+                queue->entry[request_index].processed = true;
 
                 scheduled_reads[op_channel]--;
             }
 
-            // remove the oldest entry
-            queue->remove_queue(&queue->entry[request_index]);
             update_process_cycle(queue);
         }
         else { // data bus is busy, the available bank cycle time is fast-forwarded for faster simulation
@@ -421,6 +427,8 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
 
 int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
+    packet->event_cycle = current_core_cycle[packet->cpu];
+
     // simply return read requests with dummy response before the warmup
     if (all_warmup_complete < NUM_CPUS) {
         for (auto ret : packet->to_return)
@@ -486,6 +494,8 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 {
+    packet->event_cycle = current_core_cycle[packet->cpu];
+
     // simply drop write requests before the warmup
     if (all_warmup_complete < NUM_CPUS)
         return -1;
@@ -501,6 +511,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
         if (WQ[channel].entry[index].address == 0) {
             
             WQ[channel].entry[index] = *packet;
+            WQ[channel].entry[index].event_cycle = current_core_cycle[packet->cpu];
             WQ[channel].occupancy++;
 
 #ifdef DEBUG_PRINT
@@ -545,7 +556,7 @@ void MEMORY_CONTROLLER::update_schedule_cycle(PACKET_QUEUE *queue)
         });
         */
 
-        if (queue->entry[i].address && (queue->entry[i].scheduled == 0) && (queue->entry[i].event_cycle < min_cycle)) {
+        if (queue->entry[i].address && (!queue->entry[i].scheduled) && (!queue->entry[i].processed) && (queue->entry[i].event_cycle < min_cycle)) {
             min_cycle = queue->entry[i].event_cycle;
             min_index = i;
         }
@@ -569,7 +580,7 @@ void MEMORY_CONTROLLER::update_process_cycle(PACKET_QUEUE *queue)
     uint64_t min_cycle = UINT64_MAX;
     uint32_t min_index = queue->SIZE;
     for (uint32_t i=0; i<queue->SIZE; i++) {
-        if (queue->entry[i].scheduled && (queue->entry[i].event_cycle < min_cycle)) {
+        if (queue->entry[i].scheduled && !queue->entry[i].processed && (queue->entry[i].event_cycle < min_cycle)) {
             min_cycle = queue->entry[i].event_cycle;
             min_index = i;
         }

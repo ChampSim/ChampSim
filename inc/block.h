@@ -12,14 +12,16 @@ class MemoryRequestProducer;
 // message packet
 class PACKET {
   public:
-    uint8_t scheduled = 0,
-            translated = 0,
-            fetched = 0,
-            prefetched = 0;
+    bool scheduled = false,
+         processed = false,
+         returned = false;
 
-    int fill_level = -1,
-        pf_origin_level,
-        rob_index = -1,
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
+            type = 0,
+            fill_level = 0,
+            pf_origin_level = 0;
+
+    int rob_index = -1,
         producer = -1,
         delta = 0,
         depth = 0,
@@ -27,19 +29,7 @@ class PACKET {
         confidence = 0;
 
     uint32_t pf_metadata;
-
-    uint8_t  is_producer = 0, 
-             returned = 0,
-             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-             type = 0;
-
-    std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
-    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
-
-    uint32_t cpu = NUM_CPUS,
-             data_index = 0,
-             lq_index = 0,
-             sq_index = 0;
+    uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
              full_addr = 0,
@@ -51,6 +41,8 @@ class PACKET {
              event_cycle = std::numeric_limits<uint64_t>::max(),
              cycle_enqueued = 0;
 
+    std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
     std::list<MemoryRequestProducer*> to_return;
 };
 

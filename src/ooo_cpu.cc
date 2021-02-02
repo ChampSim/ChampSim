@@ -325,9 +325,6 @@ void O3_CPU::fetch_instruction()
           // Also mark it as decoded
           it->decoded = COMPLETED;
 
-          // It can be acted on immediately
-          it->event_cycle = current_core_cycle[cpu];
-
           // Update LRU
           unsigned hit_lru = way->lru;
           std::for_each(dib_set_begin, dib_set_end, [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
@@ -353,7 +350,6 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.type = LOAD; 
 	  trace_packet.asid[0] = 0;
 	  trace_packet.asid[1] = 0;
-	  trace_packet.event_cycle = current_core_cycle[cpu];
 	  trace_packet.to_return = {&ITLB_bus};
       for (auto dep_it = itlb_req_begin; dep_it != itlb_req_end; ++dep_it)
           trace_packet.instr_depend_on_me.push_back(dep_it);
@@ -393,7 +389,6 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.type = LOAD; 
 	  fetch_packet.asid[0] = 0;
 	  fetch_packet.asid[1] = 0;
-	  fetch_packet.event_cycle = current_core_cycle[cpu];
 	  fetch_packet.to_return = {&L1I_bus};
       for (auto dep_it = l1i_req_begin; dep_it != l1i_req_end; ++dep_it)
           fetch_packet.instr_depend_on_me.push_back(dep_it);
@@ -518,10 +513,6 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
     return static_cast<CACHE*>(L1I_bus.lower_level)->va_prefetch_line(pf_v_addr, pf_v_addr, FILL_L1, 0);
 }
 
-// TODO: When should we update ROB.schedule_event_cycle?
-// I. Instruction is fetched
-// II. Instruction is completed
-// III. Instruction is retired
 void O3_CPU::schedule_instruction()
 {
     if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
@@ -552,18 +543,7 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         ROB.entry[rob_index].scheduled = COMPLETED;
 
         // ADD LATENCY
-        if (warmup_complete[cpu])
-        {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
-            else
-                ROB.entry[rob_index].event_cycle += SCHEDULING_LATENCY;
-        }
-        else
-        {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
-        }
+        ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
 
         if (ROB.entry[rob_index].reg_ready) {
 
@@ -691,19 +671,7 @@ void O3_CPU::do_execution(uint32_t rob_index)
         ROB.entry[rob_index].executed = INFLIGHT;
 
         // ADD LATENCY
-        if (warmup_complete[cpu])
-        {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + EXEC_LATENCY;
-            else
-                ROB.entry[rob_index].event_cycle += EXEC_LATENCY;
-        }
-        else
-        {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
-        }
-
+        ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
         inflight_reg_executions++;
 
@@ -1054,8 +1022,6 @@ void O3_CPU::operate_lsq()
 
                 data_packet.fill_level = FILL_L1;
                 data_packet.cpu = cpu;
-                data_packet.data_index = SQ.entry[sq_index].data_index;
-                data_packet.sq_index = sq_index;
                 if (knob_cloudsuite)
                     data_packet.address = ((SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | SQ.entry[sq_index].asid[1];
                 else
@@ -1067,7 +1033,6 @@ void O3_CPU::operate_lsq()
                 data_packet.type = RFO;
                 data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                 data_packet.asid[1] = SQ.entry[sq_index].asid[1];
-                data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
                 data_packet.to_return = {&DTLB_bus};
                 data_packet.sq_index_depend_on_me = {sq_index};
 
@@ -1127,8 +1092,6 @@ void O3_CPU::operate_lsq()
                 PACKET data_packet;
                 data_packet.fill_level = FILL_L1;
                 data_packet.cpu = cpu;
-                data_packet.data_index = LQ.entry[lq_index].data_index;
-                data_packet.lq_index = lq_index;
                 if (knob_cloudsuite)
                     data_packet.address = ((LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | LQ.entry[lq_index].asid[1];
                 else
@@ -1140,7 +1103,6 @@ void O3_CPU::operate_lsq()
                 data_packet.type = LOAD;
                 data_packet.asid[0] = LQ.entry[lq_index].asid[0];
                 data_packet.asid[1] = LQ.entry[lq_index].asid[1];
-                data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
                 data_packet.to_return = {&DTLB_bus};
                 data_packet.lq_index_depend_on_me = {lq_index};
 
@@ -1195,7 +1157,6 @@ void O3_CPU::operate_lsq()
 void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index)
 {
     SQ.entry[sq_index].fetched = COMPLETED;
-    SQ.entry[sq_index].event_cycle = current_core_cycle[cpu];
 
     ROB.entry[rob_index].num_mem_ops--;
     ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
@@ -1272,8 +1233,6 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     PACKET data_packet;
     data_packet.fill_level = FILL_L1;
     data_packet.cpu = cpu;
-    data_packet.data_index = LQ.entry[lq_index].data_index;
-    data_packet.lq_index = lq_index;
     data_packet.address = LQ.entry[lq_index].physical_address >> LOG2_BLOCK_SIZE;
     data_packet.full_addr = LQ.entry[lq_index].physical_address;
     data_packet.v_address = LQ.entry[lq_index].virtual_address >> LOG2_BLOCK_SIZE;
@@ -1284,7 +1243,6 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.type = LOAD;
     data_packet.asid[0] = LQ.entry[lq_index].asid[0];
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
-    data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
     data_packet.to_return = {&L1D_bus};
     data_packet.lq_index_depend_on_me = {lq_index};
 
@@ -1430,66 +1388,53 @@ void O3_CPU::handle_memory_return()
   std::size_t available_fetch_bandwidth = FETCH_WIDTH;
   std::size_t to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
 
-  while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty() && ITLB_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
-  {
-      PACKET &itlb_entry = ITLB_bus.PROCESSED.front();
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty())
+    {
+        PACKET &itlb_entry = ITLB_bus.PROCESSED.front();
 
       // mark the appropriate instructions in the IFETCH_BUFFER as translated and ready to fetch
-      while (!itlb_entry.instr_depend_on_me.empty())
+      while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty())
       {
           auto it = itlb_entry.instr_depend_on_me.front();
-          if (available_fetch_bandwidth > 0)
+          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
           {
-              if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
-              {
-                  it->translated = COMPLETED;
-                  // recalculate a physical address for this cache line based on the translated physical page address
-                  it->instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | (it->ip & ((1 << LOG2_PAGE_SIZE) - 1));
+              it->translated = COMPLETED;
+              // recalculate a physical address for this cache line based on the translated physical page address
+              it->instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | (it->ip & ((1 << LOG2_PAGE_SIZE) - 1));
 
-                  available_fetch_bandwidth--;
-              }
+              available_fetch_bandwidth--;
+          }
 
-              itlb_entry.instr_depend_on_me.pop_front();
-          }
-          else
-          {
-              // not enough fetch bandwidth to translate this instruction this time, so try again next cycle
-              break;
-          }
+          itlb_entry.instr_depend_on_me.pop_front();
       }
+
 
       // remove this entry if we have serviced all of its instructions
       if (itlb_entry.instr_depend_on_me.empty())
+      {
           ITLB_bus.PROCESSED.pop_front();
+      }
       --to_read;
   }
 
   available_fetch_bandwidth = FETCH_WIDTH;
   to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
 
-  while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty() && L1I_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu])
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty())
   {
       PACKET &l1i_entry = L1I_bus.PROCESSED.front();
 
       // this is the L1I cache, so instructions are now fully fetched, so mark them as such
-      while (!l1i_entry.instr_depend_on_me.empty())
+      while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty())
       {
           auto it = l1i_entry.instr_depend_on_me.front();
-          if (available_fetch_bandwidth > 0)
+          if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address) && it->fetched != 0 && it->translated == COMPLETED)
           {
-             if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address) && it->fetched != 0 && it->translated == COMPLETED)
-             {
-                 it->fetched = COMPLETED;
-                 available_fetch_bandwidth--;
-             }
+              it->fetched = COMPLETED;
+              available_fetch_bandwidth--;
+          }
 
-             l1i_entry.instr_depend_on_me.pop_front();
-          }
-          else
-          {
-              // not enough fetch bandwidth to mark instructions from this block this time, so try again next cycle
-              break;
-          }
+          l1i_entry.instr_depend_on_me.pop_front();
       }
 
       // remove this entry if we have serviced all of its instructions
@@ -1501,7 +1446,7 @@ void O3_CPU::handle_memory_return()
   // Data Memory
   to_read = static_cast<CACHE*>(DTLB_bus.lower_level)->MAX_READ;
 
-  while (to_read > 0 && !DTLB_bus.PROCESSED.empty() && (DTLB_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu]))
+  while (to_read > 0 && !DTLB_bus.PROCESSED.empty())
 	{ // DTLB
 	  PACKET &dtlb_entry = DTLB_bus.PROCESSED.front();
 
@@ -1523,7 +1468,7 @@ void O3_CPU::handle_memory_return()
           RTL1.push(lq_merged);
 	    }
 
-	  ROB.entry[dtlb_entry.rob_index].event_cycle = dtlb_entry.event_cycle;
+	  ROB.entry[dtlb_entry.rob_index].event_cycle = current_core_cycle[cpu];
 
 	  // remove this entry
 	  DTLB_bus.PROCESSED.pop_front();
@@ -1531,7 +1476,7 @@ void O3_CPU::handle_memory_return()
     }
 
   to_read = static_cast<CACHE*>(L1D_bus.lower_level)->MAX_READ;
-  while (to_read > 0 && !L1D_bus.PROCESSED.empty() && (L1D_bus.PROCESSED.front().event_cycle <= current_core_cycle[cpu]))
+  while (to_read > 0 && !L1D_bus.PROCESSED.empty())
 	{ // L1D
 	  PACKET &l1d_entry = L1D_bus.PROCESSED.front();
 
@@ -1540,7 +1485,7 @@ void O3_CPU::handle_memory_return()
 	      LQ.entry[merged].fetched = COMPLETED;
 	      LQ.entry[merged].event_cycle = current_core_cycle[cpu];
 	      ROB.entry[LQ.entry[merged].rob_index].num_mem_ops--;
-	      ROB.entry[LQ.entry[merged].rob_index].event_cycle = l1d_entry.event_cycle;
+	      ROB.entry[LQ.entry[merged].rob_index].event_cycle = current_core_cycle[cpu];
 
 	      if (ROB.entry[LQ.entry[merged].rob_index].num_mem_ops == 0)
 		inflight_mem_executions++;
@@ -1568,60 +1513,36 @@ void O3_CPU::release_load_queue(uint32_t lq_index)
 
 void O3_CPU::retire_rob()
 {
-  if ((ROB.entry[ROB.head].executed != COMPLETED) || (ROB.entry[ROB.head].event_cycle > current_core_cycle[cpu]))
+    unsigned retire_bandwidth = RETIRE_WIDTH;
+
+    while (retire_bandwidth > 0 && ROB.entry[ROB.head].ip != 0 && (ROB.entry[ROB.head].executed == COMPLETED))
     {
-      return;
-    }
-
-    for (uint32_t n=0; n<RETIRE_WIDTH; n++) {
-        if (ROB.entry[ROB.head].ip == 0)
-            return;
-
-        // retire is in-order
-        if (ROB.entry[ROB.head].executed != COMPLETED) { 
-            DP ( if (warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " head: " << ROB.head << " is not executed yet" << endl; });
-            return;
-        }
-
-        // check store instruction
-        uint32_t num_store = 0;
         for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-            if (ROB.entry[ROB.head].destination_memory[i])
-                num_store++;
-        }
+            if (ROB.entry[ROB.head].destination_memory[i]) {
 
-        if (num_store) {
-                for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-                    if (ROB.entry[ROB.head].destination_memory[i]) {
+                PACKET data_packet;
+                uint32_t sq_index = ROB.entry[ROB.head].sq_index[i];
 
-                        PACKET data_packet;
-                        uint32_t sq_index = ROB.entry[ROB.head].sq_index[i];
+                // sq_index and rob_index are no longer available after retirement
+                // but we pass this information to avoid segmentation fault
+                data_packet.fill_level = FILL_L1;
+                data_packet.cpu = cpu;
+                data_packet.address = SQ.entry[sq_index].physical_address >> LOG2_BLOCK_SIZE;
+                data_packet.full_addr = SQ.entry[sq_index].physical_address;
+                data_packet.v_address = SQ.entry[sq_index].virtual_address >> LOG2_BLOCK_SIZE;
+                data_packet.full_v_addr = SQ.entry[sq_index].virtual_address;
+                data_packet.instr_id = SQ.entry[sq_index].instr_id;
+                data_packet.rob_index = SQ.entry[sq_index].rob_index;
+                data_packet.ip = SQ.entry[sq_index].ip;
+                data_packet.type = RFO;
+                data_packet.asid[0] = SQ.entry[sq_index].asid[0];
+                data_packet.asid[1] = SQ.entry[sq_index].asid[1];
 
-                        // sq_index and rob_index are no longer available after retirement
-                        // but we pass this information to avoid segmentation fault
-                        data_packet.fill_level = FILL_L1;
-                        data_packet.cpu = cpu;
-                        data_packet.data_index = SQ.entry[sq_index].data_index;
-                        data_packet.sq_index = sq_index;
-                        data_packet.address = SQ.entry[sq_index].physical_address >> LOG2_BLOCK_SIZE;
-                        data_packet.full_addr = SQ.entry[sq_index].physical_address;
-                        data_packet.v_address = SQ.entry[sq_index].virtual_address >> LOG2_BLOCK_SIZE;
-                        data_packet.full_v_addr = SQ.entry[sq_index].virtual_address;
-                        data_packet.instr_id = SQ.entry[sq_index].instr_id;
-                        data_packet.rob_index = SQ.entry[sq_index].rob_index;
-                        data_packet.ip = SQ.entry[sq_index].ip;
-                        data_packet.type = RFO;
-                        data_packet.asid[0] = SQ.entry[sq_index].asid[0];
-                        data_packet.asid[1] = SQ.entry[sq_index].asid[1];
-                        data_packet.event_cycle = current_core_cycle[cpu];
-
-                        auto result = L1D_bus.lower_level->add_wq(&data_packet);
-                        if (result != -2)
-                            ROB.entry[ROB.head].destination_memory[i] = 0;
-                        else
-                            return;
-                }
+                auto result = L1D_bus.lower_level->add_wq(&data_packet);
+                if (result != -2)
+                    ROB.entry[ROB.head].destination_memory[i] = 0;
+                else
+                    return;
             }
         }
 
@@ -1631,13 +1552,13 @@ void O3_CPU::retire_rob()
                 uint32_t sq_index = ROB.entry[ROB.head].sq_index[i];
 
                 DP ( if (warmup_complete[cpu]) {
-                cout << "[SQ] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " releases sq_index: " << sq_index;
-                cout << hex << " address: " << (SQ.entry[sq_index].physical_address>>LOG2_BLOCK_SIZE);
-                cout << " full_addr: " << SQ.entry[sq_index].physical_address << dec << endl; });
+                        cout << "[SQ] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " releases sq_index: " << sq_index;
+                        cout << hex << " address: " << (SQ.entry[sq_index].physical_address>>LOG2_BLOCK_SIZE);
+                        cout << " full_addr: " << SQ.entry[sq_index].physical_address << dec << endl; });
 
                 LSQ_ENTRY empty_entry;
                 SQ.entry[sq_index] = empty_entry;
-                
+
                 SQ.occupancy--;
                 SQ.head++;
                 if (SQ.head == SQ.SIZE)
@@ -1647,17 +1568,18 @@ void O3_CPU::retire_rob()
 
         // release ROB entry
         DP ( if (warmup_complete[cpu]) {
-        cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });
+                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " is retired" << endl; });
 
         ooo_model_instr empty_entry;
         ROB.entry[ROB.head] = empty_entry;
-	
+
         ROB.head++;
         if (ROB.head == ROB.SIZE)
             ROB.head = 0;
         ROB.occupancy--;
         completed_executions--;
         num_retired++;
+        retire_bandwidth--;
     }
 }
 
@@ -1665,7 +1587,6 @@ void CacheBus::return_data(PACKET *packet)
 {
     if (packet->type != PREFETCH)
     {
-        //std::cout << "add to processed" << std::endl;
         PROCESSED.push_back(*packet);
     }
 }

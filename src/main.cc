@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <array>
 #include <getopt.h>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <signal.h>
 #include <vector>
@@ -10,8 +12,6 @@
 #include "ooo_cpu.h"
 #include "vmem.h"
 #include "tracereader.h"
-
-#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024)
 
 uint8_t warmup_complete[NUM_CPUS], 
         simulation_complete[NUM_CPUS], 
@@ -263,7 +263,7 @@ void print_deadlock(uint32_t i)
     for (PACKET &entry : static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->MSHR) {
         std::cout << "[L1D MSHR] entry: " << j << " instr_id: " << entry.instr_id << " rob_index: " << entry.rob_index;
         std::cout << " address: " << std::hex << entry.address << " full_addr: " << entry.full_addr << std::dec << " type: " << +entry.type;
-        std::cout << " fill_level: " << entry.fill_level << " lq_index: " << entry.lq_index << " sq_index: " << entry.sq_index << " event_cycle: " << entry.event_cycle << std::endl;
+        std::cout << " fill_level: " << entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
         ++j;
     }
 
@@ -378,7 +378,7 @@ int main(int argc, char** argv)
     DRAM_DBUS_RETURN_TIME = (BLOCK_SIZE / DRAM_CHANNEL_WIDTH) * (CPU_FREQ / DRAM_MTPS);
 
     printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
-            DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
+            (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024), DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
 
     // end consequence of knobs
 
