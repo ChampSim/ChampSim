@@ -26,14 +26,6 @@ void O3_CPU::operate()
     handle_memory_return(); // finalize memory transactions
     operate_lsq(); // execute memory transactions
 
-    // operate caches
-    static_cast<CACHE*>(ITLB_bus.lower_level)->_operate();
-    static_cast<CACHE*>(DTLB_bus.lower_level)->_operate();
-    static_cast<CACHE*>(static_cast<CACHE*>(DTLB_bus.lower_level)->lower_level)->_operate();
-    static_cast<CACHE*>(L1I_bus.lower_level)->_operate();
-    static_cast<CACHE*>(L1D_bus.lower_level)->_operate();
-    static_cast<CACHE*>(static_cast<CACHE*>(L1D_bus.lower_level)->lower_level)->_operate();
-
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();
 

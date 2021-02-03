@@ -32,7 +32,7 @@ extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
-extern std::array<champsim::operable*, NUM_CPUS+2> operables;
+extern std::array<champsim::operable*, 7*NUM_CPUS+2> operables;
 
 std::vector<tracereader*> traces;
 

@@ -228,11 +228,11 @@ with open(instantiation_file_name, 'wt') as wfp:
         wfp.write('&cpu{}_inst'.format(i))
     wfp.write('\n};\n')
 
-    wfp.write('std::array<champsim::operable*, NUM_CPUS+2> operables {\n')
+    wfp.write('std::array<champsim::operable*, 7*NUM_CPUS+2> operables {\n')
     for i in range(len(config_file['ooo_cpu'])):
         if i > 0:
             wfp.write(',\n')
-        wfp.write('&cpu{}_inst'.format(i))
+        wfp.write('&cpu{0}_inst, &cpu{0}L2C, &cpu{0}L1D, &cpu{0}L1I, &cpu{0}STLB, &cpu{0}DTLB, &cpu{0}ITLB'.format(i))
     wfp.write(',\n&LLC')
     wfp.write(',\n&DRAM')
     wfp.write('\n};\n')
