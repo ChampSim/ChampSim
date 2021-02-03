@@ -126,23 +126,39 @@ for cpu in config_file['ooo_cpu']:
 
 config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency'] - config_file['LLC']['fill_latency'])
 
-# Scale frequencies by the GCD
+# private caches operate by default at the same frequency as their cores
+for cpu in config_file['ooo_cpu']:
+    if 'frequency' not in cpu['L1I']:
+        cpu['L1I']['frequency'] = cpu['frequency']
+    if 'frequency' not in cpu['L1D']:
+        cpu['L1D']['frequency'] = cpu['frequency']
+    if 'frequency' not in cpu['L2C']:
+        cpu['L2C']['frequency'] = cpu['frequency']
+    if 'frequency' not in cpu['ITLB']:
+        cpu['ITLB']['frequency'] = cpu['frequency']
+    if 'frequency' not in cpu['DTLB']:
+        cpu['DTLB']['frequency'] = cpu['frequency']
+    if 'frequency' not in cpu['STLB']:
+        cpu['STLB']['frequency'] = cpu['frequency']
+
+# Scale frequencies
 config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
-freqs = (*[cpu['frequency'] for cpu in config_file['ooo_cpu']], config_file['LLC']['frequency'], config_file['physical_memory']['frequency'])
+freqs = list(itertools.chain(
+    *[[cpu['frequency'], cpu['L1I']['frequency'], cpu['L1D']['frequency'], cpu['L2C']['frequency'], cpu['ITLB']['frequency'], cpu['DTLB']['frequency'], cpu['STLB']['frequency']] for cpu in config_file['ooo_cpu']],
+    (config_file['LLC']['frequency'],),
+    (config_file['physical_memory']['frequency'],)
+))
 freqs = [max(freqs)/x for x in freqs]
-for i in range(len(config_file['ooo_cpu'])):
-    config_file['ooo_cpu'][i]['frequency'] = freqs[i]
+for i,cpu in enumerate(config_file['ooo_cpu']):
+    cpu['frequency'] = freqs[7*i]
+    cpu['L1I']['frequency'] = freqs[7*i+1]
+    cpu['L1D']['frequency'] = freqs[7*i+2]
+    cpu['L2C']['frequency'] = freqs[7*i+3]
+    cpu['ITLB']['frequency'] = freqs[7*i+4]
+    cpu['DTLB']['frequency'] = freqs[7*i+5]
+    cpu['STLB']['frequency'] = freqs[7*i+6]
 config_file['LLC']['frequency'] = freqs[-2]
 config_file['physical_memory']['frequency'] = freqs[-1]
-
-# private caches operate at the same frequency as their cores
-for i in range(len(config_file['ooo_cpu'])):
-    config_file['ooo_cpu'][i]['L1I']['frequency'] = config_file['ooo_cpu'][i]['frequency']
-    config_file['ooo_cpu'][i]['L1D']['frequency'] = config_file['ooo_cpu'][i]['frequency']
-    config_file['ooo_cpu'][i]['L2C']['frequency'] = config_file['ooo_cpu'][i]['frequency']
-    config_file['ooo_cpu'][i]['ITLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
-    config_file['ooo_cpu'][i]['DTLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
-    config_file['ooo_cpu'][i]['STLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
 
 ###
 # Copy or trim cores as necessary to fill out the specified number of cores
