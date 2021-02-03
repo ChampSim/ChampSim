@@ -102,13 +102,13 @@ config_file = merge_dicts(default_root, config_file) # doing this early because 
 
 default_core = { 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
-default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1i' }
-default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1d' }
-default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'max_read': 1, 'max_write': 1, 'prefetcher': 'no_l2c' }
-default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'max_read': 2, 'max_write': 2 }
-default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'max_read': 2, 'max_write': 2 }
-default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'max_read': 1, 'max_write': 1 }
-default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
+default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1i' }
+default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1d' }
+default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetcher': 'no_l2c' }
+default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2 }
+default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2 }
+default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1 }
+default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
 default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
 
@@ -143,22 +143,14 @@ config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtu
 # Establish latencies in caches
 # If not specified, hit and fill latencies are half of the total latency, where fill takes longer if the sum is odd.
 for cpu in config_file['ooo_cpu']:
-    cpu['L1I']['hit_latency'] = cpu['L1I'].get('hit_latency', cpu['L1I']['latency']//2)
-    cpu['L1D']['hit_latency'] = cpu['L1D'].get('hit_latency', cpu['L1D']['latency']//2)
-    cpu['L2C']['hit_latency'] = cpu['L2C'].get('hit_latency', cpu['L2C']['latency']//2)
-    cpu['ITLB']['hit_latency'] = cpu['ITLB'].get('hit_latency', cpu['ITLB']['latency']//2)
-    cpu['DTLB']['hit_latency'] = cpu['DTLB'].get('hit_latency', cpu['DTLB']['latency']//2)
-    cpu['STLB']['hit_latency'] = cpu['STLB'].get('hit_latency', cpu['STLB']['latency']//2)
+    cpu['L1I']['hit_latency'] = cpu['L1I'].get('hit_latency', cpu['L1I']['latency'] - cpu['L1I']['fill_latency'])
+    cpu['L1D']['hit_latency'] = cpu['L1D'].get('hit_latency', cpu['L1D']['latency'] - cpu['L1D']['fill_latency'])
+    cpu['L2C']['hit_latency'] = cpu['L2C'].get('hit_latency', cpu['L2C']['latency'] - cpu['L2C']['fill_latency'])
+    cpu['ITLB']['hit_latency'] = cpu['ITLB'].get('hit_latency', cpu['ITLB']['latency'] - cpu['ITLB']['fill_latency'])
+    cpu['DTLB']['hit_latency'] = cpu['DTLB'].get('hit_latency', cpu['DTLB']['latency'] - cpu['DTLB']['fill_latency'])
+    cpu['STLB']['hit_latency'] = cpu['STLB'].get('hit_latency', cpu['STLB']['latency'] - cpu['STLB']['fill_latency'])
 
-    cpu['L1I']['fill_latency'] = cpu['L1I'].get('fill_latency', cpu['L1I']['latency'] - cpu['L1I']['hit_latency'])
-    cpu['L1D']['fill_latency'] = cpu['L1D'].get('fill_latency', cpu['L1D']['latency'] - cpu['L1D']['hit_latency'])
-    cpu['L2C']['fill_latency'] = cpu['L2C'].get('fill_latency', cpu['L2C']['latency'] - cpu['L2C']['hit_latency'])
-    cpu['ITLB']['fill_latency'] = cpu['ITLB'].get('fill_latency', cpu['ITLB']['latency'] - cpu['ITLB']['hit_latency'])
-    cpu['DTLB']['fill_latency'] = cpu['DTLB'].get('fill_latency', cpu['DTLB']['latency'] - cpu['DTLB']['hit_latency'])
-    cpu['STLB']['fill_latency'] = cpu['STLB'].get('fill_latency', cpu['STLB']['latency'] - cpu['STLB']['hit_latency'])
-
-config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency']//2)
-config_file['LLC']['fill_latency'] = config_file['LLC'].get('fill_latency', config_file['LLC']['latency'] + config_file['LLC']['hit_latency'])
+config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency'] - config_file['LLC']['fill_latency'])
 
 ###
 # Copy or trim cores as necessary to fill out the specified number of cores
