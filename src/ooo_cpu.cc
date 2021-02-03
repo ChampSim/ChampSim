@@ -1481,19 +1481,12 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
 
 void O3_CPU::operate_cache()
 {
-    ITLB.operate_writes();
-    DTLB.operate_writes();
-    STLB.operate_writes();
-    L1I.operate_writes();
-    L1D.operate_writes();
-    L2C.operate_writes();
-
-    L2C.operate_reads();
-    L1D.operate_reads();
-    L1I.operate_reads();
-    STLB.operate_reads();
-    DTLB.operate_reads();
-    ITLB.operate_reads();
+    L2C.operate();
+    L1D.operate();
+    L1I.operate();
+    STLB.operate();
+    DTLB.operate();
+    ITLB.operate();
 
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();

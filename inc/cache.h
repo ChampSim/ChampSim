@@ -29,7 +29,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint32_t cpu;
     const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-    uint32_t LATENCY = 0;
+    const uint32_t HIT_LATENCY, FILL_LATENCY;
     std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     int fill_level = -1;
     const uint32_t MAX_READ, MAX_WRITE;
@@ -44,10 +44,10 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              pf_fill = 0;
 
     // queues
-    champsim::delay_queue<PACKET> RQ{RQ_SIZE, LATENCY}, // read queue
-                                  PQ{PQ_SIZE, LATENCY}, // prefetch queue
+    champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
+                                  PQ{PQ_SIZE, HIT_LATENCY}, // prefetch queue
                                   VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
-                                  WQ{WQ_SIZE, LATENCY}; // write queue
+                                  WQ{WQ_SIZE, HIT_LATENCY}; // write queue
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
@@ -75,8 +75,11 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t max_read, uint32_t max_write)
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), MAX_READ(max_read), MAX_WRITE(max_write) {
+    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write)
+        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write)
+    {
     }
 
     // functions
