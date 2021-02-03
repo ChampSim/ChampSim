@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import math
 import json
 import sys,os
 import itertools
 import functools
+import operator
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -26,12 +28,12 @@ config_cache_name = '.champsimconfig_cache'
 # Begin format strings
 ###
 
-llc_fmtstr = 'CACHE {name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {ll});\n'
-cache_fmtstr = 'CACHE cpu{cpu}{name}("{name}", {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {ll});\n'
+llc_fmtstr = 'CACHE {name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {ll});\n'
+cache_fmtstr = 'CACHE cpu{cpu}{name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {ll});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}L1I, &cpu{cpu}L1D);\n'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
+pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM", {attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
 module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
@@ -48,10 +50,9 @@ const_names = {
     'block_size': 'BLOCK_SIZE',
     'page_size': 'PAGE_SIZE',
     'heartbeat_frequency': 'STAT_PRINTING_PERIOD',
-    'cpu_clock_freq': 'CPU_FREQ',
     'num_cores': 'NUM_CPUS',
     'physical_memory': {
-        'frequency': 'DRAM_IO_FREQ',
+        'io_freq': 'DRAM_IO_FREQ',
         'channels': 'DRAM_CHANNELS',
         'ranks': 'DRAM_RANKS',
         'banks': 'DRAM_BANKS',
@@ -71,10 +72,10 @@ const_names = {
 # Begin default core model definition
 ###
 
-default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'cpu_clock_freq' : 4000, 'num_cores': 1, 'ooo_cpu': [{}] }
+default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'ooo_cpu': [{}] }
 config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
 
-default_core = { 'frequency': 1, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
+default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1i' }
 default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetcher': 'no_l1d' }
@@ -110,7 +111,8 @@ for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i]['DTLB'] = merge_dicts(default_dtlb, config_file.get('DTLB', {}), config_file['ooo_cpu'][i].get('DTLB',{}))
     config_file['ooo_cpu'][i]['STLB'] = merge_dicts(default_stlb, config_file.get('STLB', {}), config_file['ooo_cpu'][i].get('STLB',{}))
 
-config_file['LLC'] = merge_dicts(default_llc, config_file.get('LLC',{}))
+# LLC operates at maximum freqency of cores, if not already specified
+config_file['LLC'] = merge_dicts(default_llc, {'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
 config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
 
@@ -125,6 +127,24 @@ for cpu in config_file['ooo_cpu']:
     cpu['STLB']['hit_latency'] = cpu['STLB'].get('hit_latency', cpu['STLB']['latency'] - cpu['STLB']['fill_latency'])
 
 config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency'] - config_file['LLC']['fill_latency'])
+
+# Scale frequencies by the GCD
+config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
+freqs = (*[cpu['frequency'] for cpu in config_file['ooo_cpu']], config_file['LLC']['frequency'], config_file['physical_memory']['frequency'])
+freqs = [max(freqs)/x for x in freqs]
+for i in range(len(config_file['ooo_cpu'])):
+    config_file['ooo_cpu'][i]['frequency'] = freqs[i]
+config_file['LLC']['frequency'] = freqs[-2]
+config_file['physical_memory']['frequency'] = freqs[-1]
+
+# private caches operate at the same frequency as their cores
+for i in range(len(config_file['ooo_cpu'])):
+    config_file['ooo_cpu'][i]['L1I']['frequency'] = config_file['ooo_cpu'][i]['frequency']
+    config_file['ooo_cpu'][i]['L1D']['frequency'] = config_file['ooo_cpu'][i]['frequency']
+    config_file['ooo_cpu'][i]['L2C']['frequency'] = config_file['ooo_cpu'][i]['frequency']
+    config_file['ooo_cpu'][i]['ITLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
+    config_file['ooo_cpu'][i]['DTLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
+    config_file['ooo_cpu'][i]['STLB']['frequency'] = config_file['ooo_cpu'][i]['frequency']
 
 ###
 # Copy or trim cores as necessary to fill out the specified number of cores
@@ -184,6 +204,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "dram_controller.h"\n')
     wfp.write('#include "ooo_cpu.h"\n')
     wfp.write('#include "vmem.h"\n')
+    wfp.write('#include "operable.h"\n')
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')
     wfp.write('#include <array>\n')
 
@@ -207,6 +228,15 @@ with open(instantiation_file_name, 'wt') as wfp:
         wfp.write('&cpu{}_inst'.format(i))
     wfp.write('\n};\n')
 
+    wfp.write('std::array<champsim::operable*, NUM_CPUS+2> operables {\n')
+    for i in range(len(config_file['ooo_cpu'])):
+        if i > 0:
+            wfp.write(',\n')
+        wfp.write('&cpu{}_inst'.format(i))
+    wfp.write(',\n&LLC')
+    wfp.write(',\n&DRAM')
+    wfp.write('\n};\n')
+
     wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
     wfp.write('\n')
 
@@ -222,7 +252,6 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_log_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
-    wfp.write(define_fmtstr.format(name='cpu_clock_freq').format(names=const_names, config=config_file))
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS']:

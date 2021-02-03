@@ -1,6 +1,8 @@
 #ifndef OPERABLE_H
 #define OPERABLE_H
 
+#include <iostream>
+
 namespace champsim {
 
 class operable {
@@ -10,13 +12,14 @@ class operable {
     double leap_operation = 0;
     uint64_t current_cycle = 0;
 
-    explicit operable(double scale) : CLOCK_SCALE(1-scale) {}
+    explicit operable(double scale) : CLOCK_SCALE(scale-1) {}
 
     void _operate()
     {
         // skip periodically
         leap_operation += CLOCK_SCALE;
-        if (leap_operation > 1)
+
+        if (leap_operation >= 1)
         {
             leap_operation -= 1;
             return;
@@ -28,6 +31,15 @@ class operable {
     }
 
     virtual void operate() = 0;
+};
+
+class by_next_operate
+{
+    public:
+        bool operator() (operable *lhs, operable *rhs) const
+        {
+            return lhs->leap_operation < rhs->leap_operation;
+        }
 };
 
 }

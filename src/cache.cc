@@ -5,7 +5,6 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "ooo_cpu.h"
 #include "set.h"
 #include "util.h"
 #include "vmem.h"
@@ -17,7 +16,6 @@
 uint64_t l2pf_access = 0;
 
 extern VirtualMemory vmem;
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern uint8_t  warmup_complete[NUM_CPUS];
 
 class min_fill_index
@@ -26,16 +24,6 @@ class min_fill_index
     bool operator() (PACKET lhs, PACKET rhs)
     {
         return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
-template <>
-struct is_valid<PACKET>
-{
-    is_valid() {}
-    bool operator()(const PACKET &test)
-    {
-        return test.address != 0;
     }
 };
 
@@ -57,7 +45,7 @@ void CACHE::handle_fill()
     while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = MSHR.begin();
-        if (!fill_mshr->returned || fill_mshr->event_cycle > ooo_cpu[fill_mshr->cpu]->current_cycle)
+        if (!fill_mshr->returned || fill_mshr->event_cycle > current_cycle)
             return;
 
         // find victim
@@ -286,7 +274,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
             assert(it != std::end(MSHR));
             *it = handle_pkt;
-            it->cycle_enqueued = ooo_cpu[handle_pkt.cpu]->current_cycle;
+            it->cycle_enqueued = current_cycle;
         }
 
         // Send to the lower level
@@ -306,7 +294,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
                     std::cout << " address: " << std::hex << handle_pkt.address << " full_addr: " << handle_pkt.full_addr;
                     std::cout << " data: " << handle_pkt.data << std::dec;
-                    std::cout << " event: " << handle_pkt.event_cycle << " current: " << ooo_cpu[handle_pkt.cpu]->current_cycle << std::endl; });
+                    std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl; });
         }
         else
         {
@@ -402,11 +390,11 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
                 std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
                 std::cout << " address: " << std::hex << handle_pkt.address << " full_addr: " << handle_pkt.full_addr;
                 std::cout << " data: " << handle_pkt.data << std::dec;
-                std::cout << " event: " << handle_pkt.event_cycle << " current: " << ooo_cpu[handle_pkt.cpu]->current_cycle << std::endl; });
+                std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl; });
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-        total_miss_latency += ooo_cpu[handle_pkt.cpu]->current_cycle - handle_pkt.cycle_enqueued;
+        total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     // update prefetcher
     if (cache_type == IS_L1I)
@@ -780,7 +768,7 @@ void CACHE::return_data(PACKET *packet)
         std::cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
         std::cerr << " full_addr: " << std::hex << packet->full_addr;
         std::cerr << " address: " << packet->address << std::dec;
-        std::cerr << " event: " << packet->event_cycle << " current: " << ooo_cpu[packet->cpu]->current_cycle << std::endl;
+        std::cerr << " event: " << packet->event_cycle << " current: " << current_cycle << std::endl;
         assert(0);
     }
 
@@ -791,14 +779,14 @@ void CACHE::return_data(PACKET *packet)
     mshr_entry->pf_metadata = packet->pf_metadata;
 
     // ADD LATENCY
-    mshr_entry->event_cycle = ooo_cpu[cpu]->current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
+    mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
             std::cout << " address: " << std::hex << mshr_entry->address << " full_addr: " << mshr_entry->full_addr;
             std::cout << " data: " << mshr_entry->data << std::dec;
             std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
-            std::cout << " event: " << mshr_entry->event_cycle << " current: " << ooo_cpu[cpu]->current_cycle << std::endl; });
+            std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl; });
 
     MSHR.sort(min_fill_index());
 }

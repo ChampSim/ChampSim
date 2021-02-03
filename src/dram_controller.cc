@@ -1,13 +1,7 @@
 #include <algorithm>
 #include "dram_controller.h"
 #include "champsim_constants.h"
-#include "ooo_cpu.h"
 
-// initialized in main.cc
-uint32_t DRAM_MTPS, DRAM_DBUS_RETURN_TIME,
-         tRP, tRCD, tCAS;
-
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern uint8_t  all_warmup_complete;
 
 void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t channel)
@@ -16,8 +10,7 @@ void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t chan
         if (queue->entry[i].scheduled) {
 
             uint64_t op_addr = queue->entry[i].address;
-            uint32_t op_cpu = queue->entry[i].cpu,
-                     op_channel = dram_get_channel(op_addr), 
+            uint32_t op_channel = dram_get_channel(op_addr), 
                      op_rank = dram_get_rank(op_addr), 
                      op_bank = dram_get_bank(op_addr), 
                      op_row = dram_get_row(op_addr);
@@ -27,7 +20,7 @@ void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t chan
 #endif
 
             // update open row
-            if ((bank_request[op_channel][op_rank][op_bank].cycle_available - tCAS) <= ooo_cpu[op_cpu]->current_cycle)
+            if ((bank_request[op_channel][op_rank][op_bank].cycle_available - tCAS) <= current_cycle)
                 bank_request[op_channel][op_rank][op_bank].open_row = op_row;
             else
                 bank_request[op_channel][op_rank][op_bank].open_row = UINT32_MAX;
@@ -36,7 +29,7 @@ void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t chan
             bank_request[op_channel][op_rank][op_bank].request_index = -1;
             bank_request[op_channel][op_rank][op_bank].row_buffer_hit = 0;
             bank_request[op_channel][op_rank][op_bank].working = 0;
-            bank_request[op_channel][op_rank][op_bank].cycle_available = ooo_cpu[op_cpu]->current_cycle;
+            bank_request[op_channel][op_rank][op_bank].cycle_available = current_cycle;
             if (bank_request[op_channel][op_rank][op_bank].is_write) {
                 scheduled_writes[channel]--;
                 bank_request[op_channel][op_rank][op_bank].is_write = 0;
@@ -47,9 +40,10 @@ void MEMORY_CONTROLLER::reset_remain_requests(PACKET_QUEUE *queue, uint32_t chan
             }
 
             queue->entry[i].scheduled = 0;
-            queue->entry[i].event_cycle = ooo_cpu[op_cpu]->current_cycle;
+            // processed packets are permitted to continue returning
+            queue->entry[i].event_cycle = current_cycle;
 
-            DP ( if (warmup_complete[op_cpu]) {
+            DP ( if (all_warmup_complete > NUM_CPUS) {
             cout << queue->NAME << " instr_id: " << queue->entry[i].instr_id << " swrites: " << scheduled_writes[channel] << " sreads: " << scheduled_reads[channel] << endl; });
 
         }
@@ -83,7 +77,6 @@ struct first_completed
 void MEMORY_CONTROLLER::operate()
 {
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        //if ((write_mode[i] == 0) && (WQ[i].occupancy >= DRAM_WRITE_HIGH_WM)) {
       if ((write_mode[i] == 0) && ((WQ[i].occupancy >= DRAM_WRITE_HIGH_WM) || ((RQ[i].occupancy == 0) && (WQ[i].occupancy > 0)))) { // use idle cycles to perform writes
             write_mode[i] = 1;
 
@@ -91,51 +84,51 @@ void MEMORY_CONTROLLER::operate()
             reset_remain_requests(&RQ[i], i);
             // add data bus turn-around time
             dbus_cycle_available[i] += DRAM_DBUS_TURN_AROUND_TIME;
-        } else if (write_mode[i]) {
+        } else if (write_mode[i] && ((WQ[i].occupancy == 0) || (RQ[i].occupancy > 0 && (WQ[i].occupancy < DRAM_WRITE_LOW_WM)))) {
+            write_mode[i] = 0;
 
-            if (WQ[i].occupancy == 0)
-                write_mode[i] = 0;
-            else if (RQ[i].occupancy && (WQ[i].occupancy < DRAM_WRITE_LOW_WM))
-                write_mode[i] = 0;
-
-            if (write_mode[i] == 0) {
-                // reset scheduled WQ requests
-                reset_remain_requests(&WQ[i], i);
-                // add data bus turnaround time
-                dbus_cycle_available[i] += DRAM_DBUS_TURN_AROUND_TIME;
-            }
+            // reset scheduled WQ requests
+            reset_remain_requests(&WQ[i], i);
+            // add data bus turnaround time
+            dbus_cycle_available[i] += DRAM_DBUS_TURN_AROUND_TIME;
         }
 
         // handle write
         // schedule new entry
         if (write_mode[i] && (WQ[i].next_schedule_index < WQ[i].SIZE)) {
-            if (WQ[i].next_schedule_cycle <= ooo_cpu[WQ[i].entry[WQ[i].next_schedule_index].cpu]->current_cycle)
+            if (WQ[i].next_schedule_cycle <= current_cycle)
                 schedule(&WQ[i]);
         }
 
         // process DRAM requests
         if (write_mode[i] && (WQ[i].next_process_index < WQ[i].SIZE)) {
-            if (WQ[i].next_process_cycle <= ooo_cpu[WQ[i].entry[WQ[i].next_process_index].cpu]->current_cycle)
+            if (WQ[i].next_process_cycle <= current_cycle)
                 process(&WQ[i]);
         }
 
         // handle read
         // schedule new entry
         if ((write_mode[i] == 0) && (RQ[i].next_schedule_index < RQ[i].SIZE)) {
-            if (RQ[i].next_schedule_cycle <= ooo_cpu[RQ[i].entry[RQ[i].next_schedule_index].cpu]->current_cycle)
+            if (RQ[i].next_schedule_cycle <= current_cycle)
                 schedule(&RQ[i]);
         }
 
         // process DRAM requests
         if ((write_mode[i] == 0) && (RQ[i].next_process_index < RQ[i].SIZE)) {
-            if (RQ[i].next_process_cycle <= ooo_cpu[RQ[i].entry[RQ[i].next_process_index].cpu]->current_cycle)
+            if (RQ[i].next_process_cycle <= current_cycle)
                 process(&RQ[i]);
         }
 
         // send data back to the core cache hierarchy
         auto complete = std::min_element(RQ[i].entry, std::next(RQ[i].entry, RQ[i].SIZE), first_completed());
-        if ((write_mode[i] == 0) && complete->processed && complete->event_cycle <= ooo_cpu[complete->cpu]->current_cycle)
+        if ((write_mode[i] == 0) && complete->processed && complete->event_cycle <= current_cycle)
         {
+            //std::cout << "[DRAM_RQ" << i << "] " <<  __func__ << " return data" << std::hex;
+            //std::cout << " address: " << complete->address << " full_addr: " << complete->full_addr << std::dec;
+            //std::cout << " occupancy: " << RQ[i].occupancy << " channel: " << dram_get_channel(complete->address) << " rank: " << dram_get_rank(complete->address) << " bank: " << dram_get_bank(complete->address);
+            //std::cout << " row: " << dram_get_row(complete->address) << " column: " << dram_get_column(complete->address);
+            //std::cout << " current_cycle: " << current_cycle << " event_cycle: " << complete->event_cycle << std::endl;
+
             for (auto ret : complete->to_return)
                 ret->return_data(&(*complete));
 
@@ -249,8 +242,7 @@ void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
             LATENCY = tRP + tRCD + tCAS;
 
         uint64_t op_addr = queue->entry[oldest_index].address;
-        uint32_t op_cpu = queue->entry[oldest_index].cpu,
-                 op_channel = dram_get_channel(op_addr), 
+        uint32_t op_channel = dram_get_channel(op_addr), 
                  op_rank = dram_get_rank(op_addr), 
                  op_bank = dram_get_bank(op_addr), 
                  op_row = dram_get_row(op_addr);
@@ -261,7 +253,7 @@ void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
         // this bank is now busy
         bank_request[op_channel][op_rank][op_bank].working = 1;
         bank_request[op_channel][op_rank][op_bank].working_type = queue->entry[oldest_index].type;
-        bank_request[op_channel][op_rank][op_bank].cycle_available = ooo_cpu[op_cpu]->current_cycle + LATENCY;
+        bank_request[op_channel][op_rank][op_bank].cycle_available = current_cycle + LATENCY;
 
         bank_request[op_channel][op_rank][op_bank].request_index = oldest_index;
         bank_request[op_channel][op_rank][op_bank].row_buffer_hit = row_buffer_hit;
@@ -280,19 +272,19 @@ void MEMORY_CONTROLLER::schedule(PACKET_QUEUE *queue)
         bank_request[op_channel][op_rank][op_bank].open_row = op_row;
 
         queue->entry[oldest_index].scheduled = 1;
-        queue->entry[oldest_index].event_cycle = ooo_cpu[op_cpu]->current_cycle + LATENCY;
+        queue->entry[oldest_index].event_cycle = current_cycle + LATENCY;
 
         update_schedule_cycle(queue);
         update_process_cycle(queue);
 
-        DP (if (warmup_complete[op_cpu]) {
+        DP (if (all_warmup_complete > NUM_CPUS) {
         cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[oldest_index].instr_id;
         cout << " row buffer: " << (row_buffer_hit ? (int)bank_request[op_channel][op_rank][op_bank].open_row : -1) << hex;
         cout << " address: " << queue->entry[oldest_index].address << " full_addr: " << queue->entry[oldest_index].full_addr << dec;
         cout << " index: " << oldest_index << " occupancy: " << queue->occupancy;
         cout << " ch: " << op_channel << " rank: " << op_rank << " bank: " << op_bank; // wrong from here
         cout << " row: " << op_row << " col: " << op_column;
-        cout << " current: " << ooo_cpu[op_cpu]->current_cycle << " event: " << queue->entry[oldest_index].event_cycle << endl; });
+        cout << " current: " << current_cycle << " event: " << queue->entry[oldest_index].event_cycle << endl; });
     }
 }
 
@@ -306,8 +298,7 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
 
     uint8_t  op_type = queue->entry[request_index].type;
     uint64_t op_addr = queue->entry[request_index].address;
-    uint32_t op_cpu = queue->entry[request_index].cpu,
-             op_channel = dram_get_channel(op_addr), 
+    uint32_t op_channel = dram_get_channel(op_addr), 
              op_rank = dram_get_rank(op_addr), 
              op_bank = dram_get_bank(op_addr);
 #ifdef DEBUG_PRINT
@@ -321,13 +312,13 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
     }
 
     // paid all DRAM access latency, data is ready to be processed
-    if (bank_request[op_channel][op_rank][op_bank].cycle_available <= ooo_cpu[op_cpu]->current_cycle) {
+    if (bank_request[op_channel][op_rank][op_bank].cycle_available <= current_cycle) {
 
         // check if data bus is available
-        if (dbus_cycle_available[op_channel] <= ooo_cpu[op_cpu]->current_cycle) {
+        if (dbus_cycle_available[op_channel] <= current_cycle) {
 
             // update data bus cycle time
-            dbus_cycle_available[op_channel] = ooo_cpu[op_cpu]->current_cycle + DRAM_DBUS_RETURN_TIME;
+            dbus_cycle_available[op_channel] = current_cycle + DRAM_DBUS_RETURN_TIME;
 
             if (bank_request[op_channel][op_rank][op_bank].row_buffer_hit)
                 queue->ROW_BUFFER_HIT++;
@@ -350,12 +341,12 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
             } else {
                 queue->entry[request_index].event_cycle = dbus_cycle_available[op_channel]; 
 
-                DP ( if (warmup_complete[op_cpu]) {
+                DP ( if (all_warmup_complete > NUM_CPUS) {
                 cout << "[" << queue->NAME << "] " <<  __func__ << " return data" << hex;
                 cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
                 cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
                 cout << " row: " << op_row << " column: " << op_column;
-                cout << " current_cycle: " << ooo_cpu[op_cpu]->current_cycle << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
+                cout << " current_cycle: " << current_cycle << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
 
                 queue->entry[request_index].processed = true;
 
@@ -372,15 +363,15 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
             if ((op_type == PREFETCH) || (op_type == LOAD)) {
                 // just magically return prefetch request (no need to update data bus cycle time)
                 /*
-                dbus_cycle_available[op_channel] = ooo_cpu[op_cpu]->current_cycle + DRAM_DBUS_RETURN_TIME;
+                dbus_cycle_available[op_channel] = current_cycle + DRAM_DBUS_RETURN_TIME;
                 queue->entry[request_index].event_cycle = dbus_cycle_available[op_channel]; 
 
-                DP ( if (warmup_complete[op_cpu]) {
+                DP ( if (all_warmup_complete > NUM_CPUS) {
                 cout << "[" << queue->NAME << "] " <<  __func__ << " return data" << hex;
                 cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
                 cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
                 cout << " row: " << op_row << " column: " << op_column;
-                cout << " current_cycle: " << ooo_cpu[op_cpu]->current_cycle << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
+                cout << " current_cycle: " << current_cycle << " event_cycle: " << queue->entry[request_index].event_cycle << endl; });
                 */
 
                 // send data back to the core cache hierarchy
@@ -409,26 +400,26 @@ void MEMORY_CONTROLLER::process(PACKET_QUEUE *queue)
             }
 #endif
 
-            dbus_cycle_congested[op_channel] += (dbus_cycle_available[op_channel] - ooo_cpu[op_cpu]->current_cycle);
+            dbus_cycle_congested[op_channel] += (dbus_cycle_available[op_channel] - current_cycle);
             bank_request[op_channel][op_rank][op_bank].cycle_available = dbus_cycle_available[op_channel];
             dbus_congested[NUM_TYPES][NUM_TYPES]++;
             dbus_congested[NUM_TYPES][op_type]++;
             dbus_congested[bank_request[op_channel][op_rank][op_bank].working_type][NUM_TYPES]++;
             dbus_congested[bank_request[op_channel][op_rank][op_bank].working_type][op_type]++;
 
-            DP ( if (warmup_complete[op_cpu]) {
+            DP ( if (all_warmup_complete > NUM_CPUS) {
             cout << "[" << queue->NAME << "] " <<  __func__ << " dbus_occupied" << hex;
             cout << " address: " << queue->entry[request_index].address << " full_addr: " << queue->entry[request_index].full_addr << dec;
             cout << " occupancy: " << queue->occupancy << " channel: " << op_channel << " rank: " << op_rank << " bank: " << op_bank;
             cout << " row: " << op_row << " column: " << op_column;
-            cout << " current_cycle: " << ooo_cpu[op_cpu]->current_cycle << " event_cycle: " << bank_request[op_channel][op_rank][op_bank].cycle_available << endl; });
+            cout << " current_cycle: " << current_cycle << " event_cycle: " << bank_request[op_channel][op_rank][op_bank].cycle_available << endl; });
         }
     }
 }
 
 int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
-    packet->event_cycle = ooo_cpu[packet->cpu]->current_cycle;
+    packet->event_cycle = current_cycle;
 
     // simply return read requests with dummy response before the warmup
     if (all_warmup_complete < NUM_CPUS) {
@@ -447,7 +438,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
         for (auto ret : packet->to_return)
             ret->return_data(packet);
 
-        DP ( if (packet->cpu) {
+        DP ( if (all_warmup_complete > NUM_CPUS) {
         cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " found recent writebacks";
         cout << hex << " read: " << packet->address << " writeback: " << WQ[channel].entry[wq_index].address << dec << endl; });
 
@@ -476,13 +467,12 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
                      bank = dram_get_bank(packet->address),
                      row = dram_get_row(packet->address),
                      column = dram_get_column(packet->address); 
-#endif
 
-            DP ( if(warmup_complete[packet->cpu]) {
             cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << hex << packet->address;
             cout << " full_addr: " << packet->full_addr << dec << " ch: " << channel;
             cout << " rank: " << rank << " bank: " << bank << " row: " << row << " col: " << column;
-            cout << " occupancy: " << RQ[channel].occupancy << " current: " << ooo_cpu[packet->cpu]->current_cycle << " event: " << packet->event_cycle << endl; });
+            cout << " occupancy: " << RQ[channel].occupancy << " current: " << current_cycle << " event: " << packet->event_cycle << endl;
+#endif
 
             break;
         }
@@ -495,7 +485,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 {
-    packet->event_cycle = ooo_cpu[packet->cpu]->current_cycle;
+    packet->event_cycle = current_cycle;
 
     // simply drop write requests before the warmup
     if (all_warmup_complete < NUM_CPUS)
@@ -512,7 +502,6 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
         if (WQ[channel].entry[index].address == 0) {
             
             WQ[channel].entry[index] = *packet;
-            WQ[channel].entry[index].event_cycle = ooo_cpu[packet->cpu]->current_cycle;
             WQ[channel].occupancy++;
 
 #ifdef DEBUG_PRINT
@@ -521,13 +510,12 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
                      bank = dram_get_bank(packet->address),
                      row = dram_get_row(packet->address),
                      column = dram_get_column(packet->address); 
-#endif
 
-            DP ( if(warmup_complete[packet->cpu]) {
             cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << hex << packet->address;
             cout << " full_addr: " << packet->full_addr << dec << " ch: " << channel;
             cout << " rank: " << rank << " bank: " << bank << " row: " << row << " col: " << column;
-            cout << " occupancy: " << WQ[channel].occupancy << " current: " << ooo_cpu[packet->cpu]->current_cycle << " event: " << packet->event_cycle << endl; });
+            cout << " occupancy: " << WQ[channel].occupancy << " current: " << current_cycle << " event: " << packet->event_cycle << endl;
+#endif
 
             break;
         }
@@ -571,7 +559,7 @@ void MEMORY_CONTROLLER::update_schedule_cycle(PACKET_QUEUE *queue)
         cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[min_index].instr_id;
         cout << " address: " << hex << queue->entry[min_index].address << " full_addr: " << queue->entry[min_index].full_addr;
         cout << " data: " << queue->entry[min_index].data << dec;
-        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << ooo_cpu[queue->entry[min_index].cpu]->current_cycle << " next: " << queue->next_schedule_cycle << endl; });
+        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << current_cycle << " next: " << queue->next_schedule_cycle << endl; });
     }
 }
 
@@ -595,7 +583,7 @@ void MEMORY_CONTROLLER::update_process_cycle(PACKET_QUEUE *queue)
         cout << "[" << queue->NAME << "] " <<  __func__ << " instr_id: " << queue->entry[min_index].instr_id;
         cout << " address: " << hex << queue->entry[min_index].address << " full_addr: " << queue->entry[min_index].full_addr;
         cout << " data: " << queue->entry[min_index].data << dec << " num_returned: " << queue->num_returned;
-        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << ooo_cpu[queue->entry[min_index].cpu]->current_cycle << " next: " << queue->next_process_cycle << endl; });
+        cout << " event: " << queue->entry[min_index].event_cycle << " current: " << current_cycle << " next: " << queue->next_process_cycle << endl; });
     }
 }
 
@@ -622,7 +610,7 @@ int MEMORY_CONTROLLER::check_dram_queue(PACKET_QUEUE *queue, PACKET *packet)
     cout << " instr_id: " << packet->instr_id << " mshr occupancy: " << queue->occupancy;
     cout << " address: " << hex << packet->address;
     cout << " full_addr: " << packet->full_addr << dec;
-    cout << " cycle: " << ooo_cpu[packet->cpu]->current_cycle << endl; });
+    cout << " cycle: " << current_cycle << endl; });
 
     return -1;
 }

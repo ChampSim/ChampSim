@@ -10,6 +10,7 @@
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
+#include "operable.h"
 #include "vmem.h"
 #include "tracereader.h"
 
@@ -31,6 +32,7 @@ extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
+extern std::array<champsim::operable*, NUM_CPUS+2> operables;
 
 std::vector<tracereader*> traces;
 
@@ -355,24 +357,7 @@ int main(int argc, char** argv)
     cout << "Number of CPUs: " << NUM_CPUS << endl;
     cout << "LLC sets: " << LLC.NUM_SET << endl;
     cout << "LLC ways: " << LLC.NUM_WAY << endl;
-
-    if (knob_low_bandwidth)
-        DRAM_MTPS = DRAM_IO_FREQ/4;
-    else
-        DRAM_MTPS = DRAM_IO_FREQ;
-
-    // DRAM access latency
-    tRP  = (uint32_t)((1.0 * tRP_DRAM_NANOSECONDS  * CPU_FREQ) / 1000); 
-    tRCD = (uint32_t)((1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
-    tCAS = (uint32_t)((1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
-
-    // default: 16 = (64 / 8) * (3200 / 1600)
-    // it takes 16 CPU cycles to tranfser 64B cache block on a 8B (64-bit) bus 
-    // note that dram burst length = BLOCK_SIZE/DRAM_CHANNEL_WIDTH
-    DRAM_DBUS_RETURN_TIME = (BLOCK_SIZE / DRAM_CHANNEL_WIDTH) * (CPU_FREQ / DRAM_MTPS);
-
-    printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
-            (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024), DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
+    std::cout << "Off-chip DRAM Size: " << (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024) << " MB Channels: " << DRAM_CHANNELS << " Width: " << 8*DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
     // end consequence of knobs
 
@@ -453,8 +438,7 @@ int main(int argc, char** argv)
 
     // simulation entry point
     start_time = time(NULL);
-    uint8_t run_simulation = 1;
-    while (run_simulation) {
+    while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
 
         uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
                  elapsed_minute = elapsed_second / 60,
@@ -462,10 +446,14 @@ int main(int argc, char** argv)
         elapsed_minute -= elapsed_hour*60;
         elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
 
-        for (int i=0; i<NUM_CPUS; i++) {
+        for (auto op : operables)
+        {
+            op->_operate();
+        }
+        std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
-            ooo_cpu[i]->_operate();
-	      
+        for (std::size_t i = 0; i < ooo_cpu.size(); ++i)
+        {
             // read from trace
             while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
             {
@@ -501,15 +489,6 @@ int main(int argc, char** argv)
                 finish_warmup();
             }
 
-            /*
-            if (all_warmup_complete == 0) { 
-                all_warmup_complete = 1;
-                finish_warmup();
-            }
-            if (ooo_cpu[1]->num_retired > 0)
-                warmup_complete[1] = 1;
-            */
-            
             // simulation complete
             if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
                 simulation_complete[i] = 1;
@@ -524,17 +503,8 @@ int main(int argc, char** argv)
                 record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
                 record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
                 record_roi_stats(i, &LLC);
-
-                all_simulation_complete++;
             }
-
-            if (all_simulation_complete == NUM_CPUS)
-                run_simulation = 0;
         }
-
-        // TODO: should it be backward?
-        DRAM.operate();
-        LLC.operate();
     }
 
     uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),

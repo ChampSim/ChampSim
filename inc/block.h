@@ -46,6 +46,16 @@ class PACKET {
     std::list<MemoryRequestProducer*> to_return;
 };
 
+template <>
+struct is_valid<PACKET>
+{
+    is_valid() {}
+    bool operator()(const PACKET &test)
+    {
+        return test.address != 0;
+    }
+};
+
 template <typename LIST>
 void packet_dep_merge(LIST &dest, LIST &src)
 {

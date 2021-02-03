@@ -89,16 +89,6 @@ class MemoryRequestProducer
         explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
 };
 
-// DRAM CACHE BLOCK
-class DRAM_ARRAY {
-  public:
-    BLOCK **block;
-
-    DRAM_ARRAY() {
-        block = NULL;
-    };
-};
-
 struct BANK_REQUEST {
     uint64_t cycle_available = 0,
              address = 0,
