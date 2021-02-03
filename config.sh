@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import math
 import json
 import sys,os
 import itertools
 import functools
-import operator
 
 # Read the config file
 if len(sys.argv) >= 2:
