@@ -499,6 +499,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].dispatch_instruction();
 	      // decode
 	      ooo_cpu[i].decode_instruction();
+          ooo_cpu[i].promote_to_decode();
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
           ooo_cpu[i].translate_fetch();

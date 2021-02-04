@@ -382,9 +382,6 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
 
 void O3_CPU::fetch_instruction()
 {
-  // TODO: can we model wrong path execusion?
-  // probalby not
-  
   // if we had a branch mispredict, turn fetching back on after the branch mispredict penalty
   if((fetch_stall == 1) && (current_core_cycle[cpu] >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
     {
@@ -402,44 +399,50 @@ void O3_CPU::fetch_instruction()
     auto l1i_req_end   = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
             [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE);});
     if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin())
-	{
-	  // add it to the L1-I's read queue
-	  PACKET fetch_packet;
-	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.cpu = cpu;
-          fetch_packet.address = l1i_req_begin->instruction_pa >> LOG2_BLOCK_SIZE;
-          fetch_packet.data = l1i_req_begin->instruction_pa;
-          fetch_packet.full_addr = l1i_req_begin->instruction_pa;
-          fetch_packet.v_address = l1i_req_begin->ip >> LOG2_PAGE_SIZE;
-          fetch_packet.full_v_addr = l1i_req_begin->ip;
-	  fetch_packet.instr_id = l1i_req_begin->instr_id;
-          fetch_packet.ip = l1i_req_begin->ip;
-	  fetch_packet.type = LOAD; 
-	  fetch_packet.asid[0] = 0;
-	  fetch_packet.asid[1] = 0;
-	  fetch_packet.event_cycle = current_core_cycle[cpu];
-	  fetch_packet.to_return = {&L1I_bus};
-      for (auto dep_it = l1i_req_begin; dep_it != l1i_req_end; ++dep_it)
-          fetch_packet.instr_depend_on_me.push_back(dep_it);
+    {
+        do_fetch_instruction(l1i_req_begin, l1i_req_end);
+    }
+}
 
-      int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
+void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
+{
+    // add it to the L1-I's read queue
+    PACKET fetch_packet;
+    fetch_packet.fill_level = FILL_L1;
+    fetch_packet.cpu = cpu;
+    fetch_packet.address = begin->instruction_pa >> LOG2_BLOCK_SIZE;
+    fetch_packet.data = begin->instruction_pa;
+    fetch_packet.full_addr = begin->instruction_pa;
+    fetch_packet.v_address = begin->ip >> LOG2_PAGE_SIZE;
+    fetch_packet.full_v_addr = begin->ip;
+    fetch_packet.instr_id = begin->instr_id;
+    fetch_packet.ip = begin->ip;
+    fetch_packet.type = LOAD; 
+    fetch_packet.asid[0] = 0;
+    fetch_packet.asid[1] = 0;
+    fetch_packet.event_cycle = current_core_cycle[cpu];
+    fetch_packet.to_return = {&L1I_bus};
+    for (; begin != end; ++begin)
+        fetch_packet.instr_depend_on_me.push_back(begin);
 
-	  if(rq_index != -2)
-	    {
-	      // mark all instructions from this cache line as having been fetched
-            for (auto dep_it : fetch_packet.instr_depend_on_me)
-            {
-                dep_it->fetched = INFLIGHT;
-            }
-	    }
-	}
+    int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
-    // send to DECODE stage
+    if(rq_index != -2)
+    {
+        // mark all instructions from this cache line as having been fetched
+        for (auto dep_it : fetch_packet.instr_depend_on_me)
+        {
+            dep_it->fetched = INFLIGHT;
+        }
+    }
+}
+
+void O3_CPU::promote_to_decode()
+{
     unsigned available_fetch_bandwidth = FETCH_WIDTH;
     while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() &&
             IFETCH_BUFFER.front().translated == COMPLETED && IFETCH_BUFFER.front().fetched == COMPLETED)
     {
-        // ADD to decode buffer
         if (!warmup_complete[cpu] || IFETCH_BUFFER.front().decoded)
             DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.front());
         else
@@ -450,7 +453,6 @@ void O3_CPU::fetch_instruction()
 	available_fetch_bandwidth--;
     }
 }
-
 
 void O3_CPU::decode_instruction()
 {
