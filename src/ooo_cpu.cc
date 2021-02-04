@@ -456,34 +456,13 @@ void O3_CPU::promote_to_decode()
 
 void O3_CPU::decode_instruction()
 {
-    if (DECODE_BUFFER.empty())
-        return;
-    
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
     // Send decoded instructions to dispatch
     while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && !DISPATCH_BUFFER.full())
     {
         ooo_model_instr &db_entry = DECODE_BUFFER.front();
-
-	// Search DIB to see if we need to add this instruction
-	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
-	auto way = std::find_if(dib_set.begin(), dib_set.end(), eq_addr<dib_entry_t>(db_entry.ip, LOG2_DIB_WINDOW_SIZE));
-	
-	// If we did not find the entry in the DIB, find a victim
-	if (way == dib_set.end())
-	{
-	  way = std::max_element(dib_set.begin(), dib_set.end(), [](dib_entry_t x, dib_entry_t y){ return !y.valid || (x.valid && x.lru < y.lru); }); // invalid ways compare LRU
-	  assert(way != dib_set.end());
-	}
-	
-	// update LRU in DIB
-	std::for_each(dib_set.begin(), dib_set.end(), lru_updater<dib_entry_t>(way));
-	
-        // update way
-	way->valid = true;
-	way->lru = 0;
-	way->address = db_entry.ip;
+        do_dib_update(db_entry);
 
 	// Resume fetch 
 	if (db_entry.branch_mispredicted)
@@ -509,6 +488,26 @@ void O3_CPU::decode_instruction()
     }
 
     DECODE_BUFFER.operate();
+}
+
+void O3_CPU::do_dib_update(const ooo_model_instr &instr)
+{
+    // Search DIB to see if we need to add this instruction
+    dib_t::value_type &dib_set = DIB[(instr.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
+    auto way = std::find_if(dib_set.begin(), dib_set.end(), eq_addr<dib_entry_t>(instr.ip, LOG2_DIB_WINDOW_SIZE));
+
+    // If we did not find the entry in the DIB, find a victim
+    if (way == dib_set.end())
+    {
+        way = std::max_element(dib_set.begin(), dib_set.end(), lru_comparator<dib_entry_t>());
+        assert(way != dib_set.end());
+
+        // update way
+        way->valid = true;
+        way->address = instr.ip;
+    }
+
+    std::for_each(dib_set.begin(), dib_set.end(), lru_updater<dib_entry_t>(way));
 }
 
 void O3_CPU::dispatch_instruction()

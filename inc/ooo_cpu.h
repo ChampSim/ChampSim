@@ -198,6 +198,7 @@ class O3_CPU {
          do_check_dib(ooo_model_instr &instr),
          do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
          do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
+         do_dib_update(const ooo_model_instr &instr),
          do_scheduling(uint32_t rob_index),  
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),
