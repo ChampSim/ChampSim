@@ -334,6 +334,52 @@ void O3_CPU::do_check_dib(ooo_model_instr &instr)
     }
 }
 
+void O3_CPU::translate_fetch()
+{
+    if (IFETCH_BUFFER.empty())
+        return;
+
+    // scan through IFETCH_BUFFER to find instructions that need to be translated
+    auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return !x.translated; });
+    uint64_t find_addr = itlb_req_begin->ip;
+    auto itlb_req_end   = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(), [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE);});
+    if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin())
+    {
+        do_translate_fetch(itlb_req_begin, itlb_req_end);
+    }
+}
+
+void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
+{
+    // begin process of fetching this instruction by sending it to the ITLB
+    // add it to the ITLB's read queue
+    PACKET trace_packet;
+    trace_packet.fill_level = FILL_L1;
+    trace_packet.cpu = cpu;
+    trace_packet.address = begin->ip >> LOG2_PAGE_SIZE;
+    trace_packet.full_addr = begin->ip;
+    trace_packet.instr_id = begin->instr_id;
+    trace_packet.ip = begin->ip;
+    trace_packet.type = LOAD;
+    trace_packet.asid[0] = 0;
+    trace_packet.asid[1] = 0;
+    trace_packet.event_cycle = current_core_cycle[cpu];
+    trace_packet.to_return = {&ITLB_bus};
+    for (; begin != end; ++begin)
+        trace_packet.instr_depend_on_me.push_back(begin);
+
+    int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
+
+    if(rq_index != -2)
+    {
+        // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
+        for (auto dep_it : trace_packet.instr_depend_on_me)
+        {
+            dep_it->translated = INFLIGHT;
+        }
+    }
+}
+
 void O3_CPU::fetch_instruction()
 {
   // TODO: can we model wrong path execusion?
@@ -349,46 +395,10 @@ void O3_CPU::fetch_instruction()
   if (IFETCH_BUFFER.empty())
       return;
 
-  // scan through IFETCH_BUFFER to find instructions that need to be translated
-  auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return !x.translated; });
-  uint64_t find_addr = itlb_req_begin->ip;
-  auto itlb_req_end   = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(), [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE);});
-  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin())
-	{
-	  // begin process of fetching this instruction by sending it to the ITLB
-	  // add it to the ITLB's read queue
-	  PACKET trace_packet;
-	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.cpu = cpu;
-          trace_packet.address = itlb_req_begin->ip >> LOG2_PAGE_SIZE;
-          trace_packet.full_addr = itlb_req_begin->ip;
-	  trace_packet.instr_id = itlb_req_begin->instr_id;
-          trace_packet.ip = itlb_req_begin->ip;
-	  trace_packet.type = LOAD; 
-	  trace_packet.asid[0] = 0;
-	  trace_packet.asid[1] = 0;
-	  trace_packet.event_cycle = current_core_cycle[cpu];
-	  trace_packet.to_return = {&ITLB_bus};
-      for (auto dep_it = itlb_req_begin; dep_it != itlb_req_end; ++dep_it)
-          trace_packet.instr_depend_on_me.push_back(dep_it);
-
-      int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
-
-	  if(rq_index != -2)
-	    {
-	      // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
-            for (auto dep_it : trace_packet.instr_depend_on_me)
-            {
-                dep_it->translated = INFLIGHT;
-            }
-	    }
-	}
-
-
       // fetch cache lines that were part of a translated page but not the cache line that initiated the translation
     auto l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(),
             [](const ooo_model_instr &x){ return x.translated == COMPLETED && !x.fetched; });
-    find_addr = l1i_req_begin->instruction_pa;
+    uint64_t find_addr = l1i_req_begin->instruction_pa;
     auto l1i_req_end   = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
             [find_addr](const ooo_model_instr &x){ return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE);});
     if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin())

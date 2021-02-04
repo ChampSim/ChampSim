@@ -501,6 +501,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].decode_instruction();
 	      // fetch
 	      ooo_cpu[i].fetch_instruction();
+          ooo_cpu[i].translate_fetch();
           ooo_cpu[i].check_dib();
 	      
 	      // read from trace

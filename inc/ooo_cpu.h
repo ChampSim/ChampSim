@@ -186,6 +186,7 @@ class O3_CPU {
     // functions
     uint32_t init_instruction(ooo_model_instr instr);
     void check_dib(),
+         translate_fetch(),
          fetch_instruction(),
          decode_instruction(),
          dispatch_instruction(),
@@ -194,6 +195,7 @@ class O3_CPU {
          schedule_memory_instruction(),
          execute_memory_instruction(),
          do_check_dib(ooo_model_instr &instr),
+         do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
          do_scheduling(uint32_t rob_index),  
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),
