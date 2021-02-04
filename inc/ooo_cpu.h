@@ -50,7 +50,7 @@ class O3_CPU {
     {
         bool valid = false;
         unsigned lru = DIB_WAY;
-        uint64_t addr = 0;
+        uint64_t address = 0;
     };
 
     // instruction buffer
@@ -185,13 +185,15 @@ class O3_CPU {
 
     // functions
     uint32_t init_instruction(ooo_model_instr instr);
-    void fetch_instruction(),
+    void check_dib(),
+         fetch_instruction(),
          decode_instruction(),
          dispatch_instruction(),
          schedule_instruction(),
          execute_instruction(),
          schedule_memory_instruction(),
          execute_memory_instruction(),
+         do_check_dib(ooo_model_instr &instr),
          do_scheduling(uint32_t rob_index),  
          reg_dependency(uint32_t rob_index),
          do_execution(uint32_t rob_index),

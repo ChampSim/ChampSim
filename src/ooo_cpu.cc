@@ -304,6 +304,36 @@ uint32_t O3_CPU::check_rob(uint64_t instr_id)
     return ROB.SIZE;
 }
 
+void O3_CPU::check_dib()
+{
+    // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
+    auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
+    for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
+        do_check_dib(*it);
+}
+
+void O3_CPU::do_check_dib(ooo_model_instr &instr)
+{
+    // Check DIB to see if we recently fetched this line
+    dib_t::value_type &dib_set = DIB[(instr.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
+    auto way = std::find_if(dib_set.begin(), dib_set.end(), eq_addr<dib_entry_t>(instr.ip, LOG2_DIB_WINDOW_SIZE));
+    if (way != dib_set.end())
+    {
+        // The cache line is in the L0, so we can mark this as complete
+        instr.translated = COMPLETED;
+        instr.fetched = COMPLETED;
+
+        // Also mark it as decoded
+        instr.decoded = COMPLETED;
+
+        // It can be acted on immediately
+        instr.event_cycle = current_core_cycle[cpu];
+
+        // Update LRU
+        std::for_each(dib_set.begin(), dib_set.end(), lru_updater<dib_entry_t>(way));
+    }
+}
+
 void O3_CPU::fetch_instruction()
 {
   // TODO: can we model wrong path execusion?
@@ -318,33 +348,6 @@ void O3_CPU::fetch_instruction()
 
   if (IFETCH_BUFFER.empty())
       return;
-
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
-  for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
-  {
-      // Check DIB to see if we recently fetched this line
-      dib_t::value_type &dib_set = DIB[(it->ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
-      auto to_find = it->ip;
-      auto way = std::find_if(dib_set.begin(), dib_set.end(), [to_find](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (to_find >> LOG2_DIB_WINDOW_SIZE));});
-      if (way != dib_set.end())
-      {
-          // The cache line is in the L0, so we can mark this as complete
-          it->translated = COMPLETED;
-          it->fetched = COMPLETED;
-
-          // Also mark it as decoded
-          it->decoded = COMPLETED;
-
-          // It can be acted on immediately
-          it->event_cycle = current_core_cycle[cpu];
-
-          // Update LRU
-          unsigned hit_lru = way->lru;
-          std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
-          way->lru = 0;
-      }
-  }
 
   // scan through IFETCH_BUFFER to find instructions that need to be translated
   auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return !x.translated; });
@@ -453,7 +456,7 @@ void O3_CPU::decode_instruction()
 
 	// Search DIB to see if we need to add this instruction
 	dib_t::value_type &dib_set = DIB[(db_entry.ip >> LOG2_DIB_WINDOW_SIZE) % DIB_SET];
-	auto way = std::find_if(dib_set.begin(), dib_set.end(), [db_entry](dib_entry_t x){ return x.valid && ((x.addr >> LOG2_DIB_WINDOW_SIZE) == (db_entry.ip >> LOG2_DIB_WINDOW_SIZE));});
+	auto way = std::find_if(dib_set.begin(), dib_set.end(), eq_addr<dib_entry_t>(db_entry.ip, LOG2_DIB_WINDOW_SIZE));
 	
 	// If we did not find the entry in the DIB, find a victim
 	if (way == dib_set.end())
@@ -463,13 +466,12 @@ void O3_CPU::decode_instruction()
 	}
 	
 	// update LRU in DIB
-	unsigned hit_lru = way->lru;
-	std::for_each(dib_set.begin(), dib_set.end(), [hit_lru](dib_entry_t &x){ if (x.lru <= hit_lru) x.lru++; });
+	std::for_each(dib_set.begin(), dib_set.end(), lru_updater<dib_entry_t>(way));
 	
         // update way
 	way->valid = true;
 	way->lru = 0;
-	way->addr = db_entry.ip;
+	way->address = db_entry.ip;
 
 	// Resume fetch 
 	if (db_entry.branch_mispredicted)
