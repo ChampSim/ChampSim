@@ -17,17 +17,16 @@ class operable {
     void _operate()
     {
         // skip periodically
-        leap_operation += CLOCK_SCALE;
-
         if (leap_operation >= 1)
         {
             leap_operation -= 1;
             return;
         }
 
-        ++current_cycle;
-
         operate();
+
+        leap_operation += CLOCK_SCALE;
+        ++current_cycle;
     }
 
     virtual void operate() = 0;
