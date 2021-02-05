@@ -123,12 +123,6 @@ void MEMORY_CONTROLLER::operate()
         auto complete = std::min_element(RQ[i].entry, std::next(RQ[i].entry, RQ[i].SIZE), first_completed());
         if ((write_mode[i] == 0) && complete->processed && complete->event_cycle <= current_cycle)
         {
-            //std::cout << "[DRAM_RQ" << i << "] " <<  __func__ << " return data" << std::hex;
-            //std::cout << " address: " << complete->address << " full_addr: " << complete->full_addr << std::dec;
-            //std::cout << " occupancy: " << RQ[i].occupancy << " channel: " << dram_get_channel(complete->address) << " rank: " << dram_get_rank(complete->address) << " bank: " << dram_get_bank(complete->address);
-            //std::cout << " row: " << dram_get_row(complete->address) << " column: " << dram_get_column(complete->address);
-            //std::cout << " current_cycle: " << current_cycle << " event_cycle: " << complete->event_cycle << std::endl;
-
             for (auto ret : complete->to_return)
                 ret->return_data(&(*complete));
 
