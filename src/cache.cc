@@ -382,14 +382,21 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
         if (fill_block.prefetch && !fill_block.used)
-            pf_useless++;
+        {
+            auto incoming_addr = handle_pkt.address;
+            auto set_begin     = std::next(std::begin(block), set*NUM_WAY);
+            auto set_end       = std::next(set_begin, NUM_WAY);
+            auto pollution     = std::find_if(set_begin, set_end, [incoming_addr](const BLOCK& x){ return x.evicted_addr == incoming_addr; });
+            if (handle_pkt.type != PREFETCH && pollution != set_end)
+                pf_polluting++;
+            else
+                pf_useless++;
+        }
 
         if (handle_pkt.type == PREFETCH)
             pf_fill++;
 
-        auto lru = fill_block.lru; // preserve LRU state
-        fill_block = handle_pkt; // fill cache
-        fill_block.lru = lru;
+        fill_block = replacement_block(handle_pkt, fill_block); // fill cache
 
         if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
             fill_block.dirty = 1;
@@ -838,4 +845,31 @@ void CACHE::increment_WQ_FULL(uint64_t address)
 {
     WQ_FULL++;
 }
+
+BLOCK replacement_block(const PACKET &incoming, const BLOCK &victim)
+{
+    BLOCK repl;
+    repl.valid = true;
+    repl.prefetch = (incoming.type == PREFETCH);
+    repl.dirty = 0;
+    repl.used = 0;
+    repl.delta = incoming.delta;
+    repl.depth = incoming.depth;
+    repl.signature = incoming.signature;
+    repl.confidence = incoming.confidence;
+    repl.address = incoming.address;
+    repl.full_addr = incoming.full_addr;
+    repl.v_address = incoming.v_address;
+    repl.full_v_addr = incoming.full_v_addr;
+    repl.tag = incoming.address;
+    repl.data = incoming.data;
+    repl.ip = incoming.ip;
+    repl.cpu = incoming.cpu;
+    repl.instr_id = incoming.instr_id;
+    repl.evicted_addr = victim.address;
+    repl.lru = victim.lru;
+
+    return repl;
+}
+
 

@@ -22,10 +22,10 @@ extern uint64_t l2pf_access;
 // CACHE BLOCK
 class BLOCK {
   public:
-    uint8_t valid = 0,
-            prefetch = 0,
-            dirty = 0,
-            used = 0;
+    bool valid = false,
+         prefetch = false,
+         dirty = false,
+         used = false;
 
     int delta = 0,
         depth = 0,
@@ -40,33 +40,14 @@ class BLOCK {
              data = 0,
              ip,
              cpu = 0,
-             instr_id = 0;
+             instr_id = 0,
+             evicted_addr = 0;
 
     // replacement state
     uint32_t lru = std::numeric_limits<uint32_t>::max();
-
-    BLOCK() {}
-
-    BLOCK(const PACKET &packet) :
-        valid(1),
-        prefetch(packet.type == PREFETCH),
-        dirty(0),
-        used(0),
-        delta(packet.delta),
-        depth(packet.depth),
-        signature(packet.signature),
-        confidence(packet.confidence),
-        address(packet.address),
-        full_addr(packet.full_addr),
-        v_address(packet.v_address),
-        full_v_addr(packet.full_v_addr),
-        tag(packet.address),
-        data(packet.data),
-        ip(packet.ip),
-        cpu(packet.cpu),
-        instr_id(packet.instr_id)
-    {}
 };
+
+BLOCK replacement_block(const PACKET &incoming, const BLOCK &victim);
 
 class MemoryRequestConsumer
 {

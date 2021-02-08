@@ -41,6 +41,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
              pf_issued = 0,
              pf_useful = 0,
              pf_useless = 0,
+             pf_polluting = 0,
              pf_fill = 0;
 
     // queues
