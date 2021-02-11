@@ -271,7 +271,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         if (mshr_full) // not enough MSHR resource
             return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
 
-        bool is_read = (handle_pkt.type != PREFETCH);
+        bool is_read = prefetch_as_load || (handle_pkt.type != PREFETCH);
 
         // check to make sure the lower level queue has room for this read miss
         int queue_type = (is_read) ? 1 : 3;
