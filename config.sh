@@ -33,7 +33,7 @@ cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
-module_make_fmtstr = 'obj/{}: $(patsubst %.cc,%.o,$(wildcard {}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
+module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
@@ -284,19 +284,12 @@ with open('Makefile', 'wt') as wfp:
     for kv in libfilenames.items():
         wfp.write(module_make_fmtstr.format(*kv))
 
-    wfp.write('obj/%.o: */%.c\n')
-    wfp.write('\t@mkdir -p $(dir $@)\n')
-    wfp.write('\t$(CC) -c $(CPPFLAGS) $(CFLAGS) -o $@ $<\n\n')
-
-    wfp.write('obj/%.o: */%.cc\n')
-    wfp.write('\t@mkdir -p $(dir $@)\n')
-    wfp.write('\t$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -o $@ $<\n\n')
-
     wfp.write('-include $(wildcard prefetcher/*/*.d)\n')
     wfp.write('-include $(wildcard branch/*/*.d)\n')
     wfp.write('-include $(wildcard btb/*/*.d)\n')
     wfp.write('-include $(wildcard replacement/*/*.d)\n')
     wfp.write('-include $(wildcard src/*.d)\n')
+    wfp.write('\n')
 
 # Configuration cache
 with open(config_cache_name, 'wt') as wfp:
