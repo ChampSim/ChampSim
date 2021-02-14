@@ -33,7 +33,7 @@ cpu_fmtstr = 'O3_CPU cpu{cpu}({cpu}, {attrs[ifetch_buffer_size]}, {attrs[decode_
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM");\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
-module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
+module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc)) $(patsubst %.c,%.o,$(wildcard {1}/*.c))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
 define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
