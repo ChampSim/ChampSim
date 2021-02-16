@@ -3,6 +3,7 @@ import json
 import sys,os
 import itertools
 import functools
+import copy
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -22,15 +23,18 @@ constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 config_cache_name = '.champsimconfig_cache'
 
+cache_names = ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB')
+
 ###
 # Begin format strings
 ###
 
-llc_fmtstr = 'CACHE {name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {attrs[prefetch_as_load]:b}, {attrs[virtual_prefetch]:b}, {ll});\n'
-cache_fmtstr = 'CACHE cpu{cpu}{name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {attrs[prefetch_as_load]:b}, {attrs[virtual_prefetch]:b}, {ll});\n'
+dcn_fmtstr = 'cpu{}_{}' # default cache name format string
+
+cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {lower_level});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}PTW);\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &{attrs[ITLB]}, &{attrs[DTLB]}, &{attrs[L1I]}, &{attrs[L1D]}, &{attrs[PTW]});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
@@ -83,7 +87,7 @@ default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size
 default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True }
 default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False }
 default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False }
-default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'virtual_prefetch': False, 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
+default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'virtual_prefetch': False, 'prefetcher': 'no_llc', 'replacement': 'lru_llc', 'name': 'LLC', 'lower_level': 'DRAM' }
 default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
 default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
@@ -104,71 +108,69 @@ for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'btb': config_file['btb']} if 'btb' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
-    config_file['ooo_cpu'][i]['L1I'] = merge_dicts(default_l1i, config_file.get('L1I', {}), config_file['ooo_cpu'][i].get('L1I',{}))
-    config_file['ooo_cpu'][i]['L1D'] = merge_dicts(default_l1d, config_file.get('L1D', {}), config_file['ooo_cpu'][i].get('L1D',{}))
-    config_file['ooo_cpu'][i]['L2C'] = merge_dicts(default_l2c, config_file.get('L2C', {}), config_file['ooo_cpu'][i].get('L2C',{}))
-    config_file['ooo_cpu'][i]['ITLB'] = merge_dicts(default_itlb, config_file.get('ITLB', {}), config_file['ooo_cpu'][i].get('ITLB',{}))
-    config_file['ooo_cpu'][i]['DTLB'] = merge_dicts(default_dtlb, config_file.get('DTLB', {}), config_file['ooo_cpu'][i].get('DTLB',{}))
-    config_file['ooo_cpu'][i]['STLB'] = merge_dicts(default_stlb, config_file.get('STLB', {}), config_file['ooo_cpu'][i].get('STLB',{}))
     config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, config_file.get('PTW', {}), config_file['ooo_cpu'][i].get('PTW',{}))
-    
+
+    for cache_name, default in zip(cache_names, (default_l1i, default_l1d, default_l2c, default_itlb, default_dtlb, default_stlb)):
+        config_file['ooo_cpu'][i][cache_name] = merge_dicts(default, config_file.get(cache_name, {}), config_file['ooo_cpu'][i].get(cache_name,{}))
+
+# Copy or trim cores as necessary to fill out the specified number of cores
+original_size = len(config_file['ooo_cpu'])
+if original_size <= config_file['num_cores']:
+    for i in range(original_size, config_file['num_cores']):
+        config_file['ooo_cpu'].append(copy.deepcopy(config_file['ooo_cpu'][(i-1) % original_size]))
+else:
+    config_file['ooo_cpu'] = config_file[:(config_file['num_cores'] - original_size)]
+
+# Assign defaults that are unique per core
+for i, cpu in enumerate(config_file['ooo_cpu']):
+    percore_default = {'name': dcn_fmtstr.format(i,'PTW'), 'frequency': cpu['frequency']}
+    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(percore_default, config_file['ooo_cpu'][i]['PTW'])
+    for cache_name in cache_names:
+        percore_default = {'name': dcn_fmtstr.format(i,cache_name), 'frequency': cpu['frequency']}
+        config_file['ooo_cpu'][i][cache_name] = merge_dicts(percore_default, config_file['ooo_cpu'][i][cache_name])
 
 # LLC operates at maximum freqency of cores, if not already specified
 config_file['LLC'] = merge_dicts(default_llc, {'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
 config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
 
+# Establish default lower levels if they do not exist
+for i,cpu in enumerate(config_file['ooo_cpu']):
+    if 'lower_level' not in cpu['PTW']:
+        cpu['PTW']['lower_level'] = cpu['L1D']['name']
+    default_lower_levels = (cpu['L2C']['name'], cpu['L2C']['name'], config_file['LLC']['name'], cpu['STLB']['name'], cpu['STLB']['name'], cpu['PTW']['name'])
+    for cache_name, ll in zip(cache_names, default_lower_levels):
+        if 'lower_level' not in cpu[cache_name]:
+            cpu[cache_name]['lower_level'] = ll
+
 # Establish latencies in caches
 # If not specified, hit and fill latencies are half of the total latency, where fill takes longer if the sum is odd.
 for cpu in config_file['ooo_cpu']:
-    cpu['L1I']['hit_latency'] = cpu['L1I'].get('hit_latency', cpu['L1I']['latency'] - cpu['L1I']['fill_latency'])
-    cpu['L1D']['hit_latency'] = cpu['L1D'].get('hit_latency', cpu['L1D']['latency'] - cpu['L1D']['fill_latency'])
-    cpu['L2C']['hit_latency'] = cpu['L2C'].get('hit_latency', cpu['L2C']['latency'] - cpu['L2C']['fill_latency'])
-    cpu['ITLB']['hit_latency'] = cpu['ITLB'].get('hit_latency', cpu['ITLB']['latency'] - cpu['ITLB']['fill_latency'])
-    cpu['DTLB']['hit_latency'] = cpu['DTLB'].get('hit_latency', cpu['DTLB']['latency'] - cpu['DTLB']['fill_latency'])
-    cpu['STLB']['hit_latency'] = cpu['STLB'].get('hit_latency', cpu['STLB']['latency'] - cpu['STLB']['fill_latency'])
+    for cache_name in cache_names:
+        cpu[cache_name]['hit_latency'] = cpu[cache_name].get('hit_latency', cpu[cache_name]['latency'] - cpu[cache_name]['fill_latency'])
 
 config_file['LLC']['hit_latency'] = config_file['LLC'].get('hit_latency', config_file['LLC']['latency'] - config_file['LLC']['fill_latency'])
 
 # private caches operate by default at the same frequency as their cores
-for cpu in config_file['ooo_cpu']:
-    if 'frequency' not in cpu['L1I']:
-        cpu['L1I']['frequency'] = cpu['frequency']
-    if 'frequency' not in cpu['L1D']:
-        cpu['L1D']['frequency'] = cpu['frequency']
-    if 'frequency' not in cpu['L2C']:
-        cpu['L2C']['frequency'] = cpu['frequency']
-    if 'frequency' not in cpu['ITLB']:
-        cpu['ITLB']['frequency'] = cpu['frequency']
-    if 'frequency' not in cpu['DTLB']:
-        cpu['DTLB']['frequency'] = cpu['frequency']
-    if 'frequency' not in cpu['STLB']:
-        cpu['STLB']['frequency'] = cpu['frequency']
+#for cpu in config_file['ooo_cpu']:
+    #for cache_name in cache_names:
+        #if 'frequency' not in cpu[cache_name]:
+            #cpu[cache_name]['frequency'] = cpu['frequency']
 
 # Scale frequencies
 config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
 freqs = list(itertools.chain(
-    *[[cpu['frequency'], cpu['L1I']['frequency'], cpu['L1D']['frequency'], cpu['L2C']['frequency'], cpu['ITLB']['frequency'], cpu['DTLB']['frequency'], cpu['STLB']['frequency']] for cpu in config_file['ooo_cpu']],
+    *[[cpu['frequency'], *[cpu[cn]['frequency'] for cn in cache_names]] for cpu in config_file['ooo_cpu']],
     (config_file['LLC']['frequency'],),
     (config_file['physical_memory']['frequency'],)
 ))
 freqs = [max(freqs)/x for x in freqs]
 for i,cpu in enumerate(config_file['ooo_cpu']):
     cpu['frequency'] = freqs[7*i]
-    cpu['L1I']['frequency'] = freqs[7*i+1]
-    cpu['L1D']['frequency'] = freqs[7*i+2]
-    cpu['L2C']['frequency'] = freqs[7*i+3]
-    cpu['ITLB']['frequency'] = freqs[7*i+4]
-    cpu['DTLB']['frequency'] = freqs[7*i+5]
-    cpu['STLB']['frequency'] = freqs[7*i+6]
+    for j,cache_name in enumerate(cache_names):
+        cpu[cache_name]['frequency'] = freqs[7*i+j+1]
 config_file['LLC']['frequency'] = freqs[-2]
 config_file['physical_memory']['frequency'] = freqs[-1]
-
-###
-# Copy or trim cores as necessary to fill out the specified number of cores
-###
-
-config_file['ooo_cpu'] = list(itertools.islice(itertools.cycle(config_file['ooo_cpu']), config_file['num_cores']))
 
 ###
 # Check to make sure modules exist and they correspond to any already-built modules.
@@ -253,6 +255,41 @@ for f in os.listdir('obj'):
         os.remove('obj/' + f)
 
 ###
+# Collect caches into a single array
+###
+
+# Copy cache configurations into cache array
+caches = [config_file['LLC']]
+for i in range(len(config_file['ooo_cpu'])):
+    for cache_name in reversed(cache_names):
+        caches.append(config_file['ooo_cpu'][i][cache_name])
+        config_file['ooo_cpu'][i][cache_name] = config_file['ooo_cpu'][i][cache_name]['name']
+
+# Add PTW to memory system
+ptws = []
+for i in range(len(config_file['ooo_cpu'])):
+    ptws.append(config_file['ooo_cpu'][i]['PTW'])
+    config_file['ooo_cpu'][i]['PTW'] = config_file['ooo_cpu'][i]['PTW']['name']
+
+memory_system = list(itertools.chain(caches, ptws))
+
+# Sort so that lower levels are forward-declared
+i = 0
+while i < len(memory_system):
+    j = len(memory_system) - 1
+    while j > i and memory_system[i]['lower_level'] != memory_system[j]['name']:
+        j = j-1
+    if j != i:
+        memory_system[i:j+1] = memory_system[i+1:j+1] + [memory_system[i]]
+    else:
+        i = i+1
+
+# prune Nones
+for elem in memory_system:
+    if elem['lower_level'] is not None:
+        elem['lower_level'] = '&'+elem['lower_level'] # append address operator for C++
+
+###
 # Begin file writing
 ###
 
@@ -271,15 +308,11 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
     wfp.write('\n')
     wfp.write(pmem_fmtstr.format(attrs=config_file['physical_memory']))
-    wfp.write(llc_fmtstr.format(name='LLC', attrs=config_file['LLC'], ll='&DRAM'))
-    for i, cpu in enumerate(config_file['ooo_cpu']):
-        wfp.write(cache_fmtstr.format(cpu=i, name='L2C', attrs=cpu['L2C'], ll='&LLC'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='L1I', attrs=cpu['L1I'], ll='&cpu'+str(i)+'L2C'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='L1D', attrs=cpu['L1D'], ll='&cpu'+str(i)+'L2C'))
-        wfp.write(ptw_fmtstr.format(name='cpu'+str(i)+'PTW', **cpu['PTW'], lower_level='&cpu'+str(i)+'L1D'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='STLB', attrs=cpu['STLB'], ll='&cpu'+str(i)+'PTW'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='ITLB', attrs=cpu['ITLB'], ll='&cpu'+str(i)+'STLB'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='DTLB', attrs=cpu['DTLB'], ll='&cpu'+str(i)+'STLB'))
+    for elem in memory_system:
+        if 'pscl5_set' in elem:
+            wfp.write(ptw_fmtstr.format(**elem))
+        else:
+            wfp.write(cache_fmtstr.format(**elem))
 
     for i,cpu in enumerate(config_file['ooo_cpu']):
         wfp.write(cpu_fmtstr.format(cpu=i, attrs=cpu))
@@ -291,13 +324,16 @@ with open(instantiation_file_name, 'wt') as wfp:
         wfp.write('&cpu{}_inst'.format(i))
     wfp.write('\n};\n')
 
-    wfp.write('std::array<champsim::operable*, 7*NUM_CPUS+2> operables {\n')
+    wfp.write('std::array<champsim::operable*, 8*NUM_CPUS+2> operables {\n')
     for i in range(len(config_file['ooo_cpu'])):
-        if i > 0:
-            wfp.write(',\n')
-        wfp.write('&cpu{0}_inst, &cpu{0}L2C, &cpu{0}L1D, &cpu{0}L1I, &cpu{0}STLB, &cpu{0}DTLB, &cpu{0}ITLB'.format(i))
-    wfp.write(',\n&LLC')
-    wfp.write(',\n&DRAM')
+        wfp.write('&cpu{}_inst, '.format(i))
+        wfp.write('&{PTW}, '.format(**config_file['ooo_cpu'][i]))
+    wfp.write('\n')
+
+    for cache in reversed(caches):
+        wfp.write('&{name}, '.format(**cache))
+
+    wfp.write('\n&DRAM')
     wfp.write('\n};\n')
 
 # Constants header
