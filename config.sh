@@ -24,8 +24,6 @@ constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 config_cache_name = '.champsimconfig_cache'
 
-cache_names = ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB')
-
 ###
 # Begin format strings
 ###
@@ -113,7 +111,6 @@ for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i] = merge_dicts(default_core, {'btb': config_file['btb']} if 'btb' in config_file else {}, config_file['ooo_cpu'][i])
     config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
-    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, config_file.get('PTW', {}), config_file['ooo_cpu'][i].get('PTW',{}))
 
 # Copy or trim cores as necessary to fill out the specified number of cores
 original_size = len(config_file['ooo_cpu'])
@@ -131,44 +128,55 @@ config_file['cache'] = {c['name']: c for c in config_file['cache']}
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
-config_file['cache']['LLC'] = merge_dicts(default_llc, {'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}), config_file['cache'].get('LLC',{}))
+config_file['cache']['LLC'] = merge_dicts(default_llc, {'name': 'LLC', 'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}), config_file['cache'].get('LLC',{}))
 
+# If specified in the core, move definition to cache array
 for i, cpu in enumerate(config_file['ooo_cpu']):
-    percore_default = {'name': dcn_fmtstr.format(i,'PTW'), 'frequency': cpu['frequency']}
-    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(percore_default, config_file['ooo_cpu'][i]['PTW'])
     # Assign defaults that are unique per core
-    for cache_name, default in zip(cache_names, (default_l1i, default_l1d, default_l2c, default_itlb, default_dtlb, default_stlb)):
-        percore_default = {'name': dcn_fmtstr.format(i,cache_name), 'frequency': cpu['frequency']}
+    for cache_name in ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB'):
         if isinstance(cpu.get(cache_name,{}), dict):
-            # Assign defaults
-            cpu[cache_name] = merge_dicts(default, percore_default, config_file.get(cache_name, {}), cpu.get(cache_name, {}))
-
-            # Insert into cache array
+            cpu[cache_name] = merge_dicts({'name': dcn_fmtstr.format(i,cache_name)}, cpu.get(cache_name, {}))
             config_file['cache'][cpu[cache_name]['name']] = cpu[cache_name]
-
-            # Keep a note of the key in the core config
             cpu[cache_name] = cpu[cache_name]['name']
-        else:
-            # If value is a string, it is an index into the cache array
-            config_file['cache'][cpu[cache_name]] = merge_dicts(default, percore_default, config_file.get(cache_name, {}), config_file['cache'].get(cpu[cache_name], {}))
 
-# Establish default lower levels if they do not exist
+# Assign defaults that are unique per core
 for i,cpu in enumerate(config_file['ooo_cpu']):
-    if 'lower_level' not in cpu['PTW']:
-        cpu['PTW']['lower_level'] = cpu['L1D']
-    default_lower_levels = (cpu.get('L2C'), cpu.get('L2C'), config_file['cache']['LLC']['name'], cpu.get('STLB'), cpu.get('STLB'), cpu['PTW']['name'])
-    for cache_name, ll in zip(cache_names, default_lower_levels):
-        if 'lower_level' not in config_file['cache'][cpu[cache_name]]:
-            config_file['cache'][cpu[cache_name]]['lower_level'] = ll
-for cache in config_file['cache'].values():
-    if 'lower_level' not in cache:
-        cache['lower_level'] = None
+    percore_default = {'name': dcn_fmtstr.format(i,'PTW'), 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}
+    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, percore_default, config_file.get('PTW', {}), cpu.get('PTW',{}))
+
+    # L1I
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}
+    config_file['cache'][cpu['L1I']] = merge_dicts(default_l1i, percore_default, config_file.get('L1I', {}), config_file['cache'][cpu['L1I']])
+
+    # L1D
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}
+    config_file['cache'][cpu['L1D']] = merge_dicts(default_l1d, percore_default, config_file.get('L1D', {}), config_file['cache'][cpu['L1D']])
+
+    # ITLB
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}
+    config_file['cache'][cpu['ITLB']] = merge_dicts(default_itlb, percore_default, config_file.get('ITLB', {}), config_file['cache'][cpu['ITLB']])
+
+    # DTLB
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}
+    config_file['cache'][cpu['DTLB']] = merge_dicts(default_dtlb, percore_default, config_file.get('DTLB', {}), config_file['cache'][cpu['DTLB']])
+
+    # L2C
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': 'LLC'}
+    cache_name = config_file['cache'][cpu['L1D']]['lower_level']
+    if cache_name != 'DRAM':
+        config_file['cache'][cache_name] = merge_dicts(default_l2c, percore_default, config_file.get('L2C', {}), config_file['cache'][cache_name])
+
+    # STLB
+    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}
+    cache_name = config_file['cache'][cpu['DTLB']]['lower_level']
+    if cache_name != 'DRAM':
+        config_file['cache'][cache_name] = merge_dicts(default_l2c, percore_default, config_file.get('STLB', {}), config_file['cache'][cache_name])
 
 # Remove caches that are inaccessible
 accessible = [False]*len(config_file['cache'])
 for i,ll in enumerate(config_file['cache'].values()):
-    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in config_file['cache'].values())
-    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in config_file['ooo_cpu'])
+    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in config_file['cache'].values()) # The cache is accessible from another cache
+    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in config_file['ooo_cpu']) # The cache is accessible from a core
 config_file['cache'] = dict(itertools.compress(config_file['cache'].items(), accessible))
 
 # Establish latencies in caches
@@ -201,8 +209,8 @@ for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
         libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + config_file['cache'][cpu['L1I']]['prefetcher']
     if config_file['cache'][cpu['L1D']]['prefetcher'] is not None:
         libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + config_file['cache'][cpu['L1D']]['prefetcher']
-    if config_file['cache'][cpu['L2C']]['prefetcher'] is not None:
-        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + config_file['cache'][cpu['L2C']]['prefetcher']
+    if config_file['cache'][config_file['cache'][cpu['L1D']]['lower_level']]['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + config_file['cache'][config_file['cache'][cpu['L1D']]['lower_level']]['prefetcher']
     if cpu['branch_predictor'] is not None:
         if os.path.exists('branch/' + cpu['branch_predictor']):
             libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
