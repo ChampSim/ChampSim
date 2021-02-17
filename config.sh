@@ -160,6 +160,16 @@ for i,cpu in enumerate(config_file['ooo_cpu']):
     for cache_name, ll in zip(cache_names, default_lower_levels):
         if 'lower_level' not in config_file['cache'][cpu[cache_name]]:
             config_file['cache'][cpu[cache_name]]['lower_level'] = ll
+for cache in config_file['cache'].values():
+    if 'lower_level' not in cache:
+        cache['lower_level'] = None
+
+# Remove caches that are inaccessible
+accessible = [False]*len(config_file['cache'])
+for i,ll in enumerate(config_file['cache'].values()):
+    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in config_file['cache'].values())
+    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in config_file['ooo_cpu'])
+config_file['cache'] = dict(itertools.compress(config_file['cache'].items(), accessible))
 
 # Establish latencies in caches
 # If not specified, hit and fill latencies are half of the total latency, where fill takes longer if the sum is odd.
@@ -268,6 +278,14 @@ for fill_level in range(1,len(memory_system)+1):
 memory_system = list(memory_system.values())
 
 memory_system.sort(key=operator.itemgetter('fill_level'), reverse=True)
+
+# Check for lower levels in the array
+for i in reversed(range(len(memory_system))):
+    ul = memory_system[i]
+    if ul['lower_level'] != 'DRAM':
+        if not any((ul['lower_level'] == ll['name']) for ll in memory_system[:i]):
+            print('Could not find cache "' + ul['lower_level'] + '" in cache array. Exiting...')
+            sys.exit(1)
 
 # prune Nones
 for elem in memory_system:
