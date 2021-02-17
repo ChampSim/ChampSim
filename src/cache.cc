@@ -271,12 +271,11 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         if (mshr_full) // not enough MSHR resource
             return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
 
-        // check to make sure the lower level RQ has room for this read miss
-        if (cache_type == IS_LLC && lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address))
-            return false;
+        bool is_read = prefetch_as_load || (handle_pkt.type != PREFETCH);
 
-        // Non-LLC prefetches are prefetch requests to lower level
-        if (cache_type != IS_LLC && handle_pkt.type == PREFETCH && lower_level->get_occupancy(3, handle_pkt.address) == lower_level->get_size(3, handle_pkt.address))
+        // check to make sure the lower level queue has room for this read miss
+        int queue_type = (is_read) ? 1 : 3;
+        if (cache_type != IS_STLB && lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
             return false;
 
         // Allocate an MSHR
@@ -297,7 +296,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             else
                 handle_pkt.to_return.clear();
 
-            if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
+            if (!is_read)
                 lower_level->add_pq(&handle_pkt);
             else
                 lower_level->add_rq(&handle_pkt);
