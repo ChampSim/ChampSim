@@ -66,7 +66,8 @@ struct ooo_model_instr {
              ip = 0,
              fetch_producer = 0,
              producer_id = 0,
-             event_cycle = 0;
+             event_cycle = 0,
+             cycle_add_to_lsq = 0;
 
     bool is_branch = 0,
          is_memory = 0,

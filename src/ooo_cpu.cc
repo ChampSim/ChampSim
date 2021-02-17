@@ -804,6 +804,8 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
         if (ROB.entry[rob_index].executed == 0) // it could be already set to COMPLETED due to store-to-load forwarding
             ROB.entry[rob_index].executed  = INFLIGHT;
 
+	ROB.entry[rob_index].cycle_add_to_lsq = current_core_cycle[cpu];
+
         DP (if (warmup_complete[cpu]) {
         cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index;
         cout << " scheduled all num_mem_ops: " << ROB.entry[rob_index].num_mem_ops << endl; });
@@ -1423,6 +1425,16 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 		  {
 		    fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
 		  }
+
+		if ((warmup_complete[cpu]) && (ROB.entry[rob_index].cycle_add_to_lsq != 0)) {
+		  uint64_t load_to_use_latency = current_core_cycle[cpu] - ROB.entry[rob_index].cycle_add_to_lsq;
+		  if (load_to_use_latency < LOAD_TO_USE_HISTO_SIZE) {
+		    load_to_use_histo[load_to_use_latency]++;
+		    }
+		  else {
+		    load_to_use_histo[LOAD_TO_USE_HISTO_SIZE-1]++;
+		  }
+		}
 
                 DP(if(warmup_complete[cpu]) {
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
