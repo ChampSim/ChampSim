@@ -36,6 +36,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
+    const bool prefetch_as_load;
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -76,10 +77,10 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, MemoryRequestConsumer *ll)
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, MemoryRequestConsumer *ll)
         : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
-        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write)
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load)
     {
     }
 
