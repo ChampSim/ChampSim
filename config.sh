@@ -5,20 +5,7 @@ import itertools
 import functools
 import operator
 import copy
-
-# Read the config file
-if len(sys.argv) >= 2:
-    with open(sys.argv[1]) as rfp:
-        config_file = json.load(rfp)
-else:
-    print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_file = {}
-
-def merge_dicts(*dicts):
-    z = dicts[0].copy()
-    for d in dicts[1:]:
-        z.update(d)
-    return z
+from collections import ChainMap
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
@@ -75,8 +62,15 @@ const_names = {
 # Begin default core model definition
 ###
 
-default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'ooo_cpu': [{}] }
-config_file = merge_dicts(default_root, config_file) # doing this early because LLC dimensions depend on it
+default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+
+# Read the config file
+if len(sys.argv) >= 2:
+    with open(sys.argv[1]) as rfp:
+        config_file = ChainMap(json.load(rfp), default_root)
+else:
+    print("No configuration specified. Building default ChampSim with no prefetching.")
+    config_file = ChainMap(default_root)
 
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
@@ -103,100 +97,79 @@ os.makedirs('obj', exist_ok=True)
 # Establish default optional values
 ###
 
-config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
-config_file['virtual_memory'] = merge_dicts(default_vmem, config_file.get('virtual_memory',{}))
+config_file['physical_memory'] = ChainMap(config_file['physical_memory'], default_pmem.copy())
+config_file['virtual_memory'] = ChainMap(config_file['virtual_memory'], default_vmem.copy())
 
-# Default branch predictor and BTB
-for i in range(len(config_file['ooo_cpu'])):
-    config_file['ooo_cpu'][i] = merge_dicts(default_core, {'branch_predictor': config_file['branch_predictor']} if 'branch_predictor' in config_file else {}, config_file['ooo_cpu'][i])
-    config_file['ooo_cpu'][i] = merge_dicts(default_core, {'btb': config_file['btb']} if 'btb' in config_file else {}, config_file['ooo_cpu'][i])
-    config_file['ooo_cpu'][i]['DIB'] = merge_dicts(default_dib, config_file.get('DIB', {}), config_file['ooo_cpu'][i].get('DIB',{}))
-
-# Copy or trim cores as necessary to fill out the specified number of cores
-original_size = len(config_file['ooo_cpu'])
-if original_size <= config_file['num_cores']:
-    for i in range(original_size, config_file['num_cores']):
-        config_file['ooo_cpu'].append(copy.deepcopy(config_file['ooo_cpu'][(i-1) % original_size]))
-else:
-    config_file['ooo_cpu'] = config_file[:(config_file['num_cores'] - original_size)]
-
-# Default cache array
-config_file['cache'] = config_file.get('cache', [])
+cores = config_file.get('ooo_cpu', [{}])
 
 # Index the cache array by names
-config_file['cache'] = {c['name']: c for c in config_file['cache']}
+caches = {c['name']: c for c in config_file.get('cache',[])}
+
+# Default branch predictor and BTB
+for i in range(len(cores)):
+    cores[i] = ChainMap(cores[i], copy.deepcopy(default_root), default_core.copy())
+    cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
+
+# Copy or trim cores as necessary to fill out the specified number of cores
+original_size = len(cores)
+if original_size <= config_file['num_cores']:
+    for i in range(original_size, config_file['num_cores']):
+        cores.append(copy.deepcopy(cores[(i-1) % original_size]))
+else:
+    cores = config_file[:(config_file['num_cores'] - original_size)]
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
-config_file['cache']['LLC'] = merge_dicts(default_llc, {'name': 'LLC', 'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}), config_file['cache'].get('LLC',{}))
+caches['LLC'] = ChainMap(caches.get('LLC',{}), config_file['LLC'].copy(), {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc.copy())
 
 # If specified in the core, move definition to cache array
-for i, cpu in enumerate(config_file['ooo_cpu']):
+for i, cpu in enumerate(cores):
     # Assign defaults that are unique per core
     for cache_name in ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB'):
-        if isinstance(cpu.get(cache_name,{}), dict):
-            cpu[cache_name] = merge_dicts({'name': dcn_fmtstr.format(i,cache_name)}, cpu.get(cache_name, {}))
-            config_file['cache'][cpu[cache_name]['name']] = cpu[cache_name]
+        if isinstance(cpu[cache_name], dict):
+            cpu[cache_name] = ChainMap(cpu[cache_name], {'name': dcn_fmtstr.format(i,cache_name)})
+            caches[cpu[cache_name]['name']] = cpu[cache_name]
             cpu[cache_name] = cpu[cache_name]['name']
 
 # Assign defaults that are unique per core
-for i,cpu in enumerate(config_file['ooo_cpu']):
-    percore_default = {'name': dcn_fmtstr.format(i,'PTW'), 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}
-    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, percore_default, config_file.get('PTW', {}), cpu.get('PTW',{}))
-
-    # L1I
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}
-    config_file['cache'][cpu['L1I']] = merge_dicts(default_l1i, percore_default, config_file.get('L1I', {}), config_file['cache'][cpu['L1I']])
-
-    # L1D
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}
-    config_file['cache'][cpu['L1D']] = merge_dicts(default_l1d, percore_default, config_file.get('L1D', {}), config_file['cache'][cpu['L1D']])
-
-    # ITLB
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}
-    config_file['cache'][cpu['ITLB']] = merge_dicts(default_itlb, percore_default, config_file.get('ITLB', {}), config_file['cache'][cpu['ITLB']])
-
-    # DTLB
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}
-    config_file['cache'][cpu['DTLB']] = merge_dicts(default_dtlb, percore_default, config_file.get('DTLB', {}), config_file['cache'][cpu['DTLB']])
+for cpu in cores:
+    cpu['PTW'] = ChainMap(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': dcn_fmtstr.format(i,'PTW'), 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
+    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}, default_l1i.copy())
+    caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}, default_l1d.copy())
+    caches[cpu['ITLB']] = ChainMap(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
+    caches[cpu['DTLB']] = ChainMap(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
 
     # L2C
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': 'LLC'}
-    cache_name = config_file['cache'][cpu['L1D']]['lower_level']
+    cache_name = caches[cpu['L1D']]['lower_level']
     if cache_name != 'DRAM':
-        config_file['cache'][cache_name] = merge_dicts(default_l2c, percore_default, config_file.get('L2C', {}), config_file['cache'][cache_name])
+        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC'}, default_l2c.copy())
 
     # STLB
-    percore_default = {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}
-    cache_name = config_file['cache'][cpu['DTLB']]['lower_level']
+    cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
-        config_file['cache'][cache_name] = merge_dicts(default_l2c, percore_default, config_file.get('STLB', {}), config_file['cache'][cache_name])
+        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_l2c.copy())
 
 # Remove caches that are inaccessible
-accessible = [False]*len(config_file['cache'])
-for i,ll in enumerate(config_file['cache'].values()):
-    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in config_file['cache'].values()) # The cache is accessible from another cache
-    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in config_file['ooo_cpu']) # The cache is accessible from a core
-config_file['cache'] = dict(itertools.compress(config_file['cache'].items(), accessible))
+accessible = [False]*len(caches)
+for i,ll in enumerate(caches.values()):
+    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in caches.values()) # The cache is accessible from another cache
+    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in cores) # The cache is accessible from a core
+caches = dict(itertools.compress(caches.items(), accessible))
 
 # Establish latencies in caches
-# If not specified, hit and fill latencies are half of the total latency, where fill takes longer if the sum is odd.
-for cache in config_file['cache'].values():
-    cache['hit_latency'] = cache.get('hit_latency', cache['latency'] - cache['fill_latency'])
+for cache in caches.values():
+    cache['hit_latency'] = cache.get('hit_latency') or (cache['latency'] - cache['fill_latency'])
 
 # Scale frequencies
 config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
 freqs = list(itertools.chain(
-    [cpu['frequency'] for cpu in config_file['ooo_cpu']],
-    [cache['frequency'] for cache in config_file['cache'].values()],
+    [cpu['frequency'] for cpu in cores],
+    [cache['frequency'] for cache in caches.values()],
     (config_file['physical_memory']['frequency'],)
 ))
 freqs = [max(freqs)/x for x in freqs]
-for i,cpu in enumerate(config_file['ooo_cpu']):
-    cpu['frequency'] = freqs[i]
-for i,cache in enumerate(config_file['cache'].values()):
-    cache['frequency'] = freqs[len(config_file['ooo_cpu'])+i]
-config_file['physical_memory']['frequency'] = freqs[-1]
+for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
+    src['frequency'] = freq
 
 ###
 # Check to make sure modules exist and they correspond to any already-built modules.
@@ -204,13 +177,13 @@ config_file['physical_memory']['frequency'] = freqs[-1]
 
 # Associate modules with paths
 libfilenames = {}
-for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
-    if config_file['cache'][cpu['L1I']]['prefetcher'] is not None:
-        libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + config_file['cache'][cpu['L1I']]['prefetcher']
-    if config_file['cache'][cpu['L1D']]['prefetcher'] is not None:
-        libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + config_file['cache'][cpu['L1D']]['prefetcher']
-    if config_file['cache'][config_file['cache'][cpu['L1D']]['lower_level']]['prefetcher'] is not None:
-        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + config_file['cache'][config_file['cache'][cpu['L1D']]['lower_level']]['prefetcher']
+for i,cpu in enumerate(cores[:1]):
+    if caches[cpu['L1I']]['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1iprefetcher.a'] = 'prefetcher/' + caches[cpu['L1I']]['prefetcher']
+    if caches[cpu['L1D']]['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = 'prefetcher/' + caches[cpu['L1D']]['prefetcher']
+    if caches[caches[cpu['L1D']]['lower_level']]['prefetcher'] is not None:
+        libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = 'prefetcher/' + caches[caches[cpu['L1D']]['lower_level']]['prefetcher']
     if cpu['branch_predictor'] is not None:
         if os.path.exists('branch/' + cpu['branch_predictor']):
             libfilenames['cpu' + str(i) + 'branch_predictor.a'] = 'branch/' + cpu['branch_predictor']
@@ -229,20 +202,20 @@ for i,cpu in enumerate(config_file['ooo_cpu'][:1]):
             print('Path to BTB does not exist. Exiting...')
             sys.exit(1)
 
-if config_file['cache']['LLC']['prefetcher'] is not None:
-    if os.path.exists('prefetcher/' + config_file['cache']['LLC']['prefetcher']):
-        libfilenames['cpu' + str(i) + 'llprefetcher.a'] = 'prefetcher/' + config_file['cache']['LLC']['prefetcher']
-    elif os.path.exists(os.path.normpath(os.path.expanduser(config_file['cache']['LLC']['prefetcher']))):
-        libfilenames['cpu' + str(i) + 'llprefetcher.a'] = os.path.normpath(os.path.expanduser(config_file['cache']['LLC']['prefetcher']))
+if caches['LLC']['prefetcher'] is not None:
+    if os.path.exists('prefetcher/' + caches['LLC']['prefetcher']):
+        libfilenames['cpu' + str(i) + 'llprefetcher.a'] = 'prefetcher/' + caches['LLC']['prefetcher']
+    elif os.path.exists(os.path.normpath(os.path.expanduser(caches['LLC']['prefetcher']))):
+        libfilenames['cpu' + str(i) + 'llprefetcher.a'] = os.path.normpath(os.path.expanduser(caches['LLC']['prefetcher']))
     else:
         print('Path to LLC prefetcher does not exist. Exiting...')
         sys.exit(1)
 
-if config_file['cache']['LLC']['replacement'] is not None:
-    if os.path.exists('replacement/' + config_file['cache']['LLC']['replacement']):
-        libfilenames['cpu' + str(i) + 'llreplacement.a'] = 'replacement/' + config_file['cache']['LLC']['replacement']
-    elif os.path.exists(os.path.normpath(os.path.expanduser(config_file['cache']['LLC']['replacement']))):
-        libfilenames['cpu' + str(i) + 'llreplacement.a'] = os.path.normpath(os.path.expanduser(config_file['cache']['LLC']['replacement']))
+if caches['LLC']['replacement'] is not None:
+    if os.path.exists('replacement/' + caches['LLC']['replacement']):
+        libfilenames['cpu' + str(i) + 'llreplacement.a'] = 'replacement/' + caches['LLC']['replacement']
+    elif os.path.exists(os.path.normpath(os.path.expanduser(caches['LLC']['replacement']))):
+        libfilenames['cpu' + str(i) + 'llreplacement.a'] = os.path.normpath(os.path.expanduser(caches['LLC']['replacement']))
     else:
         print('Path to LLC replacement does not exist. Exiting...')
         sys.exit(1)
@@ -265,14 +238,14 @@ for f in os.listdir('obj'):
 
 # Add PTW to memory system
 ptws = {}
-for i in range(len(config_file['ooo_cpu'])):
-    ptws[config_file['ooo_cpu'][i]['PTW']['name']] = config_file['ooo_cpu'][i]['PTW']
-    config_file['ooo_cpu'][i]['PTW'] = config_file['ooo_cpu'][i]['PTW']['name']
+for i in range(len(cores)):
+    ptws[cores[i]['PTW']['name']] = cores[i]['PTW']
+    cores[i]['PTW'] = cores[i]['PTW']['name']
 
-memory_system = dict(config_file['cache'], **ptws)
+memory_system = dict(**caches, **ptws)
 
 # Give each element a fill level
-active_keys = list(itertools.chain.from_iterable((cpu['ITLB'], cpu['DTLB'], cpu['L1I'], cpu['L1D']) for cpu in config_file['ooo_cpu']))
+active_keys = list(itertools.chain.from_iterable((cpu['ITLB'], cpu['DTLB'], cpu['L1I'], cpu['L1D']) for cpu in cores))
 for k in active_keys:
     memory_system[k]['fill_level'] = 1
 
@@ -326,18 +299,18 @@ with open(instantiation_file_name, 'wt') as wfp:
         else:
             wfp.write(cache_fmtstr.format(**elem))
 
-    for i,cpu in enumerate(config_file['ooo_cpu']):
+    for i,cpu in enumerate(cores):
         wfp.write(cpu_fmtstr.format(cpu=i, attrs=cpu))
 
     wfp.write('std::array<O3_CPU*, NUM_CPUS> ooo_cpu {\n')
-    for i in range(len(config_file['ooo_cpu'])):
+    for i in range(len(cores)):
         if i > 0:
             wfp.write(',\n')
         wfp.write('&cpu{}_inst'.format(i))
     wfp.write('\n};\n')
 
     wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {\n')
-    for i in range(len(config_file['ooo_cpu'])):
+    for i in range(len(cores)):
         wfp.write('&cpu{}_inst, '.format(i))
     wfp.write('\n')
 
@@ -359,7 +332,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_log_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
-    wfp.write('#define NUM_OPERABLES ' + str(len(config_file['ooo_cpu']) + len(memory_system) + 1) + 'u\n')
+    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(memory_system) + 1) + 'u\n')
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:
