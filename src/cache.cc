@@ -61,7 +61,13 @@ void CACHE::handle_fill()
 
         // find victim
         uint32_t set = get_set(fill_mshr->address);
-        uint32_t way = find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
+
+        auto set_begin = std::next(std::begin(block), set*NUM_WAY);
+        auto set_end   = std::next(set_begin, NUM_WAY);
+        auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+        uint32_t way = std::distance(set_begin, first_inv);
+        if (way == NUM_WAY)
+            way = find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
 
         bool success = filllike_miss(set, way, *fill_mshr);
         if (!success)
@@ -125,7 +131,12 @@ void CACHE::handle_writeback()
             }
             else {
                 // find victim
-                way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
+                auto set_begin = std::next(std::begin(block), set*NUM_WAY);
+                auto set_end   = std::next(set_begin, NUM_WAY);
+                auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+                way = std::distance(set_begin, first_inv);
+                if (way == NUM_WAY)
+                    way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
 
                 success = filllike_miss(set, way, handle_pkt);
             }
