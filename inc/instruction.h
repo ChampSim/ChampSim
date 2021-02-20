@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 // instruction format
 #define NUM_INSTR_DESTINATIONS_SPARC 4
@@ -64,8 +65,6 @@ struct cloudsuite_instr {
 struct ooo_model_instr {
     uint64_t instr_id = 0,
              ip = 0,
-             fetch_producer = 0,
-             producer_id = 0,
              event_cycle = 0;
 
     bool is_branch = 0,
@@ -74,12 +73,7 @@ struct ooo_model_instr {
          branch_mispredicted = 0,
          source_added[NUM_INSTR_SOURCES] = {},
          destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
-         is_producer = 0,
-         is_consumer = 0,
-         reg_RAW_producer = 0,
-         reg_ready = 0,
-         mem_ready = 0,
-         reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+         is_producer = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -97,8 +91,7 @@ struct ooo_model_instr {
 
     uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
 
-    fastset
-	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
+    std::vector<ooo_model_instr*> registers_instrs_depend_on_me;
 
 
     // memory addresses that may cause dependencies between instructions

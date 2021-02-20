@@ -596,120 +596,60 @@ void O3_CPU::schedule_instruction()
 
 void O3_CPU::do_scheduling(uint32_t rob_index)
 {
-    ROB.entry[rob_index].reg_ready = 1; // reg_ready will be reset to 0 if there is RAW dependency 
+    ooo_model_instr &rob_entry = ROB.entry[rob_index];
 
-    reg_dependency(rob_index);
+    // Mark register dependencies
+    for (auto src_reg : rob_entry.source_registers) {
+        if (src_reg) {
+            std::size_t prior_idx = rob_index;
+            while (prior_idx != ROB.head)
+            {
+                prior_idx = (prior_idx == 0) ? ROB.SIZE-1 : prior_idx-1;
+                ooo_model_instr &prior = ROB.entry[prior_idx];
+                if (prior.executed != COMPLETED) {
+                    auto found = std::find(std::begin(prior.destination_registers), std::end(prior.destination_registers), src_reg);
+                    if (found != std::end(prior.destination_registers)) {
+                        prior.registers_instrs_depend_on_me.push_back(&rob_entry);
+                        rob_entry.num_reg_dependent++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
-    if (ROB.entry[rob_index].is_memory)
-        ROB.entry[rob_index].scheduled = INFLIGHT;
+    if (rob_entry.is_memory)
+        rob_entry.scheduled = INFLIGHT;
     else {
-        ROB.entry[rob_index].scheduled = COMPLETED;
+        rob_entry.scheduled = COMPLETED;
 
         // ADD LATENCY
         if (warmup_complete[cpu])
         {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
+            if (rob_entry.event_cycle < current_core_cycle[cpu])
+                rob_entry.event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
             else
-                ROB.entry[rob_index].event_cycle += SCHEDULING_LATENCY;
+                rob_entry.event_cycle += SCHEDULING_LATENCY;
         }
         else
         {
-            if (ROB.entry[rob_index].event_cycle < current_core_cycle[cpu])
-                ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
+            if (rob_entry.event_cycle < current_core_cycle[cpu])
+                rob_entry.event_cycle = current_core_cycle[cpu];
         }
 
-        if (ROB.entry[rob_index].reg_ready) {
+        if (rob_entry.num_reg_dependent == 0) {
 
-#ifdef SANITY_CHECK
-            if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
-                assert(0);
-#endif
             // remember this rob_index in the Ready-To-Execute array 1
+            assert(ready_to_execute[ready_to_execute_tail] == ROB_SIZE);
             ready_to_execute[ready_to_execute_tail] = rob_index;
 
             DP (if (warmup_complete[cpu]) {
-            cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
+            cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_entry.instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
             cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
 
             ready_to_execute_tail++;
             if (ready_to_execute_tail == ROB_SIZE)
                 ready_to_execute_tail = 0;
-        }
-    }
-}
-
-void O3_CPU::reg_dependency(uint32_t rob_index)
-{
-    // print out source/destination registers
-    DP (if (warmup_complete[cpu]) {
-    for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
-        if (ROB.entry[rob_index].source_registers[i]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " is_memory: " << +ROB.entry[rob_index].is_memory;
-            cout << " load  reg_index: " << +ROB.entry[rob_index].source_registers[i] << endl;
-        }
-    }
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-        if (ROB.entry[rob_index].destination_registers[i]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " is_memory: " << +ROB.entry[rob_index].is_memory;
-            cout << " store reg_index: " << +ROB.entry[rob_index].destination_registers[i] << endl;
-        }
-    } }); 
-
-    // check RAW dependency
-    int prior = rob_index - 1;
-    if (prior < 0)
-        prior = ROB.SIZE - 1;
-
-    if (rob_index != ROB.head) {
-        if ((int)ROB.head <= prior) {
-            for (int i=prior; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-        } else {
-            for (int i=prior; i>=0; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-            for (int i=ROB.SIZE-1; i>=(int)ROB.head; i--) if (ROB.entry[i].executed != COMPLETED) {
-		for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-			if (ROB.entry[rob_index].source_registers[j] && (ROB.entry[rob_index].reg_RAW_checked[j] == 0))
-				reg_RAW_dependency(i, rob_index, j);
-		}
-	    }
-        }
-    }
-}
-
-void O3_CPU::reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index)
-{
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-        if (ROB.entry[prior].destination_registers[i] == 0)
-            continue;
-
-        if (ROB.entry[prior].destination_registers[i] == ROB.entry[current].source_registers[source_index]) {
-
-            // we need to mark this dependency in the ROB since the producer might not be added in the store queue yet
-            ROB.entry[prior].registers_instrs_depend_on_me.insert (current);   // this load cannot be executed until the prior store gets executed
-            ROB.entry[prior].registers_index_depend_on_me[source_index].insert (current);   // this load cannot be executed until the prior store gets executed
-            ROB.entry[prior].reg_RAW_producer = 1;
-
-            ROB.entry[current].reg_ready = 0;
-            ROB.entry[current].producer_id = ROB.entry[prior].instr_id; 
-            ROB.entry[current].num_reg_dependent++;
-            ROB.entry[current].reg_RAW_checked[source_index] = 1;
-
-            DP (if(warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[current].instr_id << " is_memory: " << +ROB.entry[current].is_memory;
-            cout << " RAW reg_index: " << +ROB.entry[current].source_registers[source_index];
-            cout << " producer_id: " << ROB.entry[prior].instr_id << endl; });
-
-            return;
         }
     }
 }
@@ -750,7 +690,7 @@ void O3_CPU::execute_instruction()
 
 void O3_CPU::do_execution(uint32_t rob_index)
 {
-    //if (ROB.entry[rob_index].reg_ready && (ROB.entry[rob_index].scheduled == COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
+    //if (ROB.entry[rob_index].num_reg_dependent == 0 && (ROB.entry[rob_index].scheduled == COMPLETED) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
 
   //cout << "do_execution() rob_index: " << rob_index << " cycle: " << current_core_cycle[cpu] << endl;
   
@@ -781,7 +721,7 @@ void O3_CPU::do_execution(uint32_t rob_index)
 
 uint8_t O3_CPU::mem_reg_dependence_resolved(uint32_t rob_index)
 {
-  return ROB.entry[rob_index].reg_ready;
+  return ROB.entry[rob_index].num_reg_dependent == 0;
 }
 
 void O3_CPU::schedule_memory_instruction()
@@ -1405,8 +1345,7 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
             inflight_reg_executions--;
             completed_executions++;
 
-            if (ROB.entry[rob_index].reg_RAW_producer)
-                reg_RAW_release(rob_index);
+            reg_RAW_release(rob_index);
 
             if (ROB.entry[rob_index].branch_mispredicted)
 	      {
@@ -1429,8 +1368,7 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
                 inflight_mem_executions--;
                 completed_executions++;
                 
-                if (ROB.entry[rob_index].reg_RAW_producer)
-                    reg_RAW_release(rob_index);
+                reg_RAW_release(rob_index);
 
                 if (ROB.entry[rob_index].branch_mispredicted)
 		  {
@@ -1452,43 +1390,37 @@ uint32_t O3_CPU::complete_execution(uint32_t rob_index)
 
 void O3_CPU::reg_RAW_release(uint32_t rob_index)
 {
-    // if (!ROB.entry[rob_index].registers_instrs_depend_on_me.empty()) 
+    for (auto dependent : ROB.entry[rob_index].registers_instrs_depend_on_me)
+    {
+        dependent->num_reg_dependent--;
 
-    ITERATE_SET(i,ROB.entry[rob_index].registers_instrs_depend_on_me, ROB_SIZE) {
-        for (uint32_t j=0; j<NUM_INSTR_SOURCES; j++) {
-            if (ROB.entry[rob_index].registers_index_depend_on_me[j].search (i)) {
-                ROB.entry[i].num_reg_dependent--;
-
-                if (ROB.entry[i].num_reg_dependent == 0) {
-                    ROB.entry[i].reg_ready = 1;
-                    if (ROB.entry[i].is_memory)
-                        ROB.entry[i].scheduled = INFLIGHT;
-                    else {
-                        ROB.entry[i].scheduled = COMPLETED;
+        if (dependent->num_reg_dependent == 0) {
+            if (dependent->is_memory)
+                dependent->scheduled = INFLIGHT;
+            else {
+                dependent->scheduled = COMPLETED;
 
 #ifdef SANITY_CHECK
-                        if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
-                            assert(0);
+                if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
+                    assert(0);
 #endif
-                        // remember this rob_index in the Ready-To-Execute array 0
-                        ready_to_execute[ready_to_execute_tail] = i;
-
-                        DP (if (warmup_complete[cpu]) {
-                        cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to ready_to_execute";
-                        cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
-
-                        ready_to_execute_tail++;
-                        if (ready_to_execute_tail == ROB_SIZE)
-                            ready_to_execute_tail = 0;
-
-                    }
-                }
+                // remember this rob_index in the Ready-To-Execute array 0
+                ready_to_execute[ready_to_execute_tail] = std::distance(ROB.entry, dependent);
 
                 DP (if (warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
-                cout << ROB.entry[i].instr_id << " reg_index: " << +ROB.entry[i].source_registers[j] << " num_reg_dependent: " << ROB.entry[i].num_reg_dependent << " cycle: " << current_core_cycle[cpu] << endl; });
+                        cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " rob_index: " << i << " is added to ready_to_execute";
+                        cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
+
+                ready_to_execute_tail++;
+                if (ready_to_execute_tail == ROB_SIZE)
+                    ready_to_execute_tail = 0;
+
             }
         }
+
+        DP (if (warmup_complete[cpu]) {
+                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
+                cout << dependent->instr_id << " reg_index: " << +dependent->source_registers[j] << " num_reg_dependent: " << dependent->num_reg_dependent << " cycle: " << current_core_cycle[cpu] << endl; });
     }
 }
 
