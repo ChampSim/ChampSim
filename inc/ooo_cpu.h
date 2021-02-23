@@ -204,8 +204,7 @@ class O3_CPU {
          do_memory_scheduling(uint32_t rob_index),
          operate_lsq(),
          do_complete_execution(uint32_t rob_index),
-         reg_RAW_release(uint32_t rob_index),
-         mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
+         do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry),
          release_load_queue(uint32_t lq_index);
 
     void initialize_core();
@@ -222,8 +221,6 @@ class O3_CPU {
     uint32_t check_rob(uint64_t instr_id);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
-
-    uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
   // branch predictor
   uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);

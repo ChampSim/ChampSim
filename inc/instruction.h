@@ -72,8 +72,7 @@ struct ooo_model_instr {
          branch_taken = 0,
          branch_mispredicted = 0,
          source_added[NUM_INSTR_SOURCES] = {},
-         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
-         is_producer = 0;
+         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -91,28 +90,15 @@ struct ooo_model_instr {
 
     uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
 
-    std::vector<ooo_model_instr*> registers_instrs_depend_on_me;
-
+    // these are indices of instructions in the ROB that depend on me
+    std::vector<ooo_model_instr*> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
 
     // memory addresses that may cause dependencies between instructions
-    uint64_t instruction_pa = 0, data_pa = 0, virtual_address = 0, physical_address = 0;
+    uint64_t instruction_pa = 0;
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
-    //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
-    // keep around a record of what the original virtual addresses were
-    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC] = {};
-    uint64_t source_virtual_address[NUM_INSTR_SOURCES] = {};
-
-    // these are instruction ids of other instructions in the window
-    //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
-
-    // these are indices of instructions in the ROB that depend on me
-    fastset memory_instrs_depend_on_me;
-
-    uint32_t lq_index[NUM_INSTR_SOURCES],
-             sq_index[NUM_INSTR_DESTINATIONS_SPARC],
-             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
+    uint32_t lq_index[NUM_INSTR_SOURCES], sq_index[NUM_INSTR_DESTINATIONS_SPARC];
 
     ooo_model_instr() {
         std::fill(std::begin(lq_index), std::end(lq_index), std::numeric_limits<uint32_t>::max());

@@ -157,6 +157,16 @@ struct LSQ_ENTRY {
 		forwarding_depend_on_me;
 };
 
+template <>
+class is_valid<LSQ_ENTRY>
+{
+    public:
+        bool operator() (const LSQ_ENTRY &test)
+        {
+            return test.virtual_address != 0;
+        }
+};
+
 // reorder buffer
 template <typename T>
 struct CORE_BUFFER {
