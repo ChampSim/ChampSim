@@ -587,7 +587,24 @@ void O3_CPU::schedule_instruction()
             return;
 
         if (ROB.entry[i].scheduled == 0)
+        {
             do_scheduling(i);
+
+            if (ROB.entry[i].scheduled == COMPLETED && ROB.entry[i].num_reg_dependent == 0) {
+
+                // remember this rob_index in the Ready-To-Execute array 1
+                assert(ready_to_execute[ready_to_execute_tail] == ROB_SIZE);
+                ready_to_execute[ready_to_execute_tail] = i;
+
+                DP (if (warmup_complete[cpu]) {
+                        std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << ROB.entry[i].instr_id << " rob_index: " << i << " is added to ready_to_execute";
+                        std::cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << std::endl; });
+
+                ready_to_execute_tail++;
+                if (ready_to_execute_tail == ROB_SIZE)
+                    ready_to_execute_tail = 0;
+            }
+        }
 
         if(ROB.entry[i].executed == 0)
             num_searched++;
@@ -635,21 +652,6 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
         {
             if (rob_entry.event_cycle < current_core_cycle[cpu])
                 rob_entry.event_cycle = current_core_cycle[cpu];
-        }
-
-        if (rob_entry.num_reg_dependent == 0) {
-
-            // remember this rob_index in the Ready-To-Execute array 1
-            assert(ready_to_execute[ready_to_execute_tail] == ROB_SIZE);
-            ready_to_execute[ready_to_execute_tail] = rob_index;
-
-            DP (if (warmup_complete[cpu]) {
-            cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_entry.instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
-            cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
-
-            ready_to_execute_tail++;
-            if (ready_to_execute_tail == ROB_SIZE)
-                ready_to_execute_tail = 0;
         }
     }
 }
@@ -1336,60 +1338,16 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     return rq_index;
 }
 
-uint32_t O3_CPU::complete_execution(uint32_t rob_index)
+void O3_CPU::do_complete_execution(uint32_t rob_index)
 {
-    if (ROB.entry[rob_index].is_memory == 0) {
-        if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
+    ROB.entry[rob_index].executed = COMPLETED;
+    if (ROB.entry[rob_index].is_memory == 0)
+        inflight_reg_executions--;
+    else
+        inflight_mem_executions--;
 
-            ROB.entry[rob_index].executed = COMPLETED; 
-            inflight_reg_executions--;
-            completed_executions++;
+    completed_executions++;
 
-            reg_RAW_release(rob_index);
-
-            if (ROB.entry[rob_index].branch_mispredicted)
-	      {
-		fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
-	      }
-
-            DP(if(warmup_complete[cpu]) {
-            cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-            cout << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted << " fetch_stall: " << +fetch_stall;
-            cout << " event: " << ROB.entry[rob_index].event_cycle << endl; });
-
-	    return 1;
-        }
-    }
-    else {
-        if (ROB.entry[rob_index].num_mem_ops == 0) {
-            if ((ROB.entry[rob_index].executed == INFLIGHT) && (ROB.entry[rob_index].event_cycle <= current_core_cycle[cpu])) {
-
-	      ROB.entry[rob_index].executed = COMPLETED;
-                inflight_mem_executions--;
-                completed_executions++;
-                
-                reg_RAW_release(rob_index);
-
-                if (ROB.entry[rob_index].branch_mispredicted)
-		  {
-		    fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
-		  }
-
-                DP(if(warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " is_memory: " << +ROB.entry[rob_index].is_memory << " branch_mispredicted: " << +ROB.entry[rob_index].branch_mispredicted;
-                cout << " fetch_stall: " << +fetch_stall << " event: " << ROB.entry[rob_index].event_cycle << " current: " << current_core_cycle[cpu] << endl; });
-
-		return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-void O3_CPU::reg_RAW_release(uint32_t rob_index)
-{
     for (auto dependent : ROB.entry[rob_index].registers_instrs_depend_on_me)
     {
         dependent->num_reg_dependent--;
@@ -1399,29 +1357,12 @@ void O3_CPU::reg_RAW_release(uint32_t rob_index)
                 dependent->scheduled = INFLIGHT;
             else {
                 dependent->scheduled = COMPLETED;
-
-#ifdef SANITY_CHECK
-                if (ready_to_execute[ready_to_execute_tail] < ROB_SIZE)
-                    assert(0);
-#endif
-                // remember this rob_index in the Ready-To-Execute array 0
-                ready_to_execute[ready_to_execute_tail] = std::distance(ROB.entry, dependent);
-
-                DP (if (warmup_complete[cpu]) {
-                        cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " rob_index: " << i << " is added to ready_to_execute";
-                        cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
-
-                ready_to_execute_tail++;
-                if (ready_to_execute_tail == ROB_SIZE)
-                    ready_to_execute_tail = 0;
-
             }
         }
-
-        DP (if (warmup_complete[cpu]) {
-                cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id << " releases instr_id: ";
-                cout << dependent->instr_id << " reg_index: " << +dependent->source_registers[j] << " num_reg_dependent: " << dependent->num_reg_dependent << " cycle: " << current_core_cycle[cpu] << endl; });
     }
+
+    if (ROB.entry[rob_index].branch_mispredicted)
+        fetch_resume_cycle = current_core_cycle[cpu] + BRANCH_MISPREDICT_PENALTY;
 }
 
 void O3_CPU::operate_cache()
@@ -1447,7 +1388,34 @@ void O3_CPU::complete_inflight_instruction()
 	    {
 	        break;
 	    }
-	    instrs_executed += complete_execution(i);
+
+        if ((ROB.entry[i].executed == INFLIGHT) && (ROB.entry[i].event_cycle <= current_core_cycle[cpu]) && ROB.entry[i].num_mem_ops == 0)
+        {
+            do_complete_execution(i);
+            ++instrs_executed;
+
+            auto begin_dep = std::begin(ROB.entry[i].registers_instrs_depend_on_me);
+            auto end_dep   = std::end(ROB.entry[i].registers_instrs_depend_on_me);
+            std::sort(begin_dep, end_dep);
+            auto last = std::unique(begin_dep, end_dep);
+            ROB.entry[i].registers_instrs_depend_on_me.erase(last, end_dep);
+            for (auto dependent : ROB.entry[i].registers_instrs_depend_on_me)
+            {
+                if (dependent->scheduled == COMPLETED && dependent->num_reg_dependent == 0)
+                {
+                    assert(ready_to_execute[ready_to_execute_tail] == ROB_SIZE);
+                    ready_to_execute[ready_to_execute_tail] = std::distance(ROB.entry, dependent);
+
+                    DP (if (warmup_complete[cpu]) {
+                            cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " rob_index: " << rob_index << " is added to ready_to_execute";
+                            cout << " head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; }); 
+
+                    ready_to_execute_tail++;
+                    if (ready_to_execute_tail == ROB_SIZE)
+                        ready_to_execute_tail = 0;
+                }
+            }
+        }
 	}
     }
 }

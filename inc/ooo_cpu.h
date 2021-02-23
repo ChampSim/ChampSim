@@ -202,9 +202,9 @@ class O3_CPU {
          do_scheduling(uint32_t rob_index),
          do_execution(uint32_t rob_index),
          do_memory_scheduling(uint32_t rob_index),
-         operate_lsq();
-    uint32_t complete_execution(uint32_t rob_index);
-    void reg_RAW_release(uint32_t rob_index),
+         operate_lsq(),
+         do_complete_execution(uint32_t rob_index),
+         reg_RAW_release(uint32_t rob_index),
          mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
          release_load_queue(uint32_t lq_index);
 
