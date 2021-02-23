@@ -830,8 +830,6 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     auto lq_begin = LQ.entry;
     auto lq_end   = std::next(lq_begin, LQ.SIZE);
     auto lq_entry = std::find_if_not(lq_begin, lq_end, is_valid<LSQ_ENTRY>());
-
-    // sanity check
     assert(lq_entry != lq_end);
 
     // add it to the load queue
@@ -949,182 +947,110 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
 void O3_CPU::operate_lsq()
 {
     // handle store
-    uint32_t store_issued = 0, num_iteration = 0;
+    uint32_t store_issued = 0;
 
-    while (store_issued < SQ_WIDTH) {
-        if (RTS0[RTS0_head] < SQ_SIZE) {
-            uint32_t sq_index = RTS0[RTS0_head];
-            if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
+    while (store_issued < SQ_WIDTH && RTS0[RTS0_head] < SQ.SIZE)
+    {
+        // add it to DTLB
+        int rq_index = do_translate_store(RTS0[RTS0_head]);
 
-                // add it to DTLB
-                PACKET data_packet;
-
-                data_packet.fill_level = FILL_L1;
-                data_packet.cpu = cpu;
-                data_packet.data_index = SQ.entry[sq_index].data_index;
-                data_packet.sq_index = sq_index;
-                if (knob_cloudsuite)
-                    data_packet.address = ((SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | SQ.entry[sq_index].asid[1];
-                else
-                    data_packet.address = SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE;
-                data_packet.full_addr = SQ.entry[sq_index].virtual_address;
-                data_packet.instr_id = SQ.entry[sq_index].instr_id;
-                data_packet.rob_index = SQ.entry[sq_index].rob_index;
-                data_packet.ip = SQ.entry[sq_index].ip;
-                data_packet.type = RFO;
-                data_packet.asid[0] = SQ.entry[sq_index].asid[0];
-                data_packet.asid[1] = SQ.entry[sq_index].asid[1];
-                data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
-                data_packet.to_return = {&DTLB_bus};
-                data_packet.sq_index_depend_on_me = {sq_index};
-
-                DP (if (warmup_complete[cpu]) {
-                cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
-                cout << " head: " << RTS0_head << " tail: " << RTS0_tail << endl; }); 
-
-                int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
-
-                if (rq_index == -2)
-                    break; 
-                else 
-                    SQ.entry[sq_index].translated = INFLIGHT;
-
-                RTS0[RTS0_head] = SQ_SIZE;
-                RTS0_head++;
-                if (RTS0_head == SQ_SIZE)
-                    RTS0_head = 0;
-
-                store_issued++;
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS0] is empty head: " << RTS0_head << " tail: " << RTS0_tail << endl; });
+        if (rq_index == -2)
             break;
-        }
 
-        num_iteration++;
-        if (num_iteration == (SQ_SIZE-1))
-            break;
+        RTS0[RTS0_head] = SQ_SIZE;
+        RTS0_head++;
+        if (RTS0_head == SQ_SIZE)
+            RTS0_head = 0;
+
+        store_issued++;
     }
 
-    num_iteration = 0;
-    while (store_issued < SQ_WIDTH) {
-        if (RTS1[RTS1_head] < SQ_SIZE) {
-            uint32_t sq_index = RTS1[RTS1_head];
-            if (SQ.entry[sq_index].event_cycle <= current_core_cycle[cpu]) {
-                execute_store(SQ.entry[sq_index].rob_index, sq_index, SQ.entry[sq_index].data_index);
+    while (store_issued < SQ_WIDTH && RTS1[RTS1_head] < SQ.SIZE)
+    {
+        execute_store(RTS1[RTS1_head]);
 
-                RTS1[RTS1_head] = SQ_SIZE;
-                RTS1_head++;
-                if (RTS1_head == SQ_SIZE)
-                    RTS1_head = 0;
+        RTS1[RTS1_head] = SQ_SIZE;
+        RTS1_head++;
+        if (RTS1_head == SQ_SIZE)
+            RTS1_head = 0;
 
-                store_issued++;
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTS1] is empty head: " << RTS1_head << " tail: " << RTS1_tail << endl; });
-            break;
-        }
-
-        num_iteration++;
-        if (num_iteration == (SQ_SIZE-1))
-            break;
+        store_issued++;
     }
 
     unsigned load_issued = 0;
-    num_iteration = 0;
-    while (load_issued < LQ_WIDTH) {
-        if (RTL0[RTL0_head] < LQ_SIZE) {
-            uint32_t lq_index = RTL0[RTL0_head];
-            if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
+    while (load_issued < LQ_WIDTH && RTL0[RTL0_head] < LQ.SIZE)
+    {
+        // add it to DTLB
+        int rq_index = do_translate_load(RTL0[RTL0_head]);
 
-                // add it to DTLB
-                PACKET data_packet;
-                data_packet.fill_level = FILL_L1;
-                data_packet.cpu = cpu;
-                data_packet.data_index = LQ.entry[lq_index].data_index;
-                data_packet.lq_index = lq_index;
-                if (knob_cloudsuite)
-                    data_packet.address = ((LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | LQ.entry[lq_index].asid[1];
-                else
-                    data_packet.address = LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE;
-                data_packet.full_addr = LQ.entry[lq_index].virtual_address;
-                data_packet.instr_id = LQ.entry[lq_index].instr_id;
-                data_packet.rob_index = LQ.entry[lq_index].rob_index;
-                data_packet.ip = LQ.entry[lq_index].ip;
-                data_packet.type = LOAD;
-                data_packet.asid[0] = LQ.entry[lq_index].asid[0];
-                data_packet.asid[1] = LQ.entry[lq_index].asid[1];
-                data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
-                data_packet.to_return = {&DTLB_bus};
-                data_packet.lq_index_depend_on_me = {lq_index};
-
-                DP (if (warmup_complete[cpu]) {
-                cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
-                cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
-
-                int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
-
-                if (rq_index == -2)
-                    break; // break here
-                else  
-                    LQ.entry[lq_index].translated = INFLIGHT;
-
-                RTL0[RTL0_head] = LQ_SIZE;
-                RTL0_head++;
-                if (RTL0_head == LQ_SIZE)
-                    RTL0_head = 0;
-
-                load_issued++;
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL0] is empty head: " << RTL0_head << " tail: " << RTL0_tail << endl; });
+        if (rq_index == -2)
             break;
-        }
 
-        num_iteration++;
-        if (num_iteration == (LQ_SIZE-1))
-            break;
+        RTL0[RTL0_head] = LQ_SIZE;
+        RTL0_head++;
+        if (RTL0_head == LQ_SIZE)
+            RTL0_head = 0;
+
+        load_issued++;
     }
 
-    num_iteration = 0;
-    while (load_issued < LQ_WIDTH) {
-        if (RTL1[RTL1_head] < LQ_SIZE) {
-            uint32_t lq_index = RTL1[RTL1_head];
-            if (LQ.entry[lq_index].event_cycle <= current_core_cycle[cpu]) {
-                int rq_index = execute_load(LQ.entry[lq_index].rob_index, lq_index, LQ.entry[lq_index].data_index);
+    while (load_issued < LQ_WIDTH && RTL1[RTL1_head] < LQ.SIZE)
+    {
+        int rq_index = execute_load(RTL1[RTL1_head]);
 
-                if (rq_index != -2) {
-                    RTL1[RTL1_head] = LQ_SIZE;
-                    RTL1_head++;
-                    if (RTL1_head == LQ_SIZE)
-                        RTL1_head = 0;
-
-                    load_issued++;
-                }
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[RTL1] is empty head: " << RTL1_head << " tail: " << RTL1_tail << endl; });
+        if (rq_index == -2)
             break;
-        }
 
-        num_iteration++;
-        if (num_iteration == (LQ_SIZE-1))
-            break;
+        RTL1[RTL1_head] = LQ_SIZE;
+        RTL1_head++;
+        if (RTL1_head == LQ_SIZE)
+            RTL1_head = 0;
+
+        load_issued++;
     }
 }
 
-void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index)
+int O3_CPU::do_translate_store(std::size_t sq_index)
+{
+    PACKET data_packet;
+
+    data_packet.fill_level = FILL_L1;
+    data_packet.cpu = cpu;
+    data_packet.data_index = SQ.entry[sq_index].data_index;
+    data_packet.sq_index = sq_index;
+    if (knob_cloudsuite)
+        data_packet.address = ((SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | SQ.entry[sq_index].asid[1];
+    else
+        data_packet.address = SQ.entry[sq_index].virtual_address >> LOG2_PAGE_SIZE;
+    data_packet.full_addr = SQ.entry[sq_index].virtual_address;
+    data_packet.instr_id = SQ.entry[sq_index].instr_id;
+    data_packet.rob_index = SQ.entry[sq_index].rob_index;
+    data_packet.ip = SQ.entry[sq_index].ip;
+    data_packet.type = RFO;
+    data_packet.asid[0] = SQ.entry[sq_index].asid[0];
+    data_packet.asid[1] = SQ.entry[sq_index].asid[1];
+    data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
+    data_packet.to_return = {&DTLB_bus};
+    data_packet.sq_index_depend_on_me = {sq_index};
+
+    DP (if (warmup_complete[cpu]) {
+            cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
+            cout << " head: " << RTS0_head << " tail: " << RTS0_tail << endl; });
+
+    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
+
+    if (rq_index != -2)
+        SQ.entry[sq_index].translated = INFLIGHT;
+
+    return rq_index;
+}
+
+void O3_CPU::execute_store(uint32_t sq_index)
 {
     SQ.entry[sq_index].fetched = COMPLETED;
     SQ.entry[sq_index].event_cycle = current_core_cycle[cpu];
+
+    std::size_t rob_index = SQ.entry[sq_index].rob_index;
 
     ROB.entry[rob_index].num_mem_ops--;
     ROB.entry[rob_index].event_cycle = current_core_cycle[cpu];
@@ -1160,14 +1086,46 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
     }
 }
 
-int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_index)
+int O3_CPU::do_translate_load(std::size_t lq_index)
+{
+    PACKET data_packet;
+    data_packet.fill_level = FILL_L1;
+    data_packet.cpu = cpu;
+    data_packet.data_index = LQ.entry[lq_index].data_index;
+    if (knob_cloudsuite)
+        data_packet.address = ((LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE) << 9) | LQ.entry[lq_index].asid[1];
+    else
+        data_packet.address = LQ.entry[lq_index].virtual_address >> LOG2_PAGE_SIZE;
+    data_packet.full_addr = LQ.entry[lq_index].virtual_address;
+    data_packet.instr_id = LQ.entry[lq_index].instr_id;
+    data_packet.rob_index = LQ.entry[lq_index].rob_index;
+    data_packet.ip = LQ.entry[lq_index].ip;
+    data_packet.type = LOAD;
+    data_packet.asid[0] = LQ.entry[lq_index].asid[0];
+    data_packet.asid[1] = LQ.entry[lq_index].asid[1];
+    data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+    data_packet.to_return = {&DTLB_bus};
+    data_packet.lq_index_depend_on_me = {lq_index};
+
+    DP (if (warmup_complete[cpu]) {
+            cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
+            cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
+
+    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
+
+    if (rq_index != -2)
+        LQ.entry[lq_index].translated = INFLIGHT;
+
+    return rq_index;
+}
+
+
+int O3_CPU::execute_load(uint32_t lq_index)
 {
     // add it to L1D
     PACKET data_packet;
     data_packet.fill_level = FILL_L1;
     data_packet.cpu = cpu;
-    data_packet.data_index = LQ.entry[lq_index].data_index;
-    data_packet.lq_index = lq_index;
     data_packet.address = LQ.entry[lq_index].physical_address >> LOG2_BLOCK_SIZE;
     data_packet.full_addr = LQ.entry[lq_index].physical_address;
     data_packet.v_address = LQ.entry[lq_index].virtual_address >> LOG2_BLOCK_SIZE;

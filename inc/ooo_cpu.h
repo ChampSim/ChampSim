@@ -210,8 +210,10 @@ class O3_CPU {
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
          add_store_queue(uint32_t rob_index, uint32_t data_index),
-         execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
-    int  execute_load(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
+         execute_store(uint32_t sq_index);
+    int  execute_load(uint32_t lq_index);
+    int  do_translate_store(std::size_t lq_index);
+    int  do_translate_load(std::size_t lq_index);
     void check_dependency(int prior, int current);
     void operate_cache();
     void complete_inflight_instruction();
