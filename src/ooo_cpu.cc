@@ -658,35 +658,18 @@ void O3_CPU::do_scheduling(uint32_t rob_index)
 
 void O3_CPU::execute_instruction()
 {
-    if ((ROB.head == ROB.tail) && ROB.occupancy == 0)
-        return;
-
     // out-of-order execution for non-memory instructions
     // memory instructions are handled by memory_instruction()
-    uint32_t exec_issued = 0, num_iteration = 0;
-    
-    while (exec_issued < EXEC_WIDTH) {
-        if (ready_to_execute[ready_to_execute_head] < ROB_SIZE) {
-            uint32_t exec_index = ready_to_execute[ready_to_execute_head];
-            if (ROB.entry[exec_index].event_cycle <= current_core_cycle[cpu]) {
-                do_execution(exec_index);
+    uint32_t exec_issued = 0;
+    while (exec_issued < EXEC_WIDTH && ready_to_execute[ready_to_execute_head] < ROB_SIZE)
+    {
+        do_execution(ready_to_execute[ready_to_execute_head]);
 
-                ready_to_execute[ready_to_execute_head] = ROB_SIZE;
-                ready_to_execute_head++;
-                if (ready_to_execute_head == ROB_SIZE)
-                    ready_to_execute_head = 0;
-                exec_issued++;
-            }
-        }
-        else {
-            //DP (if (warmup_complete[cpu]) {
-            //cout << "[ready_to_execute] is empty head: " << ready_to_execute_head << " tail: " << ready_to_execute_tail << endl; });
-            break;
-        }
-
-        num_iteration++;
-        if (num_iteration == (ROB_SIZE-1))
-            break;
+        ready_to_execute[ready_to_execute_head] = ROB_SIZE;
+        ready_to_execute_head++;
+        if (ready_to_execute_head == ROB_SIZE)
+            ready_to_execute_head = 0;
+        exec_issued++;
     }
 }
 
