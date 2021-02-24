@@ -26,9 +26,7 @@
 #define BRANCH_RETURN        6
 #define BRANCH_OTHER         7
 
-#include "set.h"
-
-#include <limits>
+class LSQ_ENTRY;
 
 struct input_instr {
     // instruction pointer or PC (Program Counter)
@@ -98,14 +96,11 @@ struct ooo_model_instr {
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
 
-    uint32_t lq_index[NUM_INSTR_SOURCES], sq_index[NUM_INSTR_DESTINATIONS_SPARC];
+    LSQ_ENTRY *lq_index[NUM_INSTR_SOURCES] = {}, *sq_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
 
-    ooo_model_instr() {
-        std::fill(std::begin(lq_index), std::end(lq_index), std::numeric_limits<uint32_t>::max());
-        std::fill(std::begin(sq_index), std::end(sq_index), std::numeric_limits<uint32_t>::max());
-    };
+    ooo_model_instr() = default;
 
-    ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr()
+    ooo_model_instr(uint8_t cpu, input_instr instr)
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
@@ -120,7 +115,7 @@ struct ooo_model_instr {
         asid[1] = cpu;
     }
 
-    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ooo_model_instr()
+    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));

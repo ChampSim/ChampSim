@@ -8,6 +8,7 @@
 #include <list>
 
 class MemoryRequestProducer;
+class LSQ_ENTRY;
 
 // message packet
 class PACKET {
@@ -19,7 +20,6 @@ class PACKET {
 
     int fill_level = -1,
         pf_origin_level,
-        rob_index = -1,
         producer = -1,
         delta = 0,
         depth = 0,
@@ -33,13 +33,10 @@ class PACKET {
              asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
              type = 0;
 
-    std::list<std::size_t> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<LSQ_ENTRY*> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
     std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
 
-    uint32_t cpu = NUM_CPUS,
-             data_index = 0,
-             lq_index = 0,
-             sq_index = 0;
+    uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
              full_addr = 0,
@@ -147,14 +144,11 @@ struct LSQ_ENTRY {
              ip = 0,
              event_cycle = 0;
 
-    uint32_t rob_index = 0, data_index = 0, sq_index = std::numeric_limits<uint32_t>::max();
+    ooo_model_instr* rob_index = NULL;
 
     uint8_t translated = 0,
             fetched = 0,
             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-// forwarding_depend_on_me[ROB_SIZE];
-    fastset
-		forwarding_depend_on_me;
 };
 
 template <>
