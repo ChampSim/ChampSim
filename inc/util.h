@@ -13,6 +13,11 @@ constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
     return ((1 << (begin - end))-1) << end;
 }
 
+constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits)
+{
+    return (upper & ~bitmask(bits)) | (lower & bitmask(bits));
+}
+
 template <typename T>
 struct is_valid
 {

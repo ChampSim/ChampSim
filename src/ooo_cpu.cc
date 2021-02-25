@@ -527,7 +527,7 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
   if (!L1I.PQ.full())
     {
       // magically translate prefetches
-      uint64_t pf_pa = (vmem.va_to_pa(cpu, pf_v_addr) & (~((1 << LOG2_PAGE_SIZE) - 1))) | (pf_v_addr & ((1 << LOG2_PAGE_SIZE) - 1));
+      uint64_t pf_pa = splice_bits(vmem.va_to_pa(cpu, pf_v_addr), pf_v_addr, LOG2_PAGE_SIZE);
 
       PACKET pf_packet;
       pf_packet.fill_level = FILL_L1;
@@ -749,7 +749,7 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
 
 void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry)
 {
-        lq_entry.physical_address = (sq_entry.physical_address & ~(uint64_t) ((1 << LOG2_BLOCK_SIZE) - 1)) | (lq_entry.virtual_address & ((1 << LOG2_BLOCK_SIZE) - 1));
+        lq_entry.physical_address = splice_bits(sq_entry.physical_address, lq_entry.virtual_address, LOG2_BLOCK_SIZE);
         lq_entry.translated = COMPLETED;
         lq_entry.fetched = COMPLETED;
 
@@ -916,7 +916,7 @@ int O3_CPU::do_translate_store(LSQ_ENTRY *sq_it)
     data_packet.fill_level = FILL_L1;
     data_packet.cpu = cpu;
     if (knob_cloudsuite)
-        data_packet.address = ((sq_it->virtual_address >> LOG2_PAGE_SIZE) << 9) | sq_it->asid[1];
+        data_packet.address = splice_bits(sq_it->virtual_address, sq_it->asid[1], LOG2_PAGE_SIZE);
     else
         data_packet.address = sq_it->virtual_address >> LOG2_PAGE_SIZE;
     data_packet.full_addr = sq_it->virtual_address;
@@ -980,7 +980,7 @@ int O3_CPU::do_translate_load(LSQ_ENTRY *lq_it)
     data_packet.fill_level = FILL_L1;
     data_packet.cpu = cpu;
     if (knob_cloudsuite)
-        data_packet.address = ((lq_it->virtual_address >> LOG2_PAGE_SIZE) << 9) | lq_it->asid[1];
+        data_packet.address = splice_bits(lq_it->virtual_address, lq_it->asid[1], LOG2_PAGE_SIZE);
     else
         data_packet.address = lq_it->virtual_address >> LOG2_PAGE_SIZE;
     data_packet.full_addr = lq_it->virtual_address;
@@ -1131,7 +1131,7 @@ void O3_CPU::handle_memory_return()
               {
                   it->translated = COMPLETED;
                   // recalculate a physical address for this cache line based on the translated physical page address
-                  it->instruction_pa = (itlb_entry.data << LOG2_PAGE_SIZE) | (it->ip & ((1 << LOG2_PAGE_SIZE) - 1));
+                  it->instruction_pa = splice_bits(itlb_entry.data << LOG2_PAGE_SIZE, it->ip, LOG2_PAGE_SIZE);
 
                   available_fetch_bandwidth--;
               }
@@ -1194,7 +1194,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
 	    {
-	      sq_merged->physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (sq_merged->virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+	      sq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      sq_merged->translated = COMPLETED;
 	      sq_merged->event_cycle = current_core_cycle[cpu];
 
@@ -1203,7 +1203,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
 	    {
-	      lq_merged->physical_address = (dtlb_entry.data << LOG2_PAGE_SIZE) | (lq_merged->virtual_address & ((1 << LOG2_PAGE_SIZE) - 1)); // translated address
+	      lq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      lq_merged->translated = COMPLETED;
 	      lq_merged->event_cycle = current_core_cycle[cpu];
 
