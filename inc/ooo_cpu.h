@@ -100,7 +100,10 @@ class O3_CPU : public champsim::operable {
             CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw,
             std::function<void(O3_CPU*)> bpred_initialize,
             std::function<void(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_last_branch_result,
-            std::function<uint8_t(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_predict_branch
+            std::function<uint8_t(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_predict_branch,
+            std::function<void(O3_CPU*)> btb_initialize,
+            std::function<void(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> update_btb,
+            std::function<std::pair<uint64_t, uint8_t>(O3_CPU*, uint64_t, uint8_t)> btb_prediction
             ) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
@@ -111,7 +114,10 @@ class O3_CPU : public champsim::operable {
         ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), PTW(ptw),
         impl_branch_predictor_initialize(std::bind(bpred_initialize, this)),
         impl_last_branch_result(std::bind(bpred_last_branch_result, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
-        impl_predict_branch(std::bind(bpred_predict_branch, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
+        impl_predict_branch(std::bind(bpred_predict_branch, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
+        impl_btb_initialize(std::bind(btb_initialize, this)),
+        impl_update_btb(std::bind(update_btb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
+        impl_btb_prediction(std::bind(btb_prediction, this, std::placeholders::_1, std::placeholders::_2))
     {
         // TLBs
         itlb->cpu = this->cpu;
@@ -190,10 +196,10 @@ class O3_CPU : public champsim::operable {
     const std::function<void(uint64_t, uint64_t, uint8_t, uint8_t)> impl_last_branch_result;
     const std::function<uint8_t(uint64_t, uint64_t, uint8_t, uint8_t)> impl_predict_branch;
 
-  // btb
-  std::pair<uint64_t, uint8_t> btb_prediction(uint64_t ip, uint8_t branch_type);
-  void initialize_btb(),
-    update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+    // btb
+    const std::function<void()> impl_btb_initialize;
+    const std::function<void(uint64_t, uint64_t, uint8_t, uint8_t)> impl_update_btb;
+    const std::function<std::pair<uint64_t, uint8_t>(uint64_t, uint8_t)> impl_btb_prediction;
 
   // code prefetching
   void l1i_prefetcher_initialize();

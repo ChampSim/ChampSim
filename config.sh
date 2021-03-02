@@ -20,7 +20,7 @@ dcn_fmtstr = 'cpu{}_{}' # default cache name format string
 cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {lower_level}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &{attrs[ITLB]}, &{attrs[DTLB]}, &{attrs[L1I]}, &{attrs[L1D]}, &{attrs[PTW]}, &O3_CPU::{attrs[bpred_initialize]}, &O3_CPU::{attrs[bpred_last_result]}, &O3_CPU::{attrs[bpred_predict]});\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &{attrs[ITLB]}, &{attrs[DTLB]}, &{attrs[L1I]}, &{attrs[L1D]}, &{attrs[PTW]}, &O3_CPU::{attrs[bpred_initialize]}, &O3_CPU::{attrs[bpred_last_result]}, &O3_CPU::{attrs[bpred_predict]}, &O3_CPU::{attrs[btb_initialize]}, &O3_CPU::{attrs[btb_update]}, &O3_CPU::{attrs[btb_predict]});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
@@ -175,12 +175,16 @@ for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file[
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
-# derive function names for branch prediction
+# derive function names for branch prediction and BTB
 for cpu in cores:
     if cpu['branch_predictor'] is not None:
         cpu['bpred_initialize'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_initialize'
         cpu['bpred_last_result'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_last_result'
         cpu['bpred_predict'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_predict'
+    if cpu['btb'] is not None:
+        cpu['btb_initialize'] = 'btb_' + os.path.basename(cpu['btb']) + '_initialize'
+        cpu['btb_update'] = 'btb_' + os.path.basename(cpu['btb']) + '_update'
+        cpu['btb_predict'] = 'btb_' + os.path.basename(cpu['btb']) + '_predict'
 
 # derive function names for replacement
 for cache in caches.values():
@@ -199,14 +203,6 @@ for i,cpu in enumerate(cores[:1]):
         libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = ('prefetcher/' + caches[cpu['L1D']]['prefetcher'], '')
     if caches[caches[cpu['L1D']]['lower_level']]['prefetcher'] is not None:
         libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = ('prefetcher/' + caches[caches[cpu['L1D']]['lower_level']]['prefetcher'], '')
-    if cpu['btb'] is not None:
-        if os.path.exists('btb/' + cpu['btb']):
-            libfilenames['cpu' + str(i) + 'btb.a'] = ('btb/' + cpu['btb'], '')
-        elif os.path.exists(os.path.normpath(os.path.expanduser(cpu['btb']))):
-            libfilenames['cpu' + str(i) + 'btb.a'] = (os.path.normpath(os.path.expanduser(cpu['btb'])), '')
-        else:
-            print('Path to BTB does not exist. Exiting...')
-            sys.exit(1)
 
 if caches['LLC']['prefetcher'] is not None:
     if os.path.exists('prefetcher/' + caches['LLC']['prefetcher']):
@@ -226,6 +222,14 @@ for cpu in cores:
             print('Path to branch predictor ' + cpu['branch_predictor'] + ' does not exist. Exiting...')
             sys.exit(1)
         libfilenames['bpred_' + cpu['branch_predictor'] + '.a'] = (fname, '-Dinitialize_branch_predictor=bpred_$(notdir {0})_initialize -Dlast_branch_result=bpred_$(notdir {0})_last_result -Dpredict_branch=bpred_$(notdir {0})_predict'.format(fname))
+    if cpu['btb'] is not None:
+        fname = 'btb/' + cpu['btb']
+        if not os.path.exists(fname):
+            fname = os.path.normpath(os.path.expanduser(cpu['btb']))
+        if not os.path.exists(fname):
+            print('Path to BTB does not exist. Exiting...')
+            sys.exit(1)
+        libfilenames['btb_' + cpu['btb'] + '.a'] = (fname, '-Dinitialize_btb=btb_$(notdir {0})_initialize -Dupdate_btb=btb_$(notdir {0})_update -Dbtb_prediction=btb_$(notdir {0})_predict'.format(fname))
 
 for cache in caches.values():
     if cache['replacement'] is not None:
@@ -354,6 +358,9 @@ with open(instantiation_file_name, 'wt') as wfp:
 bpred_inits        = {c['bpred_initialize'] for c in cores}
 bpred_last_results = {c['bpred_last_result'] for c in cores}
 bpred_predicts     = {c['bpred_predict'] for c in cores}
+btb_inits          = {c['btb_initialize'] for c in cores}
+btb_updates        = {c['btb_update'] for c in cores}
+btb_predicts       = {c['btb_predict'] for c in cores}
 with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     for i in bpred_inits:
         wfp.write('void ' + i + '();\n')
@@ -363,6 +370,15 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
 
     for p in bpred_predicts:
         wfp.write('uint8_t ' + p + '(uint64_t, uint64_t, uint8_t, uint8_t);\n')
+
+    for i in btb_inits:
+        wfp.write('void ' + i + '();\n')
+
+    for u in btb_updates:
+        wfp.write('void ' + u + '(uint64_t, uint64_t, uint8_t, uint8_t);\n')
+
+    for p in btb_predicts:
+        wfp.write('std::pair<uint64_t, uint8_t> ' + p + '(uint64_t, uint8_t);\n')
 
 # Cache modules file
 repl_inits   = {c['replacement_initialize'] for c in caches.values()}
