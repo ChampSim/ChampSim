@@ -142,29 +142,6 @@ class O3_CPU : public champsim::operable {
         l1i_prefetcher_initialize();
         l1d->l1d_prefetcher_initialize();
         static_cast<CACHE*>(l1d->lower_level)->l2c_prefetcher_initialize();
-
-        using namespace std::placeholders;
-
-        itlb->find_victim = std::bind(&CACHE::lru_victim, itlb, _1, _2, _3, _4, _5, _6, _7);
-        dtlb->find_victim = std::bind(&CACHE::lru_victim, dtlb, _1, _2, _3, _4, _5, _6, _7);
-        static_cast<CACHE*>(dtlb->lower_level)->find_victim = std::bind(&CACHE::lru_victim, static_cast<CACHE*>(dtlb->lower_level), _1, _2, _3, _4, _5, _6, _7);
-        l1i->find_victim = std::bind(&CACHE::lru_victim, l1i, _1, _2, _3, _4, _5, _6, _7);
-        l1d->find_victim = std::bind(&CACHE::lru_victim, l1d, _1, _2, _3, _4, _5, _6, _7);
-        static_cast<CACHE*>(l1d->lower_level)->find_victim = std::bind(&CACHE::lru_victim, static_cast<CACHE*>(l1d->lower_level), _1, _2, _3, _4, _5, _6, _7);
-
-        itlb->update_replacement_state = std::bind(&CACHE::lru_update, itlb, _2, _3, _7, _8);
-        dtlb->update_replacement_state = std::bind(&CACHE::lru_update, dtlb, _2, _3, _7, _8);
-        static_cast<CACHE*>(dtlb->lower_level)->update_replacement_state = std::bind(&CACHE::lru_update, static_cast<CACHE*>(dtlb->lower_level), _2, _3, _7, _8);
-        l1i->update_replacement_state = std::bind(&CACHE::lru_update, l1i, _2, _3, _7, _8);
-        l1d->update_replacement_state = std::bind(&CACHE::lru_update, l1d, _2, _3, _7, _8);
-        static_cast<CACHE*>(l1d->lower_level)->update_replacement_state = std::bind(&CACHE::lru_update, static_cast<CACHE*>(l1d->lower_level), _2, _3, _7, _8);
-
-        itlb->replacement_final_stats = std::bind(&CACHE::lru_final_stats, itlb);
-        dtlb->replacement_final_stats = std::bind(&CACHE::lru_final_stats, dtlb);
-        static_cast<CACHE*>(dtlb->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(dtlb->lower_level));
-        l1i->replacement_final_stats = std::bind(&CACHE::lru_final_stats, l1i);
-        l1d->replacement_final_stats = std::bind(&CACHE::lru_final_stats, l1d);
-        static_cast<CACHE*>(l1d->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(l1d->lower_level));
     }
 
     void operate();

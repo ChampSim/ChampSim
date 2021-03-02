@@ -33,6 +33,7 @@ extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
+extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
 
 std::vector<tracereader*> traces;
@@ -434,14 +435,12 @@ int main(int argc, char** argv)
     // SHARED CACHE
     LLC.cache_type = IS_LLC;
     LLC.fill_level = FILL_LLC;
-
-    using namespace std::placeholders;
-    LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
-    LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &LLC, _1, _2, _3, _4, _5, _6, _7, _8);
-    LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &LLC);
-
-    LLC.llc_initialize_replacement();
     LLC.llc_prefetcher_initialize();
+
+    for (CACHE* cache : caches)
+    {
+        cache->impl_replacement_initialize();
+    }
 
     // simulation entry point
     start_time = time(NULL);
@@ -569,7 +568,7 @@ int main(int argc, char** argv)
     LLC.llc_prefetcher_final_stats();
 
 #ifndef CRC2_COMPILE
-    LLC.llc_replacement_final_stats();
+    LLC.impl_replacement_final_stats();
     print_dram_stats();
     print_branch_stats();
 #endif
