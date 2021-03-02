@@ -97,19 +97,22 @@ class O3_CPU : public champsim::operable {
             unsigned fetch_width, unsigned decode_width, unsigned dispatch_width, unsigned schedule_width,
             unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
             unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
-            CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw) :
+            CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw,
+            std::function<void(O3_CPU*)> bpred_initialize,
+            std::function<void(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_last_branch_result,
+            std::function<uint8_t(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_predict_branch
+            ) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
         ROB(rob_size), LQ(lq_size), SQ(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
         EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
         BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
-        ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), PTW(ptw)
+        ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), PTW(ptw),
+        impl_branch_predictor_initialize(std::bind(bpred_initialize, this)),
+        impl_last_branch_result(std::bind(bpred_last_branch_result, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
+        impl_predict_branch(std::bind(bpred_predict_branch, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
     {
-        // BRANCH PREDICTOR & BTB
-        initialize_branch_predictor();
-	initialize_btb();
-
         // TLBs
         itlb->cpu = this->cpu;
         itlb->cache_type = IS_ITLB;
@@ -182,10 +185,10 @@ class O3_CPU : public champsim::operable {
     void handle_memory_return();
     void retire_rob();
 
-  // branch predictor
-  uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
-  void initialize_branch_predictor(),
-    last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+    // branch predictor
+    const std::function<void()> impl_branch_predictor_initialize;
+    const std::function<void(uint64_t, uint64_t, uint8_t, uint8_t)> impl_last_branch_result;
+    const std::function<uint8_t(uint64_t, uint64_t, uint8_t, uint8_t)> impl_predict_branch;
 
   // btb
   std::pair<uint64_t, uint8_t> btb_prediction(uint64_t ip, uint8_t branch_type);
@@ -200,6 +203,9 @@ class O3_CPU : public champsim::operable {
   void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
   void l1i_prefetcher_final_stats();
   int prefetch_code_line(uint64_t pf_v_addr);
+
+#include "ooo_cpu_modules.inc"
+
 };
 
 #endif

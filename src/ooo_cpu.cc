@@ -45,7 +45,9 @@ void O3_CPU::operate()
 
 void O3_CPU::initialize_core()
 {
-
+    // BRANCH PREDICTOR & BTB
+    impl_branch_predictor_initialize();
+    initialize_btb();
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
@@ -239,7 +241,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 	std::pair<uint64_t, uint8_t> btb_result = btb_prediction(arch_instr.ip, arch_instr.branch_type);
 	uint64_t predicted_branch_target = btb_result.first;
 	uint8_t always_taken = btb_result.second;
-	uint8_t branch_prediction = predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+	uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
 	if((branch_prediction == 0) && (always_taken == 0))
 	  {
 	    predicted_branch_target = 0;
@@ -270,7 +272,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         }
 
 	update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-        last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+        impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 
     arch_instr.event_cycle = current_cycle;

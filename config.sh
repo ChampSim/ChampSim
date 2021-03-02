@@ -20,7 +20,7 @@ dcn_fmtstr = 'cpu{}_{}' # default cache name format string
 cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {lower_level}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &{attrs[ITLB]}, &{attrs[DTLB]}, &{attrs[L1I]}, &{attrs[L1D]}, &{attrs[PTW]});\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &{attrs[ITLB]}, &{attrs[DTLB]}, &{attrs[L1I]}, &{attrs[L1D]}, &{attrs[PTW]}, &O3_CPU::{attrs[bpred_initialize]}, &O3_CPU::{attrs[bpred_last_result]}, &O3_CPU::{attrs[bpred_predict]});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER DRAM({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
@@ -175,6 +175,13 @@ for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file[
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
+# derive function names for branch prediction
+for cpu in cores:
+    if cpu['branch_predictor'] is not None:
+        cpu['bpred_initialize'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_initialize'
+        cpu['bpred_last_result'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_last_result'
+        cpu['bpred_predict'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_predict'
+
 # derive function names for replacement
 for cache in caches.values():
     if cache['replacement'] is not None:
@@ -192,15 +199,6 @@ for i,cpu in enumerate(cores[:1]):
         libfilenames['cpu' + str(i) + 'l1dprefetcher.a'] = ('prefetcher/' + caches[cpu['L1D']]['prefetcher'], '')
     if caches[caches[cpu['L1D']]['lower_level']]['prefetcher'] is not None:
         libfilenames['cpu' + str(i) + 'l2cprefetcher.a'] = ('prefetcher/' + caches[caches[cpu['L1D']]['lower_level']]['prefetcher'], '')
-    if cpu['branch_predictor'] is not None:
-        if os.path.exists('branch/' + cpu['branch_predictor']):
-            libfilenames['cpu' + str(i) + 'branch_predictor.a'] = ('branch/' + cpu['branch_predictor'], '')
-        elif os.path.exists(os.path.normpath(os.path.expanduser(cpu['branch_predictor']))):
-            libfilenames['cpu' + str(i) + 'branch_predictor.a'] = (os.path.normpath(os.path.expanduser(cpu['branch_predictor'])), '')
-        else:
-            print('Path to branch predictor does not exist. Exiting...')
-            sys.exit(1)
-
     if cpu['btb'] is not None:
         if os.path.exists('btb/' + cpu['btb']):
             libfilenames['cpu' + str(i) + 'btb.a'] = ('btb/' + cpu['btb'], '')
@@ -218,6 +216,16 @@ if caches['LLC']['prefetcher'] is not None:
     else:
         print('Path to LLC prefetcher does not exist. Exiting...')
         sys.exit(1)
+
+for cpu in cores:
+    if cpu['branch_predictor'] is not None:
+        fname = 'branch/' + cpu['branch_predictor']
+        if not os.path.exists(fname):
+            fname = os.path.normpath(os.path.expanduser(cpu['branch_predictor']))
+        if not os.path.exists(fname):
+            print('Path to branch predictor ' + cpu['branch_predictor'] + ' does not exist. Exiting...')
+            sys.exit(1)
+        libfilenames['bpred_' + cpu['branch_predictor'] + '.a'] = (fname, '-Dinitialize_branch_predictor=bpred_$(notdir {0})_initialize -Dlast_branch_result=bpred_$(notdir {0})_last_result -Dpredict_branch=bpred_$(notdir {0})_predict'.format(fname))
 
 for cache in caches.values():
     if cache['replacement'] is not None:
@@ -342,6 +350,20 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n&DRAM')
     wfp.write('\n};\n')
 
+# Core modules file
+bpred_inits        = {c['bpred_initialize'] for c in cores}
+bpred_last_results = {c['bpred_last_result'] for c in cores}
+bpred_predicts     = {c['bpred_predict'] for c in cores}
+with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
+    for i in bpred_inits:
+        wfp.write('void ' + i + '();\n')
+
+    for l in bpred_last_results:
+        wfp.write('void ' + l + '(uint64_t, uint64_t, uint8_t, uint8_t);\n')
+
+    for p in bpred_predicts:
+        wfp.write('uint8_t ' + p + '(uint64_t, uint64_t, uint8_t, uint8_t);\n')
+
 # Cache modules file
 repl_inits   = {c['replacement_initialize'] for c in caches.values()}
 repl_victims = {c['replacement_find_victim'] for c in caches.values()}
@@ -399,7 +421,7 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('all: ' + config_file['executable_name'] + '\n\n')
     wfp.write('clean: \n\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n')
     for v in libfilenames.values():
-        wfp.write('\t find {0} -name \*.o -delete\n\t find {0} -name \*.d -delete\n'.format(v))
+        wfp.write('\t find {0} -name \*.o -delete\n\t find {0} -name \*.d -delete\n'.format(*v))
     wfp.write('\n')
     wfp.write(config_file['executable_name'] + ': $(patsubst %.cc,%.o,$(wildcard src/*.cc)) ' + ' '.join('obj/' + k for k in libfilenames) + '\n')
     wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
@@ -409,7 +431,7 @@ with open('Makefile', 'wt') as wfp:
 
     wfp.write('-include $(wildcard src/*.d)\n')
     for v in libfilenames.values():
-        wfp.write('-include $(wildcard {0}/*.d)\n'.format(v))
+        wfp.write('-include $(wildcard {0}/*.d)\n'.format(*v))
     wfp.write('\n')
 
 # Configuration cache
