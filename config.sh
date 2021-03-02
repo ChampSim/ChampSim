@@ -175,25 +175,6 @@ for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file[
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
-# derive function names for branch prediction and BTB
-for cpu in cores:
-    if cpu['branch_predictor'] is not None:
-        cpu['bpred_initialize'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_initialize'
-        cpu['bpred_last_result'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_last_result'
-        cpu['bpred_predict'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_predict'
-    if cpu['btb'] is not None:
-        cpu['btb_initialize'] = 'btb_' + os.path.basename(cpu['btb']) + '_initialize'
-        cpu['btb_update'] = 'btb_' + os.path.basename(cpu['btb']) + '_update'
-        cpu['btb_predict'] = 'btb_' + os.path.basename(cpu['btb']) + '_predict'
-
-# derive function names for replacement
-for cache in caches.values():
-    if cache['replacement'] is not None:
-        cache['replacement_initialize'] = 'repl_' + os.path.basename(cache['replacement']) + '_initialize'
-        cache['replacement_find_victim'] = 'repl_' + os.path.basename(cache['replacement']) + '_victim'
-        cache['replacement_update_replacement_state'] = 'repl_' + os.path.basename(cache['replacement']) + '_update'
-        cache['replacement_replacement_final_stats'] = 'repl_' + os.path.basename(cache['replacement']) + '_final_stats'
-
 # Associate modules with paths
 libfilenames = {}
 for i,cpu in enumerate(cores[:1]):
@@ -215,31 +196,45 @@ if caches['LLC']['prefetcher'] is not None:
 
 for cpu in cores:
     if cpu['branch_predictor'] is not None:
+        cpu['bpred_initialize'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_initialize'
+        cpu['bpred_last_result'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_last_result'
+        cpu['bpred_predict'] = 'bpred_' + os.path.basename(cpu['branch_predictor']) + '_predict'
+
         fname = 'branch/' + cpu['branch_predictor']
         if not os.path.exists(fname):
             fname = os.path.normpath(os.path.expanduser(cpu['branch_predictor']))
         if not os.path.exists(fname):
             print('Path to branch predictor ' + cpu['branch_predictor'] + ' does not exist. Exiting...')
             sys.exit(1)
-        libfilenames['bpred_' + cpu['branch_predictor'] + '.a'] = (fname, '-Dinitialize_branch_predictor=bpred_$(notdir {0})_initialize -Dlast_branch_result=bpred_$(notdir {0})_last_result -Dpredict_branch=bpred_$(notdir {0})_predict'.format(fname))
+        libfilenames['bpred_' + cpu['branch_predictor'] + '.a'] = (fname, '-Dinitialize_branch_predictor={} -Dlast_branch_result={} -Dpredict_branch={}'.format(cpu['bpred_initialize'], cpu['bpred_last_result'], cpu['bpred_predict']))
+
     if cpu['btb'] is not None:
+        cpu['btb_initialize'] = 'btb_' + os.path.basename(cpu['btb']) + '_initialize'
+        cpu['btb_update'] = 'btb_' + os.path.basename(cpu['btb']) + '_update'
+        cpu['btb_predict'] = 'btb_' + os.path.basename(cpu['btb']) + '_predict'
+
         fname = 'btb/' + cpu['btb']
         if not os.path.exists(fname):
             fname = os.path.normpath(os.path.expanduser(cpu['btb']))
         if not os.path.exists(fname):
             print('Path to BTB does not exist. Exiting...')
             sys.exit(1)
-        libfilenames['btb_' + cpu['btb'] + '.a'] = (fname, '-Dinitialize_btb=btb_$(notdir {0})_initialize -Dupdate_btb=btb_$(notdir {0})_update -Dbtb_prediction=btb_$(notdir {0})_predict'.format(fname))
+        libfilenames['btb_' + cpu['btb'] + '.a'] = (fname, '-Dinitialize_btb={} -Dupdate_btb={} -Dbtb_prediction={}'.format(cpu['btb_initialize'], cpu['btb_update'], cpu['btb_predict']))
 
 for cache in caches.values():
     if cache['replacement'] is not None:
+        cache['replacement_initialize'] = 'repl_' + os.path.basename(cache['replacement']) + '_initialize'
+        cache['replacement_find_victim'] = 'repl_' + os.path.basename(cache['replacement']) + '_victim'
+        cache['replacement_update_replacement_state'] = 'repl_' + os.path.basename(cache['replacement']) + '_update'
+        cache['replacement_replacement_final_stats'] = 'repl_' + os.path.basename(cache['replacement']) + '_final_stats'
+
         fname = 'replacement/' + cache['replacement']
         if not os.path.exists(fname):
             fname = os.path.normpath(os.path.expanduser(caches['LLC']['replacement']))
         if not os.path.exists(fname):
             print('Path to replacement ' + cache['replacement'] + ' does not exist. Exiting...')
             sys.exit(1)
-        libfilenames['repl_' + cache['replacement'] + '.a'] = (fname, '-Dinitialize_replacement=repl_$(notdir {0})_initialize -Dfind_victim=repl_$(notdir {0})_victim -Dupdate_replacement_state=repl_$(notdir {0})_update -Dreplacement_final_stats=repl_$(notdir {0})_final_stats'.format(fname))
+        libfilenames['repl_' + cache['replacement'] + '.a'] = (fname, '-Dinitialize_replacement={} -Dfind_victim={} -Dupdate_replacement_state={} -Dreplacement_final_stats={}'.format(cache['replacement_initialize'], cache['replacement_find_victim'], cache['replacement_update_replacement_state'], cache['replacement_replacement_final_stats']))
 
 # Assert module paths exist
 for path,_ in libfilenames.values():
