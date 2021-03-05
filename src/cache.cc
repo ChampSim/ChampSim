@@ -5,7 +5,6 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "set.h"
 #include "util.h"
 #include "vmem.h"
 

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <functional>
+#include <queue>
 
 #include "champsim_constants.h"
 #include "delay_queue.hpp"
@@ -50,7 +51,7 @@ class O3_CPU {
     {
         bool valid = false;
         unsigned lru = DIB_WAY;
-        uint64_t addr = 0;
+        uint64_t address = 0;
     };
 
     // instruction buffer
@@ -68,15 +69,13 @@ class O3_CPU {
     uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
 
     // Ready-To-Execute
-    uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
+    std::queue<ooo_model_instr*> ready_to_execute;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head = 0, RTL0_tail = 0,
-             RTL1[LQ_SIZE], RTL1_head = 0, RTL1_tail = 0;
+    std::queue<LSQ_ENTRY*> RTL0, RTL1;
 
     // Ready-To-Store
-    uint32_t RTS0[SQ_SIZE], RTS0_head = 0, RTS0_tail = 0,
-             RTS1[SQ_SIZE], RTS1_head = 0, RTS1_tail = 0;
+    std::queue<LSQ_ENTRY*> RTS0, RTS1;
 
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
@@ -104,22 +103,6 @@ class O3_CPU {
     {
         for (uint32_t i=0; i<STA_SIZE; i++)
 	  STA[i] = UINT64_MAX;
-
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  ready_to_execute[i] = ROB_SIZE;
-        }
-        ready_to_execute_head = 0;
-        ready_to_execute_head = 0;
-
-        for (uint32_t i=0; i<LQ_SIZE; i++) {
-	  RTL0[i] = LQ_SIZE;
-	  RTL1[i] = LQ_SIZE;
-        }
-
-        for (uint32_t i=0; i<SQ_SIZE; i++) {
-	  RTS0[i] = SQ_SIZE;
-	  RTS1[i] = SQ_SIZE;
-        }
 
         // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();
@@ -185,29 +168,35 @@ class O3_CPU {
 
     // functions
     uint32_t init_instruction(ooo_model_instr instr);
-    void fetch_instruction(),
+    void check_dib(),
+         translate_fetch(),
+         fetch_instruction(),
+         promote_to_decode(),
          decode_instruction(),
          dispatch_instruction(),
          schedule_instruction(),
          execute_instruction(),
          schedule_memory_instruction(),
          execute_memory_instruction(),
-         do_scheduling(uint32_t rob_index),  
-         reg_dependency(uint32_t rob_index),
-         do_execution(uint32_t rob_index),
+         do_check_dib(ooo_model_instr &instr),
+         do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
+         do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
+         do_dib_update(const ooo_model_instr &instr),
+         do_scheduling(uint32_t rob_index),
+         do_execution(ooo_model_instr *rob_it),
          do_memory_scheduling(uint32_t rob_index),
-         operate_lsq();
-    uint32_t complete_execution(uint32_t rob_index);
-    void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
-         reg_RAW_release(uint32_t rob_index),
-         mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
+         operate_lsq(),
+         do_complete_execution(uint32_t rob_index),
+         do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry),
          release_load_queue(uint32_t lq_index);
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
          add_store_queue(uint32_t rob_index, uint32_t data_index),
-         execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
-    int  execute_load(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
+         execute_store(LSQ_ENTRY *sq_it);
+    int  execute_load(LSQ_ENTRY *lq_it);
+    int  do_translate_store(LSQ_ENTRY *sq_it);
+    int  do_translate_load(LSQ_ENTRY *lq_it);
     void check_dependency(int prior, int current);
     void operate_cache();
     void complete_inflight_instruction();
@@ -217,8 +206,6 @@ class O3_CPU {
     uint32_t check_rob(uint64_t instr_id);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
-
-    uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
   // branch predictor
   uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
