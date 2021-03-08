@@ -19,38 +19,6 @@ extern VirtualMemory vmem;
 extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
 
-class min_fill_index
-{
-    public:
-    bool operator() (PACKET lhs, PACKET rhs)
-    {
-        return rhs.returned != COMPLETED || (lhs.returned == COMPLETED && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
-template <>
-struct is_valid<PACKET>
-{
-    is_valid() {}
-    bool operator()(const PACKET &test)
-    {
-        return test.address != 0;
-    }
-};
-
-template <typename T>
-struct eq_full_addr
-{
-    using argument_type = T;
-    const decltype(argument_type::address) val;
-    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        return validtest(test) && test.full_addr == val;
-    }
-};
-
 void CACHE::handle_fill()
 {
     while (writes_available_this_cycle > 0)
@@ -291,12 +259,6 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         }
 
 
-#if !defined(INSERT_PAGE_TABLE_WALKER)
-        // Send to the lower level
-        if (cache_type != IS_STLB)
-        {
-#endif
-
             if (handle_pkt.fill_level <= fill_level)
                 handle_pkt.to_return = {this};
             else
@@ -306,16 +268,6 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
                 lower_level->add_pq(&handle_pkt);
             else
                 lower_level->add_rq(&handle_pkt);
-#if !defined(INSERT_PAGE_TABLE_WALKER)
-        }
-        else
-        {
-            // TODO: need to differentiate page table walk and actual swap
-            handle_pkt.data = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr) >> LOG2_PAGE_SIZE;
-            handle_pkt.event_cycle = current_core_cycle[handle_pkt.cpu];
-            return_data(&handle_pkt);
-        }
-#endif
     }
 
     // update prefetcher on load instructions and prefetches from upper levels
@@ -568,7 +520,7 @@ int CACHE::add_wq(PACKET *packet)
     // if there is no duplicate, add it to the write queue
     WQ.push_back(*packet);
 
-    DP (if (warmup_complete[WQ.entry[index].cpu]) {
+    DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " occupancy: " << WQ.occupancy();
             std::cout << " data: " << std::hex << packet->data << std::dec << std::endl; })

@@ -290,7 +290,7 @@ uint32_t O3_CPU::check_rob(uint64_t instr_id)
 
     for (uint32_t i=ROB.head, count=0; count<ROB.occupancy; i=(i+1==ROB.SIZE) ? 0 : i+1, count++) {
         if (ROB.entry[i].instr_id == instr_id) {
-            DP ( if (warmup_complete[ROB.cpu]) {
+            DP ( if (warmup_complete[cpu]) {
             cout << "[ROB] " << __func__ << " same instr_id: " << ROB.entry[i].instr_id;
             cout << " rob_index: " << i << endl; });
             return i;
@@ -1492,9 +1492,7 @@ void O3_CPU::operate_cache()
     DTLB.operate_reads();
     ITLB.operate_reads();
 
-#if defined(INSERT_PAGE_TABLE_WALKER)
 	PTW.operate();
-#endif
 
     // also handle per-cycle prefetcher operation
     l1i_prefetcher_cycle_operate();

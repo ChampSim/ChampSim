@@ -593,12 +593,10 @@ int main(int argc, char** argv)
 				record_roi_stats(i, &ooo_cpu[i].ITLB);
 				record_roi_stats(i, &ooo_cpu[i].DTLB);
 				record_roi_stats(i, &ooo_cpu[i].STLB);
-#if defined(INSERT_PAGE_TABLE_WALKER)
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
 				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
-#endif
                 all_simulation_complete++;
             }
 
@@ -649,12 +647,10 @@ int main(int argc, char** argv)
 		print_roi_stats(i, &ooo_cpu[i].DTLB);
 		print_roi_stats(i, &ooo_cpu[i].STLB);
 	
-#if defined(INSERT_PAGE_TABLE_WALKER)
-		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
-		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
-		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
-		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
-#endif
+//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
+//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
+//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
+//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
 
 #endif
         print_roi_stats(i, &LLC);

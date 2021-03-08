@@ -5,8 +5,6 @@
 
 #include "champsim_constants.h"
 
-#define INSERT_PAGE_TABLE_WALKER
-
 // USEFUL MACROS
 //#define DEBUG_PRINT
 #define SANITY_CHECK
@@ -15,7 +13,8 @@
 #define NO_CRC2_COMPILE
 
 #ifdef DEBUG_PRINT
-#define DP(x) x
+//#define DP(x) x
+#define DP(x) {int temp=warmup_complete[0];warmup_complete[0]=1;x;warmup_complete[0]=temp;} //@Vishal: Use this to print in warmup+simulation
 #else
 #define DP(x)
 #endif

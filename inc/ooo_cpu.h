@@ -100,9 +100,7 @@ class O3_CPU {
 
     CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
-#if defined(INSERT_PAGE_TABLE_WALKER)
 	PageTableWalker PTW{"PTW"};
-#endif
 
     // constructor
     O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
@@ -144,18 +142,16 @@ class O3_CPU {
         STLB.cpu = this->cpu;
         STLB.cache_type = IS_STLB;
         STLB.fill_level = FILL_L2;
-#if defined(INSERT_PAGE_TABLE_WALKER)
 		STLB.lower_level = &PTW;
 
 		PTW.cpu = this->cpu;
 		PTW.cache_type = IS_PTW;
-		PTW.lower_level = &L2C; //PTW checks L2 cache for cached translation blocks.
+		PTW.lower_level = &L1D; //PTW checks L2 cache for cached translation blocks.
 
 		PTW.PSCL5.cache_type = IS_PSCL5;
 		PTW.PSCL4.cache_type = IS_PSCL4;
 		PTW.PSCL3.cache_type = IS_PSCL3;
 		PTW.PSCL2.cache_type = IS_PSCL2;
-#endif
 
 
         // PRIVATE CACHE
@@ -201,7 +197,6 @@ class O3_CPU {
         L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
 
 
-#if defined(INSERT_PAGE_TABLE_WALKER)
 		PTW.PSCL5.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL5), _1, _2, _3, _4, _5, _6, _7);
 		PTW.PSCL4.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL4), _1, _2, _3, _4, _5, _6, _7);
 		PTW.PSCL3.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL3), _1, _2, _3, _4, _5, _6, _7);
@@ -216,7 +211,6 @@ class O3_CPU {
         PTW.PSCL4.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL4));
         PTW.PSCL3.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL3));
         PTW.PSCL2.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL2));
-#endif
 
    }
 
