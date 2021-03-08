@@ -5,7 +5,6 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "set.h"
 #include "util.h"
 #include "vmem.h"
 
@@ -29,7 +28,13 @@ void CACHE::handle_fill()
 
         // find victim
         uint32_t set = get_set(fill_mshr->address);
-        uint32_t way = find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
+
+        auto set_begin = std::next(std::begin(block), set*NUM_WAY);
+        auto set_end   = std::next(set_begin, NUM_WAY);
+        auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+        uint32_t way = std::distance(set_begin, first_inv);
+        if (way == NUM_WAY)
+            way = find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->full_addr, fill_mshr->type);
 
         bool success = filllike_miss(set, way, *fill_mshr);
         if (!success)
@@ -95,7 +100,12 @@ void CACHE::handle_writeback()
             }
             else {
                 // find victim
-                way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
+                auto set_begin = std::next(std::begin(block), set*NUM_WAY);
+                auto set_end   = std::next(set_begin, NUM_WAY);
+                auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+                way = std::distance(set_begin, first_inv);
+                if (way == NUM_WAY)
+                    way = find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.full_addr, handle_pkt.type);
 
                 success = filllike_miss(set, way, handle_pkt);
             }
@@ -222,6 +232,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
         packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
+        packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
         packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
@@ -240,12 +251,11 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         if (mshr_full) // not enough MSHR resource
             return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
 
-        // check to make sure the lower level RQ has room for this read miss
-        if (cache_type == IS_LLC && lower_level->get_occupancy(1, handle_pkt.address) == lower_level->get_size(1, handle_pkt.address))
-            return false;
+        bool is_read = prefetch_as_load || (handle_pkt.type != PREFETCH);
 
-        // Non-LLC prefetches are prefetch requests to lower level
-        if (cache_type != IS_LLC && handle_pkt.type == PREFETCH && lower_level->get_occupancy(3, handle_pkt.address) == lower_level->get_size(3, handle_pkt.address))
+        // check to make sure the lower level queue has room for this read miss
+        int queue_type = (is_read) ? 1 : 3;
+        if (cache_type != IS_STLB && lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
             return false;
 
         // Allocate an MSHR
@@ -264,7 +274,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             else
                 handle_pkt.to_return.clear();
 
-            if (handle_pkt.type == PREFETCH && cache_type != IS_LLC)
+            if (!is_read)
                 lower_level->add_pq(&handle_pkt);
             else
                 lower_level->add_rq(&handle_pkt);
@@ -466,6 +476,7 @@ int CACHE::add_rq(PACKET *packet)
 
         packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
         packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+        packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
         packet_dep_merge(found_rq->to_return, packet->to_return);
 
         RQ_MERGED++;
@@ -481,7 +492,10 @@ int CACHE::add_rq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to RQ
-    RQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        RQ.push_back(*packet);
+    else
+        RQ.push_back_ready(*packet);
 
     DP ( if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -518,7 +532,10 @@ int CACHE::add_wq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to the write queue
-    WQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        WQ.push_back(*packet);
+    else
+        WQ.push_back_ready(*packet);
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -705,7 +722,10 @@ int CACHE::add_pq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to PQ
-    PQ.push_back(*packet);
+    if (warmup_complete[cpu])
+        PQ.push_back(*packet);
+    else
+        PQ.push_back_ready(*packet);
 
     DP ( if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
@@ -738,10 +758,17 @@ void CACHE::return_data(PACKET *packet)
     mshr_entry->pf_metadata = packet->pf_metadata;
 
     // ADD LATENCY
-    if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
-        mshr_entry->event_cycle = current_core_cycle[packet->cpu] + LATENCY;
+    if (warmup_complete[cpu])
+    {
+        if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
+            mshr_entry->event_cycle = current_core_cycle[packet->cpu] + FILL_LATENCY;
+        else
+            mshr_entry->event_cycle += FILL_LATENCY;
+    }
     else
-        mshr_entry->event_cycle += LATENCY;
+    {
+        mshr_entry->event_cycle = current_core_cycle[cpu];
+    }
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
