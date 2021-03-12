@@ -58,11 +58,9 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
 
-    std::array<std::array<unsigned long long, NUM_CPUS>, NUM_TYPES>
-             sim_access = {},
+    std::array<std::array<unsigned long long, NUM_TYPES>, NUM_CPUS>
              sim_hit = {},
              sim_miss = {},
-             roi_access = {},
              roi_hit = {},
              roi_miss = {};
 
@@ -89,6 +87,8 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
         HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load)
     {
     }
+
+    void reset_stats();
 
     // functions
     int  add_rq(PACKET *packet),

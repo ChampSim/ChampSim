@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
 #include <signal.h>
 #include <string.h>
 #include <vector>
@@ -40,11 +41,8 @@ std::vector<tracereader*> traces;
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->roi_access[cpu][i] = cache->sim_access[cpu][i];
-        cache->roi_hit[cpu][i] = cache->sim_hit[cpu][i];
-        cache->roi_miss[cpu][i] = cache->sim_miss[cpu][i];
-    }
+    std::copy(std::begin(cache->sim_hit[cpu]), std::end(cache->sim_hit[cpu]), std::begin(cache->roi_hit[cpu]));
+    std::copy(std::begin(cache->sim_miss[cpu]), std::end(cache->sim_miss[cpu]), std::begin(cache->roi_miss[cpu]));
 
     cache->roi_pf_requested = cache->pf_requested;
     cache->roi_pf_issued    = cache->pf_issued;
@@ -60,42 +58,37 @@ void print_roi_stats(CACHE *cache)
 
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu)
     {
-        uint64_t PER_CPU_ACCESS = 0, PER_CPU_HIT = 0, PER_CPU_MISS = 0;
+        uint64_t PER_CPU_HIT  = std::accumulate(std::begin(cache->roi_hit[cpu]), std::end(cache->roi_hit[cpu]), 0ll);
+        uint64_t PER_CPU_MISS = std::accumulate(std::begin(cache->roi_miss[cpu]), std::end(cache->roi_miss[cpu]), 0ll);
 
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
-            PER_CPU_ACCESS += cache->roi_access[cpu][i];
-            PER_CPU_HIT += cache->roi_hit[cpu][i];
-            PER_CPU_MISS += cache->roi_miss[cpu][i];
-        }
-
-        if (PER_CPU_ACCESS > 0)
+        if (PER_CPU_HIT > 0 || PER_CPU_MISS > 0)
         {
             std::cout << "CPU" << cpu << " " << cache->NAME << " ROI TOTAL    ";
-            std::cout << "  ACCESS: " << std::setw(10) << PER_CPU_ACCESS;
+            std::cout << "  ACCESS: " << std::setw(10) << PER_CPU_HIT + PER_CPU_MISS;
             std::cout << "  HIT: "    << std::setw(10) << PER_CPU_HIT;
             std::cout << "  MISS: "   << std::setw(10) << PER_CPU_MISS;
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " ROI LOAD     ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_access[cpu][LOAD];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][LOAD] + cache->roi_miss[cpu][LOAD];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][LOAD];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][LOAD];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " ROI RFO      ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_access[cpu][RFO];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][RFO] + cache->roi_miss[cpu][RFO];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][RFO];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][RFO];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " ROI PREFETCH ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_access[cpu][PREFETCH];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][PREFETCH] + cache->roi_miss[cpu][PREFETCH];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][PREFETCH];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][PREFETCH];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " ROI WRITEBACK";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_access[cpu][WRITEBACK];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][WRITEBACK] + cache->roi_miss[cpu][WRITEBACK];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][WRITEBACK];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][WRITEBACK];
             std::cout << std::endl;
@@ -133,42 +126,37 @@ void print_sim_stats(CACHE *cache)
 
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu)
     {
-        uint64_t PER_CPU_ACCESS = 0, PER_CPU_HIT = 0, PER_CPU_MISS = 0;
+        uint64_t PER_CPU_HIT  = std::accumulate(std::begin(cache->sim_hit[cpu]), std::end(cache->sim_hit[cpu]), 0ll);
+        uint64_t PER_CPU_MISS = std::accumulate(std::begin(cache->sim_miss[cpu]), std::end(cache->sim_miss[cpu]), 0ll);
 
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
-            PER_CPU_ACCESS += cache->sim_access[cpu][i];
-            PER_CPU_HIT += cache->sim_hit[cpu][i];
-            PER_CPU_MISS += cache->sim_miss[cpu][i];
-        }
-
-        if (PER_CPU_ACCESS > 0)
+        if (PER_CPU_HIT > 0 || PER_CPU_MISS > 0)
         {
             std::cout << "CPU" << cpu << " " << cache->NAME << " SIM TOTAL    ";
-            std::cout << "  ACCESS: " << std::setw(10) << PER_CPU_ACCESS;
+            std::cout << "  ACCESS: " << std::setw(10) << PER_CPU_HIT + PER_CPU_MISS;
             std::cout << "  HIT: "    << std::setw(10) << PER_CPU_HIT;
             std::cout << "  MISS: "   << std::setw(10) << PER_CPU_MISS;
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " SIM LOAD     ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_access[cpu][LOAD];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_hit[cpu][LOAD] + cache->sim_miss[cpu][LOAD];
             std::cout << "  HIT: "    << std::setw(10) << cache->sim_hit[cpu][LOAD];
             std::cout << "  MISS: "   << std::setw(10) << cache->sim_miss[cpu][LOAD];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " SIM RFO      ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_access[cpu][RFO];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_hit[cpu][RFO] + cache->sim_miss[cpu][RFO];
             std::cout << "  HIT: "    << std::setw(10) << cache->sim_hit[cpu][RFO];
             std::cout << "  MISS: "   << std::setw(10) << cache->sim_miss[cpu][RFO];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " SIM PREFETCH ";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_access[cpu][PREFETCH];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_hit[cpu][PREFETCH] + cache->sim_miss[cpu][PREFETCH];
             std::cout << "  HIT: "    << std::setw(10) << cache->sim_hit[cpu][PREFETCH];
             std::cout << "  MISS: "   << std::setw(10) << cache->sim_miss[cpu][PREFETCH];
             std::cout << std::endl;
 
             std::cout << "CPU" << cpu << " " << cache->NAME << " SIM WRITEBACK";
-            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_access[cpu][WRITEBACK];
+            std::cout << "  ACCESS: " << std::setw(10) << cache->sim_hit[cpu][WRITEBACK] + cache->sim_miss[cpu][WRITEBACK];
             std::cout << "  HIT: "    << std::setw(10) << cache->sim_hit[cpu][WRITEBACK];
             std::cout << "  MISS: "   << std::setw(10) << cache->sim_miss[cpu][WRITEBACK];
             std::cout << std::endl;
@@ -251,34 +239,6 @@ void print_dram_stats()
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
 
-void reset_cache_stats(uint32_t cpu, CACHE *cache)
-{
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->sim_access[cpu][i] = 0;
-        cache->sim_hit[cpu][i] = 0;
-        cache->sim_miss[cpu][i] = 0;
-    }
-
-    cache->pf_requested = 0;
-    cache->pf_issued = 0;
-    cache->pf_useful = 0;
-    cache->pf_useless = 0;
-    cache->pf_fill = 0;
-
-
-    cache->total_miss_latency = 0;
-
-    cache->RQ_ACCESS = 0;
-    cache->RQ_MERGED = 0;
-    cache->RQ_TO_CACHE = 0;
-
-    cache->WQ_ACCESS = 0;
-    cache->WQ_MERGED = 0;
-    cache->WQ_TO_CACHE = 0;
-    cache->WQ_FORWARD = 0;
-    cache->WQ_FULL = 0;
-}
-
 void finish_warmup()
 {
     uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
@@ -312,11 +272,11 @@ void finish_warmup()
 	    ooo_cpu[i].branch_type_misses[j] = 0;
 	  }
 	
-        reset_cache_stats(i, &ooo_cpu[i].L1I);
-        reset_cache_stats(i, &ooo_cpu[i].L1D);
-        reset_cache_stats(i, &ooo_cpu[i].L2C);
-        reset_cache_stats(i, &LLC);
+        ooo_cpu[i].L1I.reset_stats();
+        ooo_cpu[i].L1D.reset_stats();
+        ooo_cpu[i].L2C.reset_stats();
     }
+    LLC.reset_stats();
     cout << endl;
 
     // reset DRAM stats
