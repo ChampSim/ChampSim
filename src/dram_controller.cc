@@ -528,7 +528,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 
 int MEMORY_CONTROLLER::add_pq(PACKET *packet)
 {
-    return -1;
+    return add_rq(packet);
 }
 
 void MEMORY_CONTROLLER::update_schedule_cycle(PACKET_QUEUE *queue)
@@ -672,6 +672,8 @@ uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
         return RQ[channel].occupancy;
     else if (queue_type == 2)
         return WQ[channel].occupancy;
+    else if (queue_type == 3)
+        return get_occupancy(1, address);
 
     return 0;
 }
@@ -683,6 +685,8 @@ uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
         return RQ[channel].SIZE;
     else if (queue_type == 2)
         return WQ[channel].SIZE;
+    else if (queue_type == 3)
+        return get_size(1, address);
 
     return 0;
 }

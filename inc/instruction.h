@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 // instruction format
 #define NUM_INSTR_DESTINATIONS_SPARC 4
@@ -25,9 +26,7 @@
 #define BRANCH_RETURN        6
 #define BRANCH_OTHER         7
 
-#include "set.h"
-
-#include <limits>
+class LSQ_ENTRY;
 
 struct input_instr {
     // instruction pointer or PC (Program Counter)
@@ -64,8 +63,6 @@ struct cloudsuite_instr {
 struct ooo_model_instr {
     uint64_t instr_id = 0,
              ip = 0,
-             fetch_producer = 0,
-             producer_id = 0,
              event_cycle = 0;
 
     bool is_branch = 0,
@@ -73,13 +70,7 @@ struct ooo_model_instr {
          branch_taken = 0,
          branch_mispredicted = 0,
          source_added[NUM_INSTR_SOURCES] = {},
-         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {},
-         is_producer = 0,
-         is_consumer = 0,
-         reg_RAW_producer = 0,
-         reg_ready = 0,
-         mem_ready = 0,
-         reg_RAW_checked[NUM_INSTR_SOURCES] = {};
+         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -97,36 +88,19 @@ struct ooo_model_instr {
 
     uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
 
-    fastset
-	registers_instrs_depend_on_me, registers_index_depend_on_me[NUM_INSTR_SOURCES];
-
+    // these are indices of instructions in the ROB that depend on me
+    std::vector<ooo_model_instr*> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
 
     // memory addresses that may cause dependencies between instructions
-    uint64_t instruction_pa = 0, data_pa = 0, virtual_address = 0, physical_address = 0;
+    uint64_t instruction_pa = 0;
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
-    //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
-    // keep around a record of what the original virtual addresses were
-    uint64_t destination_virtual_address[NUM_INSTR_DESTINATIONS_SPARC] = {};
-    uint64_t source_virtual_address[NUM_INSTR_SOURCES] = {};
+    LSQ_ENTRY *lq_index[NUM_INSTR_SOURCES] = {}, *sq_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
 
-    // these are instruction ids of other instructions in the window
-    //uint32_t memory_instrs_i_depend_on[NUM_INSTR_SOURCES];
+    ooo_model_instr() = default;
 
-    // these are indices of instructions in the ROB that depend on me
-    fastset memory_instrs_depend_on_me;
-
-    uint32_t lq_index[NUM_INSTR_SOURCES],
-             sq_index[NUM_INSTR_DESTINATIONS_SPARC],
-             forwarding_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
-
-    ooo_model_instr() {
-        std::fill(std::begin(lq_index), std::end(lq_index), std::numeric_limits<uint32_t>::max());
-        std::fill(std::begin(sq_index), std::end(sq_index), std::numeric_limits<uint32_t>::max());
-    };
-
-    ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr()
+    ooo_model_instr(uint8_t cpu, input_instr instr)
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
@@ -141,7 +115,7 @@ struct ooo_model_instr {
         asid[1] = cpu;
     }
 
-    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ooo_model_instr()
+    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
