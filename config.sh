@@ -430,7 +430,12 @@ with open('Makefile', 'wt') as wfp:
     wfp.write('\n')
     wfp.write('.phony: all clean\n\n')
     wfp.write('all: ' + config_file['executable_name'] + '\n\n')
-    wfp.write('clean: \n\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n')
+    wfp.write('clean: \n')
+    wfp.write('\t$(RM) ' + constants_header_name + '\n')
+    wfp.write('\t$(RM) ' + instantiation_file_name + '\n')
+    wfp.write('\t$(RM) ' + 'inc/cache_modules.inc' + '\n')
+    wfp.write('\t$(RM) ' + 'inc/ooo_cpu_modules.inc' + '\n')
+    wfp.write('\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n\n')
     for v in libfilenames.values():
         wfp.write('\t find {0} -name \*.o -delete\n\t find {0} -name \*.d -delete\n'.format(*v))
     wfp.write('\n')
