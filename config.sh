@@ -5,18 +5,21 @@ import itertools
 import functools
 
 # Read the config file
-if len(sys.argv) >= 2:
-    with open(sys.argv[1]) as rfp:
-        config_file = json.load(rfp)
-else:
-    print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_file = {}
+def parse_file(fname):
+    with open(fname) as rfp:
+        return json.load(rfp)
 
 def merge_dicts(*dicts):
     z = dicts[0].copy()
     for d in dicts[1:]:
         z.update(d)
     return z
+
+if len(sys.argv) >= 2:
+    config_file = merge_dicts(*map(parse_file, sys.argv[1:]))
+else:
+    print("No configuration specified. Building default ChampSim with no prefetching.")
+    config_file = {}
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
