@@ -5,6 +5,8 @@
 #include <signal.h>
 #include <string.h>
 #include <vector>
+#
+#include <cmath>
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -36,6 +38,28 @@ extern std::vector<O3_CPU> ooo_cpu;
 extern uint64_t current_core_cycle[NUM_CPUS];
 
 std::vector<tracereader*> traces;
+
+/**
+ * @brief Computes the data-bus return time (e.g. the time data needs to go from DRAM to the LLC on a read).
+ * @param block_size The size of a memory block measured in bytes (usually 64 bytes).
+ * @param channel_width The size of bus connecting DRAM to the LLC (usually 8 bytes).
+ * @param cpu_frequency The frequency of the CPU modeled measured in MHz (3.2GHz => 3200 Mhz).
+ * @param dram_mtps The amount of transfers the DRAM is able to handle per seconds, measured in millions per seconds.
+ */
+uint32_t compute_dbus_return_time (const uint32_t& block_size, const uint32_t& channel_width,
+        const uint32_t& cpu_frequency, const uint32_t& dram_mtps) {
+    uint32_t transfers = 0,
+             transfer_cost = 0;
+
+    // First, we compute the number of transfers required.
+    transfers = static_cast<uint32_t> (std::ceil (static_cast<float> (block_size) / static_cast<float> (channel_width)));
+
+    // Second we compute the cost of a single transfer, measured in CPU cycles.
+    transfer_cost = static_cast<uint32_t> (std::ceil (static_cast<float> (cpu_frequency) / static_cast<float> (dram_mtps)));
+
+    // Third, we return the data-bus return time which is simply the product of the two values computed above.
+    return (transfers * transfer_cost);
+}
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
@@ -376,7 +400,7 @@ int main(int argc, char** argv)
     // default: 16 = (64 / 8) * (3200 / 1600)
     // it takes 16 CPU cycles to tranfser 64B cache block on a 8B (64-bit) bus 
     // note that dram burst length = BLOCK_SIZE/DRAM_CHANNEL_WIDTH
-    DRAM_DBUS_RETURN_TIME = (BLOCK_SIZE / DRAM_CHANNEL_WIDTH) * (CPU_FREQ / DRAM_MTPS);
+    DRAM_DBUS_RETURN_TIME = compute_dbus_return_time (BLOCK_SIZE, DRAM_CHANNEL_WIDTH, CPU_FREQ, DRAM_MTPS);
 
     printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
             DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
