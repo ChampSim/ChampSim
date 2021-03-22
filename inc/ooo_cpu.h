@@ -99,7 +99,7 @@ class O3_CPU {
 
     CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
-	PageTableWalker PTW{"PTW"};
+	PageTableWalker PTW{"PTW", PSCL5_SET, PSCL5_WAY, PSCL4_SET, PSCL4_WAY, PSCL3_SET, PSCL3_WAY, PSCL2_SET, PSCL2_WAY, PTW_RQ_SIZE, PTW_MSHR_SIZE, PTW_MAX_READ, PTW_MAX_WRITE};
 
     // constructor
     O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)

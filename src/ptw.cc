@@ -26,7 +26,7 @@ struct ptw_eq_addr
 
 void PageTableWalker::handle_read()
 {
-	int reads_this_cycle = PTW_MAX_READ;
+	int reads_this_cycle = MAX_READ;
 
 	while(reads_this_cycle > 0)
 	{
@@ -106,7 +106,7 @@ void PageTableWalker::handle_read()
 
 void PageTableWalker::handle_fill()
 {
-	int fill_this_cycle = PTW_MAX_FILL;
+	int fill_this_cycle = MAX_FILL;
 
 	while(fill_this_cycle > 0) //Handle pending request
 	{
