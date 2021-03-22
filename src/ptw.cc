@@ -11,30 +11,16 @@ template <typename T>
 struct ptw_eq_addr
 {
     using argument_type = T;
-    const decltype(argument_type::full_v_addr) full_v_addr;
+    const decltype(argument_type::address) address;
 	const decltype(argument_type::translation_level) translation_level;
-    ptw_eq_addr(decltype(argument_type::address) full_v_addr, decltype(argument_type::translation_level) translation_level) : full_v_addr(full_v_addr), translation_level(translation_level) {}
+    ptw_eq_addr(decltype(argument_type::address) address, decltype(argument_type::translation_level) translation_level) : address(address), translation_level(translation_level) {}
     bool operator()(const argument_type &test)
     {
         is_valid<argument_type> validtest;
         if(!validtest(test) || (test.translation_level != translation_level) || (test.returned != INFLIGHT))
 			return false;
-
-		int shift = 12;
-
-		switch(translation_level)
-		{
-			case IS_PTL5: shift+= 9+9+9+9;
-						   break;
-			case IS_PTL4: shift+= 9+9+9;
-						   break;
-			case IS_PTL3: shift+= 9+9;
-						   break;
-	   		case IS_PTL2: shift+= 9;
-	   					   break;
-		}
-
-		return  (((full_v_addr >> shift) & 0x1ff) == ((test.full_v_addr >> shift) & 0x1ff));	
+		
+		return address == test.address;
     }
 };
 
@@ -42,15 +28,14 @@ void PageTableWalker::handle_read()
 {
 	int reads_this_cycle = PTW_MAX_READ;
 
-	bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-
-	if(mshr_full)
-		return;
-
 	while(reads_this_cycle > 0)
 	{
-		if((RQ.occupancy() > 0) && (RQ.front().event_cycle <= current_core_cycle[cpu])&& (((CACHE*)lower_level)->RQ.occupancy() < ((CACHE*)lower_level)->RQ.size())) //PTW lower level is L1D
-		{
+		bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+
+		if((RQ.occupancy() == 0) || (RQ.front().event_cycle > current_core_cycle[cpu]) || mshr_full || (((CACHE*)lower_level)->RQ.occupancy() == ((CACHE*)lower_level)->RQ.size())) //PTW lower level is L1D
+			break;
+
+
 			PACKET &handle_pkt = RQ.front();
 			
 			assert((handle_pkt.full_addr >> 32) != 0xf000000f); //Page table is stored at this address
@@ -111,18 +96,11 @@ void PageTableWalker::handle_read()
 		    assert(rq_index > -2);
 			
 			packet.to_return = handle_pkt.to_return; //Set the return for MSHR packet same as read packet.
-		    packet.address = handle_pkt.address;
-			packet.full_addr = handle_pkt.full_addr;
 			packet.type = handle_pkt.type;
 			add_mshr(&packet);
 
 		    RQ.pop_front();
 			reads_this_cycle--;
-		}
-		else
-		{
-			break;
-		}
 	}
 }
 
@@ -133,8 +111,9 @@ void PageTableWalker::handle_fill()
 	while(fill_this_cycle > 0) //Handle pending request
 	{
 		auto fill_mshr = MSHR.begin();
-		if((fill_mshr->returned == COMPLETED) && (fill_mshr->event_cycle <= current_core_cycle[cpu])) //Check if current level translation complete
-		{
+		if((fill_mshr->returned != COMPLETED) || (fill_mshr->event_cycle > current_core_cycle[cpu])) //Check if current level translation complete
+			break;
+
 			assert(CR3_addr != UINT64_MAX);
 			PageTablePage* curr_page = L5; //Start wth the L5 page
 			uint64_t next_level_base_addr = UINT64_MAX;
@@ -190,7 +169,10 @@ void PageTableWalker::handle_fill()
 
 
 				fill_mshr->data = next_level_base_addr; //Return the translated physical address to STLB. Does not contain last 12 bits
-			
+		
+				fill_mshr->full_addr = fill_mshr->full_v_addr;
+				fill_mshr->address = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
+	
 				for(auto ret: fill_mshr->to_return)
 					ret->return_data(&(*fill_mshr));
 
@@ -215,7 +197,7 @@ void PageTableWalker::handle_fill()
 					packet.type = TRANSLATION;
 					packet.event_cycle = current_core_cycle[cpu];
 					packet.full_addr = next_level_base_addr << LOG2_PAGE_SIZE | (get_offset(fill_mshr->full_v_addr, fill_mshr->translation_level) << 3);
-					packet.address = fill_mshr->full_addr >> LOG2_BLOCK_SIZE;
+					packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
 					
 					packet.to_return.clear();
 					packet.to_return = {this};					
@@ -225,16 +207,14 @@ void PageTableWalker::handle_fill()
 					int rq_index = lower_level->add_rq(&packet);
 					assert(rq_index > -2);
 
+					fill_mshr->address = packet.address;
+					fill_mshr->full_addr = packet.full_addr;
+
 					MSHR.sort(min_fill_index());	
 				}
 				else
 					RQ_FULL++;
 			}
-		}
-		else
-		{
-			break;
-		}
 
 		fill_this_cycle--;
 	}
@@ -428,7 +408,7 @@ int PageTableWalker::add_pq(PACKET *packet)
 
 void PageTableWalker::return_data(PACKET *packet)
 {
-	auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->full_v_addr, packet->translation_level));
+	auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->address, packet->translation_level));
 
 	int num_return = 0;
 
@@ -451,11 +431,12 @@ void PageTableWalker::return_data(PACKET *packet)
 	
 	num_return++;
 
-	mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->full_v_addr, packet->translation_level));
+	mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->address, packet->translation_level));
+
 	}
 
     // sanity check
-    if (num_return == 0) {
+    /*if (num_return == 0) {
         cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
         cerr << " full_addr: " << hex << packet->full_addr;
         cerr << " address: " << packet->address << dec;
@@ -476,7 +457,7 @@ void PageTableWalker::return_data(PACKET *packet)
 		}
 
         assert(0);
-    }
+    }*/
 
 	MSHR.sort(min_fill_index());
 

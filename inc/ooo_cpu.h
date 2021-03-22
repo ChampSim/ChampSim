@@ -129,7 +129,7 @@ class O3_CPU {
 
 		PTW.cpu = this->cpu;
 		PTW.cache_type = IS_PTW;
-		PTW.lower_level = &L1D; //PTW checks L2 cache for cached translation blocks.
+		PTW.lower_level = &L1D; //PTW checks L1 cache for cached translation blocks.
 
 		PTW.PSCL5.cache_type = IS_PSCL5;
 		PTW.PSCL4.cache_type = IS_PSCL4;

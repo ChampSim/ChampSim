@@ -26,7 +26,7 @@
 #define PTW_MSHR_SIZE 5
 #define PTW_PQ_SIZE 0
 
-#define PTW_MAX_READ 1
+#define PTW_MAX_READ 2
 #define PTW_MAX_FILL 2
 
 #define MMU_CACHE_LATENCY 1
@@ -67,6 +67,14 @@ class PageTablePage
 	}
 };
 
+class PagingStructureCache
+{
+	public:
+		const string NAME;
+		const uint32_t NUM_SET, NUM_WAY;
+		std::vector<BLOCK> block{NUM_SET*NUM_WAY};
+};
+
 class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProducer
 {
 	public:
@@ -77,8 +85,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 		uint8_t LATENCY;
 	
 		uint64_t next_translation_virtual_address = 0xf000000f00000000;
-
-		std::map<uint64_t, uint64_t> page_table;
 
 		champsim::delay_queue<PACKET> RQ{PTW_RQ_SIZE, LATENCY},
 									  WQ{PTW_WQ_SIZE, LATENCY},
@@ -103,10 +109,10 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
     uint64_t total_miss_latency = 0;
   
 
-	CACHE PSCL5{"PSCL5", PSCL5_SET, PSCL5_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L4
-          PSCL4{"PSCL4", PSCL4_SET, PSCL4_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L3
-          PSCL3{"PSCL3", PSCL3_SET, PSCL3_WAY, 0, 0, 0, 0, 0, 0}, //Translation from L5->L2
-          PSCL2{"PSCL2", PSCL2_SET, PSCL2_WAY, 0, 0, 0, 0, 0, 0}; //Translation from L5->L1
+	CACHE PSCL5{"PSCL5", PSCL5_SET, PSCL5_WAY, 0, 0, 0, 0, 0, 0, 0 ,0 ,0}, //Translation from L5->L4
+          PSCL4{"PSCL4", PSCL4_SET, PSCL4_WAY, 0, 0, 0, 0, 0, 0, 0, 0 ,0}, //Translation from L5->L3
+          PSCL3{"PSCL3", PSCL3_SET, PSCL3_WAY, 0, 0, 0, 0, 0, 0, 0 ,0, 0}, //Translation from L5->L2
+          PSCL2{"PSCL2", PSCL2_SET, PSCL2_WAY, 0, 0, 0, 0, 0, 0, 0 ,0, 0}; //Translation from L5->L1
 
     PageTablePage *L5; //CR3 register points to the base of this page.
     uint64_t CR3_addr; //This address will not have page offset bits.

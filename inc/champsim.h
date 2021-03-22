@@ -13,8 +13,7 @@
 #define NO_CRC2_COMPILE
 
 #ifdef DEBUG_PRINT
-//#define DP(x) x
-#define DP(x) {int temp=warmup_complete[0];warmup_complete[0]=1;x;warmup_complete[0]=temp;} //@Vishal: Use this to print in warmup+simulation
+#define DP(x) x
 #else
 #define DP(x)
 #endif
