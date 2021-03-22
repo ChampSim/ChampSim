@@ -73,6 +73,14 @@ class PagingStructureCache
 		const string NAME;
 		const uint32_t NUM_SET, NUM_WAY;
 		std::vector<BLOCK> block{NUM_SET*NUM_WAY};
+		uint8_t cache_type;
+
+		PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), cache_type(v2), NUM_SET(v3), NUM_WAY(v4){}
+
+		uint32_t get_set(uint64_t address);
+		uint64_t get_index(uint64_t address);
+		uint64_t check_hit(uint64_t address);
+		void fill_cache(uint64_t next_level_base_addr, PACKET *packet);
 };
 
 class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProducer
@@ -109,10 +117,10 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
     uint64_t total_miss_latency = 0;
   
 
-	CACHE PSCL5{"PSCL5", PSCL5_SET, PSCL5_WAY, 0, 0, 0, 0, 0, 0, 0 ,0 ,0}, //Translation from L5->L4
-          PSCL4{"PSCL4", PSCL4_SET, PSCL4_WAY, 0, 0, 0, 0, 0, 0, 0, 0 ,0}, //Translation from L5->L3
-          PSCL3{"PSCL3", PSCL3_SET, PSCL3_WAY, 0, 0, 0, 0, 0, 0, 0 ,0, 0}, //Translation from L5->L2
-          PSCL2{"PSCL2", PSCL2_SET, PSCL2_WAY, 0, 0, 0, 0, 0, 0, 0 ,0, 0}; //Translation from L5->L1
+	PagingStructureCache PSCL5{"PSCL5", IS_PSCL5, PSCL5_SET, PSCL5_WAY}, //Translation from L5->L4
+          PSCL4{"PSCL4", IS_PSCL4, PSCL4_SET, PSCL4_WAY}, //Translation from L5->L3
+          PSCL3{"PSCL3", IS_PSCL3, PSCL3_SET, PSCL3_WAY}, //Translation from L5->L2
+          PSCL2{"PSCL2", IS_PSCL2, PSCL2_SET, PSCL2_WAY}; //Translation from L5->L1
 
     PageTablePage *L5; //CR3 register points to the base of this page.
     uint64_t CR3_addr; //This address will not have page offset bits.
@@ -121,11 +129,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 	{
 		CR3_addr = map_translation_page(0,0);
 		L5 = new PageTablePage();
-
-		PSCL5.fill_level = 0;
-        PSCL4.fill_level = 0;
-        PSCL3.fill_level = 0;
-        PSCL2.fill_level = 0;
 	}
 
 	~PageTableWalker()
@@ -142,7 +145,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
     void return_data(PACKET *packet),
          operate(),
          increment_WQ_FULL(uint64_t address),
-         fill_mmu_cache(CACHE &cache, uint64_t next_level_base_addr, PACKET *packet, uint8_t cache_type),
          add_mshr(PACKET *packet);
 
 	void handle_read(),
@@ -152,7 +154,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
              get_size(uint8_t queue_type, uint64_t address);
 
     uint64_t get_index(uint64_t address, uint8_t cache_type),
-             check_hit(CACHE &cache, uint64_t address, uint8_t type),
              get_offset(uint64_t address, uint8_t pt_level);
 	void     handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level);
 

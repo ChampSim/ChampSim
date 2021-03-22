@@ -131,12 +131,6 @@ class O3_CPU {
 		PTW.cache_type = IS_PTW;
 		PTW.lower_level = &L1D; //PTW checks L1 cache for cached translation blocks.
 
-		PTW.PSCL5.cache_type = IS_PSCL5;
-		PTW.PSCL4.cache_type = IS_PSCL4;
-		PTW.PSCL3.cache_type = IS_PSCL3;
-		PTW.PSCL2.cache_type = IS_PSCL2;
-
-
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
         L1I.cache_type = IS_L1I;
@@ -178,23 +172,6 @@ class O3_CPU {
         L1I.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1I);
         L1D.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1D);
         L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
-
-
-		PTW.PSCL5.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL5), _1, _2, _3, _4, _5, _6, _7);
-		PTW.PSCL4.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL4), _1, _2, _3, _4, _5, _6, _7);
-		PTW.PSCL3.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL3), _1, _2, _3, _4, _5, _6, _7);
- 		PTW.PSCL2.find_victim = std::bind(&CACHE::lru_victim, &(PTW.PSCL2), _1, _2, _3, _4, _5, _6, _7);
-
-        PTW.PSCL5.update_replacement_state = std::bind(&CACHE::lru_update, &(PTW.PSCL5), _2, _3, _7, _8);
-        PTW.PSCL4.update_replacement_state = std::bind(&CACHE::lru_update, &(PTW.PSCL4), _2, _3, _7, _8);
-        PTW.PSCL3.update_replacement_state = std::bind(&CACHE::lru_update, &(PTW.PSCL3), _2, _3, _7, _8);
-        PTW.PSCL2.update_replacement_state = std::bind(&CACHE::lru_update, &(PTW.PSCL2), _2, _3, _7, _8);
-
-        PTW.PSCL5.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL5));
-        PTW.PSCL4.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL4));
-        PTW.PSCL3.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL3));
-        PTW.PSCL2.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &(PTW.PSCL2));
-
    }
 
     // functions

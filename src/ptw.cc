@@ -41,10 +41,10 @@ void PageTableWalker::handle_read()
 			assert((handle_pkt.full_addr >> 32) != 0xf000000f); //Page table is stored at this address
 			assert(handle_pkt.full_v_addr != 0);
 
-			uint64_t address_pscl5 = check_hit(PSCL5,get_index(handle_pkt.full_addr,IS_PSCL5),handle_pkt.type);
-			uint64_t address_pscl4 = check_hit(PSCL4,get_index(handle_pkt.full_addr,IS_PSCL4),handle_pkt.type);
-			uint64_t address_pscl3 = check_hit(PSCL3,get_index(handle_pkt.full_addr,IS_PSCL3),handle_pkt.type);
-			uint64_t address_pscl2 = check_hit(PSCL2,get_index(handle_pkt.full_addr,IS_PSCL2),handle_pkt.type);
+			uint64_t address_pscl5 = PSCL5.check_hit(handle_pkt.full_addr);
+			uint64_t address_pscl4 = PSCL4.check_hit(handle_pkt.full_addr);
+			uint64_t address_pscl3 = PSCL3.check_hit(handle_pkt.full_addr);
+			uint64_t address_pscl2 = PSCL2.check_hit(handle_pkt.full_addr);
 
 
 			PACKET packet = handle_pkt;
@@ -150,13 +150,13 @@ void PageTableWalker::handle_fill()
 					{
 						switch(i)
 						{
-							case 5: fill_mmu_cache(PSCL5, next_level_base_addr, &(*fill_mshr), IS_PSCL5);
+							case 5: PSCL5.fill_cache(next_level_base_addr, &(*fill_mshr));
 									break;
-							case 4: fill_mmu_cache(PSCL4, next_level_base_addr, &(*fill_mshr), IS_PSCL4);
+							case 4: PSCL4.fill_cache(next_level_base_addr, &(*fill_mshr));
 									break;
-							case 3: fill_mmu_cache(PSCL3, next_level_base_addr, &(*fill_mshr), IS_PSCL3);
+							case 3: PSCL3.fill_cache(next_level_base_addr, &(*fill_mshr));
 									break;
-							case 2: fill_mmu_cache(PSCL2, next_level_base_addr, &(*fill_mshr), IS_PSCL2);
+							case 2: PSCL2.fill_cache(next_level_base_addr, &(*fill_mshr));
 									break;
 						}
 					}
@@ -279,77 +279,6 @@ void PageTableWalker::add_mshr(PACKET *packet)
 	it->cycle_enqueued = current_core_cycle[packet->cpu];
 }
 
-void PageTableWalker::fill_mmu_cache(CACHE &cache, uint64_t next_level_base_addr, PACKET *packet, uint8_t cache_type)
-{
-	uint64_t address = get_index(packet->full_v_addr, cache_type);
-	
-	uint32_t set = cache.get_set(address);
-	uint32_t way = cache.find_victim(packet->cpu, packet->instr_id, set, &cache.block.data()[set*cache.NUM_WAY], packet->ip, packet->full_addr, packet->type);
-
-	PACKET new_packet = *packet;
-	
-	new_packet.address = address;
-	new_packet.data = next_level_base_addr;
-
-	BLOCK &fill_block = cache.block[set * cache.NUM_WAY + way];
-	
-	auto lru = fill_block.lru;	
-	fill_block = new_packet;	
-	fill_block.lru = lru;		
-	
-	 cache.update_replacement_state(packet->cpu, set, way, packet->full_addr, packet->ip, 0, packet->type, 0);
-
-	 cache.sim_miss[packet->cpu][packet->type]++;
-     cache.sim_access[packet->cpu][packet->type]++;
-     
-}
-
-uint64_t PageTableWalker::get_index(uint64_t address, uint8_t cache_type)
-{
-
-	address = address & ( (1L<<57) -1); //Extract Last 57 bits
-
-	int shift = 12;
-
-	switch(cache_type)
-	{
-		case IS_PSCL5: shift+= 9+9+9+9;
-					   break;
-		case IS_PSCL4: shift+= 9+9+9;
-					   break;
-		case IS_PSCL3: shift+= 9+9;
-					   break;
-		case IS_PSCL2: shift+= 9; //Most siginificant 36 bits will be used to index PSCL2 
-					   break;
-	}
-
-	return (address >> shift); 
-}
-
-uint64_t PageTableWalker::check_hit(CACHE &cache, uint64_t address, uint8_t type)
-{
-
-	uint32_t set = cache.get_set(address);
-
-    if (cache.NUM_SET < set) {
-        cerr << "[" << NAME << "_ERROR] " << __func__ << " invalid set index: " << set << " NUM_SET: " << cache.NUM_SET;
-        assert(0);
-    }
-
-    for (uint32_t way=0; way<cache.NUM_WAY; way++) {
-        if (cache.block[set * cache.NUM_WAY + way].valid && (cache.block[set * cache.NUM_WAY + way].tag == address)) {
-	    
-	    	// COLLECT STATS
-            cache.sim_hit[cpu][type]++;
-            cache.sim_access[cpu][type]++;
-     
-	    return cache.block[set *cache.NUM_WAY + way].data;
-        }
-    }
-
-    return UINT64_MAX;
-}
-    
 uint64_t PageTableWalker::get_offset(uint64_t full_virtual_addr, uint8_t pt_level)
 {
 	full_virtual_addr = full_virtual_addr & ( (1L<<57) -1); //Extract Last 57 bits
@@ -435,30 +364,6 @@ void PageTableWalker::return_data(PACKET *packet)
 
 	}
 
-    // sanity check
-    /*if (num_return == 0) {
-        cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
-        cerr << " full_addr: " << hex << packet->full_addr;
-        cerr << " address: " << packet->address << dec;
-		cerr << " translation_level: " << +packet->translation_level;
-        cerr << " event: " << packet->event_cycle << " current: " << current_core_cycle[packet->cpu] << endl;
-
-		cerr << "MSHR: " << endl;
-
-		for(auto it: MSHR)
-		{
-			std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << it.instr_id;
-            std::cout << " address: " << std::hex << it.address << " full_addr: " << it.full_addr;
-			std::cout << " full_v_addr: " << it.full_v_addr;
-            std::cout << " data: " << it.data << std::dec;
-			std::cout << " translation_level: " << +it.translation_level;
-            std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
-            std::cout << " event: " << it.event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; 
-		}
-
-        assert(0);
-    }*/
-
 	MSHR.sort(min_fill_index());
 
 }
@@ -493,3 +398,79 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
 	return PQ.size();
     return 0;
 }
+
+uint32_t PagingStructureCache::get_set(uint64_t address)
+{
+    return (uint32_t) (address & ((1 << lg2(NUM_SET)) - 1)); 
+}
+
+void PagingStructureCache::fill_cache(uint64_t next_level_base_addr, PACKET *packet)
+{
+	uint64_t address = get_index(packet->full_v_addr);
+	
+	uint32_t set = get_set(address);
+	BLOCK *current_set = &block.data()[set*NUM_WAY];
+	//Find victim
+	uint32_t way = std::distance(current_set, std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>()));
+
+	PACKET new_packet = *packet;
+	
+	new_packet.address = address;
+	new_packet.data = next_level_base_addr;
+
+	BLOCK &fill_block = block[set * NUM_WAY + way];
+	
+	auto lru = fill_block.lru;	
+	fill_block = new_packet;	
+	fill_block.lru = lru;		
+	
+	//Update replacement state
+	auto begin = std::next(block.begin(), set*NUM_WAY);
+	auto end = std::next(begin, NUM_WAY);
+	uint32_t hit_lru = std::next(begin, way)->lru;
+    std::for_each(begin, end, [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });
+    std::next(begin, way)->lru = 0; // promote to the MRU position
+}
+
+uint64_t PagingStructureCache::get_index(uint64_t address)
+{
+
+	address = address & ( (1L<<57) -1); //Extract Last 57 bits
+
+	int shift = 12;
+
+	switch(cache_type)
+	{
+		case IS_PSCL5: shift+= 9+9+9+9;
+					   break;
+		case IS_PSCL4: shift+= 9+9+9;
+					   break;
+		case IS_PSCL3: shift+= 9+9;
+					   break;
+		case IS_PSCL2: shift+= 9; //Most siginificant 36 bits will be used to index PSCL2 
+					   break;
+	}
+
+	return (address >> shift); 
+}
+
+uint64_t PagingStructureCache::check_hit(uint64_t address)
+{
+	address = get_index(address);
+
+	uint32_t set = get_set(address);
+
+    if (NUM_SET < set) {
+        cerr << "[" << NAME << "_ERROR] " << __func__ << " invalid set index: " << set << " NUM_SET: " << NUM_SET;
+        assert(0);
+    }
+
+    for (uint32_t way=0; way < NUM_WAY; way++) {
+        if (block[set * NUM_WAY + way].valid && (block[set * NUM_WAY + way].tag == address)) {
+	    	return block[set * NUM_WAY + way].data;
+        }
+    }
+
+    return UINT64_MAX;
+}
+    

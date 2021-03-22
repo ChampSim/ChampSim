@@ -231,11 +231,6 @@ void finish_warmup()
 		reset_cache_stats(i, &ooo_cpu[i].DTLB);
 		reset_cache_stats(i, &ooo_cpu[i].STLB);
 
-		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL5);
-		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL4);
-		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL3);
-		reset_cache_stats(i, &ooo_cpu[i].PTW.PSCL2);
-
         reset_cache_stats(i, &LLC);
     }
     cout << endl;
@@ -586,10 +581,6 @@ int main(int argc, char** argv)
 				record_roi_stats(i, &ooo_cpu[i].ITLB);
 				record_roi_stats(i, &ooo_cpu[i].DTLB);
 				record_roi_stats(i, &ooo_cpu[i].STLB);
-				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
-				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
-				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
-				record_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
                 all_simulation_complete++;
             }
 
@@ -639,12 +630,6 @@ int main(int argc, char** argv)
 		print_roi_stats(i, &ooo_cpu[i].ITLB);
 		print_roi_stats(i, &ooo_cpu[i].DTLB);
 		print_roi_stats(i, &ooo_cpu[i].STLB);
-	
-//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL5);
-//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL4);
-//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL3);
-//		print_roi_stats(i, &ooo_cpu[i].PTW.PSCL2);
-
 #endif
         print_roi_stats(i, &LLC);
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
