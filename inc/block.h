@@ -13,25 +13,20 @@ class LSQ_ENTRY;
 // message packet
 class PACKET {
   public:
-    uint8_t scheduled = 0,
-            translated = 0,
-            fetched = 0,
-            prefetched = 0;
+    bool scheduled = false,
+         returned  = false;
 
-    int fill_level = -1,
-        pf_origin_level,
-        producer = -1,
-        delta = 0,
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
+            type = 0,
+            fill_level = 0,
+            pf_origin_level = 0;
+
+    int delta = 0,
         depth = 0,
         signature = 0,
         confidence = 0;
 
     uint32_t pf_metadata;
-
-    uint8_t  is_producer = 0, 
-             returned = 0,
-             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-             type = 0;
 
     std::list<LSQ_ENTRY*> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
     std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
@@ -49,6 +44,16 @@ class PACKET {
              cycle_enqueued = 0;
 
     std::list<MemoryRequestProducer*> to_return;
+};
+
+template <>
+struct is_valid<PACKET>
+{
+    is_valid() {}
+    bool operator()(const PACKET &test)
+    {
+        return test.address != 0;
+    }
 };
 
 template <typename LIST>

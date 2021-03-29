@@ -23,17 +23,7 @@ class min_fill_index
     public:
     bool operator() (PACKET lhs, PACKET rhs)
     {
-        return rhs.returned != COMPLETED || (lhs.returned == COMPLETED && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
-template <>
-struct is_valid<PACKET>
-{
-    is_valid() {}
-    bool operator()(const PACKET &test)
-    {
-        return test.address != 0;
+        return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
     }
 };
 
@@ -55,7 +45,7 @@ void CACHE::handle_fill()
     while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = MSHR.begin();
-        if (fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
+        if (!fill_mshr->returned || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
             return;
 
         // find victim
@@ -267,7 +257,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
-            uint8_t  prior_returned = mshr_entry->returned;
+            bool  prior_returned = mshr_entry->returned;
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
 
@@ -294,7 +284,6 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
             assert(it != std::end(MSHR));
             *it = handle_pkt;
-            it->returned = INFLIGHT;
             it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
         }
 
@@ -353,6 +342,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     auto evicting_l1i_v_addr = bypass ? 0 : fill_block.ip;
     auto evicting_address = bypass ? 0 : fill_block.address;
 
+    /*
     // is this dirty?
     if (evicting_dirty && (lower_level->get_occupancy(2, fill_block.address) == lower_level->get_size(2, fill_block.address))) {
 
@@ -365,6 +355,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
                 std::cout << " victim_addr: " << fill_block.tag << std::dec << std::endl; });
         return false;
     }
+    */
 
     if (!bypass)
     {
@@ -788,7 +779,7 @@ void CACHE::return_data(PACKET *packet)
 
     // MSHR holds the most updated information about this request
     // no need to do memcpy
-    mshr_entry->returned = COMPLETED;
+    mshr_entry->returned = true;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
 

@@ -89,32 +89,5 @@ class MemoryRequestProducer
         explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
 };
 
-// DRAM CACHE BLOCK
-class DRAM_ARRAY {
-  public:
-    BLOCK **block;
-
-    DRAM_ARRAY() {
-        block = NULL;
-    };
-};
-
-struct BANK_REQUEST {
-    uint64_t cycle_available = 0,
-             address = 0,
-             full_addr = 0;
-
-    uint32_t open_row = std::numeric_limits<uint32_t>::max();
-
-    uint8_t working = 0,
-            working_type = 0,
-            row_buffer_hit = 0,
-            drc_hit = 0,
-            is_write = 0,
-            is_read = 0;
-
-    int request_index = -1;
-};
-
 #endif
 

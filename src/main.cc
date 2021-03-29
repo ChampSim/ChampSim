@@ -14,8 +14,8 @@
 
 #define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024)
 
-uint8_t warmup_complete[NUM_CPUS], 
-        simulation_complete[NUM_CPUS], 
+uint8_t warmup_complete[NUM_CPUS] = {},
+        simulation_complete[NUM_CPUS] = {},
         all_warmup_complete = 0, 
         all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
@@ -138,22 +138,27 @@ void print_branch_stats()
 
 void print_dram_stats()
 {
-    cout << endl;
-    cout << "DRAM Statistics" << endl;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        cout << " CHANNEL " << i << endl;
-        cout << " RQ ROW_BUFFER_HIT: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_MISS << endl;
-        cout << " DBUS_CONGESTED: " << setw(10) << DRAM.dbus_congested[NUM_TYPES][NUM_TYPES] << endl; 
-        cout << " WQ ROW_BUFFER_HIT: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_MISS;
-        cout << "  FULL: " << setw(10) << DRAM.WQ[i].FULL << endl; 
-        cout << endl;
+    uint64_t total_congested_cycle = 0;
+    uint64_t total_congested_count = 0;
+    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
+    {
+        total_congested_cycle += DRAM.channels[i].dbus_cycle_congested;
+        total_congested_count += DRAM.channels[i].dbus_count_congested;
     }
 
-    uint64_t total_congested_cycle = 0;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-        total_congested_cycle += DRAM.dbus_cycle_congested[i];
-    if (DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
-        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
+    std::cout << std::endl;
+    std::cout << "DRAM Statistics" << std::endl;
+    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
+        std::cout << " CHANNEL " << i << std::endl;
+        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_MISS << std::endl;
+        std::cout << " DBUS_CONGESTED: " << std::setw(10) << total_congested_count << std::endl;
+        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_MISS;
+        std::cout << "  FULL: " << setw(10) << DRAM.channels[i].WQ_FULL << std::endl;
+        std::cout << std::endl;
+    }
+
+    if (total_congested_count)
+        cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
     else
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
@@ -228,10 +233,10 @@ void finish_warmup()
 
     // reset DRAM stats
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        DRAM.RQ[i].ROW_BUFFER_HIT = 0;
-        DRAM.RQ[i].ROW_BUFFER_MISS = 0;
-        DRAM.WQ[i].ROW_BUFFER_HIT = 0;
-        DRAM.WQ[i].ROW_BUFFER_MISS = 0;
+        DRAM.channels[i].WQ_ROW_BUFFER_HIT = 0;
+        DRAM.channels[i].WQ_ROW_BUFFER_MISS = 0;
+        DRAM.channels[i].RQ_ROW_BUFFER_HIT = 0;
+        DRAM.channels[i].RQ_ROW_BUFFER_MISS = 0;
     }
 }
 
@@ -341,9 +346,6 @@ int main(int argc, char** argv)
                 knob_cloudsuite = 1;
                 MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
                 break;
-            case 'b':
-                knob_low_bandwidth = 1;
-                break;
             case 't':
                 traces_encountered = 1;
                 break;
@@ -363,23 +365,8 @@ int main(int argc, char** argv)
     cout << "LLC sets: " << LLC_SET << endl;
     cout << "LLC ways: " << LLC_WAY << endl;
 
-    if (knob_low_bandwidth)
-        DRAM_MTPS = DRAM_IO_FREQ/4;
-    else
-        DRAM_MTPS = DRAM_IO_FREQ;
-
-    // DRAM access latency
-    tRP  = (uint32_t)((1.0 * tRP_DRAM_NANOSECONDS  * CPU_FREQ) / 1000); 
-    tRCD = (uint32_t)((1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
-    tCAS = (uint32_t)((1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ) / 1000); 
-
-    // default: 16 = (64 / 8) * (3200 / 1600)
-    // it takes 16 CPU cycles to tranfser 64B cache block on a 8B (64-bit) bus 
-    // note that dram burst length = BLOCK_SIZE/DRAM_CHANNEL_WIDTH
-    DRAM_DBUS_RETURN_TIME = (BLOCK_SIZE / DRAM_CHANNEL_WIDTH) * (CPU_FREQ / DRAM_MTPS);
-
     printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
-            DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
+            DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
 
     // end consequence of knobs
 
@@ -439,28 +426,18 @@ int main(int argc, char** argv)
         ooo_cpu.at(i).L1I.l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
         ooo_cpu.at(i).L2C.lower_level = &LLC;
 
-        // SHARED CACHE
-        LLC.cache_type = IS_LLC;
-        LLC.fill_level = FILL_LLC;
-        LLC.lower_level = &DRAM;
-
-        using namespace std::placeholders;
-        LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
-        LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &LLC, _1, _2, _3, _4, _5, _6, _7, _8);
-        LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &LLC);
-
-        // OFF-CHIP DRAM
-        DRAM.fill_level = FILL_DRAM;
-        for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-            DRAM.RQ[i].is_RQ = 1;
-            DRAM.WQ[i].is_WQ = 1;
-        }
-
-        warmup_complete[i] = 0;
-        //all_warmup_complete = NUM_CPUS;
-        simulation_complete[i] = 0;
         current_core_cycle[i] = 0;
     }
+
+    // SHARED CACHE
+    LLC.cache_type = IS_LLC;
+    LLC.fill_level = FILL_LLC;
+    LLC.lower_level = &DRAM;
+
+    using namespace std::placeholders;
+    LLC.find_victim = std::bind(&CACHE::llc_find_victim, &LLC, _1, _2, _3, _4, _5, _6, _7);
+    LLC.update_replacement_state = std::bind(&CACHE::llc_update_replacement_state, &LLC, _1, _2, _3, _4, _5, _6, _7, _8);
+    LLC.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &LLC);
 
     LLC.llc_initialize_replacement();
     LLC.llc_prefetcher_initialize();
