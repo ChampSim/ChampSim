@@ -9,9 +9,6 @@
 #include "memory_class.h"
 #include "util.h"
 
-// the data bus must wait this amount of time when switching between reads and writes, and vice versa
-#define DBUS_TURN_AROUND_NANOSECONDS 7.5
-
 // these values control when to send out a burst of writes
 #define DRAM_WRITE_HIGH_WM    ((DRAM_WQ_SIZE*7)>>3) // 7/8th
 #define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
