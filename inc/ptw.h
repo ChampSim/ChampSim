@@ -52,7 +52,7 @@ class PagingStructureCache
 		std::vector<BLOCK> block{NUM_SET*NUM_WAY};
 		uint8_t cache_type;
 
-		PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), cache_type(v2), NUM_SET(v3), NUM_WAY(v4){}
+		PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), cache_type(v2) {}
 
 		uint32_t get_set(uint64_t address);
 		uint64_t get_index(uint64_t address);
