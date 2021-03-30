@@ -372,7 +372,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     // update prefetcher
     if (cache_type == IS_L1I)
-        l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~(BLOCK_SIZE-1), set, way, handle_pkt.type == PREFETCH, evicting_l1i_v_addr & ~(BLOCK_SIZE-1));
+        l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~bitmask(LOG2_BLOCK_SIZE), set, way, handle_pkt.type == PREFETCH, evicting_l1i_v_addr & ~bitmask(LOG2_BLOCK_SIZE));
     if (cache_type == IS_L1D)
         l1d_prefetcher_cache_fill(handle_pkt.full_v_addr, handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
     if  (cache_type == IS_L2C)
@@ -425,7 +425,7 @@ void CACHE::operate_reads()
 
 uint32_t CACHE::get_set(uint64_t address)
 {
-    return (uint32_t) (address & ((1 << lg2(NUM_SET)) - 1)); 
+    return (uint32_t) (address & bitmask(lg2(NUM_SET)));
 }
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
