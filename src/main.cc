@@ -63,34 +63,40 @@ void print_roi_stats(CACHE *cache)
 
         if (PER_CPU_HIT > 0 || PER_CPU_MISS > 0)
         {
-            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI TOTAL    ";
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI TOTAL      ";
             std::cout << "  ACCESS: " << std::setw(10) << PER_CPU_HIT + PER_CPU_MISS;
             std::cout << "  HIT: "    << std::setw(10) << PER_CPU_HIT;
             std::cout << "  MISS: "   << std::setw(10) << PER_CPU_MISS;
             std::cout << std::endl;
 
-            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI LOAD     ";
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI LOAD       ";
             std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][LOAD] + cache->roi_miss[cpu][LOAD];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][LOAD];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][LOAD];
             std::cout << std::endl;
 
-            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI RFO      ";
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI RFO        ";
             std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][RFO] + cache->roi_miss[cpu][RFO];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][RFO];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][RFO];
             std::cout << std::endl;
 
-            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI PREFETCH ";
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI PREFETCH   ";
             std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][PREFETCH] + cache->roi_miss[cpu][PREFETCH];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][PREFETCH];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][PREFETCH];
             std::cout << std::endl;
 
-            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI WRITEBACK";
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI WRITEBACK  ";
             std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][WRITEBACK] + cache->roi_miss[cpu][WRITEBACK];
             std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][WRITEBACK];
             std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][WRITEBACK];
+            std::cout << std::endl;
+
+            std::cout << "CPU" << cpu << " " << cache->NAME << " ROI TRANSLATION";
+            std::cout << "  ACCESS: " << std::setw(10) << cache->roi_hit[cpu][TRANSLATION] + cache->roi_miss[cpu][TRANSLATION];
+            std::cout << "  HIT: "    << std::setw(10) << cache->roi_hit[cpu][TRANSLATION];
+            std::cout << "  MISS: "   << std::setw(10) << cache->roi_miss[cpu][TRANSLATION];
             std::cout << std::endl;
 
             active_cpus.set(cpu);
@@ -272,6 +278,9 @@ void finish_warmup()
 	    ooo_cpu[i].branch_type_misses[j] = 0;
 	  }
 	
+        ooo_cpu[i].ITLB.reset_stats();
+        ooo_cpu[i].DTLB.reset_stats();
+        ooo_cpu[i].STLB.reset_stats();
         ooo_cpu[i].L1I.reset_stats();
         ooo_cpu[i].L1D.reset_stats();
         ooo_cpu[i].L2C.reset_stats();
@@ -622,6 +631,9 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L2C);
                 record_roi_stats(i, &LLC);
 
+				record_roi_stats(i, &ooo_cpu[i].ITLB);
+				record_roi_stats(i, &ooo_cpu[i].DTLB);
+				record_roi_stats(i, &ooo_cpu[i].STLB);
                 all_simulation_complete++;
             }
 
@@ -677,6 +689,9 @@ int main(int argc, char** argv)
         print_roi_stats(&ooo_cpu[i].L1D);
         print_roi_stats(&ooo_cpu[i].L1I);
         print_roi_stats(&ooo_cpu[i].L2C);
+        print_roi_stats(&ooo_cpu[i].ITLB);
+        print_roi_stats(&ooo_cpu[i].DTLB);
+        print_roi_stats(&ooo_cpu[i].STLB);
 #endif
         std::cout << std::endl;
     }
