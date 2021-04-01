@@ -13,12 +13,6 @@
 #define WRITEBACK 3
 #define NUM_TYPES 4
 
-extern uint32_t tRP,  // Row Precharge (RP) latency
-                tRCD, // Row address to Column address (RCD) latency
-                tCAS; // Column Address Strobe (CAS) latency
-
-extern uint64_t l2pf_access;
-
 // CACHE BLOCK
 class BLOCK {
   public:
@@ -74,7 +68,6 @@ class MemoryRequestConsumer
         virtual int  add_rq(PACKET *packet) = 0;
         virtual int  add_wq(PACKET *packet) = 0;
         virtual int  add_pq(PACKET *packet) = 0;
-        virtual void increment_WQ_FULL(uint64_t address) = 0;
         virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
         virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 };

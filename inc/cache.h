@@ -91,8 +91,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void return_data(PACKET *packet),
          operate(),
          operate_writes(),
-         operate_reads(),
-         increment_WQ_FULL(uint64_t address);
+         operate_reads();
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);

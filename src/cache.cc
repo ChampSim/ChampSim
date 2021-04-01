@@ -342,21 +342,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     auto evicting_l1i_v_addr = bypass ? 0 : fill_block.ip;
     auto evicting_address = bypass ? 0 : fill_block.address;
 
-    /*
-    // is this dirty?
-    if (evicting_dirty && (lower_level->get_occupancy(2, fill_block.address) == lower_level->get_size(2, fill_block.address))) {
-
-        // lower level WQ is full, cannot replace this victim
-        lower_level->increment_WQ_FULL(fill_block.address);
-
-        DP ( if (warmup_complete[handle_pkt.cpu]) {
-                std::cout << "[" << NAME << "] " << __func__ << " ceasing write. ";
-                std::cout << " Lower level wq is full!" << " fill_addr: " << std::hex << handle_pkt.address;
-                std::cout << " victim_addr: " << fill_block.tag << std::dec << std::endl; });
-        return false;
-    }
-    */
-
     if (!bypass)
     {
         if (evicting_dirty) {
@@ -832,10 +817,5 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
-}
-
-void CACHE::increment_WQ_FULL(uint64_t address)
-{
-    WQ_FULL++;
 }
 

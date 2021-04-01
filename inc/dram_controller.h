@@ -47,11 +47,11 @@ class MEMORY_CONTROLLER : public MemoryRequestConsumer {
     const static int fill_level = FILL_DRAM;
 
     // DRAM_IO_FREQ defined in champsim_constants.h
-    const static uint64_t tRP                        = std::ceil(1.0 * tRP_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tRCD                       = std::ceil(1.0 * tRCD_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tCAS                       = std::ceil(1.0 * tCAS_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_RETURN_TIME      = BLOCK_SIZE / DRAM_CHANNEL_WIDTH;
+    const static uint64_t tRP                        = std::ceil(1.0 * tRP_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t tRCD                       = std::ceil(1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t tCAS                       = std::ceil(1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_RETURN_TIME      = std::ceil(1.0 * BLOCK_SIZE * CPU_FREQ / DRAM_CHANNEL_WIDTH / DRAM_IO_FREQ);
 
     uint64_t current_cycle = 0;
 
@@ -63,8 +63,7 @@ class MEMORY_CONTROLLER : public MemoryRequestConsumer {
          add_wq(PACKET *packet),
          add_pq(PACKET *packet);
 
-    void operate(),
-         increment_WQ_FULL(uint64_t address);
+    void operate();
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);

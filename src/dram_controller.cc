@@ -298,8 +298,3 @@ uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
     return 0;
 }
 
-void MEMORY_CONTROLLER::increment_WQ_FULL(uint64_t address)
-{
-    uint32_t channel = dram_get_channel(address);
-    channels[channel].WQ_FULL++;
-}
