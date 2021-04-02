@@ -294,16 +294,6 @@ void signal_handler(int signal)
 	exit(1);
 }
 
-void cpu_l1i_prefetcher_cache_operate(uint32_t cpu_num, uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit)
-{
-  ooo_cpu[cpu_num]->l1i_prefetcher_cache_operate(v_addr, cache_hit, prefetch_hit);
-}
-
-void cpu_l1i_prefetcher_cache_fill(uint32_t cpu_num, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr)
-{
-  ooo_cpu[cpu_num]->l1i_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr);
-}
-
 int main(int argc, char** argv)
 {
 	// interrupt signal hanlder
@@ -427,15 +417,9 @@ int main(int argc, char** argv)
     srand(seed_number);
     champsim_seed = seed_number;
 
-    for (int i=0; i<NUM_CPUS; i++) {
-        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-    }
-
     // SHARED CACHE
     LLC.cache_type = IS_LLC;
     LLC.fill_level = FILL_LLC;
-    LLC.llc_prefetcher_initialize();
 
     for (O3_CPU* cpu : ooo_cpu)
     {
@@ -444,6 +428,7 @@ int main(int argc, char** argv)
 
     for (CACHE* cache : caches)
     {
+        cache->impl_prefetcher_initialize();
         cache->impl_replacement_initialize();
     }
 
@@ -538,13 +523,9 @@ int main(int argc, char** argv)
             print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
             print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
             print_sim_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
-	    ooo_cpu[i]->l1i_prefetcher_final_stats();
-            static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
-	    static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
 #endif
             print_sim_stats(i, &LLC);
         }
-        LLC.llc_prefetcher_final_stats();
     }
 
     cout << endl << "Region of Interest Statistics" << endl;
@@ -564,16 +545,13 @@ int main(int argc, char** argv)
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
     }
 
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        ooo_cpu[i]->l1i_prefetcher_final_stats();
-        static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
-        static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
-    }
+    for (CACHE *c : caches)
+        c->impl_prefetcher_final_stats();
 
-    LLC.llc_prefetcher_final_stats();
+    for (CACHE *c : caches)
+        c->impl_replacement_final_stats();
 
 #ifndef CRC2_COMPILE
-    LLC.impl_replacement_final_stats();
     print_dram_stats();
     print_branch_stats();
 #endif

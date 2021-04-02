@@ -82,12 +82,20 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     // constructor
   CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
             uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref, MemoryRequestConsumer *ll,
+            std::function<void(CACHE*)> pref_init,
+            std::function<uint32_t(CACHE*, uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> pref_operate,
+            std::function<uint32_t(CACHE*, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> pref_cache_fill,
+            std::function<void(CACHE*)> pref_final_stats,
             std::function<void(CACHE*)> repl_init,
             std::function<uint32_t(CACHE*, uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t)> repl_find_victim,
             std::function<void(CACHE*, uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t)> repl_update_replacement_state,
             std::function<void(CACHE*)> repl_final_stats )
         : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
         HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), virtual_prefetch(va_pref),
+        impl_prefetcher_initialize(std::bind(pref_init, this)),
+        impl_prefetcher_operate(std::bind(pref_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)),
+        impl_prefetcher_cache_fill(std::bind(pref_cache_fill, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)),
+        impl_prefetcher_final_stats(std::bind(pref_final_stats, this)),
         impl_replacement_initialize(std::bind(repl_init, this)),
         impl_replacement_final_stats(std::bind(repl_final_stats, this)),
         impl_update_replacement_state(std::bind(repl_update_replacement_state, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, std::placeholders::_8)),
@@ -127,28 +135,15 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool readlike_miss(PACKET &handle_pkt);
     bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
 
-    void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
-         (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),
-         l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
+    void cpu_redir_ipref_initialize();
+    uint32_t cpu_redir_ipref_operate(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t);
+    uint32_t cpu_redir_ipref_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);
+    void cpu_redir_ipref_final_stats();
 
-    uint32_t l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         llc_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
-
-    void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
-    void prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
-             l1d_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    uint32_t l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-             llc_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-
-    void prefetcher_initialize(),
-         l1d_prefetcher_initialize(),
-         l2c_prefetcher_initialize(),
-         llc_prefetcher_initialize();
-
-    void prefetcher_final_stats(),
-         l1d_prefetcher_final_stats(),
-         l2c_prefetcher_final_stats(),
-         llc_prefetcher_final_stats();
+    const std::function<void()> impl_prefetcher_initialize;
+    const std::function<uint32_t(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> impl_prefetcher_operate;
+    const std::function<uint32_t(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> impl_prefetcher_cache_fill;
+    const std::function<void()> impl_prefetcher_final_stats;
 
     const std::function<void()> impl_replacement_initialize;
     const std::function<void()> impl_replacement_final_stats;

@@ -5,6 +5,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "ooo_cpu.h"
 #include "util.h"
 #include "vmem.h"
 
@@ -16,6 +17,7 @@ uint64_t l2pf_access = 0;
 
 extern VirtualMemory vmem;
 extern uint8_t  warmup_complete[NUM_CPUS];
+extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 void CACHE::handle_fill()
 {
@@ -183,18 +185,8 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     // update prefetcher on load instruction
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
-        if(cache_type == IS_L1I)
-            l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 1, hit_block.prefetch);
-        if (cache_type == IS_L1D)
-            l1d_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type);
-        else if (cache_type == IS_L2C)
-            l2c_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
-        else if (cache_type == IS_LLC)
-        {
-            cpu = handle_pkt.cpu;
-            llc_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
-            cpu = 0;
-        }
+        cpu = handle_pkt.cpu;
+        handle_pkt.pf_metadata = impl_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
     // update replacement policy
@@ -277,18 +269,8 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
     // update prefetcher on load instructions and prefetches from upper levels
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
-        if(cache_type == IS_L1I)
-            l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 0, 0);
-        if (cache_type == IS_L1D)
-            l1d_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type);
-        if (cache_type == IS_L2C)
-            l2c_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
-        if (cache_type == IS_LLC)
-        {
-            cpu = handle_pkt.cpu;
-            llc_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
-            cpu = 0;
-        }
+        cpu = handle_pkt.cpu;
+        handle_pkt.pf_metadata = impl_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
     return true;
@@ -352,18 +334,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     // update prefetcher
-    if (cache_type == IS_L1I)
-        l1i_prefetcher_cache_fill(handle_pkt.cpu, (virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr) & ~bitmask(LOG2_BLOCK_SIZE), set, way, handle_pkt.type == PREFETCH, evicting_address & ~bitmask(LOG2_BLOCK_SIZE));
-    if (cache_type == IS_L1D)
-        l1d_prefetcher_cache_fill(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
-    if  (cache_type == IS_L2C)
-        handle_pkt.pf_metadata = l2c_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
-    if (cache_type == IS_LLC)
-    {
-        cpu = handle_pkt.cpu;
-        handle_pkt.pf_metadata = llc_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
-        cpu = 0;
-    }
+    cpu = handle_pkt.cpu;
+    handle_pkt.pf_metadata = impl_prefetcher_cache_fill(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
 
     // update replacement policy
     impl_update_replacement_state(handle_pkt.cpu, set, way, handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type, 0);
@@ -739,5 +711,25 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
+}
+
+void CACHE::cpu_redir_ipref_initialize()
+{
+    ooo_cpu[cpu]->impl_prefetcher_initialize();
+}
+
+uint32_t CACHE::cpu_redir_ipref_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+    return ooo_cpu[cpu]->impl_prefetcher_cache_operate(addr, cache_hit, (type == PREFETCH), metadata_in);
+}
+
+uint32_t CACHE::cpu_redir_ipref_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
+    return ooo_cpu[cpu]->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+}
+
+void CACHE::cpu_redir_ipref_final_stats()
+{
+    ooo_cpu[cpu]->impl_prefetcher_final_stats();
 }
 

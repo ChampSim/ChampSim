@@ -103,7 +103,13 @@ class O3_CPU : public champsim::operable {
             std::function<uint8_t(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> bpred_predict_branch,
             std::function<void(O3_CPU*)> btb_initialize,
             std::function<void(O3_CPU*, uint64_t, uint64_t, uint8_t, uint8_t)> update_btb,
-            std::function<std::pair<uint64_t, uint8_t>(O3_CPU*, uint64_t, uint8_t)> btb_prediction
+            std::function<std::pair<uint64_t, uint8_t>(O3_CPU*, uint64_t, uint8_t)> btb_prediction,
+            std::function<void(O3_CPU*)> prefetcher_initialize,
+            std::function<void(O3_CPU*, uint64_t, uint8_t, uint64_t)> prefetcher_branch_operate,
+            std::function<uint32_t(O3_CPU*, uint64_t, uint8_t, uint8_t, uint32_t)> prefetcher_cache_operate,
+            std::function<uint32_t(O3_CPU*, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> prefetcher_cache_fill,
+            std::function<void(O3_CPU*)> prefetcher_cycle_operate,
+            std::function<void(O3_CPU*)> prefetcher_final_stats
             ) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
@@ -117,7 +123,13 @@ class O3_CPU : public champsim::operable {
         impl_predict_branch(std::bind(bpred_predict_branch, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
         impl_btb_initialize(std::bind(btb_initialize, this)),
         impl_update_btb(std::bind(update_btb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
-        impl_btb_prediction(std::bind(btb_prediction, this, std::placeholders::_1, std::placeholders::_2))
+        impl_btb_prediction(std::bind(btb_prediction, this, std::placeholders::_1, std::placeholders::_2)),
+        impl_prefetcher_initialize(std::bind(prefetcher_initialize, this)),
+        impl_prefetcher_branch_operate(std::bind(prefetcher_branch_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)),
+        impl_prefetcher_cache_operate(std::bind(prefetcher_cache_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
+        impl_prefetcher_cache_fill(std::bind(prefetcher_cache_fill, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)),
+        impl_prefetcher_cycle_operate(std::bind(prefetcher_cycle_operate, this)),
+        impl_prefetcher_final_stats(std::bind(prefetcher_final_stats, this))
     {
         // TLBs
         itlb->cpu = this->cpu;
@@ -147,10 +159,6 @@ class O3_CPU : public champsim::operable {
         static_cast<CACHE*>(l1d->lower_level)->cpu = this->cpu;
         static_cast<CACHE*>(l1d->lower_level)->cache_type = IS_L2C;
         static_cast<CACHE*>(l1d->lower_level)->fill_level = FILL_L2;
-
-        l1i_prefetcher_initialize();
-        l1d->l1d_prefetcher_initialize();
-        static_cast<CACHE*>(l1d->lower_level)->l2c_prefetcher_initialize();
     }
 
     void operate();
@@ -201,14 +209,15 @@ class O3_CPU : public champsim::operable {
     const std::function<void(uint64_t, uint64_t, uint8_t, uint8_t)> impl_update_btb;
     const std::function<std::pair<uint64_t, uint8_t>(uint64_t, uint8_t)> impl_btb_prediction;
 
-  // code prefetching
-  void l1i_prefetcher_initialize();
-  void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
-  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
-  void l1i_prefetcher_cycle_operate();
-  void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
-  void l1i_prefetcher_final_stats();
-  int prefetch_code_line(uint64_t pf_v_addr);
+    // code prefetching
+    const std::function<void()> impl_prefetcher_initialize;
+    const std::function<void(uint64_t, uint8_t, uint64_t)> impl_prefetcher_branch_operate;
+    const std::function<uint32_t(uint64_t, uint8_t, uint8_t, uint32_t)> impl_prefetcher_cache_operate;
+    const std::function<uint32_t(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> impl_prefetcher_cache_fill;
+    const std::function<void()> impl_prefetcher_cycle_operate;
+    const std::function<void()> impl_prefetcher_final_stats;
+
+    int prefetch_code_line(uint64_t pf_v_addr);
 
 #include "ooo_cpu_modules.inc"
 

@@ -28,7 +28,7 @@ void O3_CPU::operate()
     PTW->_operate();
 
     // also handle per-cycle prefetcher operation
-    l1i_prefetcher_cycle_operate();
+    impl_prefetcher_cycle_operate();
 
     schedule_memory_instruction(); // schedule memory transactions
     dispatch_instruction(); // dispatch
@@ -248,7 +248,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 	  }
 
         // call code prefetcher every time the branch predictor is used
-        l1i_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+        impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
         if(predicted_branch_target != arch_instr.branch_target)
         {
