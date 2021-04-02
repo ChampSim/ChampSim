@@ -11,13 +11,8 @@
 #define RFO       1
 #define PREFETCH  2
 #define WRITEBACK 3
-#define NUM_TYPES 4
-
-extern uint32_t tRP,  // Row Precharge (RP) latency
-                tRCD, // Row address to Column address (RCD) latency
-                tCAS; // Column Address Strobe (CAS) latency
-
-extern uint64_t l2pf_access;
+#define TRANSLATION 4
+#define NUM_TYPES 5
 
 // CACHE BLOCK
 class BLOCK {
@@ -74,7 +69,6 @@ class MemoryRequestConsumer
         virtual int  add_rq(PACKET *packet) = 0;
         virtual int  add_wq(PACKET *packet) = 0;
         virtual int  add_pq(PACKET *packet) = 0;
-        virtual void increment_WQ_FULL(uint64_t address) = 0;
         virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
         virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 };
@@ -87,23 +81,6 @@ class MemoryRequestProducer
     protected:
         MemoryRequestProducer() {}
         explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
-};
-
-struct BANK_REQUEST {
-    uint64_t cycle_available = 0,
-             address = 0,
-             full_addr = 0;
-
-    uint32_t open_row = std::numeric_limits<uint32_t>::max();
-
-    uint8_t working = 0,
-            working_type = 0,
-            row_buffer_hit = 0,
-            drc_hit = 0,
-            is_write = 0,
-            is_read = 0;
-
-    int request_index = -1;
 };
 
 #endif

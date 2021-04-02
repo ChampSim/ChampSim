@@ -17,28 +17,6 @@ uint64_t l2pf_access = 0;
 extern VirtualMemory vmem;
 extern uint8_t  warmup_complete[NUM_CPUS];
 
-class min_fill_index
-{
-    public:
-    bool operator() (PACKET lhs, PACKET rhs)
-    {
-        return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
-template <typename T>
-struct eq_full_addr
-{
-    using argument_type = T;
-    const decltype(argument_type::address) val;
-    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        return validtest(test) && test.full_addr == val;
-    }
-};
-
 void CACHE::handle_fill()
 {
     while (writes_available_this_cycle > 0)
@@ -87,6 +65,8 @@ void CACHE::handle_writeback()
 
         // handle the oldest entry
         PACKET &handle_pkt = WQ.front();
+
+		assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
 
         // access cache
         uint32_t set = get_set(handle_pkt.address);
@@ -274,7 +254,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         // check to make sure the lower level queue has room for this read miss
         int queue_type = (is_read) ? 1 : 3;
-        if (cache_type != IS_STLB && lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
+        if (lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
             return false;
 
         // Allocate an MSHR
@@ -283,34 +263,19 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
             assert(it != std::end(MSHR));
             *it = handle_pkt;
+            it->returned = false;
             it->cycle_enqueued = current_cycle;
         }
 
-        // Send to the lower level
-        if (cache_type != IS_STLB)
-        {
-            if (handle_pkt.fill_level <= fill_level)
-                handle_pkt.to_return = {this};
-            else
-                handle_pkt.to_return.clear();
-
-            if (!is_read)
-                lower_level->add_pq(&handle_pkt);
-            else
-                lower_level->add_rq(&handle_pkt);
-
-            DP (if (warmup_complete[handle_pkt.cpu]) {
-                    std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
-                    std::cout << " address: " << std::hex << handle_pkt.address << " full_addr: " << handle_pkt.full_addr;
-                    std::cout << " data: " << handle_pkt.data << std::dec;
-                    std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl; });
-        }
+        if (handle_pkt.fill_level <= fill_level)
+            handle_pkt.to_return = {this};
         else
-        {
-            // TODO: need to differentiate page table walk and actual swap
-            handle_pkt.data = vmem.va_to_pa(handle_pkt.cpu, handle_pkt.full_addr) >> LOG2_PAGE_SIZE;
-            return_data(&handle_pkt);
-        }
+            handle_pkt.to_return.clear();
+
+        if (!is_read)
+            lower_level->add_pq(&handle_pkt);
+        else
+            lower_level->add_rq(&handle_pkt);
     }
 
     // update prefetcher on load instructions and prefetches from upper levels
@@ -346,19 +311,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     auto evicting_l1i_v_addr = bypass ? 0 : fill_block.ip;
     auto evicting_address = bypass ? 0 : fill_block.address;
 
-    // is this dirty?
-    if (evicting_dirty && (lower_level->get_occupancy(2, fill_block.address) == lower_level->get_size(2, fill_block.address))) {
-
-        // lower level WQ is full, cannot replace this victim
-        lower_level->increment_WQ_FULL(fill_block.address);
-
-        DP ( if (warmup_complete[handle_pkt.cpu]) {
-                std::cout << "[" << NAME << "] " << __func__ << " ceasing write. ";
-                std::cout << " Lower level wq is full!" << " fill_addr: " << std::hex << handle_pkt.address;
-                std::cout << " victim_addr: " << fill_block.tag << std::dec << std::endl; });
-        return false;
-    }
-
     if (!bypass)
     {
         if (evicting_dirty) {
@@ -393,13 +345,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         fill_block.lru = lru;
 
         if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
+		{
             fill_block.dirty = 1;
-
-        DP (if (warmup_complete[handle_pkt.cpu]) {
-                std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
-                std::cout << " address: " << std::hex << handle_pkt.address << " full_addr: " << handle_pkt.full_addr;
-                std::cout << " data: " << handle_pkt.data << std::dec;
-                std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl; });
+			assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
+		}
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -407,7 +356,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     // update prefetcher
     if (cache_type == IS_L1I)
-        l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~(BLOCK_SIZE-1), set, way, handle_pkt.type == PREFETCH, evicting_l1i_v_addr & ~(BLOCK_SIZE-1));
+        l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~bitmask(LOG2_BLOCK_SIZE), set, way, handle_pkt.type == PREFETCH, evicting_l1i_v_addr & ~bitmask(LOG2_BLOCK_SIZE));
     if (cache_type == IS_L1D)
         l1d_prefetcher_cache_fill(handle_pkt.full_v_addr, handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
     if  (cache_type == IS_L2C)
@@ -460,7 +409,7 @@ void CACHE::operate_reads()
 
 uint32_t CACHE::get_set(uint64_t address)
 {
-    return (uint32_t) (address & ((1 << lg2(NUM_SET)) - 1)); 
+    return (uint32_t) (address & bitmask(lg2(NUM_SET)));
 }
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
@@ -572,7 +521,7 @@ int CACHE::add_wq(PACKET *packet)
     else
         WQ.push_back_ready(*packet);
 
-    DP (if (warmup_complete[WQ.entry[index].cpu]) {
+    DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " occupancy: " << WQ.occupancy();
             std::cout << " data: " << std::hex << packet->data << std::dec << std::endl; })
@@ -769,6 +718,7 @@ int CACHE::add_pq(PACKET *packet)
 
 void CACHE::return_data(PACKET *packet)
 {
+
     // check MSHR information
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address));
 
@@ -786,8 +736,6 @@ void CACHE::return_data(PACKET *packet)
     mshr_entry->returned = true;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
-
-    // ADD LATENCY
     mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
     DP (if (warmup_complete[packet->cpu]) {
@@ -826,10 +774,5 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
-}
-
-void CACHE::increment_WQ_FULL(uint64_t address)
-{
-    WQ_FULL++;
 }
 

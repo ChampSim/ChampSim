@@ -15,8 +15,8 @@
 #include "vmem.h"
 #include "tracereader.h"
 
-uint8_t warmup_complete[NUM_CPUS], 
-        simulation_complete[NUM_CPUS], 
+uint8_t warmup_complete[NUM_CPUS] = {},
+        simulation_complete[NUM_CPUS] = {},
         all_warmup_complete = 0, 
         all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
@@ -70,6 +70,10 @@ void print_roi_stats(uint32_t cpu, CACHE *cache)
 
     cout << cache->NAME;
     cout << " WRITEBACK ACCESS: " << setw(10) << cache->roi_access[cpu][3] << "  HIT: " << setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << setw(10) << cache->roi_miss[cpu][3] << endl;
+
+	cout << cache->NAME;
+    cout << " TRANSLATION ACCESS: " << setw(10) << cache->roi_access[cpu][4] << "  HIT: " << setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << setw(10) << cache->roi_miss[cpu][4] << endl;
+
 
     cout << cache->NAME;
     cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
@@ -138,22 +142,27 @@ void print_branch_stats()
 
 void print_dram_stats()
 {
-    cout << endl;
-    cout << "DRAM Statistics" << endl;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        cout << " CHANNEL " << i << endl;
-        cout << " RQ ROW_BUFFER_HIT: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.RQ[i].ROW_BUFFER_MISS << endl;
-        cout << " DBUS_CONGESTED: " << setw(10) << DRAM.dbus_congested[NUM_TYPES][NUM_TYPES] << endl; 
-        cout << " WQ ROW_BUFFER_HIT: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << setw(10) << DRAM.WQ[i].ROW_BUFFER_MISS;
-        cout << "  FULL: " << setw(10) << DRAM.WQ[i].FULL << endl; 
-        cout << endl;
+    uint64_t total_congested_cycle = 0;
+    uint64_t total_congested_count = 0;
+    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
+    {
+        total_congested_cycle += DRAM.channels[i].dbus_cycle_congested;
+        total_congested_count += DRAM.channels[i].dbus_count_congested;
     }
 
-    uint64_t total_congested_cycle = 0;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-        total_congested_cycle += DRAM.dbus_cycle_congested[i];
-    if (DRAM.dbus_congested[NUM_TYPES][NUM_TYPES])
-        cout << " AVG_CONGESTED_CYCLE: " << (total_congested_cycle / DRAM.dbus_congested[NUM_TYPES][NUM_TYPES]) << endl;
+    std::cout << std::endl;
+    std::cout << "DRAM Statistics" << std::endl;
+    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
+        std::cout << " CHANNEL " << i << std::endl;
+        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_MISS << std::endl;
+        std::cout << " DBUS_CONGESTED: " << std::setw(10) << total_congested_count << std::endl;
+        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_MISS;
+        std::cout << "  FULL: " << setw(10) << DRAM.channels[i].WQ_FULL << std::endl;
+        std::cout << std::endl;
+    }
+
+    if (total_congested_count)
+        cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
     else
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
@@ -222,16 +231,20 @@ void finish_warmup()
         reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
         reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
         reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)); //L2C
+
+        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
+        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
+        reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level)); //L2C
         reset_cache_stats(i, &LLC);
     }
     cout << endl;
 
     // reset DRAM stats
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        DRAM.RQ[i].ROW_BUFFER_HIT = 0;
-        DRAM.RQ[i].ROW_BUFFER_MISS = 0;
-        DRAM.WQ[i].ROW_BUFFER_HIT = 0;
-        DRAM.WQ[i].ROW_BUFFER_MISS = 0;
+        DRAM.channels[i].WQ_ROW_BUFFER_HIT = 0;
+        DRAM.channels[i].WQ_ROW_BUFFER_MISS = 0;
+        DRAM.channels[i].RQ_ROW_BUFFER_HIT = 0;
+        DRAM.channels[i].RQ_ROW_BUFFER_MISS = 0;
     }
 }
 
@@ -413,16 +426,6 @@ int main(int argc, char** argv)
     for (int i=0; i<NUM_CPUS; i++) {
         static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
         static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
-
-        // OFF-CHIP DRAM
-        for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-            DRAM.RQ[i].is_RQ = 1;
-            DRAM.WQ[i].is_WQ = 1;
-        }
-
-        warmup_complete[i] = 0;
-        //all_warmup_complete = NUM_CPUS;
-        simulation_complete[i] = 0;
     }
 
     // SHARED CACHE
@@ -504,6 +507,10 @@ int main(int argc, char** argv)
                 record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
                 record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
                 record_roi_stats(i, &LLC);
+
+                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
+                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
+                record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level));
             }
         }
     }
@@ -541,6 +548,10 @@ int main(int argc, char** argv)
         print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
         print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
         print_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
+
+        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
+        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
+        print_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level));
 #endif
         print_roi_stats(i, &LLC);
         //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;

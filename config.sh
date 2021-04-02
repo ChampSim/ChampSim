@@ -28,10 +28,11 @@ config_cache_name = '.champsimconfig_cache'
 
 llc_fmtstr = 'CACHE {name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {attrs[prefetch_as_load]:b}, {ll});\n'
 cache_fmtstr = 'CACHE cpu{cpu}{name}("{name}", {attrs[frequency]}, {attrs[sets]}, {attrs[ways]}, {attrs[wq_size]}, {attrs[rq_size]}, {attrs[pq_size]}, {attrs[mshr_size]}, {attrs[hit_latency]}, {attrs[fill_latency]}, {attrs[max_read]}, {attrs[max_write]}, {attrs[prefetch_as_load]:b}, {ll});\n'
+ptw_fmtstr = 'PageTableWalker {name}("{name}", {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
-cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}L1I, &cpu{cpu}L1D);\n'
+cpu_fmtstr = 'O3_CPU cpu{cpu}_inst({cpu}, {attrs[frequency]}, {attrs[DIB][sets]}, {attrs[DIB][ways]}, {attrs[DIB][window_size]}, {attrs[ifetch_buffer_size]}, {attrs[dispatch_buffer_size]}, {attrs[decode_buffer_size]}, {attrs[rob_size]}, {attrs[lq_size]}, {attrs[sq_size]}, {attrs[fetch_width]}, {attrs[decode_width]}, {attrs[dispatch_width]}, {attrs[scheduler_size]}, {attrs[execute_width]}, {attrs[lq_width]}, {attrs[sq_width]}, {attrs[retire_width]}, {attrs[mispredict_penalty]}, {attrs[decode_latency]}, {attrs[dispatch_latency]}, {attrs[schedule_latency]}, {attrs[execute_latency]}, &cpu{cpu}ITLB, &cpu{cpu}DTLB, &cpu{cpu}L1I, &cpu{cpu}L1D, &cpu{cpu}PTW);\n'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER DRAM("DRAM", {attrs[frequency]});\n'
+pmem_fmtstr = 'MEMORY_CONTROLLER DRAM({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(NUM_CPUS, {attrs[size]}, PAGE_SIZE, {attrs[num_levels]}, 1);\n'
 
 module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc)) $(patsubst %.c,%.o,$(wildcard {1}/*.c))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
@@ -62,7 +63,8 @@ const_names = {
         'rq_size': 'DRAM_RQ_SIZE',
         'tRP': 'tRP_DRAM_NANOSECONDS',
         'tRCD': 'tRCD_DRAM_NANOSECONDS',
-        'tCAS': 'tCAS_DRAM_NANOSECONDS'
+        'tCAS': 'tCAS_DRAM_NANOSECONDS',
+        'turn_around_time': 'DBUS_TURN_AROUND_NANOSECONDS'
     }
 }
 
@@ -82,9 +84,9 @@ default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size':
 default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False }
 default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False }
 default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
-default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5 }
+default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
-
+default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
 ###
 # Ensure directories are present
 ###
@@ -108,6 +110,8 @@ for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i]['ITLB'] = merge_dicts(default_itlb, config_file.get('ITLB', {}), config_file['ooo_cpu'][i].get('ITLB',{}))
     config_file['ooo_cpu'][i]['DTLB'] = merge_dicts(default_dtlb, config_file.get('DTLB', {}), config_file['ooo_cpu'][i].get('DTLB',{}))
     config_file['ooo_cpu'][i]['STLB'] = merge_dicts(default_stlb, config_file.get('STLB', {}), config_file['ooo_cpu'][i].get('STLB',{}))
+    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, config_file.get('PTW', {}), config_file['ooo_cpu'][i].get('PTW',{}))
+    
 
 # LLC operates at maximum freqency of cores, if not already specified
 config_file['LLC'] = merge_dicts(default_llc, {'frequency': max(cpu['frequency'] for cpu in config_file['ooo_cpu'])}, config_file.get('LLC',{}))
@@ -264,15 +268,18 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')
     wfp.write('#include <array>\n')
 
+    wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
+    wfp.write('\n')
     wfp.write(pmem_fmtstr.format(attrs=config_file['physical_memory']))
     wfp.write(llc_fmtstr.format(name='LLC', attrs=config_file['LLC'], ll='&DRAM'))
     for i, cpu in enumerate(config_file['ooo_cpu']):
-        wfp.write(cache_fmtstr.format(cpu=i, name='STLB', attrs=cpu['STLB'], ll='NULL'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='ITLB', attrs=cpu['ITLB'], ll='&cpu'+str(i)+'STLB'))
-        wfp.write(cache_fmtstr.format(cpu=i, name='DTLB', attrs=cpu['DTLB'], ll='&cpu'+str(i)+'STLB'))
         wfp.write(cache_fmtstr.format(cpu=i, name='L2C', attrs=cpu['L2C'], ll='&LLC'))
         wfp.write(cache_fmtstr.format(cpu=i, name='L1I', attrs=cpu['L1I'], ll='&cpu'+str(i)+'L2C'))
         wfp.write(cache_fmtstr.format(cpu=i, name='L1D', attrs=cpu['L1D'], ll='&cpu'+str(i)+'L2C'))
+        wfp.write(ptw_fmtstr.format(name='cpu'+str(i)+'PTW', **cpu['PTW'], lower_level='&cpu'+str(i)+'L1D'))
+        wfp.write(cache_fmtstr.format(cpu=i, name='STLB', attrs=cpu['STLB'], ll='&cpu'+str(i)+'PTW'))
+        wfp.write(cache_fmtstr.format(cpu=i, name='ITLB', attrs=cpu['ITLB'], ll='&cpu'+str(i)+'STLB'))
+        wfp.write(cache_fmtstr.format(cpu=i, name='DTLB', attrs=cpu['DTLB'], ll='&cpu'+str(i)+'STLB'))
 
     for i,cpu in enumerate(config_file['ooo_cpu']):
         wfp.write(cpu_fmtstr.format(cpu=i, attrs=cpu))
@@ -293,9 +300,6 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(',\n&DRAM')
     wfp.write('\n};\n')
 
-    wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
-    wfp.write('\n')
-
 # Constants header
 with open(constants_header_name, 'wt') as wfp:
     wfp.write('/***\n * THIS FILE IS AUTOMATICALLY GENERATED\n * Do not edit this file. It will be overwritten when the configure script is run.\n ***/\n\n')
@@ -310,7 +314,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
 
     for k in const_names['physical_memory']:
-        if k in ['tRP', 'tRCD', 'tCAS']:
+        if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:
             wfp.write(define_nonint_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
         else:
             wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
