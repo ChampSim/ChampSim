@@ -741,19 +741,7 @@ void CACHE::return_data(PACKET *packet)
     mshr_entry->returned = true;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
-
-    // ADD LATENCY
-    if (warmup_complete[cpu])
-    {
-        if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
-            mshr_entry->event_cycle = current_core_cycle[packet->cpu] + FILL_LATENCY;
-        else
-            mshr_entry->event_cycle += FILL_LATENCY;
-    }
-    else
-    {
-        mshr_entry->event_cycle = current_core_cycle[cpu];
-    }
+    mshr_entry->event_cycle = current_core_cycle[packet->cpu] + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
