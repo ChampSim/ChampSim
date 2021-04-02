@@ -95,53 +95,6 @@ void packet_dep_merge(LIST &dest, LIST &src)
     dest.insert(d_begin, s_begin, s_end);
 }
 
-// packet queue
-struct PACKET_QUEUE {
-    string NAME;
-    uint32_t SIZE;
-
-    uint8_t  is_RQ = 0,
-             is_WQ = 0,
-             write_mode = 0;
-
-    uint32_t cpu = 0,
-             head = 0,
-             tail = 0,
-             occupancy = 0,
-             num_returned = 0,
-             next_schedule_index = 0,
-             next_process_index = 0;
-
-    uint64_t next_schedule_cycle = std::numeric_limits<uint64_t>::max(),
-             next_process_cycle = std::numeric_limits<uint64_t>::max(),
-             ACCESS = 0,
-             FORWARD = 0,
-             MERGED = 0,
-             TO_CACHE = 0,
-             ROW_BUFFER_HIT = 0,
-             ROW_BUFFER_MISS = 0,
-             FULL = 0;
-
-    PACKET *entry;
-
-    // constructor
-    PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
-        entry = new PACKET[SIZE];
-    };
-
-    PACKET_QUEUE() {}
-
-    // destructor
-    ~PACKET_QUEUE() {
-        delete[] entry;
-    };
-
-    // functions
-    int check_queue(PACKET* packet);
-    void add_queue(PACKET* packet),
-         remove_queue(PACKET* packet);
-};
-
 // load/store queue
 struct LSQ_ENTRY {
     uint64_t instr_id = 0,
