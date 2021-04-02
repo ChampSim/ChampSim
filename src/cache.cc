@@ -349,8 +349,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
 void CACHE::operate()
 {
-  operate_writes();
-  operate_reads();
+    operate_writes();
+    operate_reads();
+
+    impl_prefetcher_cycle_operate();
 }
 
 void CACHE::operate_writes()
@@ -726,6 +728,11 @@ uint32_t CACHE::cpu_redir_ipref_operate(uint64_t addr, uint64_t ip, uint8_t cach
 uint32_t CACHE::cpu_redir_ipref_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
     return ooo_cpu[cpu]->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+}
+
+void CACHE::cpu_redir_ipref_cycle_operate()
+{
+    ooo_cpu[cpu]->impl_prefetcher_cycle_operate();
 }
 
 void CACHE::cpu_redir_ipref_final_stats()

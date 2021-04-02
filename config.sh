@@ -17,7 +17,7 @@ config_cache_name = '.champsimconfig_cache'
 
 dcn_fmtstr = 'cpu{}_{}' # default cache name format string
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {lower_level}, &CACHE::{prefetcher_initialize}, &CACHE::{prefetcher_cache_operate}, &CACHE::{prefetcher_cache_fill}, &CACHE::{prefetcher_final_stats}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
+cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {lower_level}, &CACHE::{prefetcher_initialize}, &CACHE::{prefetcher_cache_operate}, &CACHE::{prefetcher_cache_fill}, &CACHE::{prefetcher_cycle_operate}, &CACHE::{prefetcher_final_stats}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{index}_inst({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, &{PTW}, &O3_CPU::{bpred_initialize}, &O3_CPU::{bpred_last_result}, &O3_CPU::{bpred_predict}, &O3_CPU::{btb_initialize}, &O3_CPU::{btb_update}, &O3_CPU::{btb_predict}, &O3_CPU::{iprefetcher_initialize}, &O3_CPU::{iprefetcher_branch_operate}, &O3_CPU::{iprefetcher_cache_operate}, &O3_CPU::{iprefetcher_cache_fill}, &O3_CPU::{iprefetcher_cycle_operate}, &O3_CPU::{iprefetcher_final_stats});\n'
@@ -201,6 +201,7 @@ for cache in caches.values():
         cache['prefetcher_initialize'] = 'pref_' + os.path.basename(cache['prefetcher']) + '_initialize'
         cache['prefetcher_cache_operate'] = 'pref_' + os.path.basename(cache['prefetcher']) + '_cache_operate'
         cache['prefetcher_cache_fill'] = 'pref_' + os.path.basename(cache['prefetcher']) + '_cache_fill'
+        cache['prefetcher_cycle_operate'] = 'pref_' + os.path.basename(cache['prefetcher']) + '_cycle_operate'
         cache['prefetcher_final_stats'] = 'pref_' + os.path.basename(cache['prefetcher']) + '_final_stats'
 
         fname = 'prefetcher/' + cache['prefetcher']
@@ -209,8 +210,9 @@ for cache in caches.values():
         opts = ''
         # These function names should be used in future designs
         opts += ' -Dprefetcher_initialize=' + cache['prefetcher_initialize']
-        opts += ' -Dprefetcher_operate=' + cache['prefetcher_cache_operate']
+        opts += ' -Dprefetcher_cache_operate=' + cache['prefetcher_cache_operate']
         opts += ' -Dprefetcher_cache_fill=' + cache['prefetcher_cache_fill']
+        opts += ' -Dprefetcher_cycle_operate=' + cache['prefetcher_cycle_operate']
         opts += ' -Dprefetcher_final_stats=' + cache['prefetcher_final_stats']
         # These function names are deprecated, but we still permit them
         opts += ' -Dl1d_prefetcher_initialize=' + cache['prefetcher_initialize']
@@ -292,6 +294,7 @@ for cpu in cores:
     caches[cpu['L1I']]['prefetcher_initialize'] = 'cpu_redir_ipref_initialize'
     caches[cpu['L1I']]['prefetcher_cache_operate'] = 'cpu_redir_ipref_operate'
     caches[cpu['L1I']]['prefetcher_cache_fill'] = 'cpu_redir_ipref_fill'
+    caches[cpu['L1I']]['prefetcher_cycle_operate'] = 'cpu_redir_ipref_cycle_operate'
     caches[cpu['L1I']]['prefetcher_final_stats'] = 'cpu_redir_ipref_final_stats'
 
 # Assert module paths exist
@@ -466,6 +469,7 @@ repl_finals  = {c['replacement_replacement_final_stats'] for c in caches.values(
 pref_inits   = {c['prefetcher_initialize'] for c in caches.values() if c['prefetcher_initialize'].startswith('pref')}
 pref_ops     = {c['prefetcher_cache_operate'] for c in caches.values() if c['prefetcher_cache_operate'].startswith('pref')}
 pref_fill    = {c['prefetcher_cache_fill'] for c in caches.values() if c['prefetcher_cache_fill'].startswith('pref')}
+pref_cycles  = {c['prefetcher_cycle_operate'] for c in caches.values() if c['prefetcher_cycle_operate'].startswith('pref')}
 pref_finals  = {c['prefetcher_final_stats'] for c in caches.values() if c['prefetcher_final_stats'].startswith('pref')}
 with open('inc/cache_modules.inc', 'wt') as wfp:
     for i in repl_inits:
@@ -488,6 +492,9 @@ with open('inc/cache_modules.inc', 'wt') as wfp:
 
     for u in pref_fill:
         wfp.write('uint32_t ' + u + '(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);\n')
+
+    for v in pref_cycles:
+        wfp.write('void ' + v + '();\n')
 
     for f in pref_finals:
         wfp.write('void ' + f + '();\n')

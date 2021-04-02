@@ -85,6 +85,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
             std::function<void(CACHE*)> pref_init,
             std::function<uint32_t(CACHE*, uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> pref_operate,
             std::function<uint32_t(CACHE*, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> pref_cache_fill,
+            std::function<void(CACHE*)> pref_cycle,
             std::function<void(CACHE*)> pref_final_stats,
             std::function<void(CACHE*)> repl_init,
             std::function<uint32_t(CACHE*, uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t)> repl_find_victim,
@@ -95,6 +96,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
         impl_prefetcher_initialize(std::bind(pref_init, this)),
         impl_prefetcher_operate(std::bind(pref_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)),
         impl_prefetcher_cache_fill(std::bind(pref_cache_fill, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)),
+        impl_prefetcher_cycle_operate(std::bind(pref_cycle, this)),
         impl_prefetcher_final_stats(std::bind(pref_final_stats, this)),
         impl_replacement_initialize(std::bind(repl_init, this)),
         impl_replacement_final_stats(std::bind(repl_final_stats, this)),
@@ -138,11 +140,13 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     void cpu_redir_ipref_initialize();
     uint32_t cpu_redir_ipref_operate(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t);
     uint32_t cpu_redir_ipref_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);
+    void cpu_redir_ipref_cycle_operate();
     void cpu_redir_ipref_final_stats();
 
     const std::function<void()> impl_prefetcher_initialize;
     const std::function<uint32_t(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> impl_prefetcher_operate;
     const std::function<uint32_t(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> impl_prefetcher_cache_fill;
+    const std::function<void()> impl_prefetcher_cycle_operate;
     const std::function<void()> impl_prefetcher_final_stats;
 
     const std::function<void()> impl_replacement_initialize;
