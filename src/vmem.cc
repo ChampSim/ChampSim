@@ -93,7 +93,7 @@ uint32_t VirtualMemory::get_paget_table_level_count()
 uint64_t VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
   uint64_t vpage = vaddr>>lg2(page_size);
-  uint64_t voffset = vaddr&((1<<lg2(page_size))-1);
+  uint64_t voffset = vaddr & bitmask(lg2(page_size));
 
   if(vpage_to_ppage_map[cpu_num].find(vpage) == vpage_to_ppage_map[cpu_num].end())
     {
@@ -107,7 +107,7 @@ uint64_t VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 uint64_t VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
 {
   uint64_t vpage = vaddr>>lg2(page_size);
-  uint64_t pte_offset = vpage&511;
+  uint64_t pte_offset = vpage & bitmask(9);
   
   uint32_t shift_bits = 9 + (9*(pt_levels-1-level));
   uint64_t pt_lookup_tag = vpage>>shift_bits;

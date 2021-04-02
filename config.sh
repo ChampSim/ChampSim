@@ -39,6 +39,7 @@ define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}u\n'
 define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
 define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
 cache_define_fmtstr = '#define {name}_SET {attrs[sets]}u\n#define {name}_WAY {attrs[ways]}u\n#define {name}_WQ_SIZE {attrs[wq_size]}u\n#define {name}_RQ_SIZE {attrs[rq_size]}u\n#define {name}_PQ_SIZE {attrs[pq_size]}u\n#define {name}_MSHR_SIZE {attrs[mshr_size]}u\n#define {name}_HIT_LATENCY {attrs[hit_latency]}u\n#define {name}_FILL_LATENCY {attrs[fill_latency]}u\n#define {name}_MAX_READ {attrs[max_read]}\n#define {name}_MAX_WRITE {attrs[max_write]}\n#define {name}_PREF_LOAD {attrs[prefetch_as_load]:b}\n'
+ptw_define_fmtstr = '#define PSCL5_SET {attrs[pscl5_set]}u\n#define PSCL5_WAY {attrs[pscl5_way]}u\n#define PSCL4_SET {attrs[pscl4_set]}u\n#define PSCL4_WAY {attrs[pscl4_way]}u\n#define PSCL3_SET {attrs[pscl3_set]}u\n#define PSCL3_WAY {attrs[pscl3_way]}u\n#define PSCL2_SET {attrs[pscl2_set]}u\n#define PSCL2_WAY {attrs[pscl2_way]}u\n#define PTW_RQ_SIZE {attrs[ptw_rq_size]}u\n#define PTW_MSHR_SIZE {attrs[ptw_mshr_size]}u\n#define PTW_MAX_READ {attrs[ptw_max_read]}u\n#define PTW_MAX_WRITE {attrs[ptw_max_write]}u\n'
 
 ###
 # Begin named constants
@@ -112,7 +113,7 @@ default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size
 default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'prefetcher': 'no_llc', 'replacement': 'lru_llc' }
 default_pmem = { 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'row_size': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5 }
-
+default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
 ###
 # Ensure directories are present
 ###
@@ -136,6 +137,8 @@ for i in range(len(config_file['ooo_cpu'])):
     config_file['ooo_cpu'][i]['ITLB'] = merge_dicts(default_itlb, config_file.get('ITLB', {}), config_file['ooo_cpu'][i].get('ITLB',{}))
     config_file['ooo_cpu'][i]['DTLB'] = merge_dicts(default_dtlb, config_file.get('DTLB', {}), config_file['ooo_cpu'][i].get('DTLB',{}))
     config_file['ooo_cpu'][i]['STLB'] = merge_dicts(default_stlb, config_file.get('STLB', {}), config_file['ooo_cpu'][i].get('STLB',{}))
+    config_file['ooo_cpu'][i]['PTW'] = merge_dicts(default_ptw, config_file.get('PTW', {}), config_file['ooo_cpu'][i].get('PTW',{}))
+    
 
 config_file['LLC'] = merge_dicts(default_llc, config_file.get('LLC',{}))
 config_file['physical_memory'] = merge_dicts(default_pmem, config_file.get('physical_memory',{}))
@@ -289,6 +292,8 @@ with open(constants_header_name, 'wt') as wfp:
                 wfp.write(define_log_fmtstr.format(name='window_size').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='sets').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
                 wfp.write(define_fmtstr.format(name='ways').format(names=const_names['core']['DIB'], config=config_file['ooo_cpu'][0]['DIB']))
+            elif k == 'PTW':
+                wfp.write(ptw_define_fmtstr.format(name=k, attrs=v))
             else:
                 wfp.write(cache_define_fmtstr.format(name=k, attrs=v))
             wfp.write('\n')

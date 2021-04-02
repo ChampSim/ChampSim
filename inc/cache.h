@@ -18,6 +18,8 @@
 #define IS_L2C  5
 #define IS_LLC  6
 
+#define IS_PTW 7
+
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 
@@ -154,6 +156,28 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint32_t lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
     void lru_update(uint32_t set, uint32_t way, uint32_t type, uint8_t hit);
     void lru_final_stats();
+};
+
+class min_fill_index
+{
+    public:
+    bool operator() (PACKET lhs, PACKET rhs)
+    {
+        return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
+    }
+};
+
+template <typename T>
+struct eq_full_addr
+{
+    using argument_type = T;
+    const decltype(argument_type::address) val;
+    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
+    bool operator()(const argument_type &test)
+    {
+        is_valid<argument_type> validtest;
+        return validtest(test) && test.full_addr == val;
+    }
 };
 
 #endif

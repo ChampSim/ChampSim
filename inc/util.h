@@ -10,7 +10,7 @@ constexpr unsigned lg2(uint64_t n)
 
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
-    return ((1 << (begin - end))-1) << end;
+    return ((1ull << (begin - end))-1) << end;
 }
 
 constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits)
