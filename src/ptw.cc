@@ -92,8 +92,6 @@ void PageTableWalker::handle_read()
 			packet.to_return.clear();
 			packet.to_return = {this}; //Return this packet to PTW after completion.
 
-            std::cout << "[PTW] instr_id: " << packet.instr_id << " addr: " << handle_pkt.full_addr << " generates walk addr: " << packet.full_addr << " level: " << +packet.translation_level << std::endl;
-
 			int rq_index = lower_level->add_rq(&packet);
 		    assert(rq_index > -2);
 			
@@ -205,8 +203,6 @@ void PageTableWalker::handle_fill()
 					packet.to_return = {this};					
 
 					fill_mshr->returned = false;
-
-            std::cout << "[PTW] instr_id: " << packet.instr_id << " addr: " << fill_mshr->full_addr << " step walk addr: " << packet.full_addr << " level: " << +packet.translation_level << std::endl;
 
 					int rq_index = lower_level->add_rq(&packet);
 					assert(rq_index > -2);
