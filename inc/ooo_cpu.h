@@ -131,34 +131,7 @@ class O3_CPU : public champsim::operable {
         impl_prefetcher_cycle_operate(std::bind(prefetcher_cycle_operate, this)),
         impl_prefetcher_final_stats(std::bind(prefetcher_final_stats, this))
     {
-        // TLBs
-        itlb->cpu = this->cpu;
-        itlb->cache_type = IS_ITLB;
-        itlb->fill_level = FILL_L1;
-
-        dtlb->cpu = this->cpu;
-        dtlb->cache_type = IS_DTLB;
-        dtlb->fill_level = FILL_L1;
-
-        static_cast<CACHE*>(dtlb->lower_level)->cpu = this->cpu;
-        static_cast<CACHE*>(dtlb->lower_level)->cache_type = IS_STLB;
-        static_cast<CACHE*>(dtlb->lower_level)->fill_level = FILL_L2;
-
         ptw->cpu = this->cpu;
-        ptw->cache_type = IS_PTW;
-
-        // PRIVATE CACHE
-        l1i->cpu = this->cpu;
-        l1i->cache_type = IS_L1I;
-        l1i->fill_level = FILL_L1;
-
-        l1d->cpu = this->cpu;
-        l1d->cache_type = IS_L1D;
-        l1d->fill_level = FILL_L1;
-
-        static_cast<CACHE*>(l1d->lower_level)->cpu = this->cpu;
-        static_cast<CACHE*>(l1d->lower_level)->cache_type = IS_L2C;
-        static_cast<CACHE*>(l1d->lower_level)->fill_level = FILL_L2;
     }
 
     void operate();

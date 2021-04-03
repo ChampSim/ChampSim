@@ -13,8 +13,6 @@
 #define NDEBUG
 #endif
 
-uint64_t l2pf_access = 0;
-
 extern VirtualMemory vmem;
 extern uint8_t  warmup_complete[NUM_CPUS];
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
@@ -65,8 +63,6 @@ void CACHE::handle_writeback()
         // handle the oldest entry
         PACKET &handle_pkt = WQ.front();
 
-		assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
-
         // access cache
         uint32_t set = get_set(handle_pkt.address);
         uint32_t way = get_way(handle_pkt.address, set);
@@ -93,7 +89,7 @@ void CACHE::handle_writeback()
                     std::cout << " cycle: " << handle_pkt.event_cycle << std::endl; });
 
             bool success;
-            if (cache_type == IS_L1D) {
+            if (handle_pkt.type == RFO && handle_pkt.to_return.empty()) {
                 success = readlike_miss(handle_pkt);
             }
             else {
@@ -293,7 +289,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         if (evicting_dirty) {
             PACKET writeback_packet;
 
-            writeback_packet.fill_level = fill_level << 1;
+            writeback_packet.fill_level = lower_level->fill_level;
             writeback_packet.cpu = handle_pkt.cpu;
             writeback_packet.address = fill_block.address;
             writeback_packet.full_addr = fill_block.full_addr;
@@ -306,10 +302,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             if (result == -2)
                 return false;
         }
-
-        assert(cache_type != IS_ITLB || handle_pkt.data != 0);
-        assert(cache_type != IS_DTLB || handle_pkt.data != 0);
-        assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
         if (fill_block.prefetch)
             pf_useless++;
@@ -408,7 +400,7 @@ int CACHE::add_rq(PACKET *packet)
 
     // check for the latest writebacks in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
-    if (cache_type == IS_L1D) {
+    if (wq_check_full_addr) {
         found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
     }
     else {
@@ -466,7 +458,7 @@ int CACHE::add_wq(PACKET *packet)
 
     // check for duplicates in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
-    if (cache_type == IS_L1D) {
+    if (wq_check_full_addr) {
         found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
     }
     else {
@@ -503,12 +495,12 @@ int CACHE::add_wq(PACKET *packet)
     return WQ.occupancy();
 }
 
-int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
     pf_requested++;
 
     PACKET pf_packet;
-    pf_packet.fill_level = pf_fill_level;
+    pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
     pf_packet.pf_origin_level = fill_level;
     pf_packet.pf_metadata = prefetch_metadata;
     pf_packet.cpu = cpu;
@@ -541,13 +533,13 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
     return 0;
 }
 
-int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
+int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
 {
     if (!PQ.full()) {
         if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
             
             PACKET pf_packet;
-            pf_packet.fill_level = pf_fill_level;
+            pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
 	    pf_packet.pf_origin_level = fill_level;
 	    pf_packet.pf_metadata = prefetch_metadata;
             pf_packet.cpu = cpu;
@@ -604,7 +596,7 @@ int CACHE::add_pq(PACKET *packet)
 
     // check for the latest wirtebacks in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
-    if (cache_type == IS_L1D) {
+    if (wq_check_full_addr) {
         found_wq = std::find_if(WQ.begin(), WQ.end(), eq_full_addr<PACKET>(packet->full_addr));
     }
     else {

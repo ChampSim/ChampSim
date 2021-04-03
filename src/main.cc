@@ -418,9 +418,6 @@ int main(int argc, char** argv)
     champsim_seed = seed_number;
 
     // SHARED CACHE
-    LLC.cache_type = IS_LLC;
-    LLC.fill_level = FILL_LLC;
-
     for (O3_CPU* cpu : ooo_cpu)
     {
         cpu->initialize_core();
