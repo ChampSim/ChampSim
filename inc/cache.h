@@ -18,13 +18,14 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint32_t cpu;
     const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-    const uint32_t HIT_LATENCY, FILL_LATENCY;
+    const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
     std::vector<BLOCK> block{NUM_SET*NUM_WAY};
     const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     const bool prefetch_as_load;
     const bool virtual_prefetch;
-    const bool wq_check_full_addr;
+    const bool match_offset_bits;
+    bool ever_seen_data = false;
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -66,7 +67,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     
     // constructor
     CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref, bool wq_full_addr, MemoryRequestConsumer *ll,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool va_pref, bool wq_full_addr,
+            MemoryRequestConsumer *ll,
             std::function<void(CACHE*)> pref_init,
             std::function<uint32_t(CACHE*, uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> pref_operate,
             std::function<uint32_t(CACHE*, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> pref_cache_fill,
@@ -78,8 +80,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
             std::function<void(CACHE*)> repl_final_stats )
         : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll),
         NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
-        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write),
-        prefetch_as_load(pref_load), virtual_prefetch(va_pref), wq_check_full_addr(wq_full_addr),
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write),
+        prefetch_as_load(pref_load), virtual_prefetch(va_pref), match_offset_bits(wq_full_addr),
         impl_prefetcher_initialize(std::bind(pref_init, this)),
         impl_prefetcher_operate(std::bind(pref_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)),
         impl_prefetcher_cache_fill(std::bind(pref_cache_fill, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)),
@@ -144,16 +146,12 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 #include "cache_modules.inc"
 };
 
-template <typename T>
-struct eq_full_addr
+class min_fill_index
 {
-    using argument_type = T;
-    const decltype(argument_type::address) val;
-    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
-    bool operator()(const argument_type &test)
+    public:
+    bool operator() (PACKET lhs, PACKET rhs)
     {
-        is_valid<argument_type> validtest;
-        return validtest(test) && test.full_addr == val;
+        return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
     }
 };
 

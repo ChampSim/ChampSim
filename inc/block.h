@@ -31,9 +31,7 @@ class PACKET {
     uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
-             full_addr = 0,
              v_address = 0,
-             full_v_addr = 0,
              data = 0,
              instr_id = 0,
              ip = 0,

@@ -17,7 +17,7 @@ config_cache_name = '.champsimconfig_cache'
 
 dcn_fmtstr = 'cpu{}_{}' # default cache name format string
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {prefetch_as_load:b}, {virtual_prefetch:b}, {wq_check_full_addr:b}, {lower_level}, &CACHE::{prefetcher_initialize}, &CACHE::{prefetcher_cache_operate}, &CACHE::{prefetcher_cache_fill}, &CACHE::{prefetcher_cycle_operate}, &CACHE::{prefetcher_final_stats}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
+cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {virtual_prefetch:b}, {wq_check_full_addr:b}, {lower_level}, &CACHE::{prefetcher_initialize}, &CACHE::{prefetcher_cache_operate}, &CACHE::{prefetcher_cache_fill}, &CACHE::{prefetcher_cycle_operate}, &CACHE::{prefetcher_final_stats}, &CACHE::{replacement_initialize}, &CACHE::{replacement_find_victim}, &CACHE::{replacement_update_replacement_state}, &CACHE::{replacement_replacement_final_stats});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, {lower_level});\n'
 
 cpu_fmtstr = 'O3_CPU cpu{index}_inst({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, &{PTW}, &O3_CPU::{bpred_initialize}, &O3_CPU::{bpred_last_result}, &O3_CPU::{bpred_predict}, &O3_CPU::{btb_initialize}, &O3_CPU::{btb_update}, &O3_CPU::{btb_predict}, &O3_CPU::{iprefetcher_initialize}, &O3_CPU::{iprefetcher_branch_operate}, &O3_CPU::{iprefetcher_cache_operate}, &O3_CPU::{iprefetcher_cache_fill}, &O3_CPU::{iprefetcher_cycle_operate}, &O3_CPU::{iprefetcher_final_stats});\n'
@@ -170,6 +170,28 @@ freqs = list(itertools.chain(
 freqs = [max(freqs)/x for x in freqs]
 for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
     src['frequency'] = freq
+
+# TLBs use page offsets, Caches use block offsets
+for cpu in cores:
+    cache_name = cpu['ITLB']
+    while cache_name in caches:
+        caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
+        cache_name = caches[cache_name]['lower_level']
+
+    cache_name = cpu['DTLB']
+    while cache_name in caches:
+        caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
+        cache_name = caches[cache_name]['lower_level']
+
+    cache_name = cpu['L1I']
+    while cache_name in caches:
+        caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
+        cache_name = caches[cache_name]['lower_level']
+
+    cache_name = cpu['L1D']
+    while cache_name in caches:
+        caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
+        cache_name = caches[cache_name]['lower_level']
 
 ###
 # Check to make sure modules exist and they correspond to any already-built modules.

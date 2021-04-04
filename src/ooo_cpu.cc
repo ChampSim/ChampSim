@@ -347,9 +347,8 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     PACKET trace_packet;
     trace_packet.fill_level = ITLB_bus.lower_level->fill_level;
     trace_packet.cpu = cpu;
-    trace_packet.address = begin->ip >> LOG2_PAGE_SIZE;
-    trace_packet.full_addr = begin->ip;
-    trace_packet.full_v_addr = begin->ip;
+    trace_packet.address = begin->ip;
+    trace_packet.v_address = begin->ip;
     trace_packet.instr_id = begin->instr_id;
     trace_packet.ip = begin->ip;
     trace_packet.type = LOAD;
@@ -402,11 +401,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     PACKET fetch_packet;
     fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
     fetch_packet.cpu = cpu;
-    fetch_packet.address = begin->instruction_pa >> LOG2_BLOCK_SIZE;
+    fetch_packet.address = begin->instruction_pa;
     fetch_packet.data = begin->instruction_pa;
-    fetch_packet.full_addr = begin->instruction_pa;
-    fetch_packet.v_address = begin->ip >> LOG2_PAGE_SIZE;
-    fetch_packet.full_v_addr = begin->ip;
+    fetch_packet.v_address = begin->ip;
     fetch_packet.instr_id = begin->instr_id;
     fetch_packet.ip = begin->ip;
     fetch_packet.type = LOAD; 
@@ -850,12 +847,8 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 
     data_packet.fill_level = DTLB_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    if (knob_cloudsuite)
-        data_packet.address = splice_bits(sq_it->virtual_address, sq_it->asid[1], LOG2_PAGE_SIZE);
-    else
-        data_packet.address = sq_it->virtual_address >> LOG2_PAGE_SIZE;
-    data_packet.full_addr = sq_it->virtual_address;
-    data_packet.full_v_addr = sq_it->virtual_address;
+    data_packet.address = sq_it->virtual_address;
+    data_packet.v_address = sq_it->virtual_address;
     data_packet.instr_id = sq_it->instr_id;
     data_packet.ip = sq_it->ip;
     data_packet.type = RFO;
@@ -914,12 +907,8 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     PACKET data_packet;
     data_packet.fill_level = DTLB_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    if (knob_cloudsuite)
-        data_packet.address = splice_bits(lq_it->virtual_address, lq_it->asid[1], LOG2_PAGE_SIZE);
-    else
-        data_packet.address = lq_it->virtual_address >> LOG2_PAGE_SIZE;
-    data_packet.full_addr = lq_it->virtual_address;
-    data_packet.full_v_addr = lq_it->virtual_address;
+    data_packet.address = lq_it->virtual_address;
+    data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
@@ -945,10 +934,8 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     PACKET data_packet;
     data_packet.fill_level = L1D_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    data_packet.address = lq_it->physical_address >> LOG2_BLOCK_SIZE;
-    data_packet.full_addr = lq_it->physical_address;
-    data_packet.v_address = lq_it->virtual_address >> LOG2_BLOCK_SIZE;
-    data_packet.full_v_addr = lq_it->virtual_address;
+    data_packet.address = lq_it->physical_address;
+    data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
@@ -1040,9 +1027,9 @@ void O3_CPU::handle_memory_return()
       while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty())
       {
           auto it = itlb_entry.instr_depend_on_me.front();
-          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
+          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0)
           {
-              if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
+              //if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0)
               {
                   it->translated = COMPLETED;
                   // recalculate a physical address for this cache line based on the translated physical page address
@@ -1075,7 +1062,7 @@ void O3_CPU::handle_memory_return()
       while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty())
       {
           auto it = l1i_entry.instr_depend_on_me.front();
-          if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address) && it->fetched != 0 && it->translated == COMPLETED)
+          if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED)
           {
               it->fetched = COMPLETED;
               available_fetch_bandwidth--;
@@ -1161,10 +1148,8 @@ void O3_CPU::retire_rob()
                 // but we pass this information to avoid segmentation fault
                 data_packet.fill_level = L1D_bus.lower_level->fill_level;
                 data_packet.cpu = cpu;
-                data_packet.address = sq_it->physical_address >> LOG2_BLOCK_SIZE;
-                data_packet.full_addr = sq_it->physical_address;
-                data_packet.v_address = sq_it->virtual_address >> LOG2_BLOCK_SIZE;
-                data_packet.full_v_addr = sq_it->virtual_address;
+                data_packet.address = sq_it->physical_address;
+                data_packet.v_address = sq_it->virtual_address;
                 data_packet.instr_id = sq_it->instr_id;
                 data_packet.ip = sq_it->ip;
                 data_packet.type = RFO;
