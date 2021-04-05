@@ -116,7 +116,7 @@ if original_size <= config_file['num_cores']:
     for i in range(original_size, config_file['num_cores']):
         cores.append(copy.deepcopy(cores[(i-1) % original_size]))
 else:
-    cores = config_file[:(config_file['num_cores'] - original_size)]
+    cores = cores[:(config_file['num_cores'] - original_size)]
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
@@ -148,6 +148,11 @@ for cpu in cores:
     cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
         caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_l2c.copy())
+
+    # LLC
+    cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
+    if cache_name != 'DRAM':
+        caches[cache_name] = ChainMap(caches[cache_name], default_llc.copy())
 
 # Remove caches that are inaccessible
 accessible = [False]*len(caches)
@@ -415,10 +420,11 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n};\n')
 
     wfp.write('std::array<CACHE*, NUM_CACHES> caches {\n')
-    for i,cache in enumerate(caches.values()):
-        if i > 0:
-            wfp.write(',')
-        wfp.write('&{name}'.format(**cache))
+    for i,elem in enumerate(memory_system):
+        if 'pscl5_set' not in elem:
+            if i > 0:
+                wfp.write(',')
+            wfp.write('&'+elem['name'])
     wfp.write('\n};\n')
 
     wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {\n')
