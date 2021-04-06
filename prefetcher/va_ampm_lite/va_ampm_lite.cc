@@ -15,18 +15,16 @@ struct l2c_va_ampm_lite_region_t
 l2c_va_ampm_lite_region_t l2c_va_ampm_lite_regions[L2C_VA_AMPM_LITE_REGION_COUNT];
 uint64_t l2c_va_ampm_lite_region_lru;
 
-int l2c_prefetch_va_or_pa(CACHE *cache, uint64_t ip, uint64_t v_base_addr, uint64_t v_pf_addr, uint64_t p_base_addr, int pf_fill_level, int pf_metadata)
+int l2c_prefetch(CACHE *cache, uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int pf_metadata)
 {
-  if((v_base_addr>>LOG2_BLOCK_SIZE) == (v_pf_addr>>LOG2_BLOCK_SIZE))
+  if((base_addr>>LOG2_BLOCK_SIZE) == (pf_addr>>LOG2_BLOCK_SIZE))
     {
       // attempting to prefetch the same cache line!
       return -1;
     }
 
-  if((v_base_addr>>LOG2_PAGE_SIZE) != (v_pf_addr>>LOG2_PAGE_SIZE))
-    {
       // prefetching to different pages, so use virtual address prefetching
-      if(cache->va_prefetch_line(ip, v_pf_addr, pf_fill_level, pf_metadata))
+      if(cache->prefetch_line(ip, base_addr, pf_addr, pf_fill_level, pf_metadata))
         {
           return 1;
         }
@@ -34,21 +32,6 @@ int l2c_prefetch_va_or_pa(CACHE *cache, uint64_t ip, uint64_t v_base_addr, uint6
         {
           return 0;
         }
-    }
-
-   if((v_base_addr>>LOG2_PAGE_SIZE) == (v_pf_addr>>LOG2_PAGE_SIZE))
-     {
-       // prefetching in the same page, so use physical address prefetching
-       long long int pf_offset = v_pf_addr -v_base_addr;
-       if(cache->prefetch_line(ip, p_base_addr, p_base_addr+pf_offset, pf_fill_level, pf_metadata))
-         {
-           return 2;
-         }
-       else
-         {
-           return 0;
-         }
-     }
 
   return 0;
 }
@@ -238,9 +221,9 @@ void CACHE::l2c_prefetcher_initialize()
     }
 }
 
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  uint64_t current_vpn = v_addr>>LOG2_PAGE_SIZE;
+  uint64_t current_vpn = addr>>LOG2_PAGE_SIZE;
   int region_index = va_ampm_find_region(current_vpn);
 
   if(region_index == -1)
@@ -252,14 +235,14 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
     }
 
   // mark this demand access
-  va_ampm_set_cl_access(v_addr);
+  va_ampm_set_cl_access(addr);
 
   // attempt to prefetch in the positive direction
   int prefetches_issued = 0;
   for(int i=1; i<=L2C_VA_AMPM_LITE_MAX_DISTANCE; i++)
     {
-      if((va_ampm_check_cl_access(v_addr - (i*BLOCK_SIZE))) && (va_ampm_check_cl_access(v_addr - (2*i*BLOCK_SIZE)))
-	 && (va_ampm_check_cl_access(v_addr+(i*BLOCK_SIZE)) == false) && (va_ampm_check_cl_prefetch(v_addr+(i*BLOCK_SIZE)) == false))
+      if((va_ampm_check_cl_access(addr - (i*BLOCK_SIZE))) && (va_ampm_check_cl_access(addr - (2*i*BLOCK_SIZE)))
+	 && (va_ampm_check_cl_access(addr+(i*BLOCK_SIZE)) == false) && (va_ampm_check_cl_prefetch(addr+(i*BLOCK_SIZE)) == false))
 	{
 	  // found something that we should prefetch
 	  int pf_fill_level = FILL_L2;
@@ -267,10 +250,10 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
 	    {
 	      pf_fill_level = FILL_LLC;
 	    }
-	  bool prefetch_success = (l2c_prefetch_va_or_pa(this, ip, v_addr, v_addr+(i*BLOCK_SIZE), addr, pf_fill_level, 0) > 0);
+	  bool prefetch_success = (l2c_prefetch(this, ip, addr, addr+(i*BLOCK_SIZE), pf_fill_level, 0) > 0);
 	  if(prefetch_success)
 	    {
-	      va_ampm_set_cl_prefetch(v_addr+(i*BLOCK_SIZE));
+	      va_ampm_set_cl_prefetch(addr+(i*BLOCK_SIZE));
 	      prefetches_issued++;
 	    }
 	}
@@ -285,8 +268,8 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
   prefetches_issued = 0;
   for(int i=1; i<=L2C_VA_AMPM_LITE_MAX_DISTANCE; i++)
     {
-      if((va_ampm_check_cl_access(v_addr + (i*BLOCK_SIZE))) && (va_ampm_check_cl_access(v_addr + (2*i*BLOCK_SIZE)))
-	 && (va_ampm_check_cl_access(v_addr-(i*BLOCK_SIZE)) == false) && (va_ampm_check_cl_prefetch(v_addr-(i*BLOCK_SIZE)) == false))
+      if((va_ampm_check_cl_access(addr + (i*BLOCK_SIZE))) && (va_ampm_check_cl_access(addr + (2*i*BLOCK_SIZE)))
+	 && (va_ampm_check_cl_access(addr-(i*BLOCK_SIZE)) == false) && (va_ampm_check_cl_prefetch(addr-(i*BLOCK_SIZE)) == false))
 	{
 	  // found something that we should prefetch
 	  int pf_fill_level = FILL_L2;
@@ -294,10 +277,10 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
 	    {
 	      pf_fill_level = FILL_LLC;
 	    }
-	  bool prefetch_success = (l2c_prefetch_va_or_pa(this, ip, v_addr, v_addr-(i*BLOCK_SIZE), addr, pf_fill_level, 0) > 0);
+	  bool prefetch_success = (l2c_prefetch(this, ip, addr, addr-(i*BLOCK_SIZE), pf_fill_level, 0) > 0);
 	  if(prefetch_success)
 	    {
-	      va_ampm_set_cl_prefetch(v_addr-(i*BLOCK_SIZE));
+	      va_ampm_set_cl_prefetch(addr-(i*BLOCK_SIZE));
 	      prefetches_issued++;
 	    }
 	}
@@ -311,7 +294,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
   return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }
