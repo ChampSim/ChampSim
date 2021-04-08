@@ -12,8 +12,6 @@
 #include "vmem.h"
 #include "tracereader.h"
 
-#define DRAM_SIZE (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024)
-
 uint8_t warmup_complete[NUM_CPUS] = {},
         simulation_complete[NUM_CPUS] = {},
         all_warmup_complete = 0, 
@@ -374,8 +372,13 @@ int main(int argc, char** argv)
     cout << "LLC sets: " << LLC_SET << endl;
     cout << "LLC ways: " << LLC_WAY << endl;
 
-    printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
-            DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
+    long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * DRAM_LINES_PER_COLUMN * BLOCK_SIZE / 1024 / 1024; // in MiB
+    std::cout << "Off-chip DRAM Size: ";
+    if (dram_size > 1024)
+        std::cout << dram_size/1024 << " GiB";
+    else
+        std::cout << dram_size << " MiB";
+    std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8*DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
     // end consequence of knobs
 
