@@ -23,10 +23,9 @@ extern uint64_t l2pf_access;
 // CACHE BLOCK
 class BLOCK {
   public:
-    uint8_t valid = 0,
-            prefetch = 0,
-            dirty = 0,
-            used = 0;
+    bool valid = false,
+         prefetch = false,
+         dirty = false;
 
     uint64_t address = 0,
              full_addr = 0,
@@ -44,6 +43,15 @@ class BLOCK {
 class MemoryRequestConsumer
 {
     public:
+        /*
+         * add_*q() return values:
+         *
+         * -2 : queue full
+         * -1 : packet value forwarded, returned
+         * 0  : packet merged
+         * >0 : new queue occupancy
+         *
+         */
         virtual int  add_rq(PACKET *packet) = 0;
         virtual int  add_wq(PACKET *packet) = 0;
         virtual int  add_pq(PACKET *packet) = 0;

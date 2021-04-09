@@ -452,7 +452,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     // check for duplicates in the read queue
     int index = check_dram_queue(&RQ[channel], packet);
     if (index != -1)
-        return index; // merged index
+        return 0;
 
     // search for the empty index
     for (index=0; index<DRAM_RQ_SIZE; index++) {
@@ -481,7 +481,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
     update_schedule_cycle(&RQ[channel]);
 
-    return -1;
+    return RQ[channel].occupancy;
 }
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
@@ -494,7 +494,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     uint32_t channel = dram_get_channel(packet->address);
     int index = check_dram_queue(&WQ[channel], packet);
     if (index != -1)
-        return index; // merged index
+        return 0;
 
     // search for the empty index
     for (index=0; index<DRAM_WQ_SIZE; index++) {
@@ -523,7 +523,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 
     update_schedule_cycle(&WQ[channel]);
 
-    return -1;
+    return WQ[channel].occupancy;
 }
 
 int MEMORY_CONTROLLER::add_pq(PACKET *packet)

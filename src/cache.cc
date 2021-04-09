@@ -216,7 +216,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
         pf_useful++;
         hit_block.prefetch = 0;
     }
-    hit_block.used = 1;
 }
 
 bool CACHE::readlike_miss(PACKET &handle_pkt)
@@ -237,11 +236,15 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
+            // Mark the prefetch as useful
+            if (mshr_entry->pf_origin_level == fill_level)
+                pf_useful++;
+
             uint8_t  prior_returned = mshr_entry->returned;
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
 
-            // in case request is already returned, we should keep event_cycle and retunred variables
+            // in case request is already returned, we should keep event_cycle and returned status
             mshr_entry->returned = prior_returned;
             mshr_entry->event_cycle = prior_event_cycle;
         }
@@ -350,7 +353,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         assert(cache_type != IS_DTLB || handle_pkt.data != 0);
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
-        if (fill_block.prefetch && !fill_block.used)
+        if (fill_block.prefetch)
             pf_useless++;
 
         if (handle_pkt.type == PREFETCH)
@@ -359,7 +362,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         fill_block.valid = true;
         fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
         fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
-        fill_block.used = false;
         fill_block.address = handle_pkt.address;
         fill_block.full_addr = handle_pkt.full_addr;
         fill_block.v_address = handle_pkt.v_address;
@@ -484,7 +486,7 @@ int CACHE::add_rq(PACKET *packet)
 
         RQ_MERGED++;
 
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // check occupancy
@@ -505,7 +507,7 @@ int CACHE::add_rq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
     RQ_TO_CACHE++;
-    return -1;
+    return RQ.occupancy();
 }
 
 int CACHE::add_wq(PACKET *packet)
@@ -524,7 +526,7 @@ int CACHE::add_wq(PACKET *packet)
     if (found_wq != WQ.end()) {
 
         WQ_MERGED++;
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // Check for room in the queue
@@ -548,7 +550,7 @@ int CACHE::add_wq(PACKET *packet)
     WQ_TO_CACHE++;
     WQ_ACCESS++;
 
-    return -1;
+    return WQ.occupancy();
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
@@ -574,10 +576,10 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
             pf_packet.type = PREFETCH;
             pf_packet.event_cycle = current_core_cycle[cpu];
 
-            // give a dummy 0 as the IP of a prefetch
-            add_pq(&pf_packet);
+            int result = add_pq(&pf_packet);
 
-            pf_issued++;
+            if (result > 0)
+                pf_issued++;
 
             return 1;
         }
@@ -611,10 +613,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             //pf_packet.confidence = confidence;
             pf_packet.event_cycle = current_core_cycle[cpu];
 
-            // give a dummy 0 as the IP of a prefetch
-            add_pq(&pf_packet);
+            int result = add_pq(&pf_packet);
 
-            pf_issued++;
+            if (result > 0)
+                pf_issued++;
 
             return 1;
         }
@@ -712,7 +714,7 @@ int CACHE::add_pq(PACKET *packet)
         packet_dep_merge(found->to_return, packet->to_return);
 
         PQ_MERGED++;
-        return 1; // merged index
+        return 0;
     }
 
     // check occupancy
@@ -735,7 +737,7 @@ int CACHE::add_pq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
     PQ_TO_CACHE++;
-    return -1;
+    return PQ.occupancy();
 }
 
 void CACHE::return_data(PACKET *packet)

@@ -322,7 +322,7 @@ int  PageTableWalker::add_rq(PACKET *packet)
     RQ_TO_CACHE++;
     RQ_ACCESS++;
 
-    return -1;
+    return RQ.occupancy();
 }
 
 int PageTableWalker::add_wq(PACKET *packet)
@@ -415,7 +415,6 @@ void PagingStructureCache::fill_cache(uint64_t next_level_base_addr, PACKET *pac
     fill_block->valid = true;
     fill_block->prefetch = (packet->type == PREFETCH);
     fill_block->dirty = false;
-    fill_block->used = false;
     fill_block->address = address;
     fill_block->full_addr = packet->full_addr;
     fill_block->v_address = packet->v_address;
