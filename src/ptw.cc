@@ -408,28 +408,24 @@ void PagingStructureCache::fill_cache(uint64_t next_level_base_addr, PACKET *pac
 {
 	uint64_t address = get_index(packet->full_v_addr);
 	
-	uint32_t set = get_set(address);
-	BLOCK *current_set = &block.data()[set*NUM_WAY];
-	//Find victim
-	uint32_t way = std::distance(current_set, std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>()));
+    auto set_begin = std::next(std::begin(block), get_set(address)*NUM_WAY);
+    auto set_end   = std::next(set_begin, NUM_WAY);
+    auto fill_block = std::max_element(set_begin, set_end, lru_comparator<BLOCK, BLOCK>());
 
-	PACKET new_packet = *packet;
-	
-	new_packet.address = address;
-	new_packet.data = next_level_base_addr;
+    fill_block->valid = true;
+    fill_block->prefetch = (packet->type == PREFETCH);
+    fill_block->dirty = false;
+    fill_block->used = false;
+    fill_block->address = address;
+    fill_block->full_addr = packet->full_addr;
+    fill_block->v_address = packet->v_address;
+    fill_block->full_v_addr = packet->full_v_addr;
+    fill_block->data = next_level_base_addr;
+    fill_block->ip = packet->ip;
+    fill_block->cpu = packet->cpu;
+    fill_block->instr_id = packet->instr_id;
 
-	BLOCK &fill_block = block[set * NUM_WAY + way];
-	
-	auto lru = fill_block.lru;	
-	fill_block = new_packet;	
-	fill_block.lru = lru;		
-	
-	//Update replacement state
-	auto begin = std::next(block.begin(), set*NUM_WAY);
-	auto end = std::next(begin, NUM_WAY);
-	uint32_t hit_lru = std::next(begin, way)->lru;
-    std::for_each(begin, end, [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });
-    std::next(begin, way)->lru = 0; // promote to the MRU position
+    std::for_each(set_begin, set_end, lru_updater<BLOCK>(fill_block));
 }
 
 uint64_t PagingStructureCache::get_index(uint64_t address)
@@ -466,7 +462,7 @@ uint64_t PagingStructureCache::check_hit(uint64_t address)
     }
 
     for (uint32_t way=0; way < NUM_WAY; way++) {
-        if (block[set * NUM_WAY + way].valid && (block[set * NUM_WAY + way].tag == address)) {
+        if (block[set * NUM_WAY + way].valid && (block[set * NUM_WAY + way].address == address)) {
 	    	return block[set * NUM_WAY + way].data;
         }
     }

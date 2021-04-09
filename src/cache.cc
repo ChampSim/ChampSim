@@ -322,7 +322,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         DP ( if (warmup_complete[handle_pkt.cpu]) {
                 std::cout << "[" << NAME << "] " << __func__ << " ceasing write. ";
                 std::cout << " Lower level wq is full!" << " fill_addr: " << std::hex << handle_pkt.address;
-                std::cout << " victim_addr: " << fill_block.tag << std::dec << std::endl; });
+                std::cout << " victim_addr: " << fill_block.address << std::dec << std::endl; });
         return false;
     }
 
@@ -356,15 +356,18 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         if (handle_pkt.type == PREFETCH)
             pf_fill++;
 
-        auto lru = fill_block.lru; // preserve LRU state
-        fill_block = handle_pkt; // fill cache
-        fill_block.lru = lru;
-
-        if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
-		{
-            fill_block.dirty = 1;
-			assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
-		}
+        fill_block.valid = true;
+        fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
+        fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+        fill_block.used = false;
+        fill_block.address = handle_pkt.address;
+        fill_block.full_addr = handle_pkt.full_addr;
+        fill_block.v_address = handle_pkt.v_address;
+        fill_block.full_v_addr = handle_pkt.full_v_addr;
+        fill_block.data = handle_pkt.data;
+        fill_block.ip = handle_pkt.ip;
+        fill_block.cpu = handle_pkt.cpu;
+        fill_block.instr_id = handle_pkt.instr_id;
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
