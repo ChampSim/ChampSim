@@ -64,7 +64,8 @@ class O3_CPU {
     champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER{DISPATCH_BUFFER_SIZE, DISPATCH_LATENCY};
     champsim::delay_queue<ooo_model_instr> DECODE_BUFFER{DECODE_BUFFER_SIZE, DECODE_LATENCY};
     CORE_BUFFER<ooo_model_instr> ROB{"ROB", ROB_SIZE};
-    CORE_BUFFER<LSQ_ENTRY> LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+    std::vector<LSQ_ENTRY> LQ{LQ_SIZE};
+    std::vector<LSQ_ENTRY> SQ{SQ_SIZE};
 
     // store array, this structure is required to properly handle store instructions
     uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
@@ -73,10 +74,10 @@ class O3_CPU {
     std::queue<ooo_model_instr*> ready_to_execute;
 
     // Ready-To-Load
-    std::queue<LSQ_ENTRY*> RTL0, RTL1;
+    std::queue<std::vector<LSQ_ENTRY>::iterator> RTL0, RTL1;
 
     // Ready-To-Store
-    std::queue<LSQ_ENTRY*> RTS0, RTS1;
+    std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
 
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
@@ -200,11 +201,11 @@ class O3_CPU {
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
-         add_store_queue(uint32_t rob_index, uint32_t data_index),
-         execute_store(LSQ_ENTRY *sq_it);
-    int  execute_load(LSQ_ENTRY *lq_it);
-    int  do_translate_store(LSQ_ENTRY *sq_it);
-    int  do_translate_load(LSQ_ENTRY *lq_it);
+         add_store_queue(uint32_t rob_index, uint32_t data_index);
+    void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+    int  execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
+    int  do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+    int  do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
     void check_dependency(int prior, int current);
     void operate_cache();
     void complete_inflight_instruction();

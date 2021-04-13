@@ -258,13 +258,13 @@ void print_deadlock(uint32_t i)
     // print LQ entry
     cout << endl << "Load Queue Entry" << endl;
     for (uint32_t j=0; j<LQ_SIZE; j++) {
-        cout << "[LQ] entry: " << j << " instr_id: " << ooo_cpu[i].LQ.entry[j].instr_id << " address: " << hex << ooo_cpu[i].LQ.entry[j].physical_address << dec << " translated: " << +ooo_cpu[i].LQ.entry[j].translated << " fetched: " << +ooo_cpu[i].LQ.entry[i].fetched << endl;
+        cout << "[LQ] entry: " << j << " instr_id: " << ooo_cpu[i].LQ[j].instr_id << " address: " << hex << ooo_cpu[i].LQ[j].physical_address << dec << " translated: " << +ooo_cpu[i].LQ[j].translated << " fetched: " << +ooo_cpu[i].LQ[i].fetched << endl;
     }
 
     // print SQ entry
     cout << endl << "Store Queue Entry" << endl;
     for (uint32_t j=0; j<SQ_SIZE; j++) {
-        cout << "[SQ] entry: " << j << " instr_id: " << ooo_cpu[i].SQ.entry[j].instr_id << " address: " << hex << ooo_cpu[i].SQ.entry[j].physical_address << dec << " translated: " << +ooo_cpu[i].SQ.entry[j].translated << " fetched: " << +ooo_cpu[i].SQ.entry[i].fetched << endl;
+        cout << "[SQ] entry: " << j << " instr_id: " << ooo_cpu[i].SQ[j].instr_id << " address: " << hex << ooo_cpu[i].SQ[j].physical_address << dec << " translated: " << +ooo_cpu[i].SQ[j].translated << " fetched: " << +ooo_cpu[i].SQ[i].fetched << endl;
     }
 
     // print L1D MSHR entry

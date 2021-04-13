@@ -704,14 +704,14 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
             num_mem_ops++;
             if (ROB.entry[rob_index].source_added[i])
                 num_added++;
-            else if (LQ.occupancy < LQ.SIZE) {
+            else if (!std::all_of(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>())) {
                 add_load_queue(rob_index, i);
                 num_added++;
             }
             else {
                 DP(if(warmup_complete[cpu]) {
                 cout << "[LQ] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " cannot be added in the load queue occupancy: " << LQ.occupancy << " cycle: " << current_core_cycle[cpu] << endl; });
+                cout << " cannot be added in the load queue occupancy: " << std::count_if(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>()) << " cycle: " << current_core_cycle[cpu] << endl; });
             }
         }
     }
@@ -722,7 +722,7 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
             num_mem_ops++;
             if (ROB.entry[rob_index].destination_added[i])
                 num_added++;
-            else if (SQ.occupancy < SQ.SIZE) {
+            else if (!std::all_of(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>())) {
                 if (STA[STA_head] == ROB.entry[rob_index].instr_id) {
                     add_store_queue(rob_index, i);
                     num_added++;
@@ -731,7 +731,7 @@ void O3_CPU::do_memory_scheduling(uint32_t rob_index)
             else {
                 DP(if(warmup_complete[cpu]) {
                 cout << "[SQ] " << __func__ << " instr_id: " << ROB.entry[rob_index].instr_id;
-                cout << " cannot be added in the store queue occupancy: " << SQ.occupancy << " cycle: " << current_core_cycle[cpu] << endl; });
+                cout << " cannot be added in the store queue occupancy: " << std::count_if(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>()) << " cycle: " << current_core_cycle[cpu] << endl; });
             }
         }
     }
@@ -768,14 +768,13 @@ void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry)
 
         LSQ_ENTRY empty_entry;
         lq_entry = empty_entry;
-        LQ.occupancy--;
 }
 
 void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
 {
     // search for an empty slot 
-    auto lq_begin = LQ.entry;
-    auto lq_end   = std::next(lq_begin, LQ.SIZE);
+    auto lq_begin = std::begin(LQ);
+    auto lq_end   = std::end(LQ);
     auto lq_entry = std::find_if_not(lq_begin, lq_end, is_valid<LSQ_ENTRY>());
     assert(lq_entry != lq_end);
 
@@ -789,7 +788,6 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     lq_entry->asid[0] = ROB.entry[rob_index].asid[0];
     lq_entry->asid[1] = ROB.entry[rob_index].asid[1];
     lq_entry->event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
-    LQ.occupancy++;
 
     // Mark RAW
     std::size_t prior_idx = rob_index;
@@ -809,8 +807,8 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
             lq_entry->translated = INFLIGHT;
 
             // Is this already in the SQ?
-            auto sq_begin = SQ.entry;
-            auto sq_end   = std::next(sq_begin, SQ.SIZE);
+            auto sq_begin = std::begin(SQ);
+            auto sq_end   = std::end(SQ);
             auto sq_entry = std::find_if(sq_begin, sq_end, [src_mem, prior_id](const LSQ_ENTRY &x){ return x.instr_id == prior_id && x.virtual_address == src_mem; });
             if (sq_entry != sq_end && sq_entry->fetched == COMPLETED && sq_entry->event_cycle <= current_core_cycle[cpu])
             {
@@ -827,7 +825,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
 
 void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
 {
-    auto sq_it = std::next(SQ.entry, SQ.tail);
+    auto sq_it = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>());
     assert(sq_it->virtual_address == 0);
 
     // add it to the store queue
@@ -840,11 +838,6 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     sq_it->asid[1] = ROB.entry[rob_index].asid[1];
     sq_it->event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
 
-    SQ.occupancy++;
-    SQ.tail++;
-    if (SQ.tail == SQ.SIZE)
-        SQ.tail = 0;
-
     // succesfully added to the store queue
     ROB.entry[rob_index].destination_added[data_index] = 1;
     
@@ -856,8 +849,8 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     RTS0.push(sq_it);
 
     DP(if(warmup_complete[cpu]) {
-    cout << "[SQ] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id;
-    cout << " is added in the SQ translated: " << +SQ.entry[sq_index].translated << " fetched: " << +SQ.entry[sq_index].fetched;
+    cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id;
+    cout << " is added in the SQ translated: " << +sq_entry.translated << " fetched: " << +sq_entry.fetched;
     cout << " cycle: " << current_core_cycle[cpu] << endl; });
 }
 
@@ -913,7 +906,7 @@ void O3_CPU::operate_lsq()
     }
 }
 
-int O3_CPU::do_translate_store(LSQ_ENTRY *sq_it)
+int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
     PACKET data_packet;
 
@@ -945,7 +938,7 @@ int O3_CPU::do_translate_store(LSQ_ENTRY *sq_it)
     return rq_index;
 }
 
-void O3_CPU::execute_store(LSQ_ENTRY *sq_it)
+void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
     sq_it->fetched = COMPLETED;
     sq_it->event_cycle = current_core_cycle[cpu];
@@ -979,7 +972,7 @@ void O3_CPU::execute_store(LSQ_ENTRY *sq_it)
     }
 }
 
-int O3_CPU::do_translate_load(LSQ_ENTRY *lq_it)
+int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
     PACKET data_packet;
     data_packet.fill_level = FILL_L1;
@@ -1011,7 +1004,7 @@ int O3_CPU::do_translate_load(LSQ_ENTRY *lq_it)
 }
 
 
-int O3_CPU::execute_load(LSQ_ENTRY *lq_it)
+int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
     // add it to L1D
     PACKET data_packet;
@@ -1240,7 +1233,6 @@ void O3_CPU::handle_memory_return()
 
           LSQ_ENTRY empty_entry;
           *merged = empty_entry;
-          LQ.occupancy--;
 	    }
 
 	  // remove this entry
@@ -1275,53 +1267,39 @@ void O3_CPU::retire_rob()
         }
 
         if (num_store) {
-                for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-                    if (ROB.entry[ROB.head].destination_memory[i]) {
+            for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
+                if (ROB.entry[ROB.head].destination_memory[i]) {
 
-                        PACKET data_packet;
-                        auto sq_entry = ROB.entry[ROB.head].sq_index[i];
+                    PACKET data_packet;
+                    auto sq_it = ROB.entry[ROB.head].sq_index[i];
 
-                        // sq_index and rob_index are no longer available after retirement
-                        // but we pass this information to avoid segmentation fault
-                        data_packet.fill_level = FILL_L1;
-                        data_packet.cpu = cpu;
-                        data_packet.address = sq_entry->physical_address >> LOG2_BLOCK_SIZE;
-                        data_packet.full_addr = sq_entry->physical_address;
-                        data_packet.v_address = sq_entry->virtual_address >> LOG2_BLOCK_SIZE;
-                        data_packet.full_v_addr = sq_entry->virtual_address;
-                        data_packet.instr_id = sq_entry->instr_id;
-                        data_packet.ip = sq_entry->ip;
-                        data_packet.type = RFO;
-                        data_packet.asid[0] = sq_entry->asid[0];
-                        data_packet.asid[1] = sq_entry->asid[1];
-                        data_packet.event_cycle = current_core_cycle[cpu];
+                    // sq_index and rob_index are no longer available after retirement
+                    // but we pass this information to avoid segmentation fault
+                    data_packet.fill_level = FILL_L1;
+                    data_packet.cpu = cpu;
+                    data_packet.address = sq_it->physical_address >> LOG2_BLOCK_SIZE;
+                    data_packet.full_addr = sq_it->physical_address;
+                    data_packet.v_address = sq_it->virtual_address >> LOG2_BLOCK_SIZE;
+                    data_packet.full_v_addr = sq_it->virtual_address;
+                    data_packet.instr_id = sq_it->instr_id;
+                    data_packet.ip = sq_it->ip;
+                    data_packet.type = RFO;
+                    data_packet.asid[0] = sq_it->asid[0];
+                    data_packet.asid[1] = sq_it->asid[1];
+                    data_packet.event_cycle = current_core_cycle[cpu];
 
-                        auto result = L1D_bus.lower_level->add_wq(&data_packet);
-                        if (result != -2)
-                            ROB.entry[ROB.head].destination_memory[i] = 0;
-                        else
-                            return;
+                    auto result = L1D_bus.lower_level->add_wq(&data_packet);
+                    if (result != -2)
+                    {
+                        ROB.entry[ROB.head].destination_memory[i] = 0;
+                        LSQ_ENTRY empty;
+                        *sq_it = empty;
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
-            }
-        }
-
-        // release SQ entries
-        for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
-            if (ROB.entry[ROB.head].sq_index[i] != NULL) {
-                auto sq_entry = ROB.entry[ROB.head].sq_index[i];
-
-                DP ( if (warmup_complete[cpu]) {
-                        std::cout << "[SQ] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " releases sq_index: " << std::distance(SQ.entry, sq_entry);
-                        std::cout << std::hex << " address: " << (sq_entry->physical_address>>LOG2_BLOCK_SIZE);
-                        std::cout << " full_addr: " << sq_entry->physical_address << std::dec << std::endl; });
-
-                LSQ_ENTRY empty_entry;
-                *sq_entry = empty_entry;
-                
-                SQ.occupancy--;
-                SQ.head++;
-                if (SQ.head == SQ.SIZE)
-                    SQ.head = 0;
             }
         }
 

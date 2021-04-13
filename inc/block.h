@@ -33,7 +33,8 @@ class PACKET {
              asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
              type = 0;
 
-    std::list<LSQ_ENTRY*> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {};
+    std::list<std::vector<LSQ_ENTRY>::iterator> sq_index_depend_on_me = {};
     std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
 
     uint32_t cpu = NUM_CPUS;

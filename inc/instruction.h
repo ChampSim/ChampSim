@@ -1,10 +1,13 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <limits>
 #include <vector>
+
+#include "circular_buffer.hpp"
 
 // instruction format
 #define NUM_INSTR_DESTINATIONS_SPARC 4
@@ -96,7 +99,8 @@ struct ooo_model_instr {
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
 
-    LSQ_ENTRY *lq_index[NUM_INSTR_SOURCES] = {}, *sq_index[NUM_INSTR_DESTINATIONS_SPARC] = {};
+    std::array<std::vector<LSQ_ENTRY>::iterator, NUM_INSTR_SOURCES> lq_index = {};
+    std::array<std::vector<LSQ_ENTRY>::iterator, NUM_INSTR_DESTINATIONS_SPARC> sq_index = {};
 
     ooo_model_instr() = default;
 
