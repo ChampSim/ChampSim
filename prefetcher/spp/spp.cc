@@ -20,12 +20,12 @@ void CACHE::l2c_prefetcher_initialize()
     std::cout << std::endl;
 }
 
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t, uint64_t base_addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     auto pf_issued = FILTER[std::make_pair(this, cpu)].pf_useful + FILTER[std::make_pair(this, cpu)].pf_useless;
     PT[std::make_pair(this, cpu)].global_accuracy = pf_issued ? ((GLOBAL_ACCURACY_BIAS * FILTER[std::make_pair(this, cpu)].pf_useful) / pf_issued) : 0;
 
-    FILTER[cpu].update_demand(base_addr);
+    FILTER[std::make_pair(this, cpu)].update_demand(base_addr);
 
     // Stage 1: Read and update a sig stored in ST
     // last_sig and delta are used to update (sig, delta) correlation in PT
@@ -76,7 +76,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t, uint64_t base_addr, uint64_t ip
             auto bst_item = std::find_if(std::begin(ST[std::make_pair(this, cpu)].page_bootstrap_table), std::end(ST[std::make_pair(this, cpu)].page_bootstrap_table), tag_finder<SIGNATURE_TABLE::ghr_entry_t>(pf_offset));
 
             // If not found, find an invalid or lowest-confidence way to replace
-            if (bst_item == std::end(ST[cpu].page_bootstrap_table))
+            if (bst_item == std::end(ST[std::make_pair(this, cpu)].page_bootstrap_table))
                 bst_item = std::min_element(std::begin(ST[std::make_pair(this, cpu)].page_bootstrap_table), std::end(ST[std::make_pair(this, cpu)].page_bootstrap_table));
 
             // Place the information in the table
@@ -92,7 +92,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t, uint64_t base_addr, uint64_t ip
     return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t, uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
     FILTER[std::make_pair(this, cpu)].update_evict(evicted_addr);
     return metadata_in;
