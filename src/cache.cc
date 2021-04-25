@@ -23,7 +23,7 @@ void CACHE::handle_fill()
     while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = MSHR.begin();
-        if (fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
+        if (fill_mshr == std::end(MSHR) || fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
             return;
 
         // find victim
@@ -49,11 +49,8 @@ void CACHE::handle_fill()
                 ret->return_data(&(*fill_mshr));
         }
 
-        PACKET empty;
-        *fill_mshr = empty;
-
+        MSHR.erase(fill_mshr);
         writes_available_this_cycle--;
-        MSHR.splice(std::end(MSHR), MSHR, std::begin(MSHR));
     }
 }
 
@@ -223,7 +220,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 {
     // check mshr
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-    bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+    bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
     if (mshr_entry != MSHR.end()) // miss already inflight
     {
@@ -261,9 +258,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         // Allocate an MSHR
         if (handle_pkt.fill_level <= fill_level)
         {
-            auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-            assert(it != std::end(MSHR));
-            *it = handle_pkt;
+            auto it = MSHR.insert(std::end(MSHR), handle_pkt);
             it->returned = INFLIGHT;
             it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
         }

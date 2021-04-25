@@ -53,7 +53,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
                                   VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
                                   WQ{WQ_SIZE, HIT_LATENCY}; // write queue
 
-    std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
+    std::list<PACKET> MSHR; // MSHR
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
              sim_hit[NUM_CPUS][NUM_TYPES] = {},
