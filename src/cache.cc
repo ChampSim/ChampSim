@@ -53,7 +53,7 @@ void CACHE::handle_fill()
         *fill_mshr = empty;
 
         writes_available_this_cycle--;
-        MSHR.sort(min_fill_index());
+        MSHR.splice(std::end(MSHR), MSHR, std::begin(MSHR));
     }
 }
 
@@ -735,7 +735,7 @@ void CACHE::return_data(PACKET *packet)
             std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
             std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
 
-    MSHR.sort(min_fill_index());
+    MSHR.splice(std::lower_bound(std::begin(MSHR), std::end(MSHR), *mshr_entry, min_fill_index()), MSHR, mshr_entry);
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
