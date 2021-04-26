@@ -23,7 +23,7 @@ void CACHE::handle_fill()
     while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = MSHR.begin();
-        if (fill_mshr == std::end(MSHR) || fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
+        if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
             return;
 
         // find victim
@@ -234,12 +234,10 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
-            uint8_t  prior_returned = mshr_entry->returned;
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
 
-            // in case request is already returned, we should keep event_cycle and retunred variables
-            mshr_entry->returned = prior_returned;
+            // in case request is already returned, we should keep event_cycle
             mshr_entry->event_cycle = prior_event_cycle;
         }
     }
@@ -259,8 +257,8 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         if (handle_pkt.fill_level <= fill_level)
         {
             auto it = MSHR.insert(std::end(MSHR), handle_pkt);
-            it->returned = INFLIGHT;
             it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
+            it->event_cycle = std::numeric_limits<uint64_t>::max();
         }
 
 
@@ -706,22 +704,9 @@ void CACHE::return_data(PACKET *packet)
     // MSHR holds the most updated information about this request
     // no need to do memcpy
 	
-    mshr_entry->returned = COMPLETED;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
-
-    // ADD LATENCY
-    if (warmup_complete[cpu])
-    {
-        if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
-            mshr_entry->event_cycle = current_core_cycle[packet->cpu] + FILL_LATENCY;
-        else
-            mshr_entry->event_cycle += FILL_LATENCY;
-    }
-    else
-    {
-        mshr_entry->event_cycle = current_core_cycle[cpu];
-    }
+    mshr_entry->event_cycle = current_core_cycle[packet->cpu] + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
@@ -730,7 +715,8 @@ void CACHE::return_data(PACKET *packet)
             std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
             std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
 
-    MSHR.splice(std::lower_bound(std::begin(MSHR), std::end(MSHR), *mshr_entry, min_fill_index()), MSHR, mshr_entry);
+    // Order this entry after previously-returned entries, but before non-returned entries
+    MSHR.splice(std::lower_bound(std::begin(MSHR), std::end(MSHR), *mshr_entry, ord_event_cycle<PACKET>()), MSHR, mshr_entry);
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)

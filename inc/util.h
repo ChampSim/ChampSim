@@ -91,5 +91,18 @@ struct lru_updater
     }
 };
 
+template <typename T, typename U=T>
+struct ord_event_cycle
+{
+    using first_argument_type = T;
+    using second_argument_type = U;
+    bool operator() (const first_argument_type &lhs, const second_argument_type &rhs)
+    {
+        is_valid<first_argument_type> first_validtest;
+        is_valid<second_argument_type> second_validtest;
+        return !second_validtest(rhs) || (first_validtest(lhs) && lhs.event_cycle < rhs.event_cycle);
+    }
+};
+
 #endif
 
