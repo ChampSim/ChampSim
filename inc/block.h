@@ -29,7 +29,6 @@ class PACKET {
     uint32_t pf_metadata;
 
     uint8_t  is_producer = 0, 
-             returned = 0,
              asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
              type = 0;
 

@@ -159,15 +159,6 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void lru_final_stats();
 };
 
-class min_fill_index
-{
-    public:
-    bool operator() (PACKET lhs, PACKET rhs)
-    {
-        return rhs.returned != COMPLETED || (lhs.returned == COMPLETED && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
 template <>
 struct is_valid<PACKET>
 {
