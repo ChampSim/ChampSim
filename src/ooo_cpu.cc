@@ -533,7 +533,7 @@ void O3_CPU::dispatch_instruction()
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
 {
-    return static_cast<CACHE*>(L1I_bus.lower_level)->va_prefetch_line(pf_v_addr, pf_v_addr, FILL_L1, 0);
+    return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, FILL_L1, 0);
 }
 
 void O3_CPU::schedule_instruction()
