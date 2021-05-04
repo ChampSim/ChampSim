@@ -79,7 +79,7 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 									  WQ{WQ_SIZE, LATENCY},
 									  PQ{PQ_SIZE, LATENCY};
 
-		std::list<PACKET> MSHR{MSHR_SIZE};
+		std::list<PACKET> MSHR;
 
     uint64_t RQ_ACCESS = 0,
              RQ_MERGED = 0,

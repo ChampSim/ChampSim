@@ -13,8 +13,7 @@ class LSQ_ENTRY;
 // message packet
 class PACKET {
   public:
-    bool scheduled = false,
-         returned  = false;
+    bool scheduled = false;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
             type = 0,
