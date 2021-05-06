@@ -213,7 +213,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
         pf_useful++;
         hit_block.prefetch = 0;
     }
-    hit_block.used = 1;
 }
 
 bool CACHE::readlike_miss(PACKET &handle_pkt)
@@ -234,6 +233,10 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
+            // Mark the prefetch as useful
+            if (mshr_entry->pf_origin_level == fill_level)
+                pf_useful++;
+
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
 
@@ -328,21 +331,23 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         assert(cache_type != IS_DTLB || handle_pkt.data != 0);
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
-        if (fill_block.prefetch && !fill_block.used)
+        if (fill_block.prefetch)
             pf_useless++;
 
         if (handle_pkt.type == PREFETCH)
             pf_fill++;
 
-        auto lru = fill_block.lru; // preserve LRU state
-        fill_block = handle_pkt; // fill cache
-        fill_block.lru = lru;
-
-        if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
-		{
-            fill_block.dirty = 1;
-			assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
-		}
+        fill_block.valid = true;
+        fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
+        fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+        fill_block.address = handle_pkt.address;
+        fill_block.full_addr = handle_pkt.full_addr;
+        fill_block.v_address = handle_pkt.v_address;
+        fill_block.full_v_addr = handle_pkt.full_v_addr;
+        fill_block.data = handle_pkt.data;
+        fill_block.ip = handle_pkt.ip;
+        fill_block.cpu = handle_pkt.cpu;
+        fill_block.instr_id = handle_pkt.instr_id;
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -459,7 +464,7 @@ int CACHE::add_rq(PACKET *packet)
 
         RQ_MERGED++;
 
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // check occupancy
@@ -480,7 +485,7 @@ int CACHE::add_rq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
     RQ_TO_CACHE++;
-    return -1;
+    return RQ.occupancy();
 }
 
 int CACHE::add_wq(PACKET *packet)
@@ -499,7 +504,7 @@ int CACHE::add_wq(PACKET *packet)
     if (found_wq != WQ.end()) {
 
         WQ_MERGED++;
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // Check for room in the queue
@@ -523,7 +528,7 @@ int CACHE::add_wq(PACKET *packet)
     WQ_TO_CACHE++;
     WQ_ACCESS++;
 
-    return -1;
+    return WQ.occupancy();
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
@@ -545,19 +550,24 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
 
     if (virtual_prefetch)
     {
-        if (VAPQ.full())
-            return 0;
-        VAPQ.push_back(pf_packet);
+        if (!VAPQ.full())
+        {
+            VAPQ.push_back(pf_packet);
+            return 1;
+        }
     }
     else
     {
         int result = add_pq(&pf_packet);
-        if (result == -2)
-            return 0;
+        if (result != -2)
+        {
+            if (result > 0)
+                pf_issued++;
+            return 1;
+        }
     }
 
-    pf_issued++;
-    return 1;
+    return 0;
 }
 
 int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
@@ -585,10 +595,10 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             //pf_packet.confidence = confidence;
             pf_packet.event_cycle = current_core_cycle[cpu];
 
-            // give a dummy 0 as the IP of a prefetch
-            add_pq(&pf_packet);
+            int result = add_pq(&pf_packet);
 
-            pf_issued++;
+            if (result > 0)
+                pf_issued++;
 
             return 1;
         }
@@ -611,6 +621,9 @@ void CACHE::va_translate_prefetches()
         // remove the prefetch from the VAPQ
         if (result != -2)
             VAPQ.pop_front();
+
+        if (result > 0)
+            pf_issued++;
     }
 }
 
@@ -646,7 +659,7 @@ int CACHE::add_pq(PACKET *packet)
         packet_dep_merge(found->to_return, packet->to_return);
 
         PQ_MERGED++;
-        return 1; // merged index
+        return 0;
     }
 
     // check occupancy
@@ -669,7 +682,7 @@ int CACHE::add_pq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
     PQ_TO_CACHE++;
-    return -1;
+    return PQ.occupancy();
 }
 
 void CACHE::return_data(PACKET *packet)
