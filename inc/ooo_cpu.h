@@ -3,12 +3,14 @@
 
 #include <array>
 #include <functional>
+#include <queue>
 
 #include "champsim_constants.h"
 #include "delay_queue.hpp"
 #include "instruction.h"
 #include "cache.h"
 #include "instruction.h"
+#include "ptw.h"
 
 #define DEADLOCK_CYCLE 1000000
 
@@ -50,7 +52,7 @@ class O3_CPU {
     {
         bool valid = false;
         unsigned lru = DIB_WAY;
-        uint64_t addr = 0;
+        uint64_t address = 0;
     };
 
     // instruction buffer
@@ -68,15 +70,13 @@ class O3_CPU {
     uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
 
     // Ready-To-Execute
-    uint32_t ready_to_execute[ROB_SIZE], ready_to_execute_head, ready_to_execute_tail;
+    std::queue<ooo_model_instr*> ready_to_execute;
 
     // Ready-To-Load
-    uint32_t RTL0[LQ_SIZE], RTL0_head = 0, RTL0_tail = 0,
-             RTL1[LQ_SIZE], RTL1_head = 0, RTL1_tail = 0;
+    std::queue<LSQ_ENTRY*> RTL0, RTL1;
 
     // Ready-To-Store
-    uint32_t RTS0[SQ_SIZE], RTS0_head = 0, RTS0_tail = 0,
-             RTS1[SQ_SIZE], RTS1_head = 0, RTS1_tail = 0;
+    std::queue<LSQ_ENTRY*> RTS0, RTS1;
 
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
@@ -90,36 +90,22 @@ class O3_CPU {
     uint64_t branch_type_misses[8] = {};
 
     // TLBs and caches
-    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE, ITLB_HIT_LATENCY, ITLB_FILL_LATENCY, ITLB_MAX_READ, ITLB_MAX_WRITE},
-          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE, DTLB_HIT_LATENCY, DTLB_FILL_LATENCY, DTLB_MAX_READ, DTLB_MAX_WRITE},
-          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE, STLB_HIT_LATENCY, STLB_FILL_LATENCY, STLB_MAX_READ, STLB_MAX_WRITE},
-          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE, L1I_HIT_LATENCY, L1I_FILL_LATENCY, L1I_MAX_READ, L1I_MAX_WRITE},
-          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE, L1D_HIT_LATENCY, L1D_FILL_LATENCY, L1D_MAX_READ, L1D_MAX_WRITE},
-          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE, L2C_HIT_LATENCY, L2C_FILL_LATENCY, L2C_MAX_READ, L2C_MAX_WRITE};
+    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE, ITLB_HIT_LATENCY, ITLB_FILL_LATENCY, ITLB_MAX_READ, ITLB_MAX_WRITE, ITLB_PREF_LOAD, false},
+          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE, DTLB_HIT_LATENCY, DTLB_FILL_LATENCY, DTLB_MAX_READ, DTLB_MAX_WRITE, DTLB_PREF_LOAD, false},
+          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE, STLB_HIT_LATENCY, STLB_FILL_LATENCY, STLB_MAX_READ, STLB_MAX_WRITE, STLB_PREF_LOAD, false},
+          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE, L1I_HIT_LATENCY, L1I_FILL_LATENCY, L1I_MAX_READ, L1I_MAX_WRITE, L1I_PREF_LOAD, true},
+          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE, L1D_HIT_LATENCY, L1D_FILL_LATENCY, L1D_MAX_READ, L1D_MAX_WRITE, L1D_PREF_LOAD, L1D_VA_PREF},
+          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE, L2C_HIT_LATENCY, L2C_FILL_LATENCY, L2C_MAX_READ, L2C_MAX_WRITE, L2C_PREF_LOAD, L2C_VA_PREF};
 
     CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
   
+	PageTableWalker PTW{"PTW", PSCL5_SET, PSCL5_WAY, PSCL4_SET, PSCL4_WAY, PSCL3_SET, PSCL3_WAY, PSCL2_SET, PSCL2_WAY, PTW_RQ_SIZE, PTW_MSHR_SIZE, PTW_MAX_READ, PTW_MAX_WRITE};
+
     // constructor
     O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
     {
         for (uint32_t i=0; i<STA_SIZE; i++)
 	  STA[i] = UINT64_MAX;
-
-        for (uint32_t i=0; i<ROB_SIZE; i++) {
-	  ready_to_execute[i] = ROB_SIZE;
-        }
-        ready_to_execute_head = 0;
-        ready_to_execute_head = 0;
-
-        for (uint32_t i=0; i<LQ_SIZE; i++) {
-	  RTL0[i] = LQ_SIZE;
-	  RTL1[i] = LQ_SIZE;
-        }
-
-        for (uint32_t i=0; i<SQ_SIZE; i++) {
-	  RTS0[i] = SQ_SIZE;
-	  RTS1[i] = SQ_SIZE;
-        }
 
         // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();
@@ -139,6 +125,11 @@ class O3_CPU {
         STLB.cpu = this->cpu;
         STLB.cache_type = IS_STLB;
         STLB.fill_level = FILL_L2;
+		STLB.lower_level = &PTW;
+
+		PTW.cpu = this->cpu;
+		PTW.cache_type = IS_PTW;
+		PTW.lower_level = &L1D; //PTW checks L1 cache for cached translation blocks.
 
         // PRIVATE CACHE
         L1I.cpu = this->cpu;
@@ -181,33 +172,39 @@ class O3_CPU {
         L1I.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1I);
         L1D.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1D);
         L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
-    }
+   }
 
     // functions
     uint32_t init_instruction(ooo_model_instr instr);
-    void fetch_instruction(),
+    void check_dib(),
+         translate_fetch(),
+         fetch_instruction(),
+         promote_to_decode(),
          decode_instruction(),
          dispatch_instruction(),
          schedule_instruction(),
          execute_instruction(),
          schedule_memory_instruction(),
          execute_memory_instruction(),
-         do_scheduling(uint32_t rob_index),  
-         reg_dependency(uint32_t rob_index),
-         do_execution(uint32_t rob_index),
+         do_check_dib(ooo_model_instr &instr),
+         do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
+         do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
+         do_dib_update(const ooo_model_instr &instr),
+         do_scheduling(uint32_t rob_index),
+         do_execution(ooo_model_instr *rob_it),
          do_memory_scheduling(uint32_t rob_index),
-         operate_lsq();
-    uint32_t complete_execution(uint32_t rob_index);
-    void reg_RAW_dependency(uint32_t prior, uint32_t current, uint32_t source_index),
-         reg_RAW_release(uint32_t rob_index),
-         mem_RAW_dependency(uint32_t prior, uint32_t current, uint32_t data_index, uint32_t lq_index),
+         operate_lsq(),
+         do_complete_execution(uint32_t rob_index),
+         do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry),
          release_load_queue(uint32_t lq_index);
 
     void initialize_core();
     void add_load_queue(uint32_t rob_index, uint32_t data_index),
          add_store_queue(uint32_t rob_index, uint32_t data_index),
-         execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
-    int  execute_load(uint32_t rob_index, uint32_t sq_index, uint32_t data_index);
+         execute_store(LSQ_ENTRY *sq_it);
+    int  execute_load(LSQ_ENTRY *lq_it);
+    int  do_translate_store(LSQ_ENTRY *sq_it);
+    int  do_translate_load(LSQ_ENTRY *lq_it);
     void check_dependency(int prior, int current);
     void operate_cache();
     void complete_inflight_instruction();
@@ -217,8 +214,6 @@ class O3_CPU {
     uint32_t check_rob(uint64_t instr_id);
 
     uint32_t check_and_add_lsq(uint32_t rob_index);
-
-    uint8_t mem_reg_dependence_resolved(uint32_t rob_index);
 
   // branch predictor
   uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);

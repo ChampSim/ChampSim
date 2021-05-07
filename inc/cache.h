@@ -18,6 +18,8 @@
 #define IS_L2C  5
 #define IS_LLC  6
 
+#define IS_PTW 7
+
 // PAGE
 extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 
@@ -35,6 +37,8 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
+    const bool prefetch_as_load;
+    const bool virtual_prefetch;
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -50,7 +54,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
                                   VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
                                   WQ{WQ_SIZE, HIT_LATENCY}; // write queue
 
-    std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
+    std::list<PACKET> MSHR; // MSHR
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
              sim_hit[NUM_CPUS][NUM_TYPES] = {},
@@ -77,9 +81,9 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     
     // constructor
     CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write)
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref)
         : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
-        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write)
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), virtual_prefetch(va_pref)
     {
     }
 
@@ -102,8 +106,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     int  invalidate_entry(uint64_t inval_addr),
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
-         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata),
-         va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);
+         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
     void add_mshr(PACKET *packet),
          va_translate_prefetches();
@@ -119,16 +122,16 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),
-         l1d_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
+         l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
 
-    uint32_t l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         llc_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+    uint32_t l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
+         llc_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
 
     void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
     void prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
-             l1d_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    uint32_t l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-             llc_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+             l1d_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+    uint32_t l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
+             llc_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
 
     void prefetcher_initialize(),
          l1d_prefetcher_initialize(),
@@ -156,6 +159,30 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void lru_update(uint32_t set, uint32_t way, uint32_t type, uint8_t hit);
     void lru_final_stats();
 };
+
+template <>
+struct is_valid<PACKET>
+{
+    is_valid() {}
+    bool operator()(const PACKET &test)
+    {
+        return test.address != 0;
+    }
+};
+
+template <typename T>
+struct eq_full_addr
+{
+    using argument_type = T;
+    const decltype(argument_type::address) val;
+    eq_full_addr(decltype(argument_type::address) val) : val(val) {}
+    bool operator()(const argument_type &test)
+    {
+        is_valid<argument_type> validtest;
+        return validtest(test) && test.full_addr == val;
+    }
+};
+
 
 #endif
 
