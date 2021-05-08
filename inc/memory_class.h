@@ -25,7 +25,8 @@ class BLOCK {
   public:
     bool valid = false,
          prefetch = false,
-         dirty = false;
+         dirty = false,
+         polluting = false;
 
     uint64_t address = 0,
              full_addr = 0,
