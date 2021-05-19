@@ -246,13 +246,14 @@ void finish_warmup()
 
 void print_deadlock(uint32_t i)
 {
-    cout << "DEADLOCK! CPU " << i << " instr_id: " << ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].instr_id;
-    cout << " translated: " << +ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].translated;
-    cout << " fetched: " << +ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].fetched;
-    cout << " scheduled: " << +ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].scheduled;
-    cout << " executed: " << +ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed;
-    cout << " is_memory: " << +ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].is_memory;
-    cout << " event: " << ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle;
+    cout << "DEADLOCK! CPU " << i << " instr_id: " << ooo_cpu[i].ROB.front().instr_id;
+    cout << " translated: " << +ooo_cpu[i].ROB.front().translated;
+    cout << " fetched: " << +ooo_cpu[i].ROB.front().fetched;
+    cout << " scheduled: " << +ooo_cpu[i].ROB.front().scheduled;
+    cout << " executed: " << +ooo_cpu[i].ROB.front().executed;
+    cout << " is_memory: " << +ooo_cpu[i].ROB.front().is_memory;
+    cout << " num_reg_dependent: " << +ooo_cpu[i].ROB.front().num_reg_dependent;
+    cout << " event: " << ooo_cpu[i].ROB.front().event_cycle;
     cout << " current: " << current_core_cycle[i] << endl;
 
     // print LQ entry
@@ -540,7 +541,7 @@ int main(int argc, char** argv)
             }
 
             // check for deadlock
-            if (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].ip && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
+            if (!ooo_cpu[i].ROB.empty() && (ooo_cpu[i].ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_core_cycle[i])
                 print_deadlock(i);
 
             // check for warmup
