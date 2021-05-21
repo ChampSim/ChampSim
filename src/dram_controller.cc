@@ -187,7 +187,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     *rq_it = *packet;
     rq_it->event_cycle = current_cycle;
 
-    return RQ[channel].occupancy;
+    return get_occupancy(1, packet->address);
 }
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
@@ -213,7 +213,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     *wq_it = *packet;
     wq_it->event_cycle = current_cycle;
 
-    return WQ[channel].occupancy;
+    return get_occupancy(2, packet->address);
 }
 
 int MEMORY_CONTROLLER::add_pq(PACKET *packet)
