@@ -589,7 +589,7 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
         if (src_reg) {
             champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
             prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
-            if (prior != ROB.rend())
+            if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it))
             {
                 prior->registers_instrs_depend_on_me.push_back(rob_it);
                 rob_it->num_reg_dependent++;
