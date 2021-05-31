@@ -158,7 +158,7 @@
         "channels": 1,
         "ranks": 1,
         "banks": 8,
-        "rows": 32768,
+        "rows": 65536,
         "columns": 128,
         "lines_per_column": 8,
         "channel_width": 8,
