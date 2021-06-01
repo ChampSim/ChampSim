@@ -18,6 +18,7 @@ class PACKET {
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
             type = 0,
             fill_level = 0,
+            is_producer = 0,
             pf_origin_level = 0;
 
     int delta = 0,
@@ -26,10 +27,6 @@ class PACKET {
         confidence = 0;
 
     uint32_t pf_metadata;
-
-    uint8_t  is_producer = 0, 
-             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-             type = 0;
 
     std::list<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {};
     std::list<std::vector<LSQ_ENTRY>::iterator> sq_index_depend_on_me = {};
