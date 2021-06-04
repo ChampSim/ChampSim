@@ -142,27 +142,45 @@ void print_dram_stats()
 {
     uint64_t total_congested_cycle = 0;
     uint64_t total_congested_count = 0;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-    {
-        total_congested_cycle += DRAM.channels[i].dbus_cycle_congested;
-        total_congested_count += DRAM.channels[i].dbus_count_congested;
-    }
 
     std::cout << std::endl;
     std::cout << "DRAM Statistics" << std::endl;
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
         std::cout << " CHANNEL " << i << std::endl;
-        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_MISS << std::endl;
-        std::cout << " DBUS_CONGESTED: " << std::setw(10) << total_congested_count << std::endl;
-        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_MISS;
-        std::cout << "  FULL: " << setw(10) << DRAM.channels[i].WQ_FULL << std::endl;
+
+        auto &channel = DRAM.channels[i];
+        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << channel.RQ_ROW_BUFFER_HIT << " ";
+        std::cout << " ROW_BUFFER_MISS: "   << std::setw(10) << channel.RQ_ROW_BUFFER_MISS;
         std::cout << std::endl;
+
+        std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
+        if (channel.dbus_count_congested)
+            std::cout << std::setw(10) << ((double) channel.dbus_cycle_congested / channel.dbus_count_congested);
+        else
+            std::cout << "-";
+        std::cout << std::endl;
+
+        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << channel.WQ_ROW_BUFFER_HIT << " ";
+        std::cout << " ROW_BUFFER_MISS: "   << std::setw(10) << channel.WQ_ROW_BUFFER_MISS << " ";
+        std::cout << " FULL: "              << std::setw(10) << channel.WQ_FULL;
+        std::cout << std::endl;
+
+        std::cout << std::endl;
+
+        total_congested_cycle += channel.dbus_cycle_congested;
+        total_congested_count += channel.dbus_count_congested;
     }
 
-    if (total_congested_count)
-        cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
-    else
-        cout << " AVG_CONGESTED_CYCLE: -" << endl;
+    if (DRAM_CHANNELS > 1)
+    {
+        std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
+        if (total_congested_count)
+            std::cout << std::setw(10) << ((double)total_congested_cycle / total_congested_count);
+        else
+            std::cout << "-";
+
+        std::cout << std::endl;
+    }
 }
 
 void reset_cache_stats(uint32_t cpu, CACHE *cache)
