@@ -231,27 +231,27 @@ uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
     return (address >> shift) & bitmask(lg2(DRAM_CHANNELS));
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
-{
-    int shift = lg2(DRAM_LINES_PER_COLUMN) + lg2(DRAM_CHANNELS);
-    return (address >> shift) & bitmask(lg2(DRAM_COLUMNS));
-}
-
 uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
 {
-    int shift = lg2(DRAM_COLUMNS) + lg2(DRAM_LINES_PER_COLUMN) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
     return (address >> shift) & bitmask(lg2(DRAM_BANKS));
+}
+
+uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
+{
+    int shift = lg2(DRAM_CHANNELS);
+    return (address >> shift) & bitmask(lg2(DRAM_COLUMNS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
 {
-    int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_LINES_PER_COLUMN) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
     return (address >> shift) & bitmask(lg2(DRAM_RANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 {
-    int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_LINES_PER_COLUMN) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
     return (address >> shift) & bitmask(lg2(DRAM_ROWS));
 }
 

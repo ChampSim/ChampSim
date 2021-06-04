@@ -373,7 +373,7 @@ int main(int argc, char** argv)
     cout << "LLC sets: " << LLC_SET << endl;
     cout << "LLC ways: " << LLC_WAY << endl;
 
-    long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * DRAM_LINES_PER_COLUMN * BLOCK_SIZE / 1024 / 1024; // in MiB
+    long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
     std::cout << "Off-chip DRAM Size: ";
     if (dram_size > 1024)
         std::cout << dram_size/1024 << " GiB";

@@ -84,7 +84,6 @@ const_names = {
         'banks': 'DRAM_BANKS',
         'rows': 'DRAM_ROWS',
         'columns': 'DRAM_COLUMNS',
-        'lines_per_column': 'DRAM_LINES_PER_COLUMN',
         'channel_width': 'DRAM_CHANNEL_WIDTH',
         'wq_size': 'DRAM_WQ_SIZE',
         'rq_size': 'DRAM_RQ_SIZE',
