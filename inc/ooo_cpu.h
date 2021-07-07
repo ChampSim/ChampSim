@@ -37,7 +37,7 @@ class O3_CPU : public champsim::operable {
              finish_sim_cycle = 0, finish_sim_instr = 0,
              instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
              next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
-    uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0, num_searched = 0;
+    uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
 
     struct dib_entry_t
     {
@@ -55,8 +55,9 @@ class O3_CPU : public champsim::operable {
     champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
     champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER;
     champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
-    CORE_BUFFER<ooo_model_instr> ROB;
-    CORE_BUFFER<LSQ_ENTRY> LQ, SQ;
+    champsim::circular_buffer<ooo_model_instr> ROB;
+    std::vector<LSQ_ENTRY> LQ;
+    std::vector<LSQ_ENTRY> SQ;
 
     // Constants
     const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
@@ -66,13 +67,13 @@ class O3_CPU : public champsim::operable {
     std::queue<uint64_t> STA;
 
     // Ready-To-Execute
-    std::queue<ooo_model_instr*> ready_to_execute;
+    std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute;
 
     // Ready-To-Load
-    std::queue<LSQ_ENTRY*> RTL0, RTL1;
+    std::queue<std::vector<LSQ_ENTRY>::iterator> RTL0, RTL1;
 
     // Ready-To-Store
-    std::queue<LSQ_ENTRY*> RTS0, RTS1;
+    std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
 
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
@@ -99,7 +100,7 @@ class O3_CPU : public champsim::operable {
             CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
-        ROB("ROB", rob_size), LQ("LQ", lq_size), SQ("SQ", sq_size),
+        ROB(rob_size), LQ(lq_size), SQ(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
         EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
         BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
@@ -184,30 +185,25 @@ class O3_CPU : public champsim::operable {
          do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
          do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
          do_dib_update(const ooo_model_instr &instr),
-         do_scheduling(uint32_t rob_index),
-         do_execution(ooo_model_instr *rob_it),
-         do_memory_scheduling(uint32_t rob_index),
+         do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
+         do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
+         do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
          operate_lsq(),
-         do_complete_execution(uint32_t rob_index),
-         do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry),
-         release_load_queue(uint32_t lq_index);
+         do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
+         do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry);
 
     void initialize_core();
-    void add_load_queue(uint32_t rob_index, uint32_t data_index),
-         add_store_queue(uint32_t rob_index, uint32_t data_index),
-         execute_store(LSQ_ENTRY *sq_it);
-    int  execute_load(LSQ_ENTRY *lq_it);
-    int  do_translate_store(LSQ_ENTRY *sq_it);
-    int  do_translate_load(LSQ_ENTRY *lq_it);
+    void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index),
+         add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
+    void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+    int  execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
+    int  do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+    int  do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
     void check_dependency(int prior, int current);
     void operate_cache();
     void complete_inflight_instruction();
     void handle_memory_return();
     void retire_rob();
-
-    uint32_t check_rob(uint64_t instr_id);
-
-    uint32_t check_and_add_lsq(uint32_t rob_index);
 
   // branch predictor
   uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);

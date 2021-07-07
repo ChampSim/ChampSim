@@ -187,7 +187,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     *rq_it = *packet;
     rq_it->event_cycle = current_cycle;
 
-    return -1;
+    return get_occupancy(1, packet->address);
 }
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
@@ -200,7 +200,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     // Check for duplicates
     auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address));
     if (wq_it != std::end(channel.WQ))
-        return std::distance(std::begin(channel.WQ), wq_it); // merged index
+        return 0;
 
     // search for the empty index
     wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>());
@@ -213,7 +213,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     *wq_it = *packet;
     wq_it->event_cycle = current_cycle;
 
-    return -1;
+    return get_occupancy(2, packet->address);
 }
 
 int MEMORY_CONTROLLER::add_pq(PACKET *packet)

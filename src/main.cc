@@ -250,25 +250,28 @@ void finish_warmup()
 
 void print_deadlock(uint32_t i)
 {
-    cout << "DEADLOCK! CPU " << i << " instr_id: " << ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].instr_id;
-    cout << " translated: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].translated;
-    cout << " fetched: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].fetched;
-    cout << " scheduled: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].scheduled;
-    cout << " executed: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].executed;
-    cout << " is_memory: " << +ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].is_memory;
-    cout << " event: " << ooo_cpu[i]->ROB.entry[ooo_cpu[i]->ROB.head].event_cycle;
+    cout << "DEADLOCK! CPU " << i << " instr_id: " << ooo_cpu[i]->ROB.front().instr_id;
+    cout << " translated: " << +ooo_cpu[i]->ROB.front().translated;
+    cout << " fetched: " << +ooo_cpu[i]->ROB.front().fetched;
+    cout << " scheduled: " << +ooo_cpu[i]->ROB.front().scheduled;
+    cout << " executed: " << +ooo_cpu[i]->ROB.front().executed;
+    cout << " is_memory: " << +ooo_cpu[i]->ROB.front().is_memory;
+    cout << " num_reg_dependent: " << +ooo_cpu[i]->ROB.front().num_reg_dependent;
+    cout << " event: " << ooo_cpu[i]->ROB.front().event_cycle;
     cout << " current: " << ooo_cpu[i]->current_cycle << endl;
 
     // print LQ entry
-    cout << endl << "Load Queue Entry" << endl;
-    for (uint32_t j=0; j<ooo_cpu[i]->LQ.SIZE; j++) {
-        cout << "[LQ] entry: " << j << " instr_id: " << ooo_cpu[i]->LQ.entry[j].instr_id << " address: " << hex << ooo_cpu[i]->LQ.entry[j].physical_address << dec << " translated: " << +ooo_cpu[i]->LQ.entry[j].translated << " fetched: " << +ooo_cpu[i]->LQ.entry[i].fetched << endl;
+    std::cout << std::endl << "Load Queue Entry" << std::endl;
+    for (auto lq_it = std::begin(ooo_cpu[i]->LQ); lq_it != std::end(ooo_cpu[i]->LQ); ++lq_it)
+    {
+        std::cout << "[LQ] entry: " << std::distance(std::begin(ooo_cpu[i]->LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
     }
 
     // print SQ entry
-    cout << endl << "Store Queue Entry" << endl;
-    for (uint32_t j=0; j<ooo_cpu[i]->SQ.SIZE; j++) {
-        cout << "[SQ] entry: " << j << " instr_id: " << ooo_cpu[i]->SQ.entry[j].instr_id << " address: " << hex << ooo_cpu[i]->SQ.entry[j].physical_address << dec << " translated: " << +ooo_cpu[i]->SQ.entry[j].translated << " fetched: " << +ooo_cpu[i]->SQ.entry[i].fetched << endl;
+    std::cout << std::endl << "Store Queue Entry" << std::endl;
+    for (auto sq_it = std::begin(ooo_cpu[i]->SQ); sq_it != std::end(ooo_cpu[i]->SQ); ++sq_it)
+    {
+        std::cout << "[SQ] entry: " << std::distance(std::begin(ooo_cpu[i]->SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
     }
 
     // print L1D MSHR entry
