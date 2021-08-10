@@ -3,42 +3,10 @@
 
 #include <map>
 
-#define IS_PSCL5 11
-#define IS_PSCL4 12
-#define IS_PSCL3 13
-#define IS_PSCL2 14
-
 #define NUM_ENTRIES_PER_PAGE 512
-
-#define IS_PTL1 1
-#define IS_PTL2 2
-#define IS_PTL3 3
-#define IS_PTL4 4
-#define IS_PTL5 5
 
 //Virtual Address: 57 bit (9+9+9+9+9+12), rest MSB bits will be used to generate a unique VA per CPU.
 //PTL5->PTL4->PTL3->PTL2->PTL1->PFN
-
-class PageTablePage
-{
-    public:
-        PageTablePage* entry[NUM_ENTRIES_PER_PAGE] = {};
-        uint64_t next_level_base_addr[NUM_ENTRIES_PER_PAGE];
-
-        PageTablePage()
-        {
-            std::fill(std::begin(next_level_base_addr), std::end(next_level_base_addr), UINT64_MAX);
-        }
-
-        ~PageTablePage()
-        {
-            for(int i = 0; i < NUM_ENTRIES_PER_PAGE; i++)
-            {
-                if(entry[i] != NULL)
-                    delete(entry[i]);
-            }
-        }
-};
 
 class PagingStructureCache
 {
@@ -80,23 +48,18 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 
         PagingStructureCache PSCL5, PSCL4, PSCL3, PSCL2;
 
-        PageTablePage *L5 = new PageTablePage(); //CR3 register points to the base of this page.
-        uint64_t CR3_addr = map_translation_page(0,0); //This address will not have page offset bits.
+        uint64_t CR3_addr = map_translation_page(0);
+        std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
         PageTableWalker(string v1, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency)
             : NAME(v1),
             MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
             RQ{v10, latency},
-            PSCL5{"PSCL5", 12+9+9+9+9, v2, v3}, //Translation from L5->L4
-            PSCL4{"PSCL4", 12+9+9+9, v4, v5}, //Translation from L5->L3
-            PSCL3{"PSCL3", 12+9+9, v6, v7}, //Translation from L5->L2
-            PSCL2{"PSCL2", 12+9, v8, v9}  //Translation from L5->L1
+            PSCL5{"PSCL5", LOG2_PAGE_SIZE+4*lg2(NUM_ENTRIES_PER_PAGE), v2, v3}, //Translation from L5->L4
+            PSCL4{"PSCL4", LOG2_PAGE_SIZE+3*lg2(NUM_ENTRIES_PER_PAGE), v4, v5}, //Translation from L5->L3
+            PSCL3{"PSCL3", LOG2_PAGE_SIZE+2*lg2(NUM_ENTRIES_PER_PAGE), v6, v7}, //Translation from L5->L2
+            PSCL2{"PSCL2", LOG2_PAGE_SIZE+1*lg2(NUM_ENTRIES_PER_PAGE), v8, v9}  //Translation from L5->L1
         {
-        }
-
-        ~PageTableWalker()
-        {
-            delete L5;
         }
 
         // functions
@@ -113,13 +76,10 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
         uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
                  get_size(uint8_t queue_type, uint64_t address);
 
-        uint64_t get_offset(uint64_t address, uint8_t pt_level);
-        void     handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level);
+        uint64_t get_shamt(uint8_t pt_level);
 
-        uint64_t map_translation_page(uint64_t full_virtual_address, uint8_t level),
-                 map_data_page(uint64_t instr_id, uint64_t full_virtual_address);
-
-        void write_translation_page(uint64_t next_level_base_addr, PACKET *packet, uint8_t pt_level);
+        uint64_t map_translation_page(uint64_t full_virtual_address),
+                 map_data_page(uint64_t full_virtual_address);
 };
 
 #endif

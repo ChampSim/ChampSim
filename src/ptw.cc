@@ -6,7 +6,6 @@
 extern VirtualMemory vmem;
 extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
-extern uint8_t knob_cloudsuite;
 
 void PageTableWalker::handle_read()
 {
@@ -27,29 +26,29 @@ void PageTableWalker::handle_read()
         packet.ip = handle_pkt.ip;
         packet.full_v_addr = handle_pkt.full_addr;
         packet.init_translation_level = 5;
-        packet.full_addr = splice_bits(CR3_addr, (get_offset(handle_pkt.full_addr,IS_PTL5) << 3), LOG2_PAGE_SIZE);
+        packet.full_addr = splice_bits(CR3_addr, (handle_pkt.full_addr >> get_shamt(5)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
 
         if (auto address_pscl5 = PSCL5.check_hit(handle_pkt.full_addr); address_pscl5 != UINT64_MAX)
         {
-            packet.full_addr = splice_bits(address_pscl5, (get_offset(handle_pkt.full_addr,IS_PTL4) << 3), LOG2_PAGE_SIZE);
+            packet.full_addr = splice_bits(address_pscl5, (handle_pkt.full_addr >> get_shamt(4)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
             packet.init_translation_level = 4;
         }
 
         if (auto address_pscl4 = PSCL4.check_hit(handle_pkt.full_addr); address_pscl4 != UINT64_MAX)
         {
-            packet.full_addr = splice_bits(address_pscl4, (get_offset(handle_pkt.full_addr,IS_PTL3) << 3), LOG2_PAGE_SIZE);
+            packet.full_addr = splice_bits(address_pscl4, (handle_pkt.full_addr >> get_shamt(3)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
             packet.init_translation_level = 3;
         }
 
         if (auto address_pscl3 = PSCL3.check_hit(handle_pkt.full_addr); address_pscl3 != UINT64_MAX)
         {
-            packet.full_addr = splice_bits(address_pscl3, (get_offset(handle_pkt.full_addr,IS_PTL2) << 3), LOG2_PAGE_SIZE);
+            packet.full_addr = splice_bits(address_pscl3, (handle_pkt.full_addr >> get_shamt(2)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
             packet.init_translation_level = 2;
         }
 
         if (auto address_pscl2 = PSCL2.check_hit(handle_pkt.full_addr); address_pscl2 != UINT64_MAX)
         {
-            packet.full_addr = splice_bits(address_pscl2, (get_offset(handle_pkt.full_addr,IS_PTL1) << 3), LOG2_PAGE_SIZE);
+            packet.full_addr = splice_bits(address_pscl2, (handle_pkt.full_addr >> get_shamt(1)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
             packet.init_translation_level = 1;
         }
 
@@ -80,58 +79,42 @@ void PageTableWalker::handle_fill()
     while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_core_cycle[cpu])
     {
         auto fill_mshr = MSHR.begin();
-        PageTablePage* curr_page = L5; //Start wth the L5 page
-        uint64_t next_level_base_addr = UINT64_MAX;
-        bool page_fault = false;
 
-        for (int i = 5; i > fill_mshr->translation_level; i--)
+        std::pair key{fill_mshr->full_v_addr >> get_shamt(fill_mshr->translation_level+1), fill_mshr->translation_level};
+        auto pt_it = page_table.find(key);
+
+        if (pt_it == std::end(page_table))
         {
-            uint64_t offset = get_offset(fill_mshr->full_v_addr, i); //Get offset according to page table level
-            assert(curr_page != NULL);
-            next_level_base_addr = curr_page->next_level_base_addr[offset];
-            if(next_level_base_addr == UINT64_MAX)
-            {
-                handle_page_fault(curr_page, &(*fill_mshr), i); //i means next level does not exist.
-                page_fault = true;
-                fill_mshr->translation_level = 0; //In page fault, All levels are translated.
-                break;
-            }
-            curr_page = curr_page->entry[offset];
+            if (fill_mshr->translation_level == 1)
+                page_table[key] = map_data_page(fill_mshr->full_v_addr);
+            else
+                page_table[key] = map_translation_page(fill_mshr->full_v_addr);
         }
 
-        if(fill_mshr->translation_level == 0) //If translation complete
+        if (fill_mshr->translation_level == 0) //If translation complete
         {
-            curr_page = L5;
-            next_level_base_addr = UINT64_MAX;
-            for (int i = 5; i > 1; i--) //Walk the page table and fill MMU caches
+            for (std::size_t level = fill_mshr->init_translation_level; level > 0; --level)
             {
-                uint64_t offset = get_offset(fill_mshr->full_v_addr, i);
-                assert(curr_page != NULL);
-                next_level_base_addr = curr_page->next_level_base_addr[offset];
-                assert(next_level_base_addr != UINT64_MAX);
-                curr_page = curr_page->entry[offset];
+                std::pair fill_key{fill_mshr->full_v_addr >> get_shamt(level+1), level};
 
-                if(fill_mshr->init_translation_level - i >= 0) //Check which translation levels needs to filled
+                // Check which translation levels needs to filled
+                switch (level)
                 {
-                    switch(i)
-                    {
-                        case 5: PSCL5.fill_cache(next_level_base_addr, &(*fill_mshr));
-                                break;
-                        case 4: PSCL4.fill_cache(next_level_base_addr, &(*fill_mshr));
-                                break;
-                        case 3: PSCL3.fill_cache(next_level_base_addr, &(*fill_mshr));
-                                break;
-                        case 2: PSCL2.fill_cache(next_level_base_addr, &(*fill_mshr));
-                                break;
-                    }
+                    case 5: PSCL5.fill_cache(page_table[fill_key], &(*fill_mshr));
+                            break;
+                    case 4: PSCL4.fill_cache(page_table[fill_key], &(*fill_mshr));
+                            break;
+                    case 3: PSCL3.fill_cache(page_table[fill_key], &(*fill_mshr));
+                            break;
+                    case 2: PSCL2.fill_cache(page_table[fill_key], &(*fill_mshr));
+                            break;
                 }
             }
 
-            uint64_t offset = get_offset(fill_mshr->full_v_addr, IS_PTL1);
-            fill_mshr->data = curr_page->next_level_base_addr[offset] >> LOG2_PAGE_SIZE; //Return the translated physical address to STLB. Does not contain last 12 bits
-
+            //Return the translated physical address to STLB. Does not contain last 12 bits
+            fill_mshr->data      = page_table[key] >> LOG2_PAGE_SIZE;
             fill_mshr->full_addr = fill_mshr->full_v_addr;
-            fill_mshr->address = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
+            fill_mshr->address   = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
 
             for (auto ret: fill_mshr->to_return)
                 ret->return_data(&(*fill_mshr));
@@ -143,12 +126,10 @@ void PageTableWalker::handle_fill()
         }
         else
         {
-            assert(!page_fault); //If page fault was there, then all levels of translation should have be done.
-
             PACKET packet = *fill_mshr;
             packet.cpu = cpu;
             packet.type = TRANSLATION;
-            packet.full_addr = splice_bits(next_level_base_addr, (get_offset(fill_mshr->full_v_addr, fill_mshr->translation_level) << 3), LOG2_PAGE_SIZE);
+            packet.full_addr = splice_bits(page_table[key], (fill_mshr->full_v_addr >> get_shamt(fill_mshr->translation_level)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
             packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
             packet.to_return = {this};
 
@@ -174,31 +155,7 @@ void PageTableWalker::operate()
     RQ.operate();
 }
 
-void PageTableWalker::handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level)
-{
-    assert(pt_level <= 5);
-
-    while(pt_level > 1)
-    {
-        uint64_t offset = get_offset(packet->full_v_addr, pt_level);
-
-        assert(page != NULL && page->entry[offset] == NULL);
-
-        page->entry[offset] =  new PageTablePage();
-        page->next_level_base_addr[offset] = map_translation_page(packet->full_v_addr, pt_level);
-        write_translation_page(page->next_level_base_addr[offset], packet, pt_level);
-        page = page->entry[offset];
-        pt_level--;
-    }
-
-    uint64_t offset = get_offset(packet->full_v_addr, pt_level);
-
-    assert(page != NULL && page->next_level_base_addr[offset] == UINT64_MAX);
-
-    page->next_level_base_addr[offset] = map_data_page(packet->instr_id, packet->full_v_addr);
-}
-
-uint64_t PageTableWalker::map_translation_page(uint64_t full_v_addr, uint8_t pt_level)
+uint64_t PageTableWalker::map_translation_page(uint64_t full_v_addr)
 {
     uint64_t physical_address = vmem.va_to_pa(cpu, next_translation_virtual_address);
     next_translation_virtual_address += PAGE_SIZE;
@@ -206,19 +163,14 @@ uint64_t PageTableWalker::map_translation_page(uint64_t full_v_addr, uint8_t pt_
     return physical_address;
 }
 
-uint64_t PageTableWalker::map_data_page(uint64_t instr_id, uint64_t full_v_addr)
+uint64_t PageTableWalker::map_data_page(uint64_t full_v_addr)
 {
     return vmem.va_to_pa(cpu, full_v_addr);
 }
 
-void PageTableWalker::write_translation_page(uint64_t next_level_base_addr, PACKET *packet, uint8_t pt_level)
+uint64_t PageTableWalker::get_shamt(uint8_t pt_level)
 {
-}
-
-uint64_t PageTableWalker::get_offset(uint64_t full_virtual_addr, uint8_t pt_level)
-{
-    constexpr std::size_t offset_bits = 9;
-    return (full_virtual_addr >> (LOG2_PAGE_SIZE + offset_bits * (pt_level-1))) & bitmask(offset_bits);
+    return LOG2_PAGE_SIZE + lg2(NUM_ENTRIES_PER_PAGE) * (pt_level-1);
 }
 
 int  PageTableWalker::add_rq(PACKET *packet)
