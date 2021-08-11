@@ -391,6 +391,12 @@ int main(int argc, char** argv)
     printf("Off-chip DRAM Size: %u MB Channels: %u Width: %u-bit Data Rate: %u MT/s\n",
             DRAM_SIZE, DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_MTPS);
 
+
+    std::cout << std::endl;
+    std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
+    std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
+    std::cout << "VirtualMemory page size: " << vmem.page_size << " log2_page_size: " << lg2(vmem.page_size) << std::endl;
+
     // end consequence of knobs
 
     // search through the argv for "-traces"
