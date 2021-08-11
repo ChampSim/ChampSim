@@ -7,6 +7,17 @@ extern VirtualMemory vmem;
 extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
 
+PageTableWalker::PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency)
+: NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
+    RQ{v10, latency},
+    PSCL5{"PSCL5", LOG2_PAGE_SIZE+4*lg2(NUM_ENTRIES_PER_PAGE), v2, v3}, //Translation from L5->L4
+    PSCL4{"PSCL4", LOG2_PAGE_SIZE+3*lg2(NUM_ENTRIES_PER_PAGE), v4, v5}, //Translation from L5->L3
+    PSCL3{"PSCL3", LOG2_PAGE_SIZE+2*lg2(NUM_ENTRIES_PER_PAGE), v6, v7}, //Translation from L5->L2
+    PSCL2{"PSCL2", LOG2_PAGE_SIZE+1*lg2(NUM_ENTRIES_PER_PAGE), v8, v9}, //Translation from L5->L1
+    CR3_addr(vmem.get_pte_pa(cpu,0,5))
+{
+}
+
 void PageTableWalker::handle_read()
 {
     int reads_this_cycle = MAX_READ;
@@ -79,40 +90,26 @@ void PageTableWalker::handle_fill()
     while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_core_cycle[cpu])
     {
         auto fill_mshr = MSHR.begin();
-
-        std::pair key{fill_mshr->full_v_addr >> get_shamt(fill_mshr->translation_level+1), fill_mshr->translation_level};
-        auto pt_it = page_table.find(key);
-
-        if (pt_it == std::end(page_table))
-        {
-            if (fill_mshr->translation_level == 1)
-                page_table[key] = map_data_page(fill_mshr->full_v_addr);
-            else
-                page_table[key] = map_translation_page(fill_mshr->full_v_addr);
-        }
-
         if (fill_mshr->translation_level == 0) //If translation complete
         {
             for (std::size_t level = fill_mshr->init_translation_level; level > 0; --level)
             {
-                std::pair fill_key{fill_mshr->full_v_addr >> get_shamt(level+1), level};
-
                 // Check which translation levels needs to filled
                 switch (level)
                 {
-                    case 5: PSCL5.fill_cache(page_table[fill_key], &(*fill_mshr));
+                    case 5: PSCL5.fill_cache(vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level), &(*fill_mshr));
                             break;
-                    case 4: PSCL4.fill_cache(page_table[fill_key], &(*fill_mshr));
+                    case 4: PSCL4.fill_cache(vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level), &(*fill_mshr));
                             break;
-                    case 3: PSCL3.fill_cache(page_table[fill_key], &(*fill_mshr));
+                    case 3: PSCL3.fill_cache(vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level), &(*fill_mshr));
                             break;
-                    case 2: PSCL2.fill_cache(page_table[fill_key], &(*fill_mshr));
+                    case 2: PSCL2.fill_cache(vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level), &(*fill_mshr));
                             break;
                 }
             }
 
             //Return the translated physical address to STLB. Does not contain last 12 bits
-            fill_mshr->data      = page_table[key] >> LOG2_PAGE_SIZE;
+            fill_mshr->data      = vmem.va_to_pa(cpu, fill_mshr->full_v_addr) >> LOG2_PAGE_SIZE;
             fill_mshr->full_addr = fill_mshr->full_v_addr;
             fill_mshr->address   = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
 
@@ -129,7 +126,7 @@ void PageTableWalker::handle_fill()
             PACKET packet = *fill_mshr;
             packet.cpu = cpu;
             packet.type = TRANSLATION;
-            packet.full_addr = splice_bits(page_table[key], (fill_mshr->full_v_addr >> get_shamt(fill_mshr->translation_level)) << (LOG2_PAGE_SIZE - lg2(NUM_ENTRIES_PER_PAGE)), LOG2_PAGE_SIZE);
+            packet.full_addr = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
             packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
             packet.to_return = {this};
 
@@ -153,19 +150,6 @@ void PageTableWalker::operate()
     handle_fill();
     handle_read();
     RQ.operate();
-}
-
-uint64_t PageTableWalker::map_translation_page(uint64_t full_v_addr)
-{
-    uint64_t physical_address = vmem.va_to_pa(cpu, next_translation_virtual_address);
-    next_translation_virtual_address += PAGE_SIZE;
-
-    return physical_address;
-}
-
-uint64_t PageTableWalker::map_data_page(uint64_t full_v_addr)
-{
-    return vmem.va_to_pa(cpu, full_v_addr);
 }
 
 uint64_t PageTableWalker::get_shamt(uint8_t pt_level)
@@ -202,13 +186,13 @@ void PageTableWalker::return_data(PACKET *packet)
             mshr_entry.translation_level--;
             mshr_entry.event_cycle = current_core_cycle[cpu];
 
-            DP (if (warmup_complete[packet->cpu]) {
+            DP (if (warmup_complete[cpu]) {
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry.instr_id;
                     std::cout << " address: " << std::hex << mshr_entry.address << " full_addr: " << mshr_entry.full_addr;
                     std::cout << " full_v_addr: " << mshr_entry.full_v_addr;
                     std::cout << " data: " << mshr_entry.data << std::dec;
                     std::cout << " occupancy: " << get_occupancy(0,0);
-                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
+                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_core_cycle[cpu] << std::endl; });
         }
     }
 

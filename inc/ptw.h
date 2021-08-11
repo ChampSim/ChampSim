@@ -34,8 +34,7 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 {
     public:
         const string NAME;
-        uint32_t cpu;
-
+        const uint32_t cpu;
         const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
 
         uint64_t next_translation_virtual_address = 0xf000000f00000000;
@@ -48,19 +47,10 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
 
         PagingStructureCache PSCL5, PSCL4, PSCL3, PSCL2;
 
-        uint64_t CR3_addr = map_translation_page(0);
+        const uint64_t CR3_addr;
         std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-        PageTableWalker(string v1, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency)
-            : NAME(v1),
-            MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
-            RQ{v10, latency},
-            PSCL5{"PSCL5", LOG2_PAGE_SIZE+4*lg2(NUM_ENTRIES_PER_PAGE), v2, v3}, //Translation from L5->L4
-            PSCL4{"PSCL4", LOG2_PAGE_SIZE+3*lg2(NUM_ENTRIES_PER_PAGE), v4, v5}, //Translation from L5->L3
-            PSCL3{"PSCL3", LOG2_PAGE_SIZE+2*lg2(NUM_ENTRIES_PER_PAGE), v6, v7}, //Translation from L5->L2
-            PSCL2{"PSCL2", LOG2_PAGE_SIZE+1*lg2(NUM_ENTRIES_PER_PAGE), v8, v9}  //Translation from L5->L1
-        {
-        }
+        PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency);
 
         // functions
         int add_rq(PACKET *packet);
@@ -77,9 +67,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
                  get_size(uint8_t queue_type, uint64_t address);
 
         uint64_t get_shamt(uint8_t pt_level);
-
-        uint64_t map_translation_page(uint64_t full_virtual_address),
-                 map_data_page(uint64_t full_virtual_address);
 };
 
 #endif
