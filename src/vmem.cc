@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <numeric>
+#include <random>
 
 #include "champsim.h"
 #include "util.h"
@@ -19,20 +20,7 @@ VirtualMemory::VirtualMemory(uint32_t, uint64_t capacity, uint64_t pg_size, uint
     std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
 
     // then shuffle it
-    // initialize random number generator
-    uint64_t rand_state = random_seed+VMEM_RAND_FACTOR;
-    if (rand_state == 0) rand_state = VMEM_RAND_FACTOR<<1;
-    for (auto &x : ppage_free_list)
-    {
-        rand_state += VMEM_RAND_FACTOR;
-
-        rand_state ^= (rand_state<<13);
-        rand_state ^= (rand_state>>7);
-        rand_state ^= (rand_state<<11);
-        rand_state ^= (rand_state>>1);
-
-        std::swap(x, ppage_free_list[rand_state % std::size(ppage_free_list)]);
-    }
+    std::shuffle(std::begin(ppage_free_list), std::end(ppage_free_list), std::mt19937_64{random_seed});
 
     next_pte_page = ppage_free_list.front();
     ppage_free_list.pop_front();
