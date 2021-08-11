@@ -33,8 +33,6 @@ class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProduc
         const uint32_t cpu;
         const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
 
-        uint64_t next_translation_virtual_address = 0xf000000f00000000;
-
         champsim::delay_queue<PACKET> RQ;
 
         std::list<PACKET> MSHR;

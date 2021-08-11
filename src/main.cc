@@ -395,7 +395,7 @@ int main(int argc, char** argv)
     std::cout << std::endl;
     std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
     std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
-    std::cout << "VirtualMemory page size: " << vmem.page_size << " log2_page_size: " << lg2(vmem.page_size) << std::endl;
+    std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
     // end consequence of knobs
 

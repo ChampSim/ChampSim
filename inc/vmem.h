@@ -19,9 +19,11 @@ class VirtualMemory
         std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
         std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
 
+        uint64_t next_pte_page;
+
     public:
         const uint32_t pt_levels;
-        const uint32_t page_size;
+        const uint32_t page_size; // Size of a PTE page
         std::deque<uint64_t> ppage_free_list;
 
         // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size

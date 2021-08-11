@@ -9,9 +9,9 @@
 #include "util.h"
 
 VirtualMemory::VirtualMemory(uint32_t, uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed)
-    : pt_levels(page_table_levels), page_size(pg_size), ppage_free_list((capacity-VMEM_RESERVE_CAPACITY)/page_size, page_size)
+    : pt_levels(page_table_levels), page_size(pg_size), ppage_free_list((capacity-VMEM_RESERVE_CAPACITY)/PAGE_SIZE, PAGE_SIZE)
 {
-    assert(capacity % page_size == 0);
+    assert(capacity % PAGE_SIZE == 0);
     assert(pg_size == (1ul << lg2(pg_size)) && pg_size > 1024);
 
     // populate the free list
@@ -33,11 +33,14 @@ VirtualMemory::VirtualMemory(uint32_t, uint64_t capacity, uint64_t pg_size, uint
 
         std::swap(x, ppage_free_list[rand_state % std::size(ppage_free_list)]);
     }
+
+    next_pte_page = ppage_free_list.front();
+    ppage_free_list.pop_front();
 }
 
 uint64_t VirtualMemory::shamt(uint32_t level) const
 {
-    return lg2(page_size) + lg2(page_size/PTE_BYTES)*(level);
+    return LOG2_PAGE_SIZE + lg2(page_size/PTE_BYTES)*(level);
 }
 
 uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
@@ -47,23 +50,30 @@ uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
 
 uint64_t VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
-    auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> lg2(page_size)}, ppage_free_list.front()});
+    auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> LOG2_PAGE_SIZE}, ppage_free_list.front()});
 
     // this vpage doesn't yet have a ppage mapping
     if (fault)
         ppage_free_list.pop_front();
 
-    return splice_bits(ppage->second, vaddr, lg2(page_size));
+    return splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE);
 }
 
 uint64_t VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
 {
     std::tuple key{cpu_num, vaddr >> shamt(level+1), level};
-    auto [ppage, fault] = page_table.insert({key, ppage_free_list.front()});
+    auto [ppage, fault] = page_table.insert({key, next_pte_page});
 
     // this PTE doesn't yet have a mapping
     if (fault)
-        ppage_free_list.pop_front();
+    {
+        next_pte_page += page_size;
+        if (next_pte_page % PAGE_SIZE)
+        {
+            next_pte_page = ppage_free_list.front();
+            ppage_free_list.pop_front();
+        }
+    }
 
     return splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size));
 }
