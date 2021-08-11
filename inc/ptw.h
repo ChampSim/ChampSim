@@ -2,11 +2,7 @@
 #define PTW_H
 
 #include <map>
-
-#define NUM_ENTRIES_PER_PAGE 512
-
-//Virtual Address: 57 bit (9+9+9+9+9+12), rest MSB bits will be used to generate a unique VA per CPU.
-//PTL5->PTL4->PTL3->PTL2->PTL1->PFN
+#include <optional>
 
 class PagingStructureCache
 {
@@ -21,12 +17,12 @@ class PagingStructureCache
     const string NAME;
     const uint32_t NUM_SET, NUM_WAY;
     std::vector<block_t> block{NUM_SET*NUM_WAY};
-    const std::size_t shamt;
 
     public:
-        PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), shamt(v2) {}
+        const std::size_t level;
+        PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
 
-        uint64_t check_hit(uint64_t address);
+        std::optional<uint64_t> check_hit(uint64_t address);
         void fill_cache(uint64_t next_level_base_addr, PACKET *packet);
 };
 

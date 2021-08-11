@@ -35,6 +35,16 @@ VirtualMemory::VirtualMemory(uint32_t, uint64_t capacity, uint64_t pg_size, uint
     }
 }
 
+uint64_t VirtualMemory::shamt(uint32_t level) const
+{
+    return lg2(page_size) + lg2(page_size/PTE_BYTES)*(level);
+}
+
+uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
+{
+    return (vaddr >> shamt(level)) & bitmask(lg2(page_size/PTE_BYTES));
+}
+
 uint64_t VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
     auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> lg2(page_size)}, ppage_free_list.front()});
@@ -48,13 +58,13 @@ uint64_t VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 
 uint64_t VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
 {
-    std::tuple key{cpu_num, vaddr >> (lg2(page_size) + (9*(pt_levels-level))), level};
+    std::tuple key{cpu_num, vaddr >> shamt(level+1), level};
     auto [ppage, fault] = page_table.insert({key, ppage_free_list.front()});
 
     // this PTE doesn't yet have a mapping
     if (fault)
         ppage_free_list.pop_front();
 
-    return splice_bits(ppage->second, (vaddr >> lg2(page_size)) << 3, lg2(page_size));
+    return splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size));
 }
 
