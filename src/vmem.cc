@@ -9,7 +9,7 @@
 #include "champsim.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(uint32_t, uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed)
+VirtualMemory::VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed)
     : pt_levels(page_table_levels), page_size(pg_size), ppage_free_list((capacity-VMEM_RESERVE_CAPACITY)/PAGE_SIZE, PAGE_SIZE)
 {
     assert(capacity % PAGE_SIZE == 0);
