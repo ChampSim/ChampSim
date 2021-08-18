@@ -19,7 +19,7 @@ class PACKET {
             prefetched = 0;
 
     int fill_level = -1,
-        pf_origin_level,
+        pf_origin_level = -1,
         producer = -1,
         delta = 0,
         depth = 0,

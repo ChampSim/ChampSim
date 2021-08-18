@@ -39,6 +39,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint8_t cache_type;
     const bool prefetch_as_load;
     const bool virtual_prefetch;
+    const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -118,6 +119,8 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt);
     bool readlike_miss(PACKET &handle_pkt);
     bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
+
+    bool should_activate_prefetcher(int type);
 
     void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),

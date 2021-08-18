@@ -182,7 +182,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     handle_pkt.data = hit_block.data;
 
     // update prefetcher on load instruction
-    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level)
     {
         if(cache_type == IS_L1I)
             l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 1, hit_block.prefetch);
@@ -277,7 +277,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
     }
 
     // update prefetcher on load instructions and prefetches from upper levels
-    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level)
     {
         if(cache_type == IS_L1I)
             l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 0, 0);
@@ -763,5 +763,10 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 void CACHE::increment_WQ_FULL(uint64_t address)
 {
     WQ_FULL++;
+}
+
+bool CACHE::should_activate_prefetcher(int type)
+{
+    return (1 << static_cast<int>(type)) & pref_activate_mask;
 }
 
