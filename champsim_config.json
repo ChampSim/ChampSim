@@ -50,6 +50,7 @@
         "max_write": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": true,
+        "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "no_l1i"
     },
 
@@ -65,6 +66,7 @@
         "max_write": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
+        "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "no_l1d"
     },
 
@@ -80,6 +82,7 @@
         "max_write": 1,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
+        "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "no_l2c"
     },
 
@@ -149,6 +152,7 @@
         "max_write": 1,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
+        "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "no_llc",
         "replacement": "lru_llc"
     },
