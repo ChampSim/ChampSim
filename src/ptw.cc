@@ -93,7 +93,7 @@ void PageTableWalker::handle_fill()
         if (fill_mshr->translation_level == 0) //If translation complete
         {
             //Return the translated physical address to STLB. Does not contain last 12 bits
-            fill_mshr->data      = vmem.va_to_pa(cpu, fill_mshr->full_v_addr) >> LOG2_PAGE_SIZE;
+            fill_mshr->data      = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
             fill_mshr->full_addr = fill_mshr->full_v_addr;
             fill_mshr->address   = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
 
