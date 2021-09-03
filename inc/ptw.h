@@ -23,7 +23,7 @@ class PagingStructureCache
         PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
 
         std::optional<uint64_t> check_hit(uint64_t address);
-        void fill_cache(uint64_t next_level_base_addr, PACKET *packet);
+        void fill_cache(uint64_t next_level_paddr, uint64_t vaddr);
 };
 
 class PageTableWalker : public MemoryRequestConsumer, public MemoryRequestProducer
