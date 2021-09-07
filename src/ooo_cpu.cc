@@ -522,7 +522,7 @@ int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
   if (!L1I.PQ.full())
     {
       // magically translate prefetches
-      uint64_t pf_pa = splice_bits(vmem.va_to_pa(cpu, pf_v_addr), pf_v_addr, LOG2_PAGE_SIZE);
+      uint64_t pf_pa = splice_bits(vmem.va_to_pa(cpu, pf_v_addr).first, pf_v_addr, LOG2_PAGE_SIZE);
 
       PACKET pf_packet;
       pf_packet.fill_level = FILL_L1;

@@ -13,6 +13,8 @@
 //Virtual Address: 57 bit (9+9+9+9+9+12), rest MSB bits will be used to generate a unique VA per CPU.
 //PTL5->PTL4->PTL3->PTL2->PTL1->PFN
 
+constexpr uint64_t MINOR_FAULT_PENALTY = 200;
+
 class VirtualMemory
 {
     private:
@@ -30,8 +32,8 @@ class VirtualMemory
         VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed);
         uint64_t shamt(uint32_t level) const;
         uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
-        uint64_t va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-        uint64_t get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
+        std::pair<uint64_t, bool> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
+        std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
 };
 
 #endif

@@ -14,7 +14,7 @@ PageTableWalker::PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t 
     PSCL4{"PSCL4", 3, v4, v5}, //Translation from L5->L3
     PSCL3{"PSCL3", 2, v6, v7}, //Translation from L5->L2
     PSCL2{"PSCL2", 1, v8, v9}, //Translation from L5->L1
-    CR3_addr(vmem.get_pte_pa(cpu, 0, vmem.pt_levels))
+    CR3_addr(vmem.get_pte_pa(cpu, 0, vmem.pt_levels).first)
 {
 }
 
@@ -93,46 +93,64 @@ void PageTableWalker::handle_fill()
         if (fill_mshr->translation_level == 0) //If translation complete
         {
             //Return the translated physical address to STLB. Does not contain last 12 bits
-            fill_mshr->data      = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
-            fill_mshr->full_addr = fill_mshr->full_v_addr;
-            fill_mshr->address   = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
+            auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
+            if (warmup_complete[cpu] && fault)
+            {
+                fill_mshr->event_cycle = current_core_cycle[cpu] + MINOR_FAULT_PENALTY;
+                MSHR.sort(ord_event_cycle<PACKET>{});
+            }
+            else
+            {
+                fill_mshr->data      = addr;
+                fill_mshr->full_addr = fill_mshr->full_v_addr;
+                fill_mshr->address   = fill_mshr->full_addr >> LOG2_PAGE_SIZE;
 
-            for (auto ret: fill_mshr->to_return)
-                ret->return_data(&(*fill_mshr));
+                for (auto ret: fill_mshr->to_return)
+                    ret->return_data(&(*fill_mshr));
 
-            if(warmup_complete[cpu])
-                total_miss_latency += current_core_cycle[cpu] - fill_mshr->cycle_enqueued;
+                if(warmup_complete[cpu])
+                    total_miss_latency += current_core_cycle[cpu] - fill_mshr->cycle_enqueued;
 
-            MSHR.erase(fill_mshr);
+                MSHR.erase(fill_mshr);
+            }
         }
         else
         {
-            fill_mshr->full_addr = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
-            if (fill_mshr->translation_level == PSCL5.level)
-                PSCL5.fill_cache(fill_mshr->full_addr, fill_mshr->full_v_addr);
-            if (fill_mshr->translation_level == PSCL4.level)
-                PSCL4.fill_cache(fill_mshr->full_addr, fill_mshr->full_v_addr);
-            if (fill_mshr->translation_level == PSCL2.level)
-                PSCL3.fill_cache(fill_mshr->full_addr, fill_mshr->full_v_addr);
-            if (fill_mshr->translation_level == PSCL2.level)
-                PSCL2.fill_cache(fill_mshr->full_addr, fill_mshr->full_v_addr);
-
-            PACKET packet = *fill_mshr;
-            packet.cpu = cpu;
-            packet.type = TRANSLATION;
-            packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
-            packet.to_return = {this};
-            packet.translation_level = fill_mshr->translation_level - 1;
-
-            int rq_index = lower_level->add_rq(&packet);
-            if (rq_index != -2)
+            auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
+            if (warmup_complete[cpu] && fault)
             {
-                fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
-                fill_mshr->address = packet.address;
-                fill_mshr->full_addr = packet.full_addr;
-                fill_mshr->translation_level--;
+                fill_mshr->event_cycle = current_core_cycle[cpu] + MINOR_FAULT_PENALTY;
+                MSHR.sort(ord_event_cycle<PACKET>{});
+            }
+            else
+            {
+                if (fill_mshr->translation_level == PSCL5.level)
+                    PSCL5.fill_cache(addr, fill_mshr->full_v_addr);
+                if (fill_mshr->translation_level == PSCL4.level)
+                    PSCL4.fill_cache(addr, fill_mshr->full_v_addr);
+                if (fill_mshr->translation_level == PSCL2.level)
+                    PSCL3.fill_cache(addr, fill_mshr->full_v_addr);
+                if (fill_mshr->translation_level == PSCL2.level)
+                    PSCL2.fill_cache(addr, fill_mshr->full_v_addr);
 
-                MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
+                PACKET packet = *fill_mshr;
+                packet.cpu = cpu;
+                packet.type = TRANSLATION;
+                packet.full_addr = addr;
+                packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
+                packet.to_return = {this};
+                packet.translation_level = fill_mshr->translation_level - 1;
+
+                int rq_index = lower_level->add_rq(&packet);
+                if (rq_index != -2)
+                {
+                    fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
+                    fill_mshr->address = packet.address;
+                    fill_mshr->full_addr = packet.full_addr;
+                    fill_mshr->translation_level--;
+
+                    MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
+                }
             }
         }
 
