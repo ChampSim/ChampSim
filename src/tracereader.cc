@@ -1,9 +1,11 @@
 #include "tracereader.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <functional>
 #include <fstream>
 
 tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
@@ -67,7 +69,23 @@ ooo_model_instr tracereader::read_single_instr()
     }
 
     // copy the instruction into the performance model's instruction format
-    ooo_model_instr retval(cpu, trace_read_instr);
+    return ooo_model_instr{cpu, trace_read_instr};
+}
+
+template <typename T>
+ooo_model_instr tracereader::impl_get()
+{
+    if (instr_buffer.occupancy() <= 1)
+    {
+        std::generate_n(std::back_inserter(instr_buffer), std::size(instr_buffer)-instr_buffer.occupancy(), std::bind(&tracereader::read_single_instr<T>, this));
+
+        // set branch targets
+        for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
+            std::prev(it)->branch_target = it->ip;
+    }
+
+    auto retval = instr_buffer.front();
+    instr_buffer.pop_front();
     return retval;
 }
 
@@ -92,53 +110,23 @@ void tracereader::close()
 
 class cloudsuite_tracereader : public tracereader
 {
-    ooo_model_instr last_instr;
-    bool initialized = false;
-
     public:
-    cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+        using tracereader::tracereader;
 
     ooo_model_instr get()
     {
-        ooo_model_instr trace_read_instr = read_single_instr<cloudsuite_instr>();
-
-        if (!initialized)
-        {
-            last_instr = trace_read_instr;
-            initialized = true;
-        }
-
-        last_instr.branch_target = trace_read_instr.ip;
-        ooo_model_instr retval = last_instr;
-
-        last_instr = trace_read_instr;
-        return retval;
+        return impl_get<cloudsuite_instr>();
     }
 };
 
 class input_tracereader : public tracereader
 {
-    ooo_model_instr last_instr;
-    bool initialized = false;
-
     public:
-    input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+        using tracereader::tracereader;
 
     ooo_model_instr get()
     {
-        ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
-
-        if (!initialized)
-        {
-            last_instr = trace_read_instr;
-            initialized = true;
-        }
-
-        last_instr.branch_target = trace_read_instr.ip;
-        ooo_model_instr retval = last_instr;
-
-        last_instr = trace_read_instr;
-        return retval;
+        return impl_get<input_instr>();
     }
 };
 
