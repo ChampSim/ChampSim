@@ -8,7 +8,22 @@
 #include <functional>
 #include <fstream>
 
-tracereader::tracereader(uint8_t cpu, std::string _ts) : fp(popen(popen_cmd(_ts).c_str(), "r")), cpu(cpu), trace_string(_ts)
+std::istream& operator>>(std::istream& istrm, input_instr &instr)
+{
+    return istrm.read(reinterpret_cast<char*>(&instr), sizeof(input_instr));
+}
+
+std::istream& operator>>(std::istream& istrm, cloudsuite_instr &instr)
+{
+    return istrm.read(reinterpret_cast<char*>(&instr), sizeof(cloudsuite_instr));
+}
+
+tracereader::tracereader(uint8_t cpu, std::string _ts) :
+    fp(popen(popen_cmd(_ts).c_str(), "r")),
+#ifdef __GNUG__
+    filebuf(fp, std::ios::in),
+#endif
+    cpu(cpu), trace_string(_ts)
 {
     if (!test_file(trace_string))
     {
@@ -16,7 +31,6 @@ tracereader::tracereader(uint8_t cpu, std::string _ts) : fp(popen(popen_cmd(_ts)
         assert(0);
     }
 }
-
 
 tracereader::~tracereader()
 {
@@ -75,8 +89,15 @@ void tracereader::open(std::string trace_string)
         assert(0);
     }
 
+    bool fail = false;
     fp = popen(popen_cmd(trace_string).c_str(), "r");
-    if (fp == NULL) {
+    fail = (fp == NULL);
+#ifdef __GNUG__
+    filebuf = __gnu_cxx::stdio_filebuf<char>{fp, std::ios::in};
+#endif
+
+    if (fail)
+    {
         std::cerr << std::endl << "*** CANNOT OPEN TRACE FILE: " << trace_string << " ***" << std::endl;
         assert(0);
     }
@@ -94,7 +115,12 @@ ooo_model_instr tracereader::read_single_instr()
     T trace_read_instr;
     bool need_reopen = false;
 
+#ifdef __GNUG__
+    trace_file >> trace_read_instr;
+    need_reopen = trace_file.fail();
+#else
     need_reopen = !fread(&trace_read_instr, sizeof(T), 1, fp);
+#endif
 
     if (need_reopen)
     {
@@ -105,8 +131,12 @@ ooo_model_instr tracereader::read_single_instr()
         close();
         open(trace_string);
 
+#ifdef __GNUG__
+        trace_file >> trace_read_instr;
+#else
         auto read = fread(&trace_read_instr, sizeof(T), 1, fp);
         assert(read > 0);
+#endif
     }
 
     // copy the instruction into the performance model's instruction format

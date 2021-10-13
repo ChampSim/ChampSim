@@ -3,6 +3,11 @@
 #include <cstdio>
 #include <string>
 
+#ifdef __GNUG__
+#include <ext/stdio_filebuf.h>
+#include <iostream>
+#endif
+
 #include "circular_buffer.hpp"
 
 class tracereader
@@ -12,6 +17,10 @@ class tracereader
         std::string popen_cmd(std::string fname) const;
 
         FILE *fp = NULL;
+#ifdef __GNUG__
+        __gnu_cxx::stdio_filebuf<char> filebuf;
+        std::istream trace_file{&filebuf};
+#endif
 
         uint8_t cpu;
         std::string trace_string;
