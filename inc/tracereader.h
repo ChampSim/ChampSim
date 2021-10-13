@@ -7,20 +7,23 @@
 
 class tracereader
 {
-    protected:
-        FILE *trace_file = NULL;
+    private:
+        bool test_file(std::string fname) const;
+        std::string popen_cmd(std::string fname) const;
+
+        FILE *fp = NULL;
+
         uint8_t cpu;
-        std::string cmd_fmtstr;
-        std::string decomp_program;
         std::string trace_string;
 
         champsim::circular_buffer<ooo_model_instr> instr_buffer{32};
 
-        template <typename T>
-        ooo_model_instr impl_get();
-
         template<typename T>
         ooo_model_instr read_single_instr();
+
+    protected:
+        template <typename T>
+        ooo_model_instr impl_get();
 
     public:
         tracereader(const tracereader &other) = delete;
