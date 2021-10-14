@@ -14,7 +14,7 @@ class tracereader
 {
     private:
         bool test_file(std::string fname) const;
-        std::string popen_cmd(std::string fname) const;
+        FILE* get_fptr(std::string fname) const;
 
         FILE *fp = NULL;
 #ifdef __GNUG__

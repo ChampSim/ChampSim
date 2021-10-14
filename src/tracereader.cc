@@ -19,7 +19,7 @@ std::istream& operator>>(std::istream& istrm, cloudsuite_instr &instr)
 }
 
 tracereader::tracereader(uint8_t cpu, std::string _ts) :
-    fp(popen(popen_cmd(_ts).c_str(), "r")),
+    fp(get_fptr(_ts)),
 #ifdef __GNUG__
     filebuf(fp, std::ios::in),
 #endif
@@ -57,28 +57,25 @@ bool tracereader::test_file(std::string fname) const
     return false;
 }
 
-std::string tracereader::popen_cmd(std::string fname) const
+FILE* tracereader::get_fptr(std::string fname) const
 {
-    std::string cmd_fmtstr;
+    std::string cmd_fmtstr = "%1$s %2$s";
     if (fname.substr(0,4) == "http")
-        cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s -dc";
-    else
-        cmd_fmtstr = "%1$s -dc %2$s";
+        cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s";
 
-    std::string decomp_program;
-    std::string last_dot = fname.substr(fname.find_last_of("."));
-    if (last_dot[1] == 'g') // gzip format
-        decomp_program = "gzip";
-    else if (last_dot[1] == 'x') // xz
-        decomp_program = "xz";
-    else {
-        std::cout << "ChampSim does not support traces other than gz or xz compression!" << std::endl;
-        assert(0);
+    std::string decomp_program = "cat";
+    if (fname.back() == 'z')
+    {
+        std::string last_dot = fname.substr(fname.find_last_of("."));
+        if (last_dot[1] == 'g') // gzip format
+            decomp_program = "gzip -dc";
+        else if (last_dot[1] == 'x') // xz
+            decomp_program = "xz -dc";
     }
 
     char gunzip_command[4096];
     sprintf(gunzip_command, cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
-    return gunzip_command;
+    return popen(gunzip_command, "r");
 }
 
 void tracereader::open(std::string trace_string)
@@ -90,7 +87,7 @@ void tracereader::open(std::string trace_string)
     }
 
     bool fail = false;
-    fp = popen(popen_cmd(trace_string).c_str(), "r");
+    fp = get_fptr(trace_string);
     fail = (fp == NULL);
 #ifdef __GNUG__
     filebuf = __gnu_cxx::stdio_filebuf<char>{fp, std::ios::in};
