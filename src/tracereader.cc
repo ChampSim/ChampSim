@@ -100,18 +100,18 @@ void tracereader::close()
 template<typename T>
 void tracereader::refresh_buffer()
 {
-    T trace_read_buf[buffer_size - refresh_thresh];
-    char raw_buf[std::size(trace_read_buf) * sizeof(T)];
+    std::array<T, buffer_size - refresh_thresh> trace_read_buf;
+    std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
     bool need_reopen = false;
-    std::size_t bytes_left;
+    std::size_t bytes_left = std::size(raw_buf);
 
     // Attempt to fill the buffer from an open trace
 #ifdef __GNUG__
-    trace_file.read(raw_buf, std::size(raw_buf));
-    bytes_left = std::size(raw_buf) - trace_file.gcount();
+    trace_file.read(std::data(raw_buf), std::size(raw_buf));
+    bytes_left -= trace_file.gcount();
     need_reopen = trace_file.eof();
 #else
-    bytes_left = std::size(raw_buf) - fread(trace_read_instr, sizeof(char), std::size(raw_buf), fp);
+    bytes_left -= fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
     need_reopen = (bytes_left > 0);
 #endif
 
@@ -125,18 +125,19 @@ void tracereader::refresh_buffer()
         open(trace_string);
 
         // Attempt to fill the buffer from the reopened trace
-        auto startpos = std::prev(std::end(raw_buf), bytes_left);
+        auto startpos = std::next(std::data(raw_buf), std::size(raw_buf) - bytes_left);
 #ifdef __GNUG__
         trace_file.read(startpos, bytes_left);
-        assert(trace_file);
+        bytes_left -= trace_file.gcount();
 #else
-        auto read = fread(startpos, sizeof(char), bytes_left, fp);
-        assert(read == bytes_left);
+        bytes_left -= fread(startpos, sizeof(char), bytes_left, fp);
 #endif
     }
 
+    assert(bytes_left == 0);
+
     // Transform bytes into trace format instructions
-    std::memcpy(trace_read_buf, raw_buf, std::size(raw_buf));
+    std::memcpy(std::data(trace_read_buf), std::data(raw_buf), std::size(raw_buf));
 
     // Inflate trace format into core model instructions
     auto cpu = this->cpu;
@@ -150,7 +151,7 @@ void tracereader::refresh_buffer()
 template <typename T>
 ooo_model_instr tracereader::impl_get()
 {
-    if (instr_buffer.occupancy() <= refresh_thresh)
+    if (std::size(instr_buffer) <= refresh_thresh)
         refresh_buffer<T>();
 
     auto retval = instr_buffer.front();

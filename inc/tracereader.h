@@ -1,14 +1,13 @@
 #include "instruction.h"
 
 #include <cstdio>
+#include <deque>
 #include <string>
 
 #ifdef __GNUG__
 #include <ext/stdio_filebuf.h>
 #include <iostream>
 #endif
-
-#include "circular_buffer.hpp"
 
 class tracereader
 {
@@ -27,7 +26,7 @@ class tracereader
 
         constexpr static std::size_t buffer_size = 128;
         constexpr static std::size_t refresh_thresh = 1;
-        champsim::circular_buffer<ooo_model_instr> instr_buffer{buffer_size};
+        std::deque<ooo_model_instr> instr_buffer;
 
         template<typename T>
         void refresh_buffer();
