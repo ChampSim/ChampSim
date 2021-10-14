@@ -25,10 +25,12 @@ class tracereader
         uint8_t cpu;
         std::string trace_string;
 
-        champsim::circular_buffer<ooo_model_instr> instr_buffer{32};
+        constexpr static std::size_t buffer_size = 128;
+        constexpr static std::size_t refresh_thresh = 1;
+        champsim::circular_buffer<ooo_model_instr> instr_buffer{buffer_size};
 
         template<typename T>
-        ooo_model_instr read_single_instr();
+        void refresh_buffer();
 
     protected:
         template <typename T>

@@ -3,20 +3,11 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <functional>
 #include <fstream>
-
-std::istream& operator>>(std::istream& istrm, input_instr &instr)
-{
-    return istrm.read(reinterpret_cast<char*>(&instr), sizeof(input_instr));
-}
-
-std::istream& operator>>(std::istream& istrm, cloudsuite_instr &instr)
-{
-    return istrm.read(reinterpret_cast<char*>(&instr), sizeof(cloudsuite_instr));
-}
 
 tracereader::tracereader(uint8_t cpu, std::string _ts) :
     fp(get_fptr(_ts)),
@@ -107,48 +98,60 @@ void tracereader::close()
 }
 
 template<typename T>
-ooo_model_instr tracereader::read_single_instr()
+void tracereader::refresh_buffer()
 {
-    T trace_read_instr;
+    T trace_read_buf[buffer_size - refresh_thresh];
+    char raw_buf[std::size(trace_read_buf) * sizeof(T)];
     bool need_reopen = false;
+    std::size_t bytes_left;
 
+    // Attempt to fill the buffer from an open trace
 #ifdef __GNUG__
-    trace_file >> trace_read_instr;
-    need_reopen = trace_file.fail();
+    trace_file.read(raw_buf, std::size(raw_buf));
+    bytes_left = std::size(raw_buf) - trace_file.gcount();
+    need_reopen = trace_file.eof();
 #else
-    need_reopen = !fread(&trace_read_instr, sizeof(T), 1, fp);
+    bytes_left = std::size(raw_buf) - fread(trace_read_instr, sizeof(char), std::size(raw_buf), fp);
+    need_reopen = (bytes_left > 0);
 #endif
 
+    // If there was an error, assume it is due to EOF
     if (need_reopen)
     {
-        // reached end of file for this trace
         std::cout << "*** Reached end of trace: " << trace_string << std::endl;
 
-        // close the trace file and re-open it
+        // Close the trace file and re-open it
         close();
         open(trace_string);
 
+        // Attempt to fill the buffer from the reopened trace
+        auto startpos = std::prev(std::end(raw_buf), bytes_left);
 #ifdef __GNUG__
-        trace_file >> trace_read_instr;
+        trace_file.read(startpos, bytes_left);
+        assert(trace_file);
 #else
-        auto read = fread(&trace_read_instr, sizeof(T), 1, fp);
-        assert(read > 0);
+        auto read = fread(startpos, sizeof(char), bytes_left, fp);
+        assert(read == bytes_left);
 #endif
     }
 
-    // copy the instruction into the performance model's instruction format
-    return ooo_model_instr{cpu, trace_read_instr};
+    // Transform bytes into trace format instructions
+    std::memcpy(trace_read_buf, raw_buf, std::size(raw_buf));
+
+    // Inflate trace format into core model instructions
+    auto cpu = this->cpu;
+    std::transform(std::begin(trace_read_buf), std::end(trace_read_buf), std::back_inserter(instr_buffer), [cpu](T t){ return ooo_model_instr{cpu, t}; });
+
+    // Set branch targets
+    for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
+        std::prev(it)->branch_target = it->ip;
 }
 
 template <typename T>
 ooo_model_instr tracereader::impl_get()
 {
-    if (instr_buffer.occupancy() <= 1)
-    {
-        std::generate_n(std::back_inserter(instr_buffer), std::size(instr_buffer)-instr_buffer.occupancy(), std::bind(&tracereader::read_single_instr<T>, this));
-        for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
-            std::prev(it)->branch_target = it->ip; // set branch targets
-    }
+    if (instr_buffer.occupancy() <= refresh_thresh)
+        refresh_buffer<T>();
 
     auto retval = instr_buffer.front();
     instr_buffer.pop_front();
