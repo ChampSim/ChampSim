@@ -14,6 +14,17 @@
 #define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
 #define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
 
+namespace detail
+{
+    // https://stackoverflow.com/a/31962570
+    constexpr int32_t ceil(float num)
+    {
+        return (static_cast<float>(static_cast<int32_t>(num)) == num)
+            ? static_cast<int32_t>(num)
+            : static_cast<int32_t>(num) + ((num > 0) ? 1 : 0);
+    }
+}
+
 struct BANK_REQUEST {
     bool valid = false,
          row_buffer_hit = false;
@@ -47,11 +58,11 @@ class MEMORY_CONTROLLER : public MemoryRequestConsumer {
     const static int fill_level = FILL_DRAM;
 
     // DRAM_IO_FREQ defined in champsim_constants.h
-    const static uint64_t tRP                        = std::ceil(1.0 * tRP_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t tRCD                       = std::ceil(1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t tCAS                       = std::ceil(1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_RETURN_TIME      = std::ceil(1.0 * BLOCK_SIZE * CPU_FREQ / DRAM_CHANNEL_WIDTH / DRAM_IO_FREQ);
+    const static uint64_t tRP                        = detail::ceil(1.0 * tRP_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t tRCD                       = detail::ceil(1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t tCAS                       = detail::ceil(1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = detail::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * CPU_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_RETURN_TIME      = detail::ceil(1.0 * BLOCK_SIZE * CPU_FREQ / DRAM_CHANNEL_WIDTH / DRAM_IO_FREQ);
 
     uint64_t current_cycle = 0;
 
