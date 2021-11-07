@@ -701,6 +701,7 @@ int main(int argc, char** argv)
         ooo_cpu[i].ROB.cpu = i;
 
         // BRANCH PREDICTOR
+        ooo_cpu[i].initialize_core();
         ooo_cpu[i].initialize_branch_predictor();
 
         // TLBs

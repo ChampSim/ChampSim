@@ -1,14 +1,16 @@
 #include "ooo_cpu.h"
+#include "btb.h"
 #include "set.h"
 
 // out-of-order core
 O3_CPU ooo_cpu[NUM_CPUS]; 
 uint64_t current_core_cycle[NUM_CPUS], stall_cycle[NUM_CPUS];
 uint32_t SCHEDULING_LATENCY = 0, EXEC_LATENCY = 0, DECODE_LATENCY = 0;
+uint32_t FTQ_SIZE = 24;
 
 void O3_CPU::initialize_core()
 {
-
+    target_pred.initialize();
 }
 
 void O3_CPU::read_from_trace()
@@ -17,9 +19,44 @@ void O3_CPU::read_from_trace()
     // we read instruction traces and virtually add them in the ROB
     // note that these traces are not yet translated and fetched 
 
-    uint8_t continue_reading = 1;
+    // wait post-decode prediction
+    if(fetch_stall_post_decode) {
+        if(IFETCH_BUFFER.occupancy == 0) {
+            fetch_stall_post_decode = false;
+        }
+    }
+
+    if(ENABLE_PERFECT_BTB) assert(!fetch_stall_post_decode);
+
+    uint64_t last_ip = 0;
+    uint32_t fq_count = 0;
+    uint32_t index = IFETCH_BUFFER.head;
+    for(uint32_t i=0; i<IFETCH_BUFFER.occupancy; i++)
+    {
+        if(IFETCH_BUFFER.entry[index].ip == 0) break;
+        if((last_ip >> FQ_OFFSET) != (IFETCH_BUFFER.entry[index].ip >> FQ_OFFSET)) // belong to different cache line
+        {
+            fq_count++;
+        }
+        last_ip = IFETCH_BUFFER.entry[index].ip;
+        if(IFETCH_BUFFER.entry[index].is_branch)
+        {
+            if(IFETCH_BUFFER.entry[index].branch_taken)
+            {
+                last_ip = 0;
+            }
+        }
+        index++;
+        if(index >= IFETCH_BUFFER.SIZE)
+        {
+            index = 0;
+        }
+    }
+
+    uint32_t remaining_fq = FTQ_SIZE - fq_count;
+    uint8_t continue_reading = (current_core_cycle[cpu] >= fetch_stall_cycle) && (remaining_fq > 0) && !fetch_stall_post_decode;
     uint32_t num_reads = 0;
-    instrs_to_read_this_cycle = FETCH_WIDTH;
+    instrs_to_read_this_cycle = FETCH_TXN_COUNT * FETCH_WIDTH;
 
     // first, read PIN trace
     while (continue_reading) {
@@ -131,7 +168,11 @@ void O3_CPU::read_from_trace()
 			  }
 		      }
 		    
-		    last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken);
+                   last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken,
+                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target,
+                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type);
+                   assert(false); // cloudsuite is out-of-scope
 		  }
 		  
 		  if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
@@ -326,6 +367,7 @@ void O3_CPU::read_from_trace()
 		    arch_instr.is_branch = 1;
                     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
                     arch_instr.branch_type = BRANCH_OTHER;
+                    assert(false); // sanity check
 		  }
 
 		total_branch_types[arch_instr.branch_type]++;
@@ -339,7 +381,14 @@ void O3_CPU::read_from_trace()
                 if (IFETCH_BUFFER.occupancy < IFETCH_BUFFER.SIZE) {
 		  uint32_t ifetch_buffer_index = add_to_ifetch_buffer(&arch_instr);
 		  num_reads++;
-
+                  if((IFETCH_BUFFER.entry[ifetch_buffer_index].ip & ((1<<FQ_OFFSET)-4)) == ((1<<FQ_OFFSET)-4))
+                  {
+                      remaining_fq--;
+                  }
+                  if(remaining_fq == 0)
+                  {
+                      instrs_to_read_this_cycle = 0;
+                  }
                     // handle branch prediction
                     if (IFETCH_BUFFER.entry[ifetch_buffer_index].is_branch) {
 
@@ -348,19 +397,64 @@ void O3_CPU::read_from_trace()
 
                         num_branch++;
 
-			// handle branch prediction & branch predictor update
-			uint8_t branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
-			uint64_t predicted_branch_target = IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target;
-			if(branch_prediction == 0)
-			  {
-			    predicted_branch_target = 0;
-			  }
+			uint8_t branch_prediction = true;
+                        bool cond_branch = false;
+                        switch(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type)
+                        {
+                        case BRANCH_CONDITIONAL:
+                        case BRANCH_OTHER:
+                            cond_branch = true;
+                            branch_prediction = predict_branch(IFETCH_BUFFER.entry[ifetch_buffer_index].ip);
+                            break;
+                        default:
+                            break;
+                        }
+
+			uint64_t predicted_branch_target = 0;
+                        uint8_t branch_source = target_pred.predict_target(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                                                           IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
+                                                                           predicted_branch_target);
+
+			if(branch_prediction == 1)
+                          {
+                            if(branch_source == 0) // BTB miss
+                            {
+                                if(!PFC_ENABLE)
+                                {
+                                    if(cond_branch) branch_prediction = 0; // force to not-taken
+                                }
+                            }
+                            if(predicted_branch_target != IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target)
+                            {
+                                if( (IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type != BRANCH_INDIRECT) &&
+                                    (IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type != BRANCH_INDIRECT_CALL) )
+                                {
+                                    branch_source = 0; // fixup target at post decode prediction
+                                    if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type == BRANCH_RETURN)
+                                    {
+                                        predicted_branch_target = target_pred.predict_ras(predicted_branch_target);
+                                    }
+                                    else
+                                    {
+                                        predicted_branch_target = IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target ;
+                                    }
+                                }
+                            }
+                          }
+
 			// call code prefetcher every time the branch predictor is used
 			l1i_prefetcher_branch_operate(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
 						      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
 						      predicted_branch_target);
 			
-			if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction)
+                        // branch misprediction
+                        bool is_branch_mispredict = IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken != branch_prediction;
+                        if(!is_branch_mispredict && IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken)
+                        {
+                            is_branch_mispredict = predicted_branch_target != IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target;
+                        }
+
+			if(is_branch_mispredict)
 			  {
 			    branch_mispredictions++;
 			    total_rob_occupancy_at_branch_mispredict += ROB.occupancy;
@@ -371,17 +465,65 @@ void O3_CPU::read_from_trace()
 				IFETCH_BUFFER.entry[ifetch_buffer_index].branch_mispredicted = 1;
 			      }
 			  }
-			else
-			  {
-			    // correct prediction
-			    if(branch_prediction == 1)
-			      {
-				// if correctly predicted taken, then we can't fetch anymore instructions this cycle
-				instrs_to_read_this_cycle = 0;
-			      }
-			  }
-			
-			last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip, IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken);
+			else if(branch_prediction == 1) // correct preidiction taken
+                        {
+                             switch(branch_source)
+                             {
+                             case 0: // BTB miss
+                                  if(!ENABLE_PERFECT_BTB) fetch_stall_post_decode = 1;
+                                  fetch_stall_cycle = current_core_cycle[cpu] + BTB_LATENCY;
+                                  break;
+                             case 1: // micro predictor hit
+                                  fetch_stall_cycle = current_core_cycle[cpu] + 1;
+                                  break;
+                             case 2: // micro predictor miss
+                                  fetch_stall_cycle = current_core_cycle[cpu] + BTB_LATENCY;
+                                  break;
+                             }
+                             // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+                             instrs_to_read_this_cycle = 0;
+                        }
+                        else if(ENABLE_REPAIR_PIPE)
+                        {
+                             // BTB missed certain branch, pipeline can repair its history register
+                             // after corresponding instruction is decoded.
+                             // in that case, front-end needs to be stalled till the instruction is actually got decoded.
+                             // Condition : correct prediction NT && satisfy NT repair condition
+                             if(branch_source == 0)
+                             {
+                                  if(!ENABLE_PERFECT_BTB) fetch_stall_post_decode = 1;
+                             }
+                        }
+
+                        // branch predictor update
+                        bool bp_update = is_branch_mispredict ||
+                             (branch_source != 0) ||
+                             IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken ||
+                             ENABLE_REPAIR_PIPE ||
+                             !ENABLE_REALISTIC_BP ;
+                        last_branch_result(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                           IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken,
+                                           IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken ?
+                                           IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target :
+                                           (bp_update ? 1 : 0), // if target=0, branch predictor ignores history update
+                                           IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type);
+
+                        // BTB / indirect predictor update
+                        if(IFETCH_BUFFER.entry[ifetch_buffer_index].branch_taken)
+                        {
+                            target_pred.update_target(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
+                                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target);
+                            target_pred.update_history(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                                       IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
+                                                       IFETCH_BUFFER.entry[ifetch_buffer_index].branch_target);
+                        }
+                        else if(ALWAYS_BTB_UPDATE)
+                        {
+                            target_pred.update_target(IFETCH_BUFFER.entry[ifetch_buffer_index].ip,
+                                                      IFETCH_BUFFER.entry[ifetch_buffer_index].branch_type,
+                                                      0); // for not-taken case, target is 0
+                        }
                     }
 
                     if ((num_reads >= instrs_to_read_this_cycle) || (IFETCH_BUFFER.occupancy == IFETCH_BUFFER.SIZE))
@@ -553,7 +695,7 @@ void O3_CPU::fetch_instruction()
 {
   // TODO: can we model wrong path execusion?
   // probalby not
-  
+
   // if we had a branch mispredict, turn fetching back on after the branch mispredict penalty
   if((fetch_stall == 1) && (current_core_cycle[cpu] >= fetch_resume_cycle) && (fetch_resume_cycle != 0))
     {
@@ -672,7 +814,7 @@ void O3_CPU::fetch_instruction()
 	  index = 0;
 	}
       
-      if(index == IFETCH_BUFFER.head)
+      if(index == IFETCH_BUFFER.tail) // YI: Bug fix for original code
 	{
 	  break;
 	}
@@ -715,6 +857,7 @@ void O3_CPU::fetch_instruction()
 	    }
 	}
 
+      // YI: following statement is not required
       index++;
       if(index >= IFETCH_BUFFER.SIZE)
         {
@@ -1864,7 +2007,7 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
 	      {
 		IFETCH_BUFFER.entry[j].translated = COMPLETED;
 		// we did not fetch this instruction's cache line, but we did translated it
-		IFETCH_BUFFER.entry[j].fetched = 0;
+		// IFETCH_BUFFER.entry[j].fetched = 0; // YI: this is probably bug
 		// recalculate a physical address for this cache line based on the translated physical page address
 		uint64_t instr_pa = (queue->entry[index].instruction_pa << LOG2_PAGE_SIZE) | ((IFETCH_BUFFER.entry[j].ip) & ((1 << LOG2_PAGE_SIZE) - 1));
 		IFETCH_BUFFER.entry[j].instruction_pa = instr_pa;
@@ -1876,14 +2019,17 @@ void O3_CPU::complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
       }
     else
       {
+        uint32_t k = IFETCH_BUFFER.head;
 	// this is the L1I cache, so instructions are now fully fetched, so mark them as such
-	for(uint32_t j=0; j<IFETCH_BUFFER.SIZE; j++)
+	for(uint32_t j=0; j<IFETCH_BUFFER.occupancy; j++)
 	  {
-	    if(((IFETCH_BUFFER.entry[j].ip)>>6) == ((complete_ip)>>6))
+	    if(((IFETCH_BUFFER.entry[k].ip)>>6) == ((complete_ip)>>6))
 	      {
-		IFETCH_BUFFER.entry[j].translated = COMPLETED;
-		IFETCH_BUFFER.entry[j].fetched = COMPLETED;
+		IFETCH_BUFFER.entry[k].translated = COMPLETED;
+		IFETCH_BUFFER.entry[k].fetched = COMPLETED;
 	      }
+            k++;
+            if(k >= IFETCH_BUFFER.SIZE) k = 0;
 	  }
 
 	// remove this entry                                                                                                                                                                        

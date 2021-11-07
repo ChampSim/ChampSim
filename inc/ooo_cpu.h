@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include "cache.h"
+#include "btb.h"
 
 #ifdef CRC2_COMPILE
 #define STAT_PRINTING_PERIOD 1000000
@@ -27,7 +28,24 @@ using namespace std;
 
 #define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
-extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY;
+extern uint32_t SCHEDULING_LATENCY, EXEC_LATENCY, DECODE_LATENCY, FTQ_SIZE;
+
+// Parameter
+#define FETCH_BUF_COUNT 63
+#define FETCH_TXN_COUNT 2
+
+// Enable PFC
+#define PFC_ENABLE 1 // Post-fetch correction
+
+// branch predictor capability
+#define ENABLE_REALISTIC_BP 1 // do not allow to update branch history for BTB-miss NT
+#define ENABLE_REPAIR_PIPE  0 // repair branch history
+#define ENABLE_PERFECT_BTB  0 // perfect BTB
+#define ALWAYS_BTB_UPDATE   0 // BTB update for NT branches
+
+// Basic parameter for fetch directed instruction prefetch
+#define BTB_LATENCY 2
+#define FQ_OFFSET 5
 
 // cpu
 class O3_CPU {
@@ -53,10 +71,13 @@ class O3_CPU {
     uint32_t next_ITLB_fetch;
 
     // reorder buffer, load/store queue, register file
-    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH*2};
-    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
+    CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", FETCH_WIDTH * FETCH_BUF_COUNT};
+    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH * 10};
     CORE_BUFFER ROB{"ROB", ROB_SIZE};
     LOAD_STORE_QUEUE LQ{"LQ", LQ_SIZE}, SQ{"SQ", SQ_SIZE};
+
+    // branch target predictor
+    BRANCH_TARGET_PRED target_pred;
 
     // store array, this structure is required to properly handle store instructions
     uint64_t STA[STA_SIZE], STA_head, STA_tail; 
@@ -77,6 +98,8 @@ class O3_CPU {
     int branch_mispredict_stall_fetch; // flag that says that we should stall because a branch prediction was wrong
     int mispredicted_branch_iw_index; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
     uint8_t  fetch_stall;
+    uint8_t  fetch_stall_post_decode;
+    uint64_t fetch_stall_cycle;
     uint64_t fetch_resume_cycle;
     uint64_t num_branch, branch_mispredictions;
     uint64_t total_rob_occupancy_at_branch_mispredict;
@@ -126,6 +149,8 @@ class O3_CPU {
         branch_mispredict_stall_fetch = 0;
         mispredicted_branch_iw_index = 0;
         fetch_stall = 0;
+        fetch_stall_cycle = 0;
+        fetch_stall_post_decode = 0;
 	fetch_resume_cycle = 0;
         num_branch = 0;
         branch_mispredictions = 0;
@@ -212,7 +237,7 @@ class O3_CPU {
     // branch predictor
     uint8_t predict_branch(uint64_t ip);
     void    initialize_branch_predictor(),
-            last_branch_result(uint64_t ip, uint8_t taken);
+            last_branch_result(uint64_t ip, uint8_t taken, uint64_t target, uint8_t branch_type);
 
   // code prefetching
   void l1i_prefetcher_initialize();

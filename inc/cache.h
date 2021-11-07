@@ -48,7 +48,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define L1I_RQ_SIZE 64
 #define L1I_WQ_SIZE 64 
 #define L1I_PQ_SIZE 32
-#define L1I_MSHR_SIZE 8
+#define L1I_MSHR_SIZE 16 // 8 was default value for ChampSim
 #define L1I_LATENCY 4
 
 // L1 DATA CACHE

@@ -1,10 +1,10 @@
 #include "ooo_cpu.h"
 
-#define GLOBAL_HISTORY_LENGTH 14
+#define GLOBAL_HISTORY_LENGTH 15
 #define GLOBAL_HISTORY_MASK (1 << GLOBAL_HISTORY_LENGTH) - 1
 int branch_history_vector[NUM_CPUS];
 
-#define GS_HISTORY_TABLE_SIZE 16384
+#define GS_HISTORY_TABLE_SIZE 32768
 int gs_history_table[NUM_CPUS][GS_HISTORY_TABLE_SIZE];
 int my_last_prediction[NUM_CPUS];
 
@@ -45,7 +45,7 @@ uint8_t O3_CPU::predict_branch(uint64_t ip)
     return prediction;
 }
 
-void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken, uint64_t target, uint8_t type)
 {
     int gs_hash = gs_table_hash(ip, branch_history_vector[cpu]);
 
