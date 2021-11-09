@@ -32,7 +32,7 @@ void PageTableWalker::handle_read()
 	{
         bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
-		if(!RQ.has_ready() || mshr_full || (((CACHE*)lower_level)->RQ.occupancy() == ((CACHE*)lower_level)->RQ.size())) //PTW lower level is L1D
+		if(!RQ.has_ready() || mshr_full || lower_level->get_occupancy(1,RQ.front().address) == lower_level->get_size(1,RQ.front().address)) //PTW lower level is L1D
 			break;
 
 			PACKET &handle_pkt = RQ.front();
@@ -185,7 +185,7 @@ void PageTableWalker::handle_fill()
 			{
 				assert(!page_fault); //If page fault was there, then all levels of translation should have be done.
 
-				if((((CACHE*)lower_level)->RQ.occupancy() < ((CACHE*)lower_level)->RQ.size())) //Lower level of PTW is L1D. If L1D RQ has space then send the next level of translation.
+				if (lower_level->get_occupancy(1,fill_mshr->address) < lower_level->get_occupancy(1,fill_mshr->address)) //Lower level of PTW is L1D. If L1D RQ has space then send the next level of translation.
 				{
 					PACKET packet = *fill_mshr;
 					packet.cpu = cpu; 

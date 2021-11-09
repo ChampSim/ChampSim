@@ -4,6 +4,7 @@
 #include "ooo_cpu.h"
 #include "instruction.h"
 #include "vmem.h"
+#include "cache.h"
 
 #define DEADLOCK_CYCLE 1000000
 

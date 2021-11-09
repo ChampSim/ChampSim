@@ -11,6 +11,7 @@
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
+#include "cache.h"
 #include "operable.h"
 #include "vmem.h"
 #include "tracereader.h"

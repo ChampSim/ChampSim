@@ -5,7 +5,6 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "ooo_cpu.h"
 #include "util.h"
 #include "vmem.h"
 
@@ -15,7 +14,6 @@
 
 extern VirtualMemory vmem;
 extern uint8_t  warmup_complete[NUM_CPUS];
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 void CACHE::handle_fill()
 {
@@ -33,7 +31,7 @@ void CACHE::handle_fill()
         auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
         uint32_t way = std::distance(set_begin, first_inv);
         if (way == NUM_WAY)
-            way = impl_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->address, fill_mshr->type);
+            way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->address, fill_mshr->type);
 
         bool success = filllike_miss(set, way, *fill_mshr);
         if (!success)
@@ -71,7 +69,7 @@ void CACHE::handle_writeback()
 
         if (way < NUM_WAY) // HIT
         {
-            impl_update_replacement_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+            impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
             // COLLECT STATS
             sim_hit[handle_pkt.cpu][handle_pkt.type]++;
@@ -99,7 +97,7 @@ void CACHE::handle_writeback()
                 auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
                 way = std::distance(set_begin, first_inv);
                 if (way == NUM_WAY)
-                    way = impl_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.address, handle_pkt.type);
+                    way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.address, handle_pkt.type);
 
                 success = filllike_miss(set, way, handle_pkt);
             }
@@ -185,11 +183,12 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
         cpu = handle_pkt.cpu;
-        handle_pkt.pf_metadata = impl_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+        uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+        handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
     // update replacement policy
-    impl_update_replacement_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+    impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
     // COLLECT STATS
     sim_hit[handle_pkt.cpu][handle_pkt.type]++;
@@ -269,7 +268,8 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
         cpu = handle_pkt.cpu;
-        handle_pkt.pf_metadata = impl_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+        uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+        handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
     return true;
@@ -335,7 +335,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     handle_pkt.pf_metadata = impl_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
 
     // update replacement policy
-    impl_update_replacement_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+    impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
     // COLLECT STATS
     sim_miss[handle_pkt.cpu][handle_pkt.type]++;
@@ -687,30 +687,5 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
-}
-
-void CACHE::cpu_redir_ipref_initialize()
-{
-    ooo_cpu[cpu]->impl_prefetcher_initialize();
-}
-
-uint32_t CACHE::cpu_redir_ipref_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
-{
-    return ooo_cpu[cpu]->impl_prefetcher_cache_operate(addr, cache_hit, (type == PREFETCH), metadata_in);
-}
-
-uint32_t CACHE::cpu_redir_ipref_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
-{
-    return ooo_cpu[cpu]->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
-}
-
-void CACHE::cpu_redir_ipref_cycle_operate()
-{
-    ooo_cpu[cpu]->impl_prefetcher_cycle_operate();
-}
-
-void CACHE::cpu_redir_ipref_final_stats()
-{
-    ooo_cpu[cpu]->impl_prefetcher_final_stats();
 }
 

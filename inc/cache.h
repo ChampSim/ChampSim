@@ -9,9 +9,12 @@
 #include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
+#include "ooo_cpu.h"
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
+
+extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
@@ -23,8 +26,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     const bool prefetch_as_load;
-    const bool virtual_prefetch;
     const bool match_offset_bits;
+    const bool virtual_prefetch;
     bool ever_seen_data = false;
 
     // prefetch stats
@@ -64,35 +67,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
              WQ_TO_CACHE = 0;
 
     uint64_t total_miss_latency = 0;
-    
-    // constructor
-    CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool va_pref, bool wq_full_addr,
-            MemoryRequestConsumer *ll,
-            std::function<void(CACHE*)> pref_init,
-            std::function<uint32_t(CACHE*, uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> pref_operate,
-            std::function<uint32_t(CACHE*, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> pref_cache_fill,
-            std::function<void(CACHE*)> pref_cycle,
-            std::function<void(CACHE*)> pref_final_stats,
-            std::function<void(CACHE*)> repl_init,
-            std::function<uint32_t(CACHE*, uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t)> repl_find_victim,
-            std::function<void(CACHE*, uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t)> repl_update_replacement_state,
-            std::function<void(CACHE*)> repl_final_stats )
-        : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll),
-        NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
-        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write),
-        prefetch_as_load(pref_load), virtual_prefetch(va_pref), match_offset_bits(wq_full_addr),
-        impl_prefetcher_initialize(std::bind(pref_init, this)),
-        impl_prefetcher_operate(std::bind(pref_operate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)),
-        impl_prefetcher_cache_fill(std::bind(pref_cache_fill, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)),
-        impl_prefetcher_cycle_operate(std::bind(pref_cycle, this)),
-        impl_prefetcher_final_stats(std::bind(pref_final_stats, this)),
-        impl_replacement_initialize(std::bind(repl_init, this)),
-        impl_replacement_final_stats(std::bind(repl_final_stats, this)),
-        impl_update_replacement_state(std::bind(repl_update_replacement_state, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, std::placeholders::_8)),
-        impl_find_victim(std::bind(repl_find_victim, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7))
-    {
-    }
 
     // functions
     int  add_rq(PACKET *packet),
@@ -126,24 +100,24 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool readlike_miss(PACKET &handle_pkt);
     bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
 
-    void cpu_redir_ipref_initialize();
-    uint32_t cpu_redir_ipref_operate(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t);
-    uint32_t cpu_redir_ipref_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);
-    void cpu_redir_ipref_cycle_operate();
-    void cpu_redir_ipref_final_stats();
-
-    const std::function<void()> impl_prefetcher_initialize;
-    const std::function<uint32_t(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t)> impl_prefetcher_operate;
-    const std::function<uint32_t(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t)> impl_prefetcher_cache_fill;
-    const std::function<void()> impl_prefetcher_cycle_operate;
-    const std::function<void()> impl_prefetcher_final_stats;
-
-    const std::function<void()> impl_replacement_initialize;
-    const std::function<void()> impl_replacement_final_stats;
-    const std::function<void(uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t)> impl_update_replacement_state;
-    const std::function<uint32_t(uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t)> impl_find_victim;
-
 #include "cache_modules.inc"
+
+    const repl_t repl_type;
+    const pref_t pref_type;
+
+    // constructor
+    CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits,
+            bool pref_load, bool wq_full_addr, bool va_pref,
+            MemoryRequestConsumer *ll,
+            pref_t pref, repl_t repl)
+        : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll),
+        NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write),
+        prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref),
+        repl_type(repl), pref_type(pref)
+    {
+    }
 };
 
 class min_fill_index

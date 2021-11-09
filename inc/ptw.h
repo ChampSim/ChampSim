@@ -2,6 +2,7 @@
 #define PTW_H
 
 #include <map>
+#include "memory_class.h"
 
 #define IS_PSCL5 11
 #define IS_PSCL4 12
