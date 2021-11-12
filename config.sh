@@ -334,11 +334,9 @@ with open('Makefile', 'wt') as wfp:
     for kv in libfilenames.items():
         wfp.write(module_make_fmtstr.format(*kv))
 
-    wfp.write('-include $(wildcard prefetcher/*/*.d)\n')
-    wfp.write('-include $(wildcard branch/*/*.d)\n')
-    wfp.write('-include $(wildcard btb/*/*.d)\n')
-    wfp.write('-include $(wildcard replacement/*/*.d)\n')
     wfp.write('-include $(wildcard src/*.d)\n')
+    for v in libfilenames.values():
+        wfp.write('-include $(wildcard {0}/*.d)\n'.format(v))
     wfp.write('\n')
 
 # Configuration cache
