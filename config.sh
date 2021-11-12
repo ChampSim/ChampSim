@@ -11,6 +11,11 @@ constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 config_cache_name = '.champsimconfig_cache'
 
+fname_translation_table = str.maketrans('./-','_DH')
+
+def norm_fname(fname):
+    return os.path.relpath(os.path.expandvars(os.path.expanduser(fname)))
+
 ###
 # Begin format strings
 ###
@@ -208,15 +213,19 @@ libfilenames = {}
 for cache in caches.values():
     # Resolve cache replacment function names
     if cache['replacement'] is not None:
-        cache['replacement_name'] = os.path.basename(cache['replacement'])
+        fname = os.path.join('replacement', cache['replacement'])
+        if not os.path.exists(fname):
+            fname = norm_fname(cache['replacement'])
+        if not os.path.exists(fname):
+            print('Path "' + fname + '" does not exist. Exiting...')
+            sys.exit(1)
+
+        cache['replacement_name'] = 'r' + fname.translate(fname_translation_table)
         cache['replacement_initialize'] = 'repl_' + cache['replacement_name'] + '_initialize'
         cache['replacement_find_victim'] = 'repl_' + cache['replacement_name'] + '_victim'
         cache['replacement_update_replacement_state'] = 'repl_' + cache['replacement_name'] + '_update'
         cache['replacement_replacement_final_stats'] = 'repl_' + cache['replacement_name'] + '_final_stats'
 
-        fname = 'replacement/' + cache['replacement']
-        if not os.path.exists(fname):
-            fname = os.path.normpath(os.path.expanduser(cache['replacement']))
         opts = ''
         opts += ' -Dinitialize_replacement=' + cache['replacement_initialize']
         opts += ' -Dfind_victim=' + cache['replacement_find_victim']
@@ -226,16 +235,20 @@ for cache in caches.values():
 
     # Resolve prefetcher function names
     if cache['prefetcher'] is not None:
-        cache['prefetcher_name'] = os.path.basename(cache['prefetcher'])
+        fname = os.path.join('prefetcher', cache['prefetcher'])
+        if not os.path.exists(fname):
+            fname = norm_fname(cache['prefetcher'])
+        if not os.path.exists(fname):
+            print('Path "' + fname + '" does not exist. Exiting...')
+            sys.exit(1)
+
+        cache['prefetcher_name'] = 'p' + fname.translate(fname_translation_table)
         cache['prefetcher_initialize'] = 'pref_' + cache['prefetcher_name'] + '_initialize'
         cache['prefetcher_cache_operate'] = 'pref_' + cache['prefetcher_name'] + '_cache_operate'
         cache['prefetcher_cache_fill'] = 'pref_' + cache['prefetcher_name'] + '_cache_fill'
         cache['prefetcher_cycle_operate'] = 'pref_' + cache['prefetcher_name'] + '_cycle_operate'
         cache['prefetcher_final_stats'] = 'pref_' + cache['prefetcher_name'] + '_final_stats'
 
-        fname = 'prefetcher/' + cache['prefetcher']
-        if not os.path.exists(fname):
-            fname = os.path.normpath(os.path.expanduser(cache['prefetcher']))
         opts = ''
         # These function names should be used in future designs
         opts += ' -Dprefetcher_initialize=' + cache['prefetcher_initialize']
@@ -261,14 +274,18 @@ for cache in caches.values():
 for cpu in cores:
     # Resolve branch predictor function names
     if cpu['branch_predictor'] is not None:
-        cpu['bpred_name'] = os.path.basename(cpu['branch_predictor'])
+        fname = os.path.join('branch', cpu['branch_predictor'])
+        if not os.path.exists(fname):
+            fname = norm_fname(cpu['branch_predictor'])
+        if not os.path.exists(fname):
+            print('Path "' + fname + '" does not exist. Exiting...')
+            sys.exit(1)
+
+        cpu['bpred_name'] = 'b' + fname.translate(fname_translation_table)
         cpu['bpred_initialize'] = 'bpred_' + cpu['bpred_name'] + '_initialize'
         cpu['bpred_last_result'] = 'bpred_' + cpu['bpred_name'] + '_last_result'
         cpu['bpred_predict'] = 'bpred_' + cpu['bpred_name'] + '_predict'
 
-        fname = 'branch/' + cpu['branch_predictor']
-        if not os.path.exists(fname):
-            fname = os.path.normpath(os.path.expanduser(cpu['branch_predictor']))
         opts = ''
         opts += ' -Dinitialize_branch_predictor=' + cpu['bpred_initialize']
         opts += ' -Dlast_branch_result=' + cpu['bpred_last_result']
@@ -277,14 +294,18 @@ for cpu in cores:
 
     # Resolve BTB function names
     if cpu['btb'] is not None:
-        cpu['btb_name'] = os.path.basename(cpu['btb'])
+        fname = os.path.join('btb', cpu['btb'])
+        if not os.path.exists(fname):
+            fname = norm_fname(cpu['btb'])
+        if not os.path.exists(fname):
+            print('Path "' + fname + '" does not exist. Exiting...')
+            sys.exit(1)
+
+        cpu['btb_name'] = 'b' + fname.translate(fname_translation_table)
         cpu['btb_initialize'] = 'btb_' + cpu['btb_name'] + '_initialize'
         cpu['btb_update'] = 'btb_' + cpu['btb_name'] + '_update'
         cpu['btb_predict'] = 'btb_' + cpu['btb_name'] + '_predict'
 
-        fname = 'btb/' + cpu['btb']
-        if not os.path.exists(fname):
-            fname = os.path.normpath(os.path.expanduser(cpu['btb']))
         opts = ''
         opts += ' -Dinitialize_btb=' + cpu['btb_initialize']
         opts += ' -Dupdate_btb=' + cpu['btb_update']
@@ -293,7 +314,14 @@ for cpu in cores:
 
 
     # Resolve instruction prefetching function names
-    cpu['iprefetcher_name'] = os.path.basename(caches[cpu['L1I']]['prefetcher'])
+    fname = os.path.join('prefetcher', caches[cpu['L1I']]['prefetcher'])
+    if not os.path.exists(fname):
+        fname = norm_fname(caches[cpu['L1I']]['prefetcher'])
+    if not os.path.exists(fname):
+        print('Path "' + fname + '" does not exist. Exiting...')
+        sys.exit(1)
+
+    cpu['iprefetcher_name'] = 'p' + fname.translate(fname_translation_table)
     cpu['iprefetcher_initialize'] = 'pref_' + cpu['iprefetcher_name'] + '_initialize'
     cpu['iprefetcher_branch_operate'] = 'pref_' + cpu['iprefetcher_name'] + '_branch_operate'
     cpu['iprefetcher_cache_operate'] = 'pref_' + cpu['iprefetcher_name'] + '_cache_operate'
@@ -301,10 +329,6 @@ for cpu in cores:
     cpu['iprefetcher_cache_fill'] = 'pref_' + cpu['iprefetcher_name'] + '_cache_fill'
     cpu['iprefetcher_final_stats'] = 'pref_' + cpu['iprefetcher_name'] + '_final_stats'
 
-    if os.path.exists('prefetcher/' + caches[cpu['L1I']]['prefetcher']):
-        fname = 'prefetcher/' + caches[cpu['L1I']]['prefetcher']
-    else:
-        fname = os.path.normpath(os.path.expanduser(caches[cpu['L1I']]['prefetcher']))
     opts = ''
     # These function names should be used in future designs
     opts += ' -Dprefetcher_initialize=' + cpu['iprefetcher_initialize']
@@ -329,12 +353,6 @@ for cpu in cores:
     caches[cpu['L1I']]['prefetcher_cache_fill'] = cpu['iprefetcher_cache_fill']
     caches[cpu['L1I']]['prefetcher_cycle_operate'] = cpu['iprefetcher_cycle_operate']
     caches[cpu['L1I']]['prefetcher_final_stats'] = cpu['iprefetcher_final_stats']
-
-# Assert module paths exist
-for path,_ in libfilenames.values():
-    if not os.path.exists(path):
-        print('Path "' + path + '" does not exist. Exiting...')
-        sys.exit(1)
 
 # Check cache of previous configuration
 if os.path.exists(config_cache_name):
