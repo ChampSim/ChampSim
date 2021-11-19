@@ -4,7 +4,6 @@
 #include "util.h"
 
 extern VirtualMemory vmem;
-extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
 
@@ -14,7 +13,7 @@ void PageTableWalker::handle_read()
 
 	while(reads_this_cycle > 0)
 	{
-        bool mshr_full = (MSHR.size() == PTW_MSHR_SIZE);
+        bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
 		if(!RQ.has_ready() || mshr_full || (((CACHE*)lower_level)->RQ.occupancy() == ((CACHE*)lower_level)->RQ.size())) //PTW lower level is L1D
 			break;
@@ -81,7 +80,7 @@ void PageTableWalker::handle_read()
 			packet.type = handle_pkt.type;
 
             auto it = MSHR.insert(std::end(MSHR), packet);
-            it->cycle_enqueued = current_core_cycle[cpu];
+            it->cycle_enqueued = current_cycle;
             it->event_cycle = std::numeric_limits<uint64_t>::max();
 
 		    RQ.pop_front();
@@ -96,7 +95,7 @@ void PageTableWalker::handle_fill()
 	while(fill_this_cycle > 0) //Handle pending request
 	{
 		auto fill_mshr = MSHR.begin();
-		if (fill_mshr == std::end(MSHR) || (fill_mshr->event_cycle > current_core_cycle[cpu])) //Check if current level translation complete
+		if (fill_mshr == std::end(MSHR) || (fill_mshr->event_cycle > current_cycle)) //Check if current level translation complete
 			break;
 
 			assert(CR3_addr != UINT64_MAX);
@@ -160,7 +159,7 @@ void PageTableWalker::handle_fill()
 
 				if(warmup_complete[cpu])
 			      {
-					uint64_t current_miss_latency = (current_core_cycle[cpu] - fill_mshr->cycle_enqueued);	
+					uint64_t current_miss_latency = (current_cycle - fill_mshr->cycle_enqueued);	
 					total_miss_latency += current_miss_latency;
 			      }
 
@@ -312,7 +311,7 @@ void PageTableWalker::return_data(PACKET *packet)
         {
             assert(mshr_entry.translation_level > 0);
             mshr_entry.translation_level--;
-            mshr_entry.event_cycle = current_core_cycle[cpu];
+            mshr_entry.event_cycle = current_cycle;
 
             DP (if (warmup_complete[packet->cpu]) {
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry.instr_id;
@@ -320,7 +319,7 @@ void PageTableWalker::return_data(PACKET *packet)
                     std::cout << " full_v_addr: " << mshr_entry.full_v_addr;
                     std::cout << " data: " << mshr_entry.data << std::dec;
                     std::cout << " occupancy: " << get_occupancy(0,0);
-                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
+                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl; });
         }
     }
 
@@ -348,7 +347,7 @@ uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
 uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
 {
 	if (queue_type == 0)
-        return PTW_MSHR_SIZE;
+        return MSHR_SIZE;
     else if (queue_type == 1)
         return RQ.size();
     else if (queue_type == 2)

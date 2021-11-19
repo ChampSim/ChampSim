@@ -19,7 +19,6 @@ struct next_schedule : public invalid_is_maximal<PACKET, min_event_cycle<PACKET>
 
 void MEMORY_CONTROLLER::operate()
 {
-    current_cycle++;
     for (auto &channel : channels)
     {
         // Finish request

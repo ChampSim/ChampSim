@@ -7,6 +7,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "memory_class.h"
+#include "operable.h"
 #include "util.h"
 
 // these values control when to send out a burst of writes
@@ -53,7 +54,7 @@ struct DRAM_CHANNEL
     unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
 
-class MEMORY_CONTROLLER : public MemoryRequestConsumer {
+class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
   public:
     const static int fill_level = FILL_DRAM;
 
@@ -64,11 +65,9 @@ class MEMORY_CONTROLLER : public MemoryRequestConsumer {
     const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = detail::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * CPU_FREQ / 1000);
     const static uint64_t DRAM_DBUS_RETURN_TIME      = detail::ceil(1.0 * BLOCK_SIZE * CPU_FREQ / DRAM_CHANNEL_WIDTH / DRAM_IO_FREQ);
 
-    uint64_t current_cycle = 0;
-
     std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-    MEMORY_CONTROLLER() {}
+    MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
 
     int  add_rq(PACKET *packet),
          add_wq(PACKET *packet),
