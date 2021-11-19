@@ -4,11 +4,11 @@
 #include "util.h"
 
 extern VirtualMemory vmem;
-extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
 
-PageTableWalker::PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency)
-: NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
+PageTableWalker::PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll)
+ : champsim::operable(1), MemoryRequestProducer(ll),
+    NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
     RQ{v10, latency},
     PSCL5{"PSCL5", 4, v2, v3}, //Translation from L5->L4
     PSCL4{"PSCL4", 3, v4, v5}, //Translation from L5->L3
@@ -75,7 +75,7 @@ void PageTableWalker::handle_read()
         packet.type = handle_pkt.type;
 
         auto it = MSHR.insert(std::end(MSHR), packet);
-        it->cycle_enqueued = current_core_cycle[cpu];
+        it->cycle_enqueued = current_cycle;
         it->event_cycle = std::numeric_limits<uint64_t>::max();
 
         RQ.pop_front();
@@ -87,7 +87,7 @@ void PageTableWalker::handle_fill()
 {
     int fill_this_cycle = MAX_FILL;
 
-    while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_core_cycle[cpu])
+    while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle)
     {
         auto fill_mshr = MSHR.begin();
         if (fill_mshr->translation_level == 0) //If translation complete
@@ -96,7 +96,7 @@ void PageTableWalker::handle_fill()
             auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
             if (warmup_complete[cpu] && fault)
             {
-                fill_mshr->event_cycle = current_core_cycle[cpu] + MINOR_FAULT_PENALTY;
+                fill_mshr->event_cycle = current_cycle + MINOR_FAULT_PENALTY;
                 MSHR.sort(ord_event_cycle<PACKET>{});
             }
             else
@@ -109,7 +109,7 @@ void PageTableWalker::handle_fill()
                     ret->return_data(&(*fill_mshr));
 
                 if(warmup_complete[cpu])
-                    total_miss_latency += current_core_cycle[cpu] - fill_mshr->cycle_enqueued;
+                    total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
                 MSHR.erase(fill_mshr);
             }
@@ -119,7 +119,7 @@ void PageTableWalker::handle_fill()
             auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
             if (warmup_complete[cpu] && fault)
             {
-                fill_mshr->event_cycle = current_core_cycle[cpu] + MINOR_FAULT_PENALTY;
+                fill_mshr->event_cycle = current_cycle + MINOR_FAULT_PENALTY;
                 MSHR.sort(ord_event_cycle<PACKET>{});
             }
             else
@@ -190,7 +190,7 @@ void PageTableWalker::return_data(PACKET *packet)
     {
         if (mshr_entry.address == packet->address && mshr_entry.translation_level == packet->translation_level)
         {
-            mshr_entry.event_cycle = current_core_cycle[cpu];
+            mshr_entry.event_cycle = current_cycle;
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry.instr_id;
@@ -198,7 +198,7 @@ void PageTableWalker::return_data(PACKET *packet)
                     std::cout << " full_v_addr: " << mshr_entry.full_v_addr;
                     std::cout << " data: " << mshr_entry.data << std::dec;
                     std::cout << " occupancy: " << get_occupancy(0,0);
-                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_core_cycle[cpu] << std::endl; });
+                    std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl; });
         }
     }
 
