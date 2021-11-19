@@ -8,6 +8,7 @@
 
 #include "delay_queue.hpp"
 #include "memory_class.h"
+#include "operable.h"
 
 // CACHE TYPE
 #define IS_ITLB 0
@@ -26,7 +27,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
+class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
@@ -79,9 +80,9 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref)
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref, MemoryRequestConsumer *ll)
+        : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
         HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), virtual_prefetch(va_pref)
     {
     }
@@ -94,8 +95,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void return_data(PACKET *packet),
          operate(),
          operate_writes(),
-         operate_reads(),
-         increment_WQ_FULL(uint64_t address);
+         operate_reads();
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
@@ -159,16 +159,6 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void lru_final_stats();
 };
 
-template <>
-struct is_valid<PACKET>
-{
-    is_valid() {}
-    bool operator()(const PACKET &test)
-    {
-        return test.address != 0;
-    }
-};
-
 template <typename T>
 struct eq_full_addr
 {
@@ -181,7 +171,6 @@ struct eq_full_addr
         return validtest(test) && test.full_addr == val;
     }
 };
-
 
 #endif
 
