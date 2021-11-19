@@ -6,6 +6,7 @@
 #include "circular_buffer.hpp"
 
 #include <list>
+#include <vector>
 
 class MemoryRequestProducer;
 class LSQ_ENTRY;
@@ -13,29 +14,20 @@ class LSQ_ENTRY;
 // message packet
 class PACKET {
   public:
-    uint8_t scheduled = 0,
-            translated = 0,
-            fetched = 0,
-            prefetched = 0;
+    bool scheduled = false,
+         returned  = false;
 
-    int fill_level = -1,
-        pf_origin_level = -1,
-        producer = -1,
-        delta = 0,
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
+            type = 0,
+            fill_level = 0,
+            pf_origin_level = 0;
+
+    int delta = 0,
         depth = 0,
         signature = 0,
         confidence = 0;
 
     uint32_t pf_metadata;
-
-    uint8_t  is_producer = 0, 
-             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-             type = 0;
-
-    std::list<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {};
-    std::list<std::vector<LSQ_ENTRY>::iterator> sq_index_depend_on_me = {};
-    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
-
     uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
@@ -48,9 +40,21 @@ class PACKET {
              event_cycle = std::numeric_limits<uint64_t>::max(),
              cycle_enqueued = 0;
 
+    std::list<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
     std::list<MemoryRequestProducer*> to_return;
 
 	uint8_t translation_level = 0, init_translation_level = 0; 
+};
+
+template <>
+struct is_valid<PACKET>
+{
+    is_valid() {}
+    bool operator()(const PACKET &test)
+    {
+        return test.address != 0;
+    }
 };
 
 template <typename LIST>
@@ -89,53 +93,6 @@ void packet_dep_merge(LIST &dest, LIST &src)
 
     dest.insert(d_begin, s_begin, s_end);
 }
-
-// packet queue
-struct PACKET_QUEUE {
-    string NAME;
-    uint32_t SIZE;
-
-    uint8_t  is_RQ = 0,
-             is_WQ = 0,
-             write_mode = 0;
-
-    uint32_t cpu = 0,
-             head = 0,
-             tail = 0,
-             occupancy = 0,
-             num_returned = 0,
-             next_schedule_index = 0,
-             next_process_index = 0;
-
-    uint64_t next_schedule_cycle = std::numeric_limits<uint64_t>::max(),
-             next_process_cycle = std::numeric_limits<uint64_t>::max(),
-             ACCESS = 0,
-             FORWARD = 0,
-             MERGED = 0,
-             TO_CACHE = 0,
-             ROW_BUFFER_HIT = 0,
-             ROW_BUFFER_MISS = 0,
-             FULL = 0;
-
-    PACKET *entry;
-
-    // constructor
-    PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
-        entry = new PACKET[SIZE];
-    };
-
-    PACKET_QUEUE() {}
-
-    // destructor
-    ~PACKET_QUEUE() {
-        delete[] entry;
-    };
-
-    // functions
-    int check_queue(PACKET* packet);
-    void add_queue(PACKET* packet),
-         remove_queue(PACKET* packet);
-};
 
 // load/store queue
 struct LSQ_ENTRY {

@@ -3,11 +3,11 @@
     "block_size": 64,
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
-    "cpu_clock_freq": 4000,
     "num_cores": 1,
 
     "ooo_cpu": [
         {
+            "frequency": 4000,
             "ifetch_buffer_size":64,
             "decode_buffer_size":32,
             "dispatch_buffer_size":32,
@@ -141,6 +141,7 @@
 	},
 
     "LLC": {
+        "frequency": 4000,
         "sets": 2048,
         "ways": 16,
         "rq_size": 32,
@@ -170,7 +171,8 @@
         "rq_size": 64,
         "tRP": 12.5,
         "tRCD": 12.5,
-        "tCAS": 12.5
+        "tCAS": 12.5,
+        "turn_around_time": 7.5
     },
 
     "virtual_memory": {

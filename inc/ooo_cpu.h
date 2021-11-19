@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <queue>
 #include <functional>
 #include <queue>
 
@@ -10,65 +11,60 @@
 #include "instruction.h"
 #include "cache.h"
 #include "instruction.h"
+#include "operable.h"
 #include "ptw.h"
 
-#define DEADLOCK_CYCLE 1000000
-
 using namespace std;
-
-#define STA_SIZE (ROB_SIZE*NUM_INSTR_DESTINATIONS_SPARC)
 
 class CacheBus : public MemoryRequestProducer
 {
     public:
-        champsim::circular_buffer<PACKET> PROCESSED{ROB_SIZE};
-        explicit CacheBus(MemoryRequestConsumer *ll) : MemoryRequestProducer(ll) {}
+        champsim::circular_buffer<PACKET> PROCESSED;
+        CacheBus(std::size_t q_size, MemoryRequestConsumer *ll) : MemoryRequestProducer(ll), PROCESSED(q_size) {}
         void return_data(PACKET *packet);
 };
 
 // cpu
-class O3_CPU {
+class O3_CPU : public champsim::operable {
   public:
     uint32_t cpu = 0;
-
-    // trace
-    FILE *trace_file = NULL;
-    char trace_string[1024];
-    char gunzip_command[1024];
+    bool operated = false;
 
     // instruction
-    input_instr current_instr;
-    cloudsuite_instr current_cloudsuite_instr;
     uint64_t instr_unique_id = 0, completed_executions = 0,
-             begin_sim_cycle = 0, begin_sim_instr,
+             begin_sim_cycle = 0, begin_sim_instr = 0,
              last_sim_cycle = 0, last_sim_instr = 0,
              finish_sim_cycle = 0, finish_sim_instr = 0,
-             warmup_instructions, simulation_instructions, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+             instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
              next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
-    uint32_t next_ITLB_fetch = 0;
 
     struct dib_entry_t
     {
         bool valid = false;
-        unsigned lru = DIB_WAY;
+        unsigned lru = 999999;
         uint64_t address = 0;
     };
 
     // instruction buffer
-    using dib_t= std::array<std::array<dib_entry_t, DIB_WAY>, DIB_SET>;
-    dib_t DIB;
+    using dib_t= std::vector<dib_entry_t>;
+    const std::size_t dib_set, dib_way, dib_window;
+    dib_t DIB{dib_set*dib_way};
 
     // reorder buffer, load/store queue, register file
-    champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER{IFETCH_BUFFER_SIZE};
-    champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER{DISPATCH_BUFFER_SIZE, DISPATCH_LATENCY};
-    champsim::delay_queue<ooo_model_instr> DECODE_BUFFER{DECODE_BUFFER_SIZE, DECODE_LATENCY};
-    champsim::circular_buffer<ooo_model_instr> ROB{ROB_SIZE};
-    std::vector<LSQ_ENTRY> LQ{LQ_SIZE};
-    std::vector<LSQ_ENTRY> SQ{SQ_SIZE};
+    champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
+    champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER;
+    champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
+    champsim::circular_buffer<ooo_model_instr> ROB;
+    std::vector<LSQ_ENTRY> LQ;
+    std::vector<LSQ_ENTRY> SQ;
+
+    // Constants
+    const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
+    const unsigned BRANCH_MISPREDICT_PENALTY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
     // store array, this structure is required to properly handle store instructions
-    uint64_t STA[STA_SIZE], STA_head = 0, STA_tail = 0;
+    std::queue<uint64_t> STA;
 
     // Ready-To-Execute
     std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute;
@@ -90,93 +86,91 @@ class O3_CPU {
     uint64_t total_branch_types[8] = {};
     uint64_t branch_type_misses[8] = {};
 
-    // TLBs and caches
-    CACHE ITLB{"ITLB", ITLB_SET, ITLB_WAY, ITLB_WQ_SIZE, ITLB_RQ_SIZE, ITLB_PQ_SIZE, ITLB_MSHR_SIZE, ITLB_HIT_LATENCY, ITLB_FILL_LATENCY, ITLB_MAX_READ, ITLB_MAX_WRITE, ITLB_PREF_LOAD, false, ITLB_PREF_ACTIVATE_MASK},
-          DTLB{"DTLB", DTLB_SET, DTLB_WAY, DTLB_WQ_SIZE, DTLB_RQ_SIZE, DTLB_PQ_SIZE, DTLB_MSHR_SIZE, DTLB_HIT_LATENCY, DTLB_FILL_LATENCY, DTLB_MAX_READ, DTLB_MAX_WRITE, DTLB_PREF_LOAD, false, DTLB_PREF_ACTIVATE_MASK},
-          STLB{"STLB", STLB_SET, STLB_WAY, STLB_WQ_SIZE, STLB_RQ_SIZE, STLB_PQ_SIZE, STLB_MSHR_SIZE, STLB_HIT_LATENCY, STLB_FILL_LATENCY, STLB_MAX_READ, STLB_MAX_WRITE, STLB_PREF_LOAD, false, STLB_PREF_ACTIVATE_MASK},
-          L1I{"L1I", L1I_SET, L1I_WAY, L1I_WQ_SIZE, L1I_RQ_SIZE, L1I_PQ_SIZE, L1I_MSHR_SIZE, L1I_HIT_LATENCY, L1I_FILL_LATENCY, L1I_MAX_READ, L1I_MAX_WRITE, L1I_PREF_LOAD, true, L1I_PREF_ACTIVATE_MASK},
-          L1D{"L1D", L1D_SET, L1D_WAY, L1D_WQ_SIZE, L1D_RQ_SIZE, L1D_PQ_SIZE, L1D_MSHR_SIZE, L1D_HIT_LATENCY, L1D_FILL_LATENCY, L1D_MAX_READ, L1D_MAX_WRITE, L1D_PREF_LOAD, L1D_VA_PREF, L1D_PREF_ACTIVATE_MASK},
-          L2C{"L2C", L2C_SET, L2C_WAY, L2C_WQ_SIZE, L2C_RQ_SIZE, L2C_PQ_SIZE, L2C_MSHR_SIZE, L2C_HIT_LATENCY, L2C_FILL_LATENCY, L2C_MAX_READ, L2C_MAX_WRITE, L2C_PREF_LOAD, L2C_VA_PREF, L2C_PREF_ACTIVATE_MASK};
-
-    CacheBus ITLB_bus{&ITLB}, DTLB_bus{&DTLB}, L1I_bus{&L1I}, L1D_bus{&L1D};
+    CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
   
-	PageTableWalker PTW{"PTW", PSCL5_SET, PSCL5_WAY, PSCL4_SET, PSCL4_WAY, PSCL3_SET, PSCL3_WAY, PSCL2_SET, PSCL2_WAY, PTW_RQ_SIZE, PTW_MSHR_SIZE, PTW_MAX_READ, PTW_MAX_WRITE};
+	PageTableWalker *PTW;
 
     // constructor
-    O3_CPU(uint32_t cpu, uint64_t warmup_instructions, uint64_t simulation_instructions) : cpu(cpu), begin_sim_cycle(warmup_instructions), warmup_instructions(warmup_instructions), simulation_instructions(simulation_instructions)
+    O3_CPU(uint32_t cpu, double freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
+            std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
+            std::size_t rob_size, std::size_t lq_size, std::size_t sq_size,
+            unsigned fetch_width, unsigned decode_width, unsigned dispatch_width, unsigned schedule_width,
+            unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
+            unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
+            CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw) :
+        champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
+        IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
+        ROB(rob_size), LQ(lq_size), SQ(sq_size),
+        FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
+        EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
+        BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
+        ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), PTW(ptw)
     {
-        for (uint32_t i=0; i<STA_SIZE; i++)
-	  STA[i] = UINT64_MAX;
-
         // BRANCH PREDICTOR & BTB
         initialize_branch_predictor();
 	initialize_btb();
 
         // TLBs
-        ITLB.cpu = this->cpu;
-        ITLB.cache_type = IS_ITLB;
-        ITLB.fill_level = FILL_L1;
-        ITLB.lower_level = &STLB;
+        itlb->cpu = this->cpu;
+        itlb->cache_type = IS_ITLB;
+        itlb->fill_level = FILL_L1;
 
-        DTLB.cpu = this->cpu;
-        DTLB.cache_type = IS_DTLB;
-        DTLB.fill_level = FILL_L1;
-        DTLB.lower_level = &STLB;
+        dtlb->cpu = this->cpu;
+        dtlb->cache_type = IS_DTLB;
+        dtlb->fill_level = FILL_L1;
 
-        STLB.cpu = this->cpu;
-        STLB.cache_type = IS_STLB;
-        STLB.fill_level = FILL_L2;
-		STLB.lower_level = &PTW;
+        static_cast<CACHE*>(dtlb->lower_level)->cpu = this->cpu;
+        static_cast<CACHE*>(dtlb->lower_level)->cache_type = IS_STLB;
+        static_cast<CACHE*>(dtlb->lower_level)->fill_level = FILL_L2;
 
-		PTW.cpu = this->cpu;
-		PTW.cache_type = IS_PTW;
-		PTW.lower_level = &L1D; //PTW checks L1 cache for cached translation blocks.
+        ptw->cpu = this->cpu;
+        ptw->cache_type = IS_PTW;
 
         // PRIVATE CACHE
-        L1I.cpu = this->cpu;
-        L1I.cache_type = IS_L1I;
-        L1I.fill_level = FILL_L1;
-        L1I.lower_level = &L2C;
+        l1i->cpu = this->cpu;
+        l1i->cache_type = IS_L1I;
+        l1i->fill_level = FILL_L1;
 
-        L1D.cpu = this->cpu;
-        L1D.cache_type = IS_L1D;
-        L1D.fill_level = FILL_L1;
-        L1D.lower_level = &L2C;
+        l1d->cpu = this->cpu;
+        l1d->cache_type = IS_L1D;
+        l1d->fill_level = FILL_L1;
 
-        L2C.cpu = this->cpu;
-        L2C.cache_type = IS_L2C;
-        L2C.fill_level = FILL_L2;
+        static_cast<CACHE*>(l1d->lower_level)->cpu = this->cpu;
+        static_cast<CACHE*>(l1d->lower_level)->cache_type = IS_L2C;
+        static_cast<CACHE*>(l1d->lower_level)->fill_level = FILL_L2;
 
         l1i_prefetcher_initialize();
-        L1D.l1d_prefetcher_initialize();
-        L2C.l2c_prefetcher_initialize();
+        l1d->l1d_prefetcher_initialize();
+        static_cast<CACHE*>(l1d->lower_level)->l2c_prefetcher_initialize();
 
         using namespace std::placeholders;
 
-        ITLB.find_victim = std::bind(&CACHE::lru_victim, &ITLB, _1, _2, _3, _4, _5, _6, _7);
-        DTLB.find_victim = std::bind(&CACHE::lru_victim, &DTLB, _1, _2, _3, _4, _5, _6, _7);
-        STLB.find_victim = std::bind(&CACHE::lru_victim, &STLB, _1, _2, _3, _4, _5, _6, _7);
-        L1I.find_victim = std::bind(&CACHE::lru_victim, &L1I, _1, _2, _3, _4, _5, _6, _7);
-        L1D.find_victim = std::bind(&CACHE::lru_victim, &L1D, _1, _2, _3, _4, _5, _6, _7);
-        L2C.find_victim = std::bind(&CACHE::lru_victim, &L2C, _1, _2, _3, _4, _5, _6, _7);
+        itlb->find_victim = std::bind(&CACHE::lru_victim, itlb, _1, _2, _3, _4, _5, _6, _7);
+        dtlb->find_victim = std::bind(&CACHE::lru_victim, dtlb, _1, _2, _3, _4, _5, _6, _7);
+        static_cast<CACHE*>(dtlb->lower_level)->find_victim = std::bind(&CACHE::lru_victim, static_cast<CACHE*>(dtlb->lower_level), _1, _2, _3, _4, _5, _6, _7);
+        l1i->find_victim = std::bind(&CACHE::lru_victim, l1i, _1, _2, _3, _4, _5, _6, _7);
+        l1d->find_victim = std::bind(&CACHE::lru_victim, l1d, _1, _2, _3, _4, _5, _6, _7);
+        static_cast<CACHE*>(l1d->lower_level)->find_victim = std::bind(&CACHE::lru_victim, static_cast<CACHE*>(l1d->lower_level), _1, _2, _3, _4, _5, _6, _7);
 
-        ITLB.update_replacement_state = std::bind(&CACHE::lru_update, &ITLB, _2, _3, _7, _8);
-        DTLB.update_replacement_state = std::bind(&CACHE::lru_update, &DTLB, _2, _3, _7, _8);
-        STLB.update_replacement_state = std::bind(&CACHE::lru_update, &STLB, _2, _3, _7, _8);
-        L1I.update_replacement_state = std::bind(&CACHE::lru_update, &L1I, _2, _3, _7, _8);
-        L1D.update_replacement_state = std::bind(&CACHE::lru_update, &L1D, _2, _3, _7, _8);
-        L2C.update_replacement_state = std::bind(&CACHE::lru_update, &L2C, _2, _3, _7, _8);
+        itlb->update_replacement_state = std::bind(&CACHE::lru_update, itlb, _2, _3, _7, _8);
+        dtlb->update_replacement_state = std::bind(&CACHE::lru_update, dtlb, _2, _3, _7, _8);
+        static_cast<CACHE*>(dtlb->lower_level)->update_replacement_state = std::bind(&CACHE::lru_update, static_cast<CACHE*>(dtlb->lower_level), _2, _3, _7, _8);
+        l1i->update_replacement_state = std::bind(&CACHE::lru_update, l1i, _2, _3, _7, _8);
+        l1d->update_replacement_state = std::bind(&CACHE::lru_update, l1d, _2, _3, _7, _8);
+        static_cast<CACHE*>(l1d->lower_level)->update_replacement_state = std::bind(&CACHE::lru_update, static_cast<CACHE*>(l1d->lower_level), _2, _3, _7, _8);
 
-        ITLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &ITLB);
-        DTLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &DTLB);
-        STLB.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &STLB);
-        L1I.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1I);
-        L1D.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L1D);
-        L2C.replacement_final_stats = std::bind(&CACHE::lru_final_stats, &L2C);
-   }
+        itlb->replacement_final_stats = std::bind(&CACHE::lru_final_stats, itlb);
+        dtlb->replacement_final_stats = std::bind(&CACHE::lru_final_stats, dtlb);
+        static_cast<CACHE*>(dtlb->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(dtlb->lower_level));
+        l1i->replacement_final_stats = std::bind(&CACHE::lru_final_stats, l1i);
+        l1d->replacement_final_stats = std::bind(&CACHE::lru_final_stats, l1d);
+        static_cast<CACHE*>(l1d->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(l1d->lower_level));
+    }
+
+    void operate();
 
     // functions
-    uint32_t init_instruction(ooo_model_instr instr);
+    void init_instruction(ooo_model_instr instr);
     void check_dib(),
          translate_fetch(),
          fetch_instruction(),
