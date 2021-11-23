@@ -133,9 +133,9 @@ class O3_CPU : public champsim::operable {
 
 #include "ooo_cpu_modules.inc"
 
-    const bpred_t bpred_type;
-    const btb_t btb_type;
-    const ipref_t ipref_type;
+    const int bpred_type;
+    const int btb_type;
+    const int ipref_type;
 
     O3_CPU(uint32_t cpu, double freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
             std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
@@ -144,7 +144,7 @@ class O3_CPU : public champsim::operable {
             unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
             unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
             CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw,
-            bpred_t bpred_type, btb_t btb_type, ipref_t ipref_type
+            int bpred_type, int btb_type, int ipref_type
             ) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),

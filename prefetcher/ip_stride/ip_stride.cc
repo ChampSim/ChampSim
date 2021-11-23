@@ -44,7 +44,7 @@ IP_TRACKER trackers[IP_TRACKER_COUNT];
 
 void CACHE::prefetcher_initialize() 
 {
-    std::cout << NAME " IP-based stride prefetcher" << std::endl;
+    std::cout << NAME << " IP-based stride prefetcher" << std::endl;
     for (int i=0; i<IP_TRACKER_COUNT; i++)
         trackers[i].lru = i;
 }
