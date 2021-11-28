@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <bitset>
 #include <queue>
 #include <functional>
 #include <queue>
@@ -133,7 +134,7 @@ class O3_CPU : public champsim::operable {
 
 #include "ooo_cpu_modules.inc"
 
-    const int bpred_type;
+    const std::bitset<NUM_BRANCH_MODULES> bpred_type;
     const int btb_type;
     const int ipref_type;
 
@@ -144,7 +145,7 @@ class O3_CPU : public champsim::operable {
             unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
             unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
             CACHE *itlb, CACHE *dtlb, CACHE *l1i, CACHE *l1d, PageTableWalker *ptw,
-            int bpred_type, int btb_type, int ipref_type
+            std::bitset<NUM_BRANCH_MODULES> bpred_type, int btb_type, int ipref_type
             ) :
         champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),

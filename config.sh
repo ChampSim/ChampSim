@@ -434,7 +434,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     for i,cpu in enumerate(cores):
         wfp.write(cpu_fmtstr.format(\
             index=i,\
-            branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['branch_predictor']),\
+            branch_enum_string=' | '.join(f'(1 << O3_CPU::b{k})' for k in cpu['branch_predictor']),\
             btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['btb']),\
             ipref_enum_string=' | '.join(f'O3_CPU::i{k}' for k in cpu['iprefetcher']),\
             **cpu))
@@ -454,25 +454,27 @@ with open(instantiation_file_name, 'wt') as wfp:
 # Core modules file
 with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     for i,b in enumerate(branch_data):
-        wfp.write(f'constexpr static int b{b} = 0b{1<<i:b};\n')
+        wfp.write(f'constexpr static std::size_t b{b} = 0b{i:b};\n')
+    wfp.write(f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n')
+    wfp.write('\n')
 
     wfp.write('\n'.join('void {bpred_initialize}();'.format(**b) for b in branch_data.values()))
     wfp.write('\nvoid impl_branch_predictor_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type | b{}) {bpred_initialize}();'.format(k,**b) for k,b in branch_data.items()))
+    wfp.write('\n    '.join('if (bpred_type[b{}]) {bpred_initialize}();'.format(k,**b) for k,b in branch_data.items()))
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('void {bpred_last_result}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(**b) for b in branch_data.values()))
     wfp.write('\nvoid impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type | b{}) {bpred_last_result}(ip, target, taken, branch_type);'.format(k,**b) for k,b in branch_data.items()))
+    wfp.write('\n    '.join('if (bpred_type[b{}]) {bpred_last_result}(ip, target, taken, branch_type);'.format(k,**b) for k,b in branch_data.items()))
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('uint8_t {bpred_predict}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(**b) for b in branch_data.values()))
     wfp.write('\nuint8_t impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('uint8_t result;\n    ')
-    wfp.write('\n    '.join('if (bpred_type | b{}) result = {bpred_predict}(ip, predicted_target, always_taken, branch_type);'.format(k,**b) for k,b in branch_data.items()))
-    wfp.write('\n    return result;')
+    wfp.write('std::bitset<NUM_BRANCH_MODULES> result;\n    ')
+    wfp.write('\n    '.join('if (bpred_type[b{0}]) result[b{0}] = {bpred_predict}(ip, predicted_target, always_taken, branch_type);'.format(k,**b) for k,b in branch_data.items()))
+    wfp.write('\n    return result.any();')
     wfp.write('\n}\n\n')
 
     for i,b in enumerate(btb_data):
