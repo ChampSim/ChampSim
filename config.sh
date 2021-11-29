@@ -428,7 +428,7 @@ with open(instantiation_file_name, 'wt') as wfp:
         else:
             wfp.write(cache_fmtstr.format(\
                 repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['replacement']),\
-                pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
+                pref_enum_string=' | '.join(f'(1 << CACHE::p{k})' for k in elem['prefetcher']),\
                 **elem))
 
     for i,cpu in enumerate(cores):
@@ -454,8 +454,7 @@ with open(instantiation_file_name, 'wt') as wfp:
 # Core modules file
 with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     for i,b in enumerate(branch_data):
-        wfp.write(f'constexpr static std::size_t b{b} = 0b{i:b};\n')
-    wfp.write(f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n')
+        wfp.write(f'constexpr static std::size_t b{b} = {i};\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('void {bpred_initialize}();'.format(**b) for b in branch_data.values()))
@@ -478,7 +477,7 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n}\n\n')
 
     for i,b in enumerate(btb_data):
-        wfp.write(f'constexpr static int t{b} = 0b{1<<i:b};\n')
+        wfp.write(f'constexpr static int t{b} = {1<<i};\n')
 
     wfp.write('\n'.join('void {btb_initialize}();'.format(**b) for b in btb_data.values()))
     wfp.write('\nvoid impl_btb_initialize()\n{\n    ')
@@ -501,7 +500,7 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n')
 
     for i,b in enumerate(ipref_data):
-        wfp.write(f'constexpr static int i{b} = 0b{1<<i:b};\n')
+        wfp.write(f'constexpr static std::size_t i{b} = {i};\n')
 
     wfp.write('\n'.join('void {prefetcher_initialize}();'.format(**i) for i in ipref_data.values()))
     #wfp.write('\nvoid impl_prefetcher_initialize()\n{\n    ')
@@ -548,7 +547,7 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
 # Cache modules file
 with open('inc/cache_modules.inc', 'wt') as wfp:
     for i,b in enumerate(repl_data):
-        wfp.write(f'constexpr static int r{b} = 0b{1<<i:b};\n')
+        wfp.write(f'constexpr static int r{b} = {1<<i};\n')
 
     wfp.write('\n'.join('void {init_func_name}();'.format(**r) for r in repl_data.values()))
     wfp.write('\nvoid impl_replacement_initialize()\n{\n    ')
@@ -577,43 +576,44 @@ with open('inc/cache_modules.inc', 'wt') as wfp:
     wfp.write('\n')
 
     for i,b in enumerate(pref_data):
-        wfp.write(f'constexpr static int p{b} = 0b{1<<i:b};\n')
+        wfp.write(f'constexpr static std::size_t p{b} = {i};\n')
+    wfp.write('\n')
 
     wfp.write('\n'.join('void {prefetcher_initialize}();'.format(**p) for p in pref_data.values() if not p['prefetcher_initialize'].startswith('ooo_cpu')))
     wfp.write('\nvoid impl_prefetcher_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type | p{}) {prefetcher_initialize}();'.format(k,**p) for k,p in pref_data.items()))
+    wfp.write('\n    '.join('if (pref_type[p{}]) {prefetcher_initialize}();'.format(k,**p) for k,p in pref_data.items()))
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('uint32_t {prefetcher_cache_operate}(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t);'.format(**p) for p in pref_data.values() if not p['prefetcher_cache_operate'].startswith('ooo_cpu')))
     wfp.write('\nuint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)\n{\n    ')
-    wfp.write('uint32_t result;\n')
+    wfp.write('uint32_t result = 0;\n')
     for k,p in pref_data.items():
         if p['prefetcher_cache_operate'].startswith('ooo_cpu'): ## modify signature for redirect
-            wfp.write('    if (pref_type | p{}) result = {prefetcher_cache_operate}(addr, cache_hit, (type == PREFETCH), metadata_in);\n'.format(k,**p))
+            wfp.write('    if (pref_type[p{}]) result ^= {prefetcher_cache_operate}(addr, cache_hit, (type == PREFETCH), metadata_in);\n'.format(k,**p))
         else:
-            wfp.write('    if (pref_type | p{}) result = {prefetcher_cache_operate}(addr, ip, cache_hit, type, metadata_in);\n'.format(k,**p))
+            wfp.write('    if (pref_type[p{}]) result ^= {prefetcher_cache_operate}(addr, ip, cache_hit, type, metadata_in);\n'.format(k,**p))
     wfp.write('    return result;')
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('uint32_t {prefetcher_cache_fill}(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);'.format(**p) for p in pref_data.values() if not p['prefetcher_cache_fill'].startswith('ooo_cpu')))
     wfp.write('\nuint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)\n{\n    ')
-    wfp.write('uint32_t result;\n    ')
-    wfp.write('\n    '.join('if (pref_type | p{}) result = {prefetcher_cache_fill}(addr, set, way, prefetch, evicted_addr, metadata_in);'.format(k,**p) for k,p in pref_data.items()))
+    wfp.write('uint32_t result = 0;\n    ')
+    wfp.write('\n    '.join('if (pref_type[p{}]) result ^= {prefetcher_cache_fill}(addr, set, way, prefetch, evicted_addr, metadata_in);'.format(k,**p) for k,p in pref_data.items()))
     wfp.write('\n    return result;')
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('void {prefetcher_cycle_operate}();'.format(**p) for p in pref_data.values() if not p['prefetcher_cycle_operate'].startswith('ooo_cpu')))
     wfp.write('\nvoid impl_prefetcher_cycle_operate()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type | p{}) {prefetcher_cycle_operate}();'.format(k,**p) for k,p in pref_data.items()))
+    wfp.write('\n    '.join('if (pref_type[p{}]) {prefetcher_cycle_operate}();'.format(k,**p) for k,p in pref_data.items()))
     wfp.write('\n}\n')
     wfp.write('\n')
 
     wfp.write('\n'.join('void {prefetcher_final_stats}();'.format(**p) for p in pref_data.values() if not p['prefetcher_final_stats'].startswith('ooo_cpu')))
     wfp.write('\nvoid impl_prefetcher_final_stats()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type | p{}) {prefetcher_final_stats}();'.format(k,**p) for k,p in pref_data.items()))
+    wfp.write('\n    '.join('if (pref_type[p{}]) {prefetcher_final_stats}();'.format(k,**p) for k,p in pref_data.items()))
     wfp.write('\n}\n')
     wfp.write('\n')
 
@@ -631,6 +631,8 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
     wfp.write('#define NUM_CACHES ' + str(len(caches)) + 'u\n')
     wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(memory_system) + 1) + 'u\n')
+    wfp.write(f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n')
+    wfp.write(f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n')
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:

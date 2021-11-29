@@ -1,6 +1,7 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <bitset>
 #include <string>
 #include <functional>
 #include <list>
@@ -103,14 +104,14 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 #include "cache_modules.inc"
 
     const int repl_type;
-    const int pref_type;
+    const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
     // constructor
     CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
             uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits,
             bool pref_load, bool wq_full_addr, bool va_pref,
             MemoryRequestConsumer *ll,
-            int pref, int repl)
+            std::bitset<NUM_PREFETCH_MODULES> pref, int repl)
         : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll),
         NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
         HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write),
