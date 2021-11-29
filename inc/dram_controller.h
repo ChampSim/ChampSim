@@ -11,9 +11,9 @@
 #include "util.h"
 
 // these values control when to send out a burst of writes
-#define DRAM_WRITE_HIGH_WM    ((DRAM_WQ_SIZE*7)>>3) // 7/8th
-#define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
-#define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
+constexpr static unsigned long DRAM_WRITE_HIGH_WM = 0.875 * DRAM_WQ_SIZE;
+constexpr static unsigned long DRAM_WRITE_LOW_WM = 0.75 * DRAM_WQ_SIZE;
+constexpr static unsigned long MIN_DRAM_WRITES_PER_SWITCH = 0.25 * DRAM_WQ_SIZE;
 
 struct BANK_REQUEST {
     bool valid = false,
@@ -46,10 +46,10 @@ struct DRAM_CHANNEL
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
   public:
     // DRAM_IO_FREQ defined in champsim_constants.h
-    const static uint64_t tRP                        = std::ceil(1.0 * tRP_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tRCD                       = std::ceil(1.0 * tRCD_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tCAS                       = std::ceil(1.0 * tCAS_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t tRP                        = std::ceil(tRP_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t tRCD                       = std::ceil(tRCD_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t tCAS                       = std::ceil(tCAS_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(DBUS_TURN_AROUND_NANOSECONDS * DRAM_IO_FREQ / 1000);
     const static uint64_t DRAM_DBUS_RETURN_TIME      = std::ceil(1.0 * BLOCK_SIZE / DRAM_CHANNEL_WIDTH);
 
     std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
