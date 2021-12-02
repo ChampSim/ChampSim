@@ -66,9 +66,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     bool writes_ip = false;
     bool reads_other = false;
 
-    for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
+    arch_instr.num_reg_ops += std::size(arch_instr.destination_registers);
+    for (auto dreg : arch_instr.destination_registers)
     {
-        switch(arch_instr.destination_registers[i])
+        switch(dreg)
         {
             case 0:
                 break;
@@ -82,16 +83,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
                 break;
         }
 
-        /*
-           if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24) && (arch_instr.destination_registers[i] < 28))
-           {
-           arch_instr.destination_registers[i] = 0;
-           }
-           */
+    }
 
-        if (arch_instr.destination_registers[i])
-            arch_instr.num_reg_ops++;
-        if (arch_instr.destination_memory[i])
+    for (auto dmem : arch_instr.destination_memory)
+    {
+        if (dmem)
         {
             arch_instr.num_mem_ops++;
 
@@ -106,9 +102,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         }
     }
 
-    for (int i=0; i<NUM_INSTR_SOURCES; i++)
+    arch_instr.num_reg_ops += std::size(arch_instr.source_registers);
+    for (auto sreg : arch_instr.source_registers)
     {
-        switch(arch_instr.source_registers[i])
+        switch(sreg)
         {
             case 0:
                 break;
@@ -125,19 +122,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
                 reads_other = true;
                 break;
         }
-
-        /*
-           if((!arch_instr.is_branch) && (arch_instr.source_registers[i] > 25) && (arch_instr.source_registers[i] < 28))
-           {
-           arch_instr.source_registers[i] = 0;
-           }
-           */
-
-        if (arch_instr.source_registers[i])
-            arch_instr.num_reg_ops++;
-        if (arch_instr.source_memory[i])
-            arch_instr.num_mem_ops++;
     }
+
+    arch_instr.num_mem_ops += std::size(arch_instr.source_memory) - std::count(std::begin(arch_instr.source_memory), std::end(arch_instr.source_memory), 0);
 
     if (arch_instr.num_mem_ops > 0)
         arch_instr.is_memory = 1;
@@ -215,13 +202,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
        // which can't be determined before execution.
        if((arch_instr.is_branch != 0) || (arch_instr.num_mem_ops > 0) || (!reads_other))
          {
-           for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
+             auto sp = std::find(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_STACK_POINTER);
+             if (sp != std::end(arch_instr.destination_registers))
              {
-               if(arch_instr.destination_registers[i] == REG_STACK_POINTER)
-                 {
-                   arch_instr.destination_registers[i] = 0;
-                   arch_instr.num_reg_ops--;
-                 }
+                 arch_instr.destination_registers.erase(sp);
+                 arch_instr.num_reg_ops--;
              }
          }
       }
@@ -279,15 +264,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     // branch predictor, cache contents, and prefetchers are still warmed up
     if(!warmup_complete[cpu])
       {
-	for (int i=0; i<NUM_INSTR_SOURCES; i++)
-	  {
-	    arch_instr.source_registers[i] = 0;
-	  }
-	for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++)
-	  {
-	    arch_instr.destination_registers[i] = 0;
-	  }
-	arch_instr.num_reg_ops = 0;
+          arch_instr.source_registers.clear();
+          arch_instr.destination_registers.clear();
+          arch_instr.num_reg_ops = 0;
       }
 
     // Add to IFETCH_BUFFER
@@ -570,14 +549,12 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
 {
     // Mark register dependencies
     for (auto src_reg : rob_it->source_registers) {
-        if (src_reg) {
-            champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
-            prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
-            if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it))
-            {
-                prior->registers_instrs_depend_on_me.push_back(rob_it);
-                rob_it->num_reg_dependent++;
-            }
+        champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
+        prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
+        if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it))
+        {
+            prior->registers_instrs_depend_on_me.push_back(rob_it);
+            rob_it->num_reg_dependent++;
         }
     }
 
