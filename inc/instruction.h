@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <iostream>
@@ -87,9 +88,9 @@ struct ooo_model_instr {
             executed = 0;
     int num_reg_ops = 0, num_mem_ops = 0, num_reg_dependent = 0;
 
-    uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
+    std::vector<uint8_t> destination_registers = {}; // output registers
 
-    uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers 
+    std::vector<uint8_t> source_registers = {}; // input registers 
 
     // these are indices of instructions in the ROB that depend on me
     std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
@@ -106,9 +107,9 @@ struct ooo_model_instr {
 
     ooo_model_instr(uint8_t cpu, input_instr instr)
     {
-        std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
+        std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
-        std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
+        std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
         std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
         this->ip = instr.ip;
@@ -121,9 +122,9 @@ struct ooo_model_instr {
 
     ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
     {
-        std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
+        std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers), 0);
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
-        std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
+        std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers), 0);
         std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
         this->ip = instr.ip;
