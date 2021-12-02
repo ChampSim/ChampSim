@@ -146,9 +146,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
        // which can't be determined before execution.
        if((arch_instr.is_branch != 0) || (arch_instr.num_mem_ops > 0) || (!reads_other))
          {
-             auto sp = std::find(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_STACK_POINTER);
-             if (sp != std::end(arch_instr.destination_registers))
-                 arch_instr.destination_registers.erase(sp);
+             auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_STACK_POINTER);
+             arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
          }
       }
 
