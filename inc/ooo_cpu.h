@@ -2,7 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
-#include <queue>
+#include <deque>
 #include <functional>
 #include <queue>
 
@@ -64,7 +64,7 @@ class O3_CPU : public champsim::operable {
     const unsigned BRANCH_MISPREDICT_PENALTY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
     // store array, this structure is required to properly handle store instructions
-    std::queue<uint64_t> STA;
+    std::deque<uint64_t> STA;
 
     // Ready-To-Execute
     std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute;
