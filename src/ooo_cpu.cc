@@ -66,23 +66,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_INSTRUCTION_POINTER);
     bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r){ return r != REG_STACK_POINTER && r != REG_FLAGS && r != REG_INSTRUCTION_POINTER; });
 
-    for (auto dmem : arch_instr.destination_memory)
-    {
-        if (dmem)
-        {
-            arch_instr.num_mem_ops++;
-
-            // update STA, this structure is required to execute store instructions properly without deadlock
-            if (arch_instr.num_mem_ops > 0)
-            {
-#ifdef SANITY_CHECK
-                assert(STA.size() < ROB.size()*NUM_INSTR_DESTINATIONS_SPARC);
-#endif
-                STA.push(instr_unique_id);
-            }
-        }
-    }
-
+    arch_instr.num_mem_ops = std::size(arch_instr.destination_memory) - std::count(std::begin(arch_instr.destination_memory), std::end(arch_instr.destination_memory), 0);
+    std::fill_n(std::back_inserter(STA), arch_instr.num_mem_ops, arch_instr.instr_id);
     arch_instr.num_mem_ops += std::size(arch_instr.source_memory) - std::count(std::begin(arch_instr.source_memory), std::end(arch_instr.source_memory), 0);
 
     if (arch_instr.num_mem_ops > 0)
@@ -596,6 +581,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
             else if (!std::all_of(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>())) {
                 if (STA.front() == rob_it->instr_id) {
                     add_store_queue(rob_it, i);
+                    STA.pop_front();
                     num_added++;
                 }
             }
@@ -718,7 +704,6 @@ void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterato
     sq_it->event_cycle = current_cycle + SCHEDULING_LATENCY;
 
     // succesfully added to the store queue
-    STA.pop();
     rob_it->destination_added[data_index] = 1;
 
     RTS0.push(sq_it);
