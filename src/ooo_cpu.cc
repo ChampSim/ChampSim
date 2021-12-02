@@ -59,31 +59,12 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     arch_instr.instr_id = instr_unique_id;
 
-    bool reads_sp = false;
-    bool writes_sp = false;
-    bool reads_flags = false;
-    bool reads_ip = false;
-    bool writes_ip = false;
-    bool reads_other = false;
-
-    arch_instr.num_reg_ops += std::size(arch_instr.destination_registers);
-    for (auto dreg : arch_instr.destination_registers)
-    {
-        switch(dreg)
-        {
-            case 0:
-                break;
-            case REG_STACK_POINTER:
-                writes_sp = true;
-                break;
-            case REG_INSTRUCTION_POINTER:
-                writes_ip = true;
-                break;
-            default:
-                break;
-        }
-
-    }
+    bool writes_sp = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_STACK_POINTER);
+    bool writes_ip = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_INSTRUCTION_POINTER);
+    bool reads_sp = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_STACK_POINTER);
+    bool reads_flags = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_FLAGS);
+    bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_INSTRUCTION_POINTER);
+    bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r){ return r != REG_STACK_POINTER && r != REG_FLAGS && r != REG_INSTRUCTION_POINTER; });
 
     for (auto dmem : arch_instr.destination_memory)
     {
@@ -99,28 +80,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 #endif
                 STA.push(instr_unique_id);
             }
-        }
-    }
-
-    arch_instr.num_reg_ops += std::size(arch_instr.source_registers);
-    for (auto sreg : arch_instr.source_registers)
-    {
-        switch(sreg)
-        {
-            case 0:
-                break;
-            case REG_STACK_POINTER:
-                reads_sp = true;
-                break;
-            case REG_FLAGS:
-                reads_flags = true;
-                break;
-            case REG_INSTRUCTION_POINTER:
-                reads_ip = true;
-                break;
-            default:
-                reads_other = true;
-                break;
         }
     }
 
@@ -204,10 +163,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
          {
              auto sp = std::find(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), REG_STACK_POINTER);
              if (sp != std::end(arch_instr.destination_registers))
-             {
                  arch_instr.destination_registers.erase(sp);
-                 arch_instr.num_reg_ops--;
-             }
          }
       }
 
@@ -266,8 +222,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       {
           arch_instr.source_registers.clear();
           arch_instr.destination_registers.clear();
-          arch_instr.num_reg_ops = 0;
       }
+
+    arch_instr.num_reg_ops = std::size(arch_instr.destination_registers) + std::size(arch_instr.source_registers);
 
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(arch_instr);
