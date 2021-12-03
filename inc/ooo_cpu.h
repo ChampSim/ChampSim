@@ -5,6 +5,8 @@
 #include <deque>
 #include <functional>
 #include <queue>
+#include <limits>
+#include <vector>
 
 #include "champsim_constants.h"
 #include "delay_queue.hpp"
@@ -58,6 +60,8 @@ class O3_CPU : public champsim::operable {
     champsim::circular_buffer<ooo_model_instr> ROB;
     std::vector<LSQ_ENTRY> LQ;
     std::vector<LSQ_ENTRY> SQ;
+
+    std::array<std::vector<champsim::circular_buffer<ooo_model_instr>::iterator>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
 
     // Constants
     const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;

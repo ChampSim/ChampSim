@@ -490,13 +490,23 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
 {
     // Mark register dependencies
     for (auto src_reg : rob_it->source_registers) {
-        champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
-        prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
-        if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it))
+        if (!std::empty(reg_producers[src_reg]))
         {
-            prior->registers_instrs_depend_on_me.push_back(rob_it);
-            rob_it->num_reg_dependent++;
+            auto prior = reg_producers[src_reg].back();
+            if (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it)
+            {
+                prior->registers_instrs_depend_on_me.push_back(rob_it);
+                rob_it->num_reg_dependent++;
+            }
         }
+    }
+
+    for (auto dreg : rob_it->destination_registers)
+    {
+        auto begin = std::begin(reg_producers[dreg]);
+        auto end   = std::end(reg_producers[dreg]);
+        auto ins   = std::lower_bound(begin, end, rob_it);
+        reg_producers[dreg].insert(ins, rob_it);
     }
 
     if (rob_it->is_memory)
@@ -888,6 +898,15 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 
 void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
 {
+    for (auto dreg : rob_it->destination_registers)
+    {
+        auto begin = std::begin(reg_producers[dreg]);
+        auto end   = std::end(reg_producers[dreg]);
+        auto elem = std::find(begin, end, rob_it);
+        assert(elem != end);
+        reg_producers[dreg].erase(elem);
+    }
+
     rob_it->executed = COMPLETED;
     if (rob_it->is_memory == 0)
         inflight_reg_executions--;
