@@ -88,7 +88,6 @@ struct ooo_model_instr {
     int num_reg_ops = 0, num_mem_ops = 0, num_reg_dependent = 0;
 
     std::vector<uint8_t> destination_registers = {}; // output registers
-
     std::vector<uint8_t> source_registers = {}; // input registers 
 
     struct lsq_info
@@ -111,7 +110,9 @@ struct ooo_model_instr {
 
     ooo_model_instr() = default;
 
-    ooo_model_instr(uint8_t cpu, input_instr instr)
+    private:
+    template <typename T>
+    ooo_model_instr(T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
     {
         std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
         std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
@@ -120,29 +121,17 @@ struct ooo_model_instr {
             if (addr != 0) destination_memory.emplace_back(addr);
         for (auto addr : instr.source_memory)
             if (addr != 0) source_memory.emplace_back(addr);
+    }
 
-        this->ip = instr.ip;
-        this->is_branch = instr.is_branch;
-        this->branch_taken = instr.branch_taken;
-
+    public:
+    ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr)
+    {
         asid[0] = cpu;
         asid[1] = cpu;
     }
 
-    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
+    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ooo_model_instr(instr)
     {
-        std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers), 0);
-        std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers), 0);
-
-        for (auto addr : instr.destination_memory)
-            if (addr != 0) destination_memory.emplace_back(addr);
-        for (auto addr : instr.source_memory)
-            if (addr != 0) source_memory.emplace_back(addr);
-
-        this->ip = instr.ip;
-        this->is_branch = instr.is_branch;
-        this->branch_taken = instr.branch_taken;
-
         std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
     }
 };
