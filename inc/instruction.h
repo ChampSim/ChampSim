@@ -85,7 +85,7 @@ struct ooo_model_instr {
             decoded = 0,
             scheduled = 0,
             executed = 0;
-    int num_reg_ops = 0, num_mem_ops = 0, num_reg_dependent = 0;
+    int num_mem_ops = 0, num_reg_dependent = 0;
 
     std::vector<uint8_t> destination_registers = {}; // output registers
     std::vector<uint8_t> source_registers = {}; // input registers 
