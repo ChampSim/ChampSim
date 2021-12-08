@@ -95,11 +95,11 @@ void packet_dep_merge(LIST &dest, LIST &src)
 }
 
 // load/store queue
-struct LSQ_ENTRY {
+struct LSQ_ENTRY
+{
+    bool valid = false;
     uint64_t instr_id = 0,
-             producer_id = std::numeric_limits<uint64_t>::max(),
              virtual_address = 0,
-             physical_address = 0,
              ip = 0,
              event_cycle = 0;
 
@@ -108,16 +108,9 @@ struct LSQ_ENTRY {
     uint8_t translated = 0,
             fetched = 0,
             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-};
 
-template <>
-class is_valid<LSQ_ENTRY>
-{
-    public:
-        bool operator() (const LSQ_ENTRY &test)
-        {
-            return test.virtual_address != 0;
-        }
+    uint64_t physical_address = 0,
+             producer_id = std::numeric_limits<uint64_t>::max();
 };
 
 #endif

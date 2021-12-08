@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "circular_buffer.hpp"
+#include "util.h"
 
 // instruction format
 #define NUM_INSTR_DESTINATIONS_SPARC 4
@@ -72,9 +73,7 @@ struct ooo_model_instr {
     bool is_branch = 0,
          is_memory = 0,
          branch_taken = 0,
-         branch_mispredicted = 0,
-         source_added[NUM_INSTR_SOURCES] = {},
-         destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
+         branch_mispredicted = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -92,25 +91,35 @@ struct ooo_model_instr {
 
     std::vector<uint8_t> source_registers = {}; // input registers 
 
+    struct lsq_info
+    {
+        uint64_t address;
+        bool added = false;
+        std::vector<LSQ_ENTRY>::iterator q_entry;
+
+        explicit lsq_info(uint64_t address) : address(address) {};
+    };
+
+    std::vector<lsq_info> destination_memory = {};
+    std::vector<lsq_info> source_memory = {};
+
     // these are indices of instructions in the ROB that depend on me
     std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
 
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa = 0;
-    uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
-    uint64_t source_memory[NUM_INSTR_SOURCES] = {}; // input memory
-
-    std::array<std::vector<LSQ_ENTRY>::iterator, NUM_INSTR_SOURCES> lq_index = {};
-    std::array<std::vector<LSQ_ENTRY>::iterator, NUM_INSTR_DESTINATIONS_SPARC> sq_index = {};
 
     ooo_model_instr() = default;
 
     ooo_model_instr(uint8_t cpu, input_instr instr)
     {
         std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
-        std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
         std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
-        std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
+
+        for (auto addr : instr.destination_memory)
+            if (addr != 0) destination_memory.emplace_back(addr);
+        for (auto addr : instr.source_memory)
+            if (addr != 0) source_memory.emplace_back(addr);
 
         this->ip = instr.ip;
         this->is_branch = instr.is_branch;
@@ -123,9 +132,12 @@ struct ooo_model_instr {
     ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
     {
         std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers), 0);
-        std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
         std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers), 0);
-        std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
+
+        for (auto addr : instr.destination_memory)
+            if (addr != 0) destination_memory.emplace_back(addr);
+        for (auto addr : instr.source_memory)
+            if (addr != 0) source_memory.emplace_back(addr);
 
         this->ip = instr.ip;
         this->is_branch = instr.is_branch;
@@ -133,6 +145,13 @@ struct ooo_model_instr {
 
         std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
     }
+};
+
+// For compatability with eq_addr
+template <>
+struct is_valid<ooo_model_instr::lsq_info>
+{
+    bool operator()(const ooo_model_instr::lsq_info &test) { return true; }
 };
 
 #endif

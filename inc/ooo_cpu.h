@@ -197,8 +197,6 @@ class O3_CPU : public champsim::operable {
          do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry);
 
     void initialize_core();
-    void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index),
-         add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
     void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
     int  execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
     int  do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
