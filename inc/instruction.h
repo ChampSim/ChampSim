@@ -108,8 +108,6 @@ struct ooo_model_instr {
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa = 0;
 
-    ooo_model_instr() = default;
-
     private:
     template <typename T>
     ooo_model_instr(T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
