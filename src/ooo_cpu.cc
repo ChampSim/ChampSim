@@ -66,9 +66,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_INSTRUCTION_POINTER);
     bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r){ return r != REG_STACK_POINTER && r != REG_FLAGS && r != REG_INSTRUCTION_POINTER; });
 
-    arch_instr.num_mem_ops = std::size(arch_instr.destination_memory);
-    std::fill_n(std::back_inserter(STA), arch_instr.num_mem_ops, arch_instr.instr_id);
-    arch_instr.num_mem_ops += std::size(arch_instr.source_memory);
+    std::fill_n(std::back_inserter(STA), std::size(arch_instr.destination_memory), arch_instr.instr_id);
+    arch_instr.num_mem_ops = std::size(arch_instr.destination_memory) + std::size(arch_instr.source_memory);
 
     if (arch_instr.num_mem_ops > 0)
         arch_instr.is_memory = 1;
@@ -207,8 +206,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
           arch_instr.source_registers.clear();
           arch_instr.destination_registers.clear();
       }
-
-    arch_instr.num_reg_ops = std::size(arch_instr.destination_registers) + std::size(arch_instr.source_registers);
 
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(arch_instr);
