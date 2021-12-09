@@ -47,13 +47,6 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
     return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
-void record_roi_stats(uint32_t cpu, CACHE *cache)
-{
-    std::copy(std::begin(cache->sim_access[cpu]), std::end(cache->sim_access[cpu]), std::begin(cache->roi_access[cpu]));
-    std::copy(std::begin(cache->sim_hit[cpu]), std::end(cache->sim_hit[cpu]), std::begin(cache->roi_hit[cpu]));
-    std::copy(std::begin(cache->sim_miss[cpu]), std::end(cache->sim_miss[cpu]), std::begin(cache->roi_miss[cpu]));
-}
-
 void print_roi_stats(uint32_t cpu, CACHE *cache)
 {
     uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
@@ -173,67 +166,6 @@ void print_dram_stats()
         cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
     else
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
-}
-
-void reset_cache_stats(CACHE *cache)
-{
-    for (auto& arr : cache->sim_access)
-        std::fill(std::begin(arr), std::end(arr), 0);
-    for (auto& arr : cache->sim_hit)
-        std::fill(std::begin(arr), std::end(arr), 0);
-    for (auto& arr : cache->sim_miss)
-        std::fill(std::begin(arr), std::end(arr), 0);
-
-    cache->pf_requested = 0;
-    cache->pf_issued = 0;
-    cache->pf_useful = 0;
-    cache->pf_useless = 0;
-    cache->pf_fill = 0;
-
-    cache->total_miss_latency = 0;
-
-    cache->RQ_ACCESS = 0;
-    cache->RQ_MERGED = 0;
-    cache->RQ_TO_CACHE = 0;
-
-    cache->WQ_ACCESS = 0;
-    cache->WQ_MERGED = 0;
-    cache->WQ_TO_CACHE = 0;
-    cache->WQ_FORWARD = 0;
-    cache->WQ_FULL = 0;
-}
-
-void reset_stats()
-{
-    for (auto cpu : ooo_cpu)
-    {
-        // reset branch stats
-        cpu->num_branch = 0;
-        cpu->branch_mispredictions = 0;
-        cpu->total_rob_occupancy_at_branch_mispredict = 0;
-
-        std::fill(std::begin(cpu->total_branch_types), std::end(cpu->total_branch_types), 0);
-        std::fill(std::begin(cpu->branch_type_misses), std::end(cpu->branch_type_misses), 0);
-
-        reset_cache_stats(static_cast<CACHE*>(cpu->L1I_bus.lower_level));
-        reset_cache_stats(static_cast<CACHE*>(cpu->L1D_bus.lower_level));
-        reset_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)); //L2C
-
-        reset_cache_stats(static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
-        reset_cache_stats(static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
-        reset_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level)); //L2C
-    }
-
-    reset_cache_stats(&LLC);
-
-    // reset DRAM stats
-    for (auto& chan : DRAM.channels)
-    {
-        chan.WQ_ROW_BUFFER_HIT = 0;
-        chan.WQ_ROW_BUFFER_MISS = 0;
-        chan.RQ_ROW_BUFFER_HIT = 0;
-        chan.RQ_ROW_BUFFER_MISS = 0;
-    }
 }
 
 void print_deadlock(uint32_t i)
@@ -441,22 +373,15 @@ int main(int argc, char** argv)
         phase_info{"Simulation", simulation_instructions}
     }};
 
-    std::bitset<NUM_CPUS> phase_complete;
-
     // simulation entry point
     for (auto phase : phases)
     {
         // Initialize phase
-        for (auto cpu : ooo_cpu)
-        {
-            cpu->begin_phase_instr = cpu->num_retired;
-            cpu->begin_phase_cycle = cpu->current_cycle;
-
-        }
-        reset_stats();
-        phase_complete.reset();
+        for (auto op : operables)
+            op->begin_phase();
 
         // Perform phase
+        std::bitset<NUM_CPUS> phase_complete = {};
         while (!phase_complete.all())
         {
             // Operate
@@ -478,27 +403,18 @@ int main(int argc, char** argv)
                 // Keep warmup_complete
                 warmup_complete[cpu->cpu] = (cpu->num_retired >= warmup_instructions);
 
-                // simulation complete
-                if ((!phase_complete[cpu->cpu]) && (cpu->num_retired >= (cpu->begin_phase_instr + phase.length)))
+                // Phase complete
+                if (!phase_complete[cpu->cpu] && (cpu->num_retired >= (cpu->begin_phase_instr + phase.length)))
                 {
                     phase_complete.set(cpu->cpu);
-                    cpu->finish_phase_instr = cpu->num_retired;
-                    cpu->finish_phase_cycle = cpu->current_cycle;
+                    for (auto op : operables)
+                        op->end_phase(cpu->cpu);
 
                     std::cout << phase.name << " finished CPU " << cpu->cpu;
                     std::cout << " instructions: " << cpu->finish_phase_instr - cpu->begin_phase_instr;
                     std::cout << " cycles: " << cpu->finish_phase_cycle - cpu->begin_phase_cycle;
                     std::cout << " cumulative IPC: " << ((float) cpu->finish_phase_instr - cpu->begin_phase_instr) / (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
                     std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
-                    record_roi_stats(cpu->cpu, &LLC);
-
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
-                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
                 }
             }
         }

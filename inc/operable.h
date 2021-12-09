@@ -30,6 +30,8 @@ class operable {
     }
 
     virtual void operate() = 0;
+    virtual void begin_phase() = 0;
+    virtual void end_phase(unsigned cpu) = 0;
 };
 
 class by_next_operate

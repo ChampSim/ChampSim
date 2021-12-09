@@ -741,3 +741,38 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
     return 0;
 }
 
+void CACHE::begin_phase()
+{
+    for (auto& arr : sim_access)
+        std::fill(std::begin(arr), std::end(arr), 0);
+    for (auto& arr : sim_hit)
+        std::fill(std::begin(arr), std::end(arr), 0);
+    for (auto& arr : sim_miss)
+        std::fill(std::begin(arr), std::end(arr), 0);
+
+    pf_requested = 0;
+    pf_issued = 0;
+    pf_useful = 0;
+    pf_useless = 0;
+    pf_fill = 0;
+
+    total_miss_latency = 0;
+
+    RQ_ACCESS = 0;
+    RQ_MERGED = 0;
+    RQ_TO_CACHE = 0;
+
+    WQ_ACCESS = 0;
+    WQ_MERGED = 0;
+    WQ_TO_CACHE = 0;
+    WQ_FORWARD = 0;
+    WQ_FULL = 0;
+}
+
+void CACHE::end_phase(unsigned cpu)
+{
+    std::copy(std::begin(sim_access[cpu]), std::end(sim_access[cpu]), std::begin(roi_access[cpu]));
+    std::copy(std::begin(sim_hit[cpu]), std::end(sim_hit[cpu]), std::begin(roi_hit[cpu]));
+    std::copy(std::begin(sim_miss[cpu]), std::end(sim_miss[cpu]), std::begin(roi_miss[cpu]));
+}
+

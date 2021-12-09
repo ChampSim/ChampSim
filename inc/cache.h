@@ -93,9 +93,11 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
          add_pq(PACKET *packet);
 
     void return_data(PACKET *packet),
-         operate(),
+         operate() override,
          operate_writes(),
          operate_reads();
+    void begin_phase() override;
+    void end_phase(unsigned cpu) override;
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);

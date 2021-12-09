@@ -66,6 +66,26 @@ void O3_CPU::initialize_core()
 
 }
 
+void O3_CPU::begin_phase()
+{
+    begin_phase_instr = num_retired;
+    begin_phase_cycle = current_cycle;
+
+    // reset branch stats
+    num_branch = 0;
+    branch_mispredictions = 0;
+    total_rob_occupancy_at_branch_mispredict = 0;
+
+    std::fill(std::begin(total_branch_types), std::end(total_branch_types), 0);
+    std::fill(std::begin(branch_type_misses), std::end(branch_type_misses), 0);
+}
+
+void O3_CPU::end_phase(unsigned cpu)
+{
+    finish_phase_instr = num_retired;
+    finish_phase_cycle = current_cycle;
+}
+
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
     // actual processors do not work like this but for easier implementation,

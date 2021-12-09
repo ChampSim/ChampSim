@@ -167,7 +167,9 @@ class O3_CPU : public champsim::operable {
         static_cast<CACHE*>(l1d->lower_level)->replacement_final_stats = std::bind(&CACHE::lru_final_stats, static_cast<CACHE*>(l1d->lower_level));
     }
 
-    void operate();
+    void operate() override;
+    void begin_phase() override;
+    void end_phase(unsigned cpu) override;
 
     // functions
     void init_instruction(ooo_model_instr instr);

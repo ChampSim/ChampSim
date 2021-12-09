@@ -426,4 +426,12 @@ uint64_t PagingStructureCache::check_hit(uint64_t address)
 
     return UINT64_MAX;
 }
-    
+
+void PageTableWalker::begin_phase()
+{
+}
+
+void PageTableWalker::end_phase(unsigned cpu)
+{
+}
+

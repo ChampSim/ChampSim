@@ -62,7 +62,9 @@ class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsume
          add_wq(PACKET *packet),
          add_pq(PACKET *packet);
 
-    void operate();
+    void operate() override;
+    void begin_phase() override;
+    void end_phase(unsigned cpu) override;
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);

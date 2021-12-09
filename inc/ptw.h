@@ -124,9 +124,12 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
          add_pq(PACKET *packet);
 
     void return_data(PACKET *packet),
-         operate(),
          increment_WQ_FULL(uint64_t address),
          add_mshr(PACKET *packet);
+
+    void operate() override;
+    void begin_phase() override;
+    void end_phase(unsigned cpu) override;
 
 	void handle_read(),
 		 handle_fill();
