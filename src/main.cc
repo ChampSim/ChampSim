@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <getopt.h>
 #include <fstream>
 #include <functional>
@@ -27,7 +28,7 @@ uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
          champsim_seed;
 
-time_t start_time = time(NULL);
+auto start_time = std::chrono::steady_clock::now();
 
 extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
@@ -39,13 +40,11 @@ std::vector<tracereader*> traces;
 
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
 {
-    uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
-             elapsed_minute = elapsed_second / 60,
-             elapsed_hour = elapsed_minute / 60;
-    elapsed_minute -= elapsed_hour*60;
-    elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
-
-    return {elapsed_hour, elapsed_minute, elapsed_second};
+    auto diff = std::chrono::steady_clock::now() - start_time;
+    auto elapsed_hour   = std::chrono::duration_cast<std::chrono::hours>(diff);
+    auto elapsed_minute = std::chrono::duration_cast<std::chrono::minutes>(diff) - elapsed_hour;
+    auto elapsed_second = std::chrono::duration_cast<std::chrono::seconds>(diff) - elapsed_hour - elapsed_minute;
+    return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
