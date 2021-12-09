@@ -177,20 +177,20 @@ void print_dram_stats()
         cout << " AVG_CONGESTED_CYCLE: -" << endl;
 }
 
-void reset_cache_stats(uint32_t cpu, CACHE *cache)
+void reset_cache_stats(CACHE *cache)
 {
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->sim_access[cpu][i] = 0;
-        cache->sim_hit[cpu][i] = 0;
-        cache->sim_miss[cpu][i] = 0;
-    }
+    for (auto& arr : cache->sim_access)
+        std::fill(std::begin(arr), std::end(arr), 0);
+    for (auto& arr : cache->sim_hit)
+        std::fill(std::begin(arr), std::end(arr), 0);
+    for (auto& arr : cache->sim_miss)
+        std::fill(std::begin(arr), std::end(arr), 0);
 
     cache->pf_requested = 0;
     cache->pf_issued = 0;
     cache->pf_useful = 0;
     cache->pf_useless = 0;
     cache->pf_fill = 0;
-
 
     cache->total_miss_latency = 0;
 
@@ -207,37 +207,37 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
 
 void finish_warmup()
 {
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle; 
-        ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
+    for (auto cpu : ooo_cpu)
+    {
+        cpu->begin_sim_cycle = cpu->current_cycle; 
+        cpu->begin_sim_instr = cpu->num_retired;
 
         // reset branch stats
-        ooo_cpu[i]->num_branch = 0;
-        ooo_cpu[i]->branch_mispredictions = 0;
-	ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict = 0;
+        cpu->num_branch = 0;
+        cpu->branch_mispredictions = 0;
+        cpu->total_rob_occupancy_at_branch_mispredict = 0;
 
-	for(uint32_t j=0; j<8; j++)
-	  {
-	    ooo_cpu[i]->total_branch_types[j] = 0;
-	    ooo_cpu[i]->branch_type_misses[j] = 0;
-	  }
-	
-        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
-        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
-        reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)); //L2C
+        std::fill(std::begin(cpu->total_branch_types), std::end(cpu->total_branch_types), 0);
+        std::fill(std::begin(cpu->branch_type_misses), std::end(cpu->branch_type_misses), 0);
 
-        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
-        reset_cache_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
-        reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level)); //L2C
-        reset_cache_stats(i, &LLC);
+        reset_cache_stats(static_cast<CACHE*>(cpu->L1I_bus.lower_level));
+        reset_cache_stats(static_cast<CACHE*>(cpu->L1D_bus.lower_level));
+        reset_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)); //L2C
+
+        reset_cache_stats(static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
+        reset_cache_stats(static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
+        reset_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level)); //L2C
     }
 
+    reset_cache_stats(&LLC);
+
     // reset DRAM stats
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        DRAM.channels[i].WQ_ROW_BUFFER_HIT = 0;
-        DRAM.channels[i].WQ_ROW_BUFFER_MISS = 0;
-        DRAM.channels[i].RQ_ROW_BUFFER_HIT = 0;
-        DRAM.channels[i].RQ_ROW_BUFFER_MISS = 0;
+    for (auto& chan : DRAM.channels)
+    {
+        chan.WQ_ROW_BUFFER_HIT = 0;
+        chan.WQ_ROW_BUFFER_MISS = 0;
+        chan.RQ_ROW_BUFFER_HIT = 0;
+        chan.RQ_ROW_BUFFER_MISS = 0;
     }
 }
 
@@ -442,18 +442,14 @@ int main(int argc, char** argv)
         auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
 
         for (auto op : operables)
-        {
             op->_operate();
-        }
         std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
         for (std::size_t i = 0; i < ooo_cpu.size(); ++i)
         {
             // read from trace
             while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
-            {
                 ooo_cpu[i]->init_instruction(traces[i]->get());
-            }
 
             // heartbeat information
             if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
