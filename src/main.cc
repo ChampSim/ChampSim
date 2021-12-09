@@ -445,34 +445,34 @@ int main(int argc, char** argv)
             op->_operate();
         std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
-        for (std::size_t i = 0; i < ooo_cpu.size(); ++i)
+        for (auto cpu : ooo_cpu)
         {
             // read from trace
-            while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
-                ooo_cpu[i]->init_instruction(traces[i]->get());
+            while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
+                cpu->init_instruction(traces[cpu->cpu]->get());
 
             // heartbeat information
-            if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
+            if (show_heartbeat && (cpu->num_retired >= cpu->next_print_instruction)) {
                 float cumulative_ipc;
-                if (warmup_complete[i])
-                    cumulative_ipc = (1.0*(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
+                if (warmup_complete[cpu->cpu])
+                    cumulative_ipc = (1.0*(cpu->num_retired - cpu->begin_sim_instr)) / (cpu->current_cycle - cpu->begin_sim_cycle);
                 else
-                    cumulative_ipc = (1.0*ooo_cpu[i]->num_retired) / ooo_cpu[i]->current_cycle;
-                float heartbeat_ipc = (1.0*ooo_cpu[i]->num_retired - ooo_cpu[i]->last_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->last_sim_cycle);
+                    cumulative_ipc = (1.0*cpu->num_retired) / cpu->current_cycle;
+                float heartbeat_ipc = (1.0*cpu->num_retired - cpu->last_sim_instr) / (cpu->current_cycle - cpu->last_sim_cycle);
 
-                cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
+                cout << "Heartbeat CPU " << cpu->cpu << " instructions: " << cpu->num_retired << " cycles: " << cpu->current_cycle;
                 cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc; 
                 cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-                ooo_cpu[i]->next_print_instruction += STAT_PRINTING_PERIOD;
+                cpu->next_print_instruction += STAT_PRINTING_PERIOD;
 
-                ooo_cpu[i]->last_sim_instr = ooo_cpu[i]->num_retired;
-                ooo_cpu[i]->last_sim_cycle = ooo_cpu[i]->current_cycle;
+                cpu->last_sim_instr = cpu->num_retired;
+                cpu->last_sim_cycle = cpu->current_cycle;
             }
 
             // check for warmup
             // warmup complete
-            if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired > warmup_instructions)) {
-                warmup_complete[i] = 1;
+            if ((warmup_complete[cpu->cpu] == 0) && (cpu->num_retired > warmup_instructions)) {
+                warmup_complete[cpu->cpu] = 1;
                 all_warmup_complete++;
             }
             if (all_warmup_complete == NUM_CPUS) { // this part is called only once when all cores are warmed up
@@ -488,76 +488,83 @@ int main(int argc, char** argv)
             }
 
             // simulation complete
-            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0) && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
-                simulation_complete[i] = 1;
-                ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
-                ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
+            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[cpu->cpu] == 0) && (cpu->num_retired >= (cpu->begin_sim_instr + simulation_instructions))) {
+                simulation_complete[cpu->cpu] = 1;
+                cpu->finish_sim_instr = cpu->num_retired - cpu->begin_sim_instr;
+                cpu->finish_sim_cycle = cpu->current_cycle - cpu->begin_sim_cycle;
 
-                cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle;
-                cout << " cumulative IPC: " << ((float) ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
+                cout << "Finished CPU " << cpu->cpu << " instructions: " << cpu->finish_sim_instr << " cycles: " << cpu->finish_sim_cycle;
+                cout << " cumulative IPC: " << ((float) cpu->finish_sim_instr / cpu->finish_sim_cycle);
                 cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
 
-                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
-                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
-                record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
-                record_roi_stats(i, &LLC);
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+                record_roi_stats(cpu->cpu, &LLC);
 
-                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
-                record_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
-                record_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level));
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
+                record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
             }
         }
     }
-    
-    cout << endl << "ChampSim completed all CPUs" << endl;
+
+    std::cout << std::endl;
+    std::cout << "ChampSim completed all CPUs" << std::endl;
+
     if (NUM_CPUS > 1) {
-        cout << endl << "Total Simulation Statistics (not including warmup)" << endl;
-        for (uint32_t i=0; i<NUM_CPUS; i++) {
-            cout << endl << "CPU " << i << " cumulative IPC: " << (float) (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle); 
-            cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr << " cycles: " << ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle << endl;
-#ifndef CRC2_COMPILE
-            print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
-            print_sim_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
-            print_sim_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
-	    ooo_cpu[i]->l1i_prefetcher_final_stats();
-            static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
-	    static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
-#endif
-            print_sim_stats(i, &LLC);
+        std::cout << std::endl;
+        std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
+        for (auto cpu : ooo_cpu)
+        {
+            std::cout << std::endl;
+            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (float) (cpu->num_retired - cpu->begin_sim_instr) / (cpu->current_cycle - cpu->begin_sim_cycle); 
+            std::cout << " instructions: " << cpu->num_retired - cpu->begin_sim_instr << " cycles: " << cpu->current_cycle - cpu->begin_sim_cycle << endl;
+
+            print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
+            print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
+            print_sim_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+
+            cpu->l1i_prefetcher_final_stats();
+            static_cast<CACHE*>(cpu->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
+            static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
+
+            print_sim_stats(cpu->cpu, &LLC);
         }
+
         LLC.llc_prefetcher_final_stats();
     }
 
-    cout << endl << "Region of Interest Statistics" << endl;
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        cout << endl << "CPU " << i << " cumulative IPC: " << ((float) ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle); 
-        cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
-#ifndef CRC2_COMPILE
-        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level));
-        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->L1I_bus.lower_level));
-        print_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level));
+    std::cout << std::endl;
+    std::cout << "Region of Interest Statistics" << std::endl;
+    for (auto cpu : ooo_cpu)
+    {
+        std::cout << std::endl;
+        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << ((float) cpu->finish_sim_instr / cpu->finish_sim_cycle); 
+        std::cout << " instructions: " << cpu->finish_sim_instr << " cycles: " << cpu->finish_sim_cycle;
+        std::cout << endl;
 
-        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level));
-        print_roi_stats(i, static_cast<CACHE*>(ooo_cpu[i]->ITLB_bus.lower_level));
-        print_roi_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level));
-#endif
-        print_roi_stats(i, &LLC);
-        //cout << "Major fault: " << major_fault[i] << " Minor fault: " << minor_fault[i] << endl;
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
+        print_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
+        print_roi_stats(cpu->cpu, &LLC);
     }
 
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        ooo_cpu[i]->l1i_prefetcher_final_stats();
-        static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
-        static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
+    for (auto cpu : ooo_cpu)
+    {
+        cpu->l1i_prefetcher_final_stats();
+        static_cast<CACHE*>(cpu->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
+        static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
     }
 
     LLC.llc_prefetcher_final_stats();
-
-#ifndef CRC2_COMPILE
     LLC.llc_replacement_final_stats();
     print_dram_stats();
     print_branch_stats();
-#endif
 
     return 0;
 }
