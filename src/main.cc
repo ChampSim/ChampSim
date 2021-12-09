@@ -27,7 +27,7 @@ uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
          champsim_seed;
 
-time_t start_time;
+time_t start_time = time(NULL);
 
 extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
@@ -36,6 +36,17 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<champsim::operable*, 7*NUM_CPUS+2> operables;
 
 std::vector<tracereader*> traces;
+
+std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
+{
+    uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
+             elapsed_minute = elapsed_second / 60,
+             elapsed_hour = elapsed_minute / 60;
+    elapsed_minute -= elapsed_hour*60;
+    elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
+
+    return {elapsed_hour, elapsed_minute, elapsed_second};
+}
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
@@ -197,23 +208,7 @@ void reset_cache_stats(uint32_t cpu, CACHE *cache)
 
 void finish_warmup()
 {
-    uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
-             elapsed_minute = elapsed_second / 60,
-             elapsed_hour = elapsed_minute / 60;
-    elapsed_minute -= elapsed_hour*60;
-    elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
-
-    // reset core latency
-    // note: since re-ordering he function calls in the main simulation loop, it's no longer necessary to add
-    //       extra latency for scheduling and execution, unless you want these steps to take longer than 1 cycle.
-    //PAGE_TABLE_LATENCY = 100;
-    //SWAP_LATENCY = 100000;
-
-    cout << endl;
     for (uint32_t i=0; i<NUM_CPUS; i++) {
-        cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
-        cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-
         ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle; 
         ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
 
@@ -237,7 +232,6 @@ void finish_warmup()
         reset_cache_stats(i, static_cast<CACHE*>(static_cast<CACHE*>(ooo_cpu[i]->DTLB_bus.lower_level)->lower_level)); //L2C
         reset_cache_stats(i, &LLC);
     }
-    cout << endl;
 
     // reset DRAM stats
     for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
@@ -444,14 +438,9 @@ int main(int argc, char** argv)
     LLC.llc_prefetcher_initialize();
 
     // simulation entry point
-    start_time = time(NULL);
     while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
 
-        uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
-                 elapsed_minute = elapsed_second / 60,
-                 elapsed_hour = elapsed_minute / 60;
-        elapsed_minute -= elapsed_hour*60;
-        elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
+        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
 
         for (auto op : operables)
         {
@@ -493,6 +482,13 @@ int main(int argc, char** argv)
             }
             if (all_warmup_complete == NUM_CPUS) { // this part is called only once when all cores are warmed up
                 all_warmup_complete++;
+                for (auto cpu : ooo_cpu)
+                {
+                    std::cout << std::endl;
+                    std::cout << "Warmup complete CPU " << cpu->cpu << " instructions: " << cpu->num_retired << " cycles: " << cpu->current_cycle;
+                    std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+                    std::cout << std::endl;
+                }
                 finish_warmup();
             }
 
@@ -517,12 +513,6 @@ int main(int argc, char** argv)
             }
         }
     }
-
-    uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
-             elapsed_minute = elapsed_second / 60,
-             elapsed_hour = elapsed_minute / 60;
-    elapsed_minute -= elapsed_hour*60;
-    elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
     
     cout << endl << "ChampSim completed all CPUs" << endl;
     if (NUM_CPUS > 1) {
