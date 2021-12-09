@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <chrono>
 #include <getopt.h>
 #include <fstream>
@@ -17,12 +18,11 @@
 #include "tracereader.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {},
-        simulation_complete[NUM_CPUS] = {},
-        all_warmup_complete = 0, 
-        all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
         knob_cloudsuite = 0,
         knob_low_bandwidth = 0;
+
+extern uint8_t show_heartbeat;
 
 uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
@@ -49,11 +49,9 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        cache->roi_access[cpu][i] = cache->sim_access[cpu][i];
-        cache->roi_hit[cpu][i] = cache->sim_hit[cpu][i];
-        cache->roi_miss[cpu][i] = cache->sim_miss[cpu][i];
-    }
+    std::copy(std::begin(cache->sim_access[cpu]), std::end(cache->sim_access[cpu]), std::begin(cache->roi_access[cpu]));
+    std::copy(std::begin(cache->sim_hit[cpu]), std::end(cache->sim_hit[cpu]), std::begin(cache->roi_hit[cpu]));
+    std::copy(std::begin(cache->sim_miss[cpu]), std::end(cache->sim_miss[cpu]), std::begin(cache->roi_miss[cpu]));
 }
 
 void print_roi_stats(uint32_t cpu, CACHE *cache)
@@ -130,23 +128,23 @@ void print_branch_stats()
 
 	/*
 	cout << "Branch types" << endl;
-	cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " << (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " << (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " << (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << " " << (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-	cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " << (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << endl << endl;
+	cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " << (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " << (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " << (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << " " << (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
+	cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " << (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl << endl;
 	*/
 
 	cout << "Branch type MPKI" << endl;
-	cout << "BRANCH_DIRECT_JUMP: " << (1000.0*ooo_cpu[i]->branch_type_misses[1]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-	cout << "BRANCH_INDIRECT: " << (1000.0*ooo_cpu[i]->branch_type_misses[2]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-	cout << "BRANCH_CONDITIONAL: " << (1000.0*ooo_cpu[i]->branch_type_misses[3]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-	cout << "BRANCH_DIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[4]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-	cout << "BRANCH_INDIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[5]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-	cout << "BRANCH_RETURN: " << (1000.0*ooo_cpu[i]->branch_type_misses[6]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl << endl;
+	cout << "BRANCH_DIRECT_JUMP: " << (1000.0*ooo_cpu[i]->branch_type_misses[1]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
+	cout << "BRANCH_INDIRECT: " << (1000.0*ooo_cpu[i]->branch_type_misses[2]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
+	cout << "BRANCH_CONDITIONAL: " << (1000.0*ooo_cpu[i]->branch_type_misses[3]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
+	cout << "BRANCH_DIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[4]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
+	cout << "BRANCH_INDIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[5]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
+	cout << "BRANCH_RETURN: " << (1000.0*ooo_cpu[i]->branch_type_misses[6]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl << endl;
     }
 }
 
@@ -205,13 +203,10 @@ void reset_cache_stats(CACHE *cache)
     cache->WQ_FULL = 0;
 }
 
-void finish_warmup()
+void reset_stats()
 {
     for (auto cpu : ooo_cpu)
     {
-        cpu->begin_sim_cycle = cpu->current_cycle; 
-        cpu->begin_sim_instr = cpu->num_retired;
-
         // reset branch stats
         cpu->num_branch = 0;
         cpu->branch_mispredictions = 0;
@@ -296,6 +291,12 @@ void cpu_l1i_prefetcher_cache_fill(uint32_t cpu_num, uint64_t addr, uint32_t set
   ooo_cpu[cpu_num]->l1i_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr);
 }
 
+struct phase_info
+{
+    std::string name;
+    uint64_t length;
+};
+
 int main(int argc, char** argv)
 {
 	// interrupt signal hanlder
@@ -307,8 +308,7 @@ int main(int argc, char** argv)
 
     cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
 
-    // initialize knobs
-    uint8_t show_heartbeat = 1;
+    show_heartbeat = 1;
 
     uint32_t seed_number = 0;
 
@@ -419,9 +419,9 @@ int main(int argc, char** argv)
     srand(seed_number);
     champsim_seed = seed_number;
 
-    for (int i=0; i<NUM_CPUS; i++) {
-        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
-        static_cast<CACHE*>(ooo_cpu.at(i)->L1I_bus.lower_level)->l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
+    for (auto cpu : ooo_cpu) {
+        static_cast<CACHE*>(cpu->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
+        static_cast<CACHE*>(cpu->L1I_bus.lower_level)->l1i_prefetcher_cache_fill = cpu_l1i_prefetcher_cache_fill;
     }
 
     // SHARED CACHE
@@ -436,80 +436,83 @@ int main(int argc, char** argv)
     LLC.llc_initialize_replacement();
     LLC.llc_prefetcher_initialize();
 
+    std::vector<phase_info> phases{{
+        phase_info{"Warmup", warmup_instructions},
+        phase_info{"Simulation", simulation_instructions}
+    }};
+
+    std::bitset<NUM_CPUS> phase_complete;
+
     // simulation entry point
-    while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
-
-        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
-
-        for (auto op : operables)
-            op->_operate();
-        std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
-
+    for (auto phase : phases)
+    {
+        // Initialize phase
         for (auto cpu : ooo_cpu)
         {
-            // read from trace
-            while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
-                cpu->init_instruction(traces[cpu->cpu]->get());
+            cpu->begin_phase_instr = cpu->num_retired;
+            cpu->begin_phase_cycle = cpu->current_cycle;
 
-            // heartbeat information
-            if (show_heartbeat && (cpu->num_retired >= cpu->next_print_instruction)) {
-                float cumulative_ipc;
-                if (warmup_complete[cpu->cpu])
-                    cumulative_ipc = (1.0*(cpu->num_retired - cpu->begin_sim_instr)) / (cpu->current_cycle - cpu->begin_sim_cycle);
-                else
-                    cumulative_ipc = (1.0*cpu->num_retired) / cpu->current_cycle;
-                float heartbeat_ipc = (1.0*cpu->num_retired - cpu->last_sim_instr) / (cpu->current_cycle - cpu->last_sim_cycle);
+        }
+        reset_stats();
+        phase_complete.reset();
 
-                cout << "Heartbeat CPU " << cpu->cpu << " instructions: " << cpu->num_retired << " cycles: " << cpu->current_cycle;
-                cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc; 
-                cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-                cpu->next_print_instruction += STAT_PRINTING_PERIOD;
+        // Perform phase
+        while (!phase_complete.all())
+        {
+            // Operate
+            for (auto op : operables)
+                op->_operate();
+            std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
-                cpu->last_sim_instr = cpu->num_retired;
-                cpu->last_sim_cycle = cpu->current_cycle;
+            // Read from trace
+            for (auto cpu : ooo_cpu)
+            {
+                while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
+                    cpu->init_instruction(traces[cpu->cpu]->get()); // read from trace
             }
 
-            // check for warmup
-            // warmup complete
-            if ((warmup_complete[cpu->cpu] == 0) && (cpu->num_retired > warmup_instructions)) {
-                warmup_complete[cpu->cpu] = 1;
-                all_warmup_complete++;
-            }
-            if (all_warmup_complete == NUM_CPUS) { // this part is called only once when all cores are warmed up
-                all_warmup_complete++;
-                for (auto cpu : ooo_cpu)
+            // Check for phase finish
+            auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+            for (auto cpu : ooo_cpu)
+            {
+                // Keep warmup_complete
+                warmup_complete[cpu->cpu] = (cpu->num_retired >= warmup_instructions);
+
+                // simulation complete
+                if ((!phase_complete[cpu->cpu]) && (cpu->num_retired >= (cpu->begin_phase_instr + phase.length)))
                 {
-                    std::cout << std::endl;
-                    std::cout << "Warmup complete CPU " << cpu->cpu << " instructions: " << cpu->num_retired << " cycles: " << cpu->current_cycle;
+                    phase_complete.set(cpu->cpu);
+                    cpu->finish_phase_instr = cpu->num_retired;
+                    cpu->finish_phase_cycle = cpu->current_cycle;
+
+                    std::cout << phase.name << " finished CPU " << cpu->cpu;
+                    std::cout << " instructions: " << cpu->finish_phase_instr - cpu->begin_phase_instr;
+                    std::cout << " cycles: " << cpu->finish_phase_cycle - cpu->begin_phase_cycle;
+                    std::cout << " cumulative IPC: " << ((float) cpu->finish_phase_instr - cpu->begin_phase_instr) / (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
                     std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-                    std::cout << std::endl;
+
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+                    record_roi_stats(cpu->cpu, &LLC);
+
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
+                    record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
                 }
-                finish_warmup();
             }
+        }
 
-            // simulation complete
-            if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[cpu->cpu] == 0) && (cpu->num_retired >= (cpu->begin_sim_instr + simulation_instructions))) {
-                simulation_complete[cpu->cpu] = 1;
-                cpu->finish_sim_instr = cpu->num_retired - cpu->begin_sim_instr;
-                cpu->finish_sim_cycle = cpu->current_cycle - cpu->begin_sim_cycle;
-
-                cout << "Finished CPU " << cpu->cpu << " instructions: " << cpu->finish_sim_instr << " cycles: " << cpu->finish_sim_cycle;
-                cout << " cumulative IPC: " << ((float) cpu->finish_sim_instr / cpu->finish_sim_cycle);
-                cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
-
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
-                record_roi_stats(cpu->cpu, &LLC);
-
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
-                record_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
-            }
+        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+        for (auto cpu : ooo_cpu)
+        {
+            std::cout << std::endl;
+            std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << (cpu->num_retired - cpu->begin_phase_instr) << " cycles: " << (cpu->current_cycle - cpu->begin_phase_cycle);
+            std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+            std::cout << std::endl;
         }
     }
 
-    std::cout << std::endl;
     std::cout << "ChampSim completed all CPUs" << std::endl;
 
     if (NUM_CPUS > 1) {
@@ -518,8 +521,8 @@ int main(int argc, char** argv)
         for (auto cpu : ooo_cpu)
         {
             std::cout << std::endl;
-            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (float) (cpu->num_retired - cpu->begin_sim_instr) / (cpu->current_cycle - cpu->begin_sim_cycle); 
-            std::cout << " instructions: " << cpu->num_retired - cpu->begin_sim_instr << " cycles: " << cpu->current_cycle - cpu->begin_sim_cycle << endl;
+            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (float) (cpu->num_retired - cpu->begin_phase_instr) / (cpu->current_cycle - cpu->begin_phase_cycle);
+            std::cout << " instructions: " << cpu->num_retired - cpu->begin_phase_instr << " cycles: " << cpu->current_cycle - cpu->begin_phase_cycle << endl;
 
             print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
             print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
@@ -540,8 +543,8 @@ int main(int argc, char** argv)
     for (auto cpu : ooo_cpu)
     {
         std::cout << std::endl;
-        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << ((float) cpu->finish_sim_instr / cpu->finish_sim_cycle); 
-        std::cout << " instructions: " << cpu->finish_sim_instr << " cycles: " << cpu->finish_sim_cycle;
+        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << ((float) (cpu->finish_phase_instr - cpu->begin_phase_instr) / (cpu->finish_phase_cycle - cpu->begin_phase_cycle));
+        std::cout << " instructions: " << (cpu->finish_phase_instr - cpu->begin_phase_instr) << " cycles: " << (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
         std::cout << endl;
 
         print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));

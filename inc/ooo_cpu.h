@@ -30,13 +30,13 @@ class O3_CPU : public champsim::operable {
     uint32_t cpu = 0;
     bool operated = false;
 
+    uint64_t begin_phase_cycle = 0, begin_phase_instr = 0,
+             finish_phase_cycle = 0, finish_phase_instr = 0,
+             last_heartbeat_cycle = 0, last_heartbeat_instr = 0,
+             next_print_instruction = STAT_PRINTING_PERIOD;
+
     // instruction
-    uint64_t instr_unique_id = 0, completed_executions = 0,
-             begin_sim_cycle = 0, begin_sim_instr = 0,
-             last_sim_cycle = 0, last_sim_instr = 0,
-             finish_sim_cycle = 0, finish_sim_instr = 0,
-             instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
-             next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
+    uint64_t instr_unique_id = 0, completed_executions = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0, num_retired = 0;
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
 
     struct dib_entry_t

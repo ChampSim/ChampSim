@@ -10,8 +10,11 @@
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
+uint8_t show_heartbeat;
 
 extern VirtualMemory vmem;
+
+std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 
 void O3_CPU::operate()
 {
@@ -37,6 +40,21 @@ void O3_CPU::operate()
     fetch_instruction(); // fetch
     translate_fetch();
     check_dib();
+
+    // heartbeat
+    if (show_heartbeat && (num_retired >= next_print_instruction))
+    {
+        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+
+        std::cout << "Heartbeat CPU " << cpu << " instructions: " << num_retired << " cycles: " << current_cycle;
+        std::cout << " heartbeat IPC: " << (1.0*num_retired - last_heartbeat_instr) / (current_cycle - last_heartbeat_cycle);
+        std::cout << " cumulative IPC: " << (1.0*(num_retired - begin_phase_instr)) / (current_cycle - begin_phase_cycle);
+        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+        next_print_instruction += STAT_PRINTING_PERIOD;
+
+        last_heartbeat_instr = num_retired;
+        last_heartbeat_cycle = current_cycle;
+    }
 
     // check for deadlock
     if (ROB.front().ip && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)

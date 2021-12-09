@@ -1,11 +1,12 @@
 #include "dram_controller.h"
 
 #include <algorithm>
+#include <numeric>
 
 #include "champsim_constants.h"
 #include "util.h"
 
-extern uint8_t all_warmup_complete;
+extern uint8_t warmup_complete[NUM_CPUS];
 
 struct is_unscheduled
 {
@@ -143,7 +144,7 @@ void MEMORY_CONTROLLER::schedule(std::vector<PACKET>::iterator q_it)
 
 int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
-    if (all_warmup_complete < NUM_CPUS)
+    if (!std::reduce(std::begin(warmup_complete), std::end(warmup_complete), true, std::logical_and<>{}))
     {
         for (auto ret : packet->to_return)
             ret->return_data(packet);
@@ -192,7 +193,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 {
-    if (all_warmup_complete < NUM_CPUS)
+    if (!std::reduce(std::begin(warmup_complete), std::end(warmup_complete), true, std::logical_and<>{}))
         return -1; // Fast-forward
 
     auto &channel = channels[dram_get_channel(packet->address)];
