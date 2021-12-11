@@ -305,6 +305,7 @@ void CACHE::handle_writeback()
                 // check mshr
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&WQ.entry[index]);
+		
 
 		if(mshr_index == -2)
 		  {
@@ -692,7 +693,7 @@ void CACHE::handle_read()
                         STALL[RQ.entry[index].type]++;
                     }
                     else if (mshr_index != -1) { // already in-flight miss
-
+			miss_handled = 0; //this miss information is already sent to the prefetcher in the past
                         // mark merged consumer
                         if (RQ.entry[index].type == RFO) {
 
