@@ -1,26 +1,11 @@
 #include "tracereader.h"
 
 #include <algorithm>
-#include <cassert>
-#include <cstdio>
 #include <cstring>
-#include <iostream>
-#include <string>
-#include <functional>
-#include <fstream>
 
 void detail::pclose_file(FILE *f)
 {
     pclose(f);
-}
-
-tracereader::tracereader(uint8_t cpu, std::string _ts) :
-    fp(get_fptr(_ts), &detail::pclose_file),
-#ifdef __GNUG__
-    filebuf(fp.get(), std::ios::in),
-#endif
-    cpu(cpu), trace_string(_ts)
-{
 }
 
 FILE* tracereader::get_fptr(std::string fname)
