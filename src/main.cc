@@ -35,7 +35,7 @@ extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<champsim::operable*, 7*NUM_CPUS+2> operables;
 
-std::vector<tracereader*> traces;
+std::vector<std::unique_ptr<tracereader>> traces;
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
@@ -303,6 +303,26 @@ void cpu_l1i_prefetcher_cache_fill(uint32_t cpu_num, uint64_t addr, uint32_t set
   ooo_cpu[cpu_num]->l1i_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr);
 }
 
+bool test_file(std::string fname)
+{
+    if (fname.substr(0,4) == "http")
+    {
+        char testfile_command[4096];
+        sprintf(testfile_command, "wget -q --spider %s", fname.c_str());
+        FILE *testfile = popen(testfile_command, "r");
+        return pclose(testfile);
+    }
+    else
+    {
+        std::ifstream testfile(fname);
+        bool result = testfile.good();
+        if (result)
+            testfile.close();
+        return result;
+    }
+    return false;
+}
+
 int main(int argc, char** argv)
 {
 	// interrupt signal hanlder
@@ -386,6 +406,12 @@ int main(int argc, char** argv)
         {
             std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
 
+            if (!test_file(argv[i]))
+            {
+                std::cerr << "TRACE FILE NOT FOUND" << std::endl;
+                assert(0);
+            }
+
             traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
 
             char *pch[100];
@@ -465,6 +491,13 @@ int main(int argc, char** argv)
             while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
             {
                 ooo_cpu[i]->init_instruction(traces[i]->get());
+
+                // Reopen trace if we've reached the end of the file
+                if (traces[i]->eof())
+                {
+                    std::cout << "*** Reached end of trace: " << traces[i]->trace_string << std::endl;
+                    traces[i] = get_tracereader(traces[i]->trace_string, i, knob_cloudsuite);
+                }
             }
 
             // heartbeat information

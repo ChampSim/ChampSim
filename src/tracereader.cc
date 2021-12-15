@@ -9,46 +9,21 @@
 #include <functional>
 #include <fstream>
 
+void detail::pclose_file(FILE *f)
+{
+    pclose(f);
+}
+
 tracereader::tracereader(uint8_t cpu, std::string _ts) :
-    fp(get_fptr(_ts)),
+    fp(get_fptr(_ts), &detail::pclose_file),
 #ifdef __GNUG__
-    filebuf(fp, std::ios::in),
+    filebuf(fp.get(), std::ios::in),
 #endif
     cpu(cpu), trace_string(_ts)
 {
-    if (!test_file(trace_string))
-    {
-        std::cerr << "TRACE FILE NOT FOUND" << std::endl;
-        assert(0);
-    }
 }
 
-tracereader::~tracereader()
-{
-    close();
-}
-
-bool tracereader::test_file(std::string fname) const
-{
-    if (fname.substr(0,4) == "http")
-    {
-        char testfile_command[4096];
-        sprintf(testfile_command, "wget -q --spider %s", fname.c_str());
-        FILE *testfile = popen(testfile_command, "r");
-        return pclose(testfile);
-    }
-    else
-    {
-        std::ifstream testfile(fname);
-        bool result = testfile.good();
-        if (result)
-            testfile.close();
-        return result;
-    }
-    return false;
-}
-
-FILE* tracereader::get_fptr(std::string fname) const
+FILE* tracereader::get_fptr(std::string fname)
 {
     std::string cmd_fmtstr = "%1$s %2$s";
     if (fname.substr(0,4) == "http")
@@ -69,83 +44,40 @@ FILE* tracereader::get_fptr(std::string fname) const
     return popen(gunzip_command, "r");
 }
 
-void tracereader::open(std::string trace_string)
-{
-    if (!test_file(trace_string))
-    {
-        std::cerr << "TRACE FILE NOT FOUND" << std::endl;
-        assert(0);
-    }
-
-    bool fail = false;
-    fp = get_fptr(trace_string);
-    fail = (fp == NULL);
-#ifdef __GNUG__
-    filebuf = __gnu_cxx::stdio_filebuf<char>{fp, std::ios::in};
-#endif
-
-    if (fail)
-    {
-        std::cerr << std::endl << "*** CANNOT OPEN TRACE FILE: " << trace_string << " ***" << std::endl;
-        assert(0);
-    }
-}
-
-void tracereader::close()
-{
-    if (fp != NULL)
-        pclose(fp);
-}
-
 template<typename T>
 void tracereader::refresh_buffer()
 {
     std::array<T, buffer_size - refresh_thresh> trace_read_buf;
     std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
-    bool need_reopen = false;
-    std::size_t bytes_left = std::size(raw_buf);
+    std::size_t bytes_read;
 
-    // Attempt to fill the buffer from an open trace
+    // Read from trace file
 #ifdef __GNUG__
     trace_file.read(std::data(raw_buf), std::size(raw_buf));
-    bytes_left -= trace_file.gcount();
-    need_reopen = trace_file.eof();
+    bytes_read = trace_file.gcount();
+    eof_ = trace_file.eof();
 #else
-    bytes_left -= fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-    need_reopen = (bytes_left > 0);
+    bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
+    eof_ = (bytes_left > 0);
 #endif
-
-    // If there was an error, assume it is due to EOF
-    if (need_reopen)
-    {
-        std::cout << "*** Reached end of trace: " << trace_string << std::endl;
-
-        // Close the trace file and re-open it
-        close();
-        open(trace_string);
-
-        // Attempt to fill the buffer from the reopened trace
-        auto startpos = std::next(std::data(raw_buf), std::size(raw_buf) - bytes_left);
-#ifdef __GNUG__
-        trace_file.read(startpos, bytes_left);
-        bytes_left -= trace_file.gcount();
-#else
-        bytes_left -= fread(startpos, sizeof(char), bytes_left, fp);
-#endif
-    }
-
-    assert(bytes_left == 0);
 
     // Transform bytes into trace format instructions
-    std::memcpy(std::data(trace_read_buf), std::data(raw_buf), std::size(raw_buf));
+    std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
 
     // Inflate trace format into core model instructions
     auto cpu = this->cpu;
-    std::transform(std::begin(trace_read_buf), std::end(trace_read_buf), std::back_inserter(instr_buffer), [cpu](T t){ return ooo_model_instr{cpu, t}; });
+    auto begin = std::begin(trace_read_buf);
+    auto end = std::next(begin, bytes_read/sizeof(T));
+    std::transform(begin, end, std::back_inserter(instr_buffer), [cpu](T t){ return ooo_model_instr{cpu, t}; });
 
     // Set branch targets
     for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
         std::prev(it)->branch_target = it->ip;
+}
+
+bool tracereader::eof() const
+{
+    return eof_ && std::size(instr_buffer) <= refresh_thresh;
 }
 
 template <typename T>
@@ -159,33 +91,23 @@ ooo_model_instr tracereader::impl_get()
     return retval;
 }
 
-class cloudsuite_tracereader : public tracereader
+template <typename T>
+class bulk_tracereader : public tracereader
 {
     public:
         using tracereader::tracereader;
 
     ooo_model_instr get()
     {
-        return impl_get<cloudsuite_instr>();
+        return impl_get<T>();
     }
 };
 
-class input_tracereader : public tracereader
-{
-    public:
-        using tracereader::tracereader;
-
-    ooo_model_instr get()
-    {
-        return impl_get<input_instr>();
-    }
-};
-
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
     if (is_cloudsuite)
-        return new cloudsuite_tracereader(cpu, fname);
+        return std::make_unique<bulk_tracereader<cloudsuite_instr>>(cpu, fname);
     else
-        return new input_tracereader(cpu, fname);
+        return std::make_unique<bulk_tracereader<input_instr>>(cpu, fname);
 }
 

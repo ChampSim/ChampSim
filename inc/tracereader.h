@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <deque>
+#include <memory>
 #include <string>
 
 #ifdef __GNUG__
@@ -9,20 +10,24 @@
 #include <iostream>
 #endif
 
+namespace detail
+{
+    void pclose_file(FILE* f);
+}
+
 class tracereader
 {
     private:
-        bool test_file(std::string fname) const;
-        FILE* get_fptr(std::string fname) const;
+        static FILE* get_fptr(std::string fname);
 
-        FILE *fp = NULL;
+        std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp;
 #ifdef __GNUG__
         __gnu_cxx::stdio_filebuf<char> filebuf;
         std::istream trace_file{&filebuf};
 #endif
 
         uint8_t cpu;
-        std::string trace_string;
+        bool eof_ = false;
 
         constexpr static std::size_t buffer_size = 128;
         constexpr static std::size_t refresh_thresh = 1;
@@ -36,14 +41,13 @@ class tracereader
         ooo_model_instr impl_get();
 
     public:
-        tracereader(const tracereader &other) = delete;
+        const std::string trace_string;
+
         tracereader(uint8_t cpu, std::string _ts);
-        ~tracereader();
-        void open(std::string trace_string);
-        void close();
+        bool eof() const;
 
         virtual ooo_model_instr get() = 0;
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
 
