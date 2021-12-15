@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <cstring>
 
+#ifdef __GNUG__
+#include <iostream>
+#endif
+
 void detail::pclose_file(FILE *f)
 {
     pclose(f);
@@ -38,6 +42,7 @@ void tracereader::refresh_buffer()
 
     // Read from trace file
 #ifdef __GNUG__
+    std::istream trace_file{&filebuf};
     trace_file.read(std::data(raw_buf), std::size(raw_buf));
     bytes_read = trace_file.gcount();
     eof_ = trace_file.eof();

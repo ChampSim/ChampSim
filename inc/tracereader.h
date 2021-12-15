@@ -7,7 +7,6 @@
 
 #ifdef __GNUG__
 #include <ext/stdio_filebuf.h>
-#include <iostream>
 #endif
 
 namespace detail
@@ -31,7 +30,6 @@ class tracereader
         std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
 #ifdef __GNUG__
         __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
-        std::istream trace_file{&filebuf};
 #endif
 
         const uint8_t cpu;
