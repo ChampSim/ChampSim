@@ -11,19 +11,19 @@ void CACHE::l2c_prefetcher_initialize()
 
 }
 
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     uint64_t page = addr >> LOG2_PAGE_SIZE;
     uint32_t page_offset = (addr >> LOG2_BLOCK_SIZE) & (PAGE_SIZE / BLOCK_SIZE - 1),
              last_sig = 0,
              curr_sig = 0,
-             confidence_q[L2C_MSHR_SIZE],
+             confidence_q[MSHR_SIZE],
              depth = 0;
 
     int32_t  delta = 0,
-             delta_q[L2C_MSHR_SIZE];
+             delta_q[MSHR_SIZE];
 
-    for (uint32_t i = 0; i < L2C_MSHR_SIZE; i++){
+    for (uint32_t i = 0; i < MSHR_SIZE; i++){
         confidence_q[i] = 0;
         delta_q[i] = 0;
     }
@@ -118,7 +118,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
     return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
 #ifdef FILTER_ON
     SPP_DP (cout << endl;);
