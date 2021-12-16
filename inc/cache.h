@@ -9,6 +9,7 @@
 
 #include "delay_queue.hpp"
 #include "memory_class.h"
+#include "operable.h"
 
 // CACHE TYPE
 #define IS_ITLB 0
@@ -27,7 +28,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
+class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
     const std::string NAME;
@@ -39,6 +40,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     uint8_t cache_type;
     const bool prefetch_as_load;
+    const bool virtual_prefetch;
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -58,7 +60,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
                                   VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
                                   WQ{WQ_SIZE, HIT_LATENCY}; // write queue
 
-    std::list<PACKET> MSHR{MSHR_SIZE}; // MSHR
+    std::list<PACKET> MSHR; // MSHR
 
     std::array<std::array<unsigned long long, NUM_TYPES>, NUM_CPUS>
              sim_hit = {},
@@ -83,10 +85,10 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     uint64_t total_miss_latency = 0;
     
     // constructor
-    CACHE(std::string v1, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load)
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
-        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load)
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref, MemoryRequestConsumer *ll)
+        : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
+        HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), virtual_prefetch(va_pref)
     {
     }
 
@@ -100,8 +102,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void return_data(PACKET *packet),
          operate(),
          operate_writes(),
-         operate_reads(),
-         increment_WQ_FULL(uint64_t address);
+         operate_reads();
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
@@ -111,8 +112,7 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     int  invalidate_entry(uint64_t inval_addr),
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
-         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata),
-         va_prefetch_line(uint64_t ip, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata);
+         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
     void add_mshr(PACKET *packet),
          va_translate_prefetches();
@@ -128,16 +128,16 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
 
     void prefetcher_operate    (uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
          (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t),
-         l1d_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
+         l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type);
 
-    uint32_t l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         llc_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+    uint32_t l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
+         llc_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
 
     void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
     void prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
-             l1d_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    uint32_t l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-             llc_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+             l1d_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+    uint32_t l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
+             llc_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
 
     void prefetcher_initialize(),
          l1d_prefetcher_initialize(),
@@ -166,25 +166,6 @@ class CACHE : public MemoryRequestConsumer, public MemoryRequestProducer {
     void lru_final_stats();
 };
 
-class min_fill_index
-{
-    public:
-    bool operator() (PACKET lhs, PACKET rhs)
-    {
-        return rhs.returned != COMPLETED || (lhs.returned == COMPLETED && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
-template <>
-struct is_valid<PACKET>
-{
-    is_valid() {}
-    bool operator()(const PACKET &test)
-    {
-        return test.address != 0;
-    }
-};
-
 template <typename T>
 struct eq_full_addr
 {
@@ -197,7 +178,6 @@ struct eq_full_addr
         return validtest(test) && test.full_addr == val;
     }
 };
-
 
 #endif
 

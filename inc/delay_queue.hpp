@@ -130,8 +130,8 @@ namespace champsim {
 
         private:
             const size_type sz;
-            buffer_t<value_type> _buf = {};
-            buffer_t<long long int> _delays = {};
+            buffer_t<value_type> _buf{sz};
+            buffer_t<long long int> _delays{sz};
             const long long int _latency;
             iterator _end_ready = _buf.end();
     };

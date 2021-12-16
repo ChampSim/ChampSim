@@ -15,7 +15,6 @@
 uint64_t l2pf_access = 0;
 
 extern VirtualMemory vmem;
-extern uint64_t current_core_cycle[NUM_CPUS];
 extern uint8_t  warmup_complete[NUM_CPUS];
 
 void CACHE::handle_fill()
@@ -23,7 +22,7 @@ void CACHE::handle_fill()
     while (writes_available_this_cycle > 0)
     {
         auto fill_mshr = MSHR.begin();
-        if (fill_mshr->returned != COMPLETED || fill_mshr->event_cycle > current_core_cycle[fill_mshr->cpu])
+        if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
             return;
 
         // find victim
@@ -49,11 +48,8 @@ void CACHE::handle_fill()
                 ret->return_data(&(*fill_mshr));
         }
 
-        PACKET empty;
-        *fill_mshr = empty;
-
+        MSHR.erase(fill_mshr);
         writes_available_this_cycle--;
-        MSHR.sort(min_fill_index());
     }
 }
 
@@ -61,7 +57,7 @@ void CACHE::handle_writeback()
 {
     while (writes_available_this_cycle > 0)
     {
-        if (!WQ.has_ready() || (WQ.front().cpu >= NUM_CPUS) || (WQ.front().event_cycle > current_core_cycle[WQ.front().cpu]))
+        if (!WQ.has_ready())
             return;
 
         // handle the oldest entry
@@ -123,7 +119,7 @@ void CACHE::handle_read()
 {
     while (reads_available_this_cycle > 0) {
 
-        if (!RQ.has_ready() || (RQ.front().cpu >= NUM_CPUS) || (RQ.front().event_cycle > current_core_cycle[RQ.front().cpu]))
+        if (!RQ.has_ready())
             return;
 
         // handle the oldest entry
@@ -152,7 +148,7 @@ void CACHE::handle_prefetch()
 {
     while (reads_available_this_cycle > 0)
     {
-        if (!PQ.has_ready() || (PQ.front().cpu >= NUM_CPUS) || (PQ.front().event_cycle > current_core_cycle[PQ.front().cpu]))
+        if (!PQ.has_ready())
             return;
 
         // handle the oldest entry
@@ -187,15 +183,15 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
         if(cache_type == IS_L1I)
-            l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 1, hit_block.prefetch);
+            l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 1, hit_block.prefetch);
         if (cache_type == IS_L1D)
-            l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type);
+            l1d_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 1, handle_pkt.type);
         else if (cache_type == IS_L2C)
-            l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
+            l2c_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
         else if (cache_type == IS_LLC)
         {
             cpu = handle_pkt.cpu;
-            llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, hit_block.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
+            llc_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 1, handle_pkt.type, 0);
             cpu = 0;
         }
     }
@@ -214,14 +210,13 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
         pf_useful++;
         hit_block.prefetch = 0;
     }
-    hit_block.used = 1;
 }
 
 bool CACHE::readlike_miss(PACKET &handle_pkt)
 {
     // check mshr
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address));
-    bool mshr_full = std::all_of(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+    bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
     if (mshr_entry != MSHR.end()) // miss already inflight
     {
@@ -235,12 +230,14 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH)
         {
-            uint8_t  prior_returned = mshr_entry->returned;
+            // Mark the prefetch as useful
+            if (mshr_entry->pf_origin_level == fill_level)
+                pf_useful++;
+
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
 
-            // in case request is already returned, we should keep event_cycle and retunred variables
-            mshr_entry->returned = prior_returned;
+            // in case request is already returned, we should keep event_cycle
             mshr_entry->event_cycle = prior_event_cycle;
         }
     }
@@ -253,44 +250,41 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
 
         // check to make sure the lower level queue has room for this read miss
         int queue_type = (is_read) ? 1 : 3;
-        if (cache_type != IS_STLB && lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
+        if (lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
             return false;
 
         // Allocate an MSHR
         if (handle_pkt.fill_level <= fill_level)
         {
-            auto it = std::find_if_not(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-            assert(it != std::end(MSHR));
-            *it = handle_pkt;
-            it->returned = INFLIGHT;
-            it->cycle_enqueued = current_core_cycle[handle_pkt.cpu];
+            auto it = MSHR.insert(std::end(MSHR), handle_pkt);
+            it->cycle_enqueued = current_cycle;
+            it->event_cycle = std::numeric_limits<uint64_t>::max();
         }
 
+        if (handle_pkt.fill_level <= fill_level)
+            handle_pkt.to_return = {this};
+        else
+            handle_pkt.to_return.clear();
 
-            if (handle_pkt.fill_level <= fill_level)
-                handle_pkt.to_return = {this};
-            else
-                handle_pkt.to_return.clear();
-
-            if (!is_read)
-                lower_level->add_pq(&handle_pkt);
-            else
-                lower_level->add_rq(&handle_pkt);
+        if (!is_read)
+            lower_level->add_pq(&handle_pkt);
+        else
+            lower_level->add_rq(&handle_pkt);
     }
 
     // update prefetcher on load instructions and prefetches from upper levels
     if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
     {
         if(cache_type == IS_L1I)
-            l1i_prefetcher_cache_operate(handle_pkt.cpu, handle_pkt.ip, 0, 0);
+            l1i_prefetcher_cache_operate(handle_pkt.cpu, virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, 0, 0);
         if (cache_type == IS_L1D)
-            l1d_prefetcher_operate(handle_pkt.full_v_addr, handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type);
+            l1d_prefetcher_operate(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type);
         if (cache_type == IS_L2C)
-            l2c_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
+            l2c_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
         if (cache_type == IS_LLC)
         {
             cpu = handle_pkt.cpu;
-            llc_prefetcher_operate(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
+            llc_prefetcher_operate((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, handle_pkt.ip, 0, handle_pkt.type, 0);
             cpu = 0;
         }
     }
@@ -308,21 +302,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     BLOCK &fill_block = block[set*NUM_WAY + way];
     bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
-    auto evicting_l1i_v_addr = bypass ? 0 : fill_block.ip;
-    auto evicting_address = bypass ? 0 : fill_block.address;
-
-    // is this dirty?
-    if (evicting_dirty && (lower_level->get_occupancy(2, fill_block.address) == lower_level->get_size(2, fill_block.address))) {
-
-        // lower level WQ is full, cannot replace this victim
-        lower_level->increment_WQ_FULL(fill_block.address);
-
-        DP ( if (warmup_complete[handle_pkt.cpu]) {
-                std::cout << "[" << NAME << "] " << __func__ << " ceasing write. ";
-                std::cout << " Lower level wq is full!" << " fill_addr: " << std::hex << handle_pkt.address;
-                std::cout << " victim_addr: " << fill_block.tag << std::dec << std::endl; });
-        return false;
-    }
+    auto evicting_address = bypass ? 0 : (virtual_prefetch ? fill_block.v_address : fill_block.address);
 
     if (!bypass)
     {
@@ -337,7 +317,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             writeback_packet.instr_id = handle_pkt.instr_id;
             writeback_packet.ip = 0;
             writeback_packet.type = WRITEBACK;
-            writeback_packet.event_cycle = current_core_cycle[handle_pkt.cpu];
 
             auto result = lower_level->add_wq(&writeback_packet);
             if (result == -2)
@@ -348,37 +327,39 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         assert(cache_type != IS_DTLB || handle_pkt.data != 0);
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
-        if (fill_block.prefetch && !fill_block.used)
+        if (fill_block.prefetch)
             pf_useless++;
 
         if (handle_pkt.type == PREFETCH)
             pf_fill++;
 
-        auto lru = fill_block.lru; // preserve LRU state
-        fill_block = handle_pkt; // fill cache
-        fill_block.lru = lru;
-
-        if (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && cache_type == IS_L1D))
-		{
-            fill_block.dirty = 1;
-			assert(cache_type != IS_ITLB || cache_type != IS_DTLB || cache_type != IS_STLB);
-		}
+        fill_block.valid = true;
+        fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
+        fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+        fill_block.address = handle_pkt.address;
+        fill_block.full_addr = handle_pkt.full_addr;
+        fill_block.v_address = handle_pkt.v_address;
+        fill_block.full_v_addr = handle_pkt.full_v_addr;
+        fill_block.data = handle_pkt.data;
+        fill_block.ip = handle_pkt.ip;
+        fill_block.cpu = handle_pkt.cpu;
+        fill_block.instr_id = handle_pkt.instr_id;
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-        total_miss_latency += current_core_cycle[handle_pkt.cpu] - handle_pkt.cycle_enqueued;
+        total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     // update prefetcher
     if (cache_type == IS_L1I)
-        l1i_prefetcher_cache_fill(handle_pkt.cpu, handle_pkt.ip & ~(BLOCK_SIZE-1), set, way, handle_pkt.type == PREFETCH, evicting_l1i_v_addr & ~(BLOCK_SIZE-1));
+        l1i_prefetcher_cache_fill(handle_pkt.cpu, (virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr) & ~bitmask(LOG2_BLOCK_SIZE), set, way, handle_pkt.type == PREFETCH, evicting_address & ~bitmask(LOG2_BLOCK_SIZE));
     if (cache_type == IS_L1D)
-        l1d_prefetcher_cache_fill(handle_pkt.full_v_addr, handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
+        l1d_prefetcher_cache_fill(virtual_prefetch ? handle_pkt.full_v_addr : handle_pkt.full_addr, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
     if  (cache_type == IS_L2C)
-        handle_pkt.pf_metadata = l2c_prefetcher_cache_fill(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
+        handle_pkt.pf_metadata = l2c_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
     if (cache_type == IS_LLC)
     {
         cpu = handle_pkt.cpu;
-        handle_pkt.pf_metadata = llc_prefetcher_cache_fill(handle_pkt.v_address << LOG2_BLOCK_SIZE, handle_pkt.address << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
+        handle_pkt.pf_metadata = llc_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) << LOG2_BLOCK_SIZE, set, way, handle_pkt.type == PREFETCH, evicting_address << LOG2_BLOCK_SIZE, handle_pkt.pf_metadata);
         cpu = 0;
     }
 
@@ -422,7 +403,7 @@ void CACHE::operate_reads()
 
 uint32_t CACHE::get_set(uint64_t address)
 {
-    return (uint32_t) (address & ((1 << lg2(NUM_SET)) - 1)); 
+    return (uint32_t) (address & bitmask(lg2(NUM_SET)));
 }
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
@@ -478,7 +459,7 @@ int CACHE::add_rq(PACKET *packet)
 
         RQ_MERGED++;
 
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // check occupancy
@@ -499,7 +480,7 @@ int CACHE::add_rq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
     RQ_TO_CACHE++;
-    return -1;
+    return RQ.occupancy();
 }
 
 int CACHE::add_wq(PACKET *packet)
@@ -518,7 +499,7 @@ int CACHE::add_wq(PACKET *packet)
     if (found_wq != WQ.end()) {
 
         WQ_MERGED++;
-        return 1; // merged index
+        return 0; // merged index
     }
 
     // Check for room in the queue
@@ -542,37 +523,40 @@ int CACHE::add_wq(PACKET *packet)
     WQ_TO_CACHE++;
     WQ_ACCESS++;
 
-    return -1;
+    return WQ.occupancy();
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
 {
     pf_requested++;
 
-    if (!PQ.full()) {
-        if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
-            
-            PACKET pf_packet;
-            pf_packet.fill_level = pf_fill_level;
-	    pf_packet.pf_origin_level = fill_level;
-	    pf_packet.pf_metadata = prefetch_metadata;
-            pf_packet.cpu = cpu;
-            //pf_packet.data_index = LQ.entry[lq_index].data_index;
-            //pf_packet.lq_index = lq_index;
-            pf_packet.address = pf_addr >> LOG2_BLOCK_SIZE;
-            pf_packet.full_addr = pf_addr;
-            pf_packet.v_address = 0;
-            pf_packet.full_v_addr = 0;
-            //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
-            pf_packet.ip = ip;
-            pf_packet.type = PREFETCH;
-            pf_packet.event_cycle = current_core_cycle[cpu];
+    PACKET pf_packet;
+    pf_packet.fill_level = pf_fill_level;
+    pf_packet.pf_origin_level = fill_level;
+    pf_packet.pf_metadata = prefetch_metadata;
+    pf_packet.cpu = cpu;
+    pf_packet.v_address = virtual_prefetch ? pf_addr >> LOG2_BLOCK_SIZE : 0;
+    pf_packet.address = pf_addr >> LOG2_BLOCK_SIZE;
+    pf_packet.full_v_addr = virtual_prefetch ? pf_addr : 0;
+    pf_packet.full_addr = pf_addr;
+    pf_packet.ip = ip;
+    pf_packet.type = PREFETCH;
 
-            // give a dummy 0 as the IP of a prefetch
-            add_pq(&pf_packet);
-
-            pf_issued++;
-
+    if (virtual_prefetch)
+    {
+        if (!VAPQ.full())
+        {
+            VAPQ.push_back(pf_packet);
+            return 1;
+        }
+    }
+    else
+    {
+        int result = add_pq(&pf_packet);
+        if (result != -2)
+        {
+            if (result > 0)
+                pf_issued++;
             return 1;
         }
     }
@@ -603,12 +587,11 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             //pf_packet.depth = depth;
             //pf_packet.signature = signature;
             //pf_packet.confidence = confidence;
-            pf_packet.event_cycle = current_core_cycle[cpu];
 
-            // give a dummy 0 as the IP of a prefetch
-            add_pq(&pf_packet);
+            int result = add_pq(&pf_packet);
 
-            pf_issued++;
+            if (result > 0)
+                pf_issued++;
 
             return 1;
         }
@@ -617,60 +600,23 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
     return 0;
 }
 
-int CACHE::va_prefetch_line(uint64_t ip, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
-{
-  if(pf_addr == 0)
-  {
-      std::cerr << "va_prefetch_line() pf_addr cannot be 0! exiting" << std::endl;
-      assert(0);
-  }
-
-  pf_requested++;
-  if(!VAPQ.full())
-    {
-      // generate new prefetch request packet
-      PACKET pf_packet;
-      pf_packet.fill_level = pf_fill_level;
-      pf_packet.pf_origin_level = fill_level;
-      pf_packet.pf_metadata = prefetch_metadata;
-      pf_packet.cpu = cpu;
-      pf_packet.v_address = pf_addr >> LOG2_BLOCK_SIZE;
-      pf_packet.address = pf_addr >> LOG2_BLOCK_SIZE; // make address == v_address before translation just so we can use VAPQ's check_queue() function
-	pf_packet.full_v_addr = pf_addr;
-      pf_packet.full_addr = pf_addr;
-      pf_packet.ip = ip;
-      pf_packet.type = PREFETCH;
-      pf_packet.event_cycle = 0;
-      pf_packet.to_return = {this};
-
-      auto vapq_entry = std::find_if(VAPQ.begin(), VAPQ.end(), eq_addr<PACKET>(pf_addr >> LOG2_BLOCK_SIZE));
-      if(vapq_entry != VAPQ.end())
-	{
-	  // there's already a VA prefetch to this cache line
-	  return 1;
-	}
-
-      // add the packet to the virtual address space prefetching queue
-      VAPQ.push_back(pf_packet);
-      return 1;
-    }
-
-  return 0;
-}
-
 void CACHE::va_translate_prefetches()
 {
     // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-    if (!PQ.full() && VAPQ.has_ready())
+    if (VAPQ.has_ready())
     {
         VAPQ.front().full_addr = vmem.va_to_pa(cpu, VAPQ.front().full_v_addr);
         VAPQ.front().address   = VAPQ.front().full_addr >> LOG2_BLOCK_SIZE;
 
         // move the translated prefetch over to the regular PQ
-        add_pq(&VAPQ.front());
+        int result = add_pq(&VAPQ.front());
 
         // remove the prefetch from the VAPQ
-        VAPQ.pop_front();
+        if (result != -2)
+            VAPQ.pop_front();
+
+        if (result > 0)
+            pf_issued++;
     }
 }
 
@@ -706,7 +652,7 @@ int CACHE::add_pq(PACKET *packet)
         packet_dep_merge(found->to_return, packet->to_return);
 
         PQ_MERGED++;
-        return 1; // merged index
+        return 0;
     }
 
     // check occupancy
@@ -729,7 +675,7 @@ int CACHE::add_pq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
     PQ_TO_CACHE++;
-    return -1;
+    return PQ.occupancy();
 }
 
 void CACHE::return_data(PACKET *packet)
@@ -743,38 +689,25 @@ void CACHE::return_data(PACKET *packet)
         std::cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id << " cannot find a matching entry!";
         std::cerr << " full_addr: " << std::hex << packet->full_addr;
         std::cerr << " address: " << packet->address << std::dec;
-        std::cerr << " event: " << packet->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl;
+        std::cerr << " event: " << packet->event_cycle << " current: " << current_cycle << std::endl;
         assert(0);
     }
 
     // MSHR holds the most updated information about this request
     // no need to do memcpy
-	
-    mshr_entry->returned = COMPLETED;
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
-
-    // ADD LATENCY
-    if (warmup_complete[cpu])
-    {
-        if (mshr_entry->event_cycle < current_core_cycle[packet->cpu])
-            mshr_entry->event_cycle = current_core_cycle[packet->cpu] + FILL_LATENCY;
-        else
-            mshr_entry->event_cycle += FILL_LATENCY;
-    }
-    else
-    {
-        mshr_entry->event_cycle = current_core_cycle[cpu];
-    }
+    mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
     DP (if (warmup_complete[packet->cpu]) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
             std::cout << " address: " << std::hex << mshr_entry->address << " full_addr: " << mshr_entry->full_addr;
             std::cout << " data: " << mshr_entry->data << std::dec;
             std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
-            std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_core_cycle[packet->cpu] << std::endl; });
+            std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl; });
 
-    MSHR.sort(min_fill_index());
+    // Order this entry after previously-returned entries, but before non-returned entries
+    MSHR.splice(std::lower_bound(std::begin(MSHR), std::end(MSHR), *mshr_entry, ord_event_cycle<PACKET>()), MSHR, mshr_entry);
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
@@ -803,11 +736,6 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
-}
-
-void CACHE::increment_WQ_FULL(uint64_t address)
-{
-    WQ_FULL++;
 }
 
 void CACHE::reset_stats()
