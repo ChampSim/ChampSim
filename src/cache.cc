@@ -12,8 +12,6 @@
 #define NDEBUG
 #endif
 
-uint64_t l2pf_access = 0;
-
 extern VirtualMemory vmem;
 extern uint8_t  warmup_complete[NUM_CPUS];
 
@@ -76,8 +74,7 @@ void CACHE::handle_writeback()
             update_replacement_state(handle_pkt.cpu, set, way, fill_block.full_addr, handle_pkt.ip, 0, handle_pkt.type, 1);
 
             // COLLECT STATS
-            sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-            sim_access[handle_pkt.cpu][handle_pkt.type]++;
+            sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
 
             // mark dirty
             fill_block.dirty = 1;
@@ -201,15 +198,14 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     update_replacement_state(handle_pkt.cpu, set, way, hit_block.full_addr, handle_pkt.ip, 0, handle_pkt.type, 1);
 
     // COLLECT STATS
-    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-    sim_access[handle_pkt.cpu][handle_pkt.type]++;
+    sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
 
     for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);
 
     // update prefetch stats and reset prefetch bit
     if (hit_block.prefetch) {
-        pf_useful++;
+        sim_stats.back().pf_useful++;
         hit_block.prefetch = 0;
     }
 }
@@ -234,7 +230,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
         {
             // Mark the prefetch as useful
             if (mshr_entry->pf_origin_level == fill_level)
-                pf_useful++;
+                sim_stats.back().pf_useful++;
 
             uint64_t prior_event_cycle = mshr_entry->event_cycle;
             *mshr_entry = handle_pkt;
@@ -330,10 +326,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         assert(cache_type != IS_STLB || handle_pkt.data != 0);
 
         if (fill_block.prefetch)
-            pf_useless++;
+            sim_stats.back().pf_useless++;
 
         if (handle_pkt.type == PREFETCH)
-            pf_fill++;
+            sim_stats.back().pf_fill++;
 
         fill_block.valid = true;
         fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
@@ -349,7 +345,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-        total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
+        sim_stats.back().total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     // update prefetcher
     if (cache_type == IS_L1I)
@@ -369,8 +365,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
     update_replacement_state(handle_pkt.cpu, set, way, handle_pkt.full_addr, handle_pkt.ip, 0, handle_pkt.type, 0);
 
     // COLLECT STATS
-    sim_miss[handle_pkt.cpu][handle_pkt.type]++;
-    sim_access[handle_pkt.cpu][handle_pkt.type]++;
+    sim_stats.back().misses[handle_pkt.cpu][handle_pkt.type]++;
 
     return true;
 }
@@ -430,7 +425,7 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 int CACHE::add_rq(PACKET *packet)
 {
     assert(packet->address != 0);
-    RQ_ACCESS++;
+    sim_stats.back().RQ_ACCESS++;
 
     // check for the latest writebacks in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
@@ -447,7 +442,7 @@ int CACHE::add_rq(PACKET *packet)
         for (auto ret : packet->to_return)
             ret->return_data(packet);
 
-        WQ_FORWARD++;
+        sim_stats.back().WQ_FORWARD++;
         return -1;
     }
 
@@ -460,14 +455,14 @@ int CACHE::add_rq(PACKET *packet)
         packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
         packet_dep_merge(found_rq->to_return, packet->to_return);
 
-        RQ_MERGED++;
+        sim_stats.back().RQ_MERGED++;
 
         return 0; // merged index
     }
 
     // check occupancy
     if (RQ.full()) {
-        RQ_FULL++;
+        sim_stats.back().RQ_FULL++;
 
         return -2; // cannot handle this request
     }
@@ -482,13 +477,13 @@ int CACHE::add_rq(PACKET *packet)
             std::cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
-    RQ_TO_CACHE++;
+    sim_stats.back().RQ_TO_CACHE++;
     return RQ.occupancy();
 }
 
 int CACHE::add_wq(PACKET *packet)
 {
-    WQ_ACCESS++;
+    sim_stats.back().WQ_ACCESS++;
 
     // check for duplicates in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
@@ -501,14 +496,14 @@ int CACHE::add_wq(PACKET *packet)
 
     if (found_wq != WQ.end()) {
 
-        WQ_MERGED++;
+        sim_stats.back().WQ_MERGED++;
         return 0; // merged index
     }
 
     // Check for room in the queue
     if (WQ.full())
     {
-        ++WQ_FULL;
+        ++sim_stats.back().WQ_FULL;
         return -2;
     }
 
@@ -523,15 +518,15 @@ int CACHE::add_wq(PACKET *packet)
             std::cout << " full_addr: " << packet->full_addr << std::dec << " occupancy: " << WQ.occupancy();
             std::cout << " data: " << std::hex << packet->data << std::dec << std::endl; })
 
-    WQ_TO_CACHE++;
-    WQ_ACCESS++;
+    sim_stats.back().WQ_TO_CACHE++;
+    sim_stats.back().WQ_ACCESS++;
 
     return WQ.occupancy();
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int pf_fill_level, uint32_t prefetch_metadata)
 {
-    pf_requested++;
+    sim_stats.back().pf_requested++;
 
     PACKET pf_packet;
     pf_packet.fill_level = pf_fill_level;
@@ -559,7 +554,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int 
         if (result != -2)
         {
             if (result > 0)
-                pf_issued++;
+                sim_stats.back().pf_issued++;
             return 1;
         }
     }
@@ -594,7 +589,7 @@ int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int pf_fill_l
             int result = add_pq(&pf_packet);
 
             if (result > 0)
-                pf_issued++;
+                sim_stats.back().pf_issued++;
 
             return 1;
         }
@@ -619,14 +614,14 @@ void CACHE::va_translate_prefetches()
             VAPQ.pop_front();
 
         if (result > 0)
-            pf_issued++;
+            sim_stats.back().pf_issued++;
     }
 }
 
 int CACHE::add_pq(PACKET *packet)
 {
     assert(packet->address != 0);
-    PQ_ACCESS++;
+    sim_stats.back().PQ_ACCESS++;
 
     // check for the latest wirtebacks in the write queue
     champsim::delay_queue<PACKET>::iterator found_wq;
@@ -643,7 +638,7 @@ int CACHE::add_pq(PACKET *packet)
         for (auto ret : packet->to_return)
             ret->return_data(packet);
 
-        WQ_FORWARD++;
+        sim_stats.back().WQ_FORWARD++;
         return -1;
     }
 
@@ -654,13 +649,13 @@ int CACHE::add_pq(PACKET *packet)
         found->fill_level = std::min(found->fill_level, packet->fill_level);
         packet_dep_merge(found->to_return, packet->to_return);
 
-        PQ_MERGED++;
+        sim_stats.back().PQ_MERGED++;
         return 0;
     }
 
     // check occupancy
     if (PQ.full()) {
-        PQ_FULL++;
+        sim_stats.back().PQ_FULL++;
 
         DP ( if (warmup_complete[packet->cpu]) {
         cout << "[" << NAME << "] cannot process add_pq since it is full" << endl; });
@@ -677,7 +672,7 @@ int CACHE::add_pq(PACKET *packet)
             std::cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
-    PQ_TO_CACHE++;
+    sim_stats.back().PQ_TO_CACHE++;
     return PQ.occupancy();
 }
 
@@ -743,36 +738,11 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 
 void CACHE::begin_phase()
 {
-    for (auto& arr : sim_access)
-        std::fill(std::begin(arr), std::end(arr), 0);
-    for (auto& arr : sim_hit)
-        std::fill(std::begin(arr), std::end(arr), 0);
-    for (auto& arr : sim_miss)
-        std::fill(std::begin(arr), std::end(arr), 0);
-
-    pf_requested = 0;
-    pf_issued = 0;
-    pf_useful = 0;
-    pf_useless = 0;
-    pf_fill = 0;
-
-    total_miss_latency = 0;
-
-    RQ_ACCESS = 0;
-    RQ_MERGED = 0;
-    RQ_TO_CACHE = 0;
-
-    WQ_ACCESS = 0;
-    WQ_MERGED = 0;
-    WQ_TO_CACHE = 0;
-    WQ_FORWARD = 0;
-    WQ_FULL = 0;
+    sim_stats.emplace_back();
 }
 
 void CACHE::end_phase(unsigned cpu)
 {
-    std::copy(std::begin(sim_access[cpu]), std::end(sim_access[cpu]), std::begin(roi_access[cpu]));
-    std::copy(std::begin(sim_hit[cpu]), std::end(sim_hit[cpu]), std::begin(roi_hit[cpu]));
-    std::copy(std::begin(sim_miss[cpu]), std::end(sim_miss[cpu]), std::begin(roi_miss[cpu]));
+    roi_stats.push_back(sim_stats.back());
 }
 

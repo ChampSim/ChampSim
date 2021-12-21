@@ -27,6 +27,20 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
+struct cache_stats
+{
+    // prefetch stats
+    uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
+
+    std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {}, misses = {};
+
+    uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0,
+             PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0,
+             WQ_ACCESS = 0, WQ_MERGED = 0, WQ_FULL = 0, WQ_TO_CACHE = 0, WQ_FORWARD = 0;
+
+    uint64_t total_miss_latency = 0;
+};
+
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
   public:
     uint32_t cpu;
@@ -41,12 +55,9 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     const bool prefetch_as_load;
     const bool virtual_prefetch;
 
-    // prefetch stats
-    uint64_t pf_requested = 0,
-             pf_issued = 0,
-             pf_useful = 0,
-             pf_useless = 0,
-             pf_fill = 0;
+    using stats_type = cache_stats;
+
+    std::vector<stats_type> sim_stats, roi_stats;
 
     // queues
     champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
@@ -56,29 +67,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
     std::list<PACKET> MSHR; // MSHR
 
-    uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {},
-             sim_hit[NUM_CPUS][NUM_TYPES] = {},
-             sim_miss[NUM_CPUS][NUM_TYPES] = {},
-             roi_access[NUM_CPUS][NUM_TYPES] = {},
-             roi_hit[NUM_CPUS][NUM_TYPES] = {},
-             roi_miss[NUM_CPUS][NUM_TYPES] = {};
-
-    uint64_t RQ_ACCESS = 0,
-             RQ_MERGED = 0,
-             RQ_FULL = 0,
-             RQ_TO_CACHE = 0,
-             PQ_ACCESS = 0,
-             PQ_MERGED = 0,
-             PQ_FULL = 0,
-             PQ_TO_CACHE = 0,
-             WQ_ACCESS = 0,
-             WQ_MERGED = 0,
-             WQ_FULL = 0,
-             WQ_FORWARD = 0,
-             WQ_TO_CACHE = 0;
-
-    uint64_t total_miss_latency = 0;
-    
     // constructor
   CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
             uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, bool pref_load, bool va_pref, MemoryRequestConsumer *ll)

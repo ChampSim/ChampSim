@@ -6,6 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <iomanip>
+#include <numeric>
 #include <signal.h>
 #include <string.h>
 #include <vector>
@@ -47,68 +48,49 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
     return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
-void print_roi_stats(uint32_t cpu, CACHE *cache)
+void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
 {
-    uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
+    uint64_t TOTAL_HIT = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull),
+             TOTAL_MISS = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull);
 
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        TOTAL_ACCESS += cache->roi_access[cpu][i];
-        TOTAL_HIT += cache->roi_hit[cpu][i];
-        TOTAL_MISS += cache->roi_miss[cpu][i];
-    }
+    std::cout << name << " TOTAL     ";
+    std::cout << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
+    std::cout << "HIT: "    << std::setw(10) << TOTAL_HIT << "  ";
+    std::cout << "MISS: "   << std::setw(10) << TOTAL_MISS << std::endl;
 
-    cout << cache->NAME;
-    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS << endl;
+    std::cout << name << " LOAD      ";
+    std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][LOAD] + stats.misses[cpu][LOAD] << "  ";
+    std::cout << "HIT: "    << std::setw(10) << stats.hits[cpu][LOAD] << "  ";
+    std::cout << "MISS: "   << std::setw(10) << stats.misses[cpu][LOAD] << std::endl;
 
-    cout << cache->NAME;
-    cout << " LOAD      ACCESS: " << setw(10) << cache->roi_access[cpu][0] << "  HIT: " << setw(10) << cache->roi_hit[cpu][0] << "  MISS: " << setw(10) << cache->roi_miss[cpu][0] << endl;
+    std::cout << name << " RFO       ";
+    std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][RFO] + stats.misses[cpu][RFO] << "  ";
+    std::cout << "HIT: "    << std::setw(10) << stats.hits[cpu][RFO] << "  ";
+    std::cout << "MISS: "   << std::setw(10) << stats.misses[cpu][RFO] << std::endl;
 
-    cout << cache->NAME;
-    cout << " RFO       ACCESS: " << setw(10) << cache->roi_access[cpu][1] << "  HIT: " << setw(10) << cache->roi_hit[cpu][1] << "  MISS: " << setw(10) << cache->roi_miss[cpu][1] << endl;
+    std::cout << name << " PREFETCH  ";
+    std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][PREFETCH] + stats.misses[cpu][PREFETCH] << "  ";
+    std::cout << "HIT: "    << std::setw(10) << stats.hits[cpu][PREFETCH] << "  ";
+    std::cout << "MISS: "   << std::setw(10) << stats.misses[cpu][PREFETCH] << std::endl;
 
-    cout << cache->NAME;
-    cout << " PREFETCH  ACCESS: " << setw(10) << cache->roi_access[cpu][2] << "  HIT: " << setw(10) << cache->roi_hit[cpu][2] << "  MISS: " << setw(10) << cache->roi_miss[cpu][2] << endl;
+    std::cout << name << " WRITEBACK ";
+    std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][WRITEBACK] + stats.misses[cpu][WRITEBACK] << "  ";
+    std::cout << "HIT: "    << std::setw(10) << stats.hits[cpu][WRITEBACK] << "  ";
+    std::cout << "MISS: "   << std::setw(10) << stats.misses[cpu][WRITEBACK] << std::endl;
 
-    cout << cache->NAME;
-    cout << " WRITEBACK ACCESS: " << setw(10) << cache->roi_access[cpu][3] << "  HIT: " << setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << setw(10) << cache->roi_miss[cpu][3] << endl;
+    std::cout << name << " TRANSLATION ";
+    std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][TRANSLATION] + stats.misses[cpu][TRANSLATION] << "  ";
+    std::cout << "HIT: "    << std::setw(10) << stats.hits[cpu][TRANSLATION] << "  ";
+    std::cout << "MISS: "   << std::setw(10) << stats.misses[cpu][TRANSLATION] << std::endl;
 
-	cout << cache->NAME;
-    cout << " TRANSLATION ACCESS: " << setw(10) << cache->roi_access[cpu][4] << "  HIT: " << setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << setw(10) << cache->roi_miss[cpu][4] << endl;
+    std::cout << name << " PREFETCH  ";
+    std::cout << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
+    std::cout << "ISSUED: " << std::setw(10) << stats.pf_issued << "  ";
+    std::cout << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
+    std::cout << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
 
-
-    cout << cache->NAME;
-    cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
-    cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
-
-    cout << cache->NAME;
-    cout << " AVERAGE MISS LATENCY: " << (1.0*(cache->total_miss_latency))/TOTAL_MISS << " cycles" << endl;
-    //cout << " AVERAGE MISS LATENCY: " << (cache->total_miss_latency)/TOTAL_MISS << " cycles " << cache->total_miss_latency << "/" << TOTAL_MISS<< endl;
-}
-
-void print_sim_stats(uint32_t cpu, CACHE *cache)
-{
-    uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
-
-    for (uint32_t i=0; i<NUM_TYPES; i++) {
-        TOTAL_ACCESS += cache->sim_access[cpu][i];
-        TOTAL_HIT += cache->sim_hit[cpu][i];
-        TOTAL_MISS += cache->sim_miss[cpu][i];
-    }
-
-    cout << cache->NAME;
-    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS << endl;
-
-    cout << cache->NAME;
-    cout << " LOAD      ACCESS: " << setw(10) << cache->sim_access[cpu][0] << "  HIT: " << setw(10) << cache->sim_hit[cpu][0] << "  MISS: " << setw(10) << cache->sim_miss[cpu][0] << endl;
-
-    cout << cache->NAME;
-    cout << " RFO       ACCESS: " << setw(10) << cache->sim_access[cpu][1] << "  HIT: " << setw(10) << cache->sim_hit[cpu][1] << "  MISS: " << setw(10) << cache->sim_miss[cpu][1] << endl;
-
-    cout << cache->NAME;
-    cout << " PREFETCH  ACCESS: " << setw(10) << cache->sim_access[cpu][2] << "  HIT: " << setw(10) << cache->sim_hit[cpu][2] << "  MISS: " << setw(10) << cache->sim_miss[cpu][2] << endl;
-
-    cout << cache->NAME;
-    cout << " WRITEBACK ACCESS: " << setw(10) << cache->sim_access[cpu][3] << "  HIT: " << setw(10) << cache->sim_hit[cpu][3] << "  MISS: " << setw(10) << cache->sim_miss[cpu][3] << endl;
+    std::cout << name << " AVERAGE MISS LATENCY: " << (1.0*(stats.total_miss_latency))/TOTAL_MISS << " cycles" << std::endl;
+    //std::cout << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
 }
 
 void print_branch_stats()
@@ -440,15 +422,15 @@ int main(int argc, char** argv)
             std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (float) (cpu->num_retired - cpu->begin_phase_instr) / (cpu->current_cycle - cpu->begin_phase_cycle);
             std::cout << " instructions: " << cpu->num_retired - cpu->begin_phase_instr << " cycles: " << cpu->current_cycle - cpu->begin_phase_cycle << endl;
 
-            print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
-            print_sim_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
-            print_sim_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+            print_cache_stats(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level)->sim_stats.back());
+            print_cache_stats(static_cast<CACHE*>(cpu->L1I_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level)->sim_stats.back());
+            print_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->sim_stats.back());
 
             cpu->l1i_prefetcher_final_stats();
             static_cast<CACHE*>(cpu->L1D_bus.lower_level)->l1d_prefetcher_final_stats();
             static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->l2c_prefetcher_final_stats();
 
-            print_sim_stats(cpu->cpu, &LLC);
+            print_cache_stats(LLC.NAME, cpu->cpu, LLC.sim_stats.back());
         }
 
         LLC.llc_prefetcher_final_stats();
@@ -463,14 +445,14 @@ int main(int argc, char** argv)
         std::cout << " instructions: " << (cpu->finish_phase_instr - cpu->begin_phase_instr) << " cycles: " << (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
         std::cout << endl;
 
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level));
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level));
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level));
+        print_cache_stats(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->L1D_bus.lower_level)->roi_stats.back());
+        print_cache_stats(static_cast<CACHE*>(cpu->L1I_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->L1I_bus.lower_level)->roi_stats.back());
+        print_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->L1D_bus.lower_level)->lower_level)->roi_stats.back());
 
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level));
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level));
-        print_roi_stats(cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level));
-        print_roi_stats(cpu->cpu, &LLC);
+        print_cache_stats(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->roi_stats.back());
+        print_cache_stats(static_cast<CACHE*>(cpu->ITLB_bus.lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(cpu->ITLB_bus.lower_level)->roi_stats.back());
+        print_cache_stats(static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level)->NAME, cpu->cpu, static_cast<CACHE*>(static_cast<CACHE*>(cpu->DTLB_bus.lower_level)->lower_level)->roi_stats.back());
+        print_cache_stats(LLC.NAME, cpu->cpu, LLC.roi_stats.back());
     }
 
     for (auto cpu : ooo_cpu)
