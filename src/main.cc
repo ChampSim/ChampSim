@@ -93,34 +93,25 @@ void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
     //std::cout << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
 }
 
-void print_branch_stats()
+void print_cpu_stats(uint32_t index, O3_CPU::stats_type stats, uint64_t begin_instr, uint64_t end_instr)
 {
-    for (uint32_t i=0; i<NUM_CPUS; i++) {
-        cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
-        cout << (100.0*(ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
-        cout << "% MPKI: " << (1000.0*ooo_cpu[i]->branch_mispredictions)/(ooo_cpu[i]->num_retired - warmup_instructions);
-	cout << " Average ROB Occupancy at Mispredict: " << (1.0*ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict)/ooo_cpu[i]->branch_mispredictions << endl;
+    auto total_branch         = std::accumulate(std::begin(stats.total_branch_types), std::end(stats.total_branch_types), 0ull);
+    auto total_mispredictions = std::accumulate(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), 0ull);
 
-	/*
-	cout << "Branch types" << endl;
-	cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " << (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " << (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " << (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << " " << (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl;
-	cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " << (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr) << "%" << endl << endl;
-	*/
+    std::cout << std::endl;
+    std::cout << "CPU " << index << " Branch Prediction Accuracy: ";
+    std::cout << (100.0*(total_branch - total_mispredictions)) / total_branch;
+    std::cout << "% MPKI: " << (1000.0*total_mispredictions)/(end_instr - begin_instr);
+    std::cout << " Average ROB Occupancy at Mispredict: " << (1.0*stats.total_rob_occupancy_at_branch_mispredict)/total_mispredictions << std::endl;
 
-	cout << "Branch type MPKI" << endl;
-	cout << "BRANCH_DIRECT_JUMP: " << (1000.0*ooo_cpu[i]->branch_type_misses[1]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
-	cout << "BRANCH_INDIRECT: " << (1000.0*ooo_cpu[i]->branch_type_misses[2]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
-	cout << "BRANCH_CONDITIONAL: " << (1000.0*ooo_cpu[i]->branch_type_misses[3]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
-	cout << "BRANCH_DIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[4]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
-	cout << "BRANCH_INDIRECT_CALL: " << (1000.0*ooo_cpu[i]->branch_type_misses[5]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl;
-	cout << "BRANCH_RETURN: " << (1000.0*ooo_cpu[i]->branch_type_misses[6]/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_phase_instr)) << endl << endl;
-    }
+    std::cout << "Branch type MPKI" << std::endl;
+    std::cout << "BRANCH_DIRECT_JUMP: "   << (1000.0*stats.branch_type_misses[BRANCH_DIRECT_JUMP]  /(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_DIRECT_JUMP] << "/" << stats.total_branch_types[BRANCH_DIRECT_JUMP]   << ")" << std::endl;
+    std::cout << "BRANCH_INDIRECT: "      << (1000.0*stats.branch_type_misses[BRANCH_INDIRECT]     /(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_INDIRECT] << "/" << stats.total_branch_types[BRANCH_INDIRECT]      << ")" << std::endl;
+    std::cout << "BRANCH_CONDITIONAL: "   << (1000.0*stats.branch_type_misses[BRANCH_CONDITIONAL]  /(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_CONDITIONAL] << "/" << stats.total_branch_types[BRANCH_CONDITIONAL]   << ")" << std::endl;
+    std::cout << "BRANCH_DIRECT_CALL: "   << (1000.0*stats.branch_type_misses[BRANCH_DIRECT_CALL]  /(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_DIRECT_CALL] << "/" << stats.total_branch_types[BRANCH_DIRECT_CALL]   << ")" << std::endl;
+    std::cout << "BRANCH_INDIRECT_CALL: " << (1000.0*stats.branch_type_misses[BRANCH_INDIRECT_CALL]/(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_INDIRECT_CALL] << "/" << stats.total_branch_types[BRANCH_INDIRECT_CALL] << ")" << std::endl;
+    std::cout << "BRANCH_RETURN: "        << (1000.0*stats.branch_type_misses[BRANCH_RETURN]       /(end_instr - begin_instr)) << " (" << stats.branch_type_misses[BRANCH_RETURN] << "/" << stats.total_branch_types[BRANCH_RETURN]        << ")" << std::endl;
+    std::cout << std::endl;
 }
 
 void print_dram_stats()
@@ -465,7 +456,9 @@ int main(int argc, char** argv)
     LLC.llc_prefetcher_final_stats();
     LLC.llc_replacement_final_stats();
     print_dram_stats();
-    print_branch_stats();
+
+    for (auto cpu : ooo_cpu)
+        print_cpu_stats(cpu->cpu, cpu->sim_stats.back(), cpu->begin_phase_instr, cpu->num_retired);
 
     return 0;
 }

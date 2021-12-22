@@ -71,19 +71,15 @@ void O3_CPU::begin_phase()
     begin_phase_instr = num_retired;
     begin_phase_cycle = current_cycle;
 
-    // reset branch stats
-    num_branch = 0;
-    branch_mispredictions = 0;
-    total_rob_occupancy_at_branch_mispredict = 0;
-
-    std::fill(std::begin(total_branch_types), std::end(total_branch_types), 0);
-    std::fill(std::begin(branch_type_misses), std::end(branch_type_misses), 0);
+    sim_stats.emplace_back();
 }
 
 void O3_CPU::end_phase(unsigned cpu)
 {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
+
+    roi_stats.push_back(sim_stats.back());
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
@@ -231,8 +227,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         arch_instr.branch_type = BRANCH_OTHER;
     }
 
-    total_branch_types[arch_instr.branch_type]++;
-
     if((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1))
       {
 	// clear the branch target for this instruction
@@ -272,7 +266,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         DP( if (warmup_complete[cpu]) {
                 cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
 
-        num_branch++;
+        sim_stats.back().total_branch_types[arch_instr.branch_type]++;
 
 	std::pair<uint64_t, uint8_t> btb_result = btb_prediction(arch_instr.ip, arch_instr.branch_type);
 	uint64_t predicted_branch_target = btb_result.first;
@@ -288,9 +282,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         if(predicted_branch_target != arch_instr.branch_target)
         {
-            branch_mispredictions++;
-            total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
-	    branch_type_misses[arch_instr.branch_type]++;
+            sim_stats.back().total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
+            sim_stats.back().branch_type_misses[arch_instr.branch_type]++;
             if(warmup_complete[cpu])
             {
                 fetch_stall = 1;

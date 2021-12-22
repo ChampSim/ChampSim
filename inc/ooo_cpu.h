@@ -24,6 +24,14 @@ class CacheBus : public MemoryRequestProducer
         void return_data(PACKET *packet);
 };
 
+struct branch_stats
+{
+    uint64_t total_rob_occupancy_at_branch_mispredict = 0;
+
+    std::array<uint64_t, 8> total_branch_types = {};
+    std::array<uint64_t, 8> branch_type_misses = {};
+};
+
 // cpu
 class O3_CPU : public champsim::operable {
   public:
@@ -38,6 +46,10 @@ class O3_CPU : public champsim::operable {
     // instruction
     uint64_t instr_unique_id = 0, completed_executions = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0, num_retired = 0;
     uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
+
+    using stats_type = branch_stats;
+
+    std::vector<stats_type> roi_stats, sim_stats;
 
     struct dib_entry_t
     {
@@ -76,15 +88,8 @@ class O3_CPU : public champsim::operable {
     std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
 
     // branch
-    int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
-    int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
     uint8_t  fetch_stall = 0;
     uint64_t fetch_resume_cycle = 0;
-    uint64_t num_branch = 0, branch_mispredictions = 0;
-    uint64_t total_rob_occupancy_at_branch_mispredict;
-
-    uint64_t total_branch_types[8] = {};
-    uint64_t branch_type_misses[8] = {};
 
     CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
   
