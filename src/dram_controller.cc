@@ -83,23 +83,23 @@ void MEMORY_CONTROLLER::operate()
 
                 if (iter_next_process->row_buffer_hit)
                     if (channel.write_mode)
-                        channel.WQ_ROW_BUFFER_HIT++;
+                        channel.sim_stats.back().WQ_ROW_BUFFER_HIT++;
                     else
-                        channel.RQ_ROW_BUFFER_HIT++;
+                        channel.sim_stats.back().RQ_ROW_BUFFER_HIT++;
                 else
                     if (channel.write_mode)
-                        channel.WQ_ROW_BUFFER_MISS++;
+                        channel.sim_stats.back().WQ_ROW_BUFFER_MISS++;
                     else
-                        channel.RQ_ROW_BUFFER_MISS++;
+                        channel.sim_stats.back().RQ_ROW_BUFFER_MISS++;
             }
             else
             {
                 // Bus is congested
                 if (channel.active_request != std::end(channel.bank_request))
-                    channel.dbus_cycle_congested += (channel.active_request->event_cycle - current_cycle);
+                    channel.sim_stats.back().dbus_cycle_congested += (channel.active_request->event_cycle - current_cycle);
                 else
-                    channel.dbus_cycle_congested += (channel.dbus_cycle_available - current_cycle);
-                channel.dbus_count_congested++;
+                    channel.sim_stats.back().dbus_cycle_congested += (channel.dbus_cycle_available - current_cycle);
+                channel.sim_stats.back().dbus_count_congested++;
             }
         }
 
@@ -118,16 +118,13 @@ void MEMORY_CONTROLLER::operate()
 void MEMORY_CONTROLLER::begin_phase()
 {
     for (auto& chan : channels)
-    {
-        chan.WQ_ROW_BUFFER_HIT = 0;
-        chan.WQ_ROW_BUFFER_MISS = 0;
-        chan.RQ_ROW_BUFFER_HIT = 0;
-        chan.RQ_ROW_BUFFER_MISS = 0;
-    }
+        chan.sim_stats.emplace_back();
 }
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
+    for (auto& chan : channels)
+        chan.roi_stats.push_back(chan.sim_stats.back());
 }
 
 void MEMORY_CONTROLLER::schedule(std::vector<PACKET>::iterator q_it)
@@ -222,7 +219,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>());
     if (wq_it == std::end(channel.WQ))
     {
-        channel.WQ_FULL++;
+        channel.sim_stats.back().WQ_FULL++;
         return -2;
     }
 

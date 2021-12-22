@@ -98,7 +98,6 @@ void print_cpu_stats(uint32_t index, O3_CPU::stats_type stats, uint64_t begin_in
     auto total_branch         = std::accumulate(std::begin(stats.total_branch_types), std::end(stats.total_branch_types), 0ull);
     auto total_mispredictions = std::accumulate(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), 0ull);
 
-    std::cout << std::endl;
     std::cout << "CPU " << index << " Branch Prediction Accuracy: ";
     std::cout << (100.0*(total_branch - total_mispredictions)) / total_branch;
     std::cout << "% MPKI: " << (1000.0*total_mispredictions)/(end_instr - begin_instr);
@@ -114,31 +113,19 @@ void print_cpu_stats(uint32_t index, O3_CPU::stats_type stats, uint64_t begin_in
     std::cout << std::endl;
 }
 
-void print_dram_stats()
+void print_dram_channel_stats(uint32_t index, DRAM_CHANNEL::stats_type stats)
 {
-    uint64_t total_congested_cycle = 0;
-    uint64_t total_congested_count = 0;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++)
-    {
-        total_congested_cycle += DRAM.channels[i].dbus_cycle_congested;
-        total_congested_count += DRAM.channels[i].dbus_count_congested;
-    }
-
-    std::cout << std::endl;
-    std::cout << "DRAM Statistics" << std::endl;
-    for (uint32_t i=0; i<DRAM_CHANNELS; i++) {
-        std::cout << " CHANNEL " << i << std::endl;
-        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_MISS << std::endl;
-        std::cout << " DBUS_CONGESTED: " << std::setw(10) << total_congested_count << std::endl;
-        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_MISS;
-        std::cout << "  FULL: " << setw(10) << DRAM.channels[i].WQ_FULL << std::endl;
-        std::cout << std::endl;
-    }
-
-    if (total_congested_count)
-        cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
+    std::cout << " CHANNEL " << index << std::endl;
+    std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << stats.RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << stats.RQ_ROW_BUFFER_MISS << std::endl;
+    std::cout << " AVG DBUS CONGESTED CYCLE: ";
+    if (stats.dbus_count_congested > 0)
+        std::cout << std::setw(10) << (1.0*stats.dbus_cycle_congested) / stats.dbus_count_congested;
     else
-        cout << " AVG_CONGESTED_CYCLE: -" << endl;
+        std::cout << "-";
+    std::cout << std::endl;
+    std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << stats.WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << stats.WQ_ROW_BUFFER_MISS;
+    std::cout << "  FULL: " << std::setw(10) << stats.WQ_FULL << std::endl;
+    std::cout << std::endl;
 }
 
 void print_deadlock(uint32_t i)
@@ -455,7 +442,11 @@ int main(int argc, char** argv)
 
     LLC.llc_prefetcher_final_stats();
     LLC.llc_replacement_final_stats();
-    print_dram_stats();
+
+    std::cout << std::endl;
+    std::cout << "DRAM Statistics" << std::endl;
+    for (unsigned i = 0; i < DRAM_CHANNELS; ++i)
+        print_dram_channel_stats(i, DRAM.channels[i].sim_stats.back());
 
     for (auto cpu : ooo_cpu)
         print_cpu_stats(cpu->cpu, cpu->sim_stats.back(), cpu->begin_phase_instr, cpu->num_retired);
