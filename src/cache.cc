@@ -738,11 +738,37 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 
 void CACHE::begin_phase()
 {
+    roi_stats.emplace_back();
     sim_stats.emplace_back();
 }
 
 void CACHE::end_phase(unsigned cpu)
 {
-    roi_stats.push_back(sim_stats.back());
+    roi_stats.back().hits[cpu] = sim_stats.back().hits[cpu];
+    roi_stats.back().misses[cpu] = sim_stats.back().misses[cpu];
+
+    roi_stats.back().pf_requested = sim_stats.back().pf_requested;
+    roi_stats.back().pf_issued = sim_stats.back().pf_issued;
+    roi_stats.back().pf_useful = sim_stats.back().pf_useful;
+    roi_stats.back().pf_useless = sim_stats.back().pf_useless;
+    roi_stats.back().pf_fill = sim_stats.back().pf_fill;
+
+    roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
+    roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
+    roi_stats.back().RQ_FULL = sim_stats.back().RQ_FULL;
+    roi_stats.back().RQ_TO_CACHE = sim_stats.back().RQ_TO_CACHE;
+
+    roi_stats.back().PQ_ACCESS = sim_stats.back().PQ_ACCESS;
+    roi_stats.back().PQ_MERGED = sim_stats.back().PQ_MERGED;
+    roi_stats.back().PQ_FULL = sim_stats.back().PQ_FULL;
+    roi_stats.back().PQ_TO_CACHE = sim_stats.back().PQ_TO_CACHE;
+
+    roi_stats.back().WQ_ACCESS = sim_stats.back().WQ_ACCESS;
+    roi_stats.back().WQ_MERGED = sim_stats.back().WQ_MERGED;
+    roi_stats.back().WQ_FULL = sim_stats.back().WQ_FULL;
+    roi_stats.back().WQ_TO_CACHE = sim_stats.back().WQ_TO_CACHE;
+    roi_stats.back().WQ_FORWARD = sim_stats.back().WQ_FORWARD;
+
+    roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 }
 

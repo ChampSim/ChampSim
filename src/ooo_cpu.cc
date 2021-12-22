@@ -76,10 +76,13 @@ void O3_CPU::begin_phase()
 
 void O3_CPU::end_phase(unsigned cpu)
 {
-    finish_phase_instr = num_retired;
-    finish_phase_cycle = current_cycle;
+    if (cpu == this->cpu)
+    {
+        finish_phase_instr = num_retired;
+        finish_phase_cycle = current_cycle;
 
-    roi_stats.push_back(sim_stats.back());
+        roi_stats.push_back(sim_stats.back());
+    }
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
