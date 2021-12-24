@@ -4,6 +4,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <variant>
 
 #ifdef __GNUG__
 #include <ext/stdio_filebuf.h>
@@ -17,7 +18,7 @@ namespace detail
 class tracereader
 {
     public:
-        const std::string trace_string;
+        std::string trace_string;
 
         tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu) { }
         bool eof() const;
@@ -32,7 +33,7 @@ class tracereader
         __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
 #endif
 
-        const uint8_t cpu;
+        uint8_t cpu;
         bool eof_ = false;
 
         constexpr static std::size_t buffer_size = 128;
@@ -47,5 +48,37 @@ class tracereader
         ooo_model_instr impl_get();
 };
 
-std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+template <typename T>
+class bulk_tracereader : public tracereader
+{
+    public:
+        using tracereader::tracereader;
+
+    ooo_model_instr get()
+    {
+        return impl_get<T>();
+    }
+};
+
+using supported_tracereader = std::variant<bulk_tracereader<input_instr>, bulk_tracereader<cloudsuite_instr>>;
+
+struct get_instr
+{
+    ooo_model_instr operator()(bulk_tracereader<input_instr> &tr) { return tr.get(); }
+    ooo_model_instr operator()(bulk_tracereader<cloudsuite_instr> &tr) { return tr.get(); }
+};
+
+struct get_eof
+{
+    bool operator()(const bulk_tracereader<input_instr> &tr) { return tr.eof(); }
+    bool operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.eof(); }
+};
+
+struct get_trace_string
+{
+    std::string operator()(const bulk_tracereader<input_instr> &tr) { return tr.trace_string; }
+    std::string operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.trace_string; }
+};
+
+supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
 

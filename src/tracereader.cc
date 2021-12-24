@@ -81,23 +81,11 @@ ooo_model_instr tracereader::impl_get()
     return retval;
 }
 
-template <typename T>
-class bulk_tracereader : public tracereader
-{
-    public:
-        using tracereader::tracereader;
-
-    ooo_model_instr get()
-    {
-        return impl_get<T>();
-    }
-};
-
-std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
     if (is_cloudsuite)
-        return std::make_unique<bulk_tracereader<cloudsuite_instr>>(cpu, fname);
+        return supported_tracereader{bulk_tracereader<cloudsuite_instr>{cpu, fname}};
     else
-        return std::make_unique<bulk_tracereader<input_instr>>(cpu, fname);
+        return supported_tracereader{bulk_tracereader<input_instr>{cpu, fname}};
 }
 

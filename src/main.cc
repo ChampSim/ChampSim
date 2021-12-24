@@ -35,8 +35,6 @@ extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<champsim::operable*, 7*NUM_CPUS+2> operables;
 
-std::vector<std::unique_ptr<tracereader>> traces;
-
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
@@ -332,6 +330,8 @@ int main(int argc, char** argv)
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
+    std::vector<supported_tracereader> traces;
+
     cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
 
     // initialize knobs
@@ -490,13 +490,14 @@ int main(int argc, char** argv)
             // read from trace
             while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
             {
-                ooo_cpu[i]->init_instruction(traces[i]->get());
+                ooo_cpu[i]->init_instruction(std::visit(get_instr{}, traces[i]));
 
                 // Reopen trace if we've reached the end of the file
-                if (traces[i]->eof())
+                if (std::visit(get_eof{}, traces[i]))
                 {
-                    std::cout << "*** Reached end of trace: " << traces[i]->trace_string << std::endl;
-                    traces[i] = get_tracereader(traces[i]->trace_string, i, knob_cloudsuite);
+                    auto name = std::visit(get_trace_string{}, traces[i]);
+                    std::cout << "*** Reached end of trace: " << name << std::endl;
+                    traces[i] = get_tracereader(name, i, knob_cloudsuite);
                 }
             }
 
