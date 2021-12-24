@@ -18,14 +18,10 @@ namespace detail
 class tracereader
 {
     public:
+        tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu)  { }
+
+    protected:
         std::string trace_string;
-
-        tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu) { }
-        bool eof() const;
-
-        virtual ooo_model_instr get() = 0;
-
-    private:
         static FILE* get_fptr(std::string fname);
 
         std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
@@ -43,7 +39,6 @@ class tracereader
         template<typename T>
         void refresh_buffer();
 
-    protected:
         template <typename T>
         ooo_model_instr impl_get();
 };
@@ -53,31 +48,29 @@ class bulk_tracereader : public tracereader
 {
     public:
         using tracereader::tracereader;
-
-    ooo_model_instr get()
-    {
-        return impl_get<T>();
-    }
+        friend class get_instr;
+        friend class get_eof;
+        friend class get_trace_string;
 };
 
 using supported_tracereader = std::variant<bulk_tracereader<input_instr>, bulk_tracereader<cloudsuite_instr>>;
 
 struct get_instr
 {
-    ooo_model_instr operator()(bulk_tracereader<input_instr> &tr) { return tr.get(); }
-    ooo_model_instr operator()(bulk_tracereader<cloudsuite_instr> &tr) { return tr.get(); }
+    ooo_model_instr operator()(bulk_tracereader<input_instr> &tr);
+    ooo_model_instr operator()(bulk_tracereader<cloudsuite_instr> &tr);
 };
 
 struct get_eof
 {
-    bool operator()(const bulk_tracereader<input_instr> &tr) { return tr.eof(); }
-    bool operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.eof(); }
+    bool operator()(const bulk_tracereader<input_instr> &tr);
+    bool operator()(const bulk_tracereader<cloudsuite_instr> &tr);
 };
 
 struct get_trace_string
 {
-    std::string operator()(const bulk_tracereader<input_instr> &tr) { return tr.trace_string; }
-    std::string operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.trace_string; }
+    std::string operator()(const bulk_tracereader<input_instr> &tr);
+    std::string operator()(const bulk_tracereader<cloudsuite_instr> &tr);
 };
 
 supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);

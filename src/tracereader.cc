@@ -65,11 +65,6 @@ void tracereader::refresh_buffer()
         std::prev(it)->branch_target = it->ip;
 }
 
-bool tracereader::eof() const
-{
-    return eof_ && std::size(instr_buffer) <= refresh_thresh;
-}
-
 template <typename T>
 ooo_model_instr tracereader::impl_get()
 {
@@ -84,8 +79,17 @@ ooo_model_instr tracereader::impl_get()
 supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
     if (is_cloudsuite)
-        return supported_tracereader{bulk_tracereader<cloudsuite_instr>{cpu, fname}};
+        return bulk_tracereader<cloudsuite_instr>{cpu, fname};
     else
-        return supported_tracereader{bulk_tracereader<input_instr>{cpu, fname}};
+        return bulk_tracereader<input_instr>{cpu, fname};
 }
+
+ooo_model_instr get_instr::operator()(bulk_tracereader<input_instr> &tr) { return tr.impl_get<input_instr>(); }
+ooo_model_instr get_instr::operator()(bulk_tracereader<cloudsuite_instr> &tr) { return tr.impl_get<cloudsuite_instr>(); }
+
+bool get_eof::operator()(const bulk_tracereader<input_instr> &tr) { return tr.eof_ && std::size(tr.instr_buffer) <= bulk_tracereader<input_instr>::refresh_thresh; }
+bool get_eof::operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.eof_ && std::size(tr.instr_buffer) <= bulk_tracereader<cloudsuite_instr>::refresh_thresh; }
+
+std::string get_trace_string::operator()(const bulk_tracereader<input_instr> &tr) { return tr.trace_string; }
+std::string get_trace_string::operator()(const bulk_tracereader<cloudsuite_instr> &tr) { return tr.trace_string; }
 

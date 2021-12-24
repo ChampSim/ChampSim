@@ -412,7 +412,7 @@ int main(int argc, char** argv)
                 assert(0);
             }
 
-            traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
+            traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
 
             char *pch[100];
             int count_str = 0;
