@@ -180,7 +180,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     handle_pkt.data = hit_block.data;
 
     // update prefetcher on load instruction
-    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level)
     {
         cpu = handle_pkt.cpu;
         uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
@@ -265,7 +265,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
     }
 
     // update prefetcher on load instructions and prefetches from upper levels
-    if (handle_pkt.type == LOAD || (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level < fill_level))
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level)
     {
         cpu = handle_pkt.cpu;
         uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
@@ -687,5 +687,10 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
         return PQ.size();
 
     return 0;
+}
+
+bool CACHE::should_activate_prefetcher(int type)
+{
+    return (1 << static_cast<int>(type)) & pref_activate_mask;
 }
 

@@ -29,6 +29,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     const bool match_offset_bits;
     const bool virtual_prefetch;
     bool ever_seen_data = false;
+    const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
     // prefetch stats
     uint64_t pf_requested = 0,
@@ -100,6 +101,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool readlike_miss(PACKET &handle_pkt);
     bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
 
+    bool should_activate_prefetcher(int type);
+
 #include "cache_modules.inc"
 
     const repl_t repl_type;
@@ -108,13 +111,13 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     // constructor
     CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
             uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits,
-            bool pref_load, bool wq_full_addr, bool va_pref,
+            bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask,
             MemoryRequestConsumer *ll,
             pref_t pref, repl_t repl)
         : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll),
         NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8),
         HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write),
-        prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref),
+        prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
         repl_type(repl), pref_type(pref)
     {
     }
