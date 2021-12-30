@@ -47,6 +47,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
              pf_issued = 0,
              pf_useful = 0,
              pf_useless = 0,
+             pf_polluting = 0,
              pf_fill = 0;
 
     // queues

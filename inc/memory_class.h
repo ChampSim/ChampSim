@@ -19,7 +19,8 @@ class BLOCK {
   public:
     bool valid = false,
          prefetch = false,
-         dirty = false;
+         dirty = false,
+         polluting = false;
 
     uint64_t address = 0,
              full_addr = 0,
@@ -28,7 +29,8 @@ class BLOCK {
              data = 0,
              ip = 0,
              cpu = 0,
-             instr_id = 0;
+             instr_id = 0,
+             evicted_addr = 0;
 
     // replacement state
     uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
