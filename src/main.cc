@@ -249,45 +249,6 @@ void finish_warmup()
     }
 }
 
-void print_deadlock(uint32_t i)
-{
-    cout << "DEADLOCK! CPU " << i << " instr_id: " << ooo_cpu[i]->ROB.front().instr_id;
-    cout << " translated: " << +ooo_cpu[i]->ROB.front().translated;
-    cout << " fetched: " << +ooo_cpu[i]->ROB.front().fetched;
-    cout << " scheduled: " << +ooo_cpu[i]->ROB.front().scheduled;
-    cout << " executed: " << +ooo_cpu[i]->ROB.front().executed;
-    cout << " is_memory: " << +ooo_cpu[i]->ROB.front().is_memory;
-    cout << " num_reg_dependent: " << +ooo_cpu[i]->ROB.front().num_reg_dependent;
-    cout << " event: " << ooo_cpu[i]->ROB.front().event_cycle;
-    cout << " current: " << ooo_cpu[i]->current_cycle << endl;
-
-    // print LQ entry
-    std::cout << std::endl << "Load Queue Entry" << std::endl;
-    for (auto lq_it = std::begin(ooo_cpu[i]->LQ); lq_it != std::end(ooo_cpu[i]->LQ); ++lq_it)
-    {
-        std::cout << "[LQ] entry: " << std::distance(std::begin(ooo_cpu[i]->LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
-    }
-
-    // print SQ entry
-    std::cout << std::endl << "Store Queue Entry" << std::endl;
-    for (auto sq_it = std::begin(ooo_cpu[i]->SQ); sq_it != std::end(ooo_cpu[i]->SQ); ++sq_it)
-    {
-        std::cout << "[SQ] entry: " << std::distance(std::begin(ooo_cpu[i]->SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
-    }
-
-    // print L1D MSHR entry
-    std::cout << std::endl << "L1D MSHR Entry" << std::endl;
-    std::size_t j = 0;
-    for (PACKET &entry : static_cast<CACHE*>(ooo_cpu[i]->L1D_bus.lower_level)->MSHR) {
-        std::cout << "[L1D MSHR] entry: " << j << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << (entry.address >> LOG2_BLOCK_SIZE) << " full_addr: " << entry.address << std::dec << " type: " << +entry.type;
-        std::cout << " fill_level: " << entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
-        ++j;
-    }
-
-    assert(0);
-}
-
 void signal_handler(int signal) 
 {
 	cout << "Caught signal: " << signal << endl;
@@ -441,7 +402,22 @@ int main(int argc, char** argv)
 
         for (auto op : operables)
         {
-            op->_operate();
+            try
+            {
+                op->_operate();
+            }
+            catch (champsim::deadlock &dl)
+            {
+                ooo_cpu[dl.which]->print_deadlock();
+                std::cout << std::endl;
+                for (auto c : caches)
+                {
+                    c->print_deadlock();
+                    std::cout << std::endl;
+                }
+
+                abort();
+            }
         }
         std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 

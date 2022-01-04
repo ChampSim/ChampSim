@@ -70,9 +70,9 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint64_t total_miss_latency = 0;
 
     // functions
-    int  add_rq(PACKET *packet),
-         add_wq(PACKET *packet),
-         add_pq(PACKET *packet);
+    int  add_rq(PACKET *packet) override,
+         add_wq(PACKET *packet) override,
+         add_pq(PACKET *packet) override;
 
     void return_data(PACKET *packet),
          operate(),
@@ -102,6 +102,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
 
     bool should_activate_prefetcher(int type);
+
+    void print_deadlock() override;
 
 #include "cache_modules.inc"
 

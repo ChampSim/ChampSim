@@ -127,6 +127,8 @@ class O3_CPU : public champsim::operable {
     void handle_memory_return();
     void retire_rob();
 
+    void print_deadlock() override;
+
     int prefetch_code_line(uint64_t pf_v_addr);
 
 #include "ooo_cpu_modules.inc"

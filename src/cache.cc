@@ -694,3 +694,21 @@ bool CACHE::should_activate_prefetcher(int type)
     return (1 << static_cast<int>(type)) & pref_activate_mask;
 }
 
+void CACHE::print_deadlock()
+{
+    if (!std::empty(MSHR))
+    {
+        std::cout << NAME << " MSHR Entry" << std::endl;
+        std::size_t j = 0;
+        for (PACKET entry : MSHR) {
+            std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
+            std::cout << " address: " << std::hex << (entry.address >> LOG2_BLOCK_SIZE) << " full_addr: " << entry.address << std::dec << " type: " << +entry.type;
+            std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << NAME << " MSHR empty" << std::endl;
+    }
+}
+

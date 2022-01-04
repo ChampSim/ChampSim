@@ -35,8 +35,12 @@ void O3_CPU::operate()
     check_dib();
 
     // check for deadlock
-    if (ROB.front().ip && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
-        print_deadlock(cpu);
+    if ((!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
+        (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
+        (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
+        (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+    )
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::initialize_core()
@@ -1187,6 +1191,63 @@ void CacheBus::return_data(PACKET *packet)
     if (packet->type != PREFETCH)
     {
         PROCESSED.push_back(*packet);
+    }
+}
+
+void O3_CPU::print_deadlock()
+{
+    std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
+
+    if (!std::empty(IFETCH_BUFFER))
+    {
+        std::cout << "IFETCH_BUFFER head";
+        std::cout << " instr_id: " << IFETCH_BUFFER.front().instr_id;
+        std::cout << " translated: " << +IFETCH_BUFFER.front().translated;
+        std::cout << " fetched: " << +IFETCH_BUFFER.front().fetched;
+        std::cout << " scheduled: " << +IFETCH_BUFFER.front().scheduled;
+        std::cout << " executed: " << +IFETCH_BUFFER.front().executed;
+        std::cout << " is_memory: " << +IFETCH_BUFFER.front().is_memory;
+        std::cout << " num_reg_dependent: " << +IFETCH_BUFFER.front().num_reg_dependent;
+        std::cout << " event: " << IFETCH_BUFFER.front().event_cycle;
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "IFETCH_BUFFER empty" << std::endl;
+    }
+
+    if (!std::empty(ROB))
+    {
+        std::cout << "ROB head";
+        std::cout << " instr_id: " << ROB.front().instr_id;
+        std::cout << " translated: " << +ROB.front().translated;
+        std::cout << " fetched: " << +ROB.front().fetched;
+        std::cout << " scheduled: " << +ROB.front().scheduled;
+        std::cout << " executed: " << +ROB.front().executed;
+        std::cout << " is_memory: " << +ROB.front().is_memory;
+        std::cout << " num_reg_dependent: " << +ROB.front().num_reg_dependent;
+        std::cout << " event: " << ROB.front().event_cycle;
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "ROB empty" << std::endl;
+    }
+
+    // print LQ entry
+    std::cout << "Load Queue Entry" << std::endl;
+    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
+    {
+        if (is_valid<LSQ_ENTRY>{}(*lq_it))
+            std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
+    }
+
+    // print SQ entry
+    std::cout << std::endl << "Store Queue Entry" << std::endl;
+    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it)
+    {
+        if (is_valid<LSQ_ENTRY>{}(*sq_it))
+            std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
     }
 }
 
