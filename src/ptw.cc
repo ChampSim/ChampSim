@@ -33,34 +33,17 @@ void PageTableWalker::handle_read()
         packet.fill_level = FILL_L1; //This packet will be sent from L1 to PTW.
         packet.cpu = cpu;
         packet.type = TRANSLATION;
-        packet.instr_id = handle_pkt.instr_id;
-        packet.ip = handle_pkt.ip;
         packet.full_v_addr = handle_pkt.full_addr;
         packet.init_translation_level = vmem.pt_levels - 1;
         packet.full_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.full_addr, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
 
-        if (auto address_pscl5 = PSCL5.check_hit(handle_pkt.full_addr); address_pscl5.has_value())
+        for (auto pscl : { &PSCL5, &PSCL4, &PSCL3, &PSCL2 })
         {
-            packet.full_addr = address_pscl5.value();
-            packet.init_translation_level = PSCL5.level - 1;
-        }
-
-        if (auto address_pscl4 = PSCL4.check_hit(handle_pkt.full_addr); address_pscl4.has_value())
-        {
-            packet.full_addr = address_pscl4.value();
-            packet.init_translation_level = PSCL4.level - 1;
-        }
-
-        if (auto address_pscl3 = PSCL3.check_hit(handle_pkt.full_addr); address_pscl3.has_value())
-        {
-            packet.full_addr = address_pscl3.value();
-            packet.init_translation_level = PSCL3.level - 1;
-        }
-
-        if (auto address_pscl2 = PSCL2.check_hit(handle_pkt.full_addr); address_pscl2.has_value())
-        {
-            packet.full_addr = address_pscl2.value();
-            packet.init_translation_level = PSCL2.level - 1;
+            if (auto check_addr = pscl->check_hit(handle_pkt.full_addr); check_addr.has_value())
+            {
+                packet.full_addr = check_addr.value();
+                packet.init_translation_level = pscl->level - 1;
+            }
         }
 
         packet.translation_level = packet.init_translation_level;
