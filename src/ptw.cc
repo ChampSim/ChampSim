@@ -26,28 +26,26 @@ void PageTableWalker::handle_read()
     {
         PACKET &handle_pkt = RQ.front();
 
-        assert((handle_pkt.full_addr >> 32) != 0xf000000f); //Page table is stored at this address
-        assert(handle_pkt.full_v_addr != 0);
-
-        PACKET packet = handle_pkt;
-        packet.fill_level = FILL_L1; //This packet will be sent from L1 to PTW.
-        packet.cpu = cpu;
-        packet.type = TRANSLATION;
-        packet.full_v_addr = handle_pkt.full_addr;
-        packet.init_translation_level = vmem.pt_levels - 1;
-        packet.full_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.full_addr, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
-
+        auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.full_addr, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
+        auto ptw_level = vmem.pt_levels - 1;
         for (auto pscl : { &PSCL5, &PSCL4, &PSCL3, &PSCL2 })
         {
             if (auto check_addr = pscl->check_hit(handle_pkt.full_addr); check_addr.has_value())
             {
-                packet.full_addr = check_addr.value();
-                packet.init_translation_level = pscl->level - 1;
+                ptw_addr = check_addr.value();
+                ptw_level = pscl->level - 1;
             }
         }
 
-        packet.translation_level = packet.init_translation_level;
+        PACKET packet = handle_pkt;
+        packet.fill_level = FILL_L1; //This packet will be sent from L1 to PTW.
+        packet.full_addr = ptw_addr;
         packet.address = packet.full_addr >> LOG2_BLOCK_SIZE;
+        packet.full_v_addr = handle_pkt.full_addr;
+        packet.cpu = cpu;
+        packet.type = TRANSLATION;
+        packet.init_translation_level = ptw_level;
+        packet.translation_level = packet.init_translation_level;
         packet.to_return = {this};
 
         int rq_index = lower_level->add_rq(&packet);
