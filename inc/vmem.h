@@ -5,14 +5,10 @@
 #include <deque>
 #include <map>
 
-#define VMEM_RAND_FACTOR 91827349653
 // reserve 1MB of space
 #define VMEM_RESERVE_CAPACITY 1048576
 
 #define PTE_BYTES 8
-
-//Virtual Address: 57 bit (9+9+9+9+9+12), rest MSB bits will be used to generate a unique VA per CPU.
-//PTL5->PTL4->PTL3->PTL2->PTL1->PFN
 
 constexpr uint64_t MINOR_FAULT_PENALTY = 200;
 
