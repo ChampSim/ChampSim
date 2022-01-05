@@ -328,6 +328,12 @@ int main(int argc, char** argv)
     //cout << "LLC ways: " << LLC.NUM_WAY << endl;
     std::cout << "Off-chip DRAM Size: " << (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024) << " MB Channels: " << DRAM_CHANNELS << " Width: " << 8*DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
+
+    std::cout << std::endl;
+    std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
+    std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
+    std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
+
     // end consequence of knobs
 
     // search through the argv for "-traces"
@@ -408,9 +414,9 @@ int main(int argc, char** argv)
             }
             catch (champsim::deadlock &dl)
             {
-                ooo_cpu[dl.which]->print_deadlock();
-                std::cout << std::endl;
-                for (auto c : caches)
+                //ooo_cpu[dl.which]->print_deadlock();
+                //std::cout << std::endl;
+                for (auto c : operables)
                 {
                     c->print_deadlock();
                     std::cout << std::endl;

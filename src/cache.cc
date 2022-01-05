@@ -563,7 +563,7 @@ void CACHE::va_translate_prefetches()
     // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
     if (VAPQ.has_ready())
     {
-        VAPQ.front().address = vmem.va_to_pa(cpu, VAPQ.front().v_address);
+        VAPQ.front().address = vmem.va_to_pa(cpu, VAPQ.front().v_address).first;
 
         // move the translated prefetch over to the regular PQ
         int result = add_pq(&VAPQ.front());

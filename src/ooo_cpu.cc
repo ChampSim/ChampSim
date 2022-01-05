@@ -1038,7 +1038,7 @@ void O3_CPU::handle_memory_return()
               {
                   it->translated = COMPLETED;
                   // recalculate a physical address for this cache line based on the translated physical page address
-                  it->instruction_pa = splice_bits(itlb_entry.data << LOG2_PAGE_SIZE, it->ip, LOG2_PAGE_SIZE);
+                  it->instruction_pa = splice_bits(itlb_entry.data, it->ip, LOG2_PAGE_SIZE);
               }
 
               available_fetch_bandwidth--;
@@ -1091,7 +1091,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
 	    {
-	      sq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
+	      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      sq_merged->translated = COMPLETED;
 	      sq_merged->event_cycle = current_cycle;
 
@@ -1100,7 +1100,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
 	    {
-	      lq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
+	      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      lq_merged->translated = COMPLETED;
 	      lq_merged->event_cycle = current_cycle;
 
