@@ -77,7 +77,7 @@ void PageTableWalker::handle_fill()
             auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
             if (warmup_complete[cpu] && fault)
             {
-                fill_mshr->event_cycle = current_cycle + MINOR_FAULT_PENALTY;
+                fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
                 MSHR.sort(ord_event_cycle<PACKET>{});
             }
             else
@@ -100,7 +100,7 @@ void PageTableWalker::handle_fill()
             auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
             if (warmup_complete[cpu] && fault)
             {
-                fill_mshr->event_cycle = current_cycle + MINOR_FAULT_PENALTY;
+                fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
                 MSHR.sort(ord_event_cycle<PACKET>{});
             }
             else
