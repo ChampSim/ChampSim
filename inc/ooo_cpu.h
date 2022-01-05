@@ -87,8 +87,8 @@ class O3_CPU : public champsim::operable {
     uint64_t branch_type_misses[8] = {};
 
     CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
-  
-	PageTableWalker *PTW;
+
+    PageTableWalker *PTW;
 
     // constructor
     O3_CPU(uint32_t cpu, double freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window,
@@ -122,9 +122,6 @@ class O3_CPU : public champsim::operable {
         static_cast<CACHE*>(dtlb->lower_level)->cpu = this->cpu;
         static_cast<CACHE*>(dtlb->lower_level)->cache_type = IS_STLB;
         static_cast<CACHE*>(dtlb->lower_level)->fill_level = FILL_L2;
-
-        ptw->cpu = this->cpu;
-        ptw->cache_type = IS_PTW;
 
         // PRIVATE CACHE
         l1i->cpu = this->cpu;
