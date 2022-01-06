@@ -119,10 +119,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
                 break;
 
             // check the MSHR occupancy to decide if we're going to prefetch to the L2 or LLC
-            if (get_occupancy(0,0) < (get_size(0,0)>>1))
-	      prefetch_line(ip, addr, pf_address, FILL_L2, 0);
-            else
-	      prefetch_line(ip, addr, pf_address, FILL_LLC, 0);
+	      prefetch_line(ip, addr, pf_address, (get_occupancy(0,0) < (get_size(0,0)>>1)), 0);
         }
     }
 
