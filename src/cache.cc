@@ -670,6 +670,7 @@ void CACHE::return_data(PACKET *packet)
 {
     // check MSHR information
     auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
+    auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
     // sanity check
     if (mshr_entry == MSHR.end()) {
@@ -695,7 +696,7 @@ void CACHE::return_data(PACKET *packet)
             std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl; });
 
     // Order this entry after previously-returned entries, but before non-returned entries
-    MSHR.splice(std::lower_bound(std::begin(MSHR), std::end(MSHR), *mshr_entry, ord_event_cycle<PACKET>()), MSHR, mshr_entry);
+    std::iter_swap(mshr_entry, first_unreturned);
 }
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)

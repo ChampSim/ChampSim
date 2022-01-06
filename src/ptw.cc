@@ -46,7 +46,7 @@ void PageTableWalker::handle_read()
         }
 
         PACKET packet = handle_pkt;
-        packet.fill_level = FILL_L1; //This packet will be sent from L1 to PTW.
+        packet.fill_level = lower_level->fill_level; //This packet will be sent from L1 to PTW.
         packet.address = ptw_addr;
         packet.v_address = handle_pkt.address;
         packet.cpu = cpu;
