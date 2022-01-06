@@ -1044,7 +1044,7 @@ void O3_CPU::handle_memory_return()
               available_fetch_bandwidth--;
           }
 
-          itlb_entry.instr_depend_on_me.pop_front();
+          itlb_entry.instr_depend_on_me.erase(std::begin(itlb_entry.instr_depend_on_me));
       }
 
 
@@ -1073,7 +1073,7 @@ void O3_CPU::handle_memory_return()
               available_fetch_bandwidth--;
           }
 
-          l1i_entry.instr_depend_on_me.pop_front();
+          l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
       }
 
       // remove this entry if we have serviced all of its instructions
