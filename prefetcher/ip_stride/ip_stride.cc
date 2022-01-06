@@ -42,9 +42,9 @@ class IP_TRACKER {
 
 IP_TRACKER trackers[IP_TRACKER_COUNT];
 
-void CACHE::prefetcher_initialize() 
+void CACHE::prefetcher_initialize()
 {
-    std::cout << NAME " IP-based stride prefetcher" << std::endl;
+    std::cout << NAME << " IP-based stride prefetcher" << std::endl;
     for (int i=0; i<IP_TRACKER_COUNT; i++)
         trackers[i].lru = i;
 }
@@ -135,7 +135,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
     return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }
