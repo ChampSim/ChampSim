@@ -416,6 +416,7 @@ int main(int argc, char** argv)
             {
                 //ooo_cpu[dl.which]->print_deadlock();
                 //std::cout << std::endl;
+                //for (auto c : caches)
                 for (auto c : operables)
                 {
                     c->print_deadlock();

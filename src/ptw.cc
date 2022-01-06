@@ -26,6 +26,14 @@ void PageTableWalker::handle_read()
     {
         PACKET &handle_pkt = RQ.front();
 
+        DP (if (warmup_complete[packet->cpu]) {
+        std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
+        std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
+        std::cout << " full_v_addr: " << handle_pkt.v_address;
+        std::cout << " data: " << handle_pkt.data << std::dec;
+        std::cout << " translation_level: " << +handle_pkt.translation_level;
+        std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl; });
+
         auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
         auto ptw_level = vmem.pt_levels - 1;
         for (auto pscl : { &PSCL5, &PSCL4, &PSCL3, &PSCL2 })
@@ -84,6 +92,15 @@ void PageTableWalker::handle_fill()
                 fill_mshr->data    = addr;
                 fill_mshr->address = fill_mshr->v_address;
 
+                DP (if (warmup_complete[packet->cpu]) {
+                std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << fill_mshr->instr_id;
+                std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+                std::cout << " full_v_addr: " << fill_mshr->v_address;
+                std::cout << " data: " << fill_mshr->data << std::dec;
+                std::cout << " translation_level: " << +fill_mshr->translation_level;
+                std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0,0);
+                std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl; });
+
                 for (auto ret: fill_mshr->to_return)
                     ret->return_data(&(*fill_mshr));
 
@@ -111,6 +128,15 @@ void PageTableWalker::handle_fill()
                     PSCL3.fill_cache(addr, fill_mshr->v_address);
                 if (fill_mshr->translation_level == PSCL2.level)
                     PSCL2.fill_cache(addr, fill_mshr->v_address);
+
+                DP (if (warmup_complete[packet->cpu]) {
+                std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << fill_mshr->instr_id;
+                std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+                std::cout << " full_v_addr: " << fill_mshr->v_address;
+                std::cout << " data: " << fill_mshr->data << std::dec;
+                std::cout << " translation_level: " << +fill_mshr->translation_level;
+                std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0,0);
+                std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl; });
 
                 PACKET packet = *fill_mshr;
                 packet.cpu = cpu;
@@ -142,7 +168,7 @@ void PageTableWalker::operate()
     RQ.operate();
 }
 
-int  PageTableWalker::add_rq(PACKET *packet)
+int PageTableWalker::add_rq(PACKET *packet)
 {
     assert(packet->address != 0);
 
@@ -171,10 +197,11 @@ void PageTableWalker::return_data(PACKET *packet)
 
             DP (if (warmup_complete[cpu]) {
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry.instr_id;
-                    std::cout << " address: " << std::hex << mshr_entry.address << " full_addr: " << mshr_entry.full_addr;
-                    std::cout << " full_v_addr: " << mshr_entry.full_v_addr;
+                    std::cout << " address: " << std::hex << mshr_entry.address;
+                    std::cout << " v_address: " << mshr_entry.v_address;
                     std::cout << " data: " << mshr_entry.data << std::dec;
-                    std::cout << " occupancy: " << get_occupancy(0,0);
+                    std::cout << " translation_level: " << +mshr_entry.translation_level;
+                    std::cout << " occupancy: " << get_occupancy(0,mshr_entry.address);
                     std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl; });
         }
     }
@@ -242,5 +269,4 @@ void PageTableWalker::print_deadlock()
         std::cout << NAME << " MSHR empty" << std::endl;
     }
 }
-
 
