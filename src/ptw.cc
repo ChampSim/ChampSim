@@ -191,7 +191,7 @@ void PageTableWalker::return_data(PACKET *packet)
 {
     for (auto &mshr_entry : MSHR)
     {
-        if (mshr_entry.address == packet->address && mshr_entry.translation_level == packet->translation_level)
+        if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry))
         {
             mshr_entry.event_cycle = current_cycle;
 
