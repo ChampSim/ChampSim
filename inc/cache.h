@@ -149,26 +149,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     }
 };
 
-template <>
-struct eq_addr<CACHE::BLOCK>
-{
-    using argument_type = CACHE::BLOCK;
-    using addr_type = decltype(argument_type::address);
-    using asid_type = decltype(argument_type::asid);
-
-    const asid_type match_asid;
-    const addr_type match_addr;
-    const std::size_t shamt;
-
-    eq_addr(asid_type asid, addr_type addr, std::size_t shamt = 0) : match_asid(asid), match_addr(addr), shamt(shamt) {}
-
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        return validtest(test) && test.asid == match_asid && (test.address >> shamt) == (match_addr >> shamt);
-    }
-};
-
 class min_fill_index
 {
     public:

@@ -29,20 +29,41 @@ struct is_valid
     }
 };
 
-template <typename T>
+template <typename T, typename = void>
 struct eq_addr
 {
     using argument_type = T;
-    const decltype(argument_type::address) val;
-    const std::size_t shamt = 0;
+    using addr_type = decltype(T::address);
+    const addr_type val;
+    const std::size_t shamt;
 
-    explicit eq_addr(decltype(argument_type::address) val) : val(val) {}
-    eq_addr(decltype(argument_type::address) val, std::size_t shamt) : val(val), shamt(shamt) {}
+    eq_addr(addr_type val, std::size_t shamt = 0) : val(val), shamt(shamt) {}
 
     bool operator()(const argument_type &test)
     {
         is_valid<argument_type> validtest;
         return validtest(test) && (test.address >> shamt) == (val >> shamt);
+    }
+};
+
+// Specialization for types that include a member T::asid
+template <typename T>
+struct eq_addr<T, std::void_t<decltype(T::asid)>>
+{
+    using argument_type = T;
+    using addr_type = decltype(T::address);
+    using asid_type = decltype(T::asid);
+
+    const asid_type match_asid;
+    const addr_type match_addr;
+    const std::size_t shamt;
+
+    eq_addr(asid_type asid, addr_type addr, std::size_t shamt = 0) : match_asid(asid), match_addr(addr), shamt(shamt) {}
+
+    bool operator()(const argument_type &test)
+    {
+        is_valid<argument_type> validtest;
+        return validtest(test) && test.asid == match_asid && (test.address >> shamt) == (match_addr >> shamt);
     }
 };
 

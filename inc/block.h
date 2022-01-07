@@ -51,26 +51,6 @@ struct is_valid<PACKET>
     }
 };
 
-template <>
-struct eq_addr<PACKET>
-{
-    using argument_type = PACKET;
-    using addr_type = decltype(argument_type::address);
-    using asid_type = decltype(argument_type::asid);
-
-    const asid_type match_asid;
-    const addr_type match_addr;
-    const std::size_t shamt;
-
-    eq_addr(asid_type asid, addr_type addr, std::size_t shamt = 0) : match_asid(asid), match_addr(addr), shamt(shamt) {}
-
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        return validtest(test) && test.asid == match_asid && (test.address >> shamt) == (match_addr >> shamt);
-    }
-};
-
 template <typename LIST>
 void packet_dep_merge(LIST &dest, LIST &src)
 {
