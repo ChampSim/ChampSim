@@ -38,7 +38,7 @@ void PageTableWalker::handle_read()
         auto ptw_level = vmem.pt_levels - 1;
         for (auto pscl : { &PSCL5, &PSCL4, &PSCL3, &PSCL2 })
         {
-            if (auto check_addr = pscl->check_hit(handle_pkt.address); check_addr.has_value())
+            if (auto check_addr = pscl->check_hit(handle_pkt.asid, handle_pkt.address); check_addr.has_value())
             {
                 ptw_addr = check_addr.value();
                 ptw_level = pscl->level - 1;
@@ -121,13 +121,13 @@ void PageTableWalker::handle_fill()
             else
             {
                 if (fill_mshr->translation_level == PSCL5.level)
-                    PSCL5.fill_cache(addr, fill_mshr->v_address);
+                    PSCL5.fill_cache(fill_mshr->asid, addr, fill_mshr->v_address);
                 if (fill_mshr->translation_level == PSCL4.level)
-                    PSCL4.fill_cache(addr, fill_mshr->v_address);
+                    PSCL4.fill_cache(fill_mshr->asid, addr, fill_mshr->v_address);
                 if (fill_mshr->translation_level == PSCL2.level)
-                    PSCL3.fill_cache(addr, fill_mshr->v_address);
+                    PSCL3.fill_cache(fill_mshr->asid, addr, fill_mshr->v_address);
                 if (fill_mshr->translation_level == PSCL2.level)
-                    PSCL2.fill_cache(addr, fill_mshr->v_address);
+                    PSCL2.fill_cache(fill_mshr->asid, addr, fill_mshr->v_address);
 
                 DP (if (warmup_complete[packet->cpu]) {
                 std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << fill_mshr->instr_id;
@@ -173,7 +173,7 @@ int PageTableWalker::add_rq(PACKET *packet)
     assert(packet->address != 0);
 
     // check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, LOG2_PAGE_SIZE));
     assert(found_rq == RQ.end()); //Duplicate request should not be sent.
 
     // check occupancy
@@ -189,9 +189,10 @@ int PageTableWalker::add_rq(PACKET *packet)
 
 void PageTableWalker::return_data(PACKET *packet)
 {
+    auto check = eq_addr_asid<PACKET>(packet->address, packet->asid, LOG2_BLOCK_SIZE);
     for (auto &mshr_entry : MSHR)
     {
-        if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry))
+        if (check(mshr_entry))
         {
             mshr_entry.event_cycle = current_cycle;
 
@@ -227,23 +228,23 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
     return 0;
 }
 
-void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)
+void PagingStructureCache::fill_cache(uint16_t asid, uint64_t next_level_paddr, uint64_t vaddr)
 {
     auto set_idx    = (vaddr >> vmem.shamt(level+1)) & bitmask(lg2(NUM_SET));
     auto set_begin  = std::next(std::begin(block), set_idx*NUM_WAY);
     auto set_end    = std::next(set_begin, NUM_WAY);
     auto fill_block = std::max_element(set_begin, set_end, lru_comparator<block_t, block_t>());
 
-    *fill_block = {true, vaddr, next_level_paddr, fill_block->lru};
+    *fill_block = {true, vaddr, next_level_paddr, asid, fill_block->lru};
     std::for_each(set_begin, set_end, lru_updater<block_t>(fill_block));
 }
 
-std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address)
+std::optional<uint64_t> PagingStructureCache::check_hit(uint16_t asid, uint64_t address)
 {
     auto set_idx   = (address >> vmem.shamt(level+1)) & bitmask(lg2(NUM_SET));
     auto set_begin = std::next(std::begin(block), set_idx*NUM_WAY);
     auto set_end   = std::next(set_begin, NUM_WAY);
-    auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, vmem.shamt(level+1)});
+    auto hit_block = std::find_if(set_begin, set_end, eq_addr_asid<block_t>{address, asid, vmem.shamt(level+1)});
 
     if (hit_block != set_end)
         return splice_bits(hit_block->data, vmem.get_offset(address, level) * PTE_BYTES, LOG2_PAGE_SIZE);

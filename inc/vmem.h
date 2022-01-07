@@ -13,8 +13,8 @@
 class VirtualMemory
 {
     private:
-        std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
-        std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
+        std::map<std::pair<uint16_t, uint64_t>, uint64_t> vpage_to_ppage_map;
+        std::map<std::tuple<uint16_t, uint64_t, uint32_t>, uint64_t> page_table;
 
         uint64_t next_pte_page;
 
@@ -28,8 +28,8 @@ class VirtualMemory
         VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed, uint64_t minor_fault_penalty);
         uint64_t shamt(uint32_t level) const;
         uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
-        std::pair<uint64_t, bool> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-        std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
+        std::pair<uint64_t, bool> va_to_pa(uint16_t asid, uint64_t vaddr);
+        std::pair<uint64_t, bool> get_pte_pa(uint16_t asid, uint64_t vaddr, uint32_t level);
 };
 
 #endif
