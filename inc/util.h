@@ -34,15 +34,16 @@ struct eq_addr
 {
     using argument_type = T;
     using addr_type = decltype(T::address);
-    const addr_type val;
+    const addr_type match_addr;
     const std::size_t shamt;
 
-    eq_addr(addr_type val, std::size_t shamt = 0) : val(val), shamt(shamt) {}
+    eq_addr(const argument_type &elem, std::size_t shamt = 0) : match_addr(elem.address), shamt(shamt) {}
+    eq_addr(addr_type addr, std::size_t shamt = 0) : match_addr(addr), shamt(shamt) {}
 
     bool operator()(const argument_type &test)
     {
         is_valid<argument_type> validtest;
-        return validtest(test) && (test.address >> shamt) == (val >> shamt);
+        return validtest(test) && (test.address >> shamt) == (match_addr >> shamt);
     }
 };
 
@@ -58,6 +59,7 @@ struct eq_addr<T, std::void_t<decltype(T::asid)>>
     const addr_type match_addr;
     const std::size_t shamt;
 
+    eq_addr(const argument_type &elem, std::size_t shamt = 0) : match_asid(elem.asid), match_addr(elem.address), shamt(shamt) {}
     eq_addr(asid_type asid, addr_type addr, std::size_t shamt = 0) : match_asid(asid), match_addr(addr), shamt(shamt) {}
 
     bool operator()(const argument_type &test)
