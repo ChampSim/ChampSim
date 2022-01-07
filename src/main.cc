@@ -21,7 +21,6 @@ uint8_t warmup_complete[NUM_CPUS] = {},
         all_warmup_complete = 0, 
         all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
-        knob_cloudsuite = 0,
         knob_low_bandwidth = 0;
 
 uint64_t warmup_instructions     = 1000000,
@@ -273,6 +272,7 @@ int main(int argc, char** argv)
 
     // check to see if knobs changed using getopt_long()
     int c;
+    bool knob_cloudsuite = false;
     while (1) {
         static struct option long_options[] =
         {
@@ -305,7 +305,7 @@ int main(int argc, char** argv)
                 show_heartbeat = 0;
                 break;
             case 'c':
-                knob_cloudsuite = 1;
+                knob_cloudsuite = true;
                 MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
                 break;
             case 't':
