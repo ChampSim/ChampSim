@@ -173,7 +173,7 @@ int PageTableWalker::add_rq(PACKET *packet)
     assert(packet->address != 0);
 
     // check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, LOG2_PAGE_SIZE));
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->asid, packet->address, LOG2_PAGE_SIZE));
     assert(found_rq == RQ.end()); //Duplicate request should not be sent.
 
     // check occupancy
@@ -189,7 +189,7 @@ int PageTableWalker::add_rq(PACKET *packet)
 
 void PageTableWalker::return_data(PACKET *packet)
 {
-    auto check = eq_addr_asid<PACKET>(packet->address, packet->asid, LOG2_BLOCK_SIZE);
+    auto check = eq_addr<PACKET>(packet->asid, packet->address, LOG2_BLOCK_SIZE);
     for (auto &mshr_entry : MSHR)
     {
         if (check(mshr_entry))
@@ -244,7 +244,7 @@ std::optional<uint64_t> PagingStructureCache::check_hit(uint16_t asid, uint64_t 
     auto set_idx   = (address >> vmem.shamt(level+1)) & bitmask(lg2(NUM_SET));
     auto set_begin = std::next(std::begin(block), set_idx*NUM_WAY);
     auto set_end   = std::next(set_begin, NUM_WAY);
-    auto hit_block = std::find_if(set_begin, set_end, eq_addr_asid<block_t>{address, asid, vmem.shamt(level+1)});
+    auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{asid, address, vmem.shamt(level+1)});
 
     if (hit_block != set_end)
         return splice_bits(hit_block->data, vmem.get_offset(address, level) * PTE_BYTES, LOG2_PAGE_SIZE);

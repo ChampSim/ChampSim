@@ -29,15 +29,17 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
             uint64_t address = 0,
                      v_address = 0,
-                     tag = 0,
                      data = 0,
                      ip = 0,
-                     cpu = 0,
                      instr_id = 0;
+
+            uint32_t cpu = 0;
 
             // replacement state
             uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
     };
+
+    friend class eq_addr<BLOCK>;
 
   public:
     uint32_t cpu;
@@ -144,6 +146,26 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
         prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
         repl_type(repl), pref_type(pref)
     {
+    }
+};
+
+template <>
+struct eq_addr<CACHE::BLOCK>
+{
+    using argument_type = CACHE::BLOCK;
+    using addr_type = decltype(argument_type::address);
+    using asid_type = decltype(argument_type::asid);
+
+    const asid_type match_asid;
+    const addr_type match_addr;
+    const std::size_t shamt;
+
+    eq_addr(asid_type asid, addr_type addr, std::size_t shamt = 0) : match_asid(asid), match_addr(addr), shamt(shamt) {}
+
+    bool operator()(const argument_type &test)
+    {
+        is_valid<argument_type> validtest;
+        return validtest(test) && test.asid == match_asid && (test.address >> shamt) == (match_addr >> shamt);
     }
 };
 

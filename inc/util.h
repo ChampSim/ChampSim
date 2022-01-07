@@ -46,25 +46,6 @@ struct eq_addr
     }
 };
 
-template <typename T>
-struct eq_addr_asid
-{
-    using argument_type = T;
-    using address_type = decltype(argument_type::address);
-    using asid_type    = decltype(argument_type::asid);
-    const address_type match_addr;
-    const asid_type match_asid;
-    const std::size_t shamt;
-
-    eq_addr_asid(address_type val, asid_type asid, std::size_t shamt = 0) : match_addr(val), match_asid(asid), shamt(shamt) {}
-
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        return validtest(test) && (test.address >> shamt) == (match_addr >> shamt) && test.asid == match_asid;
-    }
-};
-
 template <typename T, typename BIN, typename U = T, typename UN_T = is_valid<T>, typename UN_U = is_valid<U>>
 struct invalid_is_minimal
 {
