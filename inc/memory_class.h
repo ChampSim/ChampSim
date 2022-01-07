@@ -21,6 +21,8 @@ class BLOCK {
          prefetch = false,
          dirty = false;
 
+    uint16_t asid = std::numeric_limits<uint16_t>::max();
+
     uint64_t address = 0,
              v_address = 0,
              tag = 0,

@@ -63,7 +63,7 @@ void CACHE::handle_writeback()
 
         // access cache
         uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
+        uint32_t way = get_way(handle_pkt.asid, handle_pkt.address, set);
 
         BLOCK &fill_block = block[set*NUM_WAY + way];
 
@@ -120,7 +120,7 @@ void CACHE::handle_read()
         ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
         uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
+        uint32_t way = get_way(handle_pkt.asid, handle_pkt.address, set);
 
         if (way < NUM_WAY) // HIT
         {
@@ -149,7 +149,7 @@ void CACHE::handle_prefetch()
         PACKET &handle_pkt = PQ.front();
 
         uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
+        uint32_t way = get_way(handle_pkt.asid, handle_pkt.address, set);
 
         if (way < NUM_WAY) // HIT
         {
@@ -217,7 +217,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
             std::cout << " cycle: " << current_cycle << std::endl; });
 
     // check mshr
-    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
+    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr_asid<PACKET>(handle_pkt.address, handle_pkt.asid, OFFSET_BITS));
     bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
     if (mshr_entry != MSHR.end()) // miss already inflight
@@ -337,6 +337,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         fill_block.valid = true;
         fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
         fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+        fill_block.asid = handle_pkt.asid;
         fill_block.address = handle_pkt.address;
         fill_block.v_address = handle_pkt.v_address;
         fill_block.data = handle_pkt.data;
@@ -393,22 +394,22 @@ void CACHE::operate_reads()
     VAPQ.operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address)
+uint32_t CACHE::get_set(uint64_t address) const
 {
     return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET)));
 }
 
-uint32_t CACHE::get_way(uint64_t address, uint32_t set)
+uint32_t CACHE::get_way(uint16_t asid, uint64_t address, uint32_t set) const
 {
     auto begin = std::next(block.begin(), set*NUM_WAY);
     auto end   = std::next(begin, NUM_WAY);
-    return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
+    return std::distance(begin, std::find_if(begin, end, eq_addr_asid<BLOCK>(address, asid, OFFSET_BITS)));
 }
 
-int CACHE::invalidate_entry(uint64_t inval_addr)
+int CACHE::invalidate_entry(uint16_t asid, uint64_t inval_addr)
 {
     uint32_t set = get_set(inval_addr);
-    uint32_t way = get_way(inval_addr, set);
+    uint32_t way = get_way(asid, inval_addr, set);
 
     if (way < NUM_WAY)
         block[set*NUM_WAY + way].valid = 0;
@@ -426,7 +427,7 @@ int CACHE::add_rq(PACKET *packet)
             std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy(); })
 
     // check for the latest writebacks in the write queue
-    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address, match_offset_bits ? 0 : OFFSET_BITS));
+    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, match_offset_bits ? 0 : OFFSET_BITS));
 
     if (found_wq != WQ.end()) {
 
@@ -441,7 +442,7 @@ int CACHE::add_rq(PACKET *packet)
     }
 
     // check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, OFFSET_BITS));
     if (found_rq != RQ.end()) {
 
         DP( if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl; )
@@ -486,7 +487,7 @@ int CACHE::add_wq(PACKET *packet)
             std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy(); })
 
     // check for duplicates in the write queue
-    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address, match_offset_bits ? 0 : OFFSET_BITS));
+    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, match_offset_bits ? 0 : OFFSET_BITS));
 
     if (found_wq != WQ.end()) {
 
@@ -618,7 +619,7 @@ int CACHE::add_pq(PACKET *packet)
             std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy(); })
 
     // check for the latest wirtebacks in the write queue
-    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet->address, match_offset_bits ? 0 : OFFSET_BITS));
+    champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, match_offset_bits ? 0 : OFFSET_BITS));
 
     if (found_wq != WQ.end()) {
 
@@ -633,7 +634,7 @@ int CACHE::add_pq(PACKET *packet)
     }
 
     // check for duplicates in the PQ
-    auto found = std::find_if(PQ.begin(), PQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
+    auto found = std::find_if(PQ.begin(), PQ.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, OFFSET_BITS));
     if (found != PQ.end())
     {
         DP( if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl; )
@@ -669,7 +670,7 @@ int CACHE::add_pq(PACKET *packet)
 void CACHE::return_data(PACKET *packet)
 {
     // check MSHR information
-    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
+    auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr_asid<PACKET>(packet->address, packet->asid, OFFSET_BITS));
     auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
     // sanity check

@@ -9,7 +9,6 @@
 #define DEADLOCK_CYCLE 1000000
 
 extern uint8_t warmup_complete[NUM_CPUS];
-extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
 
 extern VirtualMemory vmem;
@@ -357,8 +356,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     trace_packet.instr_id = begin->instr_id;
     trace_packet.ip = begin->ip;
     trace_packet.type = LOAD;
-    trace_packet.asid[0] = 0;
-    trace_packet.asid[1] = 0;
+    trace_packet.asid = begin->asid;
     trace_packet.to_return = {&ITLB_bus};
     for (; begin != end; ++begin)
         trace_packet.instr_depend_on_me.push_back(begin);
@@ -412,8 +410,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     fetch_packet.instr_id = begin->instr_id;
     fetch_packet.ip = begin->ip;
     fetch_packet.type = LOAD; 
-    fetch_packet.asid[0] = 0;
-    fetch_packet.asid[1] = 0;
+    fetch_packet.asid = begin->asid;
     fetch_packet.to_return = {&L1I_bus};
     for (; begin != end; ++begin)
         fetch_packet.instr_depend_on_me.push_back(begin);
@@ -741,8 +738,7 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
     lq_it->virtual_address = rob_it->source_memory[data_index];
     lq_it->ip = rob_it->ip;
     lq_it->rob_index = rob_it;
-    lq_it->asid[0] = rob_it->asid[0];
-    lq_it->asid[1] = rob_it->asid[1];
+    lq_it->asid = rob_it->asid;
     lq_it->event_cycle = current_cycle + SCHEDULING_LATENCY;
 
     // Mark RAW in the ROB since the producer might not be added in the store queue yet
@@ -778,8 +774,7 @@ void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterato
     sq_it->virtual_address = rob_it->destination_memory[data_index];
     sq_it->ip = rob_it->ip;
     sq_it->rob_index = rob_it;
-    sq_it->asid[0] = rob_it->asid[0];
-    sq_it->asid[1] = rob_it->asid[1];
+    sq_it->asid = rob_it->asid;
     sq_it->event_cycle = current_cycle + SCHEDULING_LATENCY;
 
     // succesfully added to the store queue
@@ -857,8 +852,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     data_packet.instr_id = sq_it->instr_id;
     data_packet.ip = sq_it->ip;
     data_packet.type = RFO;
-    data_packet.asid[0] = sq_it->asid[0];
-    data_packet.asid[1] = sq_it->asid[1];
+    data_packet.asid = sq_it->asid;
     data_packet.to_return = {&DTLB_bus};
     data_packet.sq_index_depend_on_me = {sq_it};
 
@@ -917,8 +911,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.asid[0] = lq_it->asid[0];
-    data_packet.asid[1] = lq_it->asid[1];
+    data_packet.asid = lq_it->asid;
     data_packet.to_return = {&DTLB_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
@@ -944,8 +937,7 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.asid[0] = lq_it->asid[0];
-    data_packet.asid[1] = lq_it->asid[1];
+    data_packet.asid = lq_it->asid;
     data_packet.to_return = {&L1D_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
@@ -1158,8 +1150,7 @@ void O3_CPU::retire_rob()
                 data_packet.instr_id = sq_it->instr_id;
                 data_packet.ip = sq_it->ip;
                 data_packet.type = RFO;
-                data_packet.asid[0] = sq_it->asid[0];
-                data_packet.asid[1] = sq_it->asid[1];
+                data_packet.asid = sq_it->asid;
 
                 auto result = L1D_bus.lower_level->add_wq(&data_packet);
                 if (result != -2)

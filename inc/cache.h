@@ -82,10 +82,10 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
 
-    uint32_t get_set(uint64_t address),
-             get_way(uint64_t address, uint32_t set);
+    uint32_t get_set(uint64_t address) const,
+             get_way(uint16_t asid, uint64_t address, uint32_t set) const;
 
-    int  invalidate_entry(uint64_t inval_addr),
+    int  invalidate_entry(uint16_t asid, uint64_t inval_addr),
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 

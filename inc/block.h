@@ -17,10 +17,11 @@ class PACKET {
     bool scheduled = false,
          returned  = false;
 
-    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-            type = 0,
+    uint8_t type = 0,
             fill_level = 0,
             pf_origin_level = 0;
+
+    uint16_t asid = std::numeric_limits<uint16_t>::max();
 
     int delta = 0,
         depth = 0,
@@ -78,8 +79,9 @@ struct LSQ_ENTRY {
     champsim::circular_buffer<ooo_model_instr>::iterator rob_index;
 
     uint8_t translated = 0,
-            fetched = 0,
-            asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+            fetched = 0;
+
+    uint16_t asid = std::numeric_limits<uint16_t>::max();
 };
 
 template <>
