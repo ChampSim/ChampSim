@@ -104,7 +104,7 @@ struct ooo_model_instr {
 
     ooo_model_instr() = default;
 
-    ooo_model_instr(uint8_t cpu, input_instr instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(cpu)
+    explicit ooo_model_instr(input_instr instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
@@ -112,7 +112,7 @@ struct ooo_model_instr {
         std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
     }
 
-    ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid((static_cast<uint16_t>(instr.asid[1]) << 8) + instr.asid[0])
+    explicit ooo_model_instr(cloudsuite_instr instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid((static_cast<uint16_t>(instr.asid[1]) << 8) + instr.asid[0])
     {
         std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
         std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));

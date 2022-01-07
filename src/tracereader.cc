@@ -6,7 +6,7 @@
 #include <string>
 #include <fstream>
 
-tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
+tracereader::tracereader(std::string _ts) : trace_string(_ts)
 {
     std::string last_dot = trace_string.substr(trace_string.find_last_of("."));
 
@@ -67,7 +67,7 @@ ooo_model_instr tracereader::read_single_instr()
     }
 
     // copy the instruction into the performance model's instruction format
-    ooo_model_instr retval(cpu, trace_read_instr);
+    ooo_model_instr retval(trace_read_instr);
     return retval;
 }
 
@@ -96,7 +96,7 @@ class cloudsuite_tracereader : public tracereader
     bool initialized = false;
 
     public:
-    cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+    cloudsuite_tracereader(std::string _tn) : tracereader(_tn) {}
 
     ooo_model_instr get()
     {
@@ -120,13 +120,15 @@ class input_tracereader : public tracereader
 {
     ooo_model_instr last_instr;
     bool initialized = false;
+    uint16_t asid;
 
     public:
-    input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+    input_tracereader(uint16_t asid, std::string _tn) : tracereader(_tn), asid(asid) {}
 
     ooo_model_instr get()
     {
         ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
+        trace_read_instr.asid = asid;
 
         if (!initialized)
         {
@@ -142,15 +144,15 @@ class input_tracereader : public tracereader
     }
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+tracereader* get_tracereader(std::string fname, uint16_t asid, bool is_cloudsuite)
 {
     if (is_cloudsuite)
     {
-        return new cloudsuite_tracereader(cpu, fname);
+        return new cloudsuite_tracereader(fname);
     }
     else
     {
-        return new input_tracereader(cpu, fname);
+        return new input_tracereader(asid, fname);
     }
 }
 
