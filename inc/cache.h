@@ -17,6 +17,28 @@
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
+
+    // CACHE BLOCK
+    class BLOCK {
+        public:
+            bool valid = false,
+                 prefetch = false,
+                 dirty = false;
+
+            uint16_t asid = std::numeric_limits<uint16_t>::max();
+
+            uint64_t address = 0,
+                     v_address = 0,
+                     tag = 0,
+                     data = 0,
+                     ip = 0,
+                     cpu = 0,
+                     instr_id = 0;
+
+            // replacement state
+            uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+    };
+
   public:
     uint32_t cpu;
     const std::string NAME;
