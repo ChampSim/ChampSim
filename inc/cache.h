@@ -125,14 +125,5 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     }
 };
 
-class min_fill_index
-{
-    public:
-    bool operator() (PACKET lhs, PACKET rhs)
-    {
-        return !rhs.returned || (lhs.returned && lhs.event_cycle < rhs.event_cycle);
-    }
-};
-
 #endif
 
