@@ -18,8 +18,7 @@
 #include "vmem.h"
 #include "tracereader.h"
 
-uint8_t warmup_complete[NUM_CPUS] = {},
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
+uint8_t MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
         knob_cloudsuite = 0,
         knob_low_bandwidth = 0;
 
@@ -186,6 +185,7 @@ void cpu_l1i_prefetcher_cache_fill(uint32_t cpu_num, uint64_t addr, uint32_t set
 struct phase_info
 {
     std::string name;
+    bool is_warmup;
     uint64_t length;
 };
 
@@ -335,8 +335,8 @@ int main(int argc, char** argv)
     LLC.llc_prefetcher_initialize();
 
     std::vector<phase_info> phases{{
-        phase_info{"Warmup", warmup_instructions},
-        phase_info{"Simulation", simulation_instructions}
+        phase_info{"Warmup", true, warmup_instructions},
+        phase_info{"Simulation", false, simulation_instructions}
     }};
 
     // simulation entry point
@@ -344,7 +344,10 @@ int main(int argc, char** argv)
     {
         // Initialize phase
         for (auto op : operables)
+        {
+            op->warmup = phase.is_warmup;
             op->begin_phase();
+        }
 
         // Perform phase
         std::bitset<NUM_CPUS> phase_complete = {};
@@ -366,9 +369,6 @@ int main(int argc, char** argv)
             auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
             for (auto cpu : ooo_cpu)
             {
-                // Keep warmup_complete
-                warmup_complete[cpu->cpu] = (cpu->num_retired >= warmup_instructions);
-
                 // Phase complete
                 if (!phase_complete[cpu->cpu] && (cpu->num_retired >= (cpu->begin_phase_instr + phase.length)))
                 {

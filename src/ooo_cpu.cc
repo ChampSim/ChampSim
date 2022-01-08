@@ -7,7 +7,6 @@
 
 #define DEADLOCK_CYCLE 1000000
 
-extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
 uint8_t show_heartbeat;
@@ -266,7 +265,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     // handle branch prediction
     if (arch_instr.is_branch) {
 
-        DP( if (warmup_complete[cpu]) {
+        DP( if (warmup) {
                 cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
 
         sim_stats.back().total_branch_types[arch_instr.branch_type]++;
@@ -287,7 +286,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         {
             sim_stats.back().total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
             sim_stats.back().branch_type_misses[arch_instr.branch_type]++;
-            if(warmup_complete[cpu])
+            if (warmup)
             {
                 fetch_stall = 1;
                 instrs_to_read_this_cycle = 0;
@@ -311,7 +310,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     // fast warmup eliminates register dependencies between instructions
     // branch predictor, cache contents, and prefetchers are still warmed up
-    if(!warmup_complete[cpu])
+    if (!warmup)
       {
 	for (int i=0; i<NUM_INSTR_SOURCES; i++)
 	  {
@@ -471,7 +470,7 @@ void O3_CPU::promote_to_decode()
     while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() &&
             IFETCH_BUFFER.front().translated == COMPLETED && IFETCH_BUFFER.front().fetched == COMPLETED)
     {
-        if (!warmup_complete[cpu] || IFETCH_BUFFER.front().decoded)
+        if (!warmup || IFETCH_BUFFER.front().decoded)
             DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.front());
         else
             DECODE_BUFFER.push_back(IFETCH_BUFFER.front());
@@ -506,7 +505,7 @@ void O3_CPU::decode_instruction()
 	  }
 	
         // Add to dispatch
-        if (warmup_complete[cpu])
+        if (warmup)
             DISPATCH_BUFFER.push_back(db_entry);
         else
             DISPATCH_BUFFER.push_back_ready(db_entry);
@@ -578,7 +577,7 @@ void O3_CPU::schedule_instruction()
                 assert(ready_to_execute.size() < ROB.size());
                 ready_to_execute.push(rob_it);
 
-                DP ( if (warmup_complete[cpu]) {
+                DP ( if (warmup) {
                         std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl; });
             }
         }
@@ -621,7 +620,7 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
         rob_it->scheduled = COMPLETED;
 
         // ADD LATENCY
-        rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
+        rob_it->event_cycle = current_cycle + (warmup ? SCHEDULING_LATENCY : 0);
     }
 }
 
@@ -643,11 +642,11 @@ void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator r
     rob_it->executed = INFLIGHT;
 
     // ADD LATENCY
-    rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
+    rob_it->event_cycle = current_cycle + (warmup ? EXEC_LATENCY : 0);
 
     inflight_reg_executions++;
 
-    DP (if (warmup_complete[cpu]) {
+    DP (if (warmup) {
             std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;});
 }
 
@@ -680,7 +679,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                 num_added++;
             }
             else {
-                DP(if(warmup_complete[cpu]) {
+                DP(if(warmup) {
                 cout << "[LQ] " << __func__ << " instr_id: " << rob_it->instr_id;
                 cout << " cannot be added in the load queue occupancy: " << std::count_if(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>()) << " cycle: " << current_cycle << endl; });
             }
@@ -700,7 +699,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                 }
             }
             else {
-                DP(if(warmup_complete[cpu]) {
+                DP(if(warmup) {
                 cout << "[SQ] " << __func__ << " instr_id: " << rob_it->instr_id;
                 cout << " cannot be added in the store queue occupancy: " << std::count_if(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>()) << " cycle: " << current_cycle << endl; });
             }
@@ -714,7 +713,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
         if (rob_it->executed == 0) // it could be already set to COMPLETED due to store-to-load forwarding
             rob_it->executed  = INFLIGHT;
 
-        DP (if (warmup_complete[cpu]) {
+        DP (if (warmup) {
         cout << "[ROB] " << __func__ << " instr_id: " << rob_it->instr_id;
         cout << " scheduled all num_mem_ops: " << rob_it->num_mem_ops << endl; });
     }
@@ -732,7 +731,7 @@ void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry)
         if (lq_entry.rob_index->num_mem_ops == 0)
             inflight_mem_executions++;
 
-        DP(if(warmup_complete[cpu]) {
+        DP(if(warmup) {
                 cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << hex;
                 cout << " full_addr: " << lq_entry.physical_address << dec << " is forwarded by store instr_id: ";
                 cout << sq_entry.instr_id << " remain_num_ops: " << lq_entry.rob_index->num_mem_ops << " cycle: " << current_cycle << endl; });
@@ -823,7 +822,7 @@ void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterato
 
     RTS0.push(sq_it);
 
-    DP(if(warmup_complete[cpu]) {
+    DP(if(warmup) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id;
             std::cout << " is added in the SQ translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched;
             std::cout << " cycle: " << current_cycle << std::endl; });
@@ -901,7 +900,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     data_packet.to_return = {&DTLB_bus};
     data_packet.sq_index_depend_on_me = {sq_it};
 
-    DP (if (warmup_complete[cpu]) {
+    DP (if (warmup) {
             std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is popped from to RTS0" << std::endl; })
 
     int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
@@ -923,7 +922,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     if (sq_it->rob_index->num_mem_ops == 0)
         inflight_mem_executions++;
 
-    DP (if (warmup_complete[cpu]) {
+    DP (if (warmup) {
             std::cout << "[SQ1] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
             std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
             std::cout << " event_cycle: " << sq_it->event_cycle << std::endl; });
@@ -965,7 +964,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.to_return = {&DTLB_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
-    DP (if (warmup_complete[cpu]) {
+    DP (if (warmup) {
             std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is popped to RTL0" << std::endl; })
 
     int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
@@ -1050,7 +1049,7 @@ void O3_CPU::complete_inflight_instruction()
                         assert(ready_to_execute.size() < ROB.size());
                         ready_to_execute.push(dependent);
 
-                        DP ( if (warmup_complete[cpu]) {
+                        DP ( if (warmup) {
                                 std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl; })
                     }
                 }
@@ -1223,7 +1222,7 @@ void O3_CPU::retire_rob()
         }
 
         // release ROB entry
-        DP ( if (warmup_complete[cpu]) {
+        DP ( if (warmup) {
                 cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
         ROB.pop_front();

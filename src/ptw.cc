@@ -4,7 +4,6 @@
 #include "util.h"
 
 extern VirtualMemory vmem;
-extern uint8_t  warmup_complete[NUM_CPUS];
 
 PageTableWalker::PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll)
  : champsim::operable(1), MemoryRequestProducer(ll),
@@ -75,7 +74,7 @@ void PageTableWalker::handle_fill()
         {
             //Return the translated physical address to STLB. Does not contain last 12 bits
             auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->full_v_addr);
-            if (warmup_complete[cpu] && fault)
+            if (warmup && fault)
             {
                 fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
                 MSHR.sort(ord_event_cycle<PACKET>{});
@@ -89,7 +88,7 @@ void PageTableWalker::handle_fill()
                 for (auto ret: fill_mshr->to_return)
                     ret->return_data(&(*fill_mshr));
 
-                if(warmup_complete[cpu])
+                if (warmup)
                     total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
                 MSHR.erase(fill_mshr);
@@ -98,7 +97,7 @@ void PageTableWalker::handle_fill()
         else
         {
             auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->full_v_addr, fill_mshr->translation_level);
-            if (warmup_complete[cpu] && fault)
+            if (warmup && fault)
             {
                 fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
                 MSHR.sort(ord_event_cycle<PACKET>{});
@@ -173,7 +172,7 @@ void PageTableWalker::return_data(PACKET *packet)
         {
             mshr_entry.event_cycle = current_cycle;
 
-            DP (if (warmup_complete[cpu]) {
+            DP (if (warmup) {
                     std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry.instr_id;
                     std::cout << " address: " << std::hex << mshr_entry.address << " full_addr: " << mshr_entry.full_addr;
                     std::cout << " full_v_addr: " << mshr_entry.full_v_addr;

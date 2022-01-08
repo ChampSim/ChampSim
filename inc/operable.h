@@ -11,6 +11,7 @@ class operable {
 
     double leap_operation = 0;
     uint64_t current_cycle = 0;
+    bool warmup = true;
 
     explicit operable(double scale) : CLOCK_SCALE(scale-1) {}
 

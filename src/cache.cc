@@ -13,7 +13,6 @@
 #endif
 
 extern VirtualMemory vmem;
-extern uint8_t  warmup_complete[NUM_CPUS];
 
 void CACHE::handle_fill()
 {
@@ -81,7 +80,7 @@ void CACHE::handle_writeback()
         }
         else // MISS
         {
-            DP ( if (warmup_complete[handle_pkt.cpu]) {
+            DP ( if (warmup) {
                     std::cout << "[" << NAME << "] " << __func__ << " type: " << +handle_pkt.type << " miss";
                     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << handle_pkt.address;
                     std::cout << " full_addr: " << handle_pkt.full_addr << std::dec;
@@ -344,7 +343,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         fill_block.instr_id = handle_pkt.instr_id;
     }
 
-    if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
+    if (handle_pkt.cycle_enqueued != 0)
         sim_stats.back().total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     // update prefetcher
@@ -468,12 +467,12 @@ int CACHE::add_rq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to RQ
-    if (warmup_complete[cpu])
+    if (warmup)
         RQ.push_back(*packet);
     else
         RQ.push_back_ready(*packet);
 
-    DP ( if (warmup_complete[packet->cpu]) {
+    DP ( if (warmup) {
             std::cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << RQ.occupancy() << std::endl; })
 
@@ -508,12 +507,12 @@ int CACHE::add_wq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to the write queue
-    if (warmup_complete[cpu])
+    if (warmup)
         WQ.push_back(*packet);
     else
         WQ.push_back_ready(*packet);
 
-    DP (if (warmup_complete[packet->cpu]) {
+    DP (if (warmup) {
             std::cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " occupancy: " << WQ.occupancy();
             std::cout << " data: " << std::hex << packet->data << std::dec << std::endl; })
@@ -657,18 +656,18 @@ int CACHE::add_pq(PACKET *packet)
     if (PQ.full()) {
         sim_stats.back().PQ_FULL++;
 
-        DP ( if (warmup_complete[packet->cpu]) {
+        DP ( if (warmup) {
         cout << "[" << NAME << "] cannot process add_pq since it is full" << endl; });
         return -2; // cannot handle this request
     }
 
     // if there is no duplicate, add it to PQ
-    if (warmup_complete[cpu])
+    if (warmup)
         PQ.push_back(*packet);
     else
         PQ.push_back_ready(*packet);
 
-    DP ( if (warmup_complete[packet->cpu]) {
+    DP ( if (warmup) {
             std::cout << "[" << NAME << "_PQ] " <<  __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << packet->address;
             std::cout << " full_addr: " << packet->full_addr << std::dec << " type: " << +packet->type << " occupancy: " << PQ.occupancy() << std::endl; })
 
@@ -695,9 +694,9 @@ void CACHE::return_data(PACKET *packet)
     // no need to do memcpy
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
-    mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
+    mshr_entry->event_cycle = current_cycle + (warmup ? FILL_LATENCY : 0);
 
-    DP (if (warmup_complete[packet->cpu]) {
+    DP (if (warmup) {
             std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
             std::cout << " address: " << std::hex << mshr_entry->address << " full_addr: " << mshr_entry->full_addr;
             std::cout << " data: " << mshr_entry->data << std::dec;
