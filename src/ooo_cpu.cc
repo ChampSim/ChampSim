@@ -73,11 +73,7 @@ void O3_CPU::begin_phase()
     begin_phase_instr = num_retired;
     begin_phase_cycle = current_cycle;
 
-    // reset branch stats
-    total_rob_occupancy_at_branch_mispredict = 0;
-
-    std::fill(std::begin(total_branch_types), std::end(total_branch_types), 0);
-    std::fill(std::begin(branch_type_misses), std::end(branch_type_misses), 0);
+    sim_stats.emplace_back();
 }
 
 void O3_CPU::end_phase(unsigned cpu)
@@ -86,6 +82,8 @@ void O3_CPU::end_phase(unsigned cpu)
     {
         finish_phase_instr = num_retired;
         finish_phase_cycle = current_cycle;
+
+        roi_stats.push_back(sim_stats.back());
     }
 }
 
@@ -234,8 +232,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         arch_instr.branch_type = BRANCH_OTHER;
     }
 
-    total_branch_types[arch_instr.branch_type]++;
-
     if((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1))
       {
 	// clear the branch target for this instruction
@@ -275,6 +271,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
         DP( if (warmup_complete[cpu]) {
                 cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl; });
 
+        sim_stats.back().total_branch_types[arch_instr.branch_type]++;
+
 	std::pair<uint64_t, uint8_t> btb_result = btb_prediction(arch_instr.ip, arch_instr.branch_type);
 	uint64_t predicted_branch_target = btb_result.first;
 	uint8_t always_taken = btb_result.second;
@@ -289,8 +287,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         if(predicted_branch_target != arch_instr.branch_target)
         {
-            total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
-	    branch_type_misses[arch_instr.branch_type]++;
+            sim_stats.back().total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
+            sim_stats.back().branch_type_misses[arch_instr.branch_type]++;
             if(warmup_complete[cpu])
             {
                 fetch_stall = 1;
@@ -1243,8 +1241,8 @@ void O3_CPU::print_roi_stats()
 
 void O3_CPU::print_phase_stats()
 {
-    auto num_branch = std::accumulate(std::begin(total_branch_types), std::end(total_branch_types), 0);
-    auto branch_mispredictions = std::accumulate(std::begin(branch_type_misses), std::end(branch_type_misses), 0);
+    auto total_branch         = std::accumulate(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), 0ull);
+    auto total_mispredictions = std::accumulate(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), 0ull);
 
     std::cout << std::endl;
     std::cout << "CPU " << cpu;
@@ -1253,8 +1251,8 @@ void O3_CPU::print_phase_stats()
     std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * total_rob_occupancy_at_branch_mispredict) / branch_mispredictions << std::endl;
 
     /*
-    std::array<double, std::tuple_size_v<decltype(total_branch_types)>> pcts;
-    std::transform(std::begin(total_branch_types), std::end(total_branch_types), std::begin(pcts), [instr=sim_instr()](auto x){ return 100.0*x/instr; });
+    std::vector<double> pcts;
+    std::transform(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), std::back_inserter(pcts), [instr=sim_instr()](auto x){ return 100.0*x/instr; });
     std::cout << "Branch types" << std::endl;
     std::cout << "NOT_BRANCH: "           << total_branch_types[NOT_BRANCH]           << " " << pcts[NOT_BRANCH]           << "%" << std::endl;
     std::cout << "BRANCH_DIRECT_JUMP: "   << total_branch_types[BRANCH_DIRECT_JUMP]   << " " << pcts[BRANCH_DIRECT_JUMP]   << "%" << std::endl;
@@ -1267,8 +1265,8 @@ void O3_CPU::print_phase_stats()
     std::cout << std::endl;
     */
 
-    std::array<double, std::tuple_size_v<decltype(branch_type_misses)>> mpkis;
-    std::transform(std::begin(branch_type_misses), std::end(branch_type_misses), std::begin(mpkis), [instr=sim_instr()](auto x){ return 1000.0*x/instr; });
+    std::vector<double> mpkis;
+    std::transform(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), std::back_inserter(mpkis), [instr=sim_instr()](auto x){ return 1000.0*x/instr; });
     std::cout << "Branch type MPKI" << std::endl;
     std::cout << "BRANCH_DIRECT_JUMP: "   << mpkis[BRANCH_DIRECT_JUMP] << std::endl;
     std::cout << "BRANCH_INDIRECT: "      << mpkis[BRANCH_INDIRECT] << std::endl;

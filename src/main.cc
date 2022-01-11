@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <functional>
 #include <iomanip>
+#include <numeric>
 #include <signal.h>
 #include <string.h>
 #include <vector>

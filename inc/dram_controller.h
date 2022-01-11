@@ -26,6 +26,14 @@ struct BANK_REQUEST {
     std::vector<PACKET>::iterator pkt;
 };
 
+struct dram_stats
+{
+    uint64_t dbus_cycle_congested = 0,
+             dbus_count_congested = 0;
+
+    unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+};
+
 struct DRAM_CHANNEL
 {
     std::vector<PACKET> WQ{DRAM_WQ_SIZE};
@@ -34,13 +42,11 @@ struct DRAM_CHANNEL
     std::array<BANK_REQUEST, DRAM_RANKS*DRAM_BANKS> bank_request = {};
     std::array<BANK_REQUEST, DRAM_RANKS*DRAM_BANKS>::iterator active_request = std::end(bank_request);
 
-    uint64_t dbus_cycle_available = 0,
-             dbus_cycle_congested = 0,
-             dbus_count_congested = 0;
-
     bool write_mode = false;
+    uint64_t dbus_cycle_available = 0;
 
-    unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+    using stats_type = dram_stats;
+    std::vector<stats_type> roi_stats, sim_stats;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
