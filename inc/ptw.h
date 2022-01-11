@@ -130,6 +130,8 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
     void operate() override;
     void begin_phase() override;
     void end_phase(unsigned cpu) override;
+    void print_roi_stats() override;
+    void print_phase_stats() override;
 
 	void handle_read(),
 		 handle_fill();

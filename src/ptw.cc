@@ -435,3 +435,11 @@ void PageTableWalker::end_phase(unsigned cpu)
 {
 }
 
+void PageTableWalker::print_roi_stats()
+{
+}
+
+void PageTableWalker::print_phase_stats()
+{
+}
+

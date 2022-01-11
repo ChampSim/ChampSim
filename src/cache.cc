@@ -1,7 +1,9 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iterator>
+#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -77,7 +79,6 @@ void CACHE::handle_writeback()
 
             // COLLECT STATS
             sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-            sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
             // mark dirty
             fill_block.dirty = 1;
@@ -202,7 +203,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     // COLLECT STATS
     sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-    sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
     for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);
@@ -370,7 +370,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     // COLLECT STATS
     sim_miss[handle_pkt.cpu][handle_pkt.type]++;
-    sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
     return true;
 }
@@ -743,8 +742,6 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
 
 void CACHE::begin_phase()
 {
-    for (auto& arr : sim_access)
-        std::fill(std::begin(arr), std::end(arr), 0);
     for (auto& arr : sim_hit)
         std::fill(std::begin(arr), std::end(arr), 0);
     for (auto& arr : sim_miss)
@@ -771,8 +768,104 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned cpu)
 {
-    std::copy(std::begin(sim_access[cpu]), std::end(sim_access[cpu]), std::begin(roi_access[cpu]));
     std::copy(std::begin(sim_hit[cpu]), std::end(sim_hit[cpu]), std::begin(roi_hit[cpu]));
     std::copy(std::begin(sim_miss[cpu]), std::end(sim_miss[cpu]), std::begin(roi_miss[cpu]));
+}
+
+void CACHE::print_roi_stats()
+{
+    for (auto i = 0; i < NUM_CPUS; ++i)
+    {
+        uint64_t TOTAL_HIT = std::accumulate(std::begin(roi_hit[cpu]), std::end(roi_hit[cpu]), 0ull),
+                 TOTAL_MISS = std::accumulate(std::begin(roi_miss[cpu]), std::end(roi_miss[cpu]), 0ull);
+
+        std::cout << NAME << " TOTAL    ";
+        std::cout << " ACCESS: " << setw(10) << TOTAL_HIT + TOTAL_MISS << " ";
+        std::cout << " HIT: " << setw(10) << TOTAL_HIT << " ";
+        std::cout << " MISS: " << setw(10) << TOTAL_MISS << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " LOAD     ";
+        std::cout << " ACCESS: " << setw(10) << roi_hit[cpu][0] + roi_miss[cpu][0] << " ";
+        std::cout << " HIT: " << setw(10) << roi_hit[cpu][0] << " ";
+        std::cout << " MISS: " << setw(10) << roi_miss[cpu][0] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " RFO      ";
+        std::cout << " ACCESS: " << setw(10) << roi_hit[cpu][1] + roi_miss[cpu][1] << " ";
+        std::cout << " HIT: " << setw(10) << roi_hit[cpu][1] << " ";
+        std::cout << " MISS: " << setw(10) << roi_miss[cpu][1] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " PREFETCH ";
+        std::cout << " ACCESS: " << setw(10) << roi_hit[cpu][2] + roi_miss[cpu][2] << " ";
+        std::cout << " HIT: " << setw(10) << roi_hit[cpu][2] << " ";
+        std::cout << " MISS: " << setw(10) << roi_miss[cpu][2] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " WRITEBACK";
+        std::cout << " ACCESS: " << setw(10) << roi_hit[cpu][3] + roi_miss[cpu][3] << " ";
+        std::cout << " HIT: " << setw(10) << roi_hit[cpu][3] << " ";
+        std::cout << " MISS: " << setw(10) << roi_miss[cpu][3] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME;
+        std::cout << " TRANSLATION ACCESS: " << setw(10) << roi_hit[cpu][4] + roi_miss[cpu][4];
+        std::cout << " HIT: " << setw(10) << roi_hit[cpu][4] << " ";
+        std::cout << " MISS: " << setw(10) << roi_miss[cpu][4] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " PREFETCH  REQUESTED: " << setw(10) << pf_requested << "  ISSUED: " << setw(10) << pf_issued;
+        std::cout << "  USEFUL: " << setw(10) << pf_useful << "  USELESS: " << setw(10) << pf_useless << endl;
+
+        std::cout << NAME;
+        std::cout << " AVERAGE MISS LATENCY: " << (1.0*(total_miss_latency))/TOTAL_MISS << " cycles" << endl;
+        //std::cout << " AVERAGE MISS LATENCY: " << (total_miss_latency)/TOTAL_MISS << " cycles " << total_miss_latency << "/" << TOTAL_MISS<< endl;
+    }
+}
+
+void CACHE::print_phase_stats()
+{
+    for (auto i = 0; i < NUM_CPUS; ++i)
+    {
+        uint64_t TOTAL_HIT = std::accumulate(std::begin(sim_hit[cpu]), std::end(sim_hit[cpu]), 0ull),
+                 TOTAL_MISS = std::accumulate(std::begin(sim_miss[cpu]), std::end(sim_miss[cpu]), 0ull);
+
+        std::cout << NAME << " TOTAL    ";
+        std::cout << " ACCESS: " << setw(10) << TOTAL_HIT + TOTAL_MISS << " ";
+        std::cout << " HIT: " << setw(10) << TOTAL_HIT << " ";
+        std::cout << " MISS: " << setw(10) << TOTAL_MISS << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " LOAD     ";
+        std::cout << " ACCESS: " << setw(10) << sim_hit[cpu][0] + sim_miss[cpu][0] << " ";
+        std::cout << " HIT: " << setw(10) << sim_hit[cpu][0] << " ";
+        std::cout << " MISS: " << setw(10) << sim_miss[cpu][0] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " RFO      ";
+        std::cout << " ACCESS: " << setw(10) << sim_hit[cpu][1] + sim_miss[cpu][1] << " ";
+        std::cout << " HIT: " << setw(10) << sim_hit[cpu][1] << " ";
+        std::cout << " MISS: " << setw(10) << sim_miss[cpu][1] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " PREFETCH ";
+        std::cout << " ACCESS: " << setw(10) << sim_hit[cpu][2] + sim_miss[cpu][2] << " ";
+        std::cout << " HIT: " << setw(10) << sim_hit[cpu][2] << " ";
+        std::cout << " MISS: " << setw(10) << sim_miss[cpu][2] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME << " WRITEBACK";
+        std::cout << " ACCESS: " << setw(10) << sim_hit[cpu][3] + sim_miss[cpu][3] << " ";
+        std::cout << " HIT: " << setw(10) << sim_hit[cpu][3] << " ";
+        std::cout << " MISS: " << setw(10) << sim_miss[cpu][3] << " ";
+        std::cout << std::endl;
+
+        std::cout << NAME;
+        std::cout << " TRANSLATION ACCESS: " << setw(10) << sim_hit[cpu][4] + sim_miss[cpu][4];
+        std::cout << " HIT: " << setw(10) << sim_hit[cpu][4] << " ";
+        std::cout << " MISS: " << setw(10) << sim_miss[cpu][4] << " ";
+        std::cout << std::endl;
+    }
 }
 

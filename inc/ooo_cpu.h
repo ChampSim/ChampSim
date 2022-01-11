@@ -80,11 +80,10 @@ class O3_CPU : public champsim::operable {
     int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
     uint8_t  fetch_stall = 0;
     uint64_t fetch_resume_cycle = 0;
-    uint64_t num_branch = 0, branch_mispredictions = 0;
     uint64_t total_rob_occupancy_at_branch_mispredict;
 
-    uint64_t total_branch_types[8] = {};
-    uint64_t branch_type_misses[8] = {};
+    std::array<unsigned long long, 8> total_branch_types = {};
+    std::array<unsigned long long, 8> branch_type_misses = {};
 
     CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
   
@@ -170,6 +169,8 @@ class O3_CPU : public champsim::operable {
     void operate() override;
     void begin_phase() override;
     void end_phase(unsigned cpu) override;
+    void print_roi_stats() override;
+    void print_phase_stats() override;
 
     // functions
     void init_instruction(ooo_model_instr instr);

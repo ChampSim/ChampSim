@@ -1,6 +1,7 @@
 #include "dram_controller.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <numeric>
 
 #include "champsim_constants.h"
@@ -130,6 +131,39 @@ void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
 }
 
+void MEMORY_CONTROLLER::print_roi_stats()
+{
+}
+
+void MEMORY_CONTROLLER::print_phase_stats()
+{
+    std::cout << std::endl;
+    std::cout << "DRAM Statistics" << std::endl;
+    auto i = 0;
+    for (auto chan : channels)
+    {
+        std::cout << " CHANNEL " << i++ << std::endl;
+        std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << chan.RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << chan.RQ_ROW_BUFFER_MISS << std::endl;
+        std::cout << " DBUS_CONGESTED: " << std::setw(10) << (1.0 * chan.dbus_cycle_congested / chan.dbus_count_congested) << std::endl;
+        std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << chan.WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10) << chan.WQ_ROW_BUFFER_MISS;
+        std::cout << "  FULL: " << std::setw(10) << chan.WQ_FULL << std::endl;
+        std::cout << std::endl;
+    }
+
+    uint64_t total_congested_cycle = 0;
+    for (auto chan : channels)
+        total_congested_cycle += chan.dbus_cycle_congested;
+
+    uint64_t total_congested_count = 0;
+    for (auto chan : channels)
+        total_congested_count += chan.dbus_count_congested;
+
+    if (total_congested_count)
+        std::cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << std::endl;
+    else
+        std::cout << " AVG_CONGESTED_CYCLE: -" << std::endl;
+}
+
 void MEMORY_CONTROLLER::schedule(std::vector<PACKET>::iterator q_it)
 {
     uint32_t op_channel = dram_get_channel(q_it->address),
@@ -159,7 +193,7 @@ void MEMORY_CONTROLLER::schedule(std::vector<PACKET>::iterator q_it)
 
 int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 {
-    if (!std::reduce(std::begin(warmup_complete), std::end(warmup_complete), true, std::logical_and<>{}))
+    if (!std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x){ return x; }))
     {
         for (auto ret : packet->to_return)
             ret->return_data(packet);
@@ -208,7 +242,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
 int MEMORY_CONTROLLER::add_wq(PACKET *packet)
 {
-    if (!std::reduce(std::begin(warmup_complete), std::end(warmup_complete), true, std::logical_and<>{}))
+    if (!std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x){ return x; }))
         return -1; // Fast-forward
 
     auto &channel = channels[dram_get_channel(packet->address)];

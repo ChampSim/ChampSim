@@ -65,6 +65,8 @@ class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsume
     void operate() override;
     void begin_phase() override;
     void end_phase(unsigned cpu) override;
+    void print_roi_stats() override;
+    void print_phase_stats() override;
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
