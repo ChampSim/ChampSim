@@ -23,8 +23,7 @@ uint8_t warmup_complete[NUM_CPUS] = {},
 extern uint8_t show_heartbeat;
 
 uint64_t warmup_instructions     = 1000000,
-         simulation_instructions = 10000000,
-         champsim_seed;
+         simulation_instructions = 10000000;
 
 auto start_time = std::chrono::steady_clock::now();
 
@@ -118,31 +117,25 @@ int main(int argc, char** argv)
 
     show_heartbeat = 1;
 
-    uint32_t seed_number = 0;
-
     // check to see if knobs changed using getopt_long()
     int c;
-    while (1) {
-        static struct option long_options[] =
-        {
-            {"warmup_instructions", required_argument, 0, 'w'},
-            {"simulation_instructions", required_argument, 0, 'i'},
-            {"hide_heartbeat", no_argument, 0, 'h'},
-            {"cloudsuite", no_argument, 0, 'c'},
-            {"traces",  no_argument, 0, 't'},
-            {0, 0, 0, 0}      
-        };
+    const struct option long_options[] =
+    {
+        {"warmup_instructions", required_argument, 0, 'w'},
+        {"simulation_instructions", required_argument, 0, 'i'},
+        {"hide_heartbeat", no_argument, 0, 'h'},
+        {"cloudsuite", no_argument, 0, 'c'},
+        {"traces",  no_argument, 0, 't'},
+        {0, 0, 0, 0}      
+    };
 
-        int option_index = 0;
-
-        c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
-
-        // no more option characters
-        if (c == -1)
-            break;
-
-        int traces_encountered = 0;
-
+    int option_index = 0; // unused
+    bool traces_encountered = false;
+    for (int c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
+            c != -1 && !traces_encountered;
+            c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index)
+        )
+    {
         switch(c) {
             case 'w':
                 warmup_instructions = atol(optarg);
@@ -158,20 +151,16 @@ int main(int argc, char** argv)
                 MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
                 break;
             case 't':
-                traces_encountered = 1;
+                traces_encountered = true;
                 break;
             default:
                 abort();
         }
-
-        if (traces_encountered == 1)
-            break;
     }
 
     // consequences of knobs
     cout << "Warmup Instructions: " << warmup_instructions << endl;
     cout << "Simulation Instructions: " << simulation_instructions << endl;
-    //cout << "Scramble Loads: " << (knob_scramble_loads ? "ture" : "false") << endl;
     cout << "Number of CPUs: " << NUM_CPUS << endl;
     cout << "LLC sets: " << LLC.NUM_SET << endl;
     cout << "LLC ways: " << LLC.NUM_WAY << endl;
@@ -180,52 +169,19 @@ int main(int argc, char** argv)
     // end consequence of knobs
 
     // search through the argv for "-traces"
-    int found_traces = 0;
     std::cout << std::endl;
-    for (int i=0; i<argc; i++) {
-        if (found_traces)
-        {
-            std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
-
-            traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
-
-            char *pch[100];
-            int count_str = 0;
-            pch[0] = strtok (argv[i], " /,.-");
-            while (pch[count_str] != NULL) {
-                //printf ("%s %d\n", pch[count_str], count_str);
-                count_str++;
-                pch[count_str] = strtok (NULL, " /,.-");
-            }
-
-            //printf("max count_str: %d\n", count_str);
-            //printf("application: %s\n", pch[count_str-3]);
-
-            int j = 0;
-            while (pch[count_str-3][j] != '\0') {
-                seed_number += pch[count_str-3][j];
-                //printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
-                j++;
-            }
-
-            if (traces.size() > NUM_CPUS) {
-                printf("\n*** Too many traces for the configured number of cores ***\n\n");
-                assert(0);
-            }
-        }
-        else if(strcmp(argv[i],"-traces") == 0) {
-            found_traces = 1;
-        }
+    for (auto it = std::find(argv, std::next(argv, argc), std::string{"-traces"}); it != std::next(argv, argc); it++)
+    {
+        std::cout << "CPU " << traces.size() << " runs " << it << std::endl;
+        traces.push_back(get_tracereader(it, traces.size(), knob_cloudsuite));
     }
 
-    if (traces.size() != NUM_CPUS) {
-        printf("\n*** Not enough traces for the configured number of cores ***\n\n");
-        assert(0);
+    if (traces.size() != NUM_CPUS)
+    {
+        std::cout << std::endl << "*** Number of traces does not match number of cores ***" << std::endl << std::endl;
+        abort();
     }
     // end trace file setup
-
-    srand(seed_number);
-    champsim_seed = seed_number;
 
     for (auto cpu : ooo_cpu) {
         static_cast<CACHE*>(cpu->L1I_bus.lower_level)->l1i_prefetcher_cache_operate = cpu_l1i_prefetcher_cache_operate;
