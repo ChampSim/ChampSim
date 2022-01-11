@@ -1249,12 +1249,12 @@ void O3_CPU::print_phase_stats()
     std::cout << std::endl;
     std::cout << "CPU " << cpu;
     std::cout << " Branch Prediction Accuracy: " << (100.0 * (num_branch - branch_mispredictions)) / num_branch << "%";
-    std::cout << " MPKI: " << (1000.0 * branch_mispredictions) / (num_retired - begin_phase_instr);
+    std::cout << " MPKI: " << (1000.0 * branch_mispredictions) / sim_instr();
     std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * total_rob_occupancy_at_branch_mispredict) / branch_mispredictions << std::endl;
 
     /*
     std::array<double, std::tuple_size_v<decltype(total_branch_types)>> pcts;
-    std::transform(std::begin(total_branch_types), std::end(total_branch_types), std::begin(pcts), [instr=num_retired-begin_phase_instr](auto x){ return 100.0*x/instr; });
+    std::transform(std::begin(total_branch_types), std::end(total_branch_types), std::begin(pcts), [instr=sim_instr()](auto x){ return 100.0*x/instr; });
     std::cout << "Branch types" << std::endl;
     std::cout << "NOT_BRANCH: "           << total_branch_types[NOT_BRANCH]           << " " << pcts[NOT_BRANCH]           << "%" << std::endl;
     std::cout << "BRANCH_DIRECT_JUMP: "   << total_branch_types[BRANCH_DIRECT_JUMP]   << " " << pcts[BRANCH_DIRECT_JUMP]   << "%" << std::endl;
@@ -1268,7 +1268,7 @@ void O3_CPU::print_phase_stats()
     */
 
     std::array<double, std::tuple_size_v<decltype(branch_type_misses)>> mpkis;
-    std::transform(std::begin(branch_type_misses), std::end(branch_type_misses), std::begin(mpkis), [instr=num_retired-begin_phase_instr](auto x){ return 1000.0*x/instr; });
+    std::transform(std::begin(branch_type_misses), std::end(branch_type_misses), std::begin(mpkis), [instr=sim_instr()](auto x){ return 1000.0*x/instr; });
     std::cout << "Branch type MPKI" << std::endl;
     std::cout << "BRANCH_DIRECT_JUMP: "   << mpkis[BRANCH_DIRECT_JUMP] << std::endl;
     std::cout << "BRANCH_INDIRECT: "      << mpkis[BRANCH_INDIRECT] << std::endl;

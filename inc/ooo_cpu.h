@@ -208,6 +208,11 @@ class O3_CPU : public champsim::operable {
     void handle_memory_return();
     void retire_rob();
 
+    uint64_t roi_instr() const { return finish_phase_instr - begin_phase_instr; }
+    uint64_t roi_cycle() const { return finish_phase_cycle - begin_phase_cycle; }
+    uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
+    uint64_t sim_cycle() const { return current_cycle - begin_phase_cycle; }
+
   // branch predictor
   uint8_t predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
   void initialize_branch_predictor(),

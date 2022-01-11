@@ -3,7 +3,6 @@
 #include <bitset>
 #include <chrono>
 #include <getopt.h>
-#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <signal.h>
@@ -14,7 +13,6 @@
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
-#include "vmem.h"
 #include "tracereader.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {},
@@ -32,7 +30,6 @@ auto start_time = std::chrono::steady_clock::now();
 
 extern CACHE LLC;
 extern MEMORY_CONTROLLER DRAM;
-extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<champsim::operable*, 7*NUM_CPUS+2> operables;
 
@@ -283,16 +280,14 @@ int main(int argc, char** argv)
                 warmup_complete[cpu->cpu] = (cpu->num_retired >= warmup_instructions);
 
                 // Phase complete
-                if (!phase_complete[cpu->cpu] && (cpu->num_retired >= (cpu->begin_phase_instr + phase.length)))
+                if (!phase_complete[cpu->cpu] && (cpu->sim_instr() >= phase.length))
                 {
                     phase_complete.set(cpu->cpu);
                     for (auto op : operables)
                         op->end_phase(cpu->cpu);
 
                     std::cout << phase.name << " finished CPU " << cpu->cpu;
-                    std::cout << " instructions: " << cpu->finish_phase_instr - cpu->begin_phase_instr;
-                    std::cout << " cycles: " << cpu->finish_phase_cycle - cpu->begin_phase_cycle;
-                    std::cout << " cumulative IPC: " << ((float) cpu->finish_phase_instr - cpu->begin_phase_instr) / (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
+                    std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle() << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
                     std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
                 }
             }
@@ -302,7 +297,7 @@ int main(int argc, char** argv)
         for (auto cpu : ooo_cpu)
         {
             std::cout << std::endl;
-            std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << (cpu->num_retired - cpu->begin_phase_instr) << " cycles: " << (cpu->current_cycle - cpu->begin_phase_cycle);
+            std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle();
             std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
             std::cout << std::endl;
         }
@@ -316,8 +311,8 @@ int main(int argc, char** argv)
         for (auto cpu : ooo_cpu)
         {
             std::cout << std::endl;
-            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (float) (cpu->num_retired - cpu->begin_phase_instr) / (cpu->current_cycle - cpu->begin_phase_cycle);
-            std::cout << " instructions: " << cpu->num_retired - cpu->begin_phase_instr << " cycles: " << cpu->current_cycle - cpu->begin_phase_cycle << endl;
+            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
+            std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle() << endl;
 
             static_cast<CACHE*>(cpu->L1D_bus.lower_level)->print_phase_stats();
             static_cast<CACHE*>(cpu->L1I_bus.lower_level)->print_phase_stats();
@@ -337,8 +332,8 @@ int main(int argc, char** argv)
     for (auto cpu : ooo_cpu)
     {
         std::cout << std::endl;
-        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << ((float) (cpu->finish_phase_instr - cpu->begin_phase_instr) / (cpu->finish_phase_cycle - cpu->begin_phase_cycle));
-        std::cout << " instructions: " << (cpu->finish_phase_instr - cpu->begin_phase_instr) << " cycles: " << (cpu->finish_phase_cycle - cpu->begin_phase_cycle);
+        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (1.0 * cpu->roi_instr() / cpu->roi_cycle());
+        std::cout << " instructions: " << cpu->roi_cycle() << " cycles: " << cpu->roi_cycle();
         std::cout << endl;
 
         static_cast<CACHE*>(cpu->L1D_bus.lower_level)->print_roi_stats();
