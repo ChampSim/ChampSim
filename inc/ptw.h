@@ -50,11 +50,11 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
         PageTableWalker(string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
         // functions
-        int add_rq(PACKET *packet);
-        int add_wq(PACKET *packet) { assert(0); }
-        int add_pq(PACKET *packet) { assert(0); }
+        int add_rq(PACKET packet) override;
+        int add_wq(PACKET packet) override { assert(0); }
+        int add_pq(PACKET packet) override { return add_rq(packet); }
 
-        void return_data(PACKET *packet),
+        void return_data(PACKET packet) override,
              operate();
 
         void handle_read(), handle_fill();

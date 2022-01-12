@@ -70,11 +70,11 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint64_t total_miss_latency = 0;
 
     // functions
-    int  add_rq(PACKET *packet) override,
-         add_wq(PACKET *packet) override,
-         add_pq(PACKET *packet) override;
+    int  add_rq(PACKET packet) override,
+         add_wq(PACKET packet) override,
+         add_pq(PACKET packet) override;
 
-    void return_data(PACKET *packet),
+    void return_data(PACKET packet) override,
          operate(),
          operate_writes(),
          operate_reads();

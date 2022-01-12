@@ -353,7 +353,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     for (; begin != end; ++begin)
         trace_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
+    int rq_index = ITLB_bus.lower_level->add_rq(trace_packet);
 
     if(rq_index != -2)
     {
@@ -408,7 +408,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     for (; begin != end; ++begin)
         fetch_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
+    int rq_index = L1I_bus.lower_level->add_rq(fetch_packet);
 
     if(rq_index != -2)
     {
@@ -863,7 +863,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     DP (if (warmup_complete[cpu]) {
             std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is popped from to RTS0" << std::endl; })
 
-    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
+    int rq_index = DTLB_bus.lower_level->add_rq(data_packet);
 
     if (rq_index != -2)
         sq_it->translated = INFLIGHT;
@@ -923,7 +923,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     DP (if (warmup_complete[cpu]) {
             std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is popped to RTL0" << std::endl; })
 
-    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
+    int rq_index = DTLB_bus.lower_level->add_rq(data_packet);
 
     if (rq_index != -2)
         lq_it->translated = INFLIGHT;
@@ -947,7 +947,7 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.to_return = {&L1D_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
-    int rq_index = L1D_bus.lower_level->add_rq(&data_packet);
+    int rq_index = L1D_bus.lower_level->add_rq(data_packet);
 
     if (rq_index != -2)
         lq_it->fetched = INFLIGHT;
@@ -1159,7 +1159,7 @@ void O3_CPU::retire_rob()
                 data_packet.asid[0] = sq_it->asid[0];
                 data_packet.asid[1] = sq_it->asid[1];
 
-                auto result = L1D_bus.lower_level->add_wq(&data_packet);
+                auto result = L1D_bus.lower_level->add_wq(data_packet);
                 if (result != -2)
                 {
                     ROB.front().destination_memory[i] = 0;
@@ -1188,11 +1188,11 @@ void O3_CPU::retire_rob()
         throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET *packet)
+void CacheBus::return_data(PACKET packet)
 {
-    if (packet->type != PREFETCH)
+    if (packet.type != PREFETCH)
     {
-        PROCESSED.push_back(*packet);
+        PROCESSED.push_back(packet);
     }
 }
 

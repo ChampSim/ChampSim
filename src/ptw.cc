@@ -26,7 +26,7 @@ void PageTableWalker::handle_read()
     {
         PACKET &handle_pkt = RQ.front();
 
-        DP (if (warmup_complete[packet->cpu]) {
+        DP (if (warmup_complete[handle_pkt.cpu]) {
         std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << handle_pkt.instr_id;
         std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
         std::cout << " full_v_addr: " << handle_pkt.v_address;
@@ -55,7 +55,7 @@ void PageTableWalker::handle_read()
         packet.translation_level = packet.init_translation_level;
         packet.to_return = {this};
 
-        int rq_index = lower_level->add_rq(&packet);
+        int rq_index = lower_level->add_rq(packet);
         if (rq_index == -2)
             return;
 
@@ -92,7 +92,7 @@ void PageTableWalker::handle_fill()
                 fill_mshr->data    = addr;
                 fill_mshr->address = fill_mshr->v_address;
 
-                DP (if (warmup_complete[packet->cpu]) {
+                DP (if (warmup_complete[fill_mshr->cpu]) {
                 std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << fill_mshr->instr_id;
                 std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
                 std::cout << " full_v_addr: " << fill_mshr->v_address;
@@ -102,7 +102,7 @@ void PageTableWalker::handle_fill()
                 std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl; });
 
                 for (auto ret: fill_mshr->to_return)
-                    ret->return_data(&(*fill_mshr));
+                    ret->return_data(*fill_mshr);
 
                 if(warmup_complete[cpu])
                     total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
@@ -129,7 +129,7 @@ void PageTableWalker::handle_fill()
                 if (fill_mshr->translation_level == PSCL2.level)
                     PSCL2.fill_cache(addr, fill_mshr->v_address);
 
-                DP (if (warmup_complete[packet->cpu]) {
+                DP (if (warmup_complete[fill_mshr->cpu]) {
                 std::cout << "[" << NAME << "] " <<  __func__ << " instr_id: " << fill_mshr->instr_id;
                 std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
                 std::cout << " full_v_addr: " << fill_mshr->v_address;
@@ -145,7 +145,7 @@ void PageTableWalker::handle_fill()
                 packet.to_return = {this};
                 packet.translation_level = fill_mshr->translation_level - 1;
 
-                int rq_index = lower_level->add_rq(&packet);
+                int rq_index = lower_level->add_rq(packet);
                 if (rq_index != -2)
                 {
                     fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
@@ -168,12 +168,12 @@ void PageTableWalker::operate()
     RQ.operate();
 }
 
-int PageTableWalker::add_rq(PACKET *packet)
+int PageTableWalker::add_rq(PACKET packet)
 {
-    assert(packet->address != 0);
+    assert(packet.address != 0);
 
     // check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet.address, LOG2_PAGE_SIZE));
     assert(found_rq == RQ.end()); //Duplicate request should not be sent.
 
     // check occupancy
@@ -182,16 +182,16 @@ int PageTableWalker::add_rq(PACKET *packet)
     }
 
     // if there is no duplicate, add it to RQ
-    RQ.push_back(*packet);
+    RQ.push_back(packet);
 
     return RQ.occupancy();
 }
 
-void PageTableWalker::return_data(PACKET *packet)
+void PageTableWalker::return_data(PACKET packet)
 {
     for (auto &mshr_entry : MSHR)
     {
-        if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry))
+        if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry))
         {
             mshr_entry.event_cycle = current_cycle;
 

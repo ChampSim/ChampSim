@@ -22,7 +22,7 @@ class CacheBus : public MemoryRequestProducer
     public:
         champsim::circular_buffer<PACKET> PROCESSED;
         CacheBus(std::size_t q_size, MemoryRequestConsumer *ll) : MemoryRequestProducer(ll), PROCESSED(q_size) {}
-        void return_data(PACKET *packet);
+        void return_data(PACKET packet) override;
 };
 
 // cpu
