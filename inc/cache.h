@@ -40,7 +40,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
     // queues
     champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-                                  VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY}, // virtual address prefetch queue
                                   WQ{WQ_SIZE, HIT_LATENCY}; // write queue
 
     std::deque<PACKET> PQ; // prefetch queue

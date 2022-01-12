@@ -140,23 +140,38 @@ void CACHE::handle_read()
 
 void CACHE::handle_prefetch()
 {
-    bool success = true;
-    auto it = std::begin(PQ);
-    for (; it != std::end(PQ) && it->event_cycle < current_cycle && std::distance(std::begin(PQ), it) < reads_available_this_cycle && success == true; ++it)
+    while (!std::empty(PQ) && PQ.front().event_cycle < current_cycle && reads_available_this_cycle > 0)
     {
-        uint32_t set = get_set(it->address);
-        uint32_t way = get_way(it->address, set);
+        PACKET &handle_pkt = PQ.front();
 
-        if (way < NUM_WAY)
-            readlike_hit(set, way, *it);
+        if (handle_pkt.v_address == handle_pkt.address) // not translated
+        {
+            auto [addr, fault] = vmem.va_to_pa(cpu, handle_pkt.v_address);
+            handle_pkt.address = addr;
+            handle_pkt.event_cycle = current_cycle + HIT_LATENCY + (fault ? vmem.minor_fault_penalty : 0);
+            auto succ = std::upper_bound(std::begin(PQ), std::end(PQ), handle_pkt, cmp_event_cycle<PACKET>{});
+            std::rotate(std::begin(PQ), std::next(std::begin(PQ)), succ);
+        }
         else
-            success = readlike_miss(*it);
-    }
+        {
+            uint32_t set = get_set(handle_pkt.address);
+            uint32_t way = get_way(handle_pkt.address, set);
 
-    // remove these entries from PQ
-    reads_available_this_cycle -= std::distance(std::begin(PQ), it);
-    if (it != std::begin(PQ))
-        PQ.erase(std::begin(PQ), success ? it : std::prev(it));
+            if (way < NUM_WAY)
+            {
+                readlike_hit(set, way, handle_pkt);
+            }
+            else
+            {
+                bool success = readlike_miss(handle_pkt);
+                if (!success)
+                    return;
+            }
+
+            PQ.pop_front();
+            reads_available_this_cycle--;
+        }
+    }
 }
 
 void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
@@ -377,11 +392,9 @@ void CACHE::operate_reads()
     // perform all reads
     reads_available_this_cycle = MAX_READ;
     handle_read();
-    va_translate_prefetches();
     handle_prefetch();
 
     RQ.operate();
-    VAPQ.operate();
 }
 
 uint32_t CACHE::get_set(uint64_t address)
@@ -524,45 +537,15 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
     pf_packet.ip = ip;
     pf_packet.type = PREFETCH;
 
-    if (virtual_prefetch)
+    int result = add_pq(pf_packet);
+    if (result != -2)
     {
-        if (!VAPQ.full())
-        {
-            VAPQ.push_back(pf_packet);
-            return 1;
-        }
-    }
-    else
-    {
-        int result = add_pq(pf_packet);
-        if (result != -2)
-        {
-            if (result > 0)
-                pf_issued++;
-            return 1;
-        }
+        if (result > 0)
+            pf_issued++;
+        return 1;
     }
 
     return 0;
-}
-
-void CACHE::va_translate_prefetches()
-{
-    // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-    if (VAPQ.has_ready())
-    {
-        VAPQ.front().address = vmem.va_to_pa(cpu, VAPQ.front().v_address).first;
-
-        // move the translated prefetch over to the regular PQ
-        int result = add_pq(VAPQ.front());
-
-        // remove the prefetch from the VAPQ
-        if (result != -2)
-            VAPQ.pop_front();
-
-        if (result > 0)
-            pf_issued++;
-    }
 }
 
 int CACHE::add_pq(PACKET packet)
@@ -612,7 +595,11 @@ int CACHE::add_pq(PACKET packet)
     }
 
     // if there is no duplicate, add it to PQ
-    packet.event_cycle = warmup_complete[cpu] ? HIT_LATENCY : 0;
+    if (packet.pf_origin_level == fill_level)
+        packet.event_cycle = current_cycle + VA_PREFETCH_TRANSLATION_LATENCY;
+    else
+        packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
+
     PQ.push_back(packet);
 
     DP( if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl; )

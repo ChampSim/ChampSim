@@ -299,6 +299,10 @@ uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t 
   return metadata_in;
 }
 
+void CACHE::prefetcher_cycle_operate()
+{
+}
+
 void CACHE::l2c_prefetcher_final_stats()
 {
 
