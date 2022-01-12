@@ -41,8 +41,8 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
         assert(0);
 
     // uncomment this line to see the LLC accesses
-    // cout << "CPU: " << cpu << "  LLC " << setw(9) << TYPE_NAME << " set: " << setw(5) << set << " way: " << setw(2) << way;
-    // cout << hex << " paddr: " << setw(12) << paddr << " ip: " << setw(8) << ip << " victim_addr: " << victim_addr << dec << endl;
+    // std::cout << "CPU: " << cpu << "  LLC " << std::setw(9) << TYPE_NAME << " set: " << std::setw(5) << set << " way: " << std::setw(2) << way;
+    // std::cout << std::hex << " paddr: " << std::setw(12) << paddr << " ip: " << std::setw(8) << ip << " victim_addr: " << victim_addr << std::dec << std::endl;
 
     return lru_update(set, way, type, hit);
 }

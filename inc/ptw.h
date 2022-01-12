@@ -47,12 +47,12 @@ class PageTablePage
 class PagingStructureCache
 {
 	public:
-		const string NAME;
+		const std::string NAME;
 		const uint32_t NUM_SET, NUM_WAY;
 		std::vector<BLOCK> block{NUM_SET*NUM_WAY};
 		uint8_t cache_type;
 
-		PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), cache_type(v2) {}
+		PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), cache_type(v2) {}
 
 		uint32_t get_set(uint64_t address);
 		uint64_t get_index(uint64_t address);
@@ -63,7 +63,7 @@ class PagingStructureCache
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
 	public:
-		const string NAME;
+		const std::string NAME;
 		uint32_t cpu;
 		uint8_t cache_type;
 
@@ -106,7 +106,7 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
     PageTablePage *L5; //CR3 register points to the base of this page.
     uint64_t CR3_addr; //This address will not have page offset bits.
 
-	PageTableWalker(string v1, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll) : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), VAL_PSCL5_SET(v2), VAL_PSCL5_WAY(v3),  VAL_PSCL4_SET(v4), VAL_PSCL4_WAY(v5), VAL_PSCL3_SET(v6), VAL_PSCL3_WAY(v7), VAL_PSCL2_SET(v8), VAL_PSCL2_WAY(v9), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13) 
+	PageTableWalker(std::string v1, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll) : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), VAL_PSCL5_SET(v2), VAL_PSCL5_WAY(v3),  VAL_PSCL4_SET(v4), VAL_PSCL4_WAY(v5), VAL_PSCL3_SET(v6), VAL_PSCL3_WAY(v7), VAL_PSCL2_SET(v8), VAL_PSCL2_WAY(v9), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13) 
 	{
 		CR3_addr = map_translation_page(0,0);
 		L5 = new PageTablePage();

@@ -44,7 +44,7 @@ IP_TRACKER trackers[IP_TRACKER_COUNT];
 
 void CACHE::l2c_prefetcher_initialize() 
 {
-    cout << "CPU " << cpu << " L2C IP-based stride prefetcher" << endl;
+    std::cout << "CPU " << cpu << " L2C IP-based stride prefetcher" << std::endl;
     for (int i=0; i<IP_TRACKER_COUNT; i++)
         trackers[i].lru = i;
 }
@@ -72,7 +72,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
         trackers[index].last_cl_addr = cl_addr;
         trackers[index].last_stride = 0;
 
-        //cout << "[IP_STRIDE] MISS index: " << index << " lru: " << trackers[index].lru << " ip: " << hex << ip << " cl_addr: " << cl_addr << dec << endl;
+        //std::cout << "[IP_STRIDE] MISS index: " << index << " lru: " << trackers[index].lru << " ip: " << std::hex << ip << " cl_addr: " << cl_addr << std::dec << std::endl;
 
         for (int i=0; i<IP_TRACKER_COUNT; i++) {
             if (trackers[i].lru < trackers[index].lru)
@@ -99,7 +99,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
         stride *= -1;
     }
 
-    //cout << "[IP_STRIDE] HIT  index: " << index << " lru: " << trackers[index].lru << " ip: " << hex << ip << " cl_addr: " << cl_addr << dec << " stride: " << stride << endl;
+    //std::cout << "[IP_STRIDE] HIT  index: " << index << " lru: " << trackers[index].lru << " ip: " << std::hex << ip << " cl_addr: " << cl_addr << std::dec << " stride: " << stride << std::endl;
 
     // don't do anything if we somehow saw the same address twice in a row
     if (stride == 0)
@@ -145,5 +145,5 @@ uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t 
 
 void CACHE::l2c_prefetcher_final_stats()
 {
-    cout << "CPU " << cpu << " L2C PC-based stride prefetcher final stats" << endl;
+    std::cout << "CPU " << cpu << " L2C PC-based stride prefetcher final stats" << std::endl;
 }

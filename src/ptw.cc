@@ -414,7 +414,7 @@ uint64_t PagingStructureCache::check_hit(uint64_t address)
 	uint32_t set = get_set(address);
 
     if (NUM_SET < set) {
-        cerr << "[" << NAME << "_ERROR] " << __func__ << " invalid set index: " << set << " NUM_SET: " << NUM_SET;
+        std::cerr << "[" << NAME << "_ERROR] " << __func__ << " invalid set index: " << set << " NUM_SET: " << NUM_SET;
         assert(0);
     }
 

@@ -14,8 +14,6 @@
 #include "operable.h"
 #include "ptw.h"
 
-using namespace std;
-
 class CacheBus : public MemoryRequestProducer
 {
     public:

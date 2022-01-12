@@ -16,7 +16,7 @@ unsigned rand_sets[TOTAL_SDM_SETS];
 
 void CACHE::llc_initialize_replacement()
 {
-    cout << "Initialize DRRIP state" << endl;
+    std::cout << "Initialize DRRIP state" << std::endl;
 
     for(int i=0; i<LLC_SET; i++) {
         for(int j=0; j<LLC_WAY; j++)
