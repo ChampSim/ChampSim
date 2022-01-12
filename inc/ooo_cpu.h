@@ -86,6 +86,9 @@ class O3_CPU : public champsim::operable {
     uint64_t total_branch_types[8] = {};
     uint64_t branch_type_misses[8] = {};
 
+    const std::size_t IN_QUEUE_SIZE = 2*FETCH_WIDTH;
+    std::deque<ooo_model_instr> input_queue;
+
     CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
   
 	PageTableWalker *PTW;
@@ -170,8 +173,8 @@ class O3_CPU : public champsim::operable {
     void operate();
 
     // functions
-    void init_instruction(ooo_model_instr instr);
-    void check_dib(),
+    void initialize_instruction(),
+         check_dib(),
          translate_fetch(),
          fetch_instruction(),
          promote_to_decode(),
@@ -181,6 +184,7 @@ class O3_CPU : public champsim::operable {
          execute_instruction(),
          schedule_memory_instruction(),
          execute_memory_instruction(),
+         do_init_instruction(ooo_model_instr &instr),
          do_check_dib(ooo_model_instr &instr),
          do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
          do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),

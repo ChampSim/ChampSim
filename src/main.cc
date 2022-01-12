@@ -488,9 +488,9 @@ int main(int argc, char** argv)
         for (std::size_t i = 0; i < ooo_cpu.size(); ++i)
         {
             // read from trace
-            while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0)
+            while (std::size(ooo_cpu[i]->input_queue) < ooo_cpu[i]->IN_QUEUE_SIZE)
             {
-                ooo_cpu[i]->init_instruction(std::visit(get_instr{}, traces[i]));
+                ooo_cpu[i]->input_queue.push_back(std::visit(get_instr{}, traces[i]));
 
                 // Reopen trace if we've reached the end of the file
                 if (std::visit(get_eof{}, traces[i]))

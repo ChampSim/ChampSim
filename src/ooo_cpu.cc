@@ -37,6 +37,7 @@ void O3_CPU::operate()
     fetch_instruction(); // fetch
     translate_fetch();
     check_dib();
+    initialize_instruction();
 
     // check for deadlock
     if (ROB.front().ip && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
@@ -48,7 +49,16 @@ void O3_CPU::initialize_core()
 
 }
 
-void O3_CPU::init_instruction(ooo_model_instr arch_instr)
+void O3_CPU::initialize_instruction()
+{
+    while (fetch_stall == 0 && instrs_to_read_this_cycle > 0 && !std::empty(input_queue))
+    {
+        do_init_instruction(input_queue.front());
+        input_queue.pop_front();
+    }
+}
+
+void O3_CPU::do_init_instruction(ooo_model_instr &arch_instr)
 {
     // actual processors do not work like this but for easier implementation,
     // we read instruction traces and virtually add them in the ROB
