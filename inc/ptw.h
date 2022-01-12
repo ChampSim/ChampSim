@@ -14,13 +14,13 @@ class PagingStructureCache
         uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
     };
 
-    const string NAME;
+    const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY;
     std::vector<block_t> block{NUM_SET*NUM_WAY};
 
     public:
         const std::size_t level;
-        PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
+        PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
 
         std::optional<uint64_t> check_hit(uint64_t address);
         void fill_cache(uint64_t next_level_paddr, uint64_t vaddr);
@@ -29,7 +29,7 @@ class PagingStructureCache
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
     public:
-        const string NAME;
+        const std::string NAME;
         const uint32_t cpu;
         const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
 
@@ -44,7 +44,7 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
         const uint64_t CR3_addr;
         std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-        PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
+        PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
         // functions
         int add_rq(PACKET *packet);
