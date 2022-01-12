@@ -140,31 +140,23 @@ void CACHE::handle_read()
 
 void CACHE::handle_prefetch()
 {
-    while (reads_available_this_cycle > 0)
+    bool success = true;
+    auto it = std::begin(PQ);
+    for (; it != std::end(PQ) && it->event_cycle < current_cycle && std::distance(std::begin(PQ), it) < reads_available_this_cycle && success == true; ++it)
     {
-        if (!PQ.has_ready())
-            return;
+        uint32_t set = get_set(it->address);
+        uint32_t way = get_way(it->address, set);
 
-        // handle the oldest entry
-        PACKET &handle_pkt = PQ.front();
-
-        uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
-
-        if (way < NUM_WAY) // HIT
-        {
-            readlike_hit(set, way, handle_pkt);
-        }
-        else {
-            bool success = readlike_miss(handle_pkt);
-            if (!success)
-                return;
-        }
-
-        // remove this entry from PQ
-        PQ.pop_front();
-        reads_available_this_cycle--;
+        if (way < NUM_WAY)
+            readlike_hit(set, way, *it);
+        else
+            success = readlike_miss(*it);
     }
+
+    // remove these entries from PQ
+    reads_available_this_cycle -= std::distance(std::begin(PQ), it);
+    if (it != std::begin(PQ))
+        PQ.erase(std::begin(PQ), success ? it : std::prev(it));
 }
 
 void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
@@ -389,7 +381,6 @@ void CACHE::operate_reads()
     handle_prefetch();
 
     RQ.operate();
-    PQ.operate();
     VAPQ.operate();
 }
 
@@ -555,40 +546,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
     return 0;
 }
 
-int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
-{
-    if (!PQ.full()) {
-        if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
-            
-            PACKET pf_packet;
-            pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
-	    pf_packet.pf_origin_level = fill_level;
-	    pf_packet.pf_metadata = prefetch_metadata;
-            pf_packet.cpu = cpu;
-            //pf_packet.data_index = LQ.entry[lq_index].data_index;
-            //pf_packet.lq_index = lq_index;
-            pf_packet.address = pf_addr;
-            pf_packet.v_address = 0;
-            //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
-            pf_packet.ip = 0;
-            pf_packet.type = PREFETCH;
-            //pf_packet.delta = delta;
-            //pf_packet.depth = depth;
-            //pf_packet.signature = signature;
-            //pf_packet.confidence = confidence;
-
-            int result = add_pq(pf_packet);
-
-            if (result > 0)
-                pf_issued++;
-
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 void CACHE::va_translate_prefetches()
 {
     // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
@@ -646,8 +603,8 @@ int CACHE::add_pq(PACKET packet)
     }
 
     // check occupancy
-    if (PQ.full()) {
-
+    if (std::size(PQ) == PQ_SIZE)
+    {
         DP( if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl; )
 
         PQ_FULL++;
@@ -655,15 +612,13 @@ int CACHE::add_pq(PACKET packet)
     }
 
     // if there is no duplicate, add it to PQ
-    if (warmup_complete[cpu])
-        PQ.push_back(packet);
-    else
-        PQ.push_back_ready(packet);
+    packet.event_cycle = warmup_complete[cpu] ? HIT_LATENCY : 0;
+    PQ.push_back(packet);
 
     DP( if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl; )
 
     PQ_TO_CACHE++;
-    return PQ.occupancy();
+    return PQ.size();
 }
 
 void CACHE::return_data(PACKET packet)
@@ -708,7 +663,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
     else if (queue_type == 2)
         return WQ.occupancy();
     else if (queue_type == 3)
-        return PQ.occupancy();
+        return PQ.size();
 
     return 0;
 }
@@ -722,7 +677,7 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
     else if (queue_type == 2)
         return WQ.size();
     else if (queue_type == 3)
-        return PQ.size();
+        return PQ_SIZE;
 
     return 0;
 }
