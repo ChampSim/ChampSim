@@ -19,14 +19,33 @@
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
+
+    struct BLOCK
+    {
+        bool valid = false,
+             prefetch = false,
+             dirty = false;
+
+        uint64_t address = 0,
+                 v_address = 0,
+                 data = 0,
+                 ip = 0,
+                 cpu = 0,
+                 instr_id = 0;
+
+        // replacement state
+        uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+    };
+
     using block_set_t = std::vector<BLOCK>;
     using block_iter_t = typename block_set_t::iterator;
+
   public:
     uint32_t cpu;
     const std::string NAME;
     const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
     const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
-    std::vector<BLOCK> block{NUM_SET*NUM_WAY};
+    block_set_t block{NUM_SET*NUM_WAY};
     const uint32_t MAX_READ, MAX_WRITE;
     uint32_t reads_available_this_cycle, writes_available_this_cycle;
     const bool prefetch_as_load;
