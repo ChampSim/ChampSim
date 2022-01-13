@@ -24,8 +24,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
 
     auto begin = std::next(block.begin(), set*NUM_WAY);
     auto end   = std::next(begin, NUM_WAY);
-    uint32_t hit_lru = std::next(begin, way)->lru;
-    std::for_each(begin, end, [hit_lru](BLOCK &x){ if (x.lru <= hit_lru) x.lru++; });
+    std::for_each(begin, end, [](BLOCK &x){ x.lru++; });
     std::next(begin, way)->lru = 0; // promote to the MRU position
 }
 

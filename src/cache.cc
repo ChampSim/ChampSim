@@ -24,23 +24,23 @@ void CACHE::handle_fill()
             return;
 
         // find victim
-        uint32_t set = get_set(fill_mshr->address);
+        auto [set_begin, set_end] = get_set_span(fill_mshr->address);
+        auto fill_block = check_block_by(set_begin, set_end, std::not_fn(is_valid<BLOCK>()));
+        if (!fill_block.has_value())
+        {
+            auto way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, get_set(fill_mshr->address), &(*set_begin), fill_mshr->ip, fill_mshr->address, fill_mshr->type);
+            if (way != NUM_WAY)
+                fill_block = std::next(set_begin, way);
+        }
 
-        auto set_begin = std::next(std::begin(block), set*NUM_WAY);
-        auto set_end   = std::next(set_begin, NUM_WAY);
-        auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
-        uint32_t way = std::distance(set_begin, first_inv);
-        if (way == NUM_WAY)
-            way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set*NUM_WAY], fill_mshr->ip, fill_mshr->address, fill_mshr->type);
-
-        bool success = filllike_miss(set, way, *fill_mshr);
+        bool success = filllike_miss(fill_block, *fill_mshr);
         if (!success)
             return;
 
-        if (way != NUM_WAY)
+        if (fill_block.has_value())
         {
             // update processed packets
-            fill_mshr->data = block[set*NUM_WAY + way].data;
+            fill_mshr->data = (*fill_block)->data;
 
             for (auto ret : fill_mshr->to_return)
                 ret->return_data(*fill_mshr);
@@ -62,21 +62,16 @@ void CACHE::handle_writeback()
         PACKET &handle_pkt = WQ.front();
 
         // access cache
-        uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
-
-        BLOCK &fill_block = block[set*NUM_WAY + way];
-
-        if (way < NUM_WAY) // HIT
+        if (auto fill_block = check_hit(handle_pkt.address); fill_block.has_value()) // HIT
         {
-            impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+            impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), (*fill_block)->address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
             // COLLECT STATS
             sim_hit[handle_pkt.cpu][handle_pkt.type]++;
             sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
             // mark dirty
-            fill_block.dirty = 1;
+            (*fill_block)->dirty = 1;
         }
         else // MISS
         {
@@ -86,14 +81,17 @@ void CACHE::handle_writeback()
             }
             else {
                 // find victim
-                auto set_begin = std::next(std::begin(block), set*NUM_WAY);
-                auto set_end   = std::next(set_begin, NUM_WAY);
-                auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
-                way = std::distance(set_begin, first_inv);
-                if (way == NUM_WAY)
-                    way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set*NUM_WAY], handle_pkt.ip, handle_pkt.address, handle_pkt.type);
 
-                success = filllike_miss(set, way, handle_pkt);
+                auto [set_begin, set_end] = get_set_span(handle_pkt.address);
+                auto fill_block = check_block_by(set_begin, set_end, std::not_fn(is_valid<BLOCK>()));
+                if (!fill_block.has_value())
+                {
+                    auto way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, get_set(handle_pkt.address), &(*set_begin), handle_pkt.ip, handle_pkt.address, handle_pkt.type);
+                    if (way != NUM_WAY)
+                        fill_block = std::next(set_begin, way);
+                }
+
+                success = filllike_miss(fill_block, handle_pkt);
             }
 
             if (!success)
@@ -119,12 +117,9 @@ void CACHE::handle_read()
         // A (hopefully temporary) hack to know whether to send the evicted paddr or vaddr to the prefetcher
         ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
-        uint32_t set = get_set(handle_pkt.address);
-        uint32_t way = get_way(handle_pkt.address, set);
-
-        if (way < NUM_WAY) // HIT
+        if (auto hit_block = check_hit(handle_pkt.address); hit_block.has_value()) // HIT
         {
-            readlike_hit(set, way, handle_pkt);
+            readlike_hit(**hit_block, handle_pkt);
         }
         else {
             bool success = readlike_miss(handle_pkt);
@@ -154,12 +149,9 @@ void CACHE::handle_prefetch()
         }
         else
         {
-            uint32_t set = get_set(handle_pkt.address);
-            uint32_t way = get_way(handle_pkt.address, set);
-
-            if (way < NUM_WAY)
+            if (auto hit_block = check_hit(handle_pkt.address); hit_block.has_value())
             {
-                readlike_hit(set, way, handle_pkt);
+                readlike_hit(**hit_block, handle_pkt);
             }
             else
             {
@@ -174,7 +166,7 @@ void CACHE::handle_prefetch()
     }
 }
 
-void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
+void CACHE::readlike_hit(BLOCK &hit_block, PACKET &handle_pkt)
 {
     DP ( if (warmup_complete[handle_pkt.cpu]) {
             std::cout << "[" << NAME << "] " << __func__ << " hit";
@@ -183,8 +175,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
             std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
             std::cout << " type: " << +handle_pkt.type;
             std::cout << " cycle: " << current_cycle << std::endl; });
-
-    BLOCK &hit_block = block[set*NUM_WAY + way];
 
     handle_pkt.data = hit_block.data;
 
@@ -197,7 +187,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt)
     }
 
     // update replacement policy
-    impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+    impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
     // COLLECT STATS
     sim_hit[handle_pkt.cpu][handle_pkt.type]++;
@@ -292,7 +282,7 @@ bool CACHE::readlike_miss(PACKET &handle_pkt)
     return true;
 }
 
-bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
+bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill_block,  PACKET &handle_pkt)
 {
     DP ( if (warmup_complete[handle_pkt.cpu]) {
             std::cout << "[" << NAME << "] " << __func__ << " miss";
@@ -302,25 +292,20 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
             std::cout << " type: " << +handle_pkt.type;
             std::cout << " cycle: " << current_cycle << std::endl; });
 
-    bool bypass = (way == NUM_WAY);
-#ifndef LLC_BYPASS
-    assert(!bypass);
-#endif
-    assert(handle_pkt.type != WRITEBACK || !bypass);
-
-    BLOCK &fill_block = block[set*NUM_WAY + way];
-    bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
     uint64_t evicting_address = 0;
 
-    if (!bypass)
+    if (fill_block.has_value())
     {
-        if (evicting_dirty) {
+        assert(handle_pkt.type != WRITEBACK);
+
+        if ((*fill_block)->dirty)
+        {
             PACKET writeback_packet;
 
             writeback_packet.fill_level = lower_level->fill_level;
             writeback_packet.cpu = handle_pkt.cpu;
-            writeback_packet.address = fill_block.address;
-            writeback_packet.data = fill_block.data;
+            writeback_packet.address = (*fill_block)->address;
+            writeback_packet.data = (*fill_block)->data;
             writeback_packet.instr_id = handle_pkt.instr_id;
             writeback_packet.ip = 0;
             writeback_packet.type = WRITEBACK;
@@ -331,25 +316,28 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
         }
 
         if (ever_seen_data)
-            evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+            evicting_address = (*fill_block)->address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
         else
-            evicting_address = fill_block.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+            evicting_address = (*fill_block)->v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
-        if (fill_block.prefetch)
+        if ((*fill_block)->prefetch)
             pf_useless++;
 
         if (handle_pkt.type == PREFETCH)
             pf_fill++;
 
-        fill_block.valid = true;
-        fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
-        fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
-        fill_block.address = handle_pkt.address;
-        fill_block.v_address = handle_pkt.v_address;
-        fill_block.data = handle_pkt.data;
-        fill_block.ip = handle_pkt.ip;
-        fill_block.cpu = handle_pkt.cpu;
-        fill_block.instr_id = handle_pkt.instr_id;
+        **fill_block = {
+            true, //valid
+            (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level), //prefetch
+            (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty())), //dirty
+            handle_pkt.address, //address
+            handle_pkt.v_address, //v_address
+            handle_pkt.data, //data
+            handle_pkt.ip, //ip
+            handle_pkt.cpu, //cpu
+            handle_pkt.instr_id, //instr_id
+            0 // lru
+        };
     }
 
     if(warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -357,10 +345,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt)
 
     // update prefetcher
     cpu = handle_pkt.cpu;
-    handle_pkt.pf_metadata = impl_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way, handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
+    handle_pkt.pf_metadata = impl_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
 
     // update replacement policy
-    impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+    impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
     // COLLECT STATS
     sim_miss[handle_pkt.cpu][handle_pkt.type]++;
@@ -402,22 +390,40 @@ uint32_t CACHE::get_set(uint64_t address)
     return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET)));
 }
 
-uint32_t CACHE::get_way(uint64_t address, uint32_t set)
+uint32_t CACHE::get_way(uint64_t address)
 {
-    auto begin = std::next(block.begin(), set*NUM_WAY);
-    auto end   = std::next(begin, NUM_WAY);
-    return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
+    auto [begin, end] = get_set_span(address);
+    return std::distance(begin, check_hit(address).value_or(end));
 }
 
-int CACHE::invalidate_entry(uint64_t inval_addr)
+auto CACHE::get_set_span(uint64_t address) -> std::pair<block_iter_t, block_iter_t>
 {
-    uint32_t set = get_set(inval_addr);
-    uint32_t way = get_way(inval_addr, set);
+    auto begin = std::next(std::begin(block), NUM_WAY*get_set(address));
+    return {begin, std::next(begin, NUM_WAY)};
+}
 
-    if (way < NUM_WAY)
-        block[set*NUM_WAY + way].valid = 0;
+template <typename F>
+auto CACHE::check_block_by(block_iter_t begin, block_iter_t end, F&& f) -> std::optional<block_iter_t>
+{
+    auto found = std::find_if(begin, end, std::forward<F>(f));
+    if (found == end)
+        return {};
+    return found;
+}
 
-    return way;
+auto CACHE::check_hit(uint64_t address) -> std::optional<block_iter_t>
+{
+    auto [begin, end] = get_set_span(address);
+    return check_block_by(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS));
+}
+
+bool CACHE::invalidate_entry(uint64_t inval_addr)
+{
+    auto hit_block = check_hit(inval_addr);
+    if (hit_block.has_value())
+        (*hit_block)->valid = 0;
+
+    return hit_block.has_value();
 }
 
 int CACHE::add_rq(PACKET packet)

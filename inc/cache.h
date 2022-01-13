@@ -4,6 +4,8 @@
 #include <string>
 #include <functional>
 #include <list>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "delay_queue.hpp"
@@ -17,6 +19,8 @@
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer {
+    using block_set_t = std::vector<BLOCK>;
+    using block_iter_t = typename block_set_t::iterator;
   public:
     uint32_t cpu;
     const std::string NAME;
@@ -83,10 +87,15 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
              get_size(uint8_t queue_type, uint64_t address);
 
     uint32_t get_set(uint64_t address),
-             get_way(uint64_t address, uint32_t set);
+             get_way(uint64_t address);
+    std::pair<block_iter_t, block_iter_t> get_set_span(uint64_t address);
+    std::optional<block_iter_t> check_hit(uint64_t address);
 
-    int  invalidate_entry(uint64_t inval_addr),
-         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
+    template <typename F>
+        std::optional<block_iter_t> check_block_by(block_iter_t begin, block_iter_t end, F&& f);
+
+    bool invalidate_entry(uint64_t inval_addr);
+    int  prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
     void add_mshr(PACKET *packet),
@@ -97,9 +106,9 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
          handle_read(),
          handle_prefetch();
 
-    void readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt);
+    void readlike_hit(BLOCK &hit_block, PACKET &handle_pkt);
     bool readlike_miss(PACKET &handle_pkt);
-    bool filllike_miss(std::size_t set, std::size_t way, PACKET &handle_pkt);
+    bool filllike_miss(std::optional<typename decltype(block)::iterator> fill_block,  PACKET &handle_pkt);
 
     bool should_activate_prefetcher(int type);
 

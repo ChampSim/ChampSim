@@ -23,7 +23,6 @@ class BLOCK {
 
     uint64_t address = 0,
              v_address = 0,
-             tag = 0,
              data = 0,
              ip = 0,
              cpu = 0,

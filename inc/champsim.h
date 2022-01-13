@@ -9,8 +9,6 @@
 // USEFUL MACROS
 //#define DEBUG_PRINT
 #define SANITY_CHECK
-#define LLC_BYPASS
-#define DRC_BYPASS
 #define NO_CRC2_COMPILE
 
 #ifdef DEBUG_PRINT
