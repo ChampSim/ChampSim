@@ -78,8 +78,6 @@ class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsume
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
 
-    void schedule(std::vector<PACKET>::iterator q_it);
-
     uint32_t dram_get_channel(uint64_t address),
              dram_get_rank   (uint64_t address),
              dram_get_bank   (uint64_t address),
