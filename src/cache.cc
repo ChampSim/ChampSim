@@ -336,7 +336,7 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
             handle_pkt.ip, //ip
             handle_pkt.cpu, //cpu
             handle_pkt.instr_id, //instr_id
-            0 // lru
+            (*fill_block)->lru // lru
         };
     }
 
@@ -349,6 +349,9 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
 
     // update replacement policy
     impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+
+    if (fill_block.has_value())
+        (*fill_block)->lru = 0;
 
     // COLLECT STATS
     sim_miss[handle_pkt.cpu][handle_pkt.type]++;
@@ -385,25 +388,25 @@ void CACHE::operate_reads()
     RQ.operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address)
+uint32_t CACHE::get_set(uint64_t address) const
 {
     return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET)));
 }
 
-uint32_t CACHE::get_way(uint64_t address)
+uint32_t CACHE::get_way(uint64_t address) const
 {
     auto [begin, end] = get_set_span(address);
     return std::distance(begin, check_hit(address).value_or(end));
 }
 
-auto CACHE::get_set_span(uint64_t address) -> std::pair<block_iter_t, block_iter_t>
+auto CACHE::get_set_span(uint64_t address) const -> std::pair<block_iter_t, block_iter_t>
 {
     auto begin = std::next(std::begin(block), NUM_WAY*get_set(address));
     return {begin, std::next(begin, NUM_WAY)};
 }
 
 template <typename F>
-auto CACHE::check_block_by(block_iter_t begin, block_iter_t end, F&& f) -> std::optional<block_iter_t>
+auto CACHE::check_block_by(block_iter_t begin, block_iter_t end, F&& f) const -> std::optional<block_iter_t>
 {
     auto found = std::find_if(begin, end, std::forward<F>(f));
     if (found == end)
@@ -411,7 +414,7 @@ auto CACHE::check_block_by(block_iter_t begin, block_iter_t end, F&& f) -> std::
     return found;
 }
 
-auto CACHE::check_hit(uint64_t address) -> std::optional<block_iter_t>
+auto CACHE::check_hit(uint64_t address) const -> std::optional<block_iter_t>
 {
     auto [begin, end] = get_set_span(address);
     return check_block_by(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS));

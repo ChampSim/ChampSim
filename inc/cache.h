@@ -105,13 +105,13 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
 
-    uint32_t get_set(uint64_t address),
-             get_way(uint64_t address);
-    std::pair<block_iter_t, block_iter_t> get_set_span(uint64_t address);
-    std::optional<block_iter_t> check_hit(uint64_t address);
+    uint32_t get_set(uint64_t address) const,
+             get_way(uint64_t address) const;
+    std::pair<block_iter_t, block_iter_t> get_set_span(uint64_t address) const;
+    std::optional<block_iter_t> check_hit(uint64_t address) const;
 
     template <typename F>
-        std::optional<block_iter_t> check_block_by(block_iter_t begin, block_iter_t end, F&& f);
+        std::optional<block_iter_t> check_block_by(block_iter_t begin, block_iter_t end, F&& f) const;
 
     bool invalidate_entry(uint64_t inval_addr);
     int  prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
