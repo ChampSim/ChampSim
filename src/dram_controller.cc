@@ -143,7 +143,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     auto &channel = channels[dram_get_channel(packet->address)];
 
     // Check for forwarding
-    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address));
+    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (wq_it != std::end(channel.WQ))
     {
         packet->data = wq_it->data;
@@ -154,7 +154,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     }
 
     // Check for duplicates
-    auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address));
+    auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (rq_it != std::end(channel.RQ))
     {
         packet_dep_merge(rq_it->lq_index_depend_on_me, packet->lq_index_depend_on_me);
@@ -186,7 +186,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     auto &channel = channels[dram_get_channel(packet->address)];
 
     // Check for duplicates
-    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address));
+    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (wq_it != std::end(channel.WQ))
         return 0;
 
@@ -210,36 +210,36 @@ int MEMORY_CONTROLLER::add_pq(PACKET *packet)
 }
 
 /*
- * | row address | rank index | bank index | column address | column offset | channel | block offset |
+ * | row address | rank index | column address | bank index | channel | block offset |
  */
 
 uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
 {
-    int shift = 0;
+    int shift = LOG2_BLOCK_SIZE;
     return (address >> shift) & bitmask(lg2(DRAM_CHANNELS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
 {
-    int shift = lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
     return (address >> shift) & bitmask(lg2(DRAM_BANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
 {
-    int shift = lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_BANKS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
     return (address >> shift) & bitmask(lg2(DRAM_COLUMNS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
 {
-    int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
     return (address >> shift) & bitmask(lg2(DRAM_RANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 {
-    int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS);
+    int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
     return (address >> shift) & bitmask(lg2(DRAM_ROWS));
 }
 

@@ -51,7 +51,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": true,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no_l1i"
+        "prefetcher": "no_instr"
     },
 
     "L1D": {
@@ -67,7 +67,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no_l1d"
+        "prefetcher": "no"
     },
 
     "L2C": {
@@ -83,7 +83,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no_l2c"
+        "prefetcher": "no"
     },
 
     "ITLB": {
@@ -154,8 +154,8 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no_llc",
-        "replacement": "lru_llc"
+        "prefetcher": "no",
+        "replacement": "lru"
     },
 
     "physical_memory": {
@@ -176,6 +176,7 @@
 
     "virtual_memory": {
         "size": 8589934592,
-        "num_levels": 5
+        "num_levels": 5,
+        "minor_fault_penalty": 200
     }
 }

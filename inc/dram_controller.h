@@ -3,8 +3,8 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 
-#include "champsim.h"
 #include "champsim_constants.h"
 #include "memory_class.h"
 #include "operable.h"
@@ -56,8 +56,6 @@ struct DRAM_CHANNEL
 
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
   public:
-    const static int fill_level = FILL_DRAM;
-
     // DRAM_IO_FREQ defined in champsim_constants.h
     const static uint64_t tRP                        = detail::ceil(1.0 * tRP_DRAM_NANOSECONDS * CPU_FREQ / 1000);
     const static uint64_t tRCD                       = detail::ceil(1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ / 1000);
@@ -67,7 +65,7 @@ class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsume
 
     std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-    MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
+    MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
 
     int  add_rq(PACKET *packet),
          add_wq(PACKET *packet),
