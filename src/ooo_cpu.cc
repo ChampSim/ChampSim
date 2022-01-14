@@ -34,13 +34,8 @@ void O3_CPU::operate()
     translate_fetch();
     check_dib();
 
-    // check for deadlock
-    if ((!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
-        (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
-        (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle) ||
-        (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
-    )
-        throw champsim::deadlock{cpu};
+    DISPATCH_BUFFER.operate();
+    DECODE_BUFFER.operate();
 }
 
 void O3_CPU::initialize_core()
@@ -52,12 +47,7 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
-    // actual processors do not work like this but for easier implementation,
-    // we read instruction traces and virtually add them in the ROB
-    // note that these traces are not yet translated and fetched
     instrs_to_read_this_cycle--;
-
-    // first, read PIN trace
 
     arch_instr.instr_id = instr_unique_id;
 
@@ -445,6 +435,10 @@ void O3_CPU::promote_to_decode()
 
 	available_fetch_bandwidth--;
     }
+
+    // check for deadlock
+    if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::decode_instruction()
@@ -480,7 +474,9 @@ void O3_CPU::decode_instruction()
 	available_decode_bandwidth--;
     }
 
-    DECODE_BUFFER.operate();
+    // check for deadlock
+    if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::do_dib_update(const ooo_model_instr &instr)
@@ -520,7 +516,9 @@ void O3_CPU::dispatch_instruction()
 	available_dispatch_bandwidth--;
     }
 
-    DISPATCH_BUFFER.operate();
+    // check for deadlock
+    if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
@@ -1044,7 +1042,7 @@ void O3_CPU::handle_memory_return()
               available_fetch_bandwidth--;
           }
 
-          itlb_entry.instr_depend_on_me.pop_front();
+          itlb_entry.instr_depend_on_me.erase(std::begin(itlb_entry.instr_depend_on_me));
       }
 
 
@@ -1073,7 +1071,7 @@ void O3_CPU::handle_memory_return()
               available_fetch_bandwidth--;
           }
 
-          l1i_entry.instr_depend_on_me.pop_front();
+          l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
       }
 
       // remove this entry if we have serviced all of its instructions
@@ -1184,6 +1182,10 @@ void O3_CPU::retire_rob()
         num_retired++;
         retire_bandwidth--;
     }
+
+    // Check for deadlock
+    if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void CacheBus::return_data(PACKET *packet)
