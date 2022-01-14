@@ -154,7 +154,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     auto &channel = channels[dram_get_channel(packet->address)];
 
     // Check for forwarding
-    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address));
+    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (wq_it != std::end(channel.WQ))
     {
         packet->data = wq_it->data;
@@ -165,7 +165,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
     }
 
     // Check for duplicates
-    auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address));
+    auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (rq_it != std::end(channel.RQ))
     {
         packet_dep_merge(rq_it->lq_index_depend_on_me, packet->lq_index_depend_on_me);
@@ -198,7 +198,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET *packet)
     auto &channel = channels[dram_get_channel(packet->address)];
 
     // Check for duplicates
-    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address));
+    auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
     if (wq_it != std::end(channel.WQ))
         return 0;
 
@@ -226,7 +226,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
     if (LOG2_DRAM_CHANNELS == 0)
         return 0;
 
-    int shift = 0;
+    int shift = LOG2_BLOCK_SIZE;
 
     return (uint32_t) (address >> shift) & (DRAM_CHANNELS - 1);
 }
@@ -236,7 +236,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
     if (LOG2_DRAM_BANKS == 0)
         return 0;
 
-    int shift = LOG2_DRAM_CHANNELS;
+    int shift = LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
 
     return (uint32_t) (address >> shift) & (DRAM_BANKS - 1);
 }
@@ -246,7 +246,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
     if (LOG2_DRAM_COLUMNS == 0)
         return 0;
 
-    int shift = LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+    int shift = LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
 
     return (uint32_t) (address >> shift) & (DRAM_COLUMNS - 1);
 }
@@ -256,7 +256,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
     if (LOG2_DRAM_RANKS == 0)
         return 0;
 
-    int shift = LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+    int shift = LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
 
     return (uint32_t) (address >> shift) & (DRAM_RANKS - 1);
 }
@@ -266,7 +266,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
     if (LOG2_DRAM_ROWS == 0)
         return 0;
 
-    int shift = LOG2_DRAM_RANKS + LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS;
+    int shift = LOG2_DRAM_RANKS + LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
 
     return (uint32_t) (address >> shift) & (DRAM_ROWS - 1);
 }
