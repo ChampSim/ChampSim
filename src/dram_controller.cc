@@ -116,12 +116,12 @@ void MEMORY_CONTROLLER::operate()
 
             auto op_idx = op_rank*DRAM_BANKS + op_bank;
 
-            if (!bank_request[op_idx].valid)
+            if (!channel.bank_request[op_idx].valid)
             {
-                bool row_buffer_hit = (bank_request[op_idx].open_row == op_row);
+                bool row_buffer_hit = (channel.bank_request[op_idx].open_row == op_row);
 
                 // this bank is now busy
-                bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+                channel.bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
 
                 iter_next_schedule->scheduled = true;
                 iter_next_schedule->event_cycle = std::numeric_limits<uint64_t>::max();

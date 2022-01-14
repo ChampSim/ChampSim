@@ -57,11 +57,11 @@ struct DRAM_CHANNEL
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
   public:
     // DRAM_IO_FREQ defined in champsim_constants.h
-    const static uint64_t tRP                        = detail::ceil(1.0 * tRP_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t tRCD                       = detail::ceil(1.0 * tRCD_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t tCAS                       = detail::ceil(1.0 * tCAS_DRAM_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = detail::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * CPU_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_RETURN_TIME      = detail::ceil(1.0 * BLOCK_SIZE * CPU_FREQ / DRAM_CHANNEL_WIDTH / DRAM_IO_FREQ);
+    const static uint64_t tRP                        = detail::ceil(1.0 * tRP_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t tRCD                       = detail::ceil(1.0 * tRCD_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t tCAS                       = detail::ceil(1.0 * tCAS_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = detail::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * DRAM_IO_FREQ / 1000);
+    const static uint64_t DRAM_DBUS_RETURN_TIME      = detail::ceil(1.0 * BLOCK_SIZE / DRAM_CHANNEL_WIDTH);
 
     std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 

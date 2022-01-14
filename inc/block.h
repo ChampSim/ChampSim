@@ -19,7 +19,6 @@ class PACKET {
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
             type = 0,
             fill_level = 0,
-            is_producer = 0,
             pf_origin_level = 0;
 
     int delta = 0,
