@@ -42,14 +42,14 @@ class IP_TRACKER {
 
 IP_TRACKER trackers[IP_TRACKER_COUNT];
 
-void CACHE::l2c_prefetcher_initialize() 
+void CACHE::prefetcher_initialize()
 {
-    cout << "CPU " << cpu << " L2C IP-based stride prefetcher" << endl;
+    std::cout << NAME << " IP-based stride prefetcher" << std::endl;
     for (int i=0; i<IP_TRACKER_COUNT; i++)
         trackers[i].lru = i;
 }
 
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     // check for a tracker hit
     uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
@@ -119,10 +119,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
                 break;
 
             // check the MSHR occupancy to decide if we're going to prefetch to the L2 or LLC
-            if (get_occupancy(0,0) < (get_size(0,0)>>1))
-	      prefetch_line(ip, addr, pf_address, FILL_L2, 0);
-            else
-	      prefetch_line(ip, addr, pf_address, FILL_LLC, 0);
+	      prefetch_line(ip, addr, pf_address, (get_occupancy(0,0) < (get_size(0,0)>>1)), 0);
         }
     }
 
@@ -138,12 +135,17 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
     return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }
 
-void CACHE::l2c_prefetcher_final_stats()
+void CACHE::prefetcher_cycle_operate()
 {
-    cout << "CPU " << cpu << " L2C PC-based stride prefetcher final stats" << endl;
 }
+
+void CACHE::prefetcher_final_stats()
+{
+    std::cout << NAME << " PC-based stride prefetcher final stats" << std::endl;
+}
+
