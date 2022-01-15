@@ -10,7 +10,7 @@
 
 #include <algorithm>
 #include <bitset>
-#include <stack>
+#include <deque>
 
 #include "util.h"
 
@@ -31,7 +31,7 @@ struct BASIC_BTB_ENTRY
 std::map<O3_CPU*, std::array<BASIC_BTB_ENTRY, BASIC_BTB_SETS*BASIC_BTB_WAYS>> basic_btb;
 std::map<O3_CPU*, std::array<uint64_t, BASIC_BTB_INDIRECT_SIZE>>              basic_btb_indirect;
 std::map<O3_CPU*, std::bitset<lg2(BASIC_BTB_INDIRECT_SIZE)>>                  basic_btb_conditional_history;
-std::map<O3_CPU*, std::stack<uint64_t>>                                       basic_btb_ras;
+std::map<O3_CPU*, std::deque<uint64_t>>                                       basic_btb_ras;
 /*
  * The following structure identifies the size of call instructions so we can
  * find the target for a call's return, since calls may have different sizes.
@@ -42,7 +42,7 @@ void O3_CPU::initialize_btb() {
   std::cout << "Basic BTB sets: " << BASIC_BTB_SETS
             << " ways: " << BASIC_BTB_WAYS
             << " indirect buffer size: " << BASIC_BTB_INDIRECT_SIZE
-            /*<< " RAS size: " << BASIC_BTB_RAS_SIZE*/ << std::endl;
+            << " RAS size: " << BASIC_BTB_RAS_SIZE << std::endl;
 
   std::fill(std::begin(basic_btb[this]), std::end(basic_btb[this]), BASIC_BTB_ENTRY{});
   std::fill(std::begin(basic_btb_indirect[this]), std::end(basic_btb_indirect[this]), 0);
@@ -54,7 +54,11 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 {
     // add something to the RAS
     if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL)
-        basic_btb_ras[this].push(ip);
+    {
+        basic_btb_ras[this].push_back(ip);
+        if (std::size(basic_btb_ras[this]) > BASIC_BTB_RAS_SIZE)
+            basic_btb_ras[this].pop_front();
+    }
 
     if (branch_type == BRANCH_RETURN)
     {
@@ -62,7 +66,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
             return {0, true};
 
         // peek at the top of the RAS and adjust for the size of the call instr
-        auto target = basic_btb_ras[this].top();
+        auto target = basic_btb_ras[this].back();
         auto size = basic_btb_call_instr_sizes[this][target % std::size(basic_btb_call_instr_sizes[this])];
 
         return {target + size, true};
@@ -109,8 +113,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // recalibrate call-return offset
         // if our return prediction got us into the right ball park, but not the
         // exactly correct byte target, then adjust our call instr size tracker
-        auto call_ip = basic_btb_ras[this].top();
-        basic_btb_ras[this].pop();
+        auto call_ip = basic_btb_ras[this].back();
+        basic_btb_ras[this].pop_back();
 
         auto estimated_call_instr_size = (call_ip > branch_target) ? call_ip - branch_target : branch_target - call_ip;
         if (estimated_call_instr_size <= 10) {
