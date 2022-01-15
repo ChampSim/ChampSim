@@ -18,7 +18,7 @@ constexpr std::size_t BASIC_BTB_SETS = 1024;
 constexpr std::size_t BASIC_BTB_WAYS = 8;
 constexpr std::size_t BASIC_BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t BASIC_BTB_RAS_SIZE = 64;
-#define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
+constexpr std::size_t BASIC_BTB_CALL_INSTR_SIZE_TRACKERS = 1024;
 
 struct BASIC_BTB_ENTRY
 {
@@ -35,24 +35,10 @@ std::map<O3_CPU*, std::bitset<lg2(BASIC_BTB_INDIRECT_SIZE)>> basic_btb_condition
 
 std::map<O3_CPU*, std::stack<uint64_t>> basic_btb_ras;
 /*
- * The following two variables are used to automatically identify the
- * size of call instructions, in bytes, which tells us the appropriate
- * target for a call's corresponding return.
- * They exist because ChampSim does not model a specific ISA, and
- * different ISAs could use different sizes for call instructions,
- * and even within the same ISA, calls can have different sizes.
+ * The following structure identifies the size of call instructions so we can
+ * find the target for a call's return, since calls may have different sizes.
  */
-uint64_t basic_btb_call_instr_sizes[NUM_CPUS][BASIC_BTB_CALL_INSTR_SIZE_TRACKERS];
-
-uint64_t basic_btb_call_size_tracker_hash(uint64_t ip) {
-  return (ip & (BASIC_BTB_CALL_INSTR_SIZE_TRACKERS-1));
-}
-
-uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip) {
-  uint64_t size = basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(ip)];
-
-  return size;
-}
+std::map<O3_CPU*, std::array<uint64_t, BASIC_BTB_CALL_INSTR_SIZE_TRACKERS>> basic_btb_call_instr_sizes;
 
 void O3_CPU::initialize_btb() {
   std::cout << "Basic BTB sets: " << BASIC_BTB_SETS
@@ -65,9 +51,7 @@ void O3_CPU::initialize_btb() {
   std::fill(std::begin(basic_btb_indirect[this]), std::end(basic_btb_indirect[this]), 0);
   basic_btb_conditional_history[this] = 0;
 
-  for (uint32_t i=0; i<BASIC_BTB_CALL_INSTR_SIZE_TRACKERS; i++) {
-    basic_btb_call_instr_sizes[cpu][i] = 4;
-  }
+  std::fill(std::begin(basic_btb_call_instr_sizes[this]), std::end(basic_btb_call_instr_sizes[this]), 4);
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type) {
@@ -87,7 +71,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 
       // peek at the top of the RAS and adjust for the size of the call instr
       auto target = basic_btb_ras[this].top();
-      auto size = basic_btb_get_call_size(cpu, target);
+      auto size = basic_btb_call_instr_sizes[this][target % std::size(basic_btb_call_instr_sizes[this])];
 
       return {target + size, always_taken};
   }
@@ -145,7 +129,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken,
 
           uint64_t estimated_call_instr_size = (call_ip > branch_target) ? call_ip - branch_target : branch_target - call_ip;
           if (estimated_call_instr_size <= 10) {
-              basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(call_ip)] = estimated_call_instr_size;
+              basic_btb_call_instr_sizes[this][call_ip % std::size(basic_btb_call_instr_sizes[this])] = estimated_call_instr_size;
           }
       }
   }
