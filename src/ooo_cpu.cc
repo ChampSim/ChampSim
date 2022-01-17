@@ -6,6 +6,7 @@
 #include "ooo_cpu.h"
 #include "instruction.h"
 #include "vmem.h"
+#include "cache.h"
 
 #define DEADLOCK_CYCLE 1000000
 
@@ -20,7 +21,6 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 
 void O3_CPU::operate()
 {
-    operated = true;
     instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
 
     retire_rob(); // retire
@@ -29,11 +29,6 @@ void O3_CPU::operate()
     schedule_instruction(); // schedule instructions
     handle_memory_return(); // finalize memory transactions
     operate_lsq(); // execute memory transactions
-
-    PTW->_operate();
-
-    // also handle per-cycle prefetcher operation
-    l1i_prefetcher_cycle_operate();
 
     schedule_memory_instruction(); // schedule memory transactions
     dispatch_instruction(); // dispatch
@@ -58,14 +53,15 @@ void O3_CPU::operate()
         last_heartbeat_cycle = current_cycle;
     }
 
-    // check for deadlock
-    if (ROB.front().ip && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
-        print_deadlock(cpu);
+    DISPATCH_BUFFER.operate();
+    DECODE_BUFFER.operate();
 }
 
 void O3_CPU::initialize_core()
 {
-
+    // BRANCH PREDICTOR & BTB
+    impl_branch_predictor_initialize();
+    impl_btb_initialize();
 }
 
 void O3_CPU::begin_phase()
@@ -89,12 +85,7 @@ void O3_CPU::end_phase(unsigned cpu)
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
-    // actual processors do not work like this but for easier implementation,
-    // we read instruction traces and virtually add them in the ROB
-    // note that these traces are not yet translated and fetched
     instrs_to_read_this_cycle--;
-
-    // first, read PIN trace
 
     arch_instr.instr_id = instr_unique_id;
 
@@ -273,17 +264,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
         sim_stats.back().total_branch_types[arch_instr.branch_type]++;
 
-	std::pair<uint64_t, uint8_t> btb_result = btb_prediction(arch_instr.ip, arch_instr.branch_type);
+	std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
 	uint64_t predicted_branch_target = btb_result.first;
 	uint8_t always_taken = btb_result.second;
-	uint8_t branch_prediction = predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+	uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
 	if((branch_prediction == 0) && (always_taken == 0))
 	  {
 	    predicted_branch_target = 0;
 	  }
 
         // call code prefetcher every time the branch predictor is used
-        l1i_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+        impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
         if(predicted_branch_target != arch_instr.branch_target)
         {
@@ -305,8 +296,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
             }
         }
 
-	update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-        last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+        impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+        impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     }
 
     arch_instr.event_cycle = current_cycle;
@@ -384,11 +375,10 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     // begin process of fetching this instruction by sending it to the ITLB
     // add it to the ITLB's read queue
     PACKET trace_packet;
-    trace_packet.fill_level = FILL_L1;
+    trace_packet.fill_level = ITLB_bus.lower_level->fill_level;
     trace_packet.cpu = cpu;
-    trace_packet.address = begin->ip >> LOG2_PAGE_SIZE;
-    trace_packet.full_addr = begin->ip;
-    trace_packet.full_v_addr = begin->ip;
+    trace_packet.address = begin->ip;
+    trace_packet.v_address = begin->ip;
     trace_packet.instr_id = begin->instr_id;
     trace_packet.ip = begin->ip;
     trace_packet.type = LOAD;
@@ -439,13 +429,11 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 {
     // add it to the L1-I's read queue
     PACKET fetch_packet;
-    fetch_packet.fill_level = FILL_L1;
+    fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
     fetch_packet.cpu = cpu;
-    fetch_packet.address = begin->instruction_pa >> LOG2_BLOCK_SIZE;
+    fetch_packet.address = begin->instruction_pa;
     fetch_packet.data = begin->instruction_pa;
-    fetch_packet.full_addr = begin->instruction_pa;
-    fetch_packet.v_address = begin->ip >> LOG2_PAGE_SIZE;
-    fetch_packet.full_v_addr = begin->ip;
+    fetch_packet.v_address = begin->ip;
     fetch_packet.instr_id = begin->instr_id;
     fetch_packet.ip = begin->ip;
     fetch_packet.type = LOAD; 
@@ -482,6 +470,10 @@ void O3_CPU::promote_to_decode()
 
 	available_fetch_bandwidth--;
     }
+
+    // check for deadlock
+    if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::decode_instruction()
@@ -517,7 +509,9 @@ void O3_CPU::decode_instruction()
 	available_decode_bandwidth--;
     }
 
-    DECODE_BUFFER.operate();
+    // check for deadlock
+    if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::do_dib_update(const ooo_model_instr &instr)
@@ -557,12 +551,14 @@ void O3_CPU::dispatch_instruction()
 	available_dispatch_bandwidth--;
     }
 
-    DISPATCH_BUFFER.operate();
+    // check for deadlock
+    if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 int O3_CPU::prefetch_code_line(uint64_t pf_v_addr)
 {
-    return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, FILL_L1, 0);
+    return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, true, 0);
 }
 
 void O3_CPU::schedule_instruction()
@@ -887,14 +883,10 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
     PACKET data_packet;
 
-    data_packet.fill_level = FILL_L1;
+    data_packet.fill_level = DTLB_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    if (knob_cloudsuite)
-        data_packet.address = splice_bits(sq_it->virtual_address, sq_it->asid[1], LOG2_PAGE_SIZE);
-    else
-        data_packet.address = sq_it->virtual_address >> LOG2_PAGE_SIZE;
-    data_packet.full_addr = sq_it->virtual_address;
-    data_packet.full_v_addr = sq_it->virtual_address;
+    data_packet.address = sq_it->virtual_address;
+    data_packet.v_address = sq_it->virtual_address;
     data_packet.instr_id = sq_it->instr_id;
     data_packet.ip = sq_it->ip;
     data_packet.type = RFO;
@@ -951,14 +943,10 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
     PACKET data_packet;
-    data_packet.fill_level = FILL_L1;
+    data_packet.fill_level = DTLB_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    if (knob_cloudsuite)
-        data_packet.address = splice_bits(lq_it->virtual_address, lq_it->asid[1], LOG2_PAGE_SIZE);
-    else
-        data_packet.address = lq_it->virtual_address >> LOG2_PAGE_SIZE;
-    data_packet.full_addr = lq_it->virtual_address;
-    data_packet.full_v_addr = lq_it->virtual_address;
+    data_packet.address = lq_it->virtual_address;
+    data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
@@ -982,12 +970,10 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
     // add it to L1D
     PACKET data_packet;
-    data_packet.fill_level = FILL_L1;
+    data_packet.fill_level = L1D_bus.lower_level->fill_level;
     data_packet.cpu = cpu;
-    data_packet.address = lq_it->physical_address >> LOG2_BLOCK_SIZE;
-    data_packet.full_addr = lq_it->physical_address;
-    data_packet.v_address = lq_it->virtual_address >> LOG2_BLOCK_SIZE;
-    data_packet.full_v_addr = lq_it->virtual_address;
+    data_packet.address = lq_it->physical_address;
+    data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
@@ -1079,19 +1065,19 @@ void O3_CPU::handle_memory_return()
       while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty())
       {
           auto it = itlb_entry.instr_depend_on_me.front();
-          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
+          if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0)
           {
-              if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address) && it->translated != 0)
+              //if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0)
               {
                   it->translated = COMPLETED;
                   // recalculate a physical address for this cache line based on the translated physical page address
-                  it->instruction_pa = splice_bits(itlb_entry.data << LOG2_PAGE_SIZE, it->ip, LOG2_PAGE_SIZE);
+                  it->instruction_pa = splice_bits(itlb_entry.data, it->ip, LOG2_PAGE_SIZE);
               }
 
               available_fetch_bandwidth--;
           }
 
-          itlb_entry.instr_depend_on_me.pop_front();
+          itlb_entry.instr_depend_on_me.erase(std::begin(itlb_entry.instr_depend_on_me));
       }
 
 
@@ -1114,13 +1100,13 @@ void O3_CPU::handle_memory_return()
       while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty())
       {
           auto it = l1i_entry.instr_depend_on_me.front();
-          if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address) && it->fetched != 0 && it->translated == COMPLETED)
+          if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED)
           {
               it->fetched = COMPLETED;
               available_fetch_bandwidth--;
           }
 
-          l1i_entry.instr_depend_on_me.pop_front();
+          l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
       }
 
       // remove this entry if we have serviced all of its instructions
@@ -1138,7 +1124,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
 	    {
-	      sq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
+	      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      sq_merged->translated = COMPLETED;
 	      sq_merged->event_cycle = current_cycle;
 
@@ -1147,7 +1133,7 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
 	    {
-	      lq_merged->physical_address = splice_bits(dtlb_entry.data << LOG2_PAGE_SIZE, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
+	      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      lq_merged->translated = COMPLETED;
 	      lq_merged->event_cycle = current_cycle;
 
@@ -1198,12 +1184,10 @@ void O3_CPU::retire_rob()
 
                 // sq_index and rob_index are no longer available after retirement
                 // but we pass this information to avoid segmentation fault
-                data_packet.fill_level = FILL_L1;
+                data_packet.fill_level = L1D_bus.lower_level->fill_level;
                 data_packet.cpu = cpu;
-                data_packet.address = sq_it->physical_address >> LOG2_BLOCK_SIZE;
-                data_packet.full_addr = sq_it->physical_address;
-                data_packet.v_address = sq_it->virtual_address >> LOG2_BLOCK_SIZE;
-                data_packet.full_v_addr = sq_it->virtual_address;
+                data_packet.address = sq_it->physical_address;
+                data_packet.v_address = sq_it->virtual_address;
                 data_packet.instr_id = sq_it->instr_id;
                 data_packet.ip = sq_it->ip;
                 data_packet.type = RFO;
@@ -1233,6 +1217,10 @@ void O3_CPU::retire_rob()
         num_retired++;
         retire_bandwidth--;
     }
+
+    // Check for deadlock
+    if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+        throw champsim::deadlock{cpu};
 }
 
 void O3_CPU::print_roi_stats()
@@ -1246,9 +1234,9 @@ void O3_CPU::print_phase_stats()
 
     std::cout << std::endl;
     std::cout << "CPU " << cpu;
-    std::cout << " Branch Prediction Accuracy: " << (100.0 * (num_branch - branch_mispredictions)) / num_branch << "%";
-    std::cout << " MPKI: " << (1000.0 * branch_mispredictions) / sim_instr();
-    std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * total_rob_occupancy_at_branch_mispredict) / branch_mispredictions << std::endl;
+    std::cout << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch << "%";
+    std::cout << " MPKI: " << (1000.0 * total_mispredictions) / sim_instr();
+    std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * sim_stats.back().total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
 
     /*
     std::vector<double> pcts;
@@ -1282,6 +1270,63 @@ void CacheBus::return_data(PACKET *packet)
     if (packet->type != PREFETCH)
     {
         PROCESSED.push_back(*packet);
+    }
+}
+
+void O3_CPU::print_deadlock()
+{
+    std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
+
+    if (!std::empty(IFETCH_BUFFER))
+    {
+        std::cout << "IFETCH_BUFFER head";
+        std::cout << " instr_id: " << IFETCH_BUFFER.front().instr_id;
+        std::cout << " translated: " << +IFETCH_BUFFER.front().translated;
+        std::cout << " fetched: " << +IFETCH_BUFFER.front().fetched;
+        std::cout << " scheduled: " << +IFETCH_BUFFER.front().scheduled;
+        std::cout << " executed: " << +IFETCH_BUFFER.front().executed;
+        std::cout << " is_memory: " << +IFETCH_BUFFER.front().is_memory;
+        std::cout << " num_reg_dependent: " << +IFETCH_BUFFER.front().num_reg_dependent;
+        std::cout << " event: " << IFETCH_BUFFER.front().event_cycle;
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "IFETCH_BUFFER empty" << std::endl;
+    }
+
+    if (!std::empty(ROB))
+    {
+        std::cout << "ROB head";
+        std::cout << " instr_id: " << ROB.front().instr_id;
+        std::cout << " translated: " << +ROB.front().translated;
+        std::cout << " fetched: " << +ROB.front().fetched;
+        std::cout << " scheduled: " << +ROB.front().scheduled;
+        std::cout << " executed: " << +ROB.front().executed;
+        std::cout << " is_memory: " << +ROB.front().is_memory;
+        std::cout << " num_reg_dependent: " << +ROB.front().num_reg_dependent;
+        std::cout << " event: " << ROB.front().event_cycle;
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "ROB empty" << std::endl;
+    }
+
+    // print LQ entry
+    std::cout << "Load Queue Entry" << std::endl;
+    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
+    {
+        if (is_valid<LSQ_ENTRY>{}(*lq_it))
+            std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
+    }
+
+    // print SQ entry
+    std::cout << std::endl << "Store Queue Entry" << std::endl;
+    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it)
+    {
+        if (is_valid<LSQ_ENTRY>{}(*sq_it))
+            std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
     }
 }
 

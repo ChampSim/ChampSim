@@ -46,9 +46,9 @@ class PF_buffer {
 };
 PF_buffer pf_buffer[NUM_CPUS][L2C_MSHR_SIZE];
 
-void CACHE::l2c_prefetcher_initialize() 
+void CACHE::prefetcher_initialize() 
 {
-    cout << "L2C Signature Path Prefetcher" << endl;
+    std::cout << NAME << " Signature Path Prefetcher" << std::endl;
 
     spp_pf_issued[cpu] = 0;
     spp_pf_useful[cpu] = 0;
@@ -595,7 +595,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta)
 */
 
 // TODO: from here
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
     // Check ST
     L2_ST_update(cpu, addr);
@@ -728,7 +728,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t 
     return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
 	// L2 FILL
     uint64_t evicted_cl = evicted_addr >> LOG2_BLOCK_SIZE;
@@ -766,9 +766,13 @@ uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32
     return metadata_in;
 }
 
-void CACHE::l2c_prefetcher_final_stats()
+void CACHE::prefetcher_cycle_operate()
 {
-    cout << endl << "L2C Signature Path Prefetcher final stats" << endl;
+}
+
+void CACHE::prefetcher_final_stats()
+{
+    std::cout << std::endl << NAME << " Signature Path Prefetcher final stats" << std::endl;
 
     /*
     int temp1 = 0, temp2 = 0;

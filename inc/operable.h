@@ -34,6 +34,7 @@ class operable {
     virtual void end_phase(unsigned cpu) = 0;
     virtual void print_roi_stats() = 0;
     virtual void print_phase_stats() = 0;
+    virtual void print_deadlock() {}
 };
 
 class by_next_operate
