@@ -1,4 +1,4 @@
-#include "ooo_cpu.h"
+#include "champsim.h"
 #include "ptw.h"
 #include "vmem.h"
 #include "util.h"

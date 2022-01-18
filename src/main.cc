@@ -8,6 +8,7 @@
 #include <string.h>
 #include <vector>
 
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
@@ -30,6 +31,9 @@ uint64_t warmup_instructions     = 1000000,
 
 time_t start_time;
 
+// For backwards compatibility with older module source.
+champsim::deprecated_clock_cycle current_core_cycle;
+
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
@@ -37,6 +41,18 @@ extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
 
 std::vector<tracereader*> traces;
+
+uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
+{
+    static bool deprecate_printed = false;
+    if (!deprecate_printed)
+    {
+        std::cout << "WARNING: The use of 'current_core_cycle[cpu]' is deprecated." << std::endl;
+        std::cout << "WARNING: Use 'this->current_cycle' instead." << std::endl;
+        deprecate_printed = true;
+    }
+    return ooo_cpu[cpu_idx]->current_cycle;
+}
 
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {

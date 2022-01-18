@@ -1,22 +1,18 @@
 #include <algorithm>
 #include <vector>
 
+#include "champsim.h"
 #include "ooo_cpu.h"
 #include "instruction.h"
-#include "vmem.h"
 #include "cache.h"
 
 #define DEADLOCK_CYCLE 1000000
 
 extern uint8_t warmup_complete[NUM_CPUS];
-extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
-
-extern VirtualMemory vmem;
 
 void O3_CPU::operate()
 {
-    operated = true;
     instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
 
     retire_rob(); // retire

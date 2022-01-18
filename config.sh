@@ -422,6 +422,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "champsim.h"\n')
     wfp.write('#include "dram_controller.h"\n')
     wfp.write('#include "ooo_cpu.h"\n')
+    wfp.write('#include "ptw.h"\n')
     wfp.write('#include "vmem.h"\n')
     wfp.write('#include "operable.h"\n')
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')

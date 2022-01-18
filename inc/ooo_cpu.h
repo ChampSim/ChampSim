@@ -6,12 +6,12 @@
 #include <functional>
 #include <queue>
 
-#include "champsim_constants.h"
+#include "champsim.h"
+#include "block.h"
 #include "delay_queue.hpp"
 #include "instruction.h"
-#include "instruction.h"
+#include "memory_class.h"
 #include "operable.h"
-#include "ptw.h"
 
 using namespace std;
 
@@ -29,7 +29,6 @@ class CacheBus : public MemoryRequestProducer
 class O3_CPU : public champsim::operable {
   public:
     uint32_t cpu = 0;
-    bool operated = false;
 
     // instruction
     uint64_t instr_unique_id = 0, completed_executions = 0,
@@ -77,8 +76,6 @@ class O3_CPU : public champsim::operable {
     std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
 
     // branch
-    int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
-    int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
     uint8_t  fetch_stall = 0;
     uint64_t fetch_resume_cycle = 0;
     uint64_t num_branch = 0, branch_mispredictions = 0;
