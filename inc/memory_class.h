@@ -1,7 +1,6 @@
 #ifndef MEMORY_CLASS_H
 #define MEMORY_CLASS_H
 
-#include "champsim.h"
 #include "block.h"
 
 #include <limits>

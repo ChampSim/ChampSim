@@ -519,19 +519,18 @@ int CACHE::add_wq(PACKET *packet)
     return WQ.occupancy();
 }
 
-int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
     pf_requested++;
 
     PACKET pf_packet;
+    pf_packet.type = PREFETCH;
     pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
     pf_packet.pf_origin_level = fill_level;
     pf_packet.pf_metadata = prefetch_metadata;
     pf_packet.cpu = cpu;
-    pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
     pf_packet.address = pf_addr;
-    pf_packet.ip = ip;
-    pf_packet.type = PREFETCH;
+    pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
     if (virtual_prefetch)
     {
@@ -555,38 +554,16 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
     return 0;
 }
 
-int CACHE::kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-    if (!PQ.full()) {
-        if ((base_addr>>LOG2_PAGE_SIZE) == (pf_addr>>LOG2_PAGE_SIZE)) {
-            
-            PACKET pf_packet;
-            pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
-	    pf_packet.pf_origin_level = fill_level;
-	    pf_packet.pf_metadata = prefetch_metadata;
-            pf_packet.cpu = cpu;
-            //pf_packet.data_index = LQ.entry[lq_index].data_index;
-            //pf_packet.lq_index = lq_index;
-            pf_packet.address = pf_addr;
-            pf_packet.v_address = 0;
-            //pf_packet.instr_id = LQ.entry[lq_index].instr_id;
-            pf_packet.ip = 0;
-            pf_packet.type = PREFETCH;
-            //pf_packet.delta = delta;
-            //pf_packet.depth = depth;
-            //pf_packet.signature = signature;
-            //pf_packet.confidence = confidence;
-
-            int result = add_pq(&pf_packet);
-
-            if (result > 0)
-                pf_issued++;
-
-            return 1;
-        }
+    static bool deprecate_printed = false;
+    if (!deprecate_printed)
+    {
+        std::cout << "WARNING: The extended signature CACHE::prefetch_line(ip, base_addr, pf_addr, fill_this_level, prefetch_metadata) is deprecated." << std::endl;
+        std::cout << "WARNING: Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead." << std::endl;
+        deprecate_printed = true;
     }
-
-    return 0;
+    return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
 
 void CACHE::va_translate_prefetches()

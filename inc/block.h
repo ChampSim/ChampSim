@@ -1,7 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "instruction.h"
 #include "circular_buffer.hpp"
 
@@ -21,11 +21,6 @@ class PACKET {
             type = 0,
             fill_level = 0,
             pf_origin_level = 0;
-
-    int delta = 0,
-        depth = 0,
-        signature = 0,
-        confidence = 0;
 
     uint32_t pf_metadata;
     uint32_t cpu = NUM_CPUS;
@@ -48,7 +43,6 @@ class PACKET {
 template <>
 struct is_valid<PACKET>
 {
-    is_valid() {}
     bool operator()(const PACKET &test)
     {
         return test.address != 0;
@@ -83,13 +77,12 @@ struct LSQ_ENTRY {
 };
 
 template <>
-class is_valid<LSQ_ENTRY>
+struct is_valid<LSQ_ENTRY>
 {
-    public:
-        bool operator() (const LSQ_ENTRY &test)
-        {
-            return test.virtual_address != 0;
-        }
+    bool operator() (const LSQ_ENTRY &test)
+    {
+        return test.virtual_address != 0;
+    }
 };
 
 #endif

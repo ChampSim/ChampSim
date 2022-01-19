@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 
+#include "champsim.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
@@ -86,8 +87,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
              get_way(uint64_t address, uint32_t set);
 
     int  invalidate_entry(uint64_t inval_addr),
-         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
-         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
+         prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
+         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); //deprecated
 
     void add_mshr(PACKET *packet),
          va_translate_prefetches();
