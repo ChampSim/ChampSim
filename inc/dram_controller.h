@@ -12,8 +12,8 @@
 
 // these values control when to send out a burst of writes
 constexpr std::size_t DRAM_WRITE_HIGH_WM         = ((DRAM_WQ_SIZE * 7) >> 3); // 7/8th
-constexpr std::size_t DRAM_WRITE_LOW_WM          = ((DRAM_WQ_SIZE * 6) >> 3)); // 6/8th
-constexpr std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2)); // 1/4
+constexpr std::size_t DRAM_WRITE_LOW_WM          = ((DRAM_WQ_SIZE * 6) >> 3); // 6/8th
+constexpr std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
 namespace detail
 {
