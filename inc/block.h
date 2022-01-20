@@ -5,7 +5,7 @@
 #include "instruction.h"
 #include "circular_buffer.hpp"
 
-#include <list>
+#include <algorithm>
 #include <vector>
 
 class MemoryRequestProducer;
@@ -31,18 +31,16 @@ class PACKET {
     uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
-             full_addr = 0,
              v_address = 0,
-             full_v_addr = 0,
              data = 0,
              instr_id = 0,
              ip = 0,
              event_cycle = std::numeric_limits<uint64_t>::max(),
              cycle_enqueued = 0;
 
-    std::list<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
-    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
-    std::list<MemoryRequestProducer*> to_return;
+    std::vector<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+    std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
+    std::vector<MemoryRequestProducer*> to_return;
 
 	uint8_t translation_level = 0, init_translation_level = 0; 
 };
@@ -60,38 +58,12 @@ struct is_valid<PACKET>
 template <typename LIST>
 void packet_dep_merge(LIST &dest, LIST &src)
 {
-    if (src.empty())
-        return;
-
-    if (dest.empty())
-    {
-        dest = src;
-        return;
-    }
-
-    auto s_begin = src.begin();
-    auto s_end   = src.end();
-    auto d_begin = dest.begin();
-    auto d_end   = dest.end();
-
-    while (s_begin != s_end && d_begin != d_end)
-    {
-        if (*s_begin > *d_begin)
-        {
-            ++d_begin;
-        }
-        else if (*s_begin == *d_begin)
-        {
-            ++s_begin;
-        }
-        else
-        {
-            dest.insert(d_begin, *s_begin);
-            ++s_begin;
-        }
-    }
-
-    dest.insert(d_begin, s_begin, s_end);
+    dest.reserve(std::size(dest) + std::size(src));
+    auto middle = std::end(dest);
+    dest.insert(middle, std::begin(src), std::end(src));
+    std::inplace_merge(std::begin(dest), middle, std::end(dest));
+    auto uniq_end = std::unique(std::begin(dest), std::end(dest));
+    dest.erase(uniq_end, std::end(dest));
 }
 
 // load/store queue
