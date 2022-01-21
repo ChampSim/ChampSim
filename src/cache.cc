@@ -660,7 +660,6 @@ void CACHE::return_data(PACKET *packet)
     }
 
     // MSHR holds the most updated information about this request
-    // no need to do memcpy
     mshr_entry->data = packet->data;
     mshr_entry->pf_metadata = packet->pf_metadata;
     mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);

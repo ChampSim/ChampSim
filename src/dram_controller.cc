@@ -29,8 +29,7 @@ void MEMORY_CONTROLLER::operate()
 
             channel.active_request->valid = false;
 
-            PACKET empty;
-            *channel.active_request->pkt = empty;
+            *channel.active_request->pkt = {};
             channel.active_request = std::end(channel.bank_request);
         }
 
@@ -110,35 +109,25 @@ void MEMORY_CONTROLLER::operate()
             iter_next_schedule = std::min_element(std::begin(channel.RQ), std::end(channel.RQ), next_schedule());
 
         if (is_valid<PACKET>()(*iter_next_schedule) && iter_next_schedule->event_cycle <= current_cycle)
-            schedule(iter_next_schedule);
+        {
+            uint32_t op_rank = dram_get_rank(iter_next_schedule->address),
+                     op_bank = dram_get_bank(iter_next_schedule->address),
+                     op_row = dram_get_row(iter_next_schedule->address);
+
+            auto op_idx = op_rank*DRAM_BANKS + op_bank;
+
+            if (!channel.bank_request[op_idx].valid)
+            {
+                bool row_buffer_hit = (channel.bank_request[op_idx].open_row == op_row);
+
+                // this bank is now busy
+                channel.bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+
+                iter_next_schedule->scheduled = true;
+                iter_next_schedule->event_cycle = std::numeric_limits<uint64_t>::max();
+            }
+        }
     }
-}
-
-void MEMORY_CONTROLLER::schedule(std::vector<PACKET>::iterator q_it)
-{
-    uint32_t op_channel = dram_get_channel(q_it->address),
-             op_rank = dram_get_rank(q_it->address),
-             op_bank = dram_get_bank(q_it->address),
-             op_row = dram_get_row(q_it->address);
-
-    BANK_REQUEST &op_request = channels[op_channel].bank_request[op_rank*DRAM_BANKS + op_bank];
-
-    if (op_request.valid)
-        return;
-
-    bool row_buffer_hit = (op_request.open_row == op_row);
-
-    // this bank is now busy
-    op_request.valid = true;
-    op_request.row_buffer_hit = row_buffer_hit;
-    op_request.open_row = op_row;
-    op_request.pkt = q_it;
-    op_request.event_cycle = current_cycle + tCAS;
-    if (!row_buffer_hit)
-        op_request.event_cycle += tRP + tRCD;
-
-    q_it->scheduled = true;
-    q_it->event_cycle = std::numeric_limits<uint64_t>::max();
 }
 
 int MEMORY_CONTROLLER::add_rq(PACKET *packet)
@@ -178,10 +167,9 @@ int MEMORY_CONTROLLER::add_rq(PACKET *packet)
 
     // Find empty slot
     rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>());
-
     if (rq_it == std::end(channel.RQ))
     {
-        return -2;
+        return 0;
     }
 
     *rq_it = *packet;
@@ -221,54 +209,38 @@ int MEMORY_CONTROLLER::add_pq(PACKET *packet)
     return add_rq(packet);
 }
 
+/*
+ * | row address | rank index | column address | bank index | channel | block offset |
+ */
+
 uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
 {
-    if (LOG2_DRAM_CHANNELS == 0)
-        return 0;
-
     int shift = LOG2_BLOCK_SIZE;
-
-    return (uint32_t) (address >> shift) & (DRAM_CHANNELS - 1);
+    return (address >> shift) & bitmask(lg2(DRAM_CHANNELS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
 {
-    if (LOG2_DRAM_BANKS == 0)
-        return 0;
-
-    int shift = LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
-
-    return (uint32_t) (address >> shift) & (DRAM_BANKS - 1);
+    int shift = lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+    return (address >> shift) & bitmask(lg2(DRAM_BANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
 {
-    if (LOG2_DRAM_COLUMNS == 0)
-        return 0;
-
-    int shift = LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
-
-    return (uint32_t) (address >> shift) & (DRAM_COLUMNS - 1);
+    int shift = lg2(DRAM_BANKS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+    return (address >> shift) & bitmask(lg2(DRAM_COLUMNS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
 {
-    if (LOG2_DRAM_RANKS == 0)
-        return 0;
-
-    int shift = LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
-
-    return (uint32_t) (address >> shift) & (DRAM_RANKS - 1);
+    int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+    return (address >> shift) & bitmask(lg2(DRAM_RANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 {
-    if (LOG2_DRAM_ROWS == 0)
-        return 0;
-
-    int shift = LOG2_DRAM_RANKS + LOG2_DRAM_COLUMNS + LOG2_DRAM_BANKS + LOG2_DRAM_CHANNELS + LOG2_BLOCK_SIZE;
-
-    return (uint32_t) (address >> shift) & (DRAM_ROWS - 1);
+    int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+    return (address >> shift) & bitmask(lg2(DRAM_ROWS));
 }
 
 uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
