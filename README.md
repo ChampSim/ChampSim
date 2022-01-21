@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center"> ChampSim </h1>
-  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. Traces for the 3rd Data Prefetching Championship (DPC-3) can be found from here (https://dpc3.compas.cs.stonybrook.edu/?SW_IS). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
+  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. If you have questions about how to use ChampSim, you can often receive a quicker response on the mailing list. Please reserve GitHub Issues for bugs. <p>
 </p>
 
 # Clone ChampSim repository
@@ -19,11 +19,7 @@ $ make
 
 # Download DPC-3 trace
 
-Professor Daniel Jimenez at Texas A&M University kindly provided traces for DPC-3. Use the following script to download these traces (~20GB size and max simpoint only).
-```
-$ cd scripts
-$ ./download_dpc3_traces.sh
-```
+Professor Daniel Jimenez at Texas A&M University kindly provided traces for the 3rd Data Prefetching Championship (DPC-3). They can be found here (http://hpca23.cse.tamu.edu/champsim-traces/speccpu/$LINE). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj)
 
 # Run simulation
 
