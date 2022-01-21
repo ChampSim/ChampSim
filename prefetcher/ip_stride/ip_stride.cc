@@ -142,10 +142,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
 
 void CACHE::prefetcher_cycle_operate()
 {
-<<<<<<< HEAD
     std::cout << "CPU " << cpu << " L2C PC-based stride prefetcher final stats" << std::endl;
-=======
->>>>>>> develop
 }
 
 void CACHE::prefetcher_final_stats()
