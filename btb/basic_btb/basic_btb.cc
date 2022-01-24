@@ -164,7 +164,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
     // peek at the top of the RAS
     uint64_t target = peek_basic_btb_ras(cpu);
     // and adjust for the size of the call instr
-    target += basic_btb_get_call_size(cpu, target);
+    if (target) target += basic_btb_get_call_size(cpu, target);
 
     return std::make_pair(target, always_taken);
   } else if ((branch_type == BRANCH_INDIRECT) ||
