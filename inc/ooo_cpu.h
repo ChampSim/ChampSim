@@ -90,32 +90,38 @@ public:
 
   // functions
   void init_instruction(ooo_model_instr instr);
-  void check_dib(), translate_fetch(), fetch_instruction(), promote_to_decode(),
-      decode_instruction(), dispatch_instruction(), schedule_instruction(),
-      execute_instruction(), schedule_memory_instruction(),
-      execute_memory_instruction(), do_check_dib(ooo_model_instr &instr),
-      do_translate_fetch(
+  void check_dib();
+  void translate_fetch();
+  void fetch_instruction();
+  void promote_to_decode();
+  void decode_instruction();
+  void dispatch_instruction();
+  void schedule_instruction();
+  void execute_instruction();
+  void schedule_memory_instruction();
+  void execute_memory_instruction();
+  void do_check_dib(ooo_model_instr &instr);
+  void do_translate_fetch(
           champsim::circular_buffer<ooo_model_instr>::iterator begin,
-          champsim::circular_buffer<ooo_model_instr>::iterator end),
-      do_fetch_instruction(
+          champsim::circular_buffer<ooo_model_instr>::iterator end);
+  void do_fetch_instruction(
           champsim::circular_buffer<ooo_model_instr>::iterator begin,
-          champsim::circular_buffer<ooo_model_instr>::iterator end),
-      do_dib_update(const ooo_model_instr &instr),
-      do_scheduling(
-          champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      do_memory_scheduling(
-          champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      operate_lsq(),
-      do_complete_execution(
-          champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry);
+          champsim::circular_buffer<ooo_model_instr>::iterator end);
+  void do_dib_update(const ooo_model_instr &instr);
+  void do_scheduling(
+          champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_memory_scheduling(
+          champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void operate_lsq();
+  void do_complete_execution(
+          champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry);
 
   void initialize_core();
-  void
-  add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index,
-                 uint32_t data_index),
-      add_store_queue(
+  void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index,
+                 uint32_t data_index);
+  void add_store_queue(
           champsim::circular_buffer<ooo_model_instr>::iterator rob_index,
           uint32_t data_index);
   void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);

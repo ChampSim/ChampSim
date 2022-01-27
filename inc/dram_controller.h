@@ -73,16 +73,20 @@ public:
       : champsim::operable(freq_scale),
         MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
 
-  int add_rq(PACKET *packet), add_wq(PACKET *packet), add_pq(PACKET *packet);
+  int add_rq(PACKET *packet) override;
+  int add_wq(PACKET *packet) override;
+  int add_pq(PACKET *packet) override;
 
-  void operate();
+  void operate() override;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
-      get_size(uint8_t queue_type, uint64_t address);
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-  uint32_t dram_get_channel(uint64_t address), dram_get_rank(uint64_t address),
-      dram_get_bank(uint64_t address), dram_get_row(uint64_t address),
-      dram_get_column(uint64_t address);
+  uint32_t dram_get_channel(uint64_t address);
+  uint32_t dram_get_rank(uint64_t address);
+  uint32_t dram_get_bank(uint64_t address);
+  uint32_t dram_get_row(uint64_t address);
+  uint32_t dram_get_column(uint64_t address);
 };
 
 #endif

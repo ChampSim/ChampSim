@@ -63,27 +63,32 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(PACKET *packet) override, add_wq(PACKET *packet) override,
-      add_pq(PACKET *packet) override;
+  int add_rq(PACKET *packet) override;
+  int add_wq(PACKET *packet) override;
+  int add_pq(PACKET *packet) override;
 
-  void return_data(PACKET *packet), operate(), operate_writes(),
-      operate_reads();
+  void return_data(PACKET *packet) override;
+  void operate() override;
+  void operate_writes() override;
+  void operate_reads() override;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
-      get_size(uint8_t queue_type, uint64_t address);
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-  uint32_t get_set(uint64_t address), get_way(uint64_t address, uint32_t set);
+  uint32_t get_set(uint64_t address);
+  uint32_t get_way(uint64_t address, uint32_t set);
 
-  int invalidate_entry(uint64_t inval_addr),
-      prefetch_line(uint64_t pf_addr, bool fill_this_level,
-                    uint32_t prefetch_metadata),
-      prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr,
-                    bool fill_this_level,
-                    uint32_t prefetch_metadata); // deprecated
+  int invalidate_entry(uint64_t inval_addr);
+  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
 
-  void add_mshr(PACKET *packet), va_translate_prefetches();
+  void add_mshr(PACKET *packet);
+  void va_translate_prefetches();
 
-  void handle_fill(), handle_writeback(), handle_read(), handle_prefetch();
+  void handle_fill();
+  void handle_writeback();
+  void handle_read();
+  void handle_prefetch();
 
   void readlike_hit(std::size_t set, std::size_t way, PACKET &handle_pkt);
   bool readlike_miss(PACKET &handle_pkt);
