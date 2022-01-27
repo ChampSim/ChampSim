@@ -69,8 +69,8 @@ public:
 
   void return_data(PACKET *packet) override;
   void operate() override;
-  void operate_writes() override;
-  void operate_reads() override;
+  void operate_writes();
+  void operate_reads();
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
