@@ -5,89 +5,89 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
-#include <type_traits>
 #include <vector>
 
-namespace champsim {
+#include <type_traits>
 
-template <typename T> class circular_buffer_iterator {
+namespace champsim
+{
+
+template <typename T>
+class circular_buffer_iterator
+{
 protected:
   using cbuf_type = T;
   using self_type = circular_buffer_iterator<T>;
 
 public:
-  cbuf_type *buf;
+  cbuf_type* buf;
   typename cbuf_type::size_type pos;
 
 public:
   using difference_type = typename cbuf_type::difference_type;
   using value_type = typename cbuf_type::value_type;
-  using pointer = value_type *;
-  using reference = value_type &;
+  using pointer = value_type*;
+  using reference = value_type&;
   using iterator_category = std::random_access_iterator_tag;
 
   friend class circular_buffer_iterator<typename std::remove_const<T>::type>;
   friend class circular_buffer_iterator<typename std::add_const<T>::type>;
 
   circular_buffer_iterator() : buf(NULL), pos(0) {}
-  circular_buffer_iterator(cbuf_type *buf, typename cbuf_type::size_type pos)
-      : buf(buf), pos(pos) {}
+  circular_buffer_iterator(cbuf_type* buf, typename cbuf_type::size_type pos) : buf(buf), pos(pos) {}
 
-  circular_buffer_iterator(
-      const circular_buffer_iterator<typename std::remove_const<T>::type>
-          &other)
-      : buf(other.buf), pos(other.pos) {}
+  circular_buffer_iterator(const circular_buffer_iterator<typename std::remove_const<T>::type>& other) : buf(other.buf), pos(other.pos) {}
 
   reference operator*() { return (*buf)[pos]; }
   pointer operator->() { return &(operator*()); }
 
-  self_type &operator+=(difference_type n) {
+  self_type& operator+=(difference_type n)
+  {
     pos = cbuf_type::circ_inc(pos, n, *buf);
     return *this;
   }
-  self_type operator+(difference_type n) {
+  self_type operator+(difference_type n)
+  {
     self_type r(*this);
     r += n;
     return r;
   }
-  self_type &operator-=(difference_type n) {
+  self_type& operator-=(difference_type n)
+  {
     operator+=(-n);
     return *this;
   }
-  self_type operator-(difference_type n) {
+  self_type operator-(difference_type n)
+  {
     self_type r(*this);
     r -= n;
     return r;
   }
 
-  self_type &operator++() { return operator+=(1); }
-  self_type operator++(int) {
+  self_type& operator++() { return operator+=(1); }
+  self_type operator++(int)
+  {
     self_type r(*this);
     operator++();
     return r;
   }
-  self_type &operator--() { return operator-=(1); }
-  self_type operator--(int) {
+  self_type& operator--() { return operator-=(1); }
+  self_type operator--(int)
+  {
     self_type r(*this);
     operator--();
     return r;
   }
 
-  difference_type operator-(const self_type &other) const;
+  difference_type operator-(const self_type& other) const;
   reference operator[](difference_type n) { return *(*this + n); }
 
-  bool operator<(const self_type &other) const {
-    return buf == other.buf && (other - *this) > 0;
-  }
-  bool operator>(const self_type &other) const {
-    return other.operator<(*this);
-  }
-  bool operator>=(const self_type &other) const { return !operator<(other); }
-  bool operator<=(const self_type &other) const { return !operator>(other); }
-  bool operator==(const self_type &other) const {
-    return operator<=(other) && operator>=(other);
-  }
-  bool operator!=(const self_type &other) const { return !operator==(other); }
+  bool operator<(const self_type& other) const { return buf == other.buf && (other - *this) > 0; }
+  bool operator>(const self_type& other) const { return other.operator<(*this); }
+  bool operator>=(const self_type& other) const { return !operator<(other); }
+  bool operator<=(const self_type& other) const { return !operator>(other); }
+  bool operator==(const self_type& other) const { return operator<=(other) && operator>=(other); }
+  bool operator!=(const self_type& other) const { return !operator==(other); }
 };
 
 /***
@@ -95,7 +95,9 @@ public:
  * contiguous memory. Iterators to this structure are never invalidated, unless
  * the element it refers to is popped.
  */
-template <typename T> class circular_buffer {
+template <typename T>
+class circular_buffer
+{
 protected:
   using buffer_t = std::vector<T>;
 
@@ -103,10 +105,10 @@ public:
   using value_type = typename buffer_t::value_type;
   using size_type = typename buffer_t::size_type;
   using difference_type = typename buffer_t::difference_type;
-  using reference = value_type &;
-  using const_reference = const value_type &;
-  using pointer = value_type *;
-  using const_pointer = const value_type *;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using pointer = value_type*;
+  using const_pointer = const value_type*;
   using iterator = circular_buffer_iterator<circular_buffer<T>>;
   using const_iterator = circular_buffer_iterator<const circular_buffer<T>>;
   using reverse_iterator = std::reverse_iterator<iterator>;
@@ -127,29 +129,21 @@ protected:
   reference operator[](size_type n) { return entry_.at(n); }
   const_reference operator[](size_type n) const { return entry_.at(n); }
 
-  static size_type circ_inc(size_type base, difference_type inc,
-                            const circular_buffer<T> &buf);
+  static size_type circ_inc(size_type base, difference_type inc, const circular_buffer<T>& buf);
 
 public:
   explicit circular_buffer(std::size_t N) : sz_(N), entry_(N + 1) {}
 
   constexpr size_type size() const noexcept { return sz_; }
-  size_type occupancy() const noexcept {
-    return std::distance(begin(), end());
-  };
+  size_type occupancy() const noexcept { return std::distance(begin(), end()); };
   bool empty() const noexcept { return occupancy() == 0; }
   bool full() const noexcept { return occupancy() == size(); }
-  constexpr size_type max_size() const noexcept {
-    return static_cast<size_type>(std::numeric_limits<difference_type>::max() -
-                                  1);
-  }
+  constexpr size_type max_size() const noexcept { return static_cast<size_type>(std::numeric_limits<difference_type>::max() - 1); }
 
   reference front() { return operator[](head_); }
   reference back() { return operator[](circ_inc(tail_, -1, *this)); }
   const_reference front() const { return operator[](head_); }
-  const_reference back() const {
-    return operator[](circ_inc(tail_, -1, *this));
-  }
+  const_reference back() const { return operator[](circ_inc(tail_, -1, *this)); }
 
   iterator begin() noexcept { return iterator(this, head_); }
   iterator end() noexcept { return iterator(this, tail_); }
@@ -160,39 +154,34 @@ public:
 
   reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
   reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
-  const_reverse_iterator rbegin() const noexcept {
-    return const_reverse_iterator(end());
-  }
-  const_reverse_iterator rend() const noexcept {
-    return const_reverse_iterator(begin());
-  }
-  const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator(end());
-  }
-  const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator(begin());
-  }
+  const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+  const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+  const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(end()); }
+  const_reverse_iterator crend() const noexcept { return const_reverse_iterator(begin()); }
 
   void clear() { head_ = tail_ = 0; }
-  void push_back(const T &item) {
+  void push_back(const T& item)
+  {
     assert(!full());
     operator[](tail_) = item;
     tail_ = circ_inc(tail_, 1, *this);
   }
-  void push_back(const T &&item) {
+  void push_back(const T&& item)
+  {
     assert(!full());
     operator[](tail_) = std::move(item);
     tail_ = circ_inc(tail_, 1, *this);
   }
-  void pop_front() {
+  void pop_front()
+  {
     assert(!empty());
     head_ = circ_inc(head_, 1, *this);
   }
 };
 
 template <typename T>
-auto circular_buffer<T>::circ_inc(size_type base, difference_type inc,
-                                  const circular_buffer<T> &buf) -> size_type {
+auto circular_buffer<T>::circ_inc(size_type base, difference_type inc, const circular_buffer<T>& buf) -> size_type
+{
   difference_type signed_new_base = base + inc;
   const difference_type max_size = buf.entry_.size();
 
@@ -208,8 +197,8 @@ auto circular_buffer<T>::circ_inc(size_type base, difference_type inc,
 }
 
 template <typename T>
-auto circular_buffer_iterator<T>::operator-(const self_type &other) const
-    -> difference_type {
+auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> difference_type
+{
   difference_type diff = pos - other.pos;
 
   // Adjust for the cases where the tail has wrapped, but the head has not.

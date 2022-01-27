@@ -10,7 +10,8 @@
 
 #define PTE_BYTES 8
 
-class VirtualMemory {
+class VirtualMemory
+{
 private:
   std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
@@ -25,13 +26,11 @@ public:
 
   // capacity and pg_size are measured in bytes, and capacity must be a multiple
   // of pg_size
-  VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels,
-                uint64_t random_seed, uint64_t minor_fault_penalty);
+  VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed, uint64_t minor_fault_penalty);
   uint64_t shamt(uint32_t level) const;
   uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
   std::pair<uint64_t, bool> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-  std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr,
-                                       uint32_t level);
+  std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
 };
 
 #endif

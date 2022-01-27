@@ -1,20 +1,20 @@
+#include "ooo_cpu.h"
+
 #include <algorithm>
 #include <vector>
 
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "ooo_cpu.h"
 
 #define DEADLOCK_CYCLE 1000000
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
 
-void O3_CPU::operate() {
-  instrs_to_read_this_cycle =
-      std::min((std::size_t)FETCH_WIDTH,
-               IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
+void O3_CPU::operate()
+{
+  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -35,13 +35,15 @@ void O3_CPU::operate() {
   DECODE_BUFFER.operate();
 }
 
-void O3_CPU::initialize_core() {
+void O3_CPU::initialize_core()
+{
   // BRANCH PREDICTOR & BTB
   impl_branch_predictor_initialize();
   impl_btb_initialize();
 }
 
-void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
+void O3_CPU::init_instruction(ooo_model_instr arch_instr)
+{
   instrs_to_read_this_cycle--;
 
   arch_instr.instr_id = instr_unique_id;
@@ -137,20 +139,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = 1;
     arch_instr.branch_type = BRANCH_INDIRECT;
-  } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags &&
-             !reads_other) {
+  } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
     // conditional branch
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
     arch_instr.branch_type = BRANCH_CONDITIONAL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags &&
-             !reads_other) {
+  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
     // direct call
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = 1;
     arch_instr.branch_type = BRANCH_DIRECT_CALL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags &&
-             reads_other) {
+  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
     // indirect call
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = 1;
@@ -186,8 +185,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
     // stack pointer position. reads_other indicates that the stack pointer is
     // being changed by a variable amount, which can't be determined before
     // execution.
-    if ((arch_instr.is_branch != 0) || (arch_instr.num_mem_ops > 0) ||
-        (!reads_other)) {
+    if ((arch_instr.is_branch != 0) || (arch_instr.num_mem_ops > 0) || (!reads_other)) {
       for (uint32_t i = 0; i < MAX_INSTR_DESTINATIONS; i++) {
         if (arch_instr.destination_registers[i] == REG_STACK_POINTER) {
           arch_instr.destination_registers[i] = 0;
@@ -203,27 +201,21 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
   if (arch_instr.is_branch) {
 
     DP(if (warmup_complete[cpu]) {
-      cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex
-           << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken
-           << endl;
+      cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl;
     });
 
     num_branch++;
 
-    std::pair<uint64_t, uint8_t> btb_result =
-        impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
+    std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
     uint64_t predicted_branch_target = btb_result.first;
     uint8_t always_taken = btb_result.second;
-    uint8_t branch_prediction =
-        impl_predict_branch(arch_instr.ip, predicted_branch_target,
-                            always_taken, arch_instr.branch_type);
+    uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
     if ((branch_prediction == 0) && (always_taken == 0)) {
       predicted_branch_target = 0;
     }
 
     // call code prefetcher every time the branch predictor is used
-    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type,
-                                   predicted_branch_target);
+    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
     if (predicted_branch_target != arch_instr.branch_target) {
       branch_mispredictions++;
@@ -242,10 +234,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
       }
     }
 
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target,
-                    arch_instr.branch_taken, arch_instr.branch_type);
-    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target,
-                            arch_instr.branch_taken, arch_instr.branch_type);
+    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
   }
 
   arch_instr.event_cycle = current_cycle;
@@ -268,23 +258,21 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr) {
   instr_unique_id++;
 }
 
-void O3_CPU::check_dib() {
+void O3_CPU::check_dib()
+{
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded
   // instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(),
-                      std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
+  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
   for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
     do_check_dib(*it);
 }
 
-void O3_CPU::do_check_dib(ooo_model_instr &instr) {
+void O3_CPU::do_check_dib(ooo_model_instr& instr)
+{
   // Check DIB to see if we recently fetched this line
-  auto dib_set_begin = std::next(
-      DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
+  auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
   auto dib_set_end = std::next(dib_set_begin, dib_way);
-  auto way =
-      std::find_if(dib_set_begin, dib_set_end,
-                   eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
+  auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
 
   if (way != dib_set_end) {
     // The cache line is in the L0, so we can mark this as complete
@@ -302,29 +290,23 @@ void O3_CPU::do_check_dib(ooo_model_instr &instr) {
   }
 }
 
-void O3_CPU::translate_fetch() {
+void O3_CPU::translate_fetch()
+{
   if (IFETCH_BUFFER.empty())
     return;
 
   // scan through IFETCH_BUFFER to find instructions that need to be translated
-  auto itlb_req_begin =
-      std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(),
-                   [](const ooo_model_instr &x) { return !x.translated; });
+  auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
   uint64_t find_addr = itlb_req_begin->ip;
   auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
-                                   [find_addr](const ooo_model_instr &x) {
-                                     return (find_addr >> LOG2_PAGE_SIZE) !=
-                                            (x.ip >> LOG2_PAGE_SIZE);
-                                   });
-  if (itlb_req_end != IFETCH_BUFFER.end() ||
-      itlb_req_begin == IFETCH_BUFFER.begin()) {
+                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
+  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin()) {
     do_translate_fetch(itlb_req_begin, itlb_req_end);
   }
 }
 
-void O3_CPU::do_translate_fetch(
-    champsim::circular_buffer<ooo_model_instr>::iterator begin,
-    champsim::circular_buffer<ooo_model_instr>::iterator end) {
+void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
+{
   // begin process of fetching this instruction by sending it to the ITLB
   // add it to the ITLB's read queue
   PACKET trace_packet;
@@ -352,11 +334,11 @@ void O3_CPU::do_translate_fetch(
   }
 }
 
-void O3_CPU::fetch_instruction() {
+void O3_CPU::fetch_instruction()
+{
   // if we had a branch mispredict, turn fetching back on after the branch
   // mispredict penalty
-  if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) &&
-      (fetch_resume_cycle != 0)) {
+  if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
     fetch_stall = 0;
     fetch_resume_cycle = 0;
   }
@@ -366,27 +348,19 @@ void O3_CPU::fetch_instruction() {
 
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
-  auto l1i_req_begin = std::find_if(
-      IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x) {
-        return x.translated == COMPLETED && !x.fetched;
-      });
+  auto l1i_req_begin =
+      std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
   uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto l1i_req_end =
-      std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
-                   [find_addr](const ooo_model_instr &x) {
-                     return (find_addr >> LOG2_BLOCK_SIZE) !=
-                            (x.instruction_pa >> LOG2_BLOCK_SIZE);
-                   });
-  if (l1i_req_end != IFETCH_BUFFER.end() ||
-      l1i_req_begin == IFETCH_BUFFER.begin()) {
+  auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
+                                  [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
+  if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin()) {
 
     do_fetch_instruction(l1i_req_begin, l1i_req_end);
   }
 }
 
-void O3_CPU::do_fetch_instruction(
-    champsim::circular_buffer<ooo_model_instr>::iterator begin,
-    champsim::circular_buffer<ooo_model_instr>::iterator end) {
+void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
+{
   // add it to the L1-I's read queue
   PACKET fetch_packet;
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
@@ -413,12 +387,11 @@ void O3_CPU::do_fetch_instruction(
   }
 }
 
-void O3_CPU::promote_to_decode() {
+void O3_CPU::promote_to_decode()
+{
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
-  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() &&
-         !DECODE_BUFFER.full() &&
-         IFETCH_BUFFER.front().translated == COMPLETED &&
-         IFETCH_BUFFER.front().fetched == COMPLETED) {
+  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().translated == COMPLETED
+         && IFETCH_BUFFER.front().fetched == COMPLETED) {
     if (!warmup_complete[cpu] || IFETCH_BUFFER.front().decoded)
       DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.front());
     else
@@ -430,25 +403,23 @@ void O3_CPU::promote_to_decode() {
   }
 
   // check for deadlock
-  if (!std::empty(IFETCH_BUFFER) &&
-      (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
 }
 
-void O3_CPU::decode_instruction() {
+void O3_CPU::decode_instruction()
+{
   std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
   // Send decoded instructions to dispatch
-  while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() &&
-         !DISPATCH_BUFFER.full()) {
-    ooo_model_instr &db_entry = DECODE_BUFFER.front();
+  while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && !DISPATCH_BUFFER.full()) {
+    ooo_model_instr& db_entry = DECODE_BUFFER.front();
     do_dib_update(db_entry);
 
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
-      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) ||
-          (db_entry.branch_type == BRANCH_DIRECT_CALL)) {
+      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch
         // again at execute
         db_entry.branch_mispredicted = 0;
@@ -468,24 +439,20 @@ void O3_CPU::decode_instruction() {
   }
 
   // check for deadlock
-  if (!std::empty(DECODE_BUFFER) &&
-      (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr &instr) {
+void O3_CPU::do_dib_update(const ooo_model_instr& instr)
+{
   // Search DIB to see if we need to add this instruction
-  auto dib_set_begin = std::next(
-      DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
+  auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
   auto dib_set_end = std::next(dib_set_begin, dib_way);
-  auto way =
-      std::find_if(dib_set_begin, dib_set_end,
-                   eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
+  auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
 
   // If we did not find the entry in the DIB, find a victim
   if (way == dib_set_end) {
-    way = std::max_element(dib_set_begin, dib_set_end,
-                           lru_comparator<dib_entry_t>());
+    way = std::max_element(dib_set_begin, dib_set_end, lru_comparator<dib_entry_t>());
     assert(way != dib_set_end);
 
     // update way
@@ -496,15 +463,15 @@ void O3_CPU::do_dib_update(const ooo_model_instr &instr) {
   std::for_each(dib_set_begin, dib_set_end, lru_updater<dib_entry_t>(way));
 }
 
-void O3_CPU::dispatch_instruction() {
+void O3_CPU::dispatch_instruction()
+{
   if (DISPATCH_BUFFER.empty())
     return;
 
   std::size_t available_dispatch_bandwidth = DISPATCH_WIDTH;
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
-  while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.has_ready() &&
-         !ROB.full()) {
+  while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.has_ready() && !ROB.full()) {
     // Add to ROB
     ROB.push_back(DISPATCH_BUFFER.front());
     DISPATCH_BUFFER.pop_front();
@@ -512,20 +479,16 @@ void O3_CPU::dispatch_instruction() {
   }
 
   // check for deadlock
-  if (!std::empty(DISPATCH_BUFFER) &&
-      (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
 }
 
-int O3_CPU::prefetch_code_line(uint64_t pf_v_addr) {
-  return static_cast<CACHE *>(L1I_bus.lower_level)
-      ->prefetch_line(0, pf_v_addr, pf_v_addr, true, 0);
-}
+int O3_CPU::prefetch_code_line(uint64_t pf_v_addr) { return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, true, 0); }
 
-void O3_CPU::schedule_instruction() {
+void O3_CPU::schedule_instruction()
+{
   std::size_t search_bw = SCHEDULER_SIZE;
-  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0;
-       ++rob_it) {
+  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0; ++rob_it) {
     if (rob_it->scheduled == 0) {
       do_scheduling(rob_it);
 
@@ -536,9 +499,7 @@ void O3_CPU::schedule_instruction() {
         ready_to_execute.push(rob_it);
 
         DP(if (warmup_complete[cpu]) {
-          std::cout << "[ready_to_execute] " << __func__
-                    << " instr_id: " << rob_it->instr_id
-                    << " is added to ready_to_execute" << std::endl;
+          std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
         });
       }
     }
@@ -551,25 +512,22 @@ void O3_CPU::schedule_instruction() {
 struct instr_reg_will_produce {
   const uint8_t match_reg;
   explicit instr_reg_will_produce(uint8_t reg) : match_reg(reg) {}
-  bool operator()(const ooo_model_instr &test) const {
+  bool operator()(const ooo_model_instr& test) const
+  {
     auto dreg_begin = std::begin(test.destination_registers);
     auto dreg_end = std::end(test.destination_registers);
-    return test.executed != COMPLETED &&
-           std::find(dreg_begin, dreg_end, match_reg) != dreg_end;
+    return test.executed != COMPLETED && std::find(dreg_begin, dreg_end, match_reg) != dreg_end;
   }
 };
 
-void O3_CPU::do_scheduling(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it) {
+void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
+{
   // Mark register dependencies
   for (auto src_reg : rob_it->source_registers) {
     if (src_reg) {
-      champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{
-          rob_it};
+      champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
       prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
-      if (prior != ROB.rend() &&
-          (prior->registers_instrs_depend_on_me.empty() ||
-           prior->registers_instrs_depend_on_me.back() != rob_it)) {
+      if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it)) {
         prior->registers_instrs_depend_on_me.push_back(rob_it);
         rob_it->num_reg_dependent++;
       }
@@ -582,12 +540,12 @@ void O3_CPU::do_scheduling(
     rob_it->scheduled = COMPLETED;
 
     // ADD LATENCY
-    rob_it->event_cycle =
-        current_cycle + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
+    rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
   }
 }
 
-void O3_CPU::execute_instruction() {
+void O3_CPU::execute_instruction()
+{
   // out-of-order execution for non-memory instructions
   // memory instructions are handled by memory_instruction()
   uint32_t exec_issued = 0;
@@ -598,31 +556,27 @@ void O3_CPU::execute_instruction() {
   }
 }
 
-void O3_CPU::do_execution(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it) {
+void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
+{
   rob_it->executed = INFLIGHT;
 
   // ADD LATENCY
-  rob_it->event_cycle =
-      current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
+  rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
   inflight_reg_executions++;
 
   DP(if (warmup_complete[cpu]) {
-    std::cout << "[ROB] " << __func__
-              << " non-memory instr_id: " << rob_it->instr_id
-              << " event_cycle: " << rob_it->event_cycle << std::endl;
+    std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
   });
 }
 
-void O3_CPU::schedule_memory_instruction() {
+void O3_CPU::schedule_memory_instruction()
+{
   // execution is out-of-order but we have an in-order scheduling algorithm to
   // detect all RAW dependencies
   unsigned search_bw = SCHEDULER_SIZE;
-  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0;
-       ++rob_it) {
-    if (rob_it->is_memory && rob_it->num_reg_dependent == 0 &&
-        (rob_it->scheduled == INFLIGHT))
+  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0; ++rob_it) {
+    if (rob_it->is_memory && rob_it->num_reg_dependent == 0 && (rob_it->scheduled == INFLIGHT))
       do_memory_scheduling(rob_it);
 
     if (rob_it->executed == 0)
@@ -630,8 +584,8 @@ void O3_CPU::schedule_memory_instruction() {
   }
 }
 
-void O3_CPU::do_memory_scheduling(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it) {
+void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
+{
   uint32_t num_mem_ops = 0, num_added = 0;
 
   // load
@@ -640,16 +594,13 @@ void O3_CPU::do_memory_scheduling(
       num_mem_ops++;
       if (rob_it->source_added[i])
         num_added++;
-      else if (!std::all_of(std::begin(LQ), std::end(LQ),
-                            is_valid<LSQ_ENTRY>())) {
+      else if (!std::all_of(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>())) {
         add_load_queue(rob_it, i);
         num_added++;
       } else {
         DP(if (warmup_complete[cpu]) {
           cout << "[LQ] " << __func__ << " instr_id: " << rob_it->instr_id;
-          cout << " cannot be added in the load queue occupancy: "
-               << std::count_if(std::begin(LQ), std::end(LQ),
-                                is_valid<LSQ_ENTRY>())
+          cout << " cannot be added in the load queue occupancy: " << std::count_if(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>())
                << " cycle: " << current_cycle << endl;
         });
       }
@@ -662,8 +613,7 @@ void O3_CPU::do_memory_scheduling(
       num_mem_ops++;
       if (rob_it->destination_added[i])
         num_added++;
-      else if (!std::all_of(std::begin(SQ), std::end(SQ),
-                            is_valid<LSQ_ENTRY>())) {
+      else if (!std::all_of(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>())) {
         if (STA.front() == rob_it->instr_id) {
           add_store_queue(rob_it, i);
           num_added++;
@@ -671,9 +621,7 @@ void O3_CPU::do_memory_scheduling(
       } else {
         DP(if (warmup_complete[cpu]) {
           cout << "[SQ] " << __func__ << " instr_id: " << rob_it->instr_id;
-          cout << " cannot be added in the store queue occupancy: "
-               << std::count_if(std::begin(SQ), std::end(SQ),
-                                is_valid<LSQ_ENTRY>())
+          cout << " cannot be added in the store queue occupancy: " << std::count_if(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>())
                << " cycle: " << current_cycle << endl;
         });
       }
@@ -695,9 +643,9 @@ void O3_CPU::do_memory_scheduling(
   }
 }
 
-void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry) {
-  lq_entry.physical_address = splice_bits(
-      sq_entry.physical_address, lq_entry.virtual_address, LOG2_BLOCK_SIZE);
+void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry)
+{
+  lq_entry.physical_address = splice_bits(sq_entry.physical_address, lq_entry.virtual_address, LOG2_BLOCK_SIZE);
   lq_entry.translated = COMPLETED;
   lq_entry.fetched = COMPLETED;
 
@@ -709,11 +657,8 @@ void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry) {
 
   DP(if (warmup_complete[cpu]) {
     cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << hex;
-    cout << " full_addr: " << lq_entry.physical_address << dec
-         << " is forwarded by store instr_id: ";
-    cout << sq_entry.instr_id
-         << " remain_num_ops: " << lq_entry.rob_index->num_mem_ops
-         << " cycle: " << current_cycle << endl;
+    cout << " full_addr: " << lq_entry.physical_address << dec << " is forwarded by store instr_id: ";
+    cout << sq_entry.instr_id << " remain_num_ops: " << lq_entry.rob_index->num_mem_ops << " cycle: " << current_cycle << endl;
   });
 
   LSQ_ENTRY empty_entry;
@@ -723,7 +668,8 @@ void O3_CPU::do_sq_forward_to_lq(LSQ_ENTRY &sq_entry, LSQ_ENTRY &lq_entry) {
 struct instr_mem_will_produce {
   const uint64_t match_mem;
   explicit instr_mem_will_produce(uint64_t mem) : match_mem(mem) {}
-  bool operator()(const ooo_model_instr &test) const {
+  bool operator()(const ooo_model_instr& test) const
+  {
     auto dmem_begin = std::begin(test.destination_memory);
     auto dmem_end = std::end(test.destination_memory);
     return std::find(dmem_begin, dmem_end, match_mem) != dmem_end;
@@ -732,20 +678,17 @@ struct instr_mem_will_produce {
 
 struct sq_will_forward {
   const uint64_t match_id, match_addr;
-  sq_will_forward(uint64_t id, uint64_t addr)
-      : match_id(id), match_addr(addr) {}
-  bool operator()(const LSQ_ENTRY &sq_test) const {
-    return sq_test.fetched == COMPLETED && sq_test.instr_id == match_id &&
-           sq_test.virtual_address == match_addr;
+  sq_will_forward(uint64_t id, uint64_t addr) : match_id(id), match_addr(addr) {}
+  bool operator()(const LSQ_ENTRY& sq_test) const
+  {
+    return sq_test.fetched == COMPLETED && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
   }
 };
 
-void O3_CPU::add_load_queue(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it,
-    uint32_t data_index) {
+void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
+{
   // search for an empty slot
-  auto lq_it =
-      std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>());
+  auto lq_it = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>());
   assert(lq_it != std::end(LQ));
 
   // add it to the load queue
@@ -762,8 +705,7 @@ void O3_CPU::add_load_queue(
   // Mark RAW in the ROB since the producer might not be added in the store
   // queue yet
   champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
-  prior_it = std::find_if(prior_it, ROB.rend(),
-                          instr_mem_will_produce(lq_it->virtual_address));
+  prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(lq_it->virtual_address));
   if (prior_it != ROB.rend()) {
     // this load cannot be executed until the prior store gets executed
     prior_it->memory_instrs_depend_on_me.push_back(rob_it);
@@ -771,9 +713,7 @@ void O3_CPU::add_load_queue(
     lq_it->translated = INFLIGHT;
 
     // Is this already in the SQ?
-    auto sq_it = std::find_if(
-        std::begin(SQ), std::end(SQ),
-        sq_will_forward(prior_it->instr_id, lq_it->virtual_address));
+    auto sq_it = std::find_if(std::begin(SQ), std::end(SQ), sq_will_forward(prior_it->instr_id, lq_it->virtual_address));
     if (sq_it != std::end(SQ))
       do_sq_forward_to_lq(*sq_it, *lq_it);
   } else {
@@ -782,11 +722,9 @@ void O3_CPU::add_load_queue(
   }
 }
 
-void O3_CPU::add_store_queue(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it,
-    uint32_t data_index) {
-  auto sq_it =
-      std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>());
+void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
+{
+  auto sq_it = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>());
   assert(sq_it->virtual_address == 0);
 
   // add it to the store queue
@@ -807,13 +745,13 @@ void O3_CPU::add_store_queue(
 
   DP(if (warmup_complete[cpu]) {
     std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id;
-    std::cout << " is added in the SQ translated: " << +sq_it->translated
-              << " fetched: " << +sq_it->fetched;
+    std::cout << " is added in the SQ translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
 }
 
-void O3_CPU::operate_lsq() {
+void O3_CPU::operate_lsq()
+{
   // handle store
 
   uint32_t store_issued = 0;
@@ -860,7 +798,8 @@ void O3_CPU::operate_lsq() {
   }
 }
 
-int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
+int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+{
   PACKET data_packet;
 
   data_packet.fill_level = DTLB_bus.lower_level->fill_level;
@@ -876,9 +815,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
   data_packet.sq_index_depend_on_me = {sq_it};
 
   DP(if (warmup_complete[cpu]) {
-    std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id
-              << " rob_index: " << sq_it->rob_index << " is popped from to RTS0"
-              << std::endl;
+    std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is popped from to RTS0" << std::endl;
   })
 
   int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
@@ -889,7 +826,8 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
   return rq_index;
 }
 
-void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
+void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+{
   sq_it->fetched = COMPLETED;
   sq_it->event_cycle = current_cycle;
 
@@ -900,10 +838,8 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
     inflight_mem_executions++;
 
   DP(if (warmup_complete[cpu]) {
-    std::cout << "[SQ1] " << __func__ << " instr_id: " << sq_it->instr_id
-              << std::hex;
-    std::cout << " full_address: " << sq_it->physical_address << std::dec
-              << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
+    std::cout << "[SQ1] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
+    std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
     std::cout << " event_cycle: " << sq_it->event_cycle << std::endl;
   });
 
@@ -911,12 +847,10 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
   // check if this store has dependent loads
   for (auto dependent : sq_it->rob_index->memory_instrs_depend_on_me) {
     // check if dependent loads are already added in the load queue
-    for (uint32_t j = 0; j < NUM_INSTR_SOURCES;
-         j++) { // which one is dependent?
+    for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
       if (dependent->source_memory[j] && dependent->source_added[j]) {
-        if (dependent->source_memory[j] ==
-            sq_it->virtual_address) { // this is required since a single
-                                      // instruction can issue multiple loads
+        if (dependent->source_memory[j] == sq_it->virtual_address) { // this is required since a single
+                                                                     // instruction can issue multiple loads
 
           // now we can resolve RAW dependency
           assert(dependent->lq_index[j]->producer_id == sq_it->instr_id);
@@ -928,7 +862,8 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it) {
   }
 }
 
-int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it) {
+int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+{
   PACKET data_packet;
   data_packet.fill_level = DTLB_bus.lower_level->fill_level;
   data_packet.cpu = cpu;
@@ -943,9 +878,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it) {
   data_packet.lq_index_depend_on_me = {lq_it};
 
   DP(if (warmup_complete[cpu]) {
-    std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id
-              << " rob_index: " << lq_it->rob_index << " is popped to RTL0"
-              << std::endl;
+    std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is popped to RTL0" << std::endl;
   })
 
   int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
@@ -956,7 +889,8 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it) {
   return rq_index;
 }
 
-int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it) {
+int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+{
   // add it to L1D
   PACKET data_packet;
   data_packet.fill_level = L1D_bus.lower_level->fill_level;
@@ -979,8 +913,8 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it) {
   return rq_index;
 }
 
-void O3_CPU::do_complete_execution(
-    champsim::circular_buffer<ooo_model_instr>::iterator rob_it) {
+void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
+{
   rob_it->executed = COMPLETED;
   if (rob_it->is_memory == 0)
     inflight_reg_executions--;
@@ -1006,27 +940,24 @@ void O3_CPU::do_complete_execution(
     fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 }
 
-void O3_CPU::complete_inflight_instruction() {
+void O3_CPU::complete_inflight_instruction()
+{
   // update ROB entries with completed executions
   if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
     std::size_t complete_bw = EXEC_WIDTH;
     auto rob_it = std::begin(ROB);
     while (rob_it != std::end(ROB) && complete_bw > 0) {
-      if ((rob_it->executed == INFLIGHT) &&
-          (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0) {
+      if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0) {
         do_complete_execution(rob_it);
         --complete_bw;
 
         for (auto dependent : rob_it->registers_instrs_depend_on_me) {
-          if (dependent->scheduled == COMPLETED &&
-              dependent->num_reg_dependent == 0) {
+          if (dependent->scheduled == COMPLETED && dependent->num_reg_dependent == 0) {
             assert(ready_to_execute.size() < ROB.size());
             ready_to_execute.push(dependent);
 
             DP(if (warmup_complete[cpu]) {
-              std::cout << "[ready_to_execute] " << __func__
-                        << " instr_id: " << dependent->instr_id
-                        << " is added to ready_to_execute" << std::endl;
+              std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
             })
           }
         }
@@ -1037,39 +968,34 @@ void O3_CPU::complete_inflight_instruction() {
   }
 }
 
-void O3_CPU::handle_memory_return() {
+void O3_CPU::handle_memory_return()
+{
   // Instruction Memory
 
   std::size_t available_fetch_bandwidth = FETCH_WIDTH;
-  std::size_t to_read = static_cast<CACHE *>(ITLB_bus.lower_level)->MAX_READ;
+  std::size_t to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
 
-  while (available_fetch_bandwidth > 0 && to_read > 0 &&
-         !ITLB_bus.PROCESSED.empty()) {
-    PACKET &itlb_entry = ITLB_bus.PROCESSED.front();
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty()) {
+    PACKET& itlb_entry = ITLB_bus.PROCESSED.front();
 
     // mark the appropriate instructions in the IFETCH_BUFFER as translated and
     // ready to fetch
-    while (available_fetch_bandwidth > 0 &&
-           !itlb_entry.instr_depend_on_me.empty()) {
+    while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty()) {
       auto it = itlb_entry.instr_depend_on_me.front();
-      if ((it->ip >> LOG2_PAGE_SIZE) ==
-              (itlb_entry.address >> LOG2_PAGE_SIZE) &&
-          it->translated != 0) {
+      if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0) {
         // if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >>
         // LOG2_PAGE_SIZE) && it->translated != 0)
         {
           it->translated = COMPLETED;
           // recalculate a physical address for this cache line based on the
           // translated physical page address
-          it->instruction_pa =
-              splice_bits(itlb_entry.data, it->ip, LOG2_PAGE_SIZE);
+          it->instruction_pa = splice_bits(itlb_entry.data, it->ip, LOG2_PAGE_SIZE);
         }
 
         available_fetch_bandwidth--;
       }
 
-      itlb_entry.instr_depend_on_me.erase(
-          std::begin(itlb_entry.instr_depend_on_me));
+      itlb_entry.instr_depend_on_me.erase(std::begin(itlb_entry.instr_depend_on_me));
     }
 
     // remove this entry if we have serviced all of its instructions
@@ -1080,26 +1006,21 @@ void O3_CPU::handle_memory_return() {
   }
 
   available_fetch_bandwidth = FETCH_WIDTH;
-  to_read = static_cast<CACHE *>(L1I_bus.lower_level)->MAX_READ;
+  to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
 
-  while (available_fetch_bandwidth > 0 && to_read > 0 &&
-         !L1I_bus.PROCESSED.empty()) {
-    PACKET &l1i_entry = L1I_bus.PROCESSED.front();
+  while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty()) {
+    PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
     // this is the L1I cache, so instructions are now fully fetched, so mark
     // them as such
-    while (available_fetch_bandwidth > 0 &&
-           !l1i_entry.instr_depend_on_me.empty()) {
+    while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       auto it = l1i_entry.instr_depend_on_me.front();
-      if ((it->instruction_pa >> LOG2_BLOCK_SIZE) ==
-              (l1i_entry.address >> LOG2_BLOCK_SIZE) &&
-          it->fetched != 0 && it->translated == COMPLETED) {
+      if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED) {
         it->fetched = COMPLETED;
         available_fetch_bandwidth--;
       }
 
-      l1i_entry.instr_depend_on_me.erase(
-          std::begin(l1i_entry.instr_depend_on_me));
+      l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
     }
 
     // remove this entry if we have serviced all of its instructions
@@ -1109,15 +1030,14 @@ void O3_CPU::handle_memory_return() {
   }
 
   // Data Memory
-  to_read = static_cast<CACHE *>(DTLB_bus.lower_level)->MAX_READ;
+  to_read = static_cast<CACHE*>(DTLB_bus.lower_level)->MAX_READ;
 
   while (to_read > 0 && !DTLB_bus.PROCESSED.empty()) { // DTLB
-    PACKET &dtlb_entry = DTLB_bus.PROCESSED.front();
+    PACKET& dtlb_entry = DTLB_bus.PROCESSED.front();
 
     for (auto sq_merged : dtlb_entry.sq_index_depend_on_me) {
-      sq_merged->physical_address =
-          splice_bits(dtlb_entry.data, sq_merged->virtual_address,
-                      LOG2_PAGE_SIZE); // translated address
+      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address,
+                                                LOG2_PAGE_SIZE); // translated address
       sq_merged->translated = COMPLETED;
       sq_merged->event_cycle = current_cycle;
 
@@ -1125,9 +1045,8 @@ void O3_CPU::handle_memory_return() {
     }
 
     for (auto lq_merged : dtlb_entry.lq_index_depend_on_me) {
-      lq_merged->physical_address =
-          splice_bits(dtlb_entry.data, lq_merged->virtual_address,
-                      LOG2_PAGE_SIZE); // translated address
+      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address,
+                                                LOG2_PAGE_SIZE); // translated address
       lq_merged->translated = COMPLETED;
       lq_merged->event_cycle = current_cycle;
 
@@ -1139,9 +1058,9 @@ void O3_CPU::handle_memory_return() {
     --to_read;
   }
 
-  to_read = static_cast<CACHE *>(L1D_bus.lower_level)->MAX_READ;
+  to_read = static_cast<CACHE*>(L1D_bus.lower_level)->MAX_READ;
   while (to_read > 0 && !L1D_bus.PROCESSED.empty()) { // L1D
-    PACKET &l1d_entry = L1D_bus.PROCESSED.front();
+    PACKET& l1d_entry = L1D_bus.PROCESSED.front();
 
     for (auto merged : l1d_entry.lq_index_depend_on_me) {
       merged->fetched = COMPLETED;
@@ -1163,11 +1082,11 @@ void O3_CPU::handle_memory_return() {
   }
 }
 
-void O3_CPU::retire_rob() {
+void O3_CPU::retire_rob()
+{
   unsigned retire_bandwidth = RETIRE_WIDTH;
 
-  while (retire_bandwidth > 0 && !ROB.empty() &&
-         (ROB.front().executed == COMPLETED)) {
+  while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED)) {
     for (uint32_t i = 0; i < MAX_INSTR_DESTINATIONS; i++) {
       if (ROB.front().destination_memory[i]) {
 
@@ -1198,10 +1117,7 @@ void O3_CPU::retire_rob() {
     }
 
     // release ROB entry
-    DP(if (warmup_complete[cpu]) {
-      cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id
-           << " is retired" << endl;
-    });
+    DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
     ROB.pop_front();
     completed_executions--;
@@ -1210,20 +1126,20 @@ void O3_CPU::retire_rob() {
   }
 
   // Check for deadlock
-  if (!std::empty(ROB) &&
-      (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET *packet) {
+void CacheBus::return_data(PACKET* packet)
+{
   if (packet->type != PREFETCH) {
     PROCESSED.push_back(*packet);
   }
 }
 
-void O3_CPU::print_deadlock() {
-  std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle
-            << std::endl;
+void O3_CPU::print_deadlock()
+{
+  std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
 
   if (!std::empty(IFETCH_BUFFER)) {
     std::cout << "IFETCH_BUFFER head";
@@ -1233,8 +1149,7 @@ void O3_CPU::print_deadlock() {
     std::cout << " scheduled: " << +IFETCH_BUFFER.front().scheduled;
     std::cout << " executed: " << +IFETCH_BUFFER.front().executed;
     std::cout << " is_memory: " << +IFETCH_BUFFER.front().is_memory;
-    std::cout << " num_reg_dependent: "
-              << +IFETCH_BUFFER.front().num_reg_dependent;
+    std::cout << " num_reg_dependent: " << +IFETCH_BUFFER.front().num_reg_dependent;
     std::cout << " event: " << IFETCH_BUFFER.front().event_cycle;
     std::cout << std::endl;
   } else {
@@ -1260,21 +1175,15 @@ void O3_CPU::print_deadlock() {
   std::cout << "Load Queue Entry" << std::endl;
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (is_valid<LSQ_ENTRY>{}(*lq_it))
-      std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it)
-                << " instr_id: " << lq_it->instr_id << " address: " << std::hex
-                << lq_it->physical_address << std::dec
-                << " translated: " << +lq_it->translated
-                << " fetched: " << +lq_it->fetched << std::endl;
+      std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex
+                << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
   }
 
   // print SQ entry
   std::cout << std::endl << "Store Queue Entry" << std::endl;
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
     if (is_valid<LSQ_ENTRY>{}(*sq_it))
-      std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it)
-                << " instr_id: " << sq_it->instr_id << " address: " << std::hex
-                << sq_it->physical_address << std::dec
-                << " translated: " << +sq_it->translated
-                << " fetched: " << +sq_it->fetched << std::endl;
+      std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
+                << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
   }
 }

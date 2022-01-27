@@ -10,7 +10,8 @@
 #include "memory_class.h"
 #include "operable.h"
 
-class PagingStructureCache {
+class PagingStructureCache
+{
   struct block_t {
     bool valid = false;
     uint64_t address;
@@ -24,16 +25,14 @@ class PagingStructureCache {
 
 public:
   const std::size_t level;
-  PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4)
-      : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
+  PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
 
   std::optional<uint64_t> check_hit(uint64_t address);
   void fill_cache(uint64_t next_level_paddr, uint64_t vaddr);
 };
 
-class PageTableWalker : public champsim::operable,
-                        public MemoryRequestConsumer,
-                        public MemoryRequestProducer {
+class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
+{
 public:
   const std::string NAME;
   const uint32_t cpu;
@@ -50,18 +49,15 @@ public:
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level,
-                  uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5,
-                  uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9,
-                  uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13,
-                  unsigned latency, MemoryRequestConsumer *ll);
+  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+                  uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
   // functions
-  int add_rq(PACKET *packet) override;
-  int add_wq(PACKET *packet) override { assert(0); }
-  int add_pq(PACKET *packet) override { assert(0); }
+  int add_rq(PACKET* packet) override;
+  int add_wq(PACKET* packet) override { assert(0); }
+  int add_pq(PACKET* packet) override { assert(0); }
 
-  void return_data(PACKET *packet) override;
+  void return_data(PACKET* packet) override;
   void operate() override;
 
   void handle_read();

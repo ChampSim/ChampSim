@@ -3,9 +3,11 @@
 
 #include <iostream>
 
-namespace champsim {
+namespace champsim
+{
 
-class operable {
+class operable
+{
 public:
   const double CLOCK_SCALE;
 
@@ -14,7 +16,8 @@ public:
 
   explicit operable(double scale) : CLOCK_SCALE(scale - 1) {}
 
-  void _operate() {
+  void _operate()
+  {
     // skip periodically
     if (leap_operation >= 1) {
       leap_operation -= 1;
@@ -31,11 +34,10 @@ public:
   virtual void print_deadlock() {}
 };
 
-class by_next_operate {
+class by_next_operate
+{
 public:
-  bool operator()(operable *lhs, operable *rhs) const {
-    return lhs->leap_operation < rhs->leap_operation;
-  }
+  bool operator()(operable* lhs, operable* rhs) const { return lhs->leap_operation < rhs->leap_operation; }
 };
 
 } // namespace champsim
