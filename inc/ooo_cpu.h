@@ -39,7 +39,6 @@ class O3_CPU : public champsim::operable {
              finish_sim_cycle = 0, finish_sim_instr = 0,
              instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
              next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0;
-    uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
 
     struct dib_entry_t
     {

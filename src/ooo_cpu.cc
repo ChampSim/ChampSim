@@ -536,8 +536,6 @@ void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator r
     // ADD LATENCY
     rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
-    inflight_reg_executions++;
-
     DP (if (warmup_complete[cpu]) {
             std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;});
 }
@@ -607,8 +605,6 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                     {
                         rob_it->num_mem_ops--;
                         rob_it->event_cycle = current_cycle;
-                        if (rob_it->num_mem_ops == 0)
-                            inflight_mem_executions++;
 
                         assert(rob_it->num_mem_ops >= 0);
 
@@ -736,8 +732,6 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     sq_it->rob_index->num_mem_ops--;
     sq_it->rob_index->event_cycle = current_cycle;
     assert(sq_it->rob_index->num_mem_ops >= 0);
-    if (sq_it->rob_index->num_mem_ops == 0)
-        inflight_mem_executions++;
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
@@ -755,8 +749,6 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
             // update corresponding LQ entry
             dependent->num_mem_ops--;
             dependent->event_cycle = current_cycle;
-            if (dependent->num_mem_ops == 0)
-                inflight_mem_executions++;
 
             assert(found->q_entry->producer_id == sq_it->instr_id);
             assert(dependent->num_mem_ops >= 0);
@@ -824,10 +816,6 @@ void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::i
     }
 
     rob_it->executed = COMPLETED;
-    if (rob_it->is_memory == 0)
-        inflight_reg_executions--;
-    else
-        inflight_mem_executions--;
 
     completed_executions++;
 
@@ -852,32 +840,30 @@ void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::i
 void O3_CPU::complete_inflight_instruction()
 {
     // update ROB entries with completed executions
-    if ((inflight_reg_executions > 0) || (inflight_mem_executions > 0)) {
-        std::size_t complete_bw = EXEC_WIDTH;
-        auto rob_it = std::begin(ROB);
-        while (rob_it != std::end(ROB) && complete_bw > 0)
+    std::size_t complete_bw = EXEC_WIDTH;
+    auto rob_it = std::begin(ROB);
+    while (rob_it != std::end(ROB) && complete_bw > 0)
+    {
+        if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0)
         {
-            if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0)
+            do_complete_execution(rob_it);
+            --complete_bw;
+
+            for (auto dependent : rob_it->registers_instrs_depend_on_me)
             {
-                do_complete_execution(rob_it);
-                --complete_bw;
-
-                for (auto dependent : rob_it->registers_instrs_depend_on_me)
+                if (dependent->scheduled == COMPLETED && dependent->num_reg_dependent == 0)
                 {
-                    if (dependent->scheduled == COMPLETED && dependent->num_reg_dependent == 0)
-                    {
-                        assert(ready_to_execute.size() < ROB.size());
-                        ready_to_execute.push(dependent);
+                    assert(ready_to_execute.size() < ROB.size());
+                    ready_to_execute.push(dependent);
 
-                        DP ( if (warmup_complete[cpu]) {
-                                std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl; })
-                    }
+                    DP ( if (warmup_complete[cpu]) {
+                            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl; })
                 }
-
             }
 
-            ++rob_it;
         }
+
+        ++rob_it;
     }
 }
 
@@ -983,9 +969,6 @@ void O3_CPU::handle_memory_return()
             merged->event_cycle = current_cycle;
             merged->rob_index->num_mem_ops--;
             merged->rob_index->event_cycle = current_cycle;
-
-            if (merged->rob_index->num_mem_ops == 0)
-                inflight_mem_executions++;
 
           LSQ_ENTRY empty_entry;
           *merged = empty_entry;
