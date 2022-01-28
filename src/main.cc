@@ -306,29 +306,22 @@ int main(int argc, char** argv)
     uint32_t seed_number = 0;
 
     // check to see if knobs changed using getopt_long()
+    int traces_encountered = 0;
+    static struct option long_options[] =
+    {
+        {"warmup_instructions", required_argument, 0, 'w'},
+        {"simulation_instructions", required_argument, 0, 'i'},
+        {"hide_heartbeat", no_argument, 0, 'h'},
+        {"cloudsuite", no_argument, 0, 'c'},
+        {"traces",  no_argument, &traces_encountered, 1},
+        {0, 0, 0, 0}
+    };
+
     int c;
-    while (1) {
-        static struct option long_options[] =
+    while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered)
+    {
+        switch (c)
         {
-            {"warmup_instructions", required_argument, 0, 'w'},
-            {"simulation_instructions", required_argument, 0, 'i'},
-            {"hide_heartbeat", no_argument, 0, 'h'},
-            {"cloudsuite", no_argument, 0, 'c'},
-            {"traces",  no_argument, 0, 't'},
-            {0, 0, 0, 0}      
-        };
-
-        int option_index = 0;
-
-        c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
-
-        // no more option characters
-        if (c == -1)
-            break;
-
-        int traces_encountered = 0;
-
-        switch(c) {
             case 'w':
                 warmup_instructions = atol(optarg);
                 break;
@@ -342,15 +335,11 @@ int main(int argc, char** argv)
                 knob_cloudsuite = 1;
                 MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
                 break;
-            case 't':
-                traces_encountered = 1;
+            case 0:
                 break;
             default:
                 abort();
         }
-
-        if (traces_encountered == 1)
-            break;
     }
 
     // consequences of knobs
@@ -375,41 +364,35 @@ int main(int argc, char** argv)
     // end consequence of knobs
 
     // search through the argv for "-traces"
-    int found_traces = 0;
     std::cout << std::endl;
-    for (int i=0; i<argc; i++) {
-        if (found_traces)
-        {
-            std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+    for (int i=optind; i<argc; i++)
+    {
+        std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
 
-            traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
+        traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
 
-            char *pch[100];
-            int count_str = 0;
-            pch[0] = strtok (argv[i], " /,.-");
-            while (pch[count_str] != NULL) {
-                //printf ("%s %d\n", pch[count_str], count_str);
-                count_str++;
-                pch[count_str] = strtok (NULL, " /,.-");
-            }
-
-            //printf("max count_str: %d\n", count_str);
-            //printf("application: %s\n", pch[count_str-3]);
-
-            int j = 0;
-            while (pch[count_str-3][j] != '\0') {
-                seed_number += pch[count_str-3][j];
-                //printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
-                j++;
-            }
-
-            if (traces.size() > NUM_CPUS) {
-                printf("\n*** Too many traces for the configured number of cores ***\n\n");
-                assert(0);
-            }
+        char *pch[100];
+        int count_str = 0;
+        pch[0] = strtok (argv[i], " /,.-");
+        while (pch[count_str] != NULL) {
+            //printf ("%s %d\n", pch[count_str], count_str);
+            count_str++;
+            pch[count_str] = strtok (NULL, " /,.-");
         }
-        else if(strcmp(argv[i],"-traces") == 0) {
-            found_traces = 1;
+
+        //printf("max count_str: %d\n", count_str);
+        //printf("application: %s\n", pch[count_str-3]);
+
+        int j = 0;
+        while (pch[count_str-3][j] != '\0') {
+            seed_number += pch[count_str-3][j];
+            //printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
+            j++;
+        }
+
+        if (traces.size() > NUM_CPUS) {
+            printf("\n*** Too many traces for the configured number of cores ***\n\n");
+            assert(0);
         }
     }
 
