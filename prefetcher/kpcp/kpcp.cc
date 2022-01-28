@@ -1,6 +1,7 @@
 // Note that some variables and functions are defined at kpcp_util.cc
 
 #include "kpcp.h"
+
 #include "cache.h"
 
 #define PF_THRESHOLD 25
@@ -21,23 +22,23 @@ L2_PT_invalid[NUM_CPUS], L2_PT_miss[NUM_CPUS]; int
 l2_sig_dist[NUM_CPUS][1<<SIG_LENGTH];
 */
 
-int num_pf[NUM_CPUS], curr_conf[NUM_CPUS], curr_delta[NUM_CPUS],
-    MAX_CONF[NUM_CPUS];
+int num_pf[NUM_CPUS], curr_conf[NUM_CPUS], curr_delta[NUM_CPUS], MAX_CONF[NUM_CPUS];
 int out_of_page[NUM_CPUS], not_enough_conf[NUM_CPUS];
 int pf_delta[NUM_CPUS][L2C_MSHR_SIZE], PF_inflight[NUM_CPUS];
 int spp_pf_issued[NUM_CPUS], spp_pf_useful[NUM_CPUS], spp_pf_useless[NUM_CPUS];
-int useful_depth[NUM_CPUS][L2C_MSHR_SIZE],
-    useless_depth[NUM_CPUS][L2C_MSHR_SIZE];
+int useful_depth[NUM_CPUS][L2C_MSHR_SIZE], useless_depth[NUM_CPUS][L2C_MSHR_SIZE];
 int conf_counter[NUM_CPUS];
 
 int PF_check(uint32_t cpu, int signature, int curr_block);
 int st_prime = L2_ST_PRIME, pt_prime = L2_PT_PRIME;
 
-class PF_buffer {
+class PF_buffer
+{
 public:
   int delta, signature, conf, depth;
 
-  PF_buffer() {
+  PF_buffer()
+  {
     delta = 0;
     signature = 0;
     conf = 0;
@@ -46,7 +47,8 @@ public:
 };
 PF_buffer pf_buffer[NUM_CPUS][L2C_MSHR_SIZE];
 
-void CACHE::prefetcher_initialize() {
+void CACHE::prefetcher_initialize()
+{
   std::cout << NAME << " Signature Path Prefetcher" << std::endl;
 
   spp_pf_issued[cpu] = 0;
@@ -69,8 +71,8 @@ void CACHE::prefetcher_initialize() {
   conf_counter[cpu] = 0;
 }
 
-void GHR_update(uint32_t cpu, int signature, int path_conf, int last_block,
-                int oop_delta) {
+void GHR_update(uint32_t cpu, int signature, int path_conf, int last_block, int oop_delta)
+{
   int match;
   for (match = 0; match < L2_GHR_TRACK; match++) {
     if (L2_GHR[cpu][match].signature == signature) { // Hit
@@ -131,7 +133,8 @@ void GHR_update(uint32_t cpu, int signature, int path_conf, int last_block,
   return;
 }
 
-int check_same_page(int curr_block, int delta) {
+int check_same_page(int curr_block, int delta)
+{
   if ((0 <= (curr_block + delta)) && ((curr_block + delta) <= 63))
     return 1;
   else
@@ -139,9 +142,10 @@ int check_same_page(int curr_block, int delta) {
 }
 
 // Check prefetch candidate
-int PF_check(uint32_t cpu, int signature, int curr_block) {
+int PF_check(uint32_t cpu, int signature, int curr_block)
+{
   int l2_pt_idx = signature % pt_prime; // L2_PT_PRIME;
-  PATTERN_TABLE *table = L2_PT[cpu][l2_pt_idx];
+  PATTERN_TABLE* table = L2_PT[cpu][l2_pt_idx];
   int pf_max = 0, pf_idx = -1, conf_max = 100, temp_conf = 100;
 
   if (table[0].c_sig) // This signature was updated at least once
@@ -153,9 +157,8 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
 
       if (temp_conf >= PF_THRESHOLD) // This delta entry has enough confidence
       {
-        if (check_same_page(
-                curr_block,
-                table[i].delta)) // Safe to prefetch in page boundary
+        if (check_same_page(curr_block,
+                            table[i].delta)) // Safe to prefetch in page boundary
         {
           pf_buffer[cpu][num_pf[cpu]].delta = table[i].delta;
           pf_buffer[cpu][num_pf[cpu]].signature = signature;
@@ -165,9 +168,7 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
           if (warmup_complete[cpu])
             L2_PF_DEBUG(printf("PF_buffer cpu: %d idx: %d delta: %d signature: "
                                "%x depth: %d conf: %d\n",
-                               cpu, 0, pf_buffer[cpu][num_pf[cpu]].delta,
-                               pf_buffer[cpu][num_pf[cpu]].signature,
-                               pf_buffer[cpu][num_pf[cpu]].depth,
+                               cpu, 0, pf_buffer[cpu][num_pf[cpu]].delta, pf_buffer[cpu][num_pf[cpu]].signature, pf_buffer[cpu][num_pf[cpu]].depth,
                                pf_buffer[cpu][num_pf[cpu]].conf));
 
           num_pf[cpu]++;
@@ -175,11 +176,9 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
         {
           out_of_page[cpu]++;
           if (warmup_complete[cpu])
-            L2_PF_DEBUG(
-                printf("PT_sig: %4x PF_check OOP high_curr_conf: %d  way: %d  "
-                       "delta: %d  counter: %d / %d  MAX_CONF: %d\n",
-                       signature, temp_conf, i, table[i].delta,
-                       table[i].c_delta, table[0].c_sig, MAX_CONF[cpu]));
+            L2_PF_DEBUG(printf("PT_sig: %4x PF_check OOP high_curr_conf: %d  way: %d  "
+                               "delta: %d  counter: %d / %d  MAX_CONF: %d\n",
+                               signature, temp_conf, i, table[i].delta, table[i].c_delta, table[0].c_sig, MAX_CONF[cpu]));
 
 #ifdef L2_GHR_ON
           GHR_update(cpu, signature, temp_conf, curr_block, table[i].delta);
@@ -193,19 +192,15 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
           conf_max = temp_conf;
         }
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(
-              printf("PT_sig: %4x PF_check candidate  high_curr_conf: %d  way: "
-                     "%d  delta: %d  counter: %d / %d  MAX_CONF: %d\n",
-                     signature, temp_conf, i, table[i].delta, table[i].c_delta,
-                     table[i].c_sig, MAX_CONF[cpu]));
+          L2_PF_DEBUG(printf("PT_sig: %4x PF_check candidate  high_curr_conf: %d  way: "
+                             "%d  delta: %d  counter: %d / %d  MAX_CONF: %d\n",
+                             signature, temp_conf, i, table[i].delta, table[i].c_delta, table[i].c_sig, MAX_CONF[cpu]));
       } else {
         not_enough_conf[cpu]++;
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(
-              printf("PT_sig: %4x PF_check no candidate  low_curr_conf: %d  "
-                     "way: %d  stride: %d  counter: %d / %d  MAX_CONF: %d\n",
-                     signature, temp_conf, i, table[i].delta, table[i].c_delta,
-                     table[i].c_sig, MAX_CONF[cpu]));
+          L2_PF_DEBUG(printf("PT_sig: %4x PF_check no candidate  low_curr_conf: %d  "
+                             "way: %d  stride: %d  counter: %d / %d  MAX_CONF: %d\n",
+                             signature, temp_conf, i, table[i].delta, table[i].c_delta, table[i].c_sig, MAX_CONF[cpu]));
       }
     }
 
@@ -228,8 +223,7 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
 
   if (curr_conf[cpu] >= PF_THRESHOLD) {
     do {
-      la_signature =
-          get_new_signature(la_signature, curr_delta[cpu] - last_delta);
+      la_signature = get_new_signature(la_signature, curr_delta[cpu] - last_delta);
       la_pf_max = 0;
       la_pf_idx = -1;
       LA_idx = la_signature % pt_prime; // L2_PT_PRIME;
@@ -240,11 +234,9 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
 
         for (int i = 0; i < L2_PT_WAY; i++) {
           // Calculate path confidence
-          temp_conf = curr_conf[cpu] * table[i].c_delta / table[0].c_sig *
-                      MAX_CONF[cpu] / 100;
+          temp_conf = curr_conf[cpu] * table[i].c_delta / table[0].c_sig * MAX_CONF[cpu] / 100;
 
-          if (temp_conf >=
-              PF_THRESHOLD) // This delta entry has enough confidence
+          if (temp_conf >= PF_THRESHOLD) // This delta entry has enough confidence
           {
             // Track the maximum counter regardless of page boundary
             if (la_pf_max < table[i].c_delta) {
@@ -253,19 +245,15 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
               conf_max = temp_conf;
             }
             if (warmup_complete[cpu])
-              L2_PF_DEBUG(printf(
-                  "PT_sig: %4x LA_check candidate  high_curr_conf: %d  way: %d "
-                  " stride: %d  counter: %d / %d  MAX_CONF: %d\n",
-                  la_signature, temp_conf, i, table[i].delta, table[i].c_delta,
-                  table[0].c_sig, MAX_CONF[cpu]));
+              L2_PF_DEBUG(printf("PT_sig: %4x LA_check candidate  high_curr_conf: %d  way: %d "
+                                 " stride: %d  counter: %d / %d  MAX_CONF: %d\n",
+                                 la_signature, temp_conf, i, table[i].delta, table[i].c_delta, table[0].c_sig, MAX_CONF[cpu]));
           } else {
             not_enough_conf[cpu]++;
             if (warmup_complete[cpu])
-              L2_PF_DEBUG(printf(
-                  "PT_sig: %4x LA_check no candidate  low_curr_conf: %d  way: "
-                  "%d  stride: %d  counter: %d / %d  MAX_CONF: %d\n",
-                  la_signature, temp_conf, i, table[i].delta, table[i].c_delta,
-                  table[0].c_sig, MAX_CONF[cpu]));
+              L2_PF_DEBUG(printf("PT_sig: %4x LA_check no candidate  low_curr_conf: %d  way: "
+                                 "%d  stride: %d  counter: %d / %d  MAX_CONF: %d\n",
+                                 la_signature, temp_conf, i, table[i].delta, table[i].c_delta, table[0].c_sig, MAX_CONF[cpu]));
           }
         }
 
@@ -273,11 +261,9 @@ int PF_check(uint32_t cpu, int signature, int curr_block) {
         if (la_pf_idx >= 0) {
           if (num_pf[cpu] < L2C_MSHR_SIZE) {
             // Safe to prefetch in page boundary
-            if (check_same_page(curr_block,
-                                curr_delta[cpu] + table[la_pf_idx].delta)) {
+            if (check_same_page(curr_block, curr_delta[cpu] + table[la_pf_idx].delta)) {
               if (curr_delta[cpu] + table[la_pf_idx].delta) {
-                pf_buffer[cpu][num_pf[cpu]].delta =
-                    curr_delta[cpu] + table[la_pf_idx].delta;
+                pf_buffer[cpu][num_pf[cpu]].delta = curr_delta[cpu] + table[la_pf_idx].delta;
                 pf_buffer[cpu][num_pf[cpu]].signature = la_signature;
                 pf_buffer[cpu][num_pf[cpu]].depth = num_pf[cpu] + 1;
                 pf_buffer[cpu][num_pf[cpu]].conf = conf_max;
@@ -605,9 +591,8 @@ table[0].c_sig)); L2_PT_miss[cpu]++; L2_PT_access[cpu]++;
 */
 
 // TODO: from here
-uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
-                                   uint8_t cache_hit, uint8_t type,
-                                   uint32_t metadata_in) {
+uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
   // Check ST
   L2_ST_update(cpu, addr);
 
@@ -638,8 +623,7 @@ uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
 
   // Check bitmap
   // Mark bitmap (demand)
-  if (L2_ST[cpu][l2_st_idx][l2_st_match].l2_pf[curr_block] &&
-      (L2_ST[cpu][l2_st_idx][l2_st_match].used[curr_block] == 0)) {
+  if (L2_ST[cpu][l2_st_idx][l2_st_match].l2_pf[curr_block] && (L2_ST[cpu][l2_st_idx][l2_st_match].used[curr_block] == 0)) {
     spp_pf_useful[cpu]++;
     useful_depth[cpu][L2_ST[cpu][l2_st_idx][l2_st_match].depth[curr_block]]++;
 
@@ -673,8 +657,7 @@ uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
     L2_PF_DEBUG(printf("pf_delta: "));
   for (int i = 0; i < num_pf[cpu]; i++) {
     if (pf_buffer[cpu][i].delta == 0) {
-      printf("pf_delta[%d][%d]: %d  num_pf_delta: %d\n", cpu, i,
-             pf_buffer[cpu][i].delta, num_pf[cpu]);
+      printf("pf_delta[%d][%d]: %d  num_pf_delta: %d\n", cpu, i, pf_buffer[cpu][i].delta, num_pf[cpu]);
       assert(0);
     } else {
       if (warmup_complete[cpu])
@@ -686,44 +669,34 @@ uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
 
   for (int i = 0; i < num_pf[cpu]; i++) {
     if (pf_buffer[cpu][i].delta == 0) {
-      printf("pf_delta[%d][%d]: %d  num_pf_delta: %d\n", cpu, i,
-             pf_buffer[cpu][i].delta, num_pf[cpu]);
+      printf("pf_delta[%d][%d]: %d  num_pf_delta: %d\n", cpu, i, pf_buffer[cpu][i].delta, num_pf[cpu]);
       assert(0);
     } else {
       // Actual prefetch request, calculate prefetch address
-      pf_addr = ((addr >> LOG2_BLOCK_SIZE) + pf_buffer[cpu][i].delta)
-                << LOG2_BLOCK_SIZE;
+      pf_addr = ((addr >> LOG2_BLOCK_SIZE) + pf_buffer[cpu][i].delta) << LOG2_BLOCK_SIZE;
       pf_block = (pf_addr >> LOG2_BLOCK_SIZE) & 0x3F;
 
       // Check bitmap
-      int l2_pf = L2_ST[cpu][l2_st_idx][l2_st_match].l2_pf[pf_block],
-          l2_demand = L2_ST[cpu][l2_st_idx][l2_st_match].used[pf_block];
+      int l2_pf = L2_ST[cpu][l2_st_idx][l2_st_match].l2_pf[pf_block], l2_demand = L2_ST[cpu][l2_st_idx][l2_st_match].used[pf_block];
 
       // if (bitmap_check)
       if (l2_pf || l2_demand) {
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(printf("Prefetch is filtered  key: %lx\n",
-                             pf_addr >> LOG2_BLOCK_SIZE));
+          L2_PF_DEBUG(printf("Prefetch is filtered  key: %lx\n", pf_addr >> LOG2_BLOCK_SIZE));
       } else {
         if (pf_buffer[cpu][i].conf >= FILL_THRESHOLD) { // Prefetch to the L2
           if (prefetch_line(ip, addr, pf_addr, FILL_L2, 0)) {
             PF_inflight[cpu]++;
             if (warmup_complete[cpu])
-              L2_PF_DEBUG(
-                  printf("L2_PREFETCH  cpu: %d base_cl: %lx pf_cl: %lx delta: "
-                         "%d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
-                         cpu, addr >> LOG2_BLOCK_SIZE,
-                         pf_addr >> LOG2_BLOCK_SIZE, pf_buffer[cpu][i].delta,
-                         pf_buffer[cpu][i].signature, pf_buffer[cpu][i].conf,
-                         pf_buffer[cpu][i].depth, pf_buffer[cpu][i].conf));
+              L2_PF_DEBUG(printf("L2_PREFETCH  cpu: %d base_cl: %lx pf_cl: %lx delta: "
+                                 "%d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
+                                 cpu, addr >> LOG2_BLOCK_SIZE, pf_addr >> LOG2_BLOCK_SIZE, pf_buffer[cpu][i].delta, pf_buffer[cpu][i].signature,
+                                 pf_buffer[cpu][i].conf, pf_buffer[cpu][i].depth, pf_buffer[cpu][i].conf));
 
             // Mark bitmap (prefetch)
             L2_ST[cpu][l2_st_idx][l2_st_match].l2_pf[pf_block] = 1;
-            L2_ST[cpu][l2_st_idx][l2_st_match].delta[pf_block] =
-                ((int64_t)pf_addr >> LOG2_BLOCK_SIZE) -
-                ((int64_t)addr >> LOG2_BLOCK_SIZE);
-            L2_ST[cpu][l2_st_idx][l2_st_match].depth[pf_block] =
-                PF_inflight[cpu];
+            L2_ST[cpu][l2_st_idx][l2_st_match].delta[pf_block] = ((int64_t)pf_addr >> LOG2_BLOCK_SIZE) - ((int64_t)addr >> LOG2_BLOCK_SIZE);
+            L2_ST[cpu][l2_st_idx][l2_st_match].depth[pf_block] = PF_inflight[cpu];
 
             spp_pf_issued[cpu]++;
             if (spp_pf_issued[cpu] > GC_MAX) {
@@ -731,18 +704,14 @@ uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
               spp_pf_useful[cpu] /= 2;
             }
           }
-        } else if (pf_buffer[cpu][i].conf >=
-                   PF_THRESHOLD) { // Prefetch to the LLC
+        } else if (pf_buffer[cpu][i].conf >= PF_THRESHOLD) { // Prefetch to the LLC
           if (prefetch_line(ip, addr, pf_addr, FILL_LLC, 0)) {
             PF_inflight[cpu]++;
             if (warmup_complete[cpu])
-              L2_PF_DEBUG(
-                  printf("LLC_PREFETCH cpu: %d base_cl: %lx pf_cl: %lx delta: "
-                         "%d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
-                         cpu, addr >> LOG2_BLOCK_SIZE,
-                         pf_addr >> LOG2_BLOCK_SIZE, pf_buffer[cpu][i].delta,
-                         pf_buffer[cpu][i].signature, pf_buffer[cpu][i].conf,
-                         pf_buffer[cpu][i].depth, pf_buffer[cpu][i].conf));
+              L2_PF_DEBUG(printf("LLC_PREFETCH cpu: %d base_cl: %lx pf_cl: %lx delta: "
+                                 "%d d_sig: %x pf_sig: %x depth: %d conf: %d\n",
+                                 cpu, addr >> LOG2_BLOCK_SIZE, pf_addr >> LOG2_BLOCK_SIZE, pf_buffer[cpu][i].delta, pf_buffer[cpu][i].signature,
+                                 pf_buffer[cpu][i].conf, pf_buffer[cpu][i].depth, pf_buffer[cpu][i].conf));
           }
         }
       }
@@ -755,10 +724,8 @@ uint32_t CACHE::prefetcher_operate(uint64_t v_addr, uint64_t addr, uint64_t ip,
   return metadata_in;
 }
 
-uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr,
-                                      uint32_t set, uint32_t way,
-                                      uint8_t prefetch, uint64_t evicted_addr,
-                                      uint32_t metadata_in) {
+uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
   // L2 FILL
   uint64_t evicted_cl = evicted_addr >> LOG2_BLOCK_SIZE;
 
@@ -767,7 +734,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr,
     int l2_st_match = L2_ST_check(cpu, evicted_addr),
         l2_st_idx = (evicted_addr >> LOG2_PAGE_SIZE) % st_prime, // L2_ST_PRIME,
         evicted_block = evicted_cl & 0x3F;
-    SIGNATURE_TABLE *table = L2_ST[cpu][l2_st_idx];
+    SIGNATURE_TABLE* table = L2_ST[cpu][l2_st_idx];
 
     if (l2_st_match >= 0) {
       int evicted_depth = table[l2_st_match].depth[evicted_block];
@@ -778,10 +745,8 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr,
           useless_depth[cpu][evicted_depth]++;
 
           L2_PF_DEBUG(if (warmup_complete[cpu]) {
-            cout << "Useless pf_addr: " << hex << evicted_cl << dec
-                 << " delta: " << table[l2_st_match].delta[evicted_block];
-            cout << " depth: " << table[l2_st_match].depth[evicted_block]
-                 << endl;
+            cout << "Useless pf_addr: " << hex << evicted_cl << dec << " delta: " << table[l2_st_match].delta[evicted_block];
+            cout << " depth: " << table[l2_st_match].depth[evicted_block] << endl;
           });
 
           // Notify sampler
@@ -800,9 +765,9 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t v_addr, uint64_t addr,
 
 void CACHE::prefetcher_cycle_operate() {}
 
-void CACHE::prefetcher_final_stats() {
-  std::cout << std::endl
-            << NAME << " Signature Path Prefetcher final stats" << std::endl;
+void CACHE::prefetcher_final_stats()
+{
+  std::cout << std::endl << NAME << " Signature Path Prefetcher final stats" << std::endl;
 
   /*
   int temp1 = 0, temp2 = 0;

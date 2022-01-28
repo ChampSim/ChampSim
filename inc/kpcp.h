@@ -27,12 +27,13 @@
 
 #define BAD_MAX 7
 
-class SIGNATURE_TABLE {
+class SIGNATURE_TABLE
+{
 public:
-  int valid, tag, last_block, signature, lru, l2_pf[64], used[64], delta[64],
-      depth[64], dirty[64], first_hit;
+  int valid, tag, last_block, signature, lru, l2_pf[64], used[64], delta[64], depth[64], dirty[64], first_hit;
 
-  SIGNATURE_TABLE() {
+  SIGNATURE_TABLE()
+  {
     valid = 0;
     tag = 0;
     last_block = 0;
@@ -51,22 +52,26 @@ public:
   };
 };
 
-class PATTERN_TABLE {
+class PATTERN_TABLE
+{
 public:
   int delta, c_delta, c_sig;
 
-  PATTERN_TABLE() {
+  PATTERN_TABLE()
+  {
     delta = 0;
     c_delta = 0;
     c_sig = 0;
   };
 };
 
-class GLOBAL_HISTORY_REGISTER {
+class GLOBAL_HISTORY_REGISTER
+{
 public:
   int signature, path_conf, last_block, oop_delta, lru;
 
-  GLOBAL_HISTORY_REGISTER() {
+  GLOBAL_HISTORY_REGISTER()
+  {
     signature = 0;
     path_conf = 0;
     last_block = 0;
@@ -77,10 +82,8 @@ public:
 extern SIGNATURE_TABLE L2_ST[NUM_CPUS][L2_ST_SET][L2_ST_WAY];
 extern PATTERN_TABLE L2_PT[NUM_CPUS][L2_PT_SET][L2_PT_WAY];
 extern GLOBAL_HISTORY_REGISTER L2_GHR[NUM_CPUS][L2_GHR_TRACK];
-extern int L2_ST_access[NUM_CPUS], L2_ST_hit[NUM_CPUS], L2_ST_invalid[NUM_CPUS],
-    L2_ST_miss[NUM_CPUS];
-extern int L2_PT_access[NUM_CPUS], L2_PT_hit[NUM_CPUS], L2_PT_invalid[NUM_CPUS],
-    L2_PT_miss[NUM_CPUS];
+extern int L2_ST_access[NUM_CPUS], L2_ST_hit[NUM_CPUS], L2_ST_invalid[NUM_CPUS], L2_ST_miss[NUM_CPUS];
+extern int L2_PT_access[NUM_CPUS], L2_PT_hit[NUM_CPUS], L2_PT_invalid[NUM_CPUS], L2_PT_miss[NUM_CPUS];
 extern int l2_sig_dist[NUM_CPUS][1 << SIG_LENGTH];
 
 unsigned int get_new_signature(unsigned int old_signature, int curr_delta);
@@ -96,13 +99,12 @@ SIGNATURE_TABLE L2_ST[NUM_CPUS][L2_ST_SET][L2_ST_WAY];
 PATTERN_TABLE L2_PT[NUM_CPUS][L2_PT_SET][L2_PT_WAY];
 GLOBAL_HISTORY_REGISTER L2_GHR[NUM_CPUS][L2_GHR_TRACK];
 
-int L2_ST_access[NUM_CPUS], L2_ST_hit[NUM_CPUS], L2_ST_invalid[NUM_CPUS],
-    L2_ST_miss[NUM_CPUS];
-int L2_PT_access[NUM_CPUS], L2_PT_hit[NUM_CPUS], L2_PT_invalid[NUM_CPUS],
-    L2_PT_miss[NUM_CPUS];
+int L2_ST_access[NUM_CPUS], L2_ST_hit[NUM_CPUS], L2_ST_invalid[NUM_CPUS], L2_ST_miss[NUM_CPUS];
+int L2_PT_access[NUM_CPUS], L2_PT_hit[NUM_CPUS], L2_PT_invalid[NUM_CPUS], L2_PT_miss[NUM_CPUS];
 int l2_sig_dist[NUM_CPUS][1 << SIG_LENGTH];
 
-unsigned int get_new_signature(unsigned int old_signature, int curr_delta) {
+unsigned int get_new_signature(unsigned int old_signature, int curr_delta)
+{
   if (curr_delta == 0)
     return old_signature;
 
@@ -123,19 +125,17 @@ unsigned int get_new_signature(unsigned int old_signature, int curr_delta) {
 }
 
 // Update signature table
-int L2_ST_update(uint32_t cpu, uint64_t addr) {
+int L2_ST_update(uint32_t cpu, uint64_t addr)
+{
   uint64_t curr_page = addr >> LOG2_PAGE_SIZE;
-  int tag = curr_page & 0xFFFF, hit = 0, match = -1,
-      L2_ST_idx = curr_page % L2_ST_PRIME,
-      curr_block = (addr >> LOG2_BLOCK_SIZE) & 0x3F;
-  SIGNATURE_TABLE *table = L2_ST[cpu][L2_ST_idx];
+  int tag = curr_page & 0xFFFF, hit = 0, match = -1, L2_ST_idx = curr_page % L2_ST_PRIME, curr_block = (addr >> LOG2_BLOCK_SIZE) & 0x3F;
+  SIGNATURE_TABLE* table = L2_ST[cpu][L2_ST_idx];
   int delta_buffer = 0, sig_buffer = 0;
 
   for (match = 0; match < L2_ST_WAY; match++) {
     if (table[match].valid && (table[match].tag == tag)) { // Hit
-      delta_buffer =
-          curr_block - table[match].last_block; // Buffer current delta
-      sig_buffer = table[match].signature;      // Buffer old signature
+      delta_buffer = curr_block - table[match].last_block; // Buffer current delta
+      sig_buffer = table[match].signature;                 // Buffer old signature
 
       if (table[match].signature == 0) { // First hit in L2_ST
         // We cannot associate delta pattern with signature when we see "the
@@ -147,16 +147,14 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
         int sig_delta = curr_block - table[match].last_block;
         if (sig_delta < 0)
           sig_delta = 64 + (curr_block - table[match].last_block) * (-1);
-        table[match].signature =
-            sig_delta & SIG_MASK; // This is the first signature
+        table[match].signature = sig_delta & SIG_MASK; // This is the first signature
         table[match].first_hit = 1;
         l2_sig_dist[cpu][table[match].signature]++;
 
         if (warmup_complete[cpu])
           L2_PF_DEBUG(printf("ST_hit_first cpu: %d cl_addr: %lx page: %lx "
                              "block: %d init_sig: %x delta: %d\n",
-                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page,
-                             curr_block, table[match].signature, delta_buffer));
+                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, table[match].signature, delta_buffer));
       } else {
         hit = 1;
         table[match].first_hit = 0;
@@ -171,8 +169,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
         if (warmup_complete[cpu])
           L2_PF_DEBUG(printf("ST_hit cpu: %d cl_addr: %lx page: %lx block: %d "
                              "old_sig: %x delta: %d\n",
-                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page,
-                             curr_block, sig_buffer, delta_buffer));
+                             cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, sig_buffer, delta_buffer));
 
         // Update signature
         int new_signature = get_new_signature(sig_buffer, delta_buffer);
@@ -201,9 +198,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
         L2_ST_access[cpu]++;
 
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(
-              printf("ST_invalid cpu: %d cl_addr: %lx page: %lx block: %d\n",
-                     cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block));
+          L2_PF_DEBUG(printf("ST_invalid cpu: %d cl_addr: %lx page: %lx block: %d\n", cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block));
         break;
       }
     }
@@ -229,9 +224,7 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
     }
 
     if (warmup_complete[cpu])
-      L2_PF_DEBUG(printf(
-          "ST_miss cpu: %d cl_addr: %lx page: %lx block: %d lru: %d\n", cpu,
-          addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, table[match].lru));
+      L2_PF_DEBUG(printf("ST_miss cpu: %d cl_addr: %lx page: %lx block: %d lru: %d\n", cpu, addr >> LOG2_BLOCK_SIZE, curr_page, curr_block, table[match].lru));
     L2_ST_miss[cpu]++;
     L2_ST_access[cpu]++;
 
@@ -247,40 +240,33 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
       if ((spec_block == curr_block) && (ghr_max <= L2_GHR[cpu][i].path_conf)) {
         ghr_max = L2_GHR[cpu][i].path_conf;
         ghr_idx = i;
-        spec_sig = get_new_signature(L2_GHR[cpu][i].signature,
-                                     L2_GHR[cpu][i].oop_delta);
+        spec_sig = get_new_signature(L2_GHR[cpu][i].signature, L2_GHR[cpu][i].oop_delta);
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(
-              printf("cpu: %d OOP_match  L2_GHR[%d]  signature: %x  path_conf: "
-                     "%d  last_block: %d  oop_delta: %d  spec_block: %d == "
-                     "curr_block: %d  spec_sig: %x\n",
-                     cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf,
-                     L2_GHR[cpu][i].last_block, L2_GHR[cpu][i].oop_delta,
-                     spec_block, curr_block, spec_sig));
+          L2_PF_DEBUG(printf("cpu: %d OOP_match  L2_GHR[%d]  signature: %x  path_conf: "
+                             "%d  last_block: %d  oop_delta: %d  spec_block: %d == "
+                             "curr_block: %d  spec_sig: %x\n",
+                             cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block, L2_GHR[cpu][i].oop_delta, spec_block,
+                             curr_block, spec_sig));
       } else {
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(
-              printf("cpu: %d OOP_unmatch  L2_GHR[%d]  signature: %x  "
-                     "path_conf: %d  last_block: %d  oop_delta: %d  "
-                     "spec_block: %d != curr_block: %d  spec_sig: %x\n",
-                     cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf,
-                     L2_GHR[cpu][i].last_block, L2_GHR[cpu][i].oop_delta,
-                     spec_block, curr_block, spec_sig));
+          L2_PF_DEBUG(printf("cpu: %d OOP_unmatch  L2_GHR[%d]  signature: %x  "
+                             "path_conf: %d  last_block: %d  oop_delta: %d  "
+                             "spec_block: %d != curr_block: %d  spec_sig: %x\n",
+                             cpu, i, L2_GHR[cpu][i].signature, L2_GHR[cpu][i].path_conf, L2_GHR[cpu][i].last_block, L2_GHR[cpu][i].oop_delta, spec_block,
+                             curr_block, spec_sig));
       }
     }
 
     if (ghr_idx >= 0) {
       // Speculatively update first page
-      spec_sig = get_new_signature(L2_GHR[cpu][ghr_idx].signature,
-                                   L2_GHR[cpu][ghr_idx].oop_delta);
+      spec_sig = get_new_signature(L2_GHR[cpu][ghr_idx].signature, L2_GHR[cpu][ghr_idx].oop_delta);
 
       hit = 1;
       table[match].signature = spec_sig;
       if (warmup_complete[cpu])
         L2_PF_DEBUG(printf("cpu: %d spec_update  page: %x  sig: %3x  delta: "
                            "%3d  curr_block: %2d  last_block[NA]: %2d\n",
-                           cpu, tag, spec_sig, L2_GHR[cpu][ghr_idx].oop_delta,
-                           curr_block, L2_GHR[cpu][ghr_idx].last_block));
+                           cpu, tag, spec_sig, L2_GHR[cpu][ghr_idx].oop_delta, curr_block, L2_GHR[cpu][ghr_idx].last_block));
     }
 #endif
   }
@@ -299,34 +285,33 @@ int L2_ST_update(uint32_t cpu, uint64_t addr) {
     return -1;
 }
 
-int L2_ST_check(uint32_t cpu, uint64_t addr) {
+int L2_ST_check(uint32_t cpu, uint64_t addr)
+{
   uint64_t curr_page = addr >> LOG2_PAGE_SIZE;
   int tag = curr_page & 0xFFFF, match = -1, L2_ST_idx = curr_page % L2_ST_PRIME;
 
-  SIGNATURE_TABLE *table = L2_ST[cpu][L2_ST_idx];
+  SIGNATURE_TABLE* table = L2_ST[cpu][L2_ST_idx];
 
   for (match = 0; match < L2_ST_WAY; match++) {
     if (table[match].valid && (table[match].tag == tag)) {
       if (warmup_complete[cpu])
         L2_PF_DEBUG(printf("ST_check found cpu: %d cl_addr: %lx page: %lx "
                            "block: %ld old_sig: %x last_block: %d\n",
-                           cpu, addr >> LOG2_BLOCK_SIZE, curr_page,
-                           (addr >> LOG2_BLOCK_SIZE) & 0x3F,
-                           table[match].signature, table[match].last_block));
+                           cpu, addr >> LOG2_BLOCK_SIZE, curr_page, (addr >> LOG2_BLOCK_SIZE) & 0x3F, table[match].signature, table[match].last_block));
       return match;
     }
   }
 
   if (warmup_complete[cpu])
-    L2_PF_DEBUG(printf(
-        "ST_check not found cpu: %d cl_addr: %lx page: %lx block: %ld\n", cpu,
-        addr >> LOG2_BLOCK_SIZE, curr_page, (addr >> LOG2_BLOCK_SIZE) & 0x3F));
+    L2_PF_DEBUG(
+        printf("ST_check not found cpu: %d cl_addr: %lx page: %lx block: %ld\n", cpu, addr >> LOG2_BLOCK_SIZE, curr_page, (addr >> LOG2_BLOCK_SIZE) & 0x3F));
   return -1;
 }
 
-void L2_PT_update(uint32_t cpu, int signature, int delta) {
+void L2_PT_update(uint32_t cpu, int signature, int delta)
+{
   int L2_PT_idx = signature % L2_PT_PRIME;
-  PATTERN_TABLE *table = L2_PT[cpu][L2_PT_idx];
+  PATTERN_TABLE* table = L2_PT[cpu][L2_PT_idx];
 
   // Update L2_PT
   // Update metadata
@@ -337,9 +322,7 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
     for (int i = 0; i < L2_PT_WAY; i++)
       table[i].c_delta = table[i].c_delta >> 1;
     if (warmup_complete[cpu])
-      L2_PF_DEBUG(
-          printf("PT_sig: %4x cpu: %d c_sig saturated sig_total: %d => %d\n",
-                 L2_PT_idx, cpu, CSIG_MAX, table[0].c_sig));
+      L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d c_sig saturated sig_total: %d => %d\n", L2_PT_idx, cpu, CSIG_MAX, table[0].c_sig));
   }
 
   int match;
@@ -349,10 +332,8 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
       table[match].c_delta++;
 
       if (warmup_complete[cpu])
-        L2_PF_DEBUG(
-            printf("PT_sig: %4x cpu: %d update_hit delta[%d]: %2d (%d / %d)\n",
-                   signature, cpu, match, table[match].delta,
-                   table[match].c_delta, table[0].c_sig));
+        L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_hit delta[%d]: %2d (%d / %d)\n", signature, cpu, match, table[match].delta, table[match].c_delta,
+                           table[0].c_sig));
       L2_PT_hit[cpu]++;
       L2_PT_access[cpu]++;
       break;
@@ -368,10 +349,8 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
         table[match].c_delta = 0;
 
         if (warmup_complete[cpu])
-          L2_PF_DEBUG(printf(
-              "PT_sig: %4x cpu: %d update_invalid delta[%d]: %2d (%d / %d)\n",
-              signature, cpu, match, table[match].delta, table[match].c_delta,
-              table[0].c_sig));
+          L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_invalid delta[%d]: %2d (%d / %d)\n", signature, cpu, match, table[match].delta, table[match].c_delta,
+                             table[0].c_sig));
         L2_PT_invalid[cpu]++;
         L2_PT_access[cpu]++;
         break;
@@ -397,10 +376,8 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
     table[match].c_delta = 0;
 
     if (warmup_complete[cpu])
-      L2_PF_DEBUG(
-          printf("PT_sig: %4x cpu: %d update_miss delta[%d]: %2d (%d / %d)\n",
-                 signature, cpu, match, table[match].delta,
-                 table[match].c_delta, table[0].c_sig));
+      L2_PF_DEBUG(printf("PT_sig: %4x cpu: %d update_miss delta[%d]: %2d (%d / %d)\n", signature, cpu, match, table[match].delta, table[match].c_delta,
+                         table[0].c_sig));
     L2_PT_miss[cpu]++;
     L2_PT_access[cpu]++;
   }
@@ -408,7 +385,8 @@ void L2_PT_update(uint32_t cpu, int signature, int delta) {
 
 // TODO: this functino should be moved to the replacement policy file
 // Check sampler
-void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful) {
+void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful)
+{
   /*
   int set = llc_get_set(address);
   int s_idx = is_it_sampled(set);

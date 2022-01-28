@@ -35,7 +35,8 @@ using namespace std;
 
 extern uint8_t warmup_complete[NUM_CPUS];
 
-namespace champsim {
+namespace champsim
+{
 struct deadlock : public std::exception {
   const uint32_t which;
   explicit deadlock(uint32_t cpu) : which(cpu) {}

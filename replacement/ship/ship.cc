@@ -1,10 +1,10 @@
-#include "cache.h"
-
 #include <algorithm>
 #include <array>
 #include <map>
 #include <utility>
 #include <vector>
+
+#include "cache.h"
 
 #define maxRRPV 3
 #define SHCT_SIZE 16384
@@ -13,7 +13,8 @@
 #define SHCT_MAX 7
 
 // sampler structure
-class SAMPLER_class {
+class SAMPLER_class
+{
 public:
   bool valid = false;
   uint8_t type = 0, used = 0;
@@ -22,27 +23,26 @@ public:
 };
 
 // sampler
-std::map<CACHE *, std::vector<std::size_t>> rand_sets;
-std::map<CACHE *, std::vector<SAMPLER_class>> sampler;
+std::map<CACHE*, std::vector<std::size_t>> rand_sets;
+std::map<CACHE*, std::vector<SAMPLER_class>> sampler;
 
 // prediction table structure
-std::map<std::pair<CACHE *, std::size_t>, std::array<unsigned, SHCT_SIZE>> SHCT;
+std::map<std::pair<CACHE*, std::size_t>, std::array<unsigned, SHCT_SIZE>> SHCT;
 
 // initialize replacement state
-void CACHE::initialize_replacement() {
+void CACHE::initialize_replacement()
+{
   // randomly selected sampler sets
   std::size_t rand_seed = 1103515245 + 12345;
   ;
   for (std::size_t i = 0; i < SAMPLER_SET; i++) {
     std::size_t val = (rand_seed / 65536) % NUM_SET;
-    std::vector<std::size_t>::iterator loc = std::lower_bound(
-        std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
+    std::vector<std::size_t>::iterator loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
 
     while (loc != std::end(rand_sets[this]) && *loc == val) {
       rand_seed = rand_seed * 1103515245 + 12345;
       val = (rand_seed / 65536) % NUM_SET;
-      loc = std::lower_bound(std::begin(rand_sets[this]),
-                             std::end(rand_sets[this]), val);
+      loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
     }
 
     rand_sets[this].insert(loc, val);
@@ -52,15 +52,12 @@ void CACHE::initialize_replacement() {
 }
 
 // find replacement victim
-uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set,
-                            const BLOCK *current_set, uint64_t ip,
-                            uint64_t full_addr, uint32_t type) {
+uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
   // look for the maxRRPV line
   auto begin = std::next(std::begin(block), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find_if(begin, end, [](BLOCK x) {
-    return x.lru == maxRRPV;
-  }); // hijack the lru field
+  auto victim = std::find_if(begin, end, [](BLOCK x) { return x.lru == maxRRPV; }); // hijack the lru field
   while (victim == end) {
     for (auto it = begin; it != end; ++it)
       it->lru++;
@@ -72,10 +69,9 @@ uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set,
 }
 
 // called on every cache hit and cache fill
-void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way,
-                                     uint64_t full_addr, uint64_t ip,
-                                     uint64_t victim_addr, uint32_t type,
-                                     uint8_t hit) {
+void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+                                     uint8_t hit)
+{
   // handle writeback access
   if (type == WRITEBACK) {
     if (!hit)
@@ -85,18 +81,13 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way,
   }
 
   // update sampler
-  auto s_idx =
-      std::find(std::begin(rand_sets[this]), std::end(rand_sets[this]), set);
+  auto s_idx = std::find(std::begin(rand_sets[this]), std::end(rand_sets[this]), set);
   if (s_idx != std::end(rand_sets[this])) {
-    auto s_set_begin =
-        std::next(std::begin(sampler[this]),
-                  std::distance(std::begin(rand_sets[this]), s_idx));
+    auto s_set_begin = std::next(std::begin(sampler[this]), std::distance(std::begin(rand_sets[this]), s_idx));
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match =
-        std::find_if(s_set_begin, s_set_end,
-                     eq_addr<SAMPLER_class>(full_addr, 8 + lg2(NUM_WAY)));
+    auto match = std::find_if(s_set_begin, s_set_end, eq_addr<SAMPLER_class>(full_addr, 8 + lg2(NUM_WAY)));
     if (match != s_set_end) {
       uint32_t SHCT_idx = match->ip % SHCT_PRIME;
       if (SHCT[std::make_pair(this, cpu)][SHCT_idx] > 0)
@@ -105,8 +96,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way,
       match->type = type;
       match->used = 1;
     } else {
-      match = std::max_element(s_set_begin, s_set_end,
-                               lru_comparator<SAMPLER_class, SAMPLER_class>());
+      match = std::max_element(s_set_begin, s_set_end, lru_comparator<SAMPLER_class, SAMPLER_class>());
 
       if (match->used) {
         uint32_t SHCT_idx = match->ip % SHCT_PRIME;

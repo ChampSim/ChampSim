@@ -72,8 +72,7 @@ sources for you to plagiarize.
 
 // geometric global history lengths
 
-int history_lengths[NTABLES] = {0,  3,  4,  6,  8,  10,  14,  19,
-                                26, 36, 49, 67, 91, 125, 170, MAXHIST};
+int history_lengths[NTABLES] = {0, 3, 4, 6, 8, 10, 14, 19, 26, 36, 49, 67, 91, 125, 170, MAXHIST};
 
 // 12-bit indices for the tables
 
@@ -105,7 +104,8 @@ int theta[NUM_CPUS],
     // perceptron sum
     yout[NUM_CPUS];
 
-void O3_CPU::initialize_branch_predictor() {
+void O3_CPU::initialize_branch_predictor()
+{
   // zero out the weights tables
 
   memset(tables, 0, sizeof(tables));
@@ -120,8 +120,8 @@ void O3_CPU::initialize_branch_predictor() {
     theta[i] = 10;
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t pc, uint64_t predicted_target,
-                               uint8_t always_taken, uint8_t branch_type) {
+uint8_t O3_CPU::predict_branch(uint64_t pc, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+{
 
   // initialize perceptron sum
 
@@ -177,8 +177,8 @@ uint8_t O3_CPU::predict_branch(uint64_t pc, uint64_t predicted_target,
   return yout[cpu] >= 1;
 }
 
-void O3_CPU::last_branch_result(uint64_t pc, uint64_t branch_target,
-                                uint8_t taken, uint8_t branch_type) {
+void O3_CPU::last_branch_result(uint64_t pc, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+{
 
   // was this prediction correct?
 
@@ -211,7 +211,7 @@ void O3_CPU::last_branch_result(uint64_t pc, uint64_t branch_target,
     for (int i = 0; i < NTABLES; i++) {
       // which weight did we use to compute yout?
 
-      int *c = &tables[cpu][i][indices[cpu][i]];
+      int* c = &tables[cpu][i][indices[cpu][i]];
 
       // increment if taken, decrement if not, saturating at 127/-128
 

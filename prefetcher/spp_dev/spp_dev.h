@@ -45,21 +45,17 @@
 #define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1)
 #define MAX_GHR_ENTRY 8
 
-enum FILTER_REQUEST {
-  SPP_L2C_PREFETCH,
-  SPP_LLC_PREFETCH,
-  L2C_DEMAND,
-  L2C_EVICT
-}; // Request type for prefetch filter
+enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
 
-class SIGNATURE_TABLE {
+class SIGNATURE_TABLE
+{
 public:
   bool valid[ST_SET][ST_WAY];
-  uint32_t tag[ST_SET][ST_WAY], last_offset[ST_SET][ST_WAY],
-      sig[ST_SET][ST_WAY], lru[ST_SET][ST_WAY];
+  uint32_t tag[ST_SET][ST_WAY], last_offset[ST_SET][ST_WAY], sig[ST_SET][ST_WAY], lru[ST_SET][ST_WAY];
 
-  SIGNATURE_TABLE() {
+  SIGNATURE_TABLE()
+  {
     cout << "Initialize SIGNATURE TABLE" << endl;
     cout << "ST_SET: " << ST_SET << endl;
     cout << "ST_WAY: " << ST_WAY << endl;
@@ -76,17 +72,17 @@ public:
       }
   };
 
-  void read_and_update_sig(uint64_t page, uint32_t page_offset,
-                           uint32_t &last_sig, uint32_t &curr_sig,
-                           int32_t &delta);
+  void read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta);
 };
 
-class PATTERN_TABLE {
+class PATTERN_TABLE
+{
 public:
   int delta[PT_SET][PT_WAY];
   uint32_t c_delta[PT_SET][PT_WAY], c_sig[PT_SET];
 
-  PATTERN_TABLE() {
+  PATTERN_TABLE()
+  {
     cout << endl << "Initialize PATTERN TABLE" << endl;
     cout << "PT_SET: " << PT_SET << endl;
     cout << "PT_WAY: " << PT_WAY << endl;
@@ -103,20 +99,19 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta),
-      read_pattern(uint32_t curr_sig, int *prefetch_delta,
-                   uint32_t *confidence_q, uint32_t &lookahead_way,
-                   uint32_t &lookahead_conf, uint32_t &pf_q_tail,
-                   uint32_t &depth);
+  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, int*prefetch_delta, uint32_t*confidence_q, uint32_t&lookahead_way,
+                                                                       uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
 };
 
-class PREFETCH_FILTER {
+class PREFETCH_FILTER
+{
 public:
   uint64_t remainder_tag[FILTER_SET];
   bool valid[FILTER_SET], // Consider this as "prefetched"
       useful[FILTER_SET]; // Consider this as "used"
 
-  PREFETCH_FILTER() {
+  PREFETCH_FILTER()
+  {
     cout << endl << "Initialize PREFETCH FILTER" << endl;
     cout << "FILTER_SET: " << FILTER_SET << endl;
 
@@ -130,7 +125,8 @@ public:
   bool check(uint64_t pf_addr, FILTER_REQUEST filter_request);
 };
 
-class GLOBAL_REGISTER {
+class GLOBAL_REGISTER
+{
 public:
   // Global counters to calculate global prefetching accuracy
   uint64_t pf_useful, pf_issued,
@@ -141,7 +137,8 @@ public:
   uint32_t sig[MAX_GHR_ENTRY], confidence[MAX_GHR_ENTRY], offset[MAX_GHR_ENTRY];
   int delta[MAX_GHR_ENTRY];
 
-  GLOBAL_REGISTER() {
+  GLOBAL_REGISTER()
+  {
     pf_useful = 0;
     pf_issued = 0;
     global_accuracy = 0;
@@ -155,8 +152,7 @@ public:
     }
   }
 
-  void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset,
-                    int pf_delta);
+  void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
   uint32_t check_entry(uint32_t page_offset);
 };
 

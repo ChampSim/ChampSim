@@ -4,12 +4,13 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
-#include <type_traits>
 #include <utility>
 
 #include "circular_buffer.hpp"
+#include <type_traits>
 
-namespace champsim {
+namespace champsim
+{
 
 /***
  * A fixed-size queue that releases its members only after a delay.
@@ -36,13 +37,15 @@ namespace champsim {
  * If no bandwidth constraints are needed, the terminal condition can simply be
  *`it != dq.end_ready()`.
  ***/
-template <typename T> class delay_queue {
+template <typename T>
+class delay_queue
+{
 private:
-  template <typename U> using buffer_t = circular_buffer<U>;
+  template <typename U>
+  using buffer_t = circular_buffer<U>;
 
 public:
-  delay_queue(std::size_t size, unsigned latency)
-      : sz(size), _buf(size), _delays(size), _latency(latency) {}
+  delay_queue(std::size_t size, unsigned latency) : sz(size), _buf(size), _delays(size), _latency(latency) {}
 
   /***
    * These types provided for compatibility with standard containers.
@@ -50,9 +53,9 @@ public:
   using value_type = T;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
-  using reference = value_type &;
+  using reference = value_type&;
   using const_reference = const reference;
-  using pointer = value_type *;
+  using pointer = value_type*;
   using const_pointer = const pointer;
   using iterator = typename buffer_t<value_type>::iterator;
   using const_iterator = typename buffer_t<value_type>::const_iterator;
@@ -91,30 +94,26 @@ public:
 
   reverse_iterator rbegin() noexcept { return _buf.rbegin(); }
   reverse_iterator rend() noexcept { return _buf.rend(); }
-  reverse_iterator rend_ready() noexcept {
-    return reverse_iterator(end_ready());
-  }
+  reverse_iterator rend_ready() noexcept { return reverse_iterator(end_ready()); }
   const_reverse_iterator rbegin() const noexcept { return _buf.rbegin(); }
   const_reverse_iterator rend() const noexcept { return _buf.rend(); }
-  const_reverse_iterator rend_ready() const noexcept {
-    return reverse_iterator(end_ready());
-  }
+  const_reverse_iterator rend_ready() const noexcept { return reverse_iterator(end_ready()); }
   const_reverse_iterator crbegin() const noexcept { return _buf.crbegin(); }
   const_reverse_iterator crend() const noexcept { return _buf.crend(); }
-  const_reverse_iterator crend_ready() const noexcept {
-    return reverse_iterator(end_ready());
-  }
+  const_reverse_iterator crend_ready() const noexcept { return reverse_iterator(end_ready()); }
 
   void clear() { _buf.clear(); }
 
   /***
    * Push an element into the queue, delayed by the fixed amount.
    ***/
-  void push_back(const T &item) {
+  void push_back(const T& item)
+  {
     _buf.push_back(item);
     _delays.push_back(_latency);
   }
-  void push_back(const T &&item) {
+  void push_back(const T&& item)
+  {
     _buf.push_back(std::forward<T>(item));
     _delays.push_back(_latency);
   }
@@ -124,7 +123,8 @@ public:
    * Note, no checking is performed. Guard all accesses with calls to
    *has_ready()
    ***/
-  void pop_front() {
+  void pop_front()
+  {
     _buf.pop_front();
     _delays.pop_front();
   }
@@ -133,11 +133,13 @@ public:
    * These functions add an element that is immediately ready. Elements are
    *still popped in order.
    ***/
-  void push_back_ready(const T &item) {
+  void push_back_ready(const T& item)
+  {
     _buf.push_back(item);
     _delays.push_back(0);
   }
-  void push_back_ready(const T &&item) {
+  void push_back_ready(const T&& item)
+  {
     _buf.push_back(std::forward<T>(item));
     _delays.push_back(0);
   }
@@ -145,14 +147,13 @@ public:
   /***
    * This function must be called once every cycle.
    ***/
-  void operate() {
-    for (auto &x : _delays)
+  void operate()
+  {
+    for (auto& x : _delays)
       --x; // The delay may go negative, this is permitted.
 
-    auto delay_it = std::partition_point(
-        _delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
-    _end_ready =
-        std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
+    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
+    _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
   }
 
 private:

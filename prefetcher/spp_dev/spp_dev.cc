@@ -1,4 +1,5 @@
 #include "spp_dev.h"
+
 #include "cache.h"
 
 SIGNATURE_TABLE ST;
@@ -10,13 +11,10 @@ void CACHE::prefetcher_initialize() {}
 
 void CACHE::prefetcher_cycle_operate() {}
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
-                                         uint8_t cache_hit, uint8_t type,
-                                         uint32_t metadata_in) {
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
   uint64_t page = addr >> LOG2_PAGE_SIZE;
-  uint32_t page_offset =
-               (addr >> LOG2_BLOCK_SIZE) & (PAGE_SIZE / BLOCK_SIZE - 1),
-           last_sig = 0, curr_sig = 0, confidence_q[MSHR_SIZE], depth = 0;
+  uint32_t page_offset = (addr >> LOG2_BLOCK_SIZE) & (PAGE_SIZE / BLOCK_SIZE - 1), last_sig = 0, curr_sig = 0, confidence_q[MSHR_SIZE], depth = 0;
 
   int32_t delta = 0, delta_q[MSHR_SIZE];
 
@@ -25,14 +23,11 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
     delta_q[i] = 0;
   }
   confidence_q[0] = 100;
-  GHR.global_accuracy =
-      GHR.pf_issued ? ((100 * GHR.pf_useful) / GHR.pf_issued) : 0;
+  GHR.global_accuracy = GHR.pf_issued ? ((100 * GHR.pf_useful) / GHR.pf_issued) : 0;
 
   SPP_DP(cout << endl
-              << "[ChampSim] " << __func__ << " addr: " << hex << addr
-              << " cache_line: " << (addr >> LOG2_BLOCK_SIZE);
-         cout << " page: " << page << " page_offset: " << dec << page_offset
-              << endl;);
+              << "[ChampSim] " << __func__ << " addr: " << hex << addr << " cache_line: " << (addr >> LOG2_BLOCK_SIZE);
+         cout << " page: " << page << " page_offset: " << dec << page_offset << endl;);
 
   // Stage 1: Read and update a sig stored in ST
   // last_sig and delta are used to update (sig, delta) correlation in PT
@@ -56,23 +51,16 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
   do {
 #endif
     uint32_t lookahead_way = PT_WAY;
-    PT.read_pattern(curr_sig, delta_q, confidence_q, lookahead_way,
-                    lookahead_conf, pf_q_tail, depth);
+    PT.read_pattern(curr_sig, delta_q, confidence_q, lookahead_way, lookahead_conf, pf_q_tail, depth);
 
     do_lookahead = 0;
     for (uint32_t i = pf_q_head; i < pf_q_tail; i++) {
       if (confidence_q[i] >= PF_THRESHOLD) {
-        uint64_t pf_addr =
-            (base_addr & ~(BLOCK_SIZE - 1)) + (delta_q[i] << LOG2_BLOCK_SIZE);
+        uint64_t pf_addr = (base_addr & ~(BLOCK_SIZE - 1)) + (delta_q[i] << LOG2_BLOCK_SIZE);
 
-        if ((addr & ~(PAGE_SIZE - 1)) ==
-            (pf_addr & ~(PAGE_SIZE -
-                         1))) { // Prefetch request is in the same physical page
-          if (FILTER.check(pf_addr, ((confidence_q[i] >= FILL_THRESHOLD)
-                                         ? SPP_L2C_PREFETCH
-                                         : SPP_LLC_PREFETCH))) {
-            prefetch_line(ip, addr, pf_addr,
-                          (confidence_q[i] >= FILL_THRESHOLD),
+        if ((addr & ~(PAGE_SIZE - 1)) == (pf_addr & ~(PAGE_SIZE - 1))) { // Prefetch request is in the same physical page
+          if (FILTER.check(pf_addr, ((confidence_q[i] >= FILL_THRESHOLD) ? SPP_L2C_PREFETCH : SPP_LLC_PREFETCH))) {
+            prefetch_line(ip, addr, pf_addr, (confidence_q[i] >= FILL_THRESHOLD),
                           0); // Use addr (not base_addr) to obey the same
                               // physical page boundary
 
@@ -82,27 +70,19 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
                 GHR.pf_issued >>= 1;
                 GHR.pf_useful >>= 1;
               }
-              SPP_DP(cout << "[ChampSim] SPP L2 prefetch issued GHR.pf_issued: "
-                          << GHR.pf_issued
-                          << " GHR.pf_useful: " << GHR.pf_useful << endl;);
+              SPP_DP(cout << "[ChampSim] SPP L2 prefetch issued GHR.pf_issued: " << GHR.pf_issued << " GHR.pf_useful: " << GHR.pf_useful << endl;);
             }
 
-            SPP_DP(cout << "[ChampSim] " << __func__ << " base_addr: " << hex
-                        << base_addr << " pf_addr: " << pf_addr;
+            SPP_DP(cout << "[ChampSim] " << __func__ << " base_addr: " << hex << base_addr << " pf_addr: " << pf_addr;
                    cout << " pf_cache_line: " << (pf_addr >> LOG2_BLOCK_SIZE);
-                   cout << " prefetch_delta: " << dec << delta_q[i]
-                        << " confidence: " << confidence_q[i];
-                   cout << " depth: " << i << " fill_level: "
-                        << ((confidence_q[i] >= FILL_THRESHOLD) ? FILL_L2
-                                                                : FILL_LLC)
-                        << endl;);
+                   cout << " prefetch_delta: " << dec << delta_q[i] << " confidence: " << confidence_q[i];
+                   cout << " depth: " << i << " fill_level: " << ((confidence_q[i] >= FILL_THRESHOLD) ? FILL_L2 : FILL_LLC) << endl;);
           }
         } else { // Prefetch request is crossing the physical page boundary
 #ifdef GHR_ON
           // Store this prefetch request in GHR to bootstrap SPP learning when
           // we see a ST miss (i.e., accessing a new page)
-          GHR.update_entry(curr_sig, confidence_q[i],
-                           (pf_addr >> LOG2_BLOCK_SIZE) & 0x3F, delta_q[i]);
+          GHR.update_entry(curr_sig, confidence_q[i], (pf_addr >> LOG2_BLOCK_SIZE) & 0x3F, delta_q[i]);
 #endif
         }
 
@@ -121,17 +101,12 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
       // int sig_delta = (PT.delta[set][lookahead_way] < 0) ? ((((-1) *
       // PT.delta[set][lookahead_way]) & 0x3F) + 0x40) :
       // PT.delta[set][lookahead_way];
-      int sig_delta = (PT.delta[set][lookahead_way] < 0)
-                          ? (((-1) * PT.delta[set][lookahead_way]) +
-                             (1 << (SIG_DELTA_BIT - 1)))
-                          : PT.delta[set][lookahead_way];
+      int sig_delta = (PT.delta[set][lookahead_way] < 0) ? (((-1) * PT.delta[set][lookahead_way]) + (1 << (SIG_DELTA_BIT - 1))) : PT.delta[set][lookahead_way];
       curr_sig = ((curr_sig << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
     }
 
-    SPP_DP(cout << "Looping curr_sig: " << hex << curr_sig
-                << " base_addr: " << base_addr << dec;
-           cout << " pf_q_head: " << pf_q_head << " pf_q_tail: " << pf_q_tail
-                << " depth: " << depth << endl;);
+    SPP_DP(cout << "Looping curr_sig: " << hex << curr_sig << " base_addr: " << base_addr << dec;
+           cout << " pf_q_head: " << pf_q_head << " pf_q_tail: " << pf_q_tail << " depth: " << depth << endl;);
 #ifdef LOOKAHEAD_ON
   } while (do_lookahead);
 #endif
@@ -139,10 +114,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
   return metadata_in;
 }
 
-uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set,
-                                      uint32_t match, uint8_t prefetch,
-                                      uint64_t evicted_addr,
-                                      uint32_t metadata_in) {
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
 #ifdef FILTER_ON
   SPP_DP(cout << endl;);
   FILTER.check(evicted_addr, L2C_EVICT);
@@ -154,7 +127,8 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set,
 void CACHE::prefetcher_final_stats() {}
 
 // TODO: Find a good 64-bit hash function
-uint64_t get_hash(uint64_t key) {
+uint64_t get_hash(uint64_t key)
+{
   // Robert Jenkins' 32 bit mix function
   key += (key << 12);
   key ^= (key >> 22);
@@ -171,16 +145,13 @@ uint64_t get_hash(uint64_t key) {
   return key;
 }
 
-void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
-                                          uint32_t &last_sig,
-                                          uint32_t &curr_sig, int32_t &delta) {
-  uint32_t set = get_hash(page) % ST_SET, match = ST_WAY,
-           partial_page = page & ST_TAG_MASK;
+void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
+{
+  uint32_t set = get_hash(page) % ST_SET, match = ST_WAY, partial_page = page & ST_TAG_MASK;
   uint8_t ST_hit = 0;
   int sig_delta = 0;
 
-  SPP_DP(cout << "[ST] " << __func__ << " page: " << hex << page
-              << " partial_page: " << partial_page << dec << endl;);
+  SPP_DP(cout << "[ST] " << __func__ << " page: " << hex << page << " partial_page: " << partial_page << dec << endl;);
 
   // Case 1: Hit
   for (match = 0; match < ST_WAY; match++) {
@@ -191,19 +162,14 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
       if (delta) {
         // Build a new sig based on 7-bit sign magnitude representation of delta
         // sig_delta = (delta < 0) ? ((((-1) * delta) & 0x3F) + 0x40) : delta;
-        sig_delta =
-            (delta < 0) ? (((-1) * delta) + (1 << (SIG_DELTA_BIT - 1))) : delta;
+        sig_delta = (delta < 0) ? (((-1) * delta) + (1 << (SIG_DELTA_BIT - 1))) : delta;
         sig[set][match] = ((last_sig << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
         curr_sig = sig[set][match];
         last_offset[set][match] = page_offset;
 
-        SPP_DP(cout << "[ST] " << __func__ << " hit set: " << set
-                    << " way: " << match;
-               cout << " valid: " << valid[set][match] << " tag: " << hex
-                    << tag[set][match];
-               cout << " last_sig: " << last_sig << " curr_sig: " << curr_sig;
-               cout << " delta: " << dec << delta
-                    << " last_offset: " << page_offset << endl;);
+        SPP_DP(cout << "[ST] " << __func__ << " hit set: " << set << " way: " << match;
+               cout << " valid: " << valid[set][match] << " tag: " << hex << tag[set][match]; cout << " last_sig: " << last_sig << " curr_sig: " << curr_sig;
+               cout << " delta: " << dec << delta << " last_offset: " << page_offset << endl;);
       } else
         last_sig = 0; // Hitting the same cache line, delta is zero
 
@@ -222,12 +188,9 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
         curr_sig = sig[set][match];
         last_offset[set][match] = page_offset;
 
-        SPP_DP(cout << "[ST] " << __func__ << " invalid set: " << set
-                    << " way: " << match;
-               cout << " valid: " << valid[set][match] << " tag: " << hex
-                    << partial_page;
-               cout << " sig: " << sig[set][match] << " last_offset: " << dec
-                    << page_offset << endl;);
+        SPP_DP(cout << "[ST] " << __func__ << " invalid set: " << set << " way: " << match;
+               cout << " valid: " << valid[set][match] << " tag: " << hex << partial_page;
+               cout << " sig: " << sig[set][match] << " last_offset: " << dec << page_offset << endl;);
 
         break;
       }
@@ -243,12 +206,9 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
         curr_sig = sig[set][match];
         last_offset[set][match] = page_offset;
 
-        SPP_DP(cout << "[ST] " << __func__ << " miss set: " << set
-                    << " way: " << match;
-               cout << " valid: " << valid[set][match] << " victim tag: " << hex
-                    << tag[set][match] << " new tag: " << partial_page;
-               cout << " sig: " << sig[set][match] << " last_offset: " << dec
-                    << page_offset << endl;);
+        SPP_DP(cout << "[ST] " << __func__ << " miss set: " << set << " way: " << match;
+               cout << " valid: " << valid[set][match] << " victim tag: " << hex << tag[set][match] << " new tag: " << partial_page;
+               cout << " sig: " << sig[set][match] << " last_offset: " << dec << page_offset << endl;);
 
         break;
       }
@@ -267,12 +227,8 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
   if (ST_hit == 0) {
     uint32_t GHR_found = GHR.check_entry(page_offset);
     if (GHR_found < MAX_GHR_ENTRY) {
-      sig_delta =
-          (GHR.delta[GHR_found] < 0)
-              ? (((-1) * GHR.delta[GHR_found]) + (1 << (SIG_DELTA_BIT - 1)))
-              : GHR.delta[GHR_found];
-      sig[set][match] =
-          ((GHR.sig[GHR_found] << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
+      sig_delta = (GHR.delta[GHR_found] < 0) ? (((-1) * GHR.delta[GHR_found]) + (1 << (SIG_DELTA_BIT - 1))) : GHR.delta[GHR_found];
+      sig[set][match] = ((GHR.sig[GHR_found] << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
       curr_sig = sig[set][match];
     }
   }
@@ -286,8 +242,7 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
 #ifdef SPP_SANITY_CHECK
       // Assertion
       if (lru[set][way] >= ST_WAY) {
-        cout << "[ST] LRU value is wrong! set: " << set << " way: " << way
-             << " lru: " << lru[set][way] << endl;
+        cout << "[ST] LRU value is wrong! set: " << set << " way: " << way << " lru: " << lru[set][way] << endl;
         assert(0);
       }
 #endif
@@ -296,7 +251,8 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset,
   lru[set][match] = 0; // Promote to the MRU position
 }
 
-void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta) {
+void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
+{
   // Update (sig, delta) correlation
   uint32_t set = get_hash(last_sig) % PT_SET, match = 0;
 
@@ -311,10 +267,8 @@ void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta) {
         c_sig[set] >>= 1;
       }
 
-      SPP_DP(cout << "[PT] " << __func__ << " hit sig: " << hex << last_sig
-                  << dec << " set: " << set << " way: " << match;
-             cout << " delta: " << delta[set][match] << " c_delta: "
-                  << c_delta[set][match] << " c_sig: " << c_sig[set] << endl;);
+      SPP_DP(cout << "[PT] " << __func__ << " hit sig: " << hex << last_sig << dec << " set: " << set << " way: " << match;
+             cout << " delta: " << delta[set][match] << " c_delta: " << c_delta[set][match] << " c_sig: " << c_sig[set] << endl;);
 
       break;
     }
@@ -325,8 +279,7 @@ void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta) {
     uint32_t victim_way = PT_WAY, min_counter = C_SIG_MAX;
 
     for (match = 0; match < PT_WAY; match++) {
-      if (c_delta[set][match] <
-          min_counter) { // Select an entry with the minimum c_delta
+      if (c_delta[set][match] < min_counter) { // Select an entry with the minimum c_delta
         victim_way = match;
         min_counter = c_delta[set][match];
       }
@@ -341,11 +294,8 @@ void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta) {
       c_sig[set] >>= 1;
     }
 
-    SPP_DP(cout << "[PT] " << __func__ << " miss sig: " << hex << last_sig
-                << dec << " set: " << set << " way: " << victim_way;
-           cout << " delta: " << delta[set][victim_way]
-                << " c_delta: " << c_delta[set][victim_way]
-                << " c_sig: " << c_sig[set] << endl;);
+    SPP_DP(cout << "[PT] " << __func__ << " miss sig: " << hex << last_sig << dec << " set: " << set << " way: " << victim_way;
+           cout << " delta: " << delta[set][victim_way] << " c_delta: " << c_delta[set][victim_way] << " c_sig: " << c_sig[set] << endl;);
 
 #ifdef SPP_SANITY_CHECK
     // Assertion
@@ -357,21 +307,16 @@ void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta) {
   }
 }
 
-void PATTERN_TABLE::read_pattern(uint32_t curr_sig, int *delta_q,
-                                 uint32_t *confidence_q,
-                                 uint32_t &lookahead_way,
-                                 uint32_t &lookahead_conf, uint32_t &pf_q_tail,
-                                 uint32_t &depth) {
+void PATTERN_TABLE::read_pattern(uint32_t curr_sig, int* delta_q, uint32_t* confidence_q, uint32_t& lookahead_way, uint32_t& lookahead_conf,
+                                 uint32_t& pf_q_tail, uint32_t& depth)
+{
   // Update (sig, delta) correlation
-  uint32_t set = get_hash(curr_sig) % PT_SET, local_conf = 0, pf_conf = 0,
-           max_conf = 0;
+  uint32_t set = get_hash(curr_sig) % PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;
 
   if (c_sig[set]) {
     for (uint32_t way = 0; way < PT_WAY; way++) {
       local_conf = (100 * c_delta[set][way]) / c_sig[set];
-      pf_conf = depth ? (GHR.global_accuracy * c_delta[set][way] / c_sig[set] *
-                         lookahead_conf / 100)
-                      : local_conf;
+      pf_conf = depth ? (GHR.global_accuracy * c_delta[set][way] / c_sig[set] * lookahead_conf / 100) : local_conf;
 
       if (pf_conf >= PF_THRESHOLD) {
         confidence_q[pf_q_tail] = pf_conf;
@@ -384,18 +329,12 @@ void PATTERN_TABLE::read_pattern(uint32_t curr_sig, int *delta_q,
         }
         pf_q_tail++;
 
-        SPP_DP(cout << "[PT] " << __func__ << " HIGH CONF: " << pf_conf
-                    << " sig: " << hex << curr_sig << dec << " set: " << set
-                    << " way: " << way;
-               cout << " delta: " << delta[set][way] << " c_delta: "
-                    << c_delta[set][way] << " c_sig: " << c_sig[set];
+        SPP_DP(cout << "[PT] " << __func__ << " HIGH CONF: " << pf_conf << " sig: " << hex << curr_sig << dec << " set: " << set << " way: " << way;
+               cout << " delta: " << delta[set][way] << " c_delta: " << c_delta[set][way] << " c_sig: " << c_sig[set];
                cout << " conf: " << local_conf << " depth: " << depth << endl;);
       } else {
-        SPP_DP(cout << "[PT] " << __func__ << "  LOW CONF: " << pf_conf
-                    << " sig: " << hex << curr_sig << dec << " set: " << set
-                    << " way: " << way;
-               cout << " delta: " << delta[set][way] << " c_delta: "
-                    << c_delta[set][way] << " c_sig: " << c_sig[set];
+        SPP_DP(cout << "[PT] " << __func__ << "  LOW CONF: " << pf_conf << " sig: " << hex << curr_sig << dec << " set: " << set << " way: " << way;
+               cout << " delta: " << delta[set][way] << " c_delta: " << c_delta[set][way] << " c_sig: " << c_sig[set];
                cout << " conf: " << local_conf << " depth: " << depth << endl;);
       }
     }
@@ -403,33 +342,24 @@ void PATTERN_TABLE::read_pattern(uint32_t curr_sig, int *delta_q,
     if (lookahead_conf >= PF_THRESHOLD)
       depth++;
 
-    SPP_DP(cout << "global_accuracy: " << GHR.global_accuracy
-                << " lookahead_conf: " << lookahead_conf << endl;);
+    SPP_DP(cout << "global_accuracy: " << GHR.global_accuracy << " lookahead_conf: " << lookahead_conf << endl;);
   } else
     confidence_q[pf_q_tail] = 0;
 }
 
-bool PREFETCH_FILTER::check(uint64_t check_addr,
-                            FILTER_REQUEST filter_request) {
-  uint64_t cache_line = check_addr >> LOG2_BLOCK_SIZE,
-           hash = get_hash(cache_line),
-           quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1),
+bool PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request)
+{
+  uint64_t cache_line = check_addr >> LOG2_BLOCK_SIZE, hash = get_hash(cache_line), quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1),
            remainder = hash % (1 << REMAINDER_BIT);
 
-  SPP_DP(cout << "[FILTER] check_addr: " << hex << check_addr
-              << " check_cache_line: " << (check_addr >> LOG2_BLOCK_SIZE);
-         cout << " hash: " << hash << dec << " quotient: " << quotient
-              << " remainder: " << remainder << endl;);
+  SPP_DP(cout << "[FILTER] check_addr: " << hex << check_addr << " check_cache_line: " << (check_addr >> LOG2_BLOCK_SIZE);
+         cout << " hash: " << hash << dec << " quotient: " << quotient << " remainder: " << remainder << endl;);
 
   switch (filter_request) {
   case SPP_L2C_PREFETCH:
-    if ((valid[quotient] || useful[quotient]) &&
-        remainder_tag[quotient] == remainder) {
-      SPP_DP(cout << "[FILTER] " << __func__
-                  << " line is already in the filter check_addr: " << hex
-                  << check_addr << " cache_line: " << cache_line << dec;
-             cout << " quotient: " << quotient << " valid: " << valid[quotient]
-                  << " useful: " << useful[quotient] << endl;);
+    if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
+      SPP_DP(cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << hex << check_addr << " cache_line: " << cache_line << dec;
+             cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << endl;);
 
       return false; // False return indicates "Do not prefetch"
     } else {
@@ -437,22 +367,16 @@ bool PREFETCH_FILTER::check(uint64_t check_addr,
       useful[quotient] = 0; // Reset useful bit
       remainder_tag[quotient] = remainder;
 
-      SPP_DP(cout << "[FILTER] " << __func__ << " set valid for check_addr: "
-                  << hex << check_addr << " cache_line: " << cache_line << dec;
-             cout << " quotient: " << quotient << " remainder_tag: "
-                  << remainder_tag[quotient] << " valid: " << valid[quotient]
+      SPP_DP(cout << "[FILTER] " << __func__ << " set valid for check_addr: " << hex << check_addr << " cache_line: " << cache_line << dec;
+             cout << " quotient: " << quotient << " remainder_tag: " << remainder_tag[quotient] << " valid: " << valid[quotient]
                   << " useful: " << useful[quotient] << endl;);
     }
     break;
 
   case SPP_LLC_PREFETCH:
-    if ((valid[quotient] || useful[quotient]) &&
-        remainder_tag[quotient] == remainder) {
-      SPP_DP(cout << "[FILTER] " << __func__
-                  << " line is already in the filter check_addr: " << hex
-                  << check_addr << " cache_line: " << cache_line << dec;
-             cout << " quotient: " << quotient << " valid: " << valid[quotient]
-                  << " useful: " << useful[quotient] << endl;);
+    if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
+      SPP_DP(cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << hex << check_addr << " cache_line: " << cache_line << dec;
+             cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << endl;);
 
       return false; // False return indicates "Do not prefetch"
     } else {
@@ -467,11 +391,8 @@ bool PREFETCH_FILTER::check(uint64_t check_addr,
       // valid[quotient] = 1;
       // useful[quotient] = 0;
 
-      SPP_DP(cout << "[FILTER] " << __func__
-                  << " don't set valid for check_addr: " << hex << check_addr
-                  << " cache_line: " << cache_line << dec;
-             cout << " quotient: " << quotient << " valid: " << valid[quotient]
-                  << " useful: " << useful[quotient] << endl;);
+      SPP_DP(cout << "[FILTER] " << __func__ << " don't set valid for check_addr: " << hex << check_addr << " cache_line: " << cache_line << dec;
+             cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << endl;);
     }
     break;
 
@@ -482,12 +403,9 @@ bool PREFETCH_FILTER::check(uint64_t check_addr,
         GHR.pf_useful++; // This cache line was prefetched by SPP and actually
                          // used in the program
 
-      SPP_DP(cout << "[FILTER] " << __func__ << " set useful for check_addr: "
-                  << hex << check_addr << " cache_line: " << cache_line << dec;
-             cout << " quotient: " << quotient << " valid: " << valid[quotient]
-                  << " useful: " << useful[quotient];
-             cout << " GHR.pf_issued: " << GHR.pf_issued
-                  << " GHR.pf_useful: " << GHR.pf_useful << endl;);
+      SPP_DP(cout << "[FILTER] " << __func__ << " set useful for check_addr: " << hex << check_addr << " cache_line: " << cache_line << dec;
+             cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient];
+             cout << " GHR.pf_issued: " << GHR.pf_issued << " GHR.pf_useful: " << GHR.pf_useful << endl;);
     }
     break;
 
@@ -512,17 +430,15 @@ bool PREFETCH_FILTER::check(uint64_t check_addr,
   return true;
 }
 
-void GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence,
-                                   uint32_t pf_offset, int pf_delta) {
+void GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta)
+{
   // NOTE: GHR implementation is slightly different from the original paper
   // Instead of matching (last_offset + delta), GHR simply stores and matches
   // the pf_offset
   uint32_t min_conf = 100, victim_way = MAX_GHR_ENTRY;
 
-  SPP_DP(cout << "[GHR] Crossing the page boundary pf_sig: " << hex << pf_sig
-              << dec;
-         cout << " confidence: " << pf_confidence << " pf_offset: " << pf_offset
-              << " pf_delta: " << pf_delta << endl;);
+  SPP_DP(cout << "[GHR] Crossing the page boundary pf_sig: " << hex << pf_sig << dec;
+         cout << " confidence: " << pf_confidence << " pf_offset: " << pf_offset << " pf_delta: " << pf_delta << endl;);
 
   for (uint32_t i = 0; i < MAX_GHR_ENTRY; i++) {
     // if (sig[i] == pf_sig) { // TODO: Which one is better and consistent?
@@ -555,11 +471,8 @@ void GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence,
     assert(0);
   }
 
-  SPP_DP(cout << "[GHR] Replace index: " << victim_way << " pf_sig: " << hex
-              << sig[victim_way] << dec;
-         cout << " confidence: " << confidence[victim_way]
-              << " pf_offset: " << offset[victim_way]
-              << " pf_delta: " << delta[victim_way] << endl;);
+  SPP_DP(cout << "[GHR] Replace index: " << victim_way << " pf_sig: " << hex << sig[victim_way] << dec;
+         cout << " confidence: " << confidence[victim_way] << " pf_offset: " << offset[victim_way] << " pf_delta: " << delta[victim_way] << endl;);
 
   valid[victim_way] = 1;
   sig[victim_way] = pf_sig;
@@ -568,7 +481,8 @@ void GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence,
   delta[victim_way] = pf_delta;
 }
 
-uint32_t GLOBAL_REGISTER::check_entry(uint32_t page_offset) {
+uint32_t GLOBAL_REGISTER::check_entry(uint32_t page_offset)
+{
   uint32_t max_conf = 0, max_conf_way = MAX_GHR_ENTRY;
 
   for (uint32_t i = 0; i < MAX_GHR_ENTRY; i++) {

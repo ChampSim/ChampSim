@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: DoozyX/clang-format-lint-action@v0.11
+      - uses: DoozyX/clang-format-lint-action@v0.13
         with:
           source: 'src inc prefetcher branch replacement btb'
           style: file
-          clangFormatVersion: 13
+          clangFormatVersion: 13.0.0
           inplace: True
       - uses: EndBug/add-and-commit@v4
         with:
