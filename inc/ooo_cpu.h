@@ -73,12 +73,6 @@ class O3_CPU : public champsim::operable {
     // Ready-To-Execute
     std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute;
 
-    // Ready-To-Load
-    std::queue<std::vector<LSQ_ENTRY>::iterator> RTL0, RTL1;
-
-    // Ready-To-Store
-    std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
-
     // branch
     int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
     int mispredicted_branch_iw_index = 0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes

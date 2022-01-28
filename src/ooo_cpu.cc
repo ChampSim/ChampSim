@@ -615,11 +615,6 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                         smem.q_entry->valid = false;
                     }
                 }
-                else
-                {
-                    // If this entry is not waiting on RAW
-                    RTL0.push(smem.q_entry);
-                }
             }
         }
     }
@@ -635,7 +630,6 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                 *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, {rob_it->asid[0], rob_it->asid[1]}};
                 dmem.added = true;
 
-                RTS0.push(dmem.q_entry);
                 STA.pop_front();
             }
         }
@@ -656,53 +650,58 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
 
 void O3_CPU::operate_lsq()
 {
-    // handle store
+    auto store_bw = SQ_WIDTH;
 
-    uint32_t store_issued = 0;
-
-    while (store_issued < SQ_WIDTH && !RTS0.empty())
+    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
     {
-        // add it to DTLB
-        int rq_index = do_translate_store(RTS0.front());
-
-        if (rq_index == -2)
-            break;
-
-        RTS0.pop();
-        store_issued++;
+        if (sq_it->valid && !sq_it->translated && sq_it->event_cycle < current_cycle)
+        {
+            auto result = do_translate_store(sq_it);
+            if (result != -2)
+            {
+                --store_bw;
+                sq_it->translated = INFLIGHT;
+            }
+        }
     }
 
-    while (store_issued < SQ_WIDTH && !RTS1.empty())
+    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
     {
-        execute_store(RTS1.front());
-
-        RTS1.pop();
-        store_issued++;
+        if (sq_it->valid && sq_it->translated == COMPLETED && !sq_it->fetched && sq_it->event_cycle < current_cycle)
+        {
+            execute_store(sq_it);
+            --store_bw;
+            sq_it->fetched = COMPLETED;
+            sq_it->event_cycle = current_cycle;
+        }
     }
 
-    unsigned load_issued = 0;
+    auto load_bw = LQ_WIDTH;
 
-    while (load_issued < LQ_WIDTH && !RTL0.empty())
+    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
     {
-        // add it to DTLB
-        int rq_index = do_translate_load(RTL0.front());
-
-        if (rq_index == -2)
-            break;
-
-        RTL0.pop();
-        load_issued++;
+        if (lq_it->valid && !lq_it->translated && lq_it->event_cycle < current_cycle)
+        {
+            auto result = do_translate_load(lq_it);
+            if (result != -2)
+            {
+                --load_bw;
+                lq_it->translated = INFLIGHT;
+            }
+        }
     }
 
-    while (load_issued < LQ_WIDTH && !RTL1.empty())
+    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
     {
-        int rq_index = execute_load(RTL1.front());
-
-        if (rq_index == -2)
-            break;
-
-        RTL1.pop();
-        load_issued++;
+        if (lq_it->valid && lq_it->translated == COMPLETED && !lq_it->fetched && lq_it->event_cycle < current_cycle)
+        {
+            auto result = execute_load(lq_it);
+            if (result != -2)
+            {
+                --load_bw;
+                lq_it->fetched = INFLIGHT;
+            }
+        }
     }
 }
 
@@ -727,21 +726,13 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     data_packet.sq_index_depend_on_me = {sq_it};
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is popped from to RTS0" << std::endl; })
+            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is issued for translating" << std::endl; })
 
-    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
-
-    if (rq_index != -2)
-        sq_it->translated = INFLIGHT;
-
-    return rq_index;
+    return DTLB_bus.lower_level->add_rq(&data_packet);
 }
 
 void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
-    sq_it->fetched = COMPLETED;
-    sq_it->event_cycle = current_cycle;
-
     sq_it->rob_index->num_mem_ops--;
     sq_it->rob_index->event_cycle = current_cycle;
     assert(sq_it->rob_index->num_mem_ops >= 0);
@@ -749,7 +740,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
         inflight_mem_executions++;
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[SQ1] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
+            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
             std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
             std::cout << " event_cycle: " << sq_it->event_cycle << std::endl; });
 
@@ -795,14 +786,9 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.lq_index_depend_on_me = {lq_it};
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is popped to RTL0" << std::endl; })
+            std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl; })
 
-    int rq_index = DTLB_bus.lower_level->add_rq(&data_packet);
-
-    if (rq_index != -2)
-        lq_it->translated = INFLIGHT;
-
-    return rq_index;
+    return DTLB_bus.lower_level->add_rq(&data_packet);
 }
 
 int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
@@ -823,12 +809,7 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.to_return = {&L1D_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
-    int rq_index = L1D_bus.lower_level->add_rq(&data_packet);
-
-    if (rq_index != -2)
-        lq_it->fetched = INFLIGHT;
-
-    return rq_index;
+    return L1D_bus.lower_level->add_rq(&data_packet);
 }
 
 void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
@@ -977,8 +958,6 @@ void O3_CPU::handle_memory_return()
 	      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      sq_merged->translated = COMPLETED;
 	      sq_merged->event_cycle = current_cycle;
-
-          RTS1.push(sq_merged);
 	    }
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
@@ -986,8 +965,6 @@ void O3_CPU::handle_memory_return()
 	      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
 	      lq_merged->translated = COMPLETED;
 	      lq_merged->event_cycle = current_cycle;
-
-          RTL1.push(lq_merged);
 	    }
 
 	  // remove this entry
