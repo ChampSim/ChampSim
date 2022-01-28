@@ -1,7 +1,6 @@
 #ifndef MEMORY_CLASS_H
 #define MEMORY_CLASS_H
 
-#include "champsim.h"
 #include "block.h"
 
 #include <limits>
@@ -22,9 +21,8 @@ class BLOCK {
          dirty = false;
 
     uint64_t address = 0,
-             full_addr = 0,
              v_address = 0,
-             full_v_addr = 0,
+             tag = 0,
              data = 0,
              ip = 0,
              cpu = 0,
@@ -46,11 +44,15 @@ class MemoryRequestConsumer
          * >0 : new queue occupancy
          *
          */
+
+        const unsigned fill_level;
         virtual int  add_rq(PACKET *packet) = 0;
         virtual int  add_wq(PACKET *packet) = 0;
         virtual int  add_pq(PACKET *packet) = 0;
         virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
         virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+
+        explicit MemoryRequestConsumer(unsigned fill_level) : fill_level(fill_level) {}
 };
 
 class MemoryRequestProducer

@@ -1,7 +1,10 @@
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
 
+#include <array>
 #include <cstdint>
+#include <exception>
+#include <iostream>
 
 #include "champsim_constants.h"
 
@@ -31,6 +34,22 @@
 using namespace std;
 
 extern uint8_t warmup_complete[NUM_CPUS];
-void print_deadlock(uint32_t i);
+
+namespace champsim
+{
+    struct deadlock : public std::exception
+    {
+        const uint32_t which;
+        explicit deadlock(uint32_t cpu) : which(cpu) {}
+    };
+
+    struct deprecated_clock_cycle
+    {
+        uint64_t operator[](std::size_t cpu_idx);
+    };
+}
+
+extern champsim::deprecated_clock_cycle current_core_cycle;
+
 #endif
 

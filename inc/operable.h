@@ -30,6 +30,7 @@ class operable {
     }
 
     virtual void operate() = 0;
+    virtual void print_deadlock() {}
 };
 
 class by_next_operate
