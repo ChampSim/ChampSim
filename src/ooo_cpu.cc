@@ -253,21 +253,15 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     // begin process of fetching this instruction by sending it to the ITLB
     // add it to the ITLB's read queue
     PACKET trace_packet;
-    trace_packet.fill_level = ITLB_bus.lower_level->fill_level;
-    trace_packet.cpu = cpu;
     trace_packet.address = begin->ip;
     trace_packet.v_address = begin->ip;
     trace_packet.instr_id = begin->instr_id;
     trace_packet.ip = begin->ip;
     trace_packet.type = LOAD;
-    trace_packet.asid[0] = 0;
-    trace_packet.asid[1] = 0;
-    trace_packet.to_return = {&ITLB_bus};
     for (; begin != end; ++begin)
         trace_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
-
+    int rq_index = ITLB_bus.issue(trace_packet);
     if(rq_index != -2)
     {
         // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
@@ -307,23 +301,17 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 {
     // add it to the L1-I's read queue
     PACKET fetch_packet;
-    fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
-    fetch_packet.cpu = cpu;
     fetch_packet.address = begin->instruction_pa;
     fetch_packet.data = begin->instruction_pa;
     fetch_packet.v_address = begin->ip;
     fetch_packet.instr_id = begin->instr_id;
     fetch_packet.ip = begin->ip;
-    fetch_packet.type = LOAD; 
-    fetch_packet.asid[0] = 0;
-    fetch_packet.asid[1] = 0;
-    fetch_packet.to_return = {&L1I_bus};
+    fetch_packet.type = LOAD;
     for (; begin != end; ++begin)
         fetch_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
-
-    if(rq_index != -2)
+    int rq_index = L1I_bus.issue(fetch_packet);
+    if (rq_index != -2)
     {
         // mark all instructions from this cache line as having been fetched
         for (auto dep_it : fetch_packet.instr_depend_on_me)
@@ -697,23 +685,17 @@ void O3_CPU::operate_lsq()
 int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
     PACKET data_packet;
-
-    data_packet.fill_level = DTLB_bus.lower_level->fill_level;
-    data_packet.cpu = cpu;
     data_packet.address = sq_it->virtual_address;
     data_packet.v_address = sq_it->virtual_address;
     data_packet.instr_id = sq_it->instr_id;
     data_packet.ip = sq_it->ip;
     data_packet.type = RFO;
-    data_packet.asid[0] = sq_it->asid[0];
-    data_packet.asid[1] = sq_it->asid[1];
-    data_packet.to_return = {&DTLB_bus};
     data_packet.sq_index_depend_on_me = {sq_it};
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is issued for translating" << std::endl; })
 
-    return DTLB_bus.lower_level->add_rq(&data_packet);
+    return DTLB_bus.issue(data_packet);
 }
 
 void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
@@ -750,41 +732,30 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
     PACKET data_packet;
-    data_packet.fill_level = DTLB_bus.lower_level->fill_level;
-    data_packet.cpu = cpu;
     data_packet.address = lq_it->virtual_address;
     data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.asid[0] = lq_it->asid[0];
-    data_packet.asid[1] = lq_it->asid[1];
-    data_packet.to_return = {&DTLB_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl; })
 
-    return DTLB_bus.lower_level->add_rq(&data_packet);
+    return DTLB_bus.issue(data_packet);
 }
 
 int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
-    // add it to L1D
     PACKET data_packet;
-    data_packet.fill_level = L1D_bus.lower_level->fill_level;
-    data_packet.cpu = cpu;
     data_packet.address = lq_it->physical_address;
     data_packet.v_address = lq_it->virtual_address;
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.asid[0] = lq_it->asid[0];
-    data_packet.asid[1] = lq_it->asid[1];
-    data_packet.to_return = {&L1D_bus};
     data_packet.lq_index_depend_on_me = {lq_it};
 
-    return L1D_bus.lower_level->add_rq(&data_packet);
+    return L1D_bus.issue(data_packet);
 }
 
 void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
@@ -974,21 +945,17 @@ void O3_CPU::retire_rob()
             PACKET data_packet;
             auto sq_it = dmem_it->q_entry;
 
-            data_packet.fill_level = L1D_bus.lower_level->fill_level;
-            data_packet.cpu = cpu;
             data_packet.address = sq_it->physical_address;
             data_packet.v_address = sq_it->virtual_address;
             data_packet.instr_id = sq_it->instr_id;
             data_packet.ip = sq_it->ip;
             data_packet.type = RFO;
-            data_packet.asid[0] = sq_it->asid[0];
-            data_packet.asid[1] = sq_it->asid[1];
 
-            auto result = L1D_bus.lower_level->add_wq(&data_packet);
-            if (result != -2)
-                sq_it->valid = false;
-            else
+            auto result = L1D_bus.issue(data_packet);
+            if (result == -2)
                 return;
+
+            sq_it->valid = false;
         }
 
         // release ROB entry
@@ -1069,5 +1036,14 @@ void O3_CPU::print_deadlock()
         if (is_valid<LSQ_ENTRY>{}(*sq_it))
             std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
     }
+}
+
+int CacheBus::issue(PACKET data_packet)
+{
+    data_packet.fill_level = lower_level->fill_level;
+    data_packet.cpu = cpu;
+    data_packet.to_return = {this};
+
+    return lower_level->add_rq(&data_packet);
 }
 

@@ -21,7 +21,7 @@ class PACKET {
             fill_level = 0,
             pf_origin_level = 0;
 
-    uint32_t pf_metadata;
+    uint32_t pf_metadata = 0;
     uint32_t cpu = NUM_CPUS;
 
     uint64_t address = 0,
