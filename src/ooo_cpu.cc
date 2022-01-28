@@ -693,7 +693,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     data_packet.sq_index_depend_on_me = {sq_it};
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is issued for translating" << std::endl; })
+            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl; })
 
     return DTLB_bus.issue(data_packet);
 }
@@ -923,9 +923,7 @@ void O3_CPU::handle_memory_return()
             merged->event_cycle = current_cycle;
             merged->rob_index->num_mem_ops--;
             merged->rob_index->event_cycle = current_cycle;
-
-          LSQ_ENTRY empty_entry;
-          *merged = empty_entry;
+            *merged = {};
 	    }
 
 	  // remove this entry
