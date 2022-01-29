@@ -165,7 +165,6 @@
         "banks": 8,
         "rows": 65536,
         "columns": 128,
-        "row_size": 8,
         "channel_width": 8,
         "wq_size": 64,
         "rq_size": 64,
