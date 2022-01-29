@@ -1,138 +1,82 @@
-//
-// From Data Prefetching Championship Simulator 2
-// Seth Pugsley, seth.h.pugsley@intel.com
-//
-
-/*
-
-  This file describes an Instruction Pointer-based (Program Counter-based) stride prefetcher.  
-  The prefetcher detects stride patterns coming from the same IP, and then 
-  prefetches additional cache lines.
-
-  Prefetches are issued into the L2 or LLC depending on L2 MSHR occupancy.
-
- */
+#include <algorithm>
+#include <array>
+#include <map>
 
 #include "cache.h"
 
-#define IP_TRACKER_COUNT 1024
-#define PREFETCH_DEGREE 3
+constexpr int PREFETCH_DEGREE = 3;
 
-class IP_TRACKER {
-  public:
-    // the IP we're tracking
-    uint64_t ip;
-
-    // the last address accessed by this IP
-    uint64_t last_cl_addr;
-
-    // the stride between the last two addresses accessed by this IP
-    int64_t last_stride;
-
-    // use LRU to evict old IP trackers
-    uint32_t lru;
-
-    IP_TRACKER () {
-        ip = 0;
-        last_cl_addr = 0;
-        last_stride = 0;
-        lru = 0;
-    };
+struct tracker_entry {
+  uint64_t ip = 0;              // the IP we're tracking
+  uint64_t last_cl_addr = 0;    // the last address accessed by this IP
+  int64_t last_stride = 0;      // the stride between the last two addresses accessed by this IP
+  uint64_t last_used_cycle = 0; // use LRU to evict old IP trackers
 };
 
-IP_TRACKER trackers[IP_TRACKER_COUNT];
+struct lookahead_entry {
+  uint64_t address = 0;
+  int64_t stride = 0;
+  int degree = 0; // degree remaining
+};
 
-void CACHE::prefetcher_initialize()
+constexpr std::size_t TRACKER_SETS = 256;
+constexpr std::size_t TRACKER_WAYS = 4;
+std::map<CACHE*, lookahead_entry> lookahead;
+std::map<CACHE*, std::array<tracker_entry, TRACKER_SETS * TRACKER_WAYS>> trackers;
+
+void CACHE::prefetcher_initialize() { std::cout << NAME << " IP-based stride prefetcher" << std::endl; }
+
+void CACHE::prefetcher_cycle_operate()
 {
-    std::cout << NAME << " IP-based stride prefetcher" << std::endl;
-    for (int i=0; i<IP_TRACKER_COUNT; i++)
-        trackers[i].lru = i;
+  // If a lookahead is active
+  if (auto [old_pf_address, stride, degree] = lookahead[this]; degree > 0) {
+    auto pf_address = old_pf_address + (stride << LOG2_BLOCK_SIZE);
+
+    // If the next step would exceed the degree or run off the page, stop
+    if (virtual_prefetch || (pf_address >> LOG2_PAGE_SIZE) == (old_pf_address >> LOG2_PAGE_SIZE)) {
+      // check the MSHR occupancy to decide if we're going to prefetch to this
+      // level or not
+      bool success = prefetch_line(0, 0, pf_address, (get_occupancy(0, pf_address) < get_size(0, pf_address) / 2), 0);
+      if (success)
+        lookahead[this] = {pf_address, stride, degree - 1};
+      // If we fail, try again next cycle
+    } else {
+      lookahead[this] = {};
+    }
+  }
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-    // check for a tracker hit
-    uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
+  uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
+  int64_t stride = 0;
 
-    int index = -1;
-    for (index=0; index<IP_TRACKER_COUNT; index++) {
-        if (trackers[index].ip == ip)
-            break;
-    }
+  // get boundaries of tracking set
+  auto set_begin = std::next(std::begin(trackers[this]), ip % TRACKER_SETS);
+  auto set_end = std::next(set_begin, TRACKER_WAYS);
 
-    // this is a new IP that doesn't have a tracker yet, so allocate one
-    if (index == IP_TRACKER_COUNT) {
+  // find the current ip within the set
+  auto found = std::find_if(set_begin, set_end, [ip](tracker_entry x) { return x.ip == ip; });
 
-        for (index=0; index<IP_TRACKER_COUNT; index++) {
-            if (trackers[index].lru == (IP_TRACKER_COUNT-1))
-                break;
-        }
-
-        trackers[index].ip = ip;
-        trackers[index].last_cl_addr = cl_addr;
-        trackers[index].last_stride = 0;
-
-        //std::cout << "[IP_STRIDE] MISS index: " << index << " lru: " << trackers[index].lru << " ip: " << std::hex << ip << " cl_addr: " << cl_addr << std::dec << std::endl;
-
-        for (int i=0; i<IP_TRACKER_COUNT; i++) {
-            if (trackers[i].lru < trackers[index].lru)
-                trackers[i].lru++;
-        }
-        trackers[index].lru = 0;
-
-        return metadata_in;
-    }
-
-    // sanity check
-    // at this point we should know a matching tracker index
-    if (index == -1)
-        assert(0);
-
+  // if we found a matching entry
+  if (found != set_end) {
     // calculate the stride between the current address and the last address
-    // this bit appears overly complicated because we're calculating
-    // differences between unsigned address variables
-    int64_t stride = 0;
-    if (cl_addr > trackers[index].last_cl_addr)
-        stride = cl_addr - trackers[index].last_cl_addr;
-    else {
-        stride = trackers[index].last_cl_addr - cl_addr;
-        stride *= -1;
-    }
+    // no need to check for overflow since these values are downshifted
+    stride = (int64_t)cl_addr - (int64_t)found->last_cl_addr;
 
-    //std::cout << "[IP_STRIDE] HIT  index: " << index << " lru: " << trackers[index].lru << " ip: " << std::hex << ip << " cl_addr: " << cl_addr << std::dec << " stride: " << stride << std::endl;
+    // Initialize prefetch state unless we somehow saw the same address twice in
+    // a row or if this is the first time we've seen this stride
+    if (stride != 0 && stride == found->last_stride)
+      lookahead[this] = {cl_addr, stride, PREFETCH_DEGREE};
+  } else {
+    // replace by LRU
+    found = std::min_element(set_begin, set_end, [](tracker_entry x, tracker_entry y) { return x.last_used_cycle < y.last_used_cycle; });
+  }
 
-    // don't do anything if we somehow saw the same address twice in a row
-    if (stride == 0)
-        return metadata_in;
-    
-    // only do any prefetching if there's a pattern of seeing the same
-    // stride more than once
-    if (stride == trackers[index].last_stride) {
+  // update tracking set
+  *found = {ip, cl_addr, stride, current_cycle};
 
-        // do some prefetching
-        for (int i=0; i<PREFETCH_DEGREE; i++) {
-            uint64_t pf_address = (cl_addr + (stride*(i+1))) << LOG2_BLOCK_SIZE;
-
-            // only issue a prefetch if the prefetch address is in the same 4 KB page 
-            // as the current demand access address
-            if ((pf_address >> LOG2_PAGE_SIZE) != (addr >> LOG2_PAGE_SIZE))
-                break;
-
-            // check the MSHR occupancy to decide if we're going to prefetch to the L2 or LLC
-	      prefetch_line(ip, addr, pf_address, (get_occupancy(0,0) < (get_size(0,0)>>1)), 0);
-        }
-    }
-
-    trackers[index].last_cl_addr = cl_addr;
-    trackers[index].last_stride = stride;
-
-    for (int i=0; i<IP_TRACKER_COUNT; i++) {
-        if (trackers[i].lru < trackers[index].lru)
-            trackers[i].lru++;
-    }
-    trackers[index].lru = 0;
-
-    return metadata_in;
+  return metadata_in;
 }
 
 uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
@@ -140,12 +84,4 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   return metadata_in;
 }
 
-void CACHE::prefetcher_cycle_operate()
-{
-}
-
-void CACHE::prefetcher_final_stats()
-{
-    std::cout << NAME << " PC-based stride prefetcher final stats" << std::endl;
-}
-
+void CACHE::prefetcher_final_stats() {}
