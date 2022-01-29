@@ -1,87 +1,62 @@
 #ifndef MEMORY_CLASS_H
 #define MEMORY_CLASS_H
 
-#include "champsim.h"
+#include <limits>
+
 #include "block.h"
 
 // CACHE ACCESS TYPE
-#define LOAD      0
-#define RFO       1
-#define PREFETCH  2
+#define LOAD 0
+#define RFO 1
+#define PREFETCH 2
 #define WRITEBACK 3
-#define NUM_TYPES 4
+#define TRANSLATION 4
+#define NUM_TYPES 5
 
-extern uint32_t tRP,  // Row Precharge (RP) latency
-                tRCD, // Row address to Column address (RCD) latency
-                tCAS; // Column Address Strobe (CAS) latency
+// CACHE BLOCK
+class BLOCK
+{
+public:
+  bool valid = false, prefetch = false, dirty = false;
 
-extern uint64_t l2pf_access;
+  uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0;
 
-class MEMORY {
-  public:
-    // memory interface
-    MEMORY *upper_level_icache[NUM_CPUS], *upper_level_dcache[NUM_CPUS], *lower_level, *extra_interface;
-
-    // empty queues
-    PACKET_QUEUE WQ{"EMPTY", 1}, RQ{"EMPTY", 1}, PQ{"EMPTY", 1}, MSHR{"EMPTY", 1};
-
-    // functions
-    virtual int  add_rq(PACKET *packet) = 0;
-    virtual int  add_wq(PACKET *packet) = 0;
-    virtual int  add_pq(PACKET *packet) = 0;
-    virtual void return_data(PACKET *packet) = 0;
-    virtual void operate() = 0;
-    virtual void increment_WQ_FULL(uint64_t address) = 0;
-    virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-    virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
-
-    // stats
-    uint64_t ACCESS[NUM_TYPES], HIT[NUM_TYPES], MISS[NUM_TYPES], MSHR_MERGED[NUM_TYPES], STALL[NUM_TYPES];
-
-    MEMORY() {
-        for (uint32_t i=0; i<NUM_TYPES; i++) {
-            ACCESS[i] = 0;
-            HIT[i] = 0;
-            MISS[i] = 0;
-            MSHR_MERGED[i] = 0;
-            STALL[i] = 0;
-        }
-    }
+  // replacement state
+  uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
 };
 
-class BANK_REQUEST {
-  public:
-    uint64_t cycle_available,
-             address,
-             full_addr;
+class MemoryRequestConsumer
+{
+public:
+  /*
+   * add_*q() return values:
+   *
+   * -2 : queue full
+   * -1 : packet value forwarded, returned
+   * 0  : packet merged
+   * >0 : new queue occupancy
+   *
+   */
 
-    uint32_t open_row;
+  const unsigned fill_level;
+  virtual int add_rq(PACKET* packet) = 0;
+  virtual int add_wq(PACKET* packet) = 0;
+  virtual int add_pq(PACKET* packet) = 0;
+  virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
+  virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
-    uint8_t working,
-            working_type,
-            row_buffer_hit,
-            drc_hit,
-            is_write,
-            is_read;
+  explicit MemoryRequestConsumer(unsigned fill_level) : fill_level(fill_level) {}
+};
 
-    int request_index;
+class MemoryRequestProducer
+{
+public:
+  MemoryRequestConsumer* lower_level;
+  virtual void return_data(PACKET* packet) = 0;
 
-    BANK_REQUEST() {
-        cycle_available = 0;
-        address = 0;
-        full_addr = 0;
-
-        open_row = UINT32_MAX;
-
-        working = 0;
-        working_type = 0;
-        row_buffer_hit = 0;
-        drc_hit = 0;
-        is_write = 0;
-        is_read = 0;
-
-        request_index = -1;
-    };
+protected:
+  MemoryRequestProducer() {}
+  explicit MemoryRequestProducer(MemoryRequestConsumer* ll) : lower_level(ll) {}
 };
 
 #endif

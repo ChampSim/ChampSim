@@ -14,8 +14,6 @@
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
 
-using namespace std;
-
 typedef struct trace_instr_format {
     unsigned long long int ip;  // instruction pointer (program counter) value
 

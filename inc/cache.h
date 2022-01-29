@@ -1,227 +1,108 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <functional>
+#include <list>
+#include <string>
+#include <vector>
+
+#include "champsim.h"
+#include "delay_queue.hpp"
 #include "memory_class.h"
+#include "ooo_cpu.h"
+#include "operable.h"
 
-// PAGE
-extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
+// virtual address space prefetching
+#define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-// CACHE TYPE
-#define IS_ITLB 0
-#define IS_DTLB 1
-#define IS_STLB 2
-#define IS_L1I  3
-#define IS_L1D  4
-#define IS_L2C  5
-#define IS_LLC  6
+extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
-// INSTRUCTION TLB
-#define ITLB_SET 16
-#define ITLB_WAY 4
-#define ITLB_RQ_SIZE 16
-#define ITLB_WQ_SIZE 16
-#define ITLB_PQ_SIZE 0
-#define ITLB_MSHR_SIZE 8
-#define ITLB_LATENCY 1
+class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
+{
+public:
+  uint32_t cpu;
+  const std::string NAME;
+  const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
+  const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
+  std::vector<BLOCK> block{NUM_SET * NUM_WAY};
+  const uint32_t MAX_READ, MAX_WRITE;
+  uint32_t reads_available_this_cycle, writes_available_this_cycle;
+  const bool prefetch_as_load;
+  const bool match_offset_bits;
+  const bool virtual_prefetch;
+  bool ever_seen_data = false;
+  const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
-// DATA TLB
-#define DTLB_SET 16
-#define DTLB_WAY 4
-#define DTLB_RQ_SIZE 16
-#define DTLB_WQ_SIZE 16
-#define DTLB_PQ_SIZE 0
-#define DTLB_MSHR_SIZE 8
-#define DTLB_LATENCY 1
+  // prefetch stats
+  uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
-// SECOND LEVEL TLB
-#define STLB_SET 128
-#define STLB_WAY 12
-#define STLB_RQ_SIZE 32
-#define STLB_WQ_SIZE 32
-#define STLB_PQ_SIZE 0
-#define STLB_MSHR_SIZE 16
-#define STLB_LATENCY 8
+  // queues
+  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
+      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
+      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
+      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
 
-// L1 INSTRUCTION CACHE
-#define L1I_SET 64
-#define L1I_WAY 8
-#define L1I_RQ_SIZE 64
-#define L1I_WQ_SIZE 64 
-#define L1I_PQ_SIZE 32
-#define L1I_MSHR_SIZE 8
-#define L1I_LATENCY 4
+  std::list<PACKET> MSHR; // MSHR
 
-// L1 DATA CACHE
-#define L1D_SET 64
-#define L1D_WAY 12
-#define L1D_RQ_SIZE 64
-#define L1D_WQ_SIZE 64 
-#define L1D_PQ_SIZE 8
-#define L1D_MSHR_SIZE 16
-#define L1D_LATENCY 5 
+  uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
+           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
 
-// L2 CACHE
-#define L2C_SET 1024
-#define L2C_WAY 8
-#define L2C_RQ_SIZE 32
-#define L2C_WQ_SIZE 32
-#define L2C_PQ_SIZE 16
-#define L2C_MSHR_SIZE 32
-#define L2C_LATENCY 10  // 4/5 (L1I or L1D) + 10 = 14/15 cycles
+  uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
+           WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0;
 
-// LAST LEVEL CACHE
-#define LLC_SET NUM_CPUS*2048
-#define LLC_WAY 16
-#define LLC_RQ_SIZE NUM_CPUS*L2C_MSHR_SIZE //48
-#define LLC_WQ_SIZE NUM_CPUS*L2C_MSHR_SIZE //48
-#define LLC_PQ_SIZE NUM_CPUS*32
-#define LLC_MSHR_SIZE NUM_CPUS*64
-#define LLC_LATENCY 20  // 4/5 (L1I or L1D) + 10 + 20 = 34/35 cycles
+  uint64_t total_miss_latency = 0;
 
-class CACHE : public MEMORY {
-  public:
-    uint32_t cpu;
-    const string NAME;
-    const uint32_t NUM_SET, NUM_WAY, NUM_LINE, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-    uint32_t LATENCY;
-    BLOCK **block;
-    int fill_level;
-    uint32_t MAX_READ, MAX_FILL;
-    uint32_t reads_available_this_cycle;
-    uint8_t cache_type;
+  // functions
+  int add_rq(PACKET* packet) override;
+  int add_wq(PACKET* packet) override;
+  int add_pq(PACKET* packet) override;
 
-    // prefetch stats
-    uint64_t pf_requested,
-             pf_issued,
-             pf_useful,
-             pf_useless,
-             pf_fill;
+  void return_data(PACKET* packet) override;
+  void operate() override;
+  void operate_writes();
+  void operate_reads();
 
-    // queues
-    PACKET_QUEUE WQ{NAME + "_WQ", WQ_SIZE}, // write queue
-                 RQ{NAME + "_RQ", RQ_SIZE}, // read queue
-                 PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
-                 MSHR{NAME + "_MSHR", MSHR_SIZE}, // MSHR
-                 PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-    uint64_t sim_access[NUM_CPUS][NUM_TYPES],
-             sim_hit[NUM_CPUS][NUM_TYPES],
-             sim_miss[NUM_CPUS][NUM_TYPES],
-             roi_access[NUM_CPUS][NUM_TYPES],
-             roi_hit[NUM_CPUS][NUM_TYPES],
-             roi_miss[NUM_CPUS][NUM_TYPES];
+  uint32_t get_set(uint64_t address);
+  uint32_t get_way(uint64_t address, uint32_t set);
 
-    uint64_t total_miss_latency;
-    
-    // constructor
-    CACHE(string v1, uint32_t v2, int v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8) 
-        : NAME(v1), NUM_SET(v2), NUM_WAY(v3), NUM_LINE(v4), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8) {
+  int invalidate_entry(uint64_t inval_addr);
+  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
 
-        LATENCY = 0;
+  void add_mshr(PACKET* packet);
+  void va_translate_prefetches();
 
-        // cache block
-        block = new BLOCK* [NUM_SET];
-        for (uint32_t i=0; i<NUM_SET; i++) {
-            block[i] = new BLOCK[NUM_WAY]; 
+  void handle_fill();
+  void handle_writeback();
+  void handle_read();
+  void handle_prefetch();
 
-            for (uint32_t j=0; j<NUM_WAY; j++) {
-                block[i][j].lru = j;
-            }
-        }
+  void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  bool readlike_miss(PACKET& handle_pkt);
+  bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
 
-        for (uint32_t i=0; i<NUM_CPUS; i++) {
-            upper_level_icache[i] = NULL;
-            upper_level_dcache[i] = NULL;
+  bool should_activate_prefetcher(int type);
 
-            for (uint32_t j=0; j<NUM_TYPES; j++) {
-                sim_access[i][j] = 0;
-                sim_hit[i][j] = 0;
-                sim_miss[i][j] = 0;
-                roi_access[i][j] = 0;
-                roi_hit[i][j] = 0;
-                roi_miss[i][j] = 0;
-            }
-        }
+  void print_deadlock() override;
 
-	total_miss_latency = 0;
+#include "cache_modules.inc"
 
-        lower_level = NULL;
-        extra_interface = NULL;
-        fill_level = -1;
-        MAX_READ = 1;
-        MAX_FILL = 1;
+  const repl_t repl_type;
+  const pref_t pref_type;
 
-        pf_requested = 0;
-        pf_issued = 0;
-        pf_useful = 0;
-        pf_useless = 0;
-        pf_fill = 0;
-    };
-
-    // destructor
-    ~CACHE() {
-        for (uint32_t i=0; i<NUM_SET; i++)
-            delete[] block[i];
-        delete[] block;
-    };
-
-    // functions
-    int  add_rq(PACKET *packet),
-         add_wq(PACKET *packet),
-         add_pq(PACKET *packet);
-
-    void return_data(PACKET *packet),
-         operate(),
-         increment_WQ_FULL(uint64_t address);
-
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
-             get_size(uint8_t queue_type, uint64_t address);
-
-    int  check_hit(PACKET *packet),
-         invalidate_entry(uint64_t inval_addr),
-         check_mshr(PACKET *packet),
-         prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
-         kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
-
-    void handle_fill(),
-         handle_writeback(),
-         handle_read(),
-         handle_prefetch();
-
-    void add_mshr(PACKET *packet),
-         update_fill_cycle(),
-         llc_initialize_replacement(),
-         update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
-         llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
-         lru_update(uint32_t set, uint32_t way),
-         fill_cache(uint32_t set, uint32_t way, PACKET *packet),
-         replacement_final_stats(),
-         llc_replacement_final_stats(),
-         //prefetcher_initialize(),
-         l1d_prefetcher_initialize(),
-         l2c_prefetcher_initialize(),
-         llc_prefetcher_initialize(),
-         prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
-         l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type),
-         prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr),
-         l1d_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-         //prefetcher_final_stats(),
-         l1d_prefetcher_final_stats(),
-         l2c_prefetcher_final_stats(),
-         llc_prefetcher_final_stats();
-    void (*l1i_prefetcher_cache_operate)(uint32_t, uint64_t, uint8_t, uint8_t);
-    void (*l1i_prefetcher_cache_fill)(uint32_t, uint64_t, uint32_t, uint32_t, uint8_t, uint64_t);
-
-    uint32_t l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         llc_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in),
-         l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in),
-         llc_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    
-    uint32_t get_set(uint64_t address),
-             get_way(uint64_t address, uint32_t set),
-             find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
-             lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+  // constructor
+  CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat,
+        uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
+        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), WQ_SIZE(v5),
+        RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
+        MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
+        repl_type(repl), pref_type(pref)
+  {
+  }
 };
 
 #endif
