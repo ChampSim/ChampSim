@@ -30,7 +30,6 @@ void O3_CPU::operate()
     translate_fetch();
     check_dib();
 
-    DISPATCH_BUFFER.operate();
     DECODE_BUFFER.operate();
 }
 
@@ -366,10 +365,8 @@ void O3_CPU::decode_instruction()
 	  }
 	
         // Add to dispatch
-        if (warmup_complete[cpu])
-            DISPATCH_BUFFER.push_back(db_entry);
-        else
-            DISPATCH_BUFFER.push_back_ready(db_entry);
+        db_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? DISPATCH_LATENCY : 0);
+        DISPATCH_BUFFER.push_back(std::move(db_entry));
         DECODE_BUFFER.pop_front();
 
 	available_decode_bandwidth--;
@@ -403,13 +400,10 @@ void O3_CPU::do_dib_update(const ooo_model_instr &instr)
 
 void O3_CPU::dispatch_instruction()
 {
-    if (DISPATCH_BUFFER.empty())
-        return;
-
     std::size_t available_dispatch_bandwidth = DISPATCH_WIDTH;
 
     // dispatch DISPATCH_WIDTH instructions into the ROB
-    while (available_dispatch_bandwidth > 0 && DISPATCH_BUFFER.has_ready() && !ROB.full())
+    while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && !ROB.full())
     {
         // Add to ROB
         ROB.push_back(DISPATCH_BUFFER.front());
