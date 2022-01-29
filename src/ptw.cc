@@ -1,452 +1,258 @@
-#include "ooo_cpu.h"
 #include "ptw.h"
-#include "vmem.h"
+
+#include "champsim.h"
 #include "util.h"
+#include "vmem.h"
 
 extern VirtualMemory vmem;
-extern uint8_t  warmup_complete[NUM_CPUS];
-extern uint8_t knob_cloudsuite;
+extern uint8_t warmup_complete[NUM_CPUS];
 
-template <typename T>
-struct ptw_eq_addr
+PageTableWalker::PageTableWalker(string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7,
+                                 uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll)
+    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
+      MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
+      PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
+      PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
+      PSCL2{"PSCL2", 1, v8, v9},                                  // Translation from L5->L1
+      CR3_addr(vmem.get_pte_pa(cpu, 0, vmem.pt_levels).first)
 {
-    using argument_type = T;
-    const decltype(argument_type::address) address;
-	const decltype(argument_type::translation_level) translation_level;
-    ptw_eq_addr(decltype(argument_type::address) address, decltype(argument_type::translation_level) translation_level) : address(address), translation_level(translation_level) {}
-    bool operator()(const argument_type &test)
-    {
-        is_valid<argument_type> validtest;
-        if(!validtest(test) || (test.translation_level != translation_level) || test.returned)
-			return false;
-		
-		return (address >> LOG2_PAGE_SIZE) == (test.address >> LOG2_PAGE_SIZE);
-    }
-};
+}
 
 void PageTableWalker::handle_read()
 {
-	int reads_this_cycle = MAX_READ;
+  int reads_this_cycle = MAX_READ;
 
-	while(reads_this_cycle > 0)
-	{
-        bool mshr_full = (MSHR.size() == MSHR_SIZE);
+  while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
+    PACKET& handle_pkt = RQ.front();
 
-		if(!RQ.has_ready() || mshr_full || lower_level->get_occupancy(1,RQ.front().address) == lower_level->get_size(1,RQ.front().address)) //PTW lower level is L1D
-			break;
+    DP(if (warmup_complete[packet->cpu]) {
+      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
+      std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
+      std::cout << " full_v_addr: " << handle_pkt.v_address;
+      std::cout << " data: " << handle_pkt.data << std::dec;
+      std::cout << " translation_level: " << +handle_pkt.translation_level;
+      std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl;
+    });
 
-			PACKET &handle_pkt = RQ.front();
-			
-			assert((handle_pkt.address >> 32) != 0xf000000f); //Page table is stored at this address
-			assert(handle_pkt.v_address != 0);
+    auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
+    auto ptw_level = vmem.pt_levels - 1;
+    for (auto pscl : {&PSCL5, &PSCL4, &PSCL3, &PSCL2}) {
+      if (auto check_addr = pscl->check_hit(handle_pkt.address); check_addr.has_value()) {
+        ptw_addr = check_addr.value();
+        ptw_level = pscl->level - 1;
+      }
+    }
 
-			uint64_t address_pscl5 = PSCL5.check_hit(handle_pkt.address);
-			uint64_t address_pscl4 = PSCL4.check_hit(handle_pkt.address);
-			uint64_t address_pscl3 = PSCL3.check_hit(handle_pkt.address);
-			uint64_t address_pscl2 = PSCL2.check_hit(handle_pkt.address);
+    PACKET packet = handle_pkt;
+    packet.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
+    packet.address = ptw_addr;
+    packet.v_address = handle_pkt.address;
+    packet.cpu = cpu;
+    packet.type = TRANSLATION;
+    packet.init_translation_level = ptw_level;
+    packet.translation_level = packet.init_translation_level;
+    packet.to_return = {this};
 
+    int rq_index = lower_level->add_rq(&packet);
+    if (rq_index == -2)
+      return;
 
-			PACKET packet = handle_pkt;
+    packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
+    packet.type = handle_pkt.type;
 
-            packet.fill_level = lower_level->fill_level; //This packet will be sent from L1 to PTW.
-            packet.cpu = cpu;
-			packet.type = TRANSLATION;
-            packet.instr_id = handle_pkt.instr_id;
-            packet.ip = handle_pkt.ip;
-            packet.event_cycle = current_cycle;
-            packet.v_address = handle_pkt.address;
+    auto it = MSHR.insert(std::end(MSHR), packet);
+    it->cycle_enqueued = current_cycle;
+    it->event_cycle = std::numeric_limits<uint64_t>::max();
 
-            uint64_t next_address = UINT64_MAX;
-
-			if(address_pscl2 != UINT64_MAX)
-			{
-				next_address = address_pscl2 << LOG2_PAGE_SIZE | (get_offset(handle_pkt.address,IS_PTL1) << 3);				
-            	packet.translation_level = 1;
-			}
-			else if(address_pscl3 != UINT64_MAX)
-			{
-				next_address = address_pscl3 << LOG2_PAGE_SIZE | (get_offset(handle_pkt.address,IS_PTL2) << 3);				
-            	packet.translation_level = 2;
-            }
-			else if(address_pscl4 != UINT64_MAX)
-			{
-				next_address = address_pscl4 << LOG2_PAGE_SIZE | (get_offset(handle_pkt.address,IS_PTL3) << 3);				
-            	packet.translation_level = 3;
-            }
-			else if(address_pscl5 != UINT64_MAX)
-			{
-				next_address = address_pscl5 << LOG2_PAGE_SIZE | (get_offset(handle_pkt.address,IS_PTL4) << 3);				
-            	packet.translation_level = 4;
-            }
-            else
-            {
-            	next_address = CR3_addr << LOG2_PAGE_SIZE | (get_offset(handle_pkt.address,IS_PTL5) << 3);				
-            	packet.translation_level = 5;
-            }
-
-            packet.init_translation_level = packet.translation_level;
-            packet.address = next_address;
-
-			packet.to_return.clear();
-			packet.to_return = {this}; //Return this packet to PTW after completion.
-
-			int rq_index = lower_level->add_rq(&packet);
-		    assert(rq_index > -2);
-			
-			packet.to_return = handle_pkt.to_return; //Set the return for MSHR packet same as read packet.
-			packet.type = handle_pkt.type;
-
-            auto it = MSHR.insert(std::end(MSHR), packet);
-            it->cycle_enqueued = current_cycle;
-            it->event_cycle = std::numeric_limits<uint64_t>::max();
-
-		    RQ.pop_front();
-			reads_this_cycle--;
-	}
+    RQ.pop_front();
+    reads_this_cycle--;
+  }
 }
 
 void PageTableWalker::handle_fill()
 {
-	int fill_this_cycle = MAX_FILL;
+  int fill_this_cycle = MAX_FILL;
 
-	while(fill_this_cycle > 0) //Handle pending request
-	{
-		auto fill_mshr = MSHR.begin();
-		if (fill_mshr == std::end(MSHR) || (fill_mshr->event_cycle > current_cycle)) //Check if current level translation complete
-			break;
+  while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
+    auto fill_mshr = MSHR.begin();
+    if (fill_mshr->translation_level == 0) // If translation complete
+    {
+      // Return the translated physical address to STLB. Does not contain last
+      // 12 bits
+      auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->v_address);
+      if (warmup_complete[cpu] && fault) {
+        fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
+        MSHR.sort(ord_event_cycle<PACKET>{});
+      } else {
+        fill_mshr->data = addr;
+        fill_mshr->address = fill_mshr->v_address;
 
-			assert(CR3_addr != UINT64_MAX);
-			PageTablePage* curr_page = L5; //Start wth the L5 page
-			uint64_t next_level_base_addr = UINT64_MAX;
-			bool page_fault = false;
+        DP(if (warmup_complete[packet->cpu]) {
+          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
+          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+          std::cout << " full_v_addr: " << fill_mshr->v_address;
+          std::cout << " data: " << fill_mshr->data << std::dec;
+          std::cout << " translation_level: " << +fill_mshr->translation_level;
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
+        });
 
-			for (int i = 5; i > fill_mshr->translation_level; i--)
-			{
-				uint64_t offset = get_offset(fill_mshr->v_address, i); //Get offset according to page table level
-				assert(curr_page != NULL);
-				next_level_base_addr = curr_page->next_level_base_addr[offset];
-				if(next_level_base_addr == UINT64_MAX)
-				{
-					handle_page_fault(curr_page, &(*fill_mshr), i); //i means next level does not exist.
-					page_fault = true;
-					fill_mshr->translation_level = 0; //In page fault, All levels are translated.
-					break;
-				}
-				curr_page = curr_page->entry[offset];
-			}
+        for (auto ret : fill_mshr->to_return)
+          ret->return_data(&(*fill_mshr));
 
-			if(fill_mshr->translation_level == 0) //If translation complete
-			{
-				curr_page = L5;
-				next_level_base_addr = UINT64_MAX;
-				for (int i = 5; i > 1; i--) //Walk the page table and fill MMU caches
-				{
-					uint64_t offset = get_offset(fill_mshr->v_address, i);
-					assert(curr_page != NULL);
-					next_level_base_addr = curr_page->next_level_base_addr[offset];
-					assert(next_level_base_addr != UINT64_MAX);
-					curr_page = curr_page->entry[offset];
+        if (warmup_complete[cpu])
+          total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
-					if(fill_mshr->init_translation_level - i >= 0) //Check which translation levels needs to filled
-					{
-						switch(i)
-						{
-							case 5: PSCL5.fill_cache(next_level_base_addr, &(*fill_mshr));
-									break;
-							case 4: PSCL4.fill_cache(next_level_base_addr, &(*fill_mshr));
-									break;
-							case 3: PSCL3.fill_cache(next_level_base_addr, &(*fill_mshr));
-									break;
-							case 2: PSCL2.fill_cache(next_level_base_addr, &(*fill_mshr));
-									break;
-						}
-					}
-				}
+        MSHR.erase(fill_mshr);
+      }
+    } else {
+      auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->v_address, fill_mshr->translation_level);
+      if (warmup_complete[cpu] && fault) {
+        fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
+        MSHR.sort(ord_event_cycle<PACKET>{});
+      } else {
+        if (fill_mshr->translation_level == PSCL5.level)
+          PSCL5.fill_cache(addr, fill_mshr->v_address);
+        if (fill_mshr->translation_level == PSCL4.level)
+          PSCL4.fill_cache(addr, fill_mshr->v_address);
+        if (fill_mshr->translation_level == PSCL2.level)
+          PSCL3.fill_cache(addr, fill_mshr->v_address);
+        if (fill_mshr->translation_level == PSCL2.level)
+          PSCL2.fill_cache(addr, fill_mshr->v_address);
 
-				uint64_t offset = get_offset(fill_mshr->v_address, IS_PTL1);
-				next_level_base_addr = curr_page->next_level_base_addr[offset];
+        DP(if (warmup_complete[packet->cpu]) {
+          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
+          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+          std::cout << " full_v_addr: " << fill_mshr->v_address;
+          std::cout << " data: " << fill_mshr->data << std::dec;
+          std::cout << " translation_level: " << +fill_mshr->translation_level;
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
+        });
 
-				fill_mshr->data = next_level_base_addr; //Return the translated physical address to STLB. Does not contain last 12 bits
-		
-				fill_mshr->address = fill_mshr->v_address;
+        PACKET packet = *fill_mshr;
+        packet.cpu = cpu;
+        packet.type = TRANSLATION;
+        packet.address = addr;
+        packet.to_return = {this};
+        packet.translation_level = fill_mshr->translation_level - 1;
 
-				for(auto ret: fill_mshr->to_return)
-					ret->return_data(&(*fill_mshr));
+        int rq_index = lower_level->add_rq(&packet);
+        if (rq_index != -2) {
+          fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
+          fill_mshr->address = packet.address;
+          fill_mshr->translation_level--;
 
-				if(warmup_complete[cpu])
-			      {
-					uint64_t current_miss_latency = (current_cycle - fill_mshr->cycle_enqueued);	
-					total_miss_latency += current_miss_latency;
-			      }
+          MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
+        }
+      }
+    }
 
-                MSHR.erase(fill_mshr);
-			}
-			else
-			{
-				assert(!page_fault); //If page fault was there, then all levels of translation should have be done.
-
-				if (lower_level->get_occupancy(1,fill_mshr->address) < lower_level->get_occupancy(1,fill_mshr->address)) //Lower level of PTW is L1D. If L1D RQ has space then send the next level of translation.
-				{
-					PACKET packet = *fill_mshr;
-					packet.cpu = cpu; 
-					packet.type = TRANSLATION;
-					packet.event_cycle = current_cycle;
-					packet.address = next_level_base_addr << LOG2_PAGE_SIZE | (get_offset(fill_mshr->v_address, fill_mshr->translation_level) << 3);
-					
-					packet.to_return.clear();
-					packet.to_return = {this};					
-
-                    fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
-
-					int rq_index = lower_level->add_rq(&packet);
-					assert(rq_index > -2);
-
-					fill_mshr->address = packet.address;
-
-                    MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
-				}
-				else
-					RQ_FULL++;
-			}
-
-		fill_this_cycle--;
-	}
+    fill_this_cycle--;
+  }
 }
 
 void PageTableWalker::operate()
-{	
-	handle_fill();
-	handle_read();
-    RQ.operate();
+{
+  handle_fill();
+  handle_read();
+  RQ.operate();
 }
 
-void PageTableWalker::handle_page_fault(PageTablePage* page, PACKET *packet, uint8_t pt_level)
+int PageTableWalker::add_rq(PACKET* packet)
 {
-	assert(pt_level <= 5);
+  assert(packet->address != 0);
 
-	while(pt_level > 1)
-	{
-		uint64_t offset = get_offset(packet->v_address, pt_level);
-		
-		assert(page != NULL && page->entry[offset] == NULL);
-		
-		page->entry[offset] =  new PageTablePage();
-		page->next_level_base_addr[offset] = map_translation_page(packet->v_address, pt_level);
-		write_translation_page(page->next_level_base_addr[offset], packet, pt_level);
-		page = page->entry[offset];
-		pt_level--;
-	}
+  // check for duplicates in the read queue
+  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
+  assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
-	uint64_t offset = get_offset(packet->v_address, pt_level);
-		
-	assert(page != NULL && page->next_level_base_addr[offset] == UINT64_MAX);
+  // check occupancy
+  if (RQ.full()) {
+    return -2; // cannot handle this request
+  }
 
-	page->next_level_base_addr[offset] = map_data_page(packet->instr_id, packet->v_address);
+  // if there is no duplicate, add it to RQ
+  RQ.push_back(*packet);
+
+  return RQ.occupancy();
 }
 
-uint64_t PageTableWalker::map_translation_page(uint64_t full_v_addr, uint8_t pt_level)
+void PageTableWalker::return_data(PACKET* packet)
 {
-	uint64_t physical_address = vmem.va_to_pa(cpu, next_translation_virtual_address);
-	next_translation_virtual_address = ( (next_translation_virtual_address >> LOG2_PAGE_SIZE) + 1 ) << LOG2_PAGE_SIZE;
-	
-	return physical_address >> LOG2_PAGE_SIZE;
-}
+  for (auto& mshr_entry : MSHR) {
+    if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry)) {
+      mshr_entry.event_cycle = current_cycle;
 
-uint64_t PageTableWalker::map_data_page(uint64_t instr_id, uint64_t full_v_addr)
-{
-	uint64_t physical_address = vmem.va_to_pa(cpu, full_v_addr);
-    return physical_address >> LOG2_PAGE_SIZE;
-}
-
-void PageTableWalker::write_translation_page(uint64_t next_level_base_addr, PACKET *packet, uint8_t pt_level)
-{
-}
-
-uint64_t PageTableWalker::get_offset(uint64_t full_virtual_addr, uint8_t pt_level)
-{
-	full_virtual_addr = full_virtual_addr & ( (1L<<57) -1); //Extract Last 57 bits
-
-	int shift = 12;
-
-	switch(pt_level)
-	{
-		case IS_PTL5: shift+= 9+9+9+9;
-					   break;
-		case IS_PTL4: shift+= 9+9+9;
-					   break;
-		case IS_PTL3: shift+= 9+9;
-					   break;
-	   	case IS_PTL2: shift+= 9;
-	   				   break;
-	}
-
-	uint64_t offset = (full_virtual_addr >> shift) & 0x1ff; //Extract the offset to generate next physical address
-
-	return offset; 
-}
-
-int  PageTableWalker::add_rq(PACKET *packet)
-{
-	assert(packet->address != 0);
-
-	// check for duplicates in the read queue
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
-    assert(found_rq == RQ.end()); //Duplicate request should not be sent.
-    
-    // check occupancy
-    if (RQ.full()) {
-        RQ_FULL++;
-        return -2; // cannot handle this request
+      DP(if (warmup_complete[cpu]) {
+        std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
+        std::cout << " address: " << std::hex << mshr_entry.address;
+        std::cout << " v_address: " << mshr_entry.v_address;
+        std::cout << " data: " << mshr_entry.data << std::dec;
+        std::cout << " translation_level: " << +mshr_entry.translation_level;
+        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
+        std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
+      });
     }
+  }
 
-    // if there is no duplicate, add it to RQ
-    RQ.push_back(*packet);
-
-    RQ_TO_CACHE++;
-    RQ_ACCESS++;
-
-    return RQ.occupancy();
-}
-
-int PageTableWalker::add_wq(PACKET *packet)
-{
-	assert(0); //No request is added to WQ
-}
-
-int PageTableWalker::add_pq(PACKET *packet)
-{
-	assert(0); //No request is added to PQ
-}
-
-void PageTableWalker::return_data(PACKET *packet)
-{
-	auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->address, packet->translation_level));
-
-	int num_return = 0;
-
-	while(mshr_entry != MSHR.end())
-	{
-	 // MSHR holds the most updated information about this request
-    // no need to do memcpy
-    mshr_entry->returned = true;
-    mshr_entry->event_cycle = current_cycle;
-
-    assert(mshr_entry->translation_level > 0);
-    mshr_entry->translation_level--;
-
-	DP (if (warmup_complete[packet->cpu]) {
-            std::cout << "[" << NAME << "_MSHR] " <<  __func__ << " instr_id: " << mshr_entry->instr_id;
-            std::cout << " address: " << std::hex << (mshr_entry->address >> LOG2_PAGE_SIZE) << " full_addr: " << mshr_entry->address;
-			std::cout << " full_v_addr: " << mshr_entry->v_address;
-            std::cout << " data: " << mshr_entry->data << std::dec;
-            std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0,0);
-            std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl; });
-	
-	num_return++;
-
-	mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), ptw_eq_addr<PACKET>(packet->address, packet->translation_level));
-
-	}
-
-    MSHR.sort(ord_event_cycle<PACKET>());
-}
-
-void PageTableWalker::increment_WQ_FULL(uint64_t address)
-{
-	WQ_FULL++;
+  MSHR.sort(ord_event_cycle<PACKET>());
 }
 
 uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
 {
-	if (queue_type == 0)
-        return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-    else if (queue_type == 1)
-        return RQ.occupancy();
-    else if (queue_type == 2)
-        return WQ.occupancy();
-    else if (queue_type == 3)
-	return PQ.occupancy();
-    return 0;
+  if (queue_type == 0)
+    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+  else if (queue_type == 1)
+    return RQ.occupancy();
+  return 0;
 }
-        
+
 uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
 {
-	if (queue_type == 0)
-        return MSHR_SIZE;
-    else if (queue_type == 1)
-        return RQ.size();
-    else if (queue_type == 2)
-        return WQ.size();
-    else if (queue_type == 3)
-	return PQ.size();
-    return 0;
+  if (queue_type == 0)
+    return MSHR_SIZE;
+  else if (queue_type == 1)
+    return RQ.size();
+  return 0;
 }
 
-uint32_t PagingStructureCache::get_set(uint64_t address)
+void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)
 {
-    return (address >> LOG2_PAGE_SIZE) & bitmask(lg2(NUM_SET));
+  auto set_idx = (vaddr >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
+  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+  auto set_end = std::next(set_begin, NUM_WAY);
+  auto fill_block = std::max_element(set_begin, set_end, lru_comparator<block_t, block_t>());
+
+  *fill_block = {true, vaddr, next_level_paddr, fill_block->lru};
+  std::for_each(set_begin, set_end, lru_updater<block_t>(fill_block));
 }
 
-void PagingStructureCache::fill_cache(uint64_t next_level_base_addr, PACKET *packet)
+std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address)
 {
-	uint64_t address = get_index(packet->v_address);
-	
-    auto set_begin = std::next(std::begin(block), get_set(address)*NUM_WAY);
-    auto set_end   = std::next(set_begin, NUM_WAY);
-    auto fill_block = std::max_element(set_begin, set_end, lru_comparator<BLOCK, BLOCK>());
+  auto set_idx = (address >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
+  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+  auto set_end = std::next(set_begin, NUM_WAY);
+  auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, vmem.shamt(level + 1)});
 
-    fill_block->valid = true;
-    fill_block->prefetch = (packet->type == PREFETCH);
-    fill_block->dirty = false;
-    fill_block->address = address;
-    fill_block->v_address = packet->v_address;
-    fill_block->data = next_level_base_addr;
-    fill_block->ip = packet->ip;
-    fill_block->cpu = packet->cpu;
-    fill_block->instr_id = packet->instr_id;
+  if (hit_block != set_end)
+    return splice_bits(hit_block->data, vmem.get_offset(address, level) * PTE_BYTES, LOG2_PAGE_SIZE);
 
-    std::for_each(set_begin, set_end, lru_updater<BLOCK>(fill_block));
+  return {};
 }
 
-uint64_t PagingStructureCache::get_index(uint64_t address)
+void PageTableWalker::print_deadlock()
 {
-
-	address = address & ( (1L<<57) -1); //Extract Last 57 bits
-
-	int shift = 12;
-
-	switch(cache_type)
-	{
-		case IS_PSCL5: shift+= 9+9+9+9;
-					   break;
-		case IS_PSCL4: shift+= 9+9+9;
-					   break;
-		case IS_PSCL3: shift+= 9+9;
-					   break;
-		case IS_PSCL2: shift+= 9; //Most siginificant 36 bits will be used to index PSCL2 
-					   break;
-	}
-
-	return (address >> shift); 
-}
-
-uint64_t PagingStructureCache::check_hit(uint64_t address)
-{
-	address = get_index(address);
-
-	uint32_t set = get_set(address);
-
-    if (NUM_SET < set) {
-        cerr << "[" << NAME << "_ERROR] " << __func__ << " invalid set index: " << set << " NUM_SET: " << NUM_SET;
-        assert(0);
+  if (!std::empty(MSHR)) {
+    std::cout << NAME << " MSHR Entry" << std::endl;
+    std::size_t j = 0;
+    for (PACKET entry : MSHR) {
+      std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
+      std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cout << " translation_level: " << +entry.translation_level;
+      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
-
-    for (uint32_t way=0; way < NUM_WAY; way++) {
-        if (block[set * NUM_WAY + way].valid && (block[set * NUM_WAY + way].address == address)) {
-	    	return block[set * NUM_WAY + way].data;
-        }
-    }
-
-    return UINT64_MAX;
+  } else {
+    std::cout << NAME << " MSHR empty" << std::endl;
+  }
 }
-    
