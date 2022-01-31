@@ -177,8 +177,7 @@ void CACHE::readlike_hit(BLOCK& hit_block, PACKET& handle_pkt)
   }
 
   // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), hit_block.address, handle_pkt.ip, 0, handle_pkt.type,
-                                1);
+  impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
   // COLLECT STATS
   sim_hit[handle_pkt.cpu][handle_pkt.type]++;
@@ -264,7 +263,7 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
     cpu = handle_pkt.cpu;
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
   return true;
@@ -337,8 +336,7 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
       get_way(handle_pkt.address), handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
 
   // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type,
-                                0);
+  impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
   if (fill_block.has_value())
     (*fill_block)->lru = 0;
@@ -380,13 +378,13 @@ void CACHE::operate_reads()
 
 uint32_t CACHE::get_set(uint64_t address) const { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
 
-uint32_t CACHE::get_way(uint64_t address) const
+uint32_t CACHE::get_way(uint64_t address)
 {
   auto [begin, end] = get_set_span(address);
   return std::distance(begin, check_hit(address).value_or(end));
 }
 
-auto CACHE::get_set_span(uint64_t address) const -> std::pair<block_iter_t, block_iter_t>
+auto CACHE::get_set_span(uint64_t address) -> std::pair<block_iter_t, block_iter_t>
 {
   auto begin = std::next(std::begin(block), NUM_WAY * get_set(address));
   return {begin, std::next(begin, NUM_WAY)};
@@ -401,7 +399,7 @@ auto CACHE::check_block_by(block_iter_t begin, block_iter_t end, F&& f) const ->
   return found;
 }
 
-auto CACHE::check_hit(uint64_t address) const -> std::optional<block_iter_t>
+auto CACHE::check_hit(uint64_t address) -> std::optional<block_iter_t>
 {
   auto [begin, end] = get_set_span(address);
   return check_block_by(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS));
@@ -522,7 +520,7 @@ int CACHE::add_wq(PACKET packet)
   return WQ.occupancy();
 }
 
-int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   pf_requested++;
 
@@ -533,7 +531,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
   pf_packet.cpu = cpu;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.address = pf_addr;
-  pf_packet.ip = ip;
   pf_packet.type = PREFETCH;
 
   int result = add_pq(pf_packet);
@@ -544,6 +541,22 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
   }
 
   return 0;
+}
+
+int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+{
+  static bool deprecate_printed = false;
+  if (!deprecate_printed) {
+    std::cout << "WARNING: The extended signature CACHE::prefetch_line(ip, "
+                 "base_addr, pf_addr, fill_this_level, prefetch_metadata) is "
+                 "deprecated."
+              << std::endl;
+    std::cout << "WARNING: Use CACHE::prefetch_line(pf_addr, fill_this_level, "
+                 "prefetch_metadata) instead."
+              << std::endl;
+    deprecate_printed = true;
+  }
+  return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
 
 int CACHE::add_pq(PACKET packet)
@@ -623,7 +636,6 @@ void CACHE::return_data(PACKET packet)
   }
 
   // MSHR holds the most updated information about this request
-  // no need to do memcpy
   mshr_entry->data = packet.data;
   mshr_entry->pf_metadata = packet.pf_metadata;
   mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);

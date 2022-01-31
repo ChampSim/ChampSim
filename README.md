@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center"> ChampSim </h1>
-  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. Traces for the 3rd Data Prefetching Championship (DPC-3) can be found from here (https://dpc3.compas.cs.stonybrook.edu/?SW_IS). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj) <p>
+  <p> ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. If you have questions about how to use ChampSim, you can often receive a quicker response on the mailing list. Please reserve GitHub Issues for bugs. <p>
 </p>
 
 # Clone ChampSim repository
@@ -13,23 +13,18 @@ git clone https://github.com/ChampSim/ChampSim.git
 ChampSim takes a JSON configuration script. Examine `champsim_config.json` for a fully-specified example. All options described in this file are optional and will be replaced with defaults if not specified. The configuration scrip can also be run without input, in which case an empty file is assumed.
 ```
 $ ./config.sh <configuration file>
-$ make clean
 $ make
 ```
 
 # Download DPC-3 trace
 
-Professor Daniel Jimenez at Texas A&M University kindly provided traces for DPC-3. Use the following script to download these traces (~20GB size and max simpoint only).
-```
-$ cd scripts
-$ ./download_dpc3_traces.sh
-```
+Professor Daniel Jimenez at Texas A&M University kindly provided traces for the 3rd Data Prefetching Championship (DPC-3). They can be found here (http://hpca23.cse.tamu.edu/champsim-traces/speccpu/$LINE). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj)
 
 # Run simulation
 
 Execute the binary directly.
 ```
-$ bin/champsim -warmup_instructions 200000000 -simulation_instructions 500000000 -traces dpc3_traces/600.perlbench_s-210B.champsimtrace.xz
+$ bin/champsim --warmup_instructions 200000000 --simulation_instructions 500000000 ~/path/to/traces/600.perlbench_s-210B.champsimtrace.xz
 ```
 
 The number of warmup and simulation instructions given will be the number of instructions retired. Note that the statistics printed at the end of the simulation include only the simulation phase.
@@ -61,7 +56,7 @@ Note that the example prefetcher is an L2 prefetcher. You might design a prefetc
 $ ./config.sh <configuration file>
 $ make clean
 $ make
-$ bin/champsim -warmup_instructions 200000000 -simulation_instructions 500000000 -traces dpc3_traces/600.perlbench_s-210B.champsimtrace.xz
+$ bin/champsim --warmup_instructions 200000000 --simulation_instructions 500000000 600.perlbench_s-210B.champsimtrace.xz
 ```
 
 # How to create traces

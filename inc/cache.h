@@ -5,9 +5,10 @@
 #include <list>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
+#include <utility>
 
+#include "champsim.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
 #include "ooo_cpu.h"
@@ -20,7 +21,6 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
-
   struct BLOCK {
     bool valid = false, prefetch = false, dirty = false;
 
@@ -67,27 +67,37 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(PACKET packet) override, add_wq(PACKET packet) override, add_pq(PACKET packet) override;
+  int add_rq(PACKET packet) override;
+  int add_wq(PACKET packet) override;
+  int add_pq(PACKET packet) override;
 
-  void return_data(PACKET packet) override, operate(), operate_writes(), operate_reads();
+  void return_data(PACKET packet) override;
+  void operate() override;
+  void operate_writes();
+  void operate_reads();
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address), get_size(uint8_t queue_type, uint64_t address);
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-  uint32_t get_set(uint64_t address) const, get_way(uint64_t address) const;
-  std::pair<block_iter_t, block_iter_t> get_set_span(uint64_t address) const;
-  std::optional<block_iter_t> check_hit(uint64_t address) const;
+  uint32_t get_set(uint64_t address) const;
+  uint32_t get_way(uint64_t address);
+  std::pair<block_iter_t, block_iter_t> get_set_span(uint64_t address);
+  std::optional<block_iter_t> check_hit(uint64_t address);
 
   template <typename F>
   std::optional<block_iter_t> check_block_by(block_iter_t begin, block_iter_t end, F&& f) const;
 
   bool invalidate_entry(uint64_t inval_addr);
-  int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata),
-      kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, int delta, int depth, int signature, int confidence,
-                        uint32_t prefetch_metadata);
+  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
 
-  void add_mshr(PACKET*packet), va_translate_prefetches();
+  void add_mshr(PACKET* packet);
+  void va_translate_prefetches();
 
-  void handle_fill(), handle_writeback(), handle_read(), handle_prefetch();
+  void handle_fill();
+  void handle_writeback();
+  void handle_read();
+  void handle_prefetch();
 
   void readlike_hit(BLOCK& hit_block, PACKET& handle_pkt);
   bool readlike_miss(PACKET& handle_pkt);

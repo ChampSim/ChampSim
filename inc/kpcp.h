@@ -410,8 +410,7 @@ void notify_sampler(uint32_t cpu, int64_t address, int dirty, int useful)
                           fill_down++;
                           conf_level[dynamic_fill_thrs[cpu]]++;
 
-                          printf("FILL_THRESHOLD goes down %d => %d at cycle: %ld\n", dynamic_fill_thrs[cpu]+1, dynamic_fill_thrs[cpu],
-  ooo_cpu[cpu].current_cycle);
+                          printf("FILL_THRESHOLD goes down %d => %d at cycle: %ld\n", dynamic_fill_thrs[cpu]+1, dynamic_fill_thrs[cpu], ooo_cpu[cpu].current_cycle);
                       }
 
                       conf_counter[cpu] = 0;

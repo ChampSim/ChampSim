@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "cache.h"
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
@@ -23,6 +24,9 @@ uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000, cham
 
 time_t start_time;
 
+// For backwards compatibility with older module source.
+champsim::deprecated_clock_cycle current_core_cycle;
+
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
@@ -30,6 +34,17 @@ extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
 
 std::vector<tracereader*> traces;
+
+uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
+{
+  static bool deprecate_printed = false;
+  if (!deprecate_printed) {
+    std::cout << "WARNING: The use of 'current_core_cycle[cpu]' is deprecated." << std::endl;
+    std::cout << "WARNING: Use 'this->current_cycle' instead." << std::endl;
+    deprecate_printed = true;
+  }
+  return ooo_cpu[cpu_idx]->current_cycle;
+}
 
 void record_roi_stats(uint32_t cpu, CACHE* cache)
 {
@@ -131,26 +146,26 @@ void print_branch_stats()
     cout << "Branch types" << endl;
     cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " <<
     (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " "
-    << (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << " " <<
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_DIRECT_JUMP: "
+    << ooo_cpu[i]->total_branch_types[1] << " " <<
+    (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired -
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_INDIRECT: " <<
+    ooo_cpu[i]->total_branch_types[2] << " " <<
     (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " "
-    << (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << " "
-    << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " "
-    << (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << " " <<
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_CONDITIONAL: "
+    << ooo_cpu[i]->total_branch_types[3] << " " <<
+    (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired -
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_DIRECT_CALL: "
+    << ooo_cpu[i]->total_branch_types[4] << " " <<
+    (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired -
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_INDIRECT_CALL:
+    " << ooo_cpu[i]->total_branch_types[5] << " " <<
+    (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired -
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_RETURN: " <<
+    ooo_cpu[i]->total_branch_types[6] << " " <<
     (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired -
-    ooo_cpu[i]->begin_sim_instr) << "%" << endl;
-    cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " <<
+    ooo_cpu[i]->begin_sim_instr) << "%" << endl; cout << "BRANCH_OTHER: " <<
+    ooo_cpu[i]->total_branch_types[7] << " " <<
     (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired -
     ooo_cpu[i]->begin_sim_instr) << "%" << endl << endl;
     */
@@ -169,28 +184,44 @@ void print_dram_stats()
 {
   uint64_t total_congested_cycle = 0;
   uint64_t total_congested_count = 0;
-  for (uint32_t i = 0; i < DRAM_CHANNELS; i++) {
-    total_congested_cycle += DRAM.channels[i].dbus_cycle_congested;
-    total_congested_count += DRAM.channels[i].dbus_count_congested;
-  }
 
   std::cout << std::endl;
   std::cout << "DRAM Statistics" << std::endl;
   for (uint32_t i = 0; i < DRAM_CHANNELS; i++) {
     std::cout << " CHANNEL " << i << std::endl;
-    std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].RQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10)
-              << DRAM.channels[i].RQ_ROW_BUFFER_MISS << std::endl;
-    std::cout << " DBUS_CONGESTED: " << std::setw(10) << total_congested_count << std::endl;
-    std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << DRAM.channels[i].WQ_ROW_BUFFER_HIT << "  ROW_BUFFER_MISS: " << std::setw(10)
-              << DRAM.channels[i].WQ_ROW_BUFFER_MISS;
-    std::cout << "  FULL: " << setw(10) << DRAM.channels[i].WQ_FULL << std::endl;
+
+    auto& channel = DRAM.channels[i];
+    std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << channel.RQ_ROW_BUFFER_HIT << " ";
+    std::cout << " ROW_BUFFER_MISS: " << std::setw(10) << channel.RQ_ROW_BUFFER_MISS;
     std::cout << std::endl;
+
+    std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
+    if (channel.dbus_count_congested)
+      std::cout << std::setw(10) << ((double)channel.dbus_cycle_congested / channel.dbus_count_congested);
+    else
+      std::cout << "-";
+    std::cout << std::endl;
+
+    std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << channel.WQ_ROW_BUFFER_HIT << " ";
+    std::cout << " ROW_BUFFER_MISS: " << std::setw(10) << channel.WQ_ROW_BUFFER_MISS << " ";
+    std::cout << " FULL: " << std::setw(10) << channel.WQ_FULL;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+
+    total_congested_cycle += channel.dbus_cycle_congested;
+    total_congested_count += channel.dbus_count_congested;
   }
 
-  if (total_congested_count)
-    cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << endl;
-  else
-    cout << " AVG_CONGESTED_CYCLE: -" << endl;
+  if (DRAM_CHANNELS > 1) {
+    std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
+    if (total_congested_count)
+      std::cout << std::setw(10) << ((double)total_congested_cycle / total_congested_count);
+    else
+      std::cout << "-";
+
+    std::cout << std::endl;
+  }
 }
 
 void reset_cache_stats(uint32_t cpu, CACHE* cache)
@@ -230,7 +261,7 @@ void finish_warmup()
   // note: since re-ordering he function calls in the main simulation loop, it's
   // no longer necessary to add
   //       extra latency for scheduling and execution, unless you want these
-  // steps to take longer than 1 cycle.
+  //       steps to take longer than 1 cycle.
   // PAGE_TABLE_LATENCY = 100;
   // SWAP_LATENCY = 100000;
 
@@ -289,25 +320,16 @@ int main(int argc, char** argv)
   uint32_t seed_number = 0;
 
   // check to see if knobs changed using getopt_long()
+  int traces_encountered = 0;
+  static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
+                                         {"simulation_instructions", required_argument, 0, 'i'},
+                                         {"hide_heartbeat", no_argument, 0, 'h'},
+                                         {"cloudsuite", no_argument, 0, 'c'},
+                                         {"traces", no_argument, &traces_encountered, 1},
+                                         {0, 0, 0, 0}};
+
   int c;
-  while (1) {
-    static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
-                                           {"simulation_instructions", required_argument, 0, 'i'},
-                                           {"hide_heartbeat", no_argument, 0, 'h'},
-                                           {"cloudsuite", no_argument, 0, 'c'},
-                                           {"traces", no_argument, 0, 't'},
-                                           {0, 0, 0, 0}};
-
-    int option_index = 0;
-
-    c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
-
-    // no more option characters
-    if (c == -1)
-      break;
-
-    int traces_encountered = 0;
-
+  while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered) {
     switch (c) {
     case 'w':
       warmup_instructions = atol(optarg);
@@ -322,27 +344,24 @@ int main(int argc, char** argv)
       knob_cloudsuite = 1;
       MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
       break;
-    case 't':
-      traces_encountered = 1;
+    case 0:
       break;
     default:
       abort();
     }
-
-    if (traces_encountered == 1)
-      break;
   }
-
   // consequences of knobs
   cout << "Warmup Instructions: " << warmup_instructions << endl;
   cout << "Simulation Instructions: " << simulation_instructions << endl;
-  // cout << "Scramble Loads: " << (knob_scramble_loads ? "ture" : "false") <<
-  // endl;
   cout << "Number of CPUs: " << NUM_CPUS << endl;
-  // cout << "LLC sets: " << LLC.NUM_SET << endl;
-  // cout << "LLC ways: " << LLC.NUM_WAY << endl;
-  std::cout << "Off-chip DRAM Size: " << (DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_ROW_SIZE / 1024) << " MB Channels: " << DRAM_CHANNELS
-            << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
+
+  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  std::cout << "Off-chip DRAM Size: ";
+  if (dram_size > 1024)
+    std::cout << dram_size / 1024 << " GiB";
+  else
+    std::cout << dram_size << " MiB";
+  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
   std::cout << std::endl;
   std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
@@ -351,40 +370,34 @@ int main(int argc, char** argv)
 
   // end consequence of knobs
 
-  // search through the argv for "-traces"
-  int found_traces = 0;
   std::cout << std::endl;
-  for (int i = 0; i < argc; i++) {
-    if (found_traces) {
-      std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+  for (int i = optind; i < argc; i++) {
+    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
 
-      traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
+    traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
 
-      char* pch[100];
-      int count_str = 0;
-      pch[0] = strtok(argv[i], " /,.-");
-      while (pch[count_str] != NULL) {
-        // printf ("%s %d\n", pch[count_str], count_str);
-        count_str++;
-        pch[count_str] = strtok(NULL, " /,.-");
-      }
+    char* pch[100];
+    int count_str = 0;
+    pch[0] = strtok(argv[i], " /,.-");
+    while (pch[count_str] != NULL) {
+      // printf ("%s %d\n", pch[count_str], count_str);
+      count_str++;
+      pch[count_str] = strtok(NULL, " /,.-");
+    }
 
-      // printf("max count_str: %d\n", count_str);
-      // printf("application: %s\n", pch[count_str-3]);
+    // printf("max count_str: %d\n", count_str);
+    // printf("application: %s\n", pch[count_str-3]);
 
-      int j = 0;
-      while (pch[count_str - 3][j] != '\0') {
-        seed_number += pch[count_str - 3][j];
-        // printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
-        j++;
-      }
+    int j = 0;
+    while (pch[count_str - 3][j] != '\0') {
+      seed_number += pch[count_str - 3][j];
+      // printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
+      j++;
+    }
 
-      if (traces.size() > NUM_CPUS) {
-        printf("\n*** Too many traces for the configured number of cores ***\n\n");
-        assert(0);
-      }
-    } else if (strcmp(argv[i], "-traces") == 0) {
-      found_traces = 1;
+    if (traces.size() > NUM_CPUS) {
+      printf("\n*** Too many traces for the configured number of cores ***\n\n");
+      assert(0);
     }
   }
 

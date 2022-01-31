@@ -4,7 +4,6 @@
 #include <limits>
 
 #include "block.h"
-#include "champsim.h"
 
 // CACHE ACCESS TYPE
 #define LOAD 0

@@ -5,11 +5,12 @@
 #include <functional>
 #include <queue>
 
-#include "champsim_constants.h"
+#include "block.h"
+#include "champsim.h"
 #include "delay_queue.hpp"
 #include "instruction.h"
+#include "memory_class.h"
 #include "operable.h"
-#include "ptw.h"
 
 using namespace std;
 
@@ -28,7 +29,6 @@ class O3_CPU : public champsim::operable
 {
 public:
   uint32_t cpu = 0;
-  bool operated = false;
 
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
@@ -72,9 +72,6 @@ public:
   std::queue<std::vector<LSQ_ENTRY>::iterator> RTS0, RTS1;
 
   // branch
-  int branch_mispredict_stall_fetch = 0; // flag that says that we should stall because a branch prediction was wrong
-  int mispredicted_branch_iw_index =
-      0; // index in the instruction window of the mispredicted branch.  fetch resumes after the instruction at this index executes
   uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
   uint64_t num_branch = 0, branch_mispredictions = 0;
@@ -89,18 +86,30 @@ public:
 
   // functions
   void init_instruction(ooo_model_instr instr);
-  void check_dib(), translate_fetch(), fetch_instruction(), promote_to_decode(), decode_instruction(), dispatch_instruction(), schedule_instruction(),
-      execute_instruction(), schedule_memory_instruction(), execute_memory_instruction(), do_check_dib(ooo_model_instr&instr),
-      do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
-      do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end),
-      do_dib_update(const ooo_model_instr&instr), do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it),
-      do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it), operate_lsq(),
-      do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it), do_sq_forward_to_lq(LSQ_ENTRY&sq_entry, LSQ_ENTRY&lq_entry);
+  void check_dib();
+  void translate_fetch();
+  void fetch_instruction();
+  void promote_to_decode();
+  void decode_instruction();
+  void dispatch_instruction();
+  void schedule_instruction();
+  void execute_instruction();
+  void schedule_memory_instruction();
+  void execute_memory_instruction();
+  void do_check_dib(ooo_model_instr& instr);
+  void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
+  void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
+  void do_dib_update(const ooo_model_instr& instr);
+  void do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void operate_lsq();
+  void do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
   void initialize_core();
-  void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index),
-      add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
+  void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
+  void add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
   void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
   int execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
   int do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "circular_buffer.hpp"
 #include "instruction.h"
 
@@ -15,11 +15,9 @@ class LSQ_ENTRY;
 class PACKET
 {
 public:
-  bool scheduled = false, returned = false;
+  bool scheduled = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0;
-
-  int delta = 0, depth = 0, signature = 0, confidence = 0;
 
   uint32_t pf_metadata;
   uint32_t cpu = NUM_CPUS;
@@ -35,7 +33,6 @@ public:
 
 template <>
 struct is_valid<PACKET> {
-  is_valid() {}
   bool operator()(const PACKET& test) { return test.address != 0; }
 };
 
@@ -60,9 +57,7 @@ struct LSQ_ENTRY {
 };
 
 template <>
-class is_valid<LSQ_ENTRY>
-{
-public:
+struct is_valid<LSQ_ENTRY> {
   bool operator()(const LSQ_ENTRY& test) { return test.virtual_address != 0; }
 };
 

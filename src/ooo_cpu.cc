@@ -4,20 +4,16 @@
 #include <vector>
 
 #include "cache.h"
+#include "champsim.h"
 #include "instruction.h"
-#include "vmem.h"
 
 #define DEADLOCK_CYCLE 1000000
 
 extern uint8_t warmup_complete[NUM_CPUS];
-extern uint8_t knob_cloudsuite;
 extern uint8_t MAX_INSTR_DESTINATIONS;
-
-extern VirtualMemory vmem;
 
 void O3_CPU::operate()
 {
-  operated = true;
   instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
 
   retire_rob();                    // retire
@@ -182,16 +178,13 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // usually be determined immediately after the instruction is decoded without
   // waiting for the stack pointer's dependency chain to be resolved.
   // We're doing it here because we already have writes_sp and reads_other
-  // handy,
-  // and in ChampSim it doesn't matter where before execution you do it.
+  // handy, and in ChampSim it doesn't matter where before execution you do it.
   if (writes_sp) {
     // Avoid creating register dependencies on the stack pointer for calls,
-    // returns, pushes,
-    // and pops, but not for variable-sized changes in the stack pointer
-    // position.
-    // reads_other indicates that the stack pointer is being changed by a
-    // variable amount,
-    // which can't be determined before execution.
+    // returns, pushes, and pops, but not for variable-sized changes in the
+    // stack pointer position. reads_other indicates that the stack pointer is
+    // being changed by a variable amount, which can't be determined before
+    // execution.
     if ((arch_instr.is_branch != 0) || (arch_instr.num_mem_ops > 0) || (!reads_other)) {
       for (uint32_t i = 0; i < MAX_INSTR_DESTINATIONS; i++) {
         if (arch_instr.destination_registers[i] == REG_STACK_POINTER) {

@@ -71,11 +71,13 @@ struct cmp_lru {
 };
 
 /*
- * A comparator to determine the LRU element. To use this comparator, the type must have a member
- * variable named "lru" and have a specialization of is_valid<>.
+ * A comparator to determine the LRU element. To use this comparator, the type
+ * must have a member variable named "lru" and have a specialization of
+ * is_valid<>.
  *
  * To use:
- *     auto lru_elem = std::max_element(std::begin(set), std::end(set), lru_comparator<BLOCK>());
+ *     auto lru_elem = std::max_element(std::begin(set), std::end(set),
+ * lru_comparator<BLOCK>());
  *
  * The MRU element can be found using std::min_element instead.
  */
@@ -90,7 +92,8 @@ struct lru_comparator : invalid_is_maximal<T, cmp_lru<T, U>, U> {
  * The type must have a member variable named "lru".
  *
  * To use:
- *     std::for_each(std::begin(set), std::end(set), lru_updater<BLOCK>(hit_element));
+ *     std::for_each(std::begin(set), std::end(set),
+ * lru_updater<BLOCK>(hit_element));
  */
 template <typename T>
 struct lru_updater {

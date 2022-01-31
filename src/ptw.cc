@@ -1,6 +1,6 @@
 #include "ptw.h"
 
-#include "ooo_cpu.h"
+#include "champsim.h"
 #include "util.h"
 #include "vmem.h"
 
@@ -57,8 +57,7 @@ void PageTableWalker::handle_read()
     if (rq_index == -2)
       return;
 
-    packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet
-                                             // same as read packet.
+    packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
     packet.type = handle_pkt.type;
 
     auto it = MSHR.insert(std::end(MSHR), packet);
