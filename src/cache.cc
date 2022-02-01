@@ -50,6 +50,16 @@ void CACHE::handle_fill()
 
 void CACHE::handle_writeback()
 {
+  for (auto it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); it != std::end(WQ);) {
+    if (auto found = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != std::end(WQ)) {
+      ++WQ_MERGED;
+      it = WQ.erase(it);
+    } else {
+      it->forward_checked = true;
+      ++it;
+    }
+  }
+
   while (!std::empty(WQ) && WQ.front().event_cycle < current_cycle && writes_available_this_cycle > 0) {
     // handle the oldest entry
     PACKET& handle_pkt = WQ.front();
@@ -57,8 +67,7 @@ void CACHE::handle_writeback()
     // access cache
     if (auto fill_block = check_hit(handle_pkt.address); fill_block.has_value()) // HIT
     {
-      impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), (*fill_block)->address, handle_pkt.ip, 0,
-                                    handle_pkt.type, 1);
+      impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), (*fill_block)->address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
       // COLLECT STATS
       sim_hit[handle_pkt.cpu][handle_pkt.type]++;
@@ -98,6 +107,30 @@ void CACHE::handle_writeback()
 
 void CACHE::handle_read()
 {
+  for (auto it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); it != std::end(RQ);) {
+    if (auto found = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != std::end(WQ)) {
+      // A writeback was found in the WQ. Forward its data and return.
+      ++WQ_FORWARD;
+      it->data = found->data;
+      for (auto ret : it->to_return)
+          ret->return_data(*it);
+
+      it = RQ.erase(it);
+    } else if (auto found = std::find_if(std::begin(RQ), it, eq_addr<PACKET>(it->address, OFFSET_BITS)); found != it) {
+      ++RQ_MERGED;
+      found->fill_level = std::min(found->fill_level, it->fill_level);
+      packet_dep_merge(found->lq_index_depend_on_me, it->lq_index_depend_on_me);
+      packet_dep_merge(found->sq_index_depend_on_me, it->sq_index_depend_on_me);
+      packet_dep_merge(found->instr_depend_on_me, it->instr_depend_on_me);
+      packet_dep_merge(found->to_return, it->to_return);
+
+      it = RQ.erase(it);
+    } else {
+      it->forward_checked = true;
+      ++it;
+    }
+  }
+
   while (!std::empty(RQ) && RQ.front().event_cycle < current_cycle && reads_available_this_cycle > 0) {
     // handle the oldest entry
     PACKET& handle_pkt = RQ.front();
@@ -123,6 +156,27 @@ void CACHE::handle_read()
 
 void CACHE::handle_prefetch()
 {
+  for (auto it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); it != std::end(PQ);) {
+    if (auto found = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != std::end(WQ)) {
+      // A writeback was found in the WQ. Forward its data and return.
+      ++WQ_FORWARD;
+      it->data = found->data;
+      for (auto ret : it->to_return)
+        ret->return_data(*it);
+
+      it = PQ.erase(it);
+    } else if (auto found = std::find_if(std::begin(PQ), it, eq_addr<PACKET>(it->address, OFFSET_BITS)); found != it) {
+      ++PQ_MERGED;
+      found->fill_level = std::min(found->fill_level, it->fill_level);
+      packet_dep_merge(found->to_return, it->to_return);
+
+      it = PQ.erase(it);
+    } else {
+      it->forward_checked = true;
+      ++it;
+    }
+  }
+
   while (!std::empty(PQ) && PQ.front().event_cycle < current_cycle && reads_available_this_cycle > 0) {
     PACKET& handle_pkt = PQ.front();
 
@@ -409,40 +463,8 @@ int CACHE::add_rq(PACKET packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.size();
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << RQ.size();
   })
-
-  // check for the latest writebacks in the write queue
-  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
-
-  if (found_wq != WQ.end()) {
-
-    DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_WQ" << std::endl;)
-
-    packet.data = found_wq->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
-
-    WQ_FORWARD++;
-    return -1;
-  }
-
-  // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));
-  if (found_rq != RQ.end()) {
-
-    DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_RQ" << std::endl;)
-
-    packet_dep_merge(found_rq->lq_index_depend_on_me, packet.lq_index_depend_on_me);
-    packet_dep_merge(found_rq->sq_index_depend_on_me, packet.sq_index_depend_on_me);
-    packet_dep_merge(found_rq->instr_depend_on_me, packet.instr_depend_on_me);
-    packet_dep_merge(found_rq->to_return, packet.to_return);
-
-    RQ_MERGED++;
-
-    return 0; // merged index
-  }
 
   // check occupancy
   if (std::size(RQ) >= RQ_SIZE) {
@@ -454,7 +476,7 @@ int CACHE::add_rq(PACKET packet)
   }
 
   packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
-
+  packet.forward_checked = false;
   // if there is no duplicate, add it to RQ
   RQ.push_back(packet);
 
@@ -470,20 +492,8 @@ int CACHE::add_wq(PACKET packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << WQ.size();
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << WQ.size();
   })
-
-  // check for duplicates in the write queue
-  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
-
-  if (found_wq != WQ.end()) {
-
-    DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED" << std::endl;)
-
-    WQ_MERGED++;
-    return 0; // merged index
-  }
 
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
@@ -494,7 +504,7 @@ int CACHE::add_wq(PACKET packet)
   }
 
   packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
-
+  packet.forward_checked = false;
   // if there is no duplicate, add it to the write queue
   WQ.push_back(packet);
 
@@ -556,33 +566,6 @@ int CACHE::add_pq(PACKET packet)
               << " occupancy: " << get_occupancy(3, packet.address);
   })
 
-  // check for the latest wirtebacks in the write queue
-  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
-
-  if (found_wq != WQ.end()) {
-
-    DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_WQ" << std::endl;)
-
-    packet.data = found_wq->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
-
-    WQ_FORWARD++;
-    return -1;
-  }
-
-  // check for duplicates in the PQ
-  auto found = std::find_if(PQ.begin(), PQ.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));
-  if (found != PQ.end()) {
-    DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_PQ" << std::endl;)
-
-    found->fill_level = std::min(found->fill_level, packet.fill_level);
-    packet_dep_merge(found->to_return, packet.to_return);
-
-    PQ_MERGED++;
-    return 0;
-  }
-
   // check occupancy
   if (std::size(PQ) == PQ_SIZE) {
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
@@ -592,6 +575,7 @@ int CACHE::add_pq(PACKET packet)
   }
 
   // if there is no duplicate, add it to PQ
+  packet.forward_checked = false;
   if (packet.pf_origin_level == fill_level)
     packet.event_cycle = current_cycle + VA_PREFETCH_TRANSLATION_LATENCY;
   else
