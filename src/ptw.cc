@@ -93,7 +93,7 @@ void PageTableWalker::handle_fill()
           std::cout << " full_v_addr: " << fill_mshr->v_address;
           std::cout << " data: " << fill_mshr->data << std::dec;
           std::cout << " translation_level: " << +fill_mshr->translation_level;
-          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << std::size(MSHR);
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         });
 
@@ -126,7 +126,7 @@ void PageTableWalker::handle_fill()
           std::cout << " full_v_addr: " << fill_mshr->v_address;
           std::cout << " data: " << fill_mshr->data << std::dec;
           std::cout << " translation_level: " << +fill_mshr->translation_level;
-          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << std::size(MSHR);
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         });
 
@@ -190,31 +190,13 @@ void PageTableWalker::return_data(PACKET packet)
         std::cout << " v_address: " << mshr_entry.v_address;
         std::cout << " data: " << mshr_entry.data << std::dec;
         std::cout << " translation_level: " << +mshr_entry.translation_level;
-        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
+        std::cout << " occupancy: " << std::size(MSHR);
         std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
       });
     }
   }
 
   MSHR.sort(ord_event_cycle<PACKET>());
-}
-
-uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
-{
-  if (queue_type == 0)
-    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-  else if (queue_type == 1)
-    return RQ.occupancy();
-  return 0;
-}
-
-uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
-{
-  if (queue_type == 0)
-    return MSHR_SIZE;
-  else if (queue_type == 1)
-    return RQ.size();
-  return 0;
 }
 
 void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)

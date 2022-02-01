@@ -233,29 +233,3 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
   int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & bitmask(lg2(DRAM_ROWS));
 }
-
-uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
-{
-  uint32_t channel = dram_get_channel(address);
-  if (queue_type == 1)
-    return std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), is_valid<PACKET>());
-  else if (queue_type == 2)
-    return std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), is_valid<PACKET>());
-  else if (queue_type == 3)
-    return get_occupancy(1, address);
-
-  return 0;
-}
-
-uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
-{
-  uint32_t channel = dram_get_channel(address);
-  if (queue_type == 1)
-    return channels[channel].RQ.size();
-  else if (queue_type == 2)
-    return channels[channel].WQ.size();
-  else if (queue_type == 3)
-    return get_size(1, address);
-
-  return 0;
-}

@@ -62,9 +62,6 @@ public:
 
   void handle_read(), handle_fill();
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
-
   uint64_t get_shamt(uint8_t pt_level);
 
   void print_deadlock() override;
