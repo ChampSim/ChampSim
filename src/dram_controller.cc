@@ -33,6 +33,41 @@ void MEMORY_CONTROLLER::operate()
             packet = {};
     }
 
+    // Check RQ for forwarding
+    for (auto it = std::begin(channel.RQ); it != std::end(channel.RQ); ++it) {
+        if (is_valid<PACKET>{}(*it) && !it->forward_checked)
+        {
+            if (auto found = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(it->address, LOG2_BLOCK_SIZE)); found != std::end(channel.WQ)) {
+                // A writeback was found in the WQ. Forward its data and return.
+                it->data = found->data;
+                for (auto ret : it->to_return)
+                    ret->return_data(*it);
+
+                *it = {};
+            } else if (auto found = std::find_if(std::begin(channel.RQ), it, eq_addr<PACKET>(it->address, LOG2_BLOCK_SIZE)); found != it) {
+                found->fill_level = std::min(found->fill_level, it->fill_level);
+                packet_dep_merge(found->lq_index_depend_on_me, it->lq_index_depend_on_me);
+                packet_dep_merge(found->sq_index_depend_on_me, it->sq_index_depend_on_me);
+                packet_dep_merge(found->instr_depend_on_me, it->instr_depend_on_me);
+                packet_dep_merge(found->to_return, it->to_return);
+
+                *it = {};
+            }
+
+            it->forward_checked = true;
+        }
+    }
+
+    // Check WQ for forwarding
+    for (auto it = std::begin(channel.WQ); it != std::end(channel.WQ); ++it) {
+        if (is_valid<PACKET>{}(*it) && !it->forward_checked)
+        {
+            if (auto found = std::find_if(std::begin(channel.WQ), it, eq_addr<PACKET>(it->address, LOG2_BLOCK_SIZE)); found != it)
+                *it = {};
+            it->forward_checked = true;
+        }
+    }
+
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
       for (auto ret : channel.active_request->pkt->to_return)
@@ -134,28 +169,10 @@ int MEMORY_CONTROLLER::add_rq(PACKET packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
-  // Check for forwarding
-  if (auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE)); wq_it != std::end(channel.WQ)) {
-    packet.data = wq_it->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
-
-    return -1; // merged index
-  }
-
-  // Check for duplicates
-  if (auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE)); rq_it != std::end(channel.RQ)) {
-    packet_dep_merge(rq_it->lq_index_depend_on_me, packet.lq_index_depend_on_me);
-    packet_dep_merge(rq_it->sq_index_depend_on_me, packet.sq_index_depend_on_me);
-    packet_dep_merge(rq_it->instr_depend_on_me, packet.instr_depend_on_me);
-    packet_dep_merge(rq_it->to_return, packet.to_return);
-
-    return std::distance(std::begin(channel.RQ), rq_it); // merged index
-  }
-
   // Find empty slot
   if (auto fill_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()); fill_it != std::end(channel.RQ)) {
     *fill_it = packet;
+    fill_it->forward_checked = false;
     fill_it->event_cycle = current_cycle;
 
     return get_occupancy(1, packet.address);
@@ -168,13 +185,10 @@ int MEMORY_CONTROLLER::add_wq(PACKET packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
-  // Check for duplicates
-  if (auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE)); wq_it != std::end(channel.WQ))
-    return 0;
-
   // search for the empty index
   if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()); wq_it != std::end(channel.WQ)) {
     *wq_it = packet;
+    wq_it->forward_checked = false;
     wq_it->event_cycle = current_cycle;
 
     return get_occupancy(2, packet.address);
