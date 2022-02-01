@@ -280,29 +280,25 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
       return false; // TODO should we allow prefetches anyway if they will not
                     // be filled to this level?
 
-    bool is_read = prefetch_as_load || (handle_pkt.type != PREFETCH);
+    auto fwd_pkt = handle_pkt; // the packet to send to the lower level
 
-    // check to make sure the lower level queue has room for this read miss
-    int queue_type = (is_read) ? 1 : 3;
-    if (lower_level->get_occupancy(queue_type, handle_pkt.address) == lower_level->get_size(queue_type, handle_pkt.address))
-      return false;
+    if (fwd_pkt.fill_level <= fill_level)
+      fwd_pkt.to_return = {this};
+    else
+      fwd_pkt.to_return.clear();
+
+    bool success;
+    if (prefetch_as_load || (fwd_pkt.type != PREFETCH))
+      success = lower_level->add_rq(fwd_pkt);
+    else
+      success = lower_level->add_pq(fwd_pkt);
 
     // Allocate an MSHR
-    if (handle_pkt.fill_level <= fill_level) {
+    if (success && handle_pkt.fill_level <= fill_level) {
       auto it = MSHR.insert(std::end(MSHR), handle_pkt);
       it->cycle_enqueued = current_cycle;
       it->event_cycle = std::numeric_limits<uint64_t>::max();
     }
-
-    if (handle_pkt.fill_level <= fill_level)
-      handle_pkt.to_return = {this};
-    else
-      handle_pkt.to_return.clear();
-
-    if (!is_read)
-      lower_level->add_pq(handle_pkt);
-    else
-      lower_level->add_rq(handle_pkt);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
@@ -342,8 +338,8 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
       writeback_packet.ip = 0;
       writeback_packet.type = WRITEBACK;
 
-      auto result = lower_level->add_wq(writeback_packet);
-      if (result == -2)
+      auto success = lower_level->add_wq(writeback_packet);
+      if (!success)
         return false;
     }
 
@@ -456,7 +452,7 @@ bool CACHE::invalidate_entry(uint64_t inval_addr)
   return hit_block.has_value();
 }
 
-int CACHE::add_rq(PACKET packet)
+bool CACHE::add_rq(PACKET packet)
 {
   assert(packet.address != 0);
   RQ_ACCESS++;
@@ -472,7 +468,7 @@ int CACHE::add_rq(PACKET packet)
 
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
 
-    return -2; // cannot handle this request
+    return false; // cannot handle this request
   }
 
   packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
@@ -483,10 +479,10 @@ int CACHE::add_rq(PACKET packet)
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
   RQ_TO_CACHE++;
-  return RQ.size();
+  return true;
 }
 
-int CACHE::add_wq(PACKET packet)
+bool CACHE::add_wq(PACKET packet)
 {
   WQ_ACCESS++;
 
@@ -500,7 +496,7 @@ int CACHE::add_wq(PACKET packet)
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
 
     ++WQ_FULL;
-    return -2;
+    return false;
   }
 
   packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
@@ -513,7 +509,7 @@ int CACHE::add_wq(PACKET packet)
   WQ_TO_CACHE++;
   WQ_ACCESS++;
 
-  return WQ.size();
+  return true;
 }
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -529,14 +525,12 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.type = PREFETCH;
 
-  int result = add_pq(pf_packet);
-  if (result != -2) {
-    if (result > 0)
-      pf_issued++;
-    return 1;
-  }
+  auto success = add_pq(pf_packet);
+  if (!success)
+    return 0;
 
-  return 0;
+  pf_issued++;
+  return 1;
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -555,7 +549,7 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
 
-int CACHE::add_pq(PACKET packet)
+bool CACHE::add_pq(PACKET packet)
 {
   assert(packet.address != 0);
   PQ_ACCESS++;
@@ -571,7 +565,7 @@ int CACHE::add_pq(PACKET packet)
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
 
     PQ_FULL++;
-    return -2; // cannot handle this request
+    return false;
   }
 
   // if there is no duplicate, add it to PQ
@@ -586,7 +580,7 @@ int CACHE::add_pq(PACKET packet)
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
   PQ_TO_CACHE++;
-  return PQ.size();
+  return true;
 }
 
 void CACHE::return_data(PACKET packet)

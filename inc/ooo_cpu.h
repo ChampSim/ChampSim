@@ -111,9 +111,9 @@ public:
   void add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
   void add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_index, uint32_t data_index);
   void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
-  int execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
-  int do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
-  int do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
+  bool execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
+  bool do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+  bool do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
   void check_dependency(int prior, int current);
   void operate_cache();
   void complete_inflight_instruction();

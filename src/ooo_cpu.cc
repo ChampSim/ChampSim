@@ -323,9 +323,9 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   for (; begin != end; ++begin)
     trace_packet.instr_depend_on_me.push_back(begin);
 
-  int rq_index = ITLB_bus.lower_level->add_rq(trace_packet);
+  auto success = ITLB_bus.lower_level->add_rq(trace_packet);
 
-  if (rq_index != -2) {
+  if (success) {
     // successfully sent to the ITLB, so mark all instructions in the
     // IFETCH_BUFFER that match this ip as translated INFLIGHT
     for (auto dep_it : trace_packet.instr_depend_on_me) {
@@ -377,9 +377,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   for (; begin != end; ++begin)
     fetch_packet.instr_depend_on_me.push_back(begin);
 
-  int rq_index = L1I_bus.lower_level->add_rq(fetch_packet);
+  auto success = L1I_bus.lower_level->add_rq(fetch_packet);
 
-  if (rq_index != -2) {
+  if (success) {
     // mark all instructions from this cache line as having been fetched
     for (auto dep_it : fetch_packet.instr_depend_on_me) {
       dep_it->fetched = INFLIGHT;
@@ -758,9 +758,9 @@ void O3_CPU::operate_lsq()
 
   while (store_issued < SQ_WIDTH && !RTS0.empty()) {
     // add it to DTLB
-    int rq_index = do_translate_store(RTS0.front());
+    auto success = do_translate_store(RTS0.front());
 
-    if (rq_index == -2)
+    if (!success)
       break;
 
     RTS0.pop();
@@ -778,9 +778,9 @@ void O3_CPU::operate_lsq()
 
   while (load_issued < LQ_WIDTH && !RTL0.empty()) {
     // add it to DTLB
-    int rq_index = do_translate_load(RTL0.front());
+    auto success = do_translate_load(RTL0.front());
 
-    if (rq_index == -2)
+    if (!success)
       break;
 
     RTL0.pop();
@@ -788,9 +788,9 @@ void O3_CPU::operate_lsq()
   }
 
   while (load_issued < LQ_WIDTH && !RTL1.empty()) {
-    int rq_index = execute_load(RTL1.front());
+    auto success = execute_load(RTL1.front());
 
-    if (rq_index == -2)
+    if (!success)
       break;
 
     RTL1.pop();
@@ -798,7 +798,7 @@ void O3_CPU::operate_lsq()
   }
 }
 
-int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+bool O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
   PACKET data_packet;
 
@@ -818,12 +818,12 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     std::cout << "[RTS0] " << __func__ << " instr_id: " << sq_it->instr_id << " rob_index: " << sq_it->rob_index << " is popped from to RTS0" << std::endl;
   })
 
-  int rq_index = DTLB_bus.lower_level->add_rq(data_packet);
+  auto success = DTLB_bus.lower_level->add_rq(data_packet);
 
-  if (rq_index != -2)
+  if (success)
     sq_it->translated = INFLIGHT;
 
-  return rq_index;
+  return success;
 }
 
 void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
@@ -862,7 +862,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   }
 }
 
-int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+bool O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
   PACKET data_packet;
   data_packet.fill_level = DTLB_bus.lower_level->fill_level;
@@ -881,15 +881,15 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     std::cout << "[RTL0] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is popped to RTL0" << std::endl;
   })
 
-  int rq_index = DTLB_bus.lower_level->add_rq(data_packet);
+  auto success = DTLB_bus.lower_level->add_rq(data_packet);
 
-  if (rq_index != -2)
+  if (success)
     lq_it->translated = INFLIGHT;
 
-  return rq_index;
+  return success;
 }
 
-int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+bool O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
   // add it to L1D
   PACKET data_packet;
@@ -905,12 +905,12 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
   data_packet.to_return = {&L1D_bus};
   data_packet.lq_index_depend_on_me = {lq_it};
 
-  int rq_index = L1D_bus.lower_level->add_rq(data_packet);
+  auto success = L1D_bus.lower_level->add_rq(data_packet);
 
-  if (rq_index != -2)
+  if (success)
     lq_it->fetched = INFLIGHT;
 
-  return rq_index;
+  return success;
 }
 
 void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
@@ -1105,8 +1105,8 @@ void O3_CPU::retire_rob()
         data_packet.asid[0] = sq_it->asid[0];
         data_packet.asid[1] = sq_it->asid[1];
 
-        auto result = L1D_bus.lower_level->add_wq(data_packet);
-        if (result != -2) {
+        auto success = L1D_bus.lower_level->add_wq(data_packet);
+        if (success) {
           ROB.front().destination_memory[i] = 0;
           LSQ_ENTRY empty;
           *sq_it = empty;

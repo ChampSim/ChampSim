@@ -16,20 +16,10 @@
 class MemoryRequestConsumer
 {
 public:
-  /*
-   * add_*q() return values:
-   *
-   * -2 : queue full
-   * -1 : packet value forwarded, returned
-   * 0  : packet merged
-   * >0 : new queue occupancy
-   *
-   */
-
   const unsigned fill_level;
-  virtual int add_rq(PACKET packet) = 0;
-  virtual int add_wq(PACKET packet) = 0;
-  virtual int add_pq(PACKET packet) = 0;
+  virtual bool add_rq(PACKET packet) = 0;
+  virtual bool add_wq(PACKET packet) = 0;
+  virtual bool add_pq(PACKET packet) = 0;
   virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
   virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 

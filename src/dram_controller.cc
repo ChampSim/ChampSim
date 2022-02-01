@@ -165,7 +165,7 @@ void MEMORY_CONTROLLER::operate()
   }
 }
 
-int MEMORY_CONTROLLER::add_rq(PACKET packet)
+bool MEMORY_CONTROLLER::add_rq(PACKET packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
@@ -175,13 +175,13 @@ int MEMORY_CONTROLLER::add_rq(PACKET packet)
     fill_it->forward_checked = false;
     fill_it->event_cycle = current_cycle;
 
-    return get_occupancy(1, packet.address);
+    return true;
   }
 
-  return -2;
+  return false;
 }
 
-int MEMORY_CONTROLLER::add_wq(PACKET packet)
+bool MEMORY_CONTROLLER::add_wq(PACKET packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
@@ -191,18 +191,18 @@ int MEMORY_CONTROLLER::add_wq(PACKET packet)
     wq_it->forward_checked = false;
     wq_it->event_cycle = current_cycle;
 
-    return get_occupancy(2, packet.address);
+    return true;
   }
 
   channel.WQ_FULL++;
-  return -2;
+  return false;
 }
+
+bool MEMORY_CONTROLLER::add_pq(PACKET packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block offset |
  */
-
-int MEMORY_CONTROLLER::add_pq(PACKET packet) { return add_rq(packet); }
 
 uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
 {
