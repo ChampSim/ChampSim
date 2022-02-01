@@ -1,7 +1,6 @@
 #include "cache.h"
 
 #include <algorithm>
-#include <iterator>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -51,10 +50,7 @@ void CACHE::handle_fill()
 
 void CACHE::handle_writeback()
 {
-  while (writes_available_this_cycle > 0) {
-    if (!WQ.has_ready())
-      return;
-
+  while (!std::empty(WQ) && WQ.front().event_cycle < current_cycle && writes_available_this_cycle > 0) {
     // handle the oldest entry
     PACKET& handle_pkt = WQ.front();
 
@@ -102,11 +98,7 @@ void CACHE::handle_writeback()
 
 void CACHE::handle_read()
 {
-  while (reads_available_this_cycle > 0) {
-
-    if (!RQ.has_ready())
-      return;
-
+  while (!std::empty(RQ) && RQ.front().event_cycle < current_cycle && reads_available_this_cycle > 0) {
     // handle the oldest entry
     PACKET& handle_pkt = RQ.front();
 
@@ -362,8 +354,6 @@ void CACHE::operate_writes()
   writes_available_this_cycle = MAX_WRITE;
   handle_fill();
   handle_writeback();
-
-  WQ.operate();
 }
 
 void CACHE::operate_reads()
@@ -372,8 +362,6 @@ void CACHE::operate_reads()
   reads_available_this_cycle = MAX_READ;
   handle_read();
   handle_prefetch();
-
-  RQ.operate();
 }
 
 uint32_t CACHE::get_set(uint64_t address) const { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
@@ -422,11 +410,11 @@ int CACHE::add_rq(PACKET packet)
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.occupancy();
+              << " occupancy: " << RQ.size();
   })
 
   // check for the latest writebacks in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
+  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
 
   if (found_wq != WQ.end()) {
 
@@ -457,7 +445,7 @@ int CACHE::add_rq(PACKET packet)
   }
 
   // check occupancy
-  if (RQ.full()) {
+  if (std::size(RQ) >= RQ_SIZE) {
     RQ_FULL++;
 
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
@@ -465,16 +453,15 @@ int CACHE::add_rq(PACKET packet)
     return -2; // cannot handle this request
   }
 
+  packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
+
   // if there is no duplicate, add it to RQ
-  if (warmup_complete[cpu])
-    RQ.push_back(packet);
-  else
-    RQ.push_back_ready(packet);
+  RQ.push_back(packet);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
   RQ_TO_CACHE++;
-  return RQ.occupancy();
+  return RQ.size();
 }
 
 int CACHE::add_wq(PACKET packet)
@@ -484,11 +471,11 @@ int CACHE::add_wq(PACKET packet)
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.occupancy();
+              << " occupancy: " << WQ.size();
   })
 
   // check for duplicates in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
+  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
 
   if (found_wq != WQ.end()) {
 
@@ -499,25 +486,24 @@ int CACHE::add_wq(PACKET packet)
   }
 
   // Check for room in the queue
-  if (WQ.full()) {
+  if (std::size(WQ) >= WQ_SIZE) {
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
 
     ++WQ_FULL;
     return -2;
   }
 
+  packet.event_cycle = current_cycle + warmup_complete[cpu] ? HIT_LATENCY : 0;
+
   // if there is no duplicate, add it to the write queue
-  if (warmup_complete[cpu])
-    WQ.push_back(packet);
-  else
-    WQ.push_back_ready(packet);
+  WQ.push_back(packet);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
   WQ_TO_CACHE++;
   WQ_ACCESS++;
 
-  return WQ.occupancy();
+  return WQ.size();
 }
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -567,11 +553,11 @@ int CACHE::add_pq(PACKET packet)
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.occupancy();
+              << " occupancy: " << get_occupancy(3, packet.address);
   })
 
   // check for the latest wirtebacks in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
+  auto found_wq = std::find_if(WQ.begin(), WQ.end(), eq_addr<PACKET>(packet.address, match_offset_bits ? 0 : OFFSET_BITS));
 
   if (found_wq != WQ.end()) {
 
@@ -658,9 +644,9 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
   else if (queue_type == 1)
-    return RQ.occupancy();
+    return RQ.size();
   else if (queue_type == 2)
-    return WQ.occupancy();
+    return WQ.size();
   else if (queue_type == 3)
     return PQ.size();
 
@@ -672,9 +658,9 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return MSHR_SIZE;
   else if (queue_type == 1)
-    return RQ.size();
+    return RQ_SIZE;
   else if (queue_type == 2)
-    return WQ.size();
+    return WQ_SIZE;
   else if (queue_type == 3)
     return PQ_SIZE;
 

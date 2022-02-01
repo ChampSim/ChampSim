@@ -51,9 +51,8 @@ public:
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
-
+  std::deque<PACKET> RQ; // read queue
+  std::deque<PACKET> WQ; // write queue
   std::deque<PACKET> PQ; // prefetch queue
 
   std::list<PACKET> MSHR; // MSHR
