@@ -3,11 +3,33 @@
 
 #include "cache.h"
 #include "champsim_constants.h"
+#include "ooo_cpu.h"
 
 namespace champsim
 {
 namespace defaults
 {
+    const auto default_core = O3_CPU::Builder{}
+        .ifetch_buffer_size(64)
+        .decode_buffer_size(32)
+        .dispatch_buffer_size(32)
+        .rob_size(352)
+        .lq_size(128)
+        .sq_size(72)
+        .fetch_width(6)
+        .decode_width(6)
+        .dispatch_width(6)
+        .execute_width(4)
+        .lq_width(2)
+        .sq_width(2)
+        .retire_width(5)
+        .mispredict_penalty(1)
+        .schedule_width(128)
+        .decode_latency(1)
+        .dispatch_latency(1)
+        .schedule_latency(0)
+        .execute_latency(0);
+
     const auto default_l1i = CACHE::Builder{}
         .sets(64)
         .ways(8)
