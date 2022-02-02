@@ -110,7 +110,7 @@ caches = {c['name']: c for c in config_file.get('cache',[])}
 
 # Default branch predictor and BTB
 for i in range(len(cores)):
-    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(default_root), default_core.copy())
+    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
     cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
 
 # Copy or trim cores as necessary to fill out the specified number of cores

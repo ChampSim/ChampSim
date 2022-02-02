@@ -40,6 +40,7 @@
 #include <array>
 #include <bitset>
 #include <deque>
+#include <map>
 
 #include "ooo_cpu.h"
 
