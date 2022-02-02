@@ -27,6 +27,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"

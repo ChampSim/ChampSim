@@ -195,14 +195,58 @@ public:
   const std::bitset<NUM_REPLACEMENT_MODULES> repl_type;
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
-  // Uncapped internal PQ size
-  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
-        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
+  class Builder
+  {
+      std::string_view m_name{};
+      double m_freq_scale{};
+      uint32_t m_sets{};
+      uint32_t m_ways{};
+      std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
+      uint32_t m_mshr_size{};
+      uint32_t m_hit_lat{};
+      uint32_t m_fill_lat{};
+      uint32_t m_max_read{};
+      uint32_t m_max_write{};
+      std::size_t m_offset_bits{};
+      bool m_pref_load{};
+      bool m_wq_full_addr{};
+      bool m_va_pref{};
 
-  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
-        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
+      unsigned m_pref_act_mask{};
+      std::vector<CACHE::channel_type*> m_uls{};
+      CACHE::channel_type* m_ll{};
+      CACHE::channel_type* m_lt{nullptr};
+      std::bitset<NUM_PREFETCH_MODULES> m_pref{};
+      std::bitset<NUM_REPLACEMENT_MODULES> m_repl{};
+
+      friend class CACHE;
+
+      public:
+
+      Builder& name(std::string_view name_) { m_name = name_; return *this; }
+      Builder& frequency(double freq_scale_) { m_freq_scale = freq_scale_; return *this; }
+      Builder& sets(uint32_t sets_) { m_sets = sets_; return *this; }
+      Builder& ways(uint32_t ways_) { m_ways = ways_; return *this; }
+      Builder& pq_size(uint32_t pq_size_) { m_pq_size = pq_size_; return *this; }
+      Builder& mshr_size(uint32_t mshr_size_) { m_mshr_size = mshr_size_; return *this; }
+      Builder& latency(uint32_t lat_) { m_fill_lat = lat_/2; m_hit_lat = lat_ - m_fill_lat; return *this; }
+      Builder& hit_latency(uint32_t hit_lat_) { m_hit_lat = hit_lat_; return *this; }
+      Builder& fill_latency(uint32_t fill_lat_) { m_fill_lat = fill_lat_; return *this; }
+      Builder& max_read(uint32_t max_read_) { m_max_read = max_read_; return *this; }
+      Builder& max_write(uint32_t max_write_) { m_max_write = max_write_; return *this; }
+      Builder& offset_bits(std::size_t offset_bits_) { m_offset_bits = offset_bits_; return *this; }
+      Builder& set_prefetch_as_load(bool pref_load_) { m_pref_load = pref_load_; return *this; }
+      Builder& set_wq_checks_full_addr(bool wq_full_addr_) { m_wq_full_addr = wq_full_addr_; return *this; }
+      Builder& set_virtual_prefetch(bool va_pref_) { m_va_pref = va_pref_; return *this; }
+      Builder& prefetch_activate(unsigned pref_act_mask_) { m_pref_act_mask = pref_act_mask_; return *this; }
+      Builder& upper_levels(std::vector<CACHE::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }
+      Builder& lower_level(CACHE::channel_type* ll_) { m_ll = ll_; return *this; }
+      Builder& lower_translate(CACHE::channel_type* lt_) { m_lt = lt_; return *this; }
+      Builder& prefetcher(std::bitset<NUM_PREFETCH_MODULES> pref_) { m_pref = pref_; return *this; }
+      Builder& replacement(std::bitset<NUM_REPLACEMENT_MODULES> repl_) { m_repl = repl_; return *this; }
+  };
+
+  CACHE(Builder b);
 };
 
 #endif

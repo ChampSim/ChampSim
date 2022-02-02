@@ -165,33 +165,33 @@ default_ptw = {
 
 # Defaults for first-level caches
 def named_l1i_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'L1I'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'L2C'), 'lower_translate': util.read_element_name(cpu, 'ITLB'), '_needs_translate': True, '_is_instruction_cache': True, **default_l1i}
+    return {'name': util.read_element_name(cpu, 'L1I'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'L2C'), 'lower_translate': util.read_element_name(cpu, 'ITLB'), '_needs_translate': True, '_is_instruction_cache': True, '_defaults': 'champsim::defaults::default_l1i', **default_l1i}
 
 def named_l1d_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'L1D'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'L2C'), 'lower_translate': util.read_element_name(cpu, 'DTLB'), '_needs_translate': True, **default_l1d}
+    return {'name': util.read_element_name(cpu, 'L1D'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'L2C'), 'lower_translate': util.read_element_name(cpu, 'DTLB'), '_needs_translate': True, '_defaults': 'champsim::defaults::default_l1d', **default_l1d}
 
 def named_itlb_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'ITLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'STLB'), **default_itlb}
+    return {'name': util.read_element_name(cpu, 'ITLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'STLB'), '_defaults': 'champsim::defaults::default_itlb', **default_itlb}
 
 def named_dtlb_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'DTLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'STLB'), **default_dtlb}
+    return {'name': util.read_element_name(cpu, 'DTLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'STLB'), '_defaults': 'champsim::defaults::default_dtlb', **default_dtlb}
 
 # Defaults for second-level caches
 def named_l2c_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'L2C'), 'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': util.read_element_name(cpu, 'STLB'), **default_l2c}
+    return {'name': util.read_element_name(cpu, 'L2C'), 'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': util.read_element_name(cpu, 'STLB'), '_defaults': 'champsim::defaults::default_l2c', **default_l2c}
 
 def sequence_l2c_defaults(name, uls):
     uls = list(uls)
     intern_default_l2c  = { 'latency': 10, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 512*len(uls), 'ways': 8, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 32*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), **intern_default_l2c}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 512*len(uls), 'ways': 8, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 32*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), '_defaults': 'champsim::defaults::default_l2c', **intern_default_l2c}
 
 def named_stlb_defaults(cpu):
-    return {'name': util.read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'PTW'), **default_stlb}
+    return {'name': util.read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'PTW'), '_defaults': 'champsim::defaults::default_stlb', **default_stlb}
 
 def sequence_stlb_defaults(name, uls):
     uls = list(uls)
     intern_default_stlb  = { 'latency': 8, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 64*len(uls), 'ways': 12, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 8*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), **intern_default_stlb}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 64*len(uls), 'ways': 12, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 8*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), '_defaults': 'champsim::defaults::default_stlb', **intern_default_stlb}
 
 # Defaults for third-level caches
 def named_ptw_defaults(cpu):
@@ -199,5 +199,5 @@ def named_ptw_defaults(cpu):
 
 def named_llc_defaults(name, uls):
     uls = list(uls)
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'ptwq_size': 5*len(uls), 'mshr_size': 64*len(uls), 'max_tag_check': len(uls), 'max_fill': len(uls), **default_llc}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'ptwq_size': 5*len(uls), 'mshr_size': 64*len(uls), 'max_tag_check': len(uls), 'max_fill': len(uls), '_defaults': 'champsim::defaults::default_llc', **default_llc}
 

@@ -75,15 +75,42 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             **elem)
 
     for elem in caches:
-        yield cache_fmtstr.format(
-            _ulptr=', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']),
-            _llptr='&{}_to_{}_queues'.format(elem['name'], elem['lower_level']),
-            _ltptr=('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate'])) if 'lower_translate' in elem else 'nullptr',
-            prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
-            repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']),\
-            pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']),\
-            **elem)
-    yield ''
+        yield 'CACHE {}{{CACHE::Builder{{ {} }}'.format(elem['name'], elem.get('_defaults', ''))
+        yield '.name("{name}")'.format(**elem)
+
+        cache_builder_parts = {
+            'frequency': '.frequency({frequency})',
+            'sets': '.sets({sets})',
+            'ways': '.ways({ways})',
+            'pq_size': '.pq_size({pq_size})',
+            'mshr_size': '.mshr_size({mshr_size})',
+            'latency': '.latency({latency})',
+            'hit_latency': '.hit_latency({hit_latency})',
+            'fill_latency': '.fill_latency({fill_latency})',
+            'max_read': '.max_read({max_read})',
+            'max_write': '.max_write({max_write})',
+            'offset_bits': '.offset_bits({offset_bits})',
+            'prefetch_as_load': '.set_prefetch_as_load(' + ('true' if elem.get('prefetch_as_load') else 'false') + ')',
+            'wq_check_full_addr': '.set_wq_checks_full_addr(' + ('true' if elem.get('wq_check_full_addr') else 'false') + ')',
+            'virtual_prefetch': '.set_virtual_prefetch(' + ('true' if elem.get('virtual_prefetch') else 'false') + ')'
+        }
+
+        yield from (v.format(**elem) for k,v in cache_builder_parts.items() if k in elem)
+
+        # Create prefetch activation masks
+        type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
+        yield '.prefetch_activate({})'.format(' | '.join('(1 << {})'.format(t) for t in type_list if t in elem.get('prefetch_activate', tuple())))
+
+        yield '.replacement({})'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
+        yield '.prefetcher({})'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))
+        yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
+        yield '.lower_level({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_level']))
+
+        if 'lower_translate' in elem:
+            yield '.lower_translate({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate']))
+
+        yield '};'
+        yield ''
 
     yield from ('O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
                 _l1iptr='&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']),

@@ -29,21 +29,13 @@
 using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{ "LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION" };
 
-CACHE::CACHE(std::string name, double freq_scale, uint32_t sets, uint32_t ways, uint32_t mshr_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
-    long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls,
-    champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
-  : CACHE(name, freq_scale, sets, ways, mshr_size, std::numeric_limits<std::size_t>::max(), hit_lat, fill_lat, max_tag, max_fill, offset_bits, pref_load, wq_full_addr, va_pref, pref_mask, std::move(uls), lt, ll, pref, repl)
-{
-}
-
-CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
-    long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls,
-    champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
-: champsim::operable(freq_scale), upper_levels(std::move(uls)), lower_level(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8),
-  PQ_SIZE(pq_size), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill), prefetch_as_load(pref_load),
-  match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_mask), repl_type(repl), pref_type(pref)
-{
-}
+CACHE::CACHE(Builder b)
+      : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), NAME(b.m_name), NUM_SET(b.m_sets), NUM_WAY(b.m_ways),
+        MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY(b.m_hit_lat), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_read),
+        MAX_FILL(b.m_max_write), prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
+        repl_type(b.m_repl), pref_type(b.m_pref)
+  {
+  }
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
   : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
