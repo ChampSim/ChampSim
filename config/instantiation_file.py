@@ -24,6 +24,42 @@ vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_pe
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
+cache_builder_parts = {
+    'frequency': '.frequency({frequency})',
+    'sets': '.sets({sets})',
+    'ways': '.ways({ways})',
+    'pq_size': '.pq_size({pq_size})',
+    'mshr_size': '.mshr_size({mshr_size})',
+    'latency': '.latency({latency})',
+    'hit_latency': '.hit_latency({hit_latency})',
+    'fill_latency': '.fill_latency({fill_latency})',
+    'max_read': '.max_read({max_read})',
+    'max_write': '.max_write({max_write})',
+    'offset_bits': '.offset_bits({offset_bits})'
+}
+
+core_builder_parts = {
+    'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
+    'decode_buffer_size': '.decode_buffer_size({dispatch_buffer_size})',
+    'dispatch_buffer_size': '.dispatch_buffer_size({decode_buffer_size})',
+    'rob_size': '.rob_size({rob_size})',
+    'lq_size': '.lq_size({lq_size})',
+    'sq_size': '.sq_size({sq_size})',
+    'fetch_width': '.fetch_width({fetch_width})',
+    'decode_width': '.decode_width({decode_width})',
+    'dispatch_width': '.dispatch_width({dispatch_width})',
+    'schedule_size': '.schedule_width({scheduler_size})',
+    'execute_width': '.execute_width({execute_width})',
+    'lq_width': '.lq_width({lq_width})',
+    'sq_width': '.sq_width({sq_width})',
+    'retire_width': '.retire_width({retire_width})',
+    'mispredict_penalty': '.mispredict_penalty({mispredict_penalty})',
+    'decode_latency': '.decode_latency({decode_latency})',
+    'dispatch_latency': '.dispatch_latency({dispatch_latency})',
+    'schedule_latency': '.schedule_latency({schedule_latency})',
+    'execute_latency': '.execute_latency({execute_latency})'
+}
+
 default_ptw_queue = {
                 'wq_size':0,
                 'pq_size':0,
@@ -75,24 +111,14 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield 'CACHE {}{{CACHE::Builder{{ {} }}'.format(elem['name'], elem.get('_defaults', ''))
         yield '.name("{name}")'.format(**elem)
 
-        cache_builder_parts = {
-            'frequency': '.frequency({frequency})',
-            'sets': '.sets({sets})',
-            'ways': '.ways({ways})',
-            'pq_size': '.pq_size({pq_size})',
-            'mshr_size': '.mshr_size({mshr_size})',
-            'latency': '.latency({latency})',
-            'hit_latency': '.hit_latency({hit_latency})',
-            'fill_latency': '.fill_latency({fill_latency})',
-            'max_read': '.max_read({max_read})',
-            'max_write': '.max_write({max_write})',
-            'offset_bits': '.offset_bits({offset_bits})',
+        local_cache_builder_parts = {
             'prefetch_as_load': '.set_prefetch_as_load(' + ('true' if elem.get('prefetch_as_load') else 'false') + ')',
             'wq_check_full_addr': '.set_wq_checks_full_addr(' + ('true' if elem.get('wq_check_full_addr') else 'false') + ')',
             'virtual_prefetch': '.set_virtual_prefetch(' + ('true' if elem.get('virtual_prefetch') else 'false') + ')'
         }
 
         yield from (v.format(**elem) for k,v in cache_builder_parts.items() if k in elem)
+        yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k in elem)
 
         # Create prefetch activation masks
         type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
@@ -121,28 +147,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.l1i_bandwidth({L1I}.MAX_TAG)'.format(**cpu)
         yield '.l1d_bandwidth({L1D}.MAX_TAG)'.format(**cpu)
 
-        core_builder_parts = {
-            'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
-            'decode_buffer_size': '.decode_buffer_size({dispatch_buffer_size})',
-            'dispatch_buffer_size': '.dispatch_buffer_size({decode_buffer_size})',
-            'rob_size': '.rob_size({rob_size})',
-            'lq_size': '.lq_size({lq_size})',
-            'sq_size': '.sq_size({sq_size})',
-            'fetch_width': '.fetch_width({fetch_width})',
-            'decode_width': '.decode_width({decode_width})',
-            'dispatch_width': '.dispatch_width({dispatch_width})',
-            'schedule_size': '.schedule_width({scheduler_size})',
-            'execute_width': '.execute_width({execute_width})',
-            'lq_width': '.lq_width({lq_width})',
-            'sq_width': '.sq_width({sq_width})',
-            'retire_width': '.retire_width({retire_width})',
-            'mispredict_penalty': '.mispredict_penalty({mispredict_penalty})',
-            'decode_latency': '.decode_latency({decode_latency})',
-            'dispatch_latency': '.dispatch_latency({dispatch_latency})',
-            'schedule_latency': '.schedule_latency({schedule_latency})',
-            'execute_latency': '.execute_latency({execute_latency})'
-        }
-
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
         yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
         yield '.btb({})'.format(' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']))
@@ -168,4 +172,3 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
     yield '}};'
     yield ''
-
