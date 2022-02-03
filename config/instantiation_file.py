@@ -106,14 +106,24 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield 'PageTableWalker {name}{{PageTableWalker::Builder{{}}'.format(**ptw)
         yield '.name("{name}")'.format(**ptw)
         yield '.cpu({cpu})'.format(**ptw)
-        yield '.add_pscl(5, {pscl5_set}, {pscl5_way})'.format(**ptw)
-        yield '.add_pscl(4, {pscl4_set}, {pscl4_way})'.format(**ptw)
-        yield '.add_pscl(3, {pscl3_set}, {pscl3_way})'.format(**ptw)
-        yield '.add_pscl(2, {pscl2_set}, {pscl2_way})'.format(**ptw)
-        yield '.rq_size({rq_size})'.format(**ptw)
-        yield '.mshr_size({mshr_size})'.format(**ptw)
-        yield '.max_read({max_read})'.format(**ptw)
-        yield '.max_fill({max_write})'.format(**ptw)
+
+        if "pscl5_set" in ptw or "pscl5_way" in ptw:
+            yield '.add_pscl(5, {pscl5_set}, {pscl5_way})'.format(**ptw)
+        if "pscl4_set" in ptw or "pscl4_way" in ptw:
+            yield '.add_pscl(4, {pscl4_set}, {pscl4_way})'.format(**ptw)
+        if "pscl3_set" in ptw or "pscl3_way" in ptw:
+            yield '.add_pscl(3, {pscl3_set}, {pscl3_way})'.format(**ptw)
+        if "pscl2_set" in ptw or "pscl2_way" in ptw:
+            yield '.add_pscl(2, {pscl2_set}, {pscl2_way})'.format(**ptw)
+        if "rq_size" in ptw:
+            yield '.rq_size({rq_size})'.format(**ptw)
+        if "mshr_size" in ptw:
+            yield '.mshr_size({mshr_size})'.format(**ptw)
+        if "max_read" in ptw:
+            yield '.max_read({max_read})'.format(**ptw)
+        if "max_write" in ptw:
+            yield '.max_fill({max_write})'.format(**ptw)
+
         yield '.latency(0)'.format(**ptw)
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
