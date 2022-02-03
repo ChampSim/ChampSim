@@ -4,6 +4,7 @@
 #include "cache.h"
 #include "champsim_constants.h"
 #include "ooo_cpu.h"
+#include "ptw.h"
 
 namespace champsim
 {
@@ -145,6 +146,16 @@ namespace defaults
         .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
+
+    const auto default_ptw = PageTableWalker::Builder{}
+        .rq_size(16)
+        .max_read(2)
+        .max_fill(2)
+        .mshr_size(5)
+        .add_pscl(5,1,2)
+        .add_pscl(4,1,4)
+        .add_pscl(3,2,4)
+        .add_pscl(2,4,8);
 }
 }
 
