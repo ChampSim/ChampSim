@@ -123,8 +123,6 @@ public:
 
   void print_deadlock() override;
 
-  int prefetch_code_line(uint64_t pf_v_addr);
-
 #include "ooo_cpu_modules.inc"
 
   const bpred_t bpred_type;

@@ -483,8 +483,6 @@ void O3_CPU::dispatch_instruction()
     throw champsim::deadlock{cpu};
 }
 
-int O3_CPU::prefetch_code_line(uint64_t pf_v_addr) { return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, true, 0); }
-
 void O3_CPU::schedule_instruction()
 {
   std::size_t search_bw = SCHEDULER_SIZE;
