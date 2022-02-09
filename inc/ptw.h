@@ -1,8 +1,11 @@
 #ifndef PTW_H
 #define PTW_H
 
+#include <list>
 #include <map>
 #include <optional>
+
+#include "memory_class.h"
 
 class PagingStructureCache
 {
@@ -44,18 +47,20 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
         const uint64_t CR3_addr;
         std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-        PageTableWalker(string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
+        PageTableWalker(string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
         // functions
         int add_rq(PACKET *packet);
         int add_wq(PACKET *packet) { assert(0); }
         int add_pq(PACKET *packet) { assert(0); }
 
-        void return_data(PACKET *packet);
+        void return_data(PACKET *packet) override;
 
         void operate() override;
         void begin_phase() override;
         void end_phase(unsigned cpu) override;
+        void print_roi_stats() override;
+        void print_phase_stats() override;
 
         void handle_read(), handle_fill();
         void increment_WQ_FULL(uint64_t address) {}
@@ -64,6 +69,9 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
                  get_size(uint8_t queue_type, uint64_t address);
 
         uint64_t get_shamt(uint8_t pt_level);
+
+        void print_deadlock() override;
 };
 
 #endif
+

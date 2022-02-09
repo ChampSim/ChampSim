@@ -2,6 +2,7 @@
 #define CHAMPSIM_H
 
 #include <cstdint>
+#include <exception>
 
 #include "champsim_constants.h"
 
@@ -31,6 +32,14 @@
 using namespace std;
 
 extern uint8_t warmup_complete[NUM_CPUS];
-void print_deadlock(uint32_t i);
+
+namespace champsim
+{
+    struct deadlock : public std::exception
+    {
+        const uint32_t which;
+        explicit deadlock(uint32_t cpu) : which(cpu) {}
+    };
+}
 #endif
 
