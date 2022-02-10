@@ -1,5 +1,3 @@
-#include "instruction.h"
-
 #include <cstdio>
 #include <deque>
 #include <memory>
@@ -14,6 +12,8 @@ namespace detail
 {
     void pclose_file(FILE* f);
 }
+
+#include "instruction.h"
 
 class tracereader
 {
