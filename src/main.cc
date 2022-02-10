@@ -4,16 +4,18 @@
 #include <chrono>
 #include <getopt.h>
 #include <functional>
+#include <getopt.h>
 #include <iomanip>
 #include <numeric>
 #include <signal.h>
 #include <string.h>
 #include <vector>
 
+#include "cache.h"
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
-#include "cache.h"
 #include "operable.h"
 #include "tracereader.h"
 #include "vmem.h"
@@ -24,10 +26,12 @@ uint8_t MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
 
 extern uint8_t show_heartbeat;
 
-uint64_t warmup_instructions     = 1000000,
-         simulation_instructions = 10000000;
+uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
 auto start_time = std::chrono::steady_clock::now();
+
+// For backwards compatibility with older module source.
+champsim::deprecated_clock_cycle current_core_cycle;
 
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
@@ -46,10 +50,21 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
     return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
-void signal_handler(int signal) 
+uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
 {
-	cout << "Caught signal: " << signal << endl;
-	exit(1);
+  static bool deprecate_printed = false;
+  if (!deprecate_printed) {
+    std::cout << "WARNING: The use of 'current_core_cycle[cpu]' is deprecated." << std::endl;
+    std::cout << "WARNING: Use 'this->current_cycle' instead." << std::endl;
+    deprecate_printed = true;
+  }
+  return ooo_cpu[cpu_idx]->current_cycle;
+}
+
+void signal_handler(int signal)
+{
+  cout << "Caught signal: " << signal << endl;
+  exit(1);
 }
 
 struct phase_info
@@ -61,100 +76,98 @@ struct phase_info
 
 int main(int argc, char** argv)
 {
-	// interrupt signal hanlder
-	struct sigaction sigIntHandler;
-	sigIntHandler.sa_handler = signal_handler;
-	sigemptyset(&sigIntHandler.sa_mask);
-	sigIntHandler.sa_flags = 0;
-	sigaction(SIGINT, &sigIntHandler, NULL);
+  // interrupt signal hanlder
+  struct sigaction sigIntHandler;
+  sigIntHandler.sa_handler = signal_handler;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+  sigaction(SIGINT, &sigIntHandler, NULL);
 
-    cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
+  cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
 
-    show_heartbeat = 1;
+  show_heartbeat = 1;
 
-    // check to see if knobs changed using getopt_long()
-    const struct option long_options[] =
-    {
-        {"warmup_instructions", required_argument, 0, 'w'},
-        {"simulation_instructions", required_argument, 0, 'i'},
-        {"hide_heartbeat", no_argument, 0, 'h'},
-        {"cloudsuite", no_argument, 0, 'c'},
-        {"traces",  no_argument, 0, 't'},
-        {0, 0, 0, 0}      
-    };
+  // check to see if knobs changed using getopt_long()
+  int traces_encountered = 0;
+  static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
+                                         {"simulation_instructions", required_argument, 0, 'i'},
+                                         {"hide_heartbeat", no_argument, 0, 'h'},
+                                         {"cloudsuite", no_argument, 0, 'c'},
+                                         {"traces", no_argument, &traces_encountered, 1},
+                                         {0, 0, 0, 0}};
 
-    int option_index = 0; // unused
-    bool traces_encountered = false;
-    for (int c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index);
-            c != -1 && !traces_encountered;
-            c = getopt_long_only(argc, argv, "wihsb", long_options, &option_index)
-        )
-    {
-        switch(c) {
-            case 'w':
-                warmup_instructions = atol(optarg);
-                break;
-            case 'i':
-                simulation_instructions = atol(optarg);
-                break;
-            case 'h':
-                show_heartbeat = 0;
-                break;
-            case 'c':
-                knob_cloudsuite = 1;
-                MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
-                break;
-            case 't':
-                traces_encountered = true;
-                break;
-            default:
-                abort();
-        }
+  int c;
+  while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered) {
+    switch (c) {
+    case 'w':
+      warmup_instructions = atol(optarg);
+      break;
+    case 'i':
+      simulation_instructions = atol(optarg);
+      break;
+    case 'h':
+      show_heartbeat = 0;
+      break;
+    case 'c':
+      knob_cloudsuite = 1;
+      MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
+      break;
+    case 0:
+      break;
+    default:
+      abort();
     }
+  }
 
-    // consequences of knobs
-    cout << "Warmup Instructions: " << warmup_instructions << endl;
-    cout << "Simulation Instructions: " << simulation_instructions << endl;
-    cout << "Number of CPUs: " << NUM_CPUS << endl;
-    //cout << "LLC sets: " << LLC.NUM_SET << endl;
-    //cout << "LLC ways: " << LLC.NUM_WAY << endl;
-    std::cout << "Off-chip DRAM Size: " << (DRAM_CHANNELS*DRAM_RANKS*DRAM_BANKS*DRAM_ROWS*DRAM_ROW_SIZE/1024) << " MB Channels: " << DRAM_CHANNELS << " Width: " << 8*DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
+  cout << "Warmup Instructions: " << warmup_instructions << endl;
+  cout << "Simulation Instructions: " << simulation_instructions << endl;
+  cout << "Number of CPUs: " << NUM_CPUS << endl;
 
-    std::cout << std::endl;
-    std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
-    std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
-    std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
+  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  std::cout << "Off-chip DRAM Size: ";
+  if (dram_size > 1024)
+    std::cout << dram_size / 1024 << " GiB";
+  else
+    std::cout << dram_size << " MiB";
+  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
-    // end consequence of knobs
+  std::cout << std::endl;
+  std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
+  std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
+  std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
-    // search through the argv for "-traces"
-    std::cout << std::endl;
-    for (auto it = std::next(std::find(argv, std::next(argv, argc), std::string{"-traces"})); it != std::next(argv, argc); it++)
-    {
-        std::cout << "CPU " << traces.size() << " runs " << *it << std::endl;
-        traces.push_back(get_tracereader(*it, traces.size(), knob_cloudsuite));
+  std::cout << std::endl;
+  for (int i = optind; i < argc; i++) {
+    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+
+    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
+
+    if (traces.size() > NUM_CPUS) {
+      printf("\n*** Too many traces for the configured number of cores ***\n\n");
+      assert(0);
     }
+  }
 
-    if (traces.size() != NUM_CPUS)
-    {
-        std::cout << std::endl << "*** Number of traces does not match number of cores ***" << std::endl << std::endl;
-        abort();
-    }
-    // end trace file setup
+  if (traces.size() != NUM_CPUS) {
+    printf("\n*** Not enough traces for the configured number of cores ***\n\n");
+    assert(0);
+  }
+  // end trace file setup
 
-    for (O3_CPU* cpu : ooo_cpu)
-        cpu->initialize_core();
+  // SHARED CACHE
+  for (O3_CPU* cpu : ooo_cpu) {
+    cpu->initialize_core();
+  }
 
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    {
-        (*it)->impl_prefetcher_initialize();
-        (*it)->impl_replacement_initialize();
-    }
+  for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
+    (*it)->impl_prefetcher_initialize();
+    (*it)->impl_replacement_initialize();
+  }
 
-    std::vector<phase_info> phases{{
-        phase_info{"Warmup", true, warmup_instructions},
-        phase_info{"Simulation", false, simulation_instructions}
-    }};
+  std::vector<phase_info> phases{{
+    phase_info{"Warmup", true, warmup_instructions},
+    phase_info{"Simulation", false, simulation_instructions}
+  }};
 
     // simulation entry point
     for (auto phase : phases)
@@ -234,42 +247,33 @@ int main(int argc, char** argv)
     {
         std::cout << std::endl;
         std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
-        for (auto cpu : ooo_cpu)
-        {
-            std::cout << std::endl;
-            std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
-            std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle();
-            std::cout << std::endl;
 
-            for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-                (*it)->print_phase_stats();
-        }
+        for (auto cpu : ooo_cpu)
+            cpu->print_phase_stats();
+
+        for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+            (*it)->print_phase_stats();
     }
 
     std::cout << std::endl;
     std::cout << "Region of Interest Statistics" << std::endl;
     for (auto cpu : ooo_cpu)
     {
-        std::cout << std::endl;
-        std::cout << "CPU " << cpu->cpu << " cumulative IPC: " << (1.0 * cpu->roi_instr() / cpu->roi_cycle());
-        std::cout << " instructions: " << cpu->roi_cycle() << " cycles: " << cpu->roi_cycle();
-        std::cout << std::endl;
+        for (auto cpu : ooo_cpu)
+            cpu->print_roi_stats();
 
         for (auto it = caches.rbegin(); it != caches.rend(); ++it)
             (*it)->print_roi_stats();
     }
 
-    for (auto cpu : ooo_cpu)
-        cpu->print_phase_stats();
+  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+    (*it)->impl_prefetcher_final_stats();
 
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-        (*it)->impl_prefetcher_final_stats();
+  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+    (*it)->impl_replacement_final_stats();
 
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-        (*it)->impl_replacement_final_stats();
+  DRAM.print_phase_stats();
 
-    DRAM.print_phase_stats();
-
-    return 0;
+  return 0;
 }
 
