@@ -5,13 +5,14 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
-#include <type_traits>
 #include <vector>
+
+#include <type_traits>
 
 namespace champsim
 {
 
-template<typename T>
+template <typename T>
 class circular_buffer_iterator
 {
     protected:
@@ -62,10 +63,11 @@ class circular_buffer_iterator
 };
 
 /***
- * This class implements a deque-like interface with fixed (maximum) size over contiguous memory.
- * Iterators to this structure are never invalidated, unless the element it refers to is popped.
+ * This class implements a deque-like interface with fixed (maximum) size over
+ * contiguous memory. Iterators to this structure are never invalidated, unless
+ * the element it refers to is popped.
  */
-template<typename T>
+template <typename T>
 class circular_buffer
 {
     protected:
@@ -141,21 +143,21 @@ auto circular_buffer<T>::circ_inc(size_type base, difference_type inc) -> size_t
     difference_type signed_new_base = base + inc;
     const difference_type max_size = sz_ + 1;
 
-    // Adjust from the negative direction
-    while (signed_new_base < 0)
-        signed_new_base += max_size;
+  // Adjust from the negative direction
+  while (signed_new_base < 0)
+    signed_new_base += max_size;
 
-    // Adjust from the positive direction
-    while (signed_new_base >= max_size)
-        signed_new_base -= max_size;
+  // Adjust from the positive direction
+  while (signed_new_base >= max_size)
+    signed_new_base -= max_size;
 
-    return static_cast<size_type>(signed_new_base);
+  return static_cast<size_type>(signed_new_base);
 }
 
 template <typename T>
 auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> difference_type
 {
-    difference_type diff = pos - other.pos;
+  difference_type diff = pos - other.pos;
 
     // Adjust for the cases where the tail has wrapped, but the head has not.
     // In the positive direction
@@ -166,10 +168,9 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
     else if (other.pos < buf->head_ && buf->head_ <= pos)
         diff = buf->sz_ + 1 - diff;
 
-    return diff;
+  return diff;
 }
 
-} //namespace champsim
+} // namespace champsim
 
 #endif
-
