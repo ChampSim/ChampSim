@@ -20,9 +20,9 @@
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0;
 
-uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000, champsim_seed;
+uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
-time_t start_time;
+auto start_time = time(NULL);
 
 // For backwards compatibility with older module source.
 champsim::deprecated_clock_cycle current_core_cycle;
@@ -299,8 +299,6 @@ int main(int argc, char** argv)
   // initialize knobs
   uint8_t show_heartbeat = 1;
 
-  uint32_t seed_number = 0;
-
   // check to see if knobs changed using getopt_long()
   int traces_encountered = 0;
   static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
@@ -333,38 +331,6 @@ int main(int argc, char** argv)
     }
   }
 
-  // search through the argv for "-traces"
-  std::cout << std::endl;
-  for (int i = optind; i < argc; i++) {
-    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
-
-    traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
-
-    char* pch[100];
-    int count_str = 0;
-    pch[0] = strtok(argv[i], " /,.-");
-    while (pch[count_str] != NULL) {
-      // printf ("%s %d\n", pch[count_str], count_str);
-      count_str++;
-      pch[count_str] = strtok(NULL, " /,.-");
-    }
-
-    // printf("max count_str: %d\n", count_str);
-    // printf("application: %s\n", pch[count_str-3]);
-
-    int j = 0;
-    while (pch[count_str - 3][j] != '\0') {
-      seed_number += pch[count_str - 3][j];
-      // printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
-      j++;
-    }
-
-    if (traces.size() > NUM_CPUS) {
-      printf("\n*** Too many traces for the configured number of cores ***\n\n");
-      assert(0);
-    }
-  }
-
   // consequences of knobs
   std::cout << "Warmup Instructions: " << warmup_instructions << std::endl;
   std::cout << "Simulation Instructions: " << simulation_instructions << std::endl;
@@ -383,42 +349,15 @@ int main(int argc, char** argv)
   std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
-  // end consequence of knobs
-
-  // search through the argv for "-traces"
-  int found_traces = 0;
   std::cout << std::endl;
-  for (int i = 0; i < argc; i++) {
-    if (found_traces) {
-      std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+  for (int i = optind; i < argc; i++) {
+    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
 
-      traces.push_back(get_tracereader(argv[i], i, knob_cloudsuite));
+    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
 
-      char* pch[100];
-      int count_str = 0;
-      pch[0] = strtok(argv[i], " /,.-");
-      while (pch[count_str] != NULL) {
-        // printf ("%s %d\n", pch[count_str], count_str);
-        count_str++;
-        pch[count_str] = strtok(NULL, " /,.-");
-      }
-
-      // printf("max count_str: %d\n", count_str);
-      // printf("application: %s\n", pch[count_str-3]);
-
-      int j = 0;
-      while (pch[count_str - 3][j] != '\0') {
-        seed_number += pch[count_str - 3][j];
-        // printf("%c %d %d\n", pch[count_str-3][j], j, seed_number);
-        j++;
-      }
-
-      if (traces.size() > NUM_CPUS) {
-        printf("\n*** Too many traces for the configured number of cores ***\n\n");
-        assert(0);
-      }
-    } else if (strcmp(argv[i], "-traces") == 0) {
-      found_traces = 1;
+    if (traces.size() > NUM_CPUS) {
+      printf("\n*** Too many traces for the configured number of cores ***\n\n");
+      assert(0);
     }
   }
 
@@ -427,9 +366,6 @@ int main(int argc, char** argv)
     assert(0);
   }
   // end trace file setup
-
-  srand(seed_number);
-  champsim_seed = seed_number;
 
   // SHARED CACHE
   for (O3_CPU* cpu : ooo_cpu) {
@@ -442,7 +378,6 @@ int main(int argc, char** argv)
   }
 
   // simulation entry point
-  start_time = time(NULL);
   while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
 
     uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time), elapsed_minute = elapsed_second / 60, elapsed_hour = elapsed_minute / 60;
