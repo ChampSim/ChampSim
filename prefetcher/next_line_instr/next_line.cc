@@ -1,23 +1,24 @@
 #include <iostream>
 
-#include "ooo_cpu.h"
+#include "cache.h"
 
-void O3_CPU::prefetcher_initialize() { std::cout << "CPU " << cpu << " next line instruction prefetcher" << endl; }
+void CACHE::prefetcher_initialize() { std::cout << NAME << " next line prefetcher" << std::endl; }
 
-void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
+void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
 
-uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  uint64_t pf_addr = v_addr + (1 << LOG2_BLOCK_SIZE);
-  prefetch_code_line(pf_addr);
+  assert(addr == ip); // Invariant for instruction prefetchers
+  uint64_t pf_addr = addr + (1 << LOG2_BLOCK_SIZE);
+  prefetch_line(pf_addr, true, metadata_in);
   return metadata_in;
 }
 
-void O3_CPU::prefetcher_cycle_operate() {}
-
-uint32_t O3_CPU::prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }
 
-void O3_CPU::l1i_prefetcher_final_stats() {}
+void CACHE::prefetcher_cycle_operate() {}
+
+void CACHE::prefetcher_final_stats() {}
