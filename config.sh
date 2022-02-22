@@ -403,17 +403,17 @@ with open(instantiation_file_name, 'wt') as wfp:
     for cpu in cores:
         wfp.write(cpu_fmtstr.format(**cpu))
 
-    wfp.write('std::array<O3_CPU*, NUM_CPUS> ooo_cpu {\n')
+    wfp.write('std::array<O3_CPU*, NUM_CPUS> ooo_cpu {{\n')
     wfp.write(', '.join('&{name}'.format(**elem) for elem in cores))
-    wfp.write('\n};\n')
+    wfp.write('\n}};\n')
 
-    wfp.write('std::array<CACHE*, NUM_CACHES> caches {\n')
+    wfp.write('std::array<CACHE*, NUM_CACHES> caches {{\n')
     wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
-    wfp.write('\n};\n')
+    wfp.write('\n}};\n')
 
-    wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {\n')
+    wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {{\n')
     wfp.write(', '.join('&{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
-    wfp.write('\n};\n')
+    wfp.write('\n}};\n')
 
 # Core modules file
 bpred_names        = {c['bpred_name'] for c in cores}

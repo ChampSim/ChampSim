@@ -9,7 +9,7 @@
 #include "instruction.h"
 
 class MemoryRequestProducer;
-class LSQ_ENTRY;
+struct LSQ_ENTRY;
 
 // message packet
 class PACKET
