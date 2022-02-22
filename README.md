@@ -50,11 +50,10 @@ Add your prefetcher to the configuration file.
     }
 }
 ```
-Note that the example prefetcher is an L2 prefetcher. You might design a prefetcher for a different level. Prefetching in the TLBs is currently not supported.
+Note that the example prefetcher is an L2 prefetcher. You might design a prefetcher for a different level.
 
 ```
 $ ./config.sh <configuration file>
-$ make clean
 $ make
 $ bin/champsim --warmup_instructions 200000000 --simulation_instructions 500000000 600.perlbench_s-210B.champsimtrace.xz
 ```
