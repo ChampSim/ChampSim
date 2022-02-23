@@ -724,7 +724,6 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.lq_index_depend_on_me = {lq_it};
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl; })
@@ -740,7 +739,6 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.instr_id = lq_it->instr_id;
     data_packet.ip = lq_it->ip;
     data_packet.type = LOAD;
-    data_packet.lq_index_depend_on_me = {lq_it};
 
     return L1D_bus.issue_read(data_packet);
 }
@@ -883,10 +881,13 @@ void O3_CPU::handle_memory_return()
             }
 	    }
 
-	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
+      for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
 	    {
-	      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
-	      lq_merged->event_cycle = current_cycle;
+            if (lq_it->valid && lq_it->translate_issued && lq_it->physical_address == 0 && lq_it->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            {
+                lq_it->physical_address = splice_bits(dtlb_entry.data, lq_it->virtual_address, LOG2_PAGE_SIZE); // translated address
+                lq_it->event_cycle = current_cycle;
+            }
 	    }
 
     // remove this entry
@@ -899,12 +900,15 @@ void O3_CPU::handle_memory_return()
 	{ // L1D
 	  PACKET &l1d_entry = L1D_bus.PROCESSED.front();
 
-	  for (auto merged : l1d_entry.lq_index_depend_on_me)
-	    {
-            merged->rob_index->num_mem_ops--;
-            merged->rob_index->event_cycle = current_cycle;
-            *merged = {};
-	    }
+      for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
+      {
+          if (lq_it->valid && lq_it->fetch_issued && lq_it->physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
+          {
+              lq_it->rob_index->num_mem_ops--;
+              lq_it->rob_index->event_cycle = current_cycle;
+              *lq_it = {};
+          }
+      }
 
 	  // remove this entry
 	  L1D_bus.PROCESSED.pop_front();

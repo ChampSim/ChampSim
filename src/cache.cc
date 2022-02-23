@@ -221,7 +221,6 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     // update fill location
     mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
 
-    packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
     packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
     packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
@@ -438,7 +437,6 @@ int CACHE::add_rq(PACKET* packet)
 
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
 
-    packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
     packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
     packet_dep_merge(found_rq->to_return, packet->to_return);
 
