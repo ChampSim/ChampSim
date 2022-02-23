@@ -242,7 +242,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     for (; begin != end; ++begin)
         trace_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = ITLB_bus.issue(trace_packet);
+    int rq_index = ITLB_bus.issue_read(trace_packet);
     if(rq_index != -2)
     {
         // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
@@ -291,7 +291,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     for (; begin != end; ++begin)
         fetch_packet.instr_depend_on_me.push_back(begin);
 
-    int rq_index = L1I_bus.issue(fetch_packet);
+    int rq_index = L1I_bus.issue_read(fetch_packet);
     if (rq_index != -2)
     {
         // mark all instructions from this cache line as having been fetched
@@ -659,7 +659,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     DP (if (warmup_complete[cpu]) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl; })
 
-    return DTLB_bus.issue(data_packet);
+    return DTLB_bus.issue_read(data_packet);
 }
 
 void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
@@ -706,7 +706,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     DP (if (warmup_complete[cpu]) {
             std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl; })
 
-    return DTLB_bus.issue(data_packet);
+    return DTLB_bus.issue_read(data_packet);
 }
 
 int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
@@ -719,7 +719,7 @@ int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
     data_packet.type = LOAD;
     data_packet.lq_index_depend_on_me = {lq_it};
 
-    return L1D_bus.issue(data_packet);
+    return L1D_bus.issue_read(data_packet);
 }
 
 void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
@@ -909,7 +909,7 @@ void O3_CPU::retire_rob()
             data_packet.ip = sq_it->ip;
             data_packet.type = RFO;
 
-            auto result = L1D_bus.issue(data_packet);
+            auto result = L1D_bus.issue_write(data_packet);
             if (result == -2)
                 return;
 
@@ -988,12 +988,21 @@ void O3_CPU::print_deadlock()
   }
 }
 
-int CacheBus::issue(PACKET data_packet)
+int CacheBus::issue_read(PACKET data_packet)
 {
     data_packet.fill_level = lower_level->fill_level;
     data_packet.cpu = cpu;
     data_packet.to_return = {this};
 
     return lower_level->add_rq(&data_packet);
+}
+
+int CacheBus::issue_write(PACKET data_packet)
+{
+    data_packet.fill_level = lower_level->fill_level;
+    data_packet.cpu = cpu;
+    data_packet.to_return = {this};
+
+    return lower_level->add_wq(&data_packet);
 }
 
