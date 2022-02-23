@@ -735,8 +735,6 @@ void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::i
 
     rob_it->executed = COMPLETED;
 
-    completed_executions++;
-
     for (auto dependent : rob_it->registers_instrs_depend_on_me)
     {
         dependent->num_reg_dependent--;
@@ -920,7 +918,6 @@ void O3_CPU::retire_rob()
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
     ROB.pop_front();
-    completed_executions--;
     num_retired++;
     retire_bandwidth--;
   }

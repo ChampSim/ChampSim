@@ -38,7 +38,6 @@ public:
 
   // instruction
   uint64_t instr_unique_id = 0;
-  uint64_t completed_executions = 0;
   uint64_t begin_sim_cycle = 0;
   uint64_t begin_sim_instr = 0;
   uint64_t last_sim_cycle = 0;
