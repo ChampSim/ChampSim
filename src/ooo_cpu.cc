@@ -542,7 +542,6 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
                     // this load cannot be executed until the prior store gets executed
                     prior_it->memory_instrs_depend_on_me.push_back(rob_it);
                     smem.q_entry->producer_id = prior_it->instr_id;
-                    smem.q_entry->translated = INFLIGHT;
 
                     // Is this already in the SQ?
                     auto sq_it = std::find_if(std::begin(SQ), std::end(SQ), sq_will_forward(prior_it->instr_id, smem.address));
@@ -634,7 +633,7 @@ void O3_CPU::operate_lsq()
 
     for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
     {
-        if (lq_it->valid && !lq_it->translated && lq_it->event_cycle < current_cycle)
+        if (lq_it->valid && lq_it->producer_id == std::numeric_limits<uint64_t>::max() && !lq_it->translated && lq_it->event_cycle < current_cycle)
         {
             auto result = do_translate_load(lq_it);
             if (result != -2)
