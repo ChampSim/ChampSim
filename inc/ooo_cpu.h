@@ -115,7 +115,8 @@ public:
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
   void initialize_core();
-  void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+  void do_finish_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+  int do_complete_store(std::vector<LSQ_ENTRY>::iterator sq_it);
   int execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
   int do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
   int do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);

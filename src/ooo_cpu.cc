@@ -531,7 +531,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
             if (smem.q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>{}); smem.q_entry != std::end(LQ))
             {
                 // add it to the load queue
-                *smem.q_entry = {true, rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, {rob_it->asid[0], rob_it->asid[1]}};
+                *smem.q_entry = {true, rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, false, {rob_it->asid[0], rob_it->asid[1]}};
                 smem.added = true;
 
                 // Mark RAW in the ROB since the producer might not be added in the store queue yet
@@ -568,7 +568,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
             if (dmem.q_entry = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>{}); dmem.q_entry != std::end(SQ) && STA.front() == rob_it->instr_id)
             {
                 // add it to the store queue
-                *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, {rob_it->asid[0], rob_it->asid[1]}};
+                *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, false, {rob_it->asid[0], rob_it->asid[1]}};
                 dmem.added = true;
 
                 STA.pop_front();
@@ -610,10 +610,23 @@ void O3_CPU::operate_lsq()
     {
         if (sq_it->valid && sq_it->translated == COMPLETED && !sq_it->fetched && sq_it->event_cycle < current_cycle)
         {
-            execute_store(sq_it);
+            do_finish_store(sq_it);
             --store_bw;
             sq_it->fetched = COMPLETED;
             sq_it->event_cycle = current_cycle;
+        }
+    }
+
+    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
+    {
+        if (sq_it->valid && sq_it->fetched == COMPLETED && sq_it->complete && sq_it->event_cycle < current_cycle)
+        {
+            auto result = do_complete_store(sq_it);
+            if (result != -2)
+            {
+                --store_bw;
+                sq_it->valid = false;
+            }
         }
     }
 
@@ -662,7 +675,7 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     return DTLB_bus.issue_read(data_packet);
 }
 
-void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+void O3_CPU::do_finish_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
     sq_it->rob_index->num_mem_ops--;
     sq_it->rob_index->event_cycle = current_cycle;
@@ -691,6 +704,18 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
             found->q_entry->valid = false;
         }
       }
+}
+
+int O3_CPU::do_complete_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+{
+    PACKET data_packet;
+    data_packet.address = sq_it->physical_address;
+    data_packet.v_address = sq_it->virtual_address;
+    data_packet.instr_id = sq_it->instr_id;
+    data_packet.ip = sq_it->ip;
+    data_packet.type = RFO;
+
+    return L1D_bus.issue_write(data_packet);
 }
 
 int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
@@ -896,23 +921,8 @@ void O3_CPU::retire_rob()
 
     while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED))
     {
-        for (auto dmem_it = std::begin(ROB.front().destination_memory); dmem_it != std::end(ROB.front().destination_memory); dmem_it = ROB.front().destination_memory.erase(dmem_it))
-        {
-            PACKET data_packet;
-            auto sq_it = dmem_it->q_entry;
-
-            data_packet.address = sq_it->physical_address;
-            data_packet.v_address = sq_it->virtual_address;
-            data_packet.instr_id = sq_it->instr_id;
-            data_packet.ip = sq_it->ip;
-            data_packet.type = RFO;
-
-            auto result = L1D_bus.issue_write(data_packet);
-            if (result == -2)
-                return;
-
-            sq_it->valid = false;
-        }
+        for (auto dmem : ROB.front().destination_memory)
+            dmem.q_entry->complete = true;
 
     // release ROB entry
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });

@@ -60,6 +60,7 @@ struct LSQ_ENTRY
 
     uint8_t translated = 0;
     uint8_t fetched = 0;
+    bool complete = false;
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint64_t physical_address = 0;
