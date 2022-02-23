@@ -58,10 +58,10 @@ struct LSQ_ENTRY
 
     champsim::circular_buffer<ooo_model_instr>::iterator rob_index;
 
-    uint8_t translated = 0;
-    uint8_t fetched = 0;
-    bool complete = false;
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+    bool translate_issued = false;
+    bool fetch_issued = false;
+    bool complete = false;
 
     uint64_t physical_address = 0;
     uint64_t producer_id = std::numeric_limits<uint64_t>::max();

@@ -517,7 +517,7 @@ struct sq_will_forward {
   sq_will_forward(uint64_t id, uint64_t addr) : match_id(id), match_addr(addr) {}
   bool operator()(const LSQ_ENTRY& sq_test) const
   {
-    return sq_test.fetched == COMPLETED && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
+    return sq_test.fetch_issued && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
   }
 };
 
@@ -531,7 +531,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
             if (smem.q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>{}); smem.q_entry != std::end(LQ))
             {
                 // add it to the load queue
-                *smem.q_entry = {true, rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, false, {rob_it->asid[0], rob_it->asid[1]}};
+                *smem.q_entry = {true, rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, {rob_it->asid[0], rob_it->asid[1]}};
                 smem.added = true;
 
                 // Mark RAW in the ROB since the producer might not be added in the store queue yet
@@ -567,7 +567,7 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
             if (dmem.q_entry = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>{}); dmem.q_entry != std::end(SQ) && STA.front() == rob_it->instr_id)
             {
                 // add it to the store queue
-                *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, 0, 0, false, {rob_it->asid[0], rob_it->asid[1]}};
+                *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, {rob_it->asid[0], rob_it->asid[1]}};
                 dmem.added = true;
 
                 STA.pop_front();
@@ -594,31 +594,31 @@ void O3_CPU::operate_lsq()
 
     for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
     {
-        if (sq_it->valid && !sq_it->translated && sq_it->event_cycle < current_cycle)
+        if (sq_it->valid && sq_it->physical_address == 0 && !sq_it->translate_issued && sq_it->event_cycle < current_cycle)
         {
             auto result = do_translate_store(sq_it);
             if (result != -2)
             {
                 --store_bw;
-                sq_it->translated = INFLIGHT;
+                sq_it->translate_issued = true;
             }
         }
     }
 
     for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
     {
-        if (sq_it->valid && sq_it->translated == COMPLETED && !sq_it->fetched && sq_it->event_cycle < current_cycle)
+        if (sq_it->valid && sq_it->physical_address != 0 && !sq_it->fetch_issued && sq_it->event_cycle < current_cycle)
         {
             do_finish_store(sq_it);
             --store_bw;
-            sq_it->fetched = COMPLETED;
+            sq_it->fetch_issued = true;
             sq_it->event_cycle = current_cycle;
         }
     }
 
     for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
     {
-        if (sq_it->valid && sq_it->fetched == COMPLETED && sq_it->complete && sq_it->event_cycle < current_cycle)
+        if (sq_it->valid && sq_it->complete && sq_it->event_cycle < current_cycle)
         {
             auto result = do_complete_store(sq_it);
             if (result != -2)
@@ -633,26 +633,26 @@ void O3_CPU::operate_lsq()
 
     for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
     {
-        if (lq_it->valid && lq_it->producer_id == std::numeric_limits<uint64_t>::max() && !lq_it->translated && lq_it->event_cycle < current_cycle)
+        if (lq_it->valid && lq_it->producer_id == std::numeric_limits<uint64_t>::max() && lq_it->physical_address == 0 && !lq_it->translate_issued && lq_it->event_cycle < current_cycle)
         {
             auto result = do_translate_load(lq_it);
             if (result != -2)
             {
                 --load_bw;
-                lq_it->translated = INFLIGHT;
+                lq_it->translate_issued = true;
             }
         }
     }
 
     for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
     {
-        if (lq_it->valid && lq_it->translated == COMPLETED && !lq_it->fetched && lq_it->event_cycle < current_cycle)
+        if (lq_it->valid && lq_it->physical_address != 0 && !lq_it->fetch_issued && lq_it->event_cycle < current_cycle)
         {
             auto result = execute_load(lq_it);
             if (result != -2)
             {
                 --load_bw;
-                lq_it->fetched = INFLIGHT;
+                lq_it->fetch_issued = true;
             }
         }
     }
@@ -878,14 +878,12 @@ void O3_CPU::handle_memory_return()
 	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
 	    {
 	      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
-	      sq_merged->translated = COMPLETED;
 	      sq_merged->event_cycle = current_cycle;
 	    }
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
 	    {
 	      lq_merged->physical_address = splice_bits(dtlb_entry.data, lq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
-	      lq_merged->translated = COMPLETED;
 	      lq_merged->event_cycle = current_cycle;
 	    }
 
@@ -901,8 +899,6 @@ void O3_CPU::handle_memory_return()
 
 	  for (auto merged : l1d_entry.lq_index_depend_on_me)
 	    {
-            merged->fetched = COMPLETED;
-            merged->event_cycle = current_cycle;
             merged->rob_index->num_mem_ops--;
             merged->rob_index->event_cycle = current_cycle;
             *merged = {};
@@ -982,7 +978,7 @@ void O3_CPU::print_deadlock()
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (is_valid<LSQ_ENTRY>{}(*lq_it))
       std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex
-                << lq_it->physical_address << std::dec << " translated: " << +lq_it->translated << " fetched: " << +lq_it->fetched << std::endl;
+                << lq_it->physical_address << std::dec << " translated: " << std::boolalpha << (lq_it->physical_address == 0) << " fetched: " << lq_it->fetch_issued << std::noboolalpha << std::endl;
   }
 
   // print SQ entry
@@ -990,7 +986,7 @@ void O3_CPU::print_deadlock()
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
     if (is_valid<LSQ_ENTRY>{}(*sq_it))
       std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
-                << sq_it->physical_address << std::dec << " translated: " << +sq_it->translated << " fetched: " << +sq_it->fetched << std::endl;
+                << sq_it->physical_address << std::dec << " translated: " << std::boolalpha << (sq_it->physical_address == 0) << " fetched: " << sq_it->fetch_issued << std::noboolalpha << std::endl;
   }
 }
 
