@@ -666,7 +666,6 @@ int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     data_packet.instr_id = sq_it->instr_id;
     data_packet.ip = sq_it->ip;
     data_packet.type = RFO;
-    data_packet.sq_index_depend_on_me = {sq_it};
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl; })
@@ -875,10 +874,13 @@ void O3_CPU::handle_memory_return()
 	{ // DTLB
 	  PACKET &dtlb_entry = DTLB_bus.PROCESSED.front();
 
-	  for (auto sq_merged : dtlb_entry.sq_index_depend_on_me)
+      for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it)
 	    {
-	      sq_merged->physical_address = splice_bits(dtlb_entry.data, sq_merged->virtual_address, LOG2_PAGE_SIZE); // translated address
-	      sq_merged->event_cycle = current_cycle;
+            if (sq_it->valid && sq_it->translate_issued && sq_it->physical_address == 0 && sq_it->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            {
+                sq_it->physical_address = splice_bits(dtlb_entry.data, sq_it->virtual_address, LOG2_PAGE_SIZE); // translated address
+                sq_it->event_cycle = current_cycle;
+            }
 	    }
 
 	  for (auto lq_merged : dtlb_entry.lq_index_depend_on_me)
