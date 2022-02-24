@@ -50,7 +50,7 @@ Add your prefetcher to the configuration file.
     }
 }
 ```
-Note that the example prefetcher is an L2 prefetcher. You might design a prefetcher for a different level. Prefetching in the TLBs is currently not supported.
+Note that the example prefetcher is an L2 prefetcher. You might design a prefetcher for a different level.
 
 ```
 $ ./config.sh <configuration file>

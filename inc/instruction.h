@@ -31,7 +31,7 @@
 #define BRANCH_RETURN 6
 #define BRANCH_OTHER 7
 
-class LSQ_ENTRY;
+struct LSQ_ENTRY;
 
 struct input_instr {
   // instruction pointer or PC (Program Counter)

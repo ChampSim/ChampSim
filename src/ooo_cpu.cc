@@ -143,7 +143,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     }
 
     // call code prefetcher every time the branch predictor is used
-    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+    static_cast<CACHE*>(L1I_bus.lower_level)->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
     if (predicted_branch_target != arch_instr.branch_target) {
       branch_mispredictions++;
@@ -393,8 +393,6 @@ void O3_CPU::dispatch_instruction()
   if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
 }
-
-int O3_CPU::prefetch_code_line(uint64_t pf_v_addr) { return static_cast<CACHE*>(L1I_bus.lower_level)->prefetch_line(0, pf_v_addr, pf_v_addr, true, 0); }
 
 void O3_CPU::schedule_instruction()
 {
