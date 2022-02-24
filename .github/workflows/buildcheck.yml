@@ -11,7 +11,9 @@ on:
       - '.github/workflows/*.yml'
       # re-include current file to not be excluded
       - '!.github/workflows/buildcheck.yml'
+      
   pull_request:
+    branches:
       - master
       - develop
     paths-ignore:
