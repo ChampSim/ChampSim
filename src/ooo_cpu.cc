@@ -592,103 +592,89 @@ void O3_CPU::operate_lsq()
 {
     auto store_bw = SQ_WIDTH;
 
-    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
-    {
-        if (sq_it->valid && sq_it->physical_address == 0 && !sq_it->translate_issued && sq_it->event_cycle < current_cycle)
-        {
-            auto result = do_translate_store(sq_it);
-            if (result != -2)
-            {
+    for (auto &sq_entry : SQ) {
+        if (store_bw > 0 && sq_entry.valid && sq_entry.physical_address == 0 && !sq_entry.translate_issued && sq_entry.event_cycle < current_cycle) {
+            auto result = do_translate_store(sq_entry);
+            if (result != -2) {
                 --store_bw;
-                sq_it->translate_issued = true;
+                sq_entry.translate_issued = true;
             }
         }
     }
 
-    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
-    {
-        if (sq_it->valid && sq_it->physical_address != 0 && !sq_it->fetch_issued && sq_it->event_cycle < current_cycle)
-        {
-            do_finish_store(sq_it);
+    for (auto &sq_entry : SQ) {
+        if (store_bw > 0 && sq_entry.valid && sq_entry.physical_address != 0 && !sq_entry.fetch_issued && sq_entry.event_cycle < current_cycle) {
+            do_finish_store(sq_entry);
             --store_bw;
-            sq_it->fetch_issued = true;
-            sq_it->event_cycle = current_cycle;
+            sq_entry.fetch_issued = true;
+            sq_entry.event_cycle = current_cycle;
         }
     }
 
-    for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it)
-    {
-        if (sq_it->valid && sq_it->complete && sq_it->event_cycle < current_cycle)
-        {
-            auto result = do_complete_store(sq_it);
-            if (result != -2)
-            {
+    for (auto &sq_entry : SQ) {
+        if (store_bw > 0 && sq_entry.valid && sq_entry.complete && sq_entry.event_cycle < current_cycle) {
+            auto result = do_complete_store(sq_entry);
+            if (result != -2) {
                 --store_bw;
-                sq_it->valid = false;
+                sq_entry.valid = false;
             }
         }
     }
 
     auto load_bw = LQ_WIDTH;
 
-    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
-    {
-        if (lq_it->valid && lq_it->producer_id == std::numeric_limits<uint64_t>::max() && lq_it->physical_address == 0 && !lq_it->translate_issued && lq_it->event_cycle < current_cycle)
-        {
-            auto result = do_translate_load(lq_it);
-            if (result != -2)
-            {
+    for (auto &lq_entry : LQ) {
+        if (load_bw > 0 && lq_entry.valid && lq_entry.producer_id == std::numeric_limits<uint64_t>::max() && lq_entry.physical_address == 0 && !lq_entry.translate_issued && lq_entry.event_cycle < current_cycle) {
+            auto result = do_translate_load(lq_entry);
+            if (result != -2) {
                 --load_bw;
-                lq_it->translate_issued = true;
+                lq_entry.translate_issued = true;
             }
         }
     }
 
-    for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it)
-    {
-        if (lq_it->valid && lq_it->physical_address != 0 && !lq_it->fetch_issued && lq_it->event_cycle < current_cycle)
-        {
-            auto result = execute_load(lq_it);
-            if (result != -2)
-            {
+    for (auto &lq_entry : LQ) {
+        if (load_bw > 0 && lq_entry.valid && lq_entry.physical_address != 0 && !lq_entry.fetch_issued && lq_entry.event_cycle < current_cycle) {
+            auto result = execute_load(lq_entry);
+            if (result != -2) {
                 --load_bw;
-                lq_it->fetch_issued = true;
+                lq_entry.fetch_issued = true;
             }
         }
     }
 }
 
-int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+int O3_CPU::do_translate_store(const LSQ_ENTRY& sq_entry)
 {
     PACKET data_packet;
-    data_packet.address = sq_it->virtual_address;
-    data_packet.v_address = sq_it->virtual_address;
-    data_packet.instr_id = sq_it->instr_id;
-    data_packet.ip = sq_it->ip;
+    data_packet.address = sq_entry.virtual_address;
+    data_packet.v_address = sq_entry.virtual_address;
+    data_packet.instr_id = sq_entry.instr_id;
+    data_packet.ip = sq_entry.ip;
     data_packet.type = RFO;
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl; })
+            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << " is issued for translating" << std::endl; })
 
     return DTLB_bus.issue_read(data_packet);
 }
 
-void O3_CPU::do_finish_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
 {
-    sq_it->rob_index->num_mem_ops--;
-    sq_it->rob_index->event_cycle = current_cycle;
-    assert(sq_it->rob_index->num_mem_ops >= 0);
+    sq_entry.rob_index->num_mem_ops--;
+    sq_entry.rob_index->event_cycle = current_cycle;
+    assert(sq_entry.rob_index->num_mem_ops >= 0);
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
-            std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
-            std::cout << " event_cycle: " << sq_it->event_cycle << std::endl; });
+            std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
+            std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_index->num_mem_ops;
+            std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl; });
 
     // resolve RAW dependency after DTLB access
     // check if this store has dependent loads
-    for (auto dependent : sq_it->rob_index->memory_instrs_depend_on_me) {
+    for (auto dependent : sq_entry.rob_index->memory_instrs_depend_on_me) {
         // check if dependent loads are already added in the load queue
-        auto found = std::find_if(std::begin(dependent->source_memory), std::end(dependent->source_memory), eq_addr<ooo_model_instr::lsq_info>{sq_it->virtual_address});
+        auto found = std::find_if(std::begin(dependent->source_memory), std::end(dependent->source_memory), eq_addr<ooo_model_instr::lsq_info>{sq_entry.virtual_address});
         assert(found != std::end(dependent->source_memory));
         if (found->added)
         {
@@ -696,7 +682,7 @@ void O3_CPU::do_finish_store(std::vector<LSQ_ENTRY>::iterator sq_it)
             dependent->num_mem_ops--;
             dependent->event_cycle = current_cycle;
 
-            assert(found->q_entry->producer_id == sq_it->instr_id);
+            assert(found->q_entry->producer_id == sq_entry.instr_id);
             assert(dependent->num_mem_ops >= 0);
 
             found->q_entry->valid = false;
@@ -704,40 +690,40 @@ void O3_CPU::do_finish_store(std::vector<LSQ_ENTRY>::iterator sq_it)
       }
 }
 
-int O3_CPU::do_complete_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+int O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 {
     PACKET data_packet;
-    data_packet.address = sq_it->physical_address;
-    data_packet.v_address = sq_it->virtual_address;
-    data_packet.instr_id = sq_it->instr_id;
-    data_packet.ip = sq_it->ip;
+    data_packet.address = sq_entry.physical_address;
+    data_packet.v_address = sq_entry.virtual_address;
+    data_packet.instr_id = sq_entry.instr_id;
+    data_packet.ip = sq_entry.ip;
     data_packet.type = RFO;
 
     return L1D_bus.issue_write(data_packet);
 }
 
-int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+int O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
 {
     PACKET data_packet;
-    data_packet.address = lq_it->virtual_address;
-    data_packet.v_address = lq_it->virtual_address;
-    data_packet.instr_id = lq_it->instr_id;
-    data_packet.ip = lq_it->ip;
+    data_packet.address = lq_entry.virtual_address;
+    data_packet.v_address = lq_entry.virtual_address;
+    data_packet.instr_id = lq_entry.instr_id;
+    data_packet.ip = lq_entry.ip;
     data_packet.type = LOAD;
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl; })
+            std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is issued for translating" << std::endl; })
 
     return DTLB_bus.issue_read(data_packet);
 }
 
-int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+int O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 {
     PACKET data_packet;
-    data_packet.address = lq_it->physical_address;
-    data_packet.v_address = lq_it->virtual_address;
-    data_packet.instr_id = lq_it->instr_id;
-    data_packet.ip = lq_it->ip;
+    data_packet.address = lq_entry.physical_address;
+    data_packet.v_address = lq_entry.virtual_address;
+    data_packet.instr_id = lq_entry.instr_id;
+    data_packet.ip = lq_entry.ip;
     data_packet.type = LOAD;
 
     return L1D_bus.issue_read(data_packet);
@@ -872,21 +858,21 @@ void O3_CPU::handle_memory_return()
 	{ // DTLB
 	  PACKET &dtlb_entry = DTLB_bus.PROCESSED.front();
 
-      for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it)
+      for (auto &sq_entry : SQ)
 	    {
-            if (sq_it->valid && sq_it->translate_issued && sq_it->physical_address == 0 && sq_it->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            if (sq_entry.valid && sq_entry.translate_issued && sq_entry.physical_address == 0 && sq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
             {
-                sq_it->physical_address = splice_bits(dtlb_entry.data, sq_it->virtual_address, LOG2_PAGE_SIZE); // translated address
-                sq_it->event_cycle = current_cycle;
+                sq_entry.physical_address = splice_bits(dtlb_entry.data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
+                sq_entry.event_cycle = current_cycle;
             }
 	    }
 
-      for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
+      for (auto &lq_entry : LQ)
 	    {
-            if (lq_it->valid && lq_it->translate_issued && lq_it->physical_address == 0 && lq_it->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            if (lq_entry.valid && lq_entry.translate_issued && lq_entry.physical_address == 0 && lq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
             {
-                lq_it->physical_address = splice_bits(dtlb_entry.data, lq_it->virtual_address, LOG2_PAGE_SIZE); // translated address
-                lq_it->event_cycle = current_cycle;
+                lq_entry.physical_address = splice_bits(dtlb_entry.data, lq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
+                lq_entry.event_cycle = current_cycle;
             }
 	    }
 
@@ -900,13 +886,13 @@ void O3_CPU::handle_memory_return()
 	{ // L1D
 	  PACKET &l1d_entry = L1D_bus.PROCESSED.front();
 
-      for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it)
+      for (auto &lq_entry : LQ)
       {
-          if (lq_it->valid && lq_it->fetch_issued && lq_it->physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
+          if (lq_entry.valid && lq_entry.fetch_issued && lq_entry.physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
           {
-              lq_it->rob_index->num_mem_ops--;
-              lq_it->rob_index->event_cycle = current_cycle;
-              *lq_it = {};
+              lq_entry.rob_index->num_mem_ops--;
+              lq_entry.rob_index->event_cycle = current_cycle;
+              lq_entry = {};
           }
       }
 
