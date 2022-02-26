@@ -36,17 +36,6 @@ struct is_valid<PACKET> {
   bool operator()(const PACKET& test) { return test.address != 0; }
 };
 
-template <typename LIST>
-void packet_dep_merge(LIST& dest, LIST& src)
-{
-  dest.reserve(std::size(dest) + std::size(src));
-  auto middle = std::end(dest);
-  dest.insert(middle, std::begin(src), std::end(src));
-  std::inplace_merge(std::begin(dest), middle, std::end(dest));
-  auto uniq_end = std::unique(std::begin(dest), std::end(dest));
-  dest.erase(uniq_end, std::end(dest));
-}
-
 // load/store queue
 struct LSQ_ENTRY {
   uint64_t instr_id = 0, producer_id = std::numeric_limits<uint64_t>::max(), virtual_address = 0, physical_address = 0, ip = 0, event_cycle = 0;
