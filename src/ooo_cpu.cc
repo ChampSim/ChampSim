@@ -496,7 +496,7 @@ void O3_CPU::schedule_instruction()
 
         // remember this rob_index in the Ready-To-Execute array 1
         assert(ready_to_execute.size() < ROB.size());
-        ready_to_execute.push(rob_it);
+        ready_to_execute.push(*rob_it);
 
         DP(if (warmup_complete[cpu]) {
           std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
@@ -527,8 +527,8 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
     if (src_reg) {
       champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior{rob_it};
       prior = std::find_if(prior, ROB.rend(), instr_reg_will_produce(src_reg));
-      if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back() != rob_it)) {
-        prior->registers_instrs_depend_on_me.push_back(rob_it);
+      if (prior != ROB.rend() && (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back().get().instr_id != rob_it->instr_id)) {
+        prior->registers_instrs_depend_on_me.emplace_back(*rob_it);
         rob_it->num_reg_dependent++;
       }
     }
@@ -556,17 +556,17 @@ void O3_CPU::execute_instruction()
   }
 }
 
-void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it)
+void O3_CPU::do_execution(ooo_model_instr &rob_entry)
 {
-  rob_it->executed = INFLIGHT;
+  rob_entry.executed = INFLIGHT;
 
   // ADD LATENCY
-  rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
+  rob_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
   inflight_reg_executions++;
 
   DP(if (warmup_complete[cpu]) {
-    std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
+    std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_entry.instr_id << " event_cycle: " << rob_entry.event_cycle << std::endl;
   });
 }
 
@@ -708,7 +708,7 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
   prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(lq_it->virtual_address));
   if (prior_it != ROB.rend()) {
     // this load cannot be executed until the prior store gets executed
-    prior_it->memory_instrs_depend_on_me.push_back(rob_it);
+    prior_it->memory_instrs_depend_on_me.push_back(*rob_it);
     lq_it->producer_id = prior_it->instr_id;
     lq_it->translated = INFLIGHT;
 
@@ -845,17 +845,17 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 
   // resolve RAW dependency after DTLB access
   // check if this store has dependent loads
-  for (auto dependent : sq_it->rob_index->memory_instrs_depend_on_me) {
+  for (ooo_model_instr &dependent : sq_it->rob_index->memory_instrs_depend_on_me) {
     // check if dependent loads are already added in the load queue
     for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
-      if (dependent->source_memory[j] && dependent->source_added[j]) {
-        if (dependent->source_memory[j] == sq_it->virtual_address) { // this is required since a single
+      if (dependent.source_memory[j] && dependent.source_added[j]) {
+        if (dependent.source_memory[j] == sq_it->virtual_address) { // this is required since a single
                                                                      // instruction can issue multiple loads
 
           // now we can resolve RAW dependency
-          assert(dependent->lq_index[j]->producer_id == sq_it->instr_id);
+          assert(dependent.lq_index[j]->producer_id == sq_it->instr_id);
           // update corresponding LQ entry
-          do_sq_forward_to_lq(*sq_it, *(dependent->lq_index[j]));
+          do_sq_forward_to_lq(*sq_it, *dependent.lq_index[j]);
         }
       }
     }
@@ -923,15 +923,15 @@ void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::i
 
   completed_executions++;
 
-  for (auto dependent : rob_it->registers_instrs_depend_on_me) {
-    dependent->num_reg_dependent--;
-    assert(dependent->num_reg_dependent >= 0);
+  for (ooo_model_instr &dependent : rob_it->registers_instrs_depend_on_me) {
+    dependent.num_reg_dependent--;
+    assert(dependent.num_reg_dependent >= 0);
 
-    if (dependent->num_reg_dependent == 0) {
-      if (dependent->is_memory)
-        dependent->scheduled = INFLIGHT;
+    if (dependent.num_reg_dependent == 0) {
+      if (dependent.is_memory)
+        dependent.scheduled = INFLIGHT;
       else {
-        dependent->scheduled = COMPLETED;
+        dependent.scheduled = COMPLETED;
       }
     }
   }
@@ -951,13 +951,13 @@ void O3_CPU::complete_inflight_instruction()
         do_complete_execution(rob_it);
         --complete_bw;
 
-        for (auto dependent : rob_it->registers_instrs_depend_on_me) {
-          if (dependent->scheduled == COMPLETED && dependent->num_reg_dependent == 0) {
+        for (ooo_model_instr &dependent : rob_it->registers_instrs_depend_on_me) {
+          if (dependent.scheduled == COMPLETED && dependent.num_reg_dependent == 0) {
             assert(ready_to_execute.size() < ROB.size());
             ready_to_execute.push(dependent);
 
             DP(if (warmup_complete[cpu]) {
-              std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
+              std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent.instr_id << " is added to ready_to_execute" << std::endl;
             })
           }
         }

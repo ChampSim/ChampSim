@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -82,7 +83,7 @@ struct ooo_model_instr {
   uint8_t source_registers[NUM_INSTR_SOURCES] = {}; // input registers
 
   // these are indices of instructions in the ROB that depend on me
-  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
+  std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me, memory_instrs_depend_on_me;
 
   // memory addresses that may cause dependencies between instructions
   uint64_t instruction_pa = 0;

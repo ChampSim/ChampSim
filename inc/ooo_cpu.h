@@ -64,7 +64,7 @@ public:
   std::queue<uint64_t> STA;
 
   // Ready-To-Execute
-  std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute;
+  std::queue<std::reference_wrapper<ooo_model_instr>> ready_to_execute;
 
   // Ready-To-Load
   std::queue<std::vector<LSQ_ENTRY>::iterator> RTL0, RTL1;
@@ -102,7 +102,7 @@ public:
   void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
-  void do_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_execution(ooo_model_instr& rob_it);
   void do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
   void operate_lsq();
   void do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
