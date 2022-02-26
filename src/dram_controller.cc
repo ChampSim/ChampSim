@@ -146,7 +146,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
 
     std::set_union(std::begin(lq_copy), std::end(lq_copy), std::begin(packet->lq_index_depend_on_me), std::end(packet->lq_index_depend_on_me), std::back_inserter(rq_it->lq_index_depend_on_me));
     std::set_union(std::begin(sq_copy), std::end(sq_copy), std::begin(packet->sq_index_depend_on_me), std::end(packet->sq_index_depend_on_me), std::back_inserter(rq_it->sq_index_depend_on_me));
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(rq_it->instr_depend_on_me));
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(rq_it->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(rq_it->to_return));
 
     return std::distance(std::begin(channel.RQ), rq_it); // merged index

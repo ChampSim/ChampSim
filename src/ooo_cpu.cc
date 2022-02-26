@@ -320,16 +320,15 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   trace_packet.asid[0] = 0;
   trace_packet.asid[1] = 0;
   trace_packet.to_return = {&ITLB_bus};
-  for (; begin != end; ++begin)
-    trace_packet.instr_depend_on_me.push_back(begin);
+  trace_packet.instr_depend_on_me = {begin, end};
 
   int rq_index = ITLB_bus.lower_level->add_rq(&trace_packet);
 
   if (rq_index != -2) {
     // successfully sent to the ITLB, so mark all instructions in the
     // IFETCH_BUFFER that match this ip as translated INFLIGHT
-    for (auto dep_it : trace_packet.instr_depend_on_me) {
-      dep_it->translated = INFLIGHT;
+    for (ooo_model_instr& dep : trace_packet.instr_depend_on_me) {
+      dep.translated = INFLIGHT;
     }
   }
 }
@@ -374,15 +373,14 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
   fetch_packet.to_return = {&L1I_bus};
-  for (; begin != end; ++begin)
-    fetch_packet.instr_depend_on_me.push_back(begin);
+  fetch_packet.instr_depend_on_me = {begin, end};
 
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
   if (rq_index != -2) {
     // mark all instructions from this cache line as having been fetched
-    for (auto dep_it : fetch_packet.instr_depend_on_me) {
-      dep_it->fetched = INFLIGHT;
+    for (ooo_model_instr& dep : fetch_packet.instr_depend_on_me) {
+      dep.fetched = INFLIGHT;
     }
   }
 }
@@ -972,8 +970,8 @@ void O3_CPU::handle_memory_return()
 {
   // Instruction Memory
 
-  std::size_t available_fetch_bandwidth = FETCH_WIDTH;
-  std::size_t to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
+  int available_fetch_bandwidth = FETCH_WIDTH;
+  int to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
 
   while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty()) {
     PACKET& itlb_entry = ITLB_bus.PROCESSED.front();
@@ -981,16 +979,10 @@ void O3_CPU::handle_memory_return()
     // mark the appropriate instructions in the IFETCH_BUFFER as translated and
     // ready to fetch
     while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty()) {
-      auto it = itlb_entry.instr_depend_on_me.front();
-      if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && it->translated != 0) {
-        // if ((it->ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >>
-        // LOG2_PAGE_SIZE) && it->translated != 0)
-        {
-          it->translated = COMPLETED;
-          // recalculate a physical address for this cache line based on the
-          // translated physical page address
-          it->instruction_pa = splice_bits(itlb_entry.data, it->ip, LOG2_PAGE_SIZE);
-        }
+      ooo_model_instr& fetched = itlb_entry.instr_depend_on_me.front();
+      if ((fetched.ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && fetched.translated != 0) {
+          fetched.translated = COMPLETED;
+          fetched.instruction_pa = splice_bits(itlb_entry.data, fetched.ip, LOG2_PAGE_SIZE);
 
         available_fetch_bandwidth--;
       }
@@ -1014,9 +1006,9 @@ void O3_CPU::handle_memory_return()
     // this is the L1I cache, so instructions are now fully fetched, so mark
     // them as such
     while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
-      auto it = l1i_entry.instr_depend_on_me.front();
-      if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED) {
-        it->fetched = COMPLETED;
+      ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
+      if ((fetched.instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0 && fetched.translated == COMPLETED) {
+        fetched.fetched = COMPLETED;
         available_fetch_bandwidth--;
       }
 

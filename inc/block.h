@@ -2,10 +2,10 @@
 #define BLOCK_H
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
 #include "champsim_constants.h"
-#include "circular_buffer.hpp"
 #include "instruction.h"
 
 class MemoryRequestProducer;
@@ -25,7 +25,7 @@ public:
   uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
 
   std::vector<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
-  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
+  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
   std::vector<MemoryRequestProducer*> to_return;
 
   uint8_t translation_level = 0, init_translation_level = 0;

@@ -228,7 +228,7 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 
     std::set_union(std::begin(lq_copy), std::end(lq_copy), std::begin(handle_pkt.lq_index_depend_on_me), std::end(handle_pkt.lq_index_depend_on_me), std::back_inserter(mshr_entry->lq_index_depend_on_me));
     std::set_union(std::begin(sq_copy), std::end(sq_copy), std::begin(handle_pkt.sq_index_depend_on_me), std::end(handle_pkt.sq_index_depend_on_me), std::back_inserter(mshr_entry->sq_index_depend_on_me));
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me), std::back_inserter(mshr_entry->instr_depend_on_me));
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me), std::back_inserter(mshr_entry->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), std::back_inserter(mshr_entry->to_return));
 
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
@@ -451,7 +451,7 @@ int CACHE::add_rq(PACKET* packet)
 
     std::set_union(std::begin(lq_copy), std::end(lq_copy), std::begin(packet->lq_index_depend_on_me), std::end(packet->lq_index_depend_on_me), std::back_inserter(found_rq->lq_index_depend_on_me));
     std::set_union(std::begin(sq_copy), std::end(sq_copy), std::begin(packet->sq_index_depend_on_me), std::end(packet->sq_index_depend_on_me), std::back_inserter(found_rq->sq_index_depend_on_me));
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(found_rq->instr_depend_on_me));
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(found_rq->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(found_rq->to_return));
 
     RQ_MERGED++;
