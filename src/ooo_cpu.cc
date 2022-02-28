@@ -400,7 +400,7 @@ void O3_CPU::schedule_instruction()
 
       if (rob_it->scheduled == COMPLETED && rob_it->num_reg_dependent == 0) {
 
-        // remember this rob_index in the Ready-To-Execute array 1
+        // remember this ROB entry in the Ready-To-Execute
         assert(ready_to_execute.size() < ROB.size());
         ready_to_execute.push(*rob_it);
 
@@ -493,24 +493,12 @@ void O3_CPU::schedule_memory_instruction()
   }
 }
 
-struct instr_mem_will_produce
-{
-    const uint64_t match_mem;
-    explicit instr_mem_will_produce(uint64_t mem) : match_mem(mem) {}
-    bool operator() (const ooo_model_instr &test) const
-    {
-        auto dmem_begin = std::begin(test.destination_memory);
-        auto dmem_end   = std::end(test.destination_memory);
-        return std::find_if(dmem_begin, dmem_end, eq_addr<ooo_model_instr::lsq_info>{match_mem}) != dmem_end;
-    }
-};
-
 struct sq_will_forward {
-  const uint64_t match_id, match_addr;
-  sq_will_forward(uint64_t id, uint64_t addr) : match_id(id), match_addr(addr) {}
-  bool operator()(const LSQ_ENTRY& sq_test) const
+  const uint64_t match_addr;
+  sq_will_forward(uint64_t addr) : match_addr(addr) {}
+  bool operator()(const std::optional<LSQ_ENTRY>& sq_test) const
   {
-    return sq_test.fetch_issued && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
+    return sq_test.has_value() && sq_test->fetch_issued && sq_test->virtual_address == match_addr;
   }
 };
 
@@ -521,32 +509,29 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
     {
         if (!smem.added)
         {
-            if (smem.q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<LSQ_ENTRY>{}); smem.q_entry != std::end(LQ))
+            if (auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<decltype(LQ)::value_type>{}); q_entry != std::end(LQ))
             {
-                // add it to the load queue
-                *smem.q_entry = {true, rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, {rob_it->asid[0], rob_it->asid[1]}};
                 smem.added = true;
 
-                // Mark RAW in the ROB since the producer might not be added in the store queue yet
-                champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
-                prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(smem.address));
-                if (prior_it != ROB.rend())
-                {
-                    // this load cannot be executed until the prior store gets executed
-                    prior_it->memory_instrs_depend_on_me.push_back(*rob_it);
-                    smem.q_entry->producer_id = prior_it->instr_id;
+                // Is this already in the SQ?
+                if (auto sq_it = std::find_if(std::begin(SQ), std::end(SQ), sq_will_forward{smem.address}); sq_it != std::end(SQ)) {
+                    rob_it->num_mem_ops--;
+                    rob_it->event_cycle = current_cycle;
 
-                    // Is this already in the SQ?
-                    auto sq_it = std::find_if(std::begin(SQ), std::end(SQ), sq_will_forward(prior_it->instr_id, smem.address));
-                    if (sq_it != std::end(SQ))
-                    {
-                        rob_it->num_mem_ops--;
-                        rob_it->event_cycle = current_cycle;
+                    assert(rob_it->num_mem_ops >= 0);
+                } else {
+                    // add it to the load queue
+                    auto val = LSQ_ENTRY{rob_it->instr_id, smem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, *rob_it, {rob_it->asid[0], rob_it->asid[1]}};
 
-                        assert(rob_it->num_mem_ops >= 0);
-
-                        smem.q_entry->valid = false;
+                    // Mark RAW in the ROB since the producer is not added in the store queue yet
+                    for (auto prior_it = std::reverse_iterator{rob_it}; prior_it != std::rend(ROB); ++prior_it) {
+                        if (auto dmem_it = std::find_if(std::begin(prior_it->destination_memory), std::end(prior_it->destination_memory), eq_addr<ooo_model_instr::lsq_info>{smem.address}); dmem_it != std::end(prior_it->destination_memory)) {
+                          //dmem_it->memory_instrs_depend_on_me.push_back(**q_entry); // this load cannot be executed until the prior store gets executed
+                          //val.producer_id = prior_it->instr_id;
+                        }
                     }
+
+                    *q_entry = val;
                 }
             }
         }
@@ -557,10 +542,13 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
     {
         if (!dmem.added)
         {
-            if (dmem.q_entry = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>{}); dmem.q_entry != std::end(SQ) && STA.front() == rob_it->instr_id)
+            if (auto q_entry = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<decltype(SQ)::value_type>{}); q_entry != std::end(SQ) && STA.front() == rob_it->instr_id)
             {
                 // add it to the store queue
-                *dmem.q_entry = {true, rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, rob_it, {rob_it->asid[0], rob_it->asid[1]}};
+                auto val = LSQ_ENTRY{rob_it->instr_id, dmem.address, rob_it->ip, current_cycle + SCHEDULING_LATENCY, *rob_it, {rob_it->asid[0], rob_it->asid[1]}};
+                //val.lq_depend_on_me = std::move(dmem.memory_instrs_depend_on_me);
+                *q_entry = val;
+
                 dmem.added = true;
 
                 STA.pop_front();
@@ -586,30 +574,30 @@ void O3_CPU::operate_lsq()
     auto store_bw = SQ_WIDTH;
 
     for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.valid && sq_entry.physical_address == 0 && !sq_entry.translate_issued && sq_entry.event_cycle < current_cycle) {
-            auto result = do_translate_store(sq_entry);
+        if (store_bw > 0 && sq_entry.has_value() && sq_entry->physical_address == 0 && !sq_entry->translate_issued && sq_entry->event_cycle < current_cycle) {
+            auto result = do_translate_store(*sq_entry);
             if (result != -2) {
                 --store_bw;
-                sq_entry.translate_issued = true;
+                sq_entry->translate_issued = true;
             }
         }
     }
 
     for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.valid && sq_entry.physical_address != 0 && !sq_entry.fetch_issued && sq_entry.event_cycle < current_cycle) {
-            do_finish_store(sq_entry);
+        if (store_bw > 0 && sq_entry.has_value() && sq_entry->physical_address != 0 && !sq_entry->fetch_issued && sq_entry->event_cycle < current_cycle) {
+            do_finish_store(*sq_entry);
             --store_bw;
-            sq_entry.fetch_issued = true;
-            sq_entry.event_cycle = current_cycle;
+            sq_entry->fetch_issued = true;
+            sq_entry->event_cycle = current_cycle;
         }
     }
 
     for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.valid && sq_entry.complete && sq_entry.event_cycle < current_cycle) {
-            auto result = do_complete_store(sq_entry);
+        if (store_bw > 0 && sq_entry.has_value() && sq_entry->instr_id < ROB.front().instr_id && sq_entry->event_cycle < current_cycle) {
+            auto result = do_complete_store(*sq_entry);
             if (result != -2) {
                 --store_bw;
-                sq_entry.valid = false;
+                sq_entry.reset();
             }
         }
     }
@@ -617,21 +605,21 @@ void O3_CPU::operate_lsq()
     auto load_bw = LQ_WIDTH;
 
     for (auto &lq_entry : LQ) {
-        if (load_bw > 0 && lq_entry.valid && lq_entry.producer_id == std::numeric_limits<uint64_t>::max() && lq_entry.physical_address == 0 && !lq_entry.translate_issued && lq_entry.event_cycle < current_cycle) {
-            auto result = do_translate_load(lq_entry);
+        if (load_bw > 0 && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && lq_entry->physical_address == 0 && !lq_entry->translate_issued && lq_entry->event_cycle < current_cycle) {
+            auto result = do_translate_load(*lq_entry);
             if (result != -2) {
                 --load_bw;
-                lq_entry.translate_issued = true;
+                lq_entry->translate_issued = true;
             }
         }
     }
 
     for (auto &lq_entry : LQ) {
-        if (load_bw > 0 && lq_entry.valid && lq_entry.physical_address != 0 && !lq_entry.fetch_issued && lq_entry.event_cycle < current_cycle) {
-            auto result = execute_load(lq_entry);
+        if (load_bw > 0 && lq_entry.has_value() && lq_entry->physical_address != 0 && !lq_entry->fetch_issued && lq_entry->event_cycle < current_cycle) {
+            auto result = execute_load(*lq_entry);
             if (result != -2) {
                 --load_bw;
-                lq_entry.fetch_issued = true;
+                lq_entry->fetch_issued = true;
             }
         }
     }
@@ -654,32 +642,26 @@ int O3_CPU::do_translate_store(const LSQ_ENTRY& sq_entry)
 
 void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
 {
-  sq_entry.rob_index->num_mem_ops--;
-  sq_entry.rob_index->event_cycle = current_cycle;
-  assert(sq_entry.rob_index->num_mem_ops >= 0);
+  sq_entry.rob_entry.get().num_mem_ops--;
+  sq_entry.rob_entry.get().event_cycle = current_cycle;
+  assert(sq_entry.rob_entry.get().num_mem_ops >= 0);
 
   DP (if (warmup_complete[cpu]) {
           std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
-          std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_index->num_mem_ops;
+          std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.num_mem_ops;
           std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl; });
 
   // resolve RAW dependency after DTLB access
   // check if this store has dependent loads
-  for (ooo_model_instr &dependent : sq_entry.rob_index->memory_instrs_depend_on_me) {
-    // check if dependent loads are already added in the load queue
-    auto found = std::find_if(std::begin(dependent.source_memory), std::end(dependent.source_memory), eq_addr<ooo_model_instr::lsq_info>{sq_entry.virtual_address});
-    assert(found != std::end(dependent.source_memory));
-    if (found->added)
-    {
+  for (std::optional<LSQ_ENTRY> &dependent : sq_entry.lq_depend_on_me) {
       // update corresponding LQ entry
-      dependent.num_mem_ops--;
-      dependent.event_cycle = current_cycle;
+      dependent->rob_entry.get().num_mem_ops--;
+      dependent->rob_entry.get().event_cycle = current_cycle;
 
-      assert(found->q_entry->producer_id == sq_entry.instr_id);
-      assert(dependent.num_mem_ops >= 0);
+      assert(dependent->producer_id == sq_entry.instr_id);
+      assert(dependent->rob_entry.get().num_mem_ops >= 0);
 
-      found->q_entry->valid = false;
-    }
+      dependent.reset();
   }
 }
 
@@ -705,7 +687,7 @@ int O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
     data_packet.type = LOAD;
 
     DP (if (warmup_complete[cpu]) {
-            std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << " rob_index: " << lq_entry.rob_index << " is issued for translating" << std::endl; })
+            std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << " is issued for translating" << std::endl; })
 
     return DTLB_bus.issue_read(data_packet);
 }
@@ -842,19 +824,19 @@ void O3_CPU::handle_memory_return()
 
       for (auto &sq_entry : SQ)
 	    {
-            if (sq_entry.valid && sq_entry.translate_issued && sq_entry.physical_address == 0 && sq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            if (sq_entry.has_value() && sq_entry->translate_issued && sq_entry->physical_address == 0 && sq_entry->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
             {
-                sq_entry.physical_address = splice_bits(dtlb_entry.data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
-                sq_entry.event_cycle = current_cycle;
+                sq_entry->physical_address = splice_bits(dtlb_entry.data, sq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
+                sq_entry->event_cycle = current_cycle;
             }
 	    }
 
       for (auto &lq_entry : LQ)
 	    {
-            if (lq_entry.valid && lq_entry.translate_issued && lq_entry.physical_address == 0 && lq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            if (lq_entry.has_value() && lq_entry->translate_issued && lq_entry->physical_address == 0 && lq_entry->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
             {
-                lq_entry.physical_address = splice_bits(dtlb_entry.data, lq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
-                lq_entry.event_cycle = current_cycle;
+                lq_entry->physical_address = splice_bits(dtlb_entry.data, lq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
+                lq_entry->event_cycle = current_cycle;
             }
 	    }
 
@@ -870,11 +852,11 @@ void O3_CPU::handle_memory_return()
 
       for (auto &lq_entry : LQ)
       {
-          if (lq_entry.valid && lq_entry.fetch_issued && lq_entry.physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
+          if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
           {
-              lq_entry.rob_index->num_mem_ops--;
-              lq_entry.rob_index->event_cycle = current_cycle;
-              lq_entry = {};
+              lq_entry->rob_entry.get().num_mem_ops--;
+              lq_entry->rob_entry.get().event_cycle = current_cycle;
+              lq_entry.reset();
           }
       }
 
@@ -890,9 +872,6 @@ void O3_CPU::retire_rob()
 
     while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED))
     {
-        for (auto dmem : ROB.front().destination_memory)
-            dmem.q_entry->complete = true;
-
     // release ROB entry
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
@@ -950,17 +929,17 @@ void O3_CPU::print_deadlock()
   // print LQ entry
   std::cout << "Load Queue Entry" << std::endl;
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
-    if (is_valid<LSQ_ENTRY>{}(*lq_it))
-      std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex
-                << lq_it->physical_address << std::dec << " translated: " << std::boolalpha << (lq_it->physical_address == 0) << " fetched: " << lq_it->fetch_issued << std::noboolalpha << std::endl;
+    if (lq_it->has_value())
+      std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << (*lq_it)->instr_id << " address: " << std::hex
+                << (*lq_it)->physical_address << std::dec << " translated: " << std::boolalpha << ((*lq_it)->physical_address == 0) << " fetched: " << (*lq_it)->fetch_issued << std::noboolalpha << std::endl;
   }
 
   // print SQ entry
   std::cout << std::endl << "Store Queue Entry" << std::endl;
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
-    if (is_valid<LSQ_ENTRY>{}(*sq_it))
-      std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
-                << sq_it->physical_address << std::dec << " translated: " << std::boolalpha << (sq_it->physical_address == 0) << " fetched: " << sq_it->fetch_issued << std::noboolalpha << std::endl;
+    if (sq_it->has_value())
+      std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << (*sq_it)->instr_id << " address: " << std::hex
+                << (*sq_it)->physical_address << std::dec << " translated: " << std::boolalpha << ((*sq_it)->physical_address == 0) << " fetched: " << (*sq_it)->fetch_issued << std::noboolalpha << std::endl;
   }
 }
 

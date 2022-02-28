@@ -97,7 +97,7 @@ struct ooo_model_instr {
     {
         uint64_t address;
         bool added = false;
-        std::vector<LSQ_ENTRY>::iterator q_entry;
+        //std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> memory_instrs_depend_on_me;
 
         explicit lsq_info(uint64_t address) : address(address) {};
     };
@@ -107,7 +107,6 @@ struct ooo_model_instr {
 
     // these are indices of instructions in the ROB that depend on me
     std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
-    std::vector<std::reference_wrapper<ooo_model_instr>> memory_instrs_depend_on_me;
 
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa = 0;

@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <optional>
 
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
 
@@ -14,6 +15,11 @@ struct is_valid {
   using argument_type = T;
   is_valid() {}
   bool operator()(const argument_type& test) { return test.valid; }
+};
+
+template <typename T>
+struct is_valid<std::optional<T>> {
+    bool operator()(const std::optional<T>& test) { return test.has_value(); }
 };
 
 template <typename T>

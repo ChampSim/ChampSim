@@ -6,6 +6,7 @@
 #include <functional>
 #include <queue>
 #include <limits>
+#include <optional>
 #include <vector>
 
 #include "block.h"
@@ -32,21 +33,20 @@ class CacheBus : public MemoryRequestProducer
 
 struct LSQ_ENTRY
 {
-  bool valid = false;
   uint64_t instr_id = 0;
   uint64_t virtual_address = 0;
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
 
-  champsim::circular_buffer<ooo_model_instr>::iterator rob_index;
+  std::reference_wrapper<ooo_model_instr> rob_entry;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool translate_issued = false;
   bool fetch_issued = false;
-  bool complete = false;
 
   uint64_t physical_address = 0;
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
+  std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me;
 };
 
 // cpu
@@ -85,8 +85,8 @@ public:
   champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
   champsim::circular_buffer<ooo_model_instr> ROB;
 
-  std::vector<LSQ_ENTRY> LQ;
-  std::vector<LSQ_ENTRY> SQ;
+  std::vector<std::optional<LSQ_ENTRY>> LQ;
+  std::vector<std::optional<LSQ_ENTRY>> SQ;
 
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
 
