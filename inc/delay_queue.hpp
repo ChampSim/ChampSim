@@ -111,11 +111,13 @@ public:
   {
     _buf.push_back(item);
     _delays.push_back(_latency);
+    update_ready();
   }
   void push_back(const T&& item)
   {
     _buf.push_back(std::forward<T>(item));
     _delays.push_back(_latency);
+    update_ready();
   }
 
   /***
@@ -137,11 +139,19 @@ public:
   {
     _buf.push_back(item);
     _delays.push_back(0);
+    update_ready();
   }
   void push_back_ready(const T&& item)
   {
     _buf.push_back(std::forward<T>(item));
     _delays.push_back(0);
+    update_ready();
+  }
+
+  void update_ready()
+  {
+    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
+    _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
   }
 
   /***
@@ -152,8 +162,7 @@ public:
     for (auto& x : _delays)
       --x; // The delay may go negative, this is permitted.
 
-    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
-    _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
+    update_ready();
   }
 
 private:
