@@ -431,9 +431,9 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
     // Mark register dependencies
     for (auto src_reg : rob_it->source_registers) {
         if (!std::empty(reg_producers[src_reg])) {
-            auto prior = reg_producers[src_reg].back();
-            if (prior->registers_instrs_depend_on_me.empty() || prior->registers_instrs_depend_on_me.back().get().instr_id != rob_it->instr_id) {
-                prior->registers_instrs_depend_on_me.push_back(*rob_it);
+            ooo_model_instr &prior = reg_producers[src_reg].back();
+            if (prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back().get().instr_id != rob_it->instr_id) {
+                prior.registers_instrs_depend_on_me.push_back(*rob_it);
                 rob_it->num_reg_dependent++;
             }
         }
@@ -443,8 +443,8 @@ void O3_CPU::do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator 
     {
         auto begin = std::begin(reg_producers[dreg]);
         auto end   = std::end(reg_producers[dreg]);
-        auto ins   = std::lower_bound(begin, end, rob_it);
-        reg_producers[dreg].insert(ins, rob_it);
+        auto ins   = std::lower_bound(begin, end, *rob_it, [](const ooo_model_instr &lhs, const ooo_model_instr &rhs){ return lhs.instr_id < rhs.instr_id; });
+        reg_producers[dreg].insert(ins, std::ref(*rob_it));
     }
 
     if (rob_it->is_memory)
@@ -728,7 +728,7 @@ void O3_CPU::do_complete_execution(champsim::circular_buffer<ooo_model_instr>::i
     {
         auto begin = std::begin(reg_producers[dreg]);
         auto end   = std::end(reg_producers[dreg]);
-        auto elem = std::find(begin, end, rob_it);
+        auto elem = std::find_if(begin, end, [id=rob_it->instr_id](ooo_model_instr &x){ return x.instr_id == id; });
         assert(elem != end);
         reg_producers[dreg].erase(elem);
     }
