@@ -221,8 +221,11 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     // update fill location
     mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
 
-    packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
-    packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
+    auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
+    auto ret_copy = std::move(mshr_entry->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me), std::back_inserter(mshr_entry->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), std::back_inserter(mshr_entry->to_return));
 
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
@@ -437,8 +440,11 @@ int CACHE::add_rq(PACKET* packet)
 
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
 
-    packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-    packet_dep_merge(found_rq->to_return, packet->to_return);
+    auto instr_copy = std::move(found_rq->instr_depend_on_me);
+    auto ret_copy = std::move(found_rq->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(found_rq->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(found_rq->to_return));
 
     RQ_MERGED++;
 
@@ -605,7 +611,9 @@ int CACHE::add_pq(PACKET* packet)
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
 
     found->fill_level = std::min(found->fill_level, packet->fill_level);
-    packet_dep_merge(found->to_return, packet->to_return);
+
+    auto ret_copy = std::move(found->to_return);
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(found->to_return));
 
     PQ_MERGED++;
     return 0;

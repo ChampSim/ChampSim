@@ -2,10 +2,10 @@
 #define BLOCK_H
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
 #include "champsim_constants.h"
-#include "circular_buffer.hpp"
 #include "instruction.h"
 
 class MemoryRequestProducer;
@@ -23,7 +23,7 @@ public:
 
   uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
 
-  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
+  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
   std::vector<MemoryRequestProducer*> to_return;
 
   uint8_t translation_level = 0, init_translation_level = 0;
@@ -33,16 +33,5 @@ template <>
 struct is_valid<PACKET> {
   bool operator()(const PACKET& test) { return test.address != 0; }
 };
-
-template <typename LIST>
-void packet_dep_merge(LIST& dest, LIST& src)
-{
-  dest.reserve(std::size(dest) + std::size(src));
-  auto middle = std::end(dest);
-  dest.insert(middle, std::begin(src), std::end(src));
-  std::inplace_merge(std::begin(dest), middle, std::end(dest));
-  auto uniq_end = std::unique(std::begin(dest), std::end(dest));
-  dest.erase(uniq_end, std::end(dest));
-}
 
 #endif

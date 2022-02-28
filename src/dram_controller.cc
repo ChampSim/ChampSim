@@ -138,8 +138,11 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
   // Check for duplicates
   auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
   if (rq_it != std::end(channel.RQ)) {
-    packet_dep_merge(rq_it->instr_depend_on_me, packet->instr_depend_on_me);
-    packet_dep_merge(rq_it->to_return, packet->to_return);
+    auto instr_copy = std::move(rq_it->instr_depend_on_me);
+    auto ret_copy = std::move(rq_it->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me), std::back_inserter(rq_it->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y){ return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(rq_it->to_return));
 
     return std::distance(std::begin(channel.RQ), rq_it); // merged index
   }
