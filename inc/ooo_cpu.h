@@ -38,7 +38,7 @@ struct LSQ_ENTRY
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
 
-  std::reference_wrapper<ooo_model_instr> rob_entry;
+  ooo_model_instr& rob_entry;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool translate_issued = false;
