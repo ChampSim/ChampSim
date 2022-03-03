@@ -5,6 +5,8 @@
 #include "champsim_constants.h"
 #include "util.h"
 
+#include "instruction.h"
+
 extern uint8_t all_warmup_complete;
 
 struct is_unscheduled {

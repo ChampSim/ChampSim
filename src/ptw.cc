@@ -115,7 +115,7 @@ void PageTableWalker::handle_fill()
           PSCL5.fill_cache(addr, fill_mshr->v_address);
         if (fill_mshr->translation_level == PSCL4.level)
           PSCL4.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL2.level)
+        if (fill_mshr->translation_level == PSCL3.level)
           PSCL3.fill_cache(addr, fill_mshr->v_address);
         if (fill_mshr->translation_level == PSCL2.level)
           PSCL2.fill_cache(addr, fill_mshr->v_address);
