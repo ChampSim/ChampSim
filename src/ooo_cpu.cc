@@ -316,7 +316,7 @@ void O3_CPU::decode_instruction()
     std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
     // Send decoded instructions to dispatch
-    while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && !DISPATCH_BUFFER.full()) {
+    while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && std::size(DISPATCH_BUFFER) < DISPATCH_BUFFER_SIZE) {
         ooo_model_instr &db_entry = DECODE_BUFFER.front();
         do_dib_update(db_entry);
 

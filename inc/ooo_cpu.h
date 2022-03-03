@@ -80,7 +80,7 @@ public:
 
   // reorder buffer, load/store queue, register file
   champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
-  champsim::circular_buffer<ooo_model_instr> DISPATCH_BUFFER;
+  std::deque<ooo_model_instr> DISPATCH_BUFFER;
   champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
 
@@ -90,7 +90,7 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
 
   // Constants
-  const std::size_t ROB_SIZE, SQ_SIZE;
+  const std::size_t DISPATCH_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
@@ -154,7 +154,7 @@ public:
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size),
-        DISPATCH_BUFFER(dispatch_buffer_size), DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
+        DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), SCHEDULING_LATENCY(schedule_latency),
         EXEC_LATENCY(execute_latency), ITLB_bus(cpu, rob_size, itlb), DTLB_bus(cpu, rob_size, dtlb), L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d),
