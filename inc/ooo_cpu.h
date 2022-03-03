@@ -83,7 +83,7 @@ public:
   champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
   champsim::circular_buffer<ooo_model_instr> DISPATCH_BUFFER;
   champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
-  champsim::circular_buffer<ooo_model_instr> ROB;
+  std::deque<ooo_model_instr> ROB;
 
   std::vector<std::optional<LSQ_ENTRY>> LQ;
   std::vector<std::optional<LSQ_ENTRY>> SQ;
@@ -91,6 +91,7 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
 
   // Constants
+  const std::size_t ROB_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
@@ -128,11 +129,11 @@ public:
   void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
-  void do_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_scheduling(ooo_model_instr &instr);
   void do_execution(ooo_model_instr& rob_it);
-  void do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_memory_scheduling(ooo_model_instr &instr);
   void operate_lsq();
-  void do_complete_execution(champsim::circular_buffer<ooo_model_instr>::iterator rob_it);
+  void do_complete_execution(ooo_model_instr &instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
   void initialize_core();
@@ -163,7 +164,7 @@ public:
          bpred_t bpred_type, btb_t btb_type, ipref_t ipref_type)
         : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size), DECODE_BUFFER(decode_buffer_size, decode_latency),
-        ROB(rob_size), LQ(lq_size), SQ(sq_size),
+        LQ(lq_size), SQ(sq_size), ROB_SIZE(rob_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
         EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
         BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
