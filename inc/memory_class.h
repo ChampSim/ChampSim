@@ -18,7 +18,7 @@
 #define NUM_TYPES 5
 
 class MemoryRequestProducer;
-class ooo_model_instr;
+struct ooo_model_instr;
 
 // message packet
 class PACKET
