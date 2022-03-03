@@ -10,7 +10,6 @@
 #define DEADLOCK_CYCLE 1000000
 
 extern uint8_t warmup_complete[NUM_CPUS];
-extern uint8_t MAX_INSTR_DESTINATIONS;
 
 void O3_CPU::operate()
 {
@@ -400,17 +399,6 @@ void O3_CPU::schedule_instruction()
       --search_bw;
   }
 }
-
-struct instr_reg_will_produce {
-  const uint8_t match_reg;
-  explicit instr_reg_will_produce(uint8_t reg) : match_reg(reg) {}
-  bool operator()(const ooo_model_instr& test) const
-  {
-    auto dreg_begin = std::begin(test.destination_registers);
-    auto dreg_end = std::end(test.destination_registers);
-    return test.executed != COMPLETED && std::find(dreg_begin, dreg_end, match_reg) != dreg_end;
-  }
-};
 
 void O3_CPU::do_scheduling(ooo_model_instr &instr)
 {
@@ -903,7 +891,6 @@ int CacheBus::issue_write(PACKET data_packet)
 {
     data_packet.fill_level = lower_level->fill_level;
     data_packet.cpu = cpu;
-    data_packet.to_return = {this};
 
     return lower_level->add_wq(&data_packet);
 }
