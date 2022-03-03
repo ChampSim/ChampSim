@@ -393,20 +393,8 @@ void O3_CPU::schedule_instruction()
 {
   std::size_t search_bw = SCHEDULER_SIZE;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0; ++rob_it) {
-    if (rob_it->scheduled == 0) {
+    if (rob_it->scheduled == 0)
       do_scheduling(*rob_it);
-
-      if (rob_it->scheduled == COMPLETED && rob_it->num_reg_dependent == 0) {
-
-        // remember this ROB entry in the Ready-To-Execute
-        assert(ready_to_execute.size() < ROB_SIZE);
-        ready_to_execute.push(*rob_it);
-
-        DP(if (warmup_complete[cpu]) {
-          std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
-        });
-      }
-    }
 
     if (rob_it->executed == 0)
       --search_bw;
@@ -446,34 +434,31 @@ void O3_CPU::do_scheduling(ooo_model_instr &instr)
     }
 
     instr.scheduled = COMPLETED;
-
-    // ADD LATENCY
     instr.event_cycle = current_cycle + (warmup_complete[cpu] ? SCHEDULING_LATENCY : 0);
 }
 
 void O3_CPU::execute_instruction()
 {
-  // out-of-order execution for non-memory instructions
-  // memory instructions are handled by memory_instruction()
-  uint32_t exec_issued = 0;
-  while (exec_issued < EXEC_WIDTH && !ready_to_execute.empty()) {
-    do_execution(ready_to_execute.front());
-    ready_to_execute.pop();
-    exec_issued++;
+  auto exec_bw = EXEC_WIDTH;
+  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw > 0; ++rob_it) {
+    if (rob_it->scheduled == COMPLETED && rob_it->executed == 0 && rob_it->num_reg_dependent == 0 && rob_it->event_cycle <= current_cycle) {
+      do_execution(*rob_it);
+      --exec_bw;
+    }
   }
 }
 
 void O3_CPU::do_execution(ooo_model_instr &rob_entry)
 {
   rob_entry.executed = INFLIGHT;
-
-  // ADD LATENCY
   rob_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
+  // Mark LQ entries as ready to translate
   for (auto &lq_entry : LQ)
       if (lq_entry.has_value() && lq_entry->instr_id == rob_entry.instr_id)
           lq_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
+  // Mark SQ entries as ready to translate
   for (auto &sq_entry : SQ)
       if (sq_entry.instr_id == rob_entry.instr_id)
           sq_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
@@ -688,24 +673,11 @@ void O3_CPU::complete_inflight_instruction()
 {
     // update ROB entries with completed executions
     std::size_t complete_bw = EXEC_WIDTH;
-    auto rob_it = std::begin(ROB);
-    while (rob_it != std::end(ROB) && complete_bw > 0) {
+    for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw > 0; ++rob_it) {
         if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0) {
             do_complete_execution(*rob_it);
             --complete_bw;
-
-            for (ooo_model_instr &dependent : rob_it->registers_instrs_depend_on_me) {
-                if (dependent.scheduled == COMPLETED && dependent.num_reg_dependent == 0) {
-                    assert(ready_to_execute.size() < ROB_SIZE);
-                    ready_to_execute.push(dependent);
-
-                    DP ( if (warmup_complete[cpu]) {
-                            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent.instr_id << " is added to ready_to_execute" << std::endl; })
-                }
-            }
         }
-
-        ++rob_it;
     }
 }
 

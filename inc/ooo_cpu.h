@@ -95,9 +95,6 @@ public:
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
-  // Ready-To-Execute
-  std::queue<std::reference_wrapper<ooo_model_instr>> ready_to_execute;
-
   // branch
   uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
