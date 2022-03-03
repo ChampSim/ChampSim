@@ -53,7 +53,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), REG_INSTRUCTION_POINTER);
     bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r){ return r != REG_STACK_POINTER && r != REG_FLAGS && r != REG_INSTRUCTION_POINTER; });
 
-    std::fill_n(std::back_inserter(STA), std::size(arch_instr.destination_memory), arch_instr.instr_id);
     arch_instr.num_mem_ops = std::size(arch_instr.destination_memory) + std::size(arch_instr.source_memory);
 
   // determine what kind of branch this is, if any
@@ -375,7 +374,7 @@ void O3_CPU::dispatch_instruction()
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
           && ((std::size_t) std::count_if(std::begin(LQ), std::end(LQ), std::not_fn(is_valid<decltype(LQ)::value_type>{})) >= std::size(DISPATCH_BUFFER.front().source_memory))
-          && ((std::size_t) std::count_if(std::begin(SQ), std::end(SQ), std::not_fn(is_valid<decltype(SQ)::value_type>{})) >= std::size(DISPATCH_BUFFER.front().destination_memory))) {
+          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
       ROB.push_back(std::move(DISPATCH_BUFFER.front()));
       DISPATCH_BUFFER.pop_front();
       do_memory_scheduling(ROB.back());
@@ -476,8 +475,8 @@ void O3_CPU::do_execution(ooo_model_instr &rob_entry)
           lq_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
   for (auto &sq_entry : SQ)
-      if (sq_entry.has_value() && sq_entry->instr_id == rob_entry.instr_id)
-          sq_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
+      if (sq_entry.instr_id == rob_entry.instr_id)
+          sq_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
     DP (if (warmup_complete[cpu]) {
             std::cout << "[ROB] " << __func__ << " instr_id: " << rob_entry.instr_id << " event_cycle: " << rob_entry.event_cycle << std::endl;});
@@ -493,34 +492,29 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr &instr)
 
         // Check for forwarding
         auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto &lhs, const auto &rhs) {
-                return !(lhs.has_value() && lhs->virtual_address == smem) || ((rhs.has_value() && rhs->virtual_address == smem) && lhs->instr_id < rhs->instr_id);
+                return lhs.virtual_address != smem || (rhs.virtual_address == smem && lhs.instr_id < rhs.instr_id);
                 });
-        if (sq_it->has_value() && (*sq_it)->virtual_address == smem) {
-            if ((*sq_it)->fetch_issued) { // Store already executed
+        if (sq_it->virtual_address == smem) {
+            if (sq_it->fetch_issued) { // Store already executed
                 q_entry->reset();
                 instr.num_mem_ops--;
 
                 DP (if (warmup_complete[cpu]) {
-                std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << (*sq_it)->instr_id << std::endl; })
+                std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl; })
             } else {
                 // this load cannot be executed until the prior store gets executed
-                (*sq_it)->lq_depend_on_me.push_back(*q_entry);
-                (*q_entry)->producer_id = (*sq_it)->instr_id;
+                sq_it->lq_depend_on_me.push_back(*q_entry);
+                (*q_entry)->producer_id = sq_it->instr_id;
 
                 DP (if (warmup_complete[cpu]) {
-                std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << (*sq_it)->instr_id << std::endl; })
+                std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << sq_it->instr_id << std::endl; })
             }
         }
     }
 
     // store
-    for (auto& dmem : instr.destination_memory) {
-        auto q_entry = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<decltype(SQ)::value_type>{});
-        assert(q_entry != std::end(SQ) && STA.front() == instr.instr_id);
-        *q_entry = {instr.instr_id, dmem, instr.ip, current_cycle + SCHEDULING_LATENCY, std::ref(instr), {instr.asid[0], instr.asid[1]}}; // add it to the store queue
-
-        STA.pop_front();
-    }
+    for (auto& dmem : instr.destination_memory)
+        SQ.push_back({instr.instr_id, dmem, instr.ip, current_cycle + SCHEDULING_LATENCY, std::ref(instr), {instr.asid[0], instr.asid[1]}}); // add it to the store queue
 
     DP (if (warmup_complete[cpu]) {
     std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " loads: " << std::size(instr.source_memory) << " stores: " << std::size(instr.destination_memory) << std::endl; });
@@ -531,33 +525,29 @@ void O3_CPU::operate_lsq()
     auto store_bw = SQ_WIDTH;
 
     for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.has_value() && sq_entry->physical_address == 0 && !sq_entry->translate_issued && sq_entry->event_cycle < current_cycle) {
-            auto result = do_translate_store(*sq_entry);
+        if (store_bw > 0 && sq_entry.physical_address == 0 && !sq_entry.translate_issued && sq_entry.event_cycle < current_cycle) {
+            auto result = do_translate_store(sq_entry);
             if (result != -2) {
                 --store_bw;
-                sq_entry->translate_issued = true;
+                sq_entry.translate_issued = true;
             }
         }
     }
 
     for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.has_value() && sq_entry->physical_address != 0 && !sq_entry->fetch_issued && sq_entry->event_cycle < current_cycle) {
-            do_finish_store(*sq_entry);
+        if (store_bw > 0 && sq_entry.physical_address != 0 && !sq_entry.fetch_issued && sq_entry.event_cycle < current_cycle) {
+            do_finish_store(sq_entry);
             --store_bw;
-            sq_entry->fetch_issued = true;
-            sq_entry->event_cycle = current_cycle;
+            sq_entry.fetch_issued = true;
+            sq_entry.event_cycle = current_cycle;
         }
     }
 
-    for (auto &sq_entry : SQ) {
-        if (store_bw > 0 && sq_entry.has_value() && sq_entry->instr_id < ROB.front().instr_id && sq_entry->event_cycle < current_cycle) {
-            auto result = do_complete_store(*sq_entry);
-            if (result != -2) {
-                --store_bw;
-                sq_entry.reset();
-            }
-        }
+    auto sq_it = std::begin(SQ);
+    for (auto result = 0; result != -2 && store_bw > 0 && sq_it != std::end(SQ) && sq_it->instr_id < ROB.front().instr_id && sq_it->event_cycle < current_cycle; --store_bw, ++sq_it) {
+        result = do_complete_store(*sq_it);
     }
+    SQ.erase(std::begin(SQ), sq_it);
 
     auto load_bw = LQ_WIDTH;
 
@@ -781,15 +771,15 @@ void O3_CPU::handle_memory_return()
 
       for (auto &sq_entry : SQ)
 	    {
-            if (sq_entry.has_value() && sq_entry->translate_issued && sq_entry->physical_address == 0 && sq_entry->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+            if (sq_entry.translate_issued && sq_entry.physical_address == 0 && sq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
             {
-                sq_entry->physical_address = splice_bits(dtlb_entry.data, sq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
-                sq_entry->event_cycle = current_cycle;
+                sq_entry.physical_address = splice_bits(dtlb_entry.data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
+                sq_entry.event_cycle = current_cycle;
 
               DP (if (warmup_complete[cpu]) {
-                  std::cout << "[DTLB_SQ] " << __func__ << " instr_id: " << sq_entry->instr_id << std::hex;
-                  std::cout << " full_address: " << sq_entry->physical_address << std::dec << " remain_mem_ops: " << sq_entry->rob_entry.get().num_mem_ops;
-                  std::cout << " event_cycle: " << sq_entry->event_cycle << std::endl; });
+                  std::cout << "[DTLB_SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
+                  std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.get().num_mem_ops;
+                  std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl; });
             }
 	    }
 
@@ -915,14 +905,13 @@ void O3_CPU::print_deadlock()
   // print SQ entry
   std::cout << std::endl << "Store Queue Entry" << std::endl;
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
-    if (sq_it->has_value())
       std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it)
-          << " instr_id: " << (*sq_it)->instr_id
-          << " address: " << std::hex << (*sq_it)->physical_address << std::dec
-          << " translate_issued: " << std::boolalpha << (*sq_it)->translate_issued
-          << " translated: " << std::boolalpha << ((*sq_it)->physical_address != 0)
-          << " fetched: " << (*sq_it)->fetch_issued << std::noboolalpha
-          << " event_cycle: " << (*sq_it)->event_cycle
+          << " instr_id: " << sq_it->instr_id
+          << " address: " << std::hex << sq_it->physical_address << std::dec
+          << " translate_issued: " << std::boolalpha << sq_it->translate_issued
+          << " translated: " << std::boolalpha << (sq_it->physical_address != 0)
+          << " fetched: " << sq_it->fetch_issued << std::noboolalpha
+          << " event_cycle: " << sq_it->event_cycle
           << std::endl;
   }
 }

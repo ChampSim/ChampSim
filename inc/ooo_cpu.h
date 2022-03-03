@@ -86,16 +86,14 @@ public:
   std::deque<ooo_model_instr> ROB;
 
   std::vector<std::optional<LSQ_ENTRY>> LQ;
-  std::vector<std::optional<LSQ_ENTRY>> SQ;
+  std::deque<LSQ_ENTRY> SQ;
 
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
 
   // Constants
-  const std::size_t ROB_SIZE;
+  const std::size_t ROB_SIZE, SQ_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
-
-  std::deque<uint64_t> STA; // this structure is required to properly handle store instructions
 
   // Ready-To-Execute
   std::queue<std::reference_wrapper<ooo_model_instr>> ready_to_execute;
@@ -164,7 +162,7 @@ public:
          bpred_t bpred_type, btb_t btb_type, ipref_t ipref_type)
         : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size), DISPATCH_BUFFER(dispatch_buffer_size), DECODE_BUFFER(decode_buffer_size, decode_latency),
-        LQ(lq_size), SQ(sq_size), ROB_SIZE(rob_size),
+        LQ(lq_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width),
         EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
         BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
