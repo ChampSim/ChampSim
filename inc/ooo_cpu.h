@@ -23,7 +23,7 @@ class CacheBus : public MemoryRequestProducer
 {
     uint32_t cpu;
     public:
-        champsim::circular_buffer<PACKET> PROCESSED;
+        std::deque<PACKET> PROCESSED;
         CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer *ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
         int issue_read(PACKET packet);
         int issue_write(PACKET packet);

@@ -669,23 +669,17 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  // Instruction Memory
-
-  int available_fetch_bandwidth = FETCH_WIDTH;
-  int to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
-
-  while (available_fetch_bandwidth > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty()) {
+  for (int itlb_bw  = FETCH_WIDTH, to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ; itlb_bw > 0 && to_read > 0 && !ITLB_bus.PROCESSED.empty(); --to_read) {
     PACKET& itlb_entry = ITLB_bus.PROCESSED.front();
 
-    // mark the appropriate instructions in the IFETCH_BUFFER as translated and
-    // ready to fetch
-    while (available_fetch_bandwidth > 0 && !itlb_entry.instr_depend_on_me.empty()) {
+    // mark instructions in the IFETCH_BUFFER as translated
+    while (itlb_bw > 0 && !itlb_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = itlb_entry.instr_depend_on_me.front();
       if ((fetched.ip >> LOG2_PAGE_SIZE) == (itlb_entry.address >> LOG2_PAGE_SIZE) && fetched.translated != 0) {
           fetched.translated = COMPLETED;
           fetched.instruction_pa = splice_bits(itlb_entry.data, fetched.ip, LOG2_PAGE_SIZE);
 
-        available_fetch_bandwidth--;
+        --itlb_bw;
       }
 
       itlb_entry.instr_depend_on_me.erase(std::begin(itlb_entry.instr_depend_on_me));
@@ -694,23 +688,17 @@ void O3_CPU::handle_memory_return()
     // remove this entry if we have serviced all of its instructions
     if (itlb_entry.instr_depend_on_me.empty())
       ITLB_bus.PROCESSED.pop_front();
-
-    --to_read;
   }
 
-  available_fetch_bandwidth = FETCH_WIDTH;
-  to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
-
-  while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty()) {
+  for (int l1i_bw  = FETCH_WIDTH, to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
-    // this is the L1I cache, so instructions are now fully fetched, so mark
-    // them as such
-    while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
+    // instructions are now fully fetched, so mark them as such
+    while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
       if ((fetched.instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0 && fetched.translated == COMPLETED) {
         fetched.fetched = COMPLETED;
-        available_fetch_bandwidth--;
+        --l1i_bw;
       }
 
       l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
@@ -719,21 +707,14 @@ void O3_CPU::handle_memory_return()
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty())
       L1I_bus.PROCESSED.pop_front();
-    --to_read;
   }
 
-  // Data Memory
-  to_read = static_cast<CACHE*>(DTLB_bus.lower_level)->MAX_READ;
-
-  while (to_read > 0 && !DTLB_bus.PROCESSED.empty())
-	{ // DTLB
-	  PACKET &dtlb_entry = DTLB_bus.PROCESSED.front();
-
-      for (auto &sq_entry : SQ)
-	    {
-            if (sq_entry.translate_issued && sq_entry.physical_address == 0 && sq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+  auto dtlb_it = std::begin(DTLB_bus.PROCESSED);
+  for (auto dtlb_bw = static_cast<CACHE*>(DTLB_bus.lower_level)->MAX_READ; dtlb_bw > 0 && dtlb_it != std::end(DTLB_bus.PROCESSED); --dtlb_bw, ++dtlb_it) {
+      for (auto &sq_entry : SQ) {
+            if (sq_entry.translate_issued && sq_entry.physical_address == 0 && sq_entry.virtual_address >> LOG2_PAGE_SIZE == dtlb_it->address >> LOG2_PAGE_SIZE)
             {
-                sq_entry.physical_address = splice_bits(dtlb_entry.data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
+                sq_entry.physical_address = splice_bits(dtlb_it->data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
                 sq_entry.event_cycle = current_cycle;
 
               DP (if (warmup_complete[cpu]) {
@@ -743,11 +724,10 @@ void O3_CPU::handle_memory_return()
             }
 	    }
 
-      for (auto &lq_entry : LQ)
-	    {
-            if (lq_entry.has_value() && lq_entry->translate_issued && lq_entry->physical_address == 0 && lq_entry->virtual_address >> LOG2_PAGE_SIZE == dtlb_entry.address >> LOG2_PAGE_SIZE)
+      for (auto &lq_entry : LQ) {
+            if (lq_entry.has_value() && lq_entry->translate_issued && lq_entry->physical_address == 0 && lq_entry->virtual_address >> LOG2_PAGE_SIZE == dtlb_it->address >> LOG2_PAGE_SIZE)
             {
-                lq_entry->physical_address = splice_bits(dtlb_entry.data, lq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
+                lq_entry->physical_address = splice_bits(dtlb_it->data, lq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
                 lq_entry->event_cycle = current_cycle;
 
               DP (if (warmup_complete[cpu]) {
@@ -756,20 +736,14 @@ void O3_CPU::handle_memory_return()
                   std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl; });
             }
 	    }
-
-    // remove this entry
-    DTLB_bus.PROCESSED.pop_front();
-    --to_read;
   }
+  DTLB_bus.PROCESSED.erase(std::begin(DTLB_bus.PROCESSED), dtlb_it);
 
-  to_read = static_cast<CACHE*>(L1D_bus.lower_level)->MAX_READ;
-  while (to_read > 0 && !L1D_bus.PROCESSED.empty())
-	{ // L1D
-	  PACKET &l1d_entry = L1D_bus.PROCESSED.front();
-
+  auto l1d_it = std::begin(L1D_bus.PROCESSED);
+  for (auto l1d_bw = static_cast<CACHE*>(L1D_bus.lower_level)->MAX_READ; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
       for (auto &lq_entry : LQ)
       {
-          if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->physical_address >> LOG2_BLOCK_SIZE == l1d_entry.address >> LOG2_BLOCK_SIZE)
+          if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->physical_address >> LOG2_BLOCK_SIZE == l1d_it->address >> LOG2_BLOCK_SIZE)
           {
               lq_entry->rob_entry.num_mem_ops--;
               lq_entry->rob_entry.event_cycle = current_cycle;
@@ -781,11 +755,8 @@ void O3_CPU::handle_memory_return()
                   std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl; });
           }
       }
-
-	  // remove this entry
-	  L1D_bus.PROCESSED.pop_front();
-      --to_read;;
-    }
+  }
+  L1D_bus.PROCESSED.erase(std::begin(L1D_bus.PROCESSED), l1d_it);
 }
 
 void O3_CPU::retire_rob()
@@ -809,9 +780,7 @@ void O3_CPU::retire_rob()
 
 void CacheBus::return_data(PACKET* packet)
 {
-  if (packet->type != PREFETCH) {
     PROCESSED.push_back(*packet);
-  }
 }
 
 void O3_CPU::print_deadlock()
