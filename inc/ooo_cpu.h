@@ -9,7 +9,6 @@
 #include <optional>
 #include <vector>
 
-#include "block.h"
 #include "champsim.h"
 #include "delay_queue.hpp"
 #include "instruction.h"
