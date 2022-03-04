@@ -996,7 +996,6 @@ int CacheBus::issue_write(PACKET data_packet)
 {
     data_packet.fill_level = lower_level->fill_level;
     data_packet.cpu = cpu;
-    data_packet.to_return = {this};
 
     return lower_level->add_wq(&data_packet);
 }
