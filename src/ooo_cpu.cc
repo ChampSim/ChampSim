@@ -300,7 +300,7 @@ void O3_CPU::translate_fetch()
   uint64_t find_addr = itlb_req_begin->ip;
   auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
-  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin()) {
+  if (itlb_req_begin != itlb_req_end) {
     do_translate_fetch(itlb_req_begin, itlb_req_end);
   }
 }
@@ -353,8 +353,7 @@ void O3_CPU::fetch_instruction()
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
-  if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin()) {
-
+  if (l1i_req_begin != l1i_req_end) {
     do_fetch_instruction(l1i_req_begin, l1i_req_end);
   }
 }
