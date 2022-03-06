@@ -67,7 +67,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
 
   if (TOTAL_ACCESS > 0) {
     std::cout << cache->NAME;
-    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
+    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
 
     std::cout << cache->NAME;
     std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->roi_access[cpu][0] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][0] << "  MISS: " << std::setw(10)
@@ -86,7 +86,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
          << cache->roi_miss[cpu][3] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << sstd::etw(10)
+    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << std::etw(10)
          << cache->roi_miss[cpu][4] << std::endl;
 
     std::cout << cache->NAME;
@@ -247,7 +247,7 @@ void finish_warmup()
   // PAGE_TABLE_LATENCY = 100;
   // SWAP_LATENCY = 100000;
 
-  std::cout << endl;
+  std::cout << std::endl;
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     std::cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
     std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
@@ -268,7 +268,7 @@ void finish_warmup()
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       reset_cache_stats(i, *it);
   }
-  cout << endl;
+  std::cout << std::endl;
 
   // reset DRAM stats
   for (uint32_t i = 0; i < DRAM_CHANNELS; i++) {
