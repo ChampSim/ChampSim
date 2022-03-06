@@ -86,7 +86,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
          << cache->roi_miss[cpu][3] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << std::etw(10)
+    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << std::setw(10)
          << cache->roi_miss[cpu][4] << std::endl;
 
     std::cout << cache->NAME;
