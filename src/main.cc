@@ -67,27 +67,28 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
 
   if (TOTAL_ACCESS > 0) {
     std::cout << cache->NAME;
-    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
+    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS
+              << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->roi_access[cpu][0] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][0] << "  MISS: " << std::setw(10)
-         << cache->roi_miss[cpu][0] << std::endl;
+    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->roi_access[cpu][0] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][0]
+              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][0] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->roi_access[cpu][1] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][1] << "  MISS: " << std::setw(10)
-         << cache->roi_miss[cpu][1] << std::endl;
+    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->roi_access[cpu][1] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][1]
+              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][1] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->roi_access[cpu][2] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][2] << "  MISS: " << std::setw(10)
-         << cache->roi_miss[cpu][2] << std::endl;
+    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->roi_access[cpu][2] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][2]
+              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][2] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->roi_access[cpu][3] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << std::setw(10)
-         << cache->roi_miss[cpu][3] << std::endl;
+    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->roi_access[cpu][3] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][3]
+              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][3] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << std::setw(10)
-         << cache->roi_miss[cpu][4] << std::endl;
+    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4]
+              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][4] << std::endl;
 
     std::cout << cache->NAME;
     std::cout << " PREFETCH  REQUESTED: " << std::setw(10) << cache->pf_requested << "  ISSUED: " << std::setw(10) << cache->pf_issued;
@@ -113,23 +114,24 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
   if (TOTAL_ACCESS > 0) {
     std::cout << cache->NAME;
-    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
+    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS
+              << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->sim_access[cpu][0] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][0] << "  MISS: " << std::setw(10)
-         << cache->sim_miss[cpu][0] << std::endl;
+    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->sim_access[cpu][0] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][0]
+              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][0] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->sim_access[cpu][1] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][1] << "  MISS: " << std::setw(10)
-         << cache->sim_miss[cpu][1] << std::endl;
+    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->sim_access[cpu][1] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][1]
+              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][1] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->sim_access[cpu][2] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][2] << "  MISS: " << std::setw(10)
-         << cache->sim_miss[cpu][2] << std::endl;
+    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->sim_access[cpu][2] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][2]
+              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][2] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->sim_access[cpu][3] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][3] << "  MISS: " << std::setw(10)
-         << cache->sim_miss[cpu][3] << std::endl;
+    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->sim_access[cpu][3] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][3]
+              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][3] << std::endl;
   }
 }
 
@@ -140,25 +142,31 @@ void print_branch_stats()
     std::cout << (100.0 * (ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
     std::cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
     std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict) / ooo_cpu[i]->branch_mispredictions
-         << std::endl;
+              << std::endl;
 
-    //std::cout << "Branch types" << endl;
-    //std::cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " << (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " << (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " << (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << " " <<  (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl;
-    //std::cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " << (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl << std::endl;
+    // std::cout << "Branch types" << endl;
+    // std::cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired -
+    // ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " <<
+    // (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_INDIRECT: "
+    // << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%"
+    // << std::endl; std::cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " <<
+    // (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_DIRECT_CALL:
+    // " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%"
+    // << std::endl; std::cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " <<
+    // (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_RETURN: " <<
+    // ooo_cpu[i]->total_branch_types[6] << " " <<  (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" <<
+    // std::endl; std::cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " <<
+    // (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl << std::endl;
 
     std::cout << "Branch type MPKI" << std::endl;
     std::cout << "BRANCH_DIRECT_JUMP: " << (1000.0 * ooo_cpu[i]->branch_type_misses[1] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
     std::cout << "BRANCH_INDIRECT: " << (1000.0 * ooo_cpu[i]->branch_type_misses[2] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
     std::cout << "BRANCH_CONDITIONAL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[3] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
     std::cout << "BRANCH_DIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[4] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl << std::endl;
+    std::cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr))
+              << std::endl;
+    std::cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl
+              << std::endl;
   }
 }
 
@@ -281,8 +289,8 @@ void finish_warmup()
 
 void signal_handler(int signal)
 {
-    std::cout << "Caught signal: " << signal << std::endl;
-	exit(1);
+  std::cout << "Caught signal: " << signal << std::endl;
+  exit(1);
 }
 
 int main(int argc, char** argv)
@@ -463,10 +471,10 @@ int main(int argc, char** argv)
     std::cout << std::endl << "Total Simulation Statistics (not including warmup)" << std::endl;
     for (uint32_t i = 0; i < NUM_CPUS; i++) {
       std::cout << std::endl
-           << "CPU " << i
-           << " cumulative IPC: " << (float)(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
+                << "CPU " << i << " cumulative IPC: "
+                << (float)(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
       std::cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr
-           << " cycles: " << ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle << std::endl;
+                << " cycles: " << ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle << std::endl;
       for (auto it = caches.rbegin(); it != caches.rend(); ++it)
         print_sim_stats(i, *it);
     }
