@@ -224,12 +224,13 @@ void O3_CPU::translate_fetch()
   auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
   while (to_read > 0 && itlb_req_begin != IFETCH_BUFFER.end()) {
     uint64_t find_addr = itlb_req_begin->ip;
-    auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(), [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
+    auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
+                                     [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
     if (itlb_req_begin != itlb_req_end) {
       do_translate_fetch(itlb_req_begin, itlb_req_end);
     }
     --to_read;
-    itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return !x.translated; }); 
+    itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
   }
 }
 
@@ -270,15 +271,17 @@ void O3_CPU::fetch_instruction()
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
   std::size_t to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
-  auto l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
+  auto l1i_req_begin =
+      std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
   while (to_read > 0 && l1i_req_begin != IFETCH_BUFFER.end()) {
     uint64_t find_addr = l1i_req_begin->instruction_pa;
-    auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(), [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
+    auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
+                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
     if (l1i_req_begin != l1i_req_end) {
       do_fetch_instruction(l1i_req_begin, l1i_req_end);
     }
     --to_read;
-    l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr &x){ return x.translated == COMPLETED && !x.fetched; });
+    l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
   }
 }
 
