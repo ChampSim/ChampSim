@@ -4,9 +4,9 @@
 #include <array>
 #include <deque>
 #include <functional>
-#include <queue>
 #include <limits>
 #include <optional>
+#include <queue>
 #include <vector>
 
 #include "champsim.h"
@@ -21,17 +21,17 @@ class CACHE;
 
 class CacheBus : public MemoryRequestProducer
 {
-    uint32_t cpu;
-    public:
-        std::deque<PACKET> PROCESSED;
-        CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer *ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
-        int issue_read(PACKET packet);
-        int issue_write(PACKET packet);
-        void return_data(PACKET *packet);
+  uint32_t cpu;
+
+public:
+  std::deque<PACKET> PROCESSED;
+  CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
+  int issue_read(PACKET packet);
+  int issue_write(PACKET packet);
+  void return_data(PACKET* packet);
 };
 
-struct LSQ_ENTRY
-{
+struct LSQ_ENTRY {
   uint64_t instr_id = 0;
   uint64_t virtual_address = 0;
   uint64_t ip = 0;
@@ -87,7 +87,7 @@ public:
   std::vector<std::optional<LSQ_ENTRY>> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
-  std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max()+1> reg_producers;
+  std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   // Constants
   const std::size_t DISPATCH_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
@@ -123,11 +123,11 @@ public:
   void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
-  void do_scheduling(ooo_model_instr &instr);
+  void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& rob_it);
-  void do_memory_scheduling(ooo_model_instr &instr);
+  void do_memory_scheduling(ooo_model_instr& instr);
   void operate_lsq();
-  void do_complete_execution(ooo_model_instr &instr);
+  void do_complete_execution(ooo_model_instr& instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
   void initialize_core();
@@ -156,9 +156,9 @@ public:
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size),
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
-        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), SCHEDULING_LATENCY(schedule_latency),
-        EXEC_LATENCY(execute_latency), ITLB_bus(cpu, rob_size, itlb), DTLB_bus(cpu, rob_size, dtlb), L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d),
-        bpred_type(bpred_type), btb_type(btb_type)
+        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
+        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(cpu, rob_size, itlb), DTLB_bus(cpu, rob_size, dtlb),
+        L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };

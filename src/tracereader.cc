@@ -83,7 +83,7 @@ void tracereader::close()
 
 class cloudsuite_tracereader : public tracereader
 {
-    std::optional<ooo_model_instr> last_instr;
+  std::optional<ooo_model_instr> last_instr;
 
 public:
   cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
@@ -92,11 +92,11 @@ public:
   {
     ooo_model_instr trace_read_instr = read_single_instr<cloudsuite_instr>();
 
-        if (!last_instr.has_value())
-            last_instr = trace_read_instr;
+    if (!last_instr.has_value())
+      last_instr = trace_read_instr;
 
-        last_instr->branch_target = trace_read_instr.ip;
-        ooo_model_instr retval = last_instr.value();
+    last_instr->branch_target = trace_read_instr.ip;
+    ooo_model_instr retval = last_instr.value();
 
     last_instr = trace_read_instr;
     return retval;
@@ -105,7 +105,7 @@ public:
 
 class input_tracereader : public tracereader
 {
-    std::optional<ooo_model_instr> last_instr;
+  std::optional<ooo_model_instr> last_instr;
 
 public:
   input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
@@ -114,11 +114,11 @@ public:
   {
     ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
 
-        if (!last_instr.has_value())
-            last_instr = trace_read_instr;
+    if (!last_instr.has_value())
+      last_instr = trace_read_instr;
 
-        last_instr->branch_target = trace_read_instr.ip;
-        ooo_model_instr retval = last_instr.value();
+    last_instr->branch_target = trace_read_instr.ip;
+    ooo_model_instr retval = last_instr.value();
 
     last_instr = trace_read_instr;
     return retval;

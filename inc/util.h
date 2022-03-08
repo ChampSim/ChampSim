@@ -19,7 +19,7 @@ struct is_valid {
 
 template <typename T>
 struct is_valid<std::optional<T>> {
-    bool operator()(const std::optional<T>& test) { return test.has_value(); }
+  bool operator()(const std::optional<T>& test) { return test.has_value(); }
 };
 
 template <typename T>
