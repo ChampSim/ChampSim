@@ -124,7 +124,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   if (arch_instr.is_branch) {
 
     DP(if (warmup_complete[cpu]) {
-      cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl;
+        std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
     });
 
     num_branch++;
@@ -218,7 +218,7 @@ void O3_CPU::translate_fetch()
   uint64_t find_addr = itlb_req_begin->ip;
   auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
-  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin()) {
+  if (itlb_req_begin != itlb_req_end) {
     do_translate_fetch(itlb_req_begin, itlb_req_end);
   }
 }
@@ -237,8 +237,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
 
   int rq_index = ITLB_bus.issue_read(trace_packet);
   if (rq_index != -2) {
-    // successfully sent to the ITLB, so mark all instructions in the
-    // IFETCH_BUFFER that match this ip as translated INFLIGHT
+    // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
     for (ooo_model_instr& dep : trace_packet.instr_depend_on_me) {
       dep.translated = INFLIGHT;
     }
@@ -264,8 +263,7 @@ void O3_CPU::fetch_instruction()
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
-  if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin()) {
-
+  if (l1i_req_begin != l1i_req_end) {
     do_fetch_instruction(l1i_req_begin, l1i_req_end);
   }
 }
@@ -519,7 +517,7 @@ void O3_CPU::operate_lsq()
     }
   }
 
-  for (; store_bw > 0 && !std::empty(SQ) && SQ.front().instr_id < ROB.front().instr_id && SQ.front().event_cycle < current_cycle; --store_bw) {
+  for (; store_bw > 0 && !std::empty(SQ) && (std::empty(ROB) || SQ.front().instr_id < ROB.front().instr_id) && SQ.front().event_cycle < current_cycle; --store_bw) {
     auto result = do_complete_store(SQ.front());
     if (result != -2)
       SQ.pop_front(); // std::deque::erase() requires MoveAssignable :(
@@ -767,8 +765,7 @@ void O3_CPU::retire_rob()
   unsigned retire_bandwidth = RETIRE_WIDTH;
 
   while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED)) {
-    // release ROB entry
-    DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
+    DP(if (warmup_complete[cpu]) { std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl; });
 
     ROB.pop_front();
     num_retired++;

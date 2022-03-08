@@ -15,10 +15,6 @@
 #include "memory_class.h"
 #include "operable.h"
 
-using namespace std;
-
-class CACHE;
-
 class CacheBus : public MemoryRequestProducer
 {
   uint32_t cpu;
