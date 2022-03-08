@@ -463,7 +463,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
       return lhs.virtual_address != smem || (rhs.virtual_address == smem && lhs.instr_id < rhs.instr_id);
     });
-    if (sq_it->virtual_address == smem) {
+    if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
       if (sq_it->fetch_issued) { // Store already executed
         q_entry->reset();
         instr.num_mem_ops--;
@@ -472,9 +472,9 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl;
         })
       } else {
-        // this load cannot be executed until the prior store gets executed
-        sq_it->lq_depend_on_me.push_back(*q_entry);
-        (*q_entry)->producer_id = sq_it->instr_id;
+        assert(sq_it->instr_id < instr.instr_id); // The found SQ entry is a prior store
+        sq_it->lq_depend_on_me.push_back(*q_entry); // Forward the load when the store finishes
+        (*q_entry)->producer_id = sq_it->instr_id; // The load waits on the store to finish
 
         DP(if (warmup_complete[cpu]) {
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << sq_it->instr_id << std::endl;
@@ -575,9 +575,10 @@ void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
     std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl;
   });
 
-  // check if this store has dependent loads
+  // Release dependent loads
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
-    // update corresponding LQ entry
+    assert(dependent.has_value()); // LQ entry is still allocated
+
     dependent->rob_entry.num_mem_ops--;
     dependent->rob_entry.event_cycle = current_cycle;
 
@@ -817,10 +818,15 @@ void O3_CPU::print_deadlock()
   std::cout << "Load Queue Entry" << std::endl;
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (lq_it->has_value())
+    {
       std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << (*lq_it)->instr_id << " address: " << std::hex
                 << (*lq_it)->physical_address << std::dec << " translate_issued: " << std::boolalpha << (*lq_it)->translate_issued
                 << " translated: " << ((*lq_it)->physical_address != 0) << " fetched: " << (*lq_it)->fetch_issued << std::noboolalpha
-                << " event_cycle: " << (*lq_it)->event_cycle << std::endl;
+                << " event_cycle: " << (*lq_it)->event_cycle;
+      if ((*lq_it)->producer_id != std::numeric_limits<uint64_t>::max())
+        std::cout << " waits on " << (*lq_it)->producer_id;
+      std::cout << std::endl;
+    }
   }
 
   // print SQ entry
@@ -829,7 +835,10 @@ void O3_CPU::print_deadlock()
     std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
               << sq_it->physical_address << std::dec << " translate_issued: " << std::boolalpha << sq_it->translate_issued << " translated: " << std::boolalpha
               << (sq_it->physical_address != 0) << " fetched: " << sq_it->fetch_issued << std::noboolalpha << " event_cycle: " << sq_it->event_cycle
-              << std::endl;
+              << " LQ waiting: ";
+    for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
+      std::cout << lq_entry->instr_id << " ";
+    std::cout << std::endl;
   }
 }
 
