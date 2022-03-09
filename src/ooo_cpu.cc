@@ -138,15 +138,16 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
     uint64_t predicted_branch_target = btb_result.first;
     uint8_t always_taken = btb_result.second;
-    uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((branch_prediction == 0) && (always_taken == 0)) {
+    arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+    if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
       predicted_branch_target = 0;
     }
 
     // call code prefetcher every time the branch predictor is used
     static_cast<CACHE*>(L1I_bus.lower_level)->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
-    if (predicted_branch_target != arch_instr.branch_target) {
+    if (predicted_branch_target != arch_instr.branch_target
+	|| (arch_instr.branch_type == BRANCH_CONDITIONAL && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       branch_mispredictions++;
       total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
       branch_type_misses[arch_instr.branch_type]++;
@@ -329,7 +330,8 @@ void O3_CPU::decode_instruction()
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
-      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)) {
+      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
+	  || (db_entry.branch_type == BRANCH_CONDITIONAL && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
