@@ -363,8 +363,7 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
         handle_pkt.data,                                                                            // data
         handle_pkt.ip,                                                                              // ip
         handle_pkt.cpu,                                                                             // cpu
-        handle_pkt.instr_id,                                                                        // instr_id
-        (*fill_block)->lru                                                                          // lru
+        handle_pkt.instr_id                                                                         // instr_id
     };
   }
 
@@ -379,9 +378,6 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
 
   // update replacement policy
   impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
-
-  if (fill_block.has_value())
-    (*fill_block)->lru = 0;
 
   // COLLECT STATS
   sim_miss[handle_pkt.cpu][handle_pkt.type]++;
