@@ -35,6 +35,9 @@ void CACHE::handle_fill()
     if (!success)
       return;
 
+    if (warmup_complete[fill_mshr->cpu])
+      total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
+
     if (fill_block.has_value()) {
       // update processed packets
       fill_mshr->data = (*fill_block)->data;
@@ -366,9 +369,6 @@ bool CACHE::filllike_miss(std::optional<typename decltype(block)::iterator> fill
         handle_pkt.instr_id                                                                         // instr_id
     };
   }
-
-  if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
   // update prefetcher
   cpu = handle_pkt.cpu;
