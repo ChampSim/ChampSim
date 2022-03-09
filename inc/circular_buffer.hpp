@@ -43,7 +43,7 @@ public:
 
   self_type& operator+=(difference_type n)
   {
-    pos = cbuf_type::circ_inc(pos, n, *buf);
+    pos = buf->circ_inc(pos, n);
     return *this;
   }
   self_type operator+(difference_type n)
@@ -126,13 +126,13 @@ protected:
   size_type head_ = 0;
   size_type tail_ = 0;
 
-  reference operator[](size_type n) { return entry_.at(n); }
-  const_reference operator[](size_type n) const { return entry_.at(n); }
+  reference operator[](size_type n) { return entry_[n]; }
+  const_reference operator[](size_type n) const { return entry_[n]; }
 
-  static size_type circ_inc(size_type base, difference_type inc, const circular_buffer<T>& buf);
+  size_type circ_inc(size_type base, difference_type inc);
 
 public:
-  explicit circular_buffer(std::size_t N) : sz_(N), entry_(N + 1) {}
+  explicit circular_buffer(std::size_t N) : sz_(N) { entry_.reserve(sz_ + 1); }
 
   constexpr size_type size() const noexcept { return sz_; }
   size_type occupancy() const noexcept { return std::distance(begin(), end()); };
@@ -141,9 +141,9 @@ public:
   constexpr size_type max_size() const noexcept { return static_cast<size_type>(std::numeric_limits<difference_type>::max() - 1); }
 
   reference front() { return operator[](head_); }
-  reference back() { return operator[](circ_inc(tail_, -1, *this)); }
+  reference back() { return operator[](circ_inc(tail_, -1)); }
   const_reference front() const { return operator[](head_); }
-  const_reference back() const { return operator[](circ_inc(tail_, -1, *this)); }
+  const_reference back() const { return operator[](circ_inc(tail_, -1)); }
 
   iterator begin() noexcept { return iterator(this, head_); }
   iterator end() noexcept { return iterator(this, tail_); }
@@ -163,27 +163,33 @@ public:
   void push_back(const T& item)
   {
     assert(!full());
-    operator[](tail_) = item;
-    tail_ = circ_inc(tail_, 1, *this);
+    if (std::size(entry_) < sz_ + 1)
+      entry_.push_back(item);
+    else
+      operator[](tail_) = item;
+    tail_ = circ_inc(tail_, 1);
   }
   void push_back(const T&& item)
   {
     assert(!full());
-    operator[](tail_) = std::move(item);
-    tail_ = circ_inc(tail_, 1, *this);
+    if (std::size(entry_) < sz_ + 1)
+      entry_.push_back(item);
+    else
+      operator[](tail_) = std::move(item);
+    tail_ = circ_inc(tail_, 1);
   }
   void pop_front()
   {
     assert(!empty());
-    head_ = circ_inc(head_, 1, *this);
+    head_ = circ_inc(head_, 1);
   }
 };
 
 template <typename T>
-auto circular_buffer<T>::circ_inc(size_type base, difference_type inc, const circular_buffer<T>& buf) -> size_type
+auto circular_buffer<T>::circ_inc(size_type base, difference_type inc) -> size_type
 {
   difference_type signed_new_base = base + inc;
-  const difference_type max_size = buf.entry_.size();
+  const difference_type max_size = sz_ + 1;
 
   // Adjust from the negative direction
   while (signed_new_base < 0)
@@ -204,11 +210,11 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
   // Adjust for the cases where the tail has wrapped, but the head has not.
   // In the positive direction
   if (pos < buf->head_ && buf->head_ <= other.pos)
-    diff = buf->entry_.size() + diff;
+    diff = buf->sz_ + 1 + diff;
 
   // In the negative direction
   else if (other.pos < buf->head_ && buf->head_ <= pos)
-    diff = buf->entry_.size() - diff;
+    diff = buf->sz_ + 1 - diff;
 
   return diff;
 }

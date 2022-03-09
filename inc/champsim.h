@@ -29,8 +29,6 @@
 #define FILL_DRC 8
 #define FILL_DRAM 16
 
-using namespace std;
-
 extern uint8_t warmup_complete[NUM_CPUS];
 
 namespace champsim

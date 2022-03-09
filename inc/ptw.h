@@ -60,7 +60,8 @@ public:
   void return_data(PACKET packet) override;
   void operate() override;
 
-  void handle_read(), handle_fill();
+  void handle_read();
+  void handle_fill();
 
   uint64_t get_shamt(uint8_t pt_level);
 

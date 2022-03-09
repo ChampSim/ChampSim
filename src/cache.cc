@@ -517,13 +517,13 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_requested++;
 
   PACKET pf_packet;
+  pf_packet.type = PREFETCH;
   pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
   pf_packet.pf_origin_level = fill_level;
   pf_packet.pf_metadata = prefetch_metadata;
   pf_packet.cpu = cpu;
-  pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.address = pf_addr;
-  pf_packet.type = PREFETCH;
+  pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
   auto success = add_pq(pf_packet);
   if (!success)
