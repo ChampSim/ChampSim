@@ -21,10 +21,10 @@ void CACHE::handle_fill()
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
       return;
 
-    // find victim
     auto [set_begin, set_end] = get_set_span(fill_mshr->address);
     auto fill_block = check_block_by(set_begin, set_end, std::not_fn(is_valid<BLOCK>()));
     if (!fill_block.has_value()) {
+      // find victim
       auto way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, get_set(fill_mshr->address), &(*set_begin), fill_mshr->ip,
                                               fill_mshr->address, fill_mshr->type);
       if (way != NUM_WAY)
@@ -54,7 +54,7 @@ void CACHE::handle_fill()
 void CACHE::handle_writeback()
 {
   for (auto it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); it != std::end(WQ);) {
-    if (auto found = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != std::end(WQ)) {
+    if (auto found = std::find_if(std::begin(WQ), it, eq_addr<PACKET>(it->address, OFFSET_BITS)); found != std::end(WQ)) {
       ++WQ_MERGED;
       it = WQ.erase(it);
     } else {
@@ -68,8 +68,7 @@ void CACHE::handle_writeback()
     PACKET& handle_pkt = WQ.front();
 
     // access cache
-    if (auto fill_block = check_hit(handle_pkt.address); fill_block.has_value()) // HIT
-    {
+    if (auto fill_block = check_hit(handle_pkt.address); fill_block.has_value()) { // HIT
       impl_replacement_update_state(handle_pkt.cpu, get_set(handle_pkt.address), get_way(handle_pkt.address), (*fill_block)->address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
       // COLLECT STATS
@@ -78,17 +77,15 @@ void CACHE::handle_writeback()
 
       // mark dirty
       (*fill_block)->dirty = 1;
-    } else // MISS
-    {
+    } else { // MISS
       bool success;
       if (handle_pkt.type == RFO && handle_pkt.to_return.empty()) {
         success = readlike_miss(handle_pkt);
       } else {
-        // find victim
-
         auto [set_begin, set_end] = get_set_span(handle_pkt.address);
         auto fill_block = check_block_by(set_begin, set_end, std::not_fn(is_valid<BLOCK>()));
         if (!fill_block.has_value()) {
+          // find victim
           auto way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, get_set(handle_pkt.address), &(*set_begin), handle_pkt.ip,
                                                   handle_pkt.address, handle_pkt.type);
           if (way != NUM_WAY)
@@ -142,8 +139,7 @@ void CACHE::handle_read()
     // vaddr to the prefetcher
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
-    if (auto hit_block = check_hit(handle_pkt.address); hit_block.has_value()) // HIT
-    {
+    if (auto hit_block = check_hit(handle_pkt.address); hit_block.has_value()) { // HIT
       readlike_hit(**hit_block, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
