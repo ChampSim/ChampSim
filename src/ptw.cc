@@ -160,7 +160,7 @@ void PageTableWalker::operate()
   RQ.operate();
 }
 
-int PageTableWalker::add_rq(const PACKET &packet)
+int PageTableWalker::add_rq(const PACKET& packet)
 {
   assert(packet.address != 0);
 
@@ -179,7 +179,7 @@ int PageTableWalker::add_rq(const PACKET &packet)
   return RQ.occupancy();
 }
 
-void PageTableWalker::return_data(const PACKET &packet)
+void PageTableWalker::return_data(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
     if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {

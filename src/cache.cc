@@ -402,7 +402,7 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
   return way;
 }
 
-int CACHE::add_rq(const PACKET &packet)
+int CACHE::add_rq(const PACKET& packet)
 {
   assert(packet.address != 0);
   RQ_ACCESS++;
@@ -466,7 +466,7 @@ int CACHE::add_rq(const PACKET &packet)
   return RQ.occupancy();
 }
 
-int CACHE::add_wq(const PACKET &packet)
+int CACHE::add_wq(const PACKET& packet)
 {
   WQ_ACCESS++;
 
@@ -573,7 +573,7 @@ void CACHE::va_translate_prefetches()
   }
 }
 
-int CACHE::add_pq(const PACKET &packet)
+int CACHE::add_pq(const PACKET& packet)
 {
   assert(packet.address != 0);
   PQ_ACCESS++;
@@ -633,7 +633,7 @@ int CACHE::add_pq(const PACKET &packet)
   return PQ.occupancy();
 }
 
-void CACHE::return_data(const PACKET &packet)
+void CACHE::return_data(const PACKET& packet)
 {
   // check MSHR information
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));

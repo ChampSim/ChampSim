@@ -114,7 +114,7 @@ void MEMORY_CONTROLLER::operate()
   }
 }
 
-int MEMORY_CONTROLLER::add_rq(const PACKET &packet)
+int MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 {
   if (all_warmup_complete < NUM_CPUS) {
     for (auto ret : packet.to_return)
@@ -159,7 +159,7 @@ int MEMORY_CONTROLLER::add_rq(const PACKET &packet)
   return get_occupancy(1, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_wq(const PACKET &packet)
+int MEMORY_CONTROLLER::add_wq(const PACKET& packet)
 {
   if (all_warmup_complete < NUM_CPUS)
     return -1; // Fast-forward
@@ -184,7 +184,7 @@ int MEMORY_CONTROLLER::add_wq(const PACKET &packet)
   return get_occupancy(2, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_pq(const PACKET &packet) { return add_rq(packet); }
+int MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block
