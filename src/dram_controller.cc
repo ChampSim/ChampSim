@@ -180,7 +180,7 @@ bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 
   // Find empty slot
   if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()); rq_it != std::end(channel.RQ)) {
-    *rq_it = *packet;
+    *rq_it = packet;
     rq_it->forward_checked = false;
     rq_it->event_cycle = current_cycle;
 
@@ -196,7 +196,7 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
 
   // search for the empty index
   if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()); wq_it != std::end(channel.WQ)) {
-    *wq_it = *packet;
+    *wq_it = packet;
     wq_it->forward_checked = false;
     wq_it->event_cycle = current_cycle;
 
