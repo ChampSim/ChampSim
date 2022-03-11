@@ -22,8 +22,8 @@ class CacheBus : public MemoryRequestProducer
 public:
   champsim::circular_buffer<PACKET> PROCESSED;
   CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
-  int issue_read(PACKET packet);
-  int issue_write(PACKET packet);
+  bool issue_read(PACKET packet);
+  bool issue_write(PACKET packet);
   void return_data(const PACKET& packet);
 };
 
@@ -113,9 +113,9 @@ public:
 
   void initialize_core();
   void execute_store(std::vector<LSQ_ENTRY>::iterator sq_it);
-  int execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
-  int do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
-  int do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
+  bool execute_load(std::vector<LSQ_ENTRY>::iterator lq_it);
+  bool do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it);
+  bool do_translate_load(std::vector<LSQ_ENTRY>::iterator sq_it);
   void complete_inflight_instruction();
   void handle_memory_return();
   void retire_rob();

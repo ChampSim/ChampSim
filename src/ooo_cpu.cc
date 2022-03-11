@@ -252,8 +252,8 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   for (; begin != end; ++begin)
     trace_packet.instr_depend_on_me.push_back(begin);
 
-  int rq_index = ITLB_bus.issue_read(trace_packet);
-  if (rq_index != -2) {
+  auto success = ITLB_bus.issue_read(trace_packet);
+  if (success) {
     // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
     for (auto dep_it : trace_packet.instr_depend_on_me) {
       dep_it->translated = INFLIGHT;
@@ -303,8 +303,8 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   for (; begin != end; ++begin)
     fetch_packet.instr_depend_on_me.push_back(begin);
 
-  int rq_index = L1I_bus.issue_read(fetch_packet);
-  if (rq_index != -2) {
+  auto success = L1I_bus.issue_read(fetch_packet);
+  if (success) {
     // mark all instructions from this cache line as having been fetched
     for (auto dep_it : fetch_packet.instr_depend_on_me) {
       dep_it->fetched = INFLIGHT;
@@ -594,8 +594,8 @@ void O3_CPU::operate_lsq()
 
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ) && store_bw > 0; ++sq_it) {
     if (sq_it->valid && !sq_it->translated && sq_it->event_cycle < current_cycle) {
-      auto result = do_translate_store(sq_it);
-      if (result != -2) {
+      auto success = do_translate_store(sq_it);
+      if (success) {
         --store_bw;
         sq_it->translated = INFLIGHT;
       }
@@ -615,8 +615,8 @@ void O3_CPU::operate_lsq()
 
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it) {
     if (lq_it->valid && !lq_it->translated && lq_it->event_cycle < current_cycle) {
-      auto result = do_translate_load(lq_it);
-      if (result != -2) {
+      auto success = do_translate_load(lq_it);
+      if (success) {
         --load_bw;
         lq_it->translated = INFLIGHT;
       }
@@ -625,8 +625,8 @@ void O3_CPU::operate_lsq()
 
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ) && load_bw > 0; ++lq_it) {
     if (lq_it->valid && lq_it->translated == COMPLETED && !lq_it->fetched && lq_it->event_cycle < current_cycle) {
-      auto result = execute_load(lq_it);
-      if (result != -2) {
+      auto success = execute_load(lq_it);
+      if (success) {
         --load_bw;
         lq_it->fetched = INFLIGHT;
       }
@@ -634,7 +634,7 @@ void O3_CPU::operate_lsq()
   }
 }
 
-int O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
+bool O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 {
   PACKET data_packet;
   data_packet.address = sq_it->virtual_address;
@@ -681,7 +681,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   }
 }
 
-int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+bool O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
   PACKET data_packet;
   data_packet.address = lq_it->virtual_address;
@@ -698,7 +698,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
   return DTLB_bus.issue_read(data_packet);
 }
 
-int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
+bool O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
   PACKET data_packet;
   data_packet.address = lq_it->physical_address;
@@ -885,8 +885,8 @@ void O3_CPU::retire_rob()
       data_packet.ip = sq_it->ip;
       data_packet.type = RFO;
 
-      auto result = L1D_bus.issue_write(data_packet);
-      if (result == -2)
+      auto success = L1D_bus.issue_write(data_packet);
+      if (!success)
         return;
 
       sq_it->valid = false;
@@ -963,7 +963,7 @@ void O3_CPU::print_deadlock()
   }
 }
 
-int CacheBus::issue_read(PACKET data_packet)
+bool CacheBus::issue_read(PACKET data_packet)
 {
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
@@ -972,7 +972,7 @@ int CacheBus::issue_read(PACKET data_packet)
   return lower_level->add_rq(data_packet);
 }
 
-int CacheBus::issue_write(PACKET data_packet)
+bool CacheBus::issue_write(PACKET data_packet)
 {
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
