@@ -114,7 +114,7 @@ void MEMORY_CONTROLLER::operate()
   }
 }
 
-int MEMORY_CONTROLLER::add_rq(PACKET packet)
+int MEMORY_CONTROLLER::add_rq(const PACKET &packet)
 {
   if (all_warmup_complete < NUM_CPUS) {
     for (auto ret : packet.to_return)
@@ -128,9 +128,10 @@ int MEMORY_CONTROLLER::add_rq(PACKET packet)
   // Check for forwarding
   auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE));
   if (wq_it != std::end(channel.WQ)) {
-    packet.data = wq_it->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
+    PACKET copy{packet};
+    copy.data = wq_it->data;
+    for (auto ret : copy.to_return)
+      ret->return_data(copy);
 
     return -1; // merged index
   }
@@ -158,7 +159,7 @@ int MEMORY_CONTROLLER::add_rq(PACKET packet)
   return get_occupancy(1, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_wq(PACKET packet)
+int MEMORY_CONTROLLER::add_wq(const PACKET &packet)
 {
   if (all_warmup_complete < NUM_CPUS)
     return -1; // Fast-forward
@@ -183,7 +184,7 @@ int MEMORY_CONTROLLER::add_wq(PACKET packet)
   return get_occupancy(2, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_pq(PACKET packet) { return add_rq(packet); }
+int MEMORY_CONTROLLER::add_pq(const PACKET &packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block

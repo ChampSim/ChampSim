@@ -407,7 +407,7 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
   return way;
 }
 
-int CACHE::add_rq(PACKET packet)
+int CACHE::add_rq(const PACKET &packet)
 {
   assert(packet.address != 0);
   RQ_ACCESS++;
@@ -425,9 +425,10 @@ int CACHE::add_rq(PACKET packet)
 
     DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_WQ" << std::endl;)
 
-    packet.data = found_wq->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
+    PACKET copy{packet};
+    copy.data = found_wq->data;
+    for (auto ret : copy.to_return)
+      ret->return_data(copy);
 
     WQ_FORWARD++;
     return -1;
@@ -470,7 +471,7 @@ int CACHE::add_rq(PACKET packet)
   return RQ.occupancy();
 }
 
-int CACHE::add_wq(PACKET packet)
+int CACHE::add_wq(const PACKET &packet)
 {
   WQ_ACCESS++;
 
@@ -577,7 +578,7 @@ void CACHE::va_translate_prefetches()
   }
 }
 
-int CACHE::add_pq(PACKET packet)
+int CACHE::add_pq(const PACKET &packet)
 {
   assert(packet.address != 0);
   PQ_ACCESS++;
@@ -595,9 +596,10 @@ int CACHE::add_pq(PACKET packet)
 
     DP(if (warmup_complete[packet.cpu]) std::cout << " MERGED_WQ" << std::endl;)
 
-    packet.data = found_wq->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
+    PACKET copy{packet};
+    copy.data = found_wq->data;
+    for (auto ret : copy.to_return)
+      ret->return_data(copy);
 
     WQ_FORWARD++;
     return -1;

@@ -53,9 +53,9 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(PACKET packet) override;
-  int add_wq(PACKET packet) override;
-  int add_pq(PACKET packet) override;
+  int add_rq(const PACKET &packet) override;
+  int add_wq(const PACKET &packet) override;
+  int add_pq(const PACKET &packet) override;
 
   void return_data(const PACKET &packet) override;
   void operate() override;

@@ -160,7 +160,7 @@ void PageTableWalker::operate()
   RQ.operate();
 }
 
-int PageTableWalker::add_rq(PACKET packet)
+int PageTableWalker::add_rq(const PACKET &packet)
 {
   assert(packet.address != 0);
 

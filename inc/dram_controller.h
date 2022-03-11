@@ -62,9 +62,9 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
 
-  int add_rq(PACKET packet) override;
-  int add_wq(PACKET packet) override;
-  int add_pq(PACKET packet) override;
+  int add_rq(const PACKET &packet) override;
+  int add_wq(const PACKET &packet) override;
+  int add_pq(const PACKET &packet) override;
 
   void operate() override;
 
