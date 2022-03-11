@@ -101,9 +101,9 @@ public:
   void handle_read();
   void handle_prefetch();
 
-  void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
-  bool readlike_miss(PACKET& handle_pkt);
-  bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  void readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_pkt);
+  bool readlike_miss(const PACKET& handle_pkt);
+  bool filllike_miss(std::size_t set, std::size_t way, const PACKET& handle_pkt);
 
   bool should_activate_prefetcher(int type);
 
