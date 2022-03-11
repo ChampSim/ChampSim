@@ -559,14 +559,12 @@ void CACHE::va_translate_prefetches()
     VAPQ.front().address = vmem.va_to_pa(cpu, VAPQ.front().v_address).first;
 
     // move the translated prefetch over to the regular PQ
-    int result = add_pq(&VAPQ.front());
-
-    // remove the prefetch from the VAPQ
-    if (result != -2)
+    auto success = add_pq(&VAPQ.front());
+    if (success) {
+      // remove the prefetch from the VAPQ
       VAPQ.pop_front();
-
-    if (result > 0)
       pf_issued++;
+    }
   }
 }
 
