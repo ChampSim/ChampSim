@@ -527,16 +527,13 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
       VAPQ.push_back(pf_packet);
       return 1;
     }
+    return 0;
   } else {
-    int result = add_pq(pf_packet);
-    if (result != -2) {
-      if (result > 0)
-        pf_issued++;
-      return 1;
-    }
+    auto success = add_pq(pf_packet);
+    if (success)
+      ++pf_issued;
+    return success;
   }
-
-  return 0;
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
