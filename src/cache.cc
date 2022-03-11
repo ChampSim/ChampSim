@@ -163,7 +163,7 @@ void CACHE::check_collision()
     if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
       rq_it->data = found_wq->data;
       for (auto ret : rq_it->to_return)
-        ret->return_data(&(*rq_it));
+        ret->return_data(*rq_it);
 
       WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
@@ -185,7 +185,7 @@ void CACHE::check_collision()
     if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
       pq_it->data = found_wq->data;
       for (auto ret : pq_it->to_return)
-        ret->return_data(&(*pq_it));
+        ret->return_data(*pq_it);
 
       WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
@@ -464,7 +464,7 @@ bool CACHE::add_rq(const PACKET& packet)
   // if there is no duplicate, add it to RQ
   RQ.push_back(packet);
   RQ.back().forward_checked = false;
-  RQ.back().event_cycle = current_cycle + (warmup_complete[packet->cpu] ? HIT_LATENCY : 0);
+  RQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -493,7 +493,7 @@ bool CACHE::add_wq(const PACKET& packet)
   // if there is no duplicate, add it to the write queue
   WQ.push_back(packet);
   WQ.back().forward_checked = false;
-  WQ.back().event_cycle = current_cycle + (warmup_complete[packet->cpu] ? HIT_LATENCY : 0);
+  WQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -584,9 +584,9 @@ bool CACHE::add_pq(const PACKET& packet)
   }
 
   // if there is no duplicate, add it to PQ
-  PQ.push_back(*packet);
+  PQ.push_back(packet);
   PQ.back().forward_checked = false;
-  PQ.back().event_cycle = current_cycle + (warmup_complete[packet->cpu] ? HIT_LATENCY : 0);
+  PQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
