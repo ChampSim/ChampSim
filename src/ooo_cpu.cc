@@ -97,14 +97,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
     arch_instr.branch_type = BRANCH_OTHER;
+  } else {
+    assert(!arch_instr.is_branch);
+    assert(arch_instr.branch_type == NOT_BRANCH);
+    arch_instr.branch_taken = 0;
+  }
+  if (arch_instr.branch_taken != 1) {
+    // clear the branch target for non-taken instructions
+    arch_instr.branch_target = 0;
   }
 
   total_branch_types[arch_instr.branch_type]++;
-
-  if ((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1)) {
-    // clear the branch target for this instruction
-    arch_instr.branch_target = 0;
-  }
 
   // Stack Pointer Folding
   // The exact, true value of the stack pointer for any given instruction can
