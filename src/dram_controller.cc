@@ -17,6 +17,18 @@ struct next_schedule : public invalid_is_maximal<PACKET, min_event_cycle<PACKET>
 void MEMORY_CONTROLLER::operate()
 {
   for (auto& channel : channels) {
+    if (all_warmup_complete < NUM_CPUS) {
+      for (auto &entry : channel.RQ) {
+        for (auto ret : entry.to_return)
+          ret->return_data(&entry);
+
+        entry = {};
+      }
+
+      for (auto &entry : channel.WQ)
+        entry = {};
+    }
+
     // Check for forwarding
     channel.check_collision();
 
@@ -164,13 +176,6 @@ void DRAM_CHANNEL::check_collision()
 
 int MEMORY_CONTROLLER::add_rq(PACKET* packet)
 {
-  if (all_warmup_complete < NUM_CPUS) {
-    for (auto ret : packet->to_return)
-      ret->return_data(packet);
-
-    return -1; // Fast-forward
-  }
-
   auto& channel = channels[dram_get_channel(packet->address)];
 
   // Find empty slot
@@ -182,14 +187,11 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
     return get_occupancy(1, packet->address);
   }
 
-  return 0;
+  return -2;
 }
 
 int MEMORY_CONTROLLER::add_wq(PACKET* packet)
 {
-  if (all_warmup_complete < NUM_CPUS)
-    return -1; // Fast-forward
-
   auto& channel = channels[dram_get_channel(packet->address)];
 
   // search for the empty index
