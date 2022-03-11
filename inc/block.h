@@ -37,7 +37,7 @@ struct is_valid<PACKET> {
 };
 
 template <typename LIST>
-void packet_dep_merge(LIST& dest, LIST& src)
+void packet_dep_merge(LIST& dest, const LIST& src)
 {
   dest.reserve(std::size(dest) + std::size(src));
   auto middle = std::end(dest);
