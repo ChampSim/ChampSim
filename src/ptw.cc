@@ -26,7 +26,7 @@ void PageTableWalker::handle_read()
   while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
     PACKET& handle_pkt = RQ.front();
 
-    DP(if (warmup_complete[packet->cpu]) {
+    DP(if (warmup_complete[handle_pkt.cpu]) {
       std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
       std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
       std::cout << " full_v_addr: " << handle_pkt.v_address;
@@ -54,7 +54,7 @@ void PageTableWalker::handle_read()
     packet.translation_level = packet.init_translation_level;
     packet.to_return = {this};
 
-    int rq_index = lower_level->add_rq(&packet);
+    int rq_index = lower_level->add_rq(packet);
     if (rq_index == -2)
       return;
 
@@ -99,7 +99,7 @@ void PageTableWalker::handle_fill()
         });
 
         for (auto ret : fill_mshr->to_return)
-          ret->return_data(&(*fill_mshr));
+          ret->return_data(*fill_mshr);
 
         if (warmup_complete[cpu])
           total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
@@ -138,7 +138,7 @@ void PageTableWalker::handle_fill()
         packet.to_return = {this};
         packet.translation_level = fill_mshr->translation_level - 1;
 
-        int rq_index = lower_level->add_rq(&packet);
+        int rq_index = lower_level->add_rq(packet);
         if (rq_index != -2) {
           fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
           fill_mshr->address = packet.address;
@@ -160,12 +160,12 @@ void PageTableWalker::operate()
   RQ.operate();
 }
 
-bool PageTableWalker::add_rq(PACKET* packet)
+bool PageTableWalker::add_rq(const PACKET& packet)
 {
-  assert(packet->address != 0);
+  assert(packet.address != 0);
 
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
+  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet.address, LOG2_PAGE_SIZE));
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
@@ -174,15 +174,15 @@ bool PageTableWalker::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
-  RQ.push_back(*packet);
+  RQ.push_back(packet);
 
   return true;
 }
 
-void PageTableWalker::return_data(PACKET* packet)
+void PageTableWalker::return_data(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
-    if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry)) {
+    if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {
       mshr_entry.event_cycle = current_cycle;
 
       DP(if (warmup_complete[cpu]) {

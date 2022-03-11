@@ -20,7 +20,7 @@ void MEMORY_CONTROLLER::operate()
     if (all_warmup_complete < NUM_CPUS) {
       for (auto &entry : channel.RQ) {
         for (auto ret : entry.to_return)
-          ret->return_data(&entry);
+          ret->return_data(entry);
 
         entry = {};
       }
@@ -35,7 +35,7 @@ void MEMORY_CONTROLLER::operate()
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
       for (auto ret : channel.active_request->pkt->to_return)
-        ret->return_data(&(*channel.active_request->pkt));
+        ret->return_data(*channel.active_request->pkt);
 
       channel.active_request->valid = false;
 
@@ -150,7 +150,7 @@ void DRAM_CHANNEL::check_collision()
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         rq_it->data = wq_it->data;
         for (auto ret : rq_it->to_return)
-          ret->return_data(&(*rq_it));
+          ret->return_data(*rq_it);
 
         *rq_it = {};
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
@@ -174,15 +174,15 @@ void DRAM_CHANNEL::check_collision()
   }
 }
 
-bool MEMORY_CONTROLLER::add_rq(PACKET* packet)
+bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 {
-  auto& channel = channels[dram_get_channel(packet->address)];
+  auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
   if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()); rq_it != std::end(channel.RQ)) {
-    packet->forward_checked = false;
-    packet->event_cycle = current_cycle;
     *rq_it = *packet;
+    rq_it->forward_checked = false;
+    rq_it->event_cycle = current_cycle;
 
     return true;
   }
@@ -190,15 +190,15 @@ bool MEMORY_CONTROLLER::add_rq(PACKET* packet)
   return false;
 }
 
-bool MEMORY_CONTROLLER::add_wq(PACKET* packet)
+bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
 {
-  auto& channel = channels[dram_get_channel(packet->address)];
+  auto& channel = channels[dram_get_channel(packet.address)];
 
   // search for the empty index
   if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()); wq_it != std::end(channel.WQ)) {
-    packet->forward_checked = false;
-    packet->event_cycle = current_cycle;
     *wq_it = *packet;
+    wq_it->forward_checked = false;
+    wq_it->event_cycle = current_cycle;
 
     return true;
   }
@@ -207,7 +207,7 @@ bool MEMORY_CONTROLLER::add_wq(PACKET* packet)
   return false;
 }
 
-bool MEMORY_CONTROLLER::add_pq(PACKET* packet) { return add_rq(packet); }
+bool MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block

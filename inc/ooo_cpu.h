@@ -24,7 +24,7 @@ public:
   CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(PACKET* packet);
+  void return_data(const PACKET& packet);
 };
 
 // cpu

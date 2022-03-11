@@ -97,14 +97,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
     arch_instr.branch_type = BRANCH_OTHER;
+  } else {
+    assert(!arch_instr.is_branch);
+    assert(arch_instr.branch_type == NOT_BRANCH);
+    arch_instr.branch_taken = 0;
+  }
+  if (arch_instr.branch_taken != 1) {
+    // clear the branch target for non-taken instructions
+    arch_instr.branch_target = 0;
   }
 
   total_branch_types[arch_instr.branch_type]++;
-
-  if ((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1)) {
-    // clear the branch target for this instruction
-    arch_instr.branch_target = 0;
-  }
 
   // Stack Pointer Folding
   // The exact, true value of the stack pointer for any given instruction can
@@ -902,10 +905,10 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET* packet)
+void CacheBus::return_data(const PACKET& packet)
 {
-  if (packet->type != PREFETCH) {
-    PROCESSED.push_back(*packet);
+  if (packet.type != PREFETCH) {
+    PROCESSED.push_back(packet);
   }
 }
 
@@ -966,7 +969,7 @@ bool CacheBus::issue_read(PACKET data_packet)
   data_packet.cpu = cpu;
   data_packet.to_return = {this};
 
-  return lower_level->add_rq(&data_packet);
+  return lower_level->add_rq(data_packet);
 }
 
 bool CacheBus::issue_write(PACKET data_packet)
@@ -974,5 +977,5 @@ bool CacheBus::issue_write(PACKET data_packet)
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
 
-  return lower_level->add_wq(&data_packet);
+  return lower_level->add_wq(data_packet);
 }
