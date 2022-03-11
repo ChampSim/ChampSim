@@ -160,7 +160,8 @@ void CACHE::check_collision()
   }
 
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); rq_it != std::end(RQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
+    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, match_offset_bits ? 0 : OFFSET_BITS));
+        found_wq != std::end(WQ)) {
       rq_it->data = found_wq->data;
       for (auto ret : rq_it->to_return)
         ret->return_data(*rq_it);
@@ -182,7 +183,8 @@ void CACHE::check_collision()
   }
 
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); pq_it != std::end(PQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
+    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, match_offset_bits ? 0 : OFFSET_BITS));
+        found_wq != std::end(WQ)) {
       pq_it->data = found_wq->data;
       for (auto ret : pq_it->to_return)
         ret->return_data(*pq_it);
@@ -448,8 +450,7 @@ bool CACHE::add_rq(const PACKET& packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.size();
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << RQ.size();
   })
 
   // check occupancy
@@ -478,10 +479,9 @@ bool CACHE::add_wq(const PACKET& packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << WQ.size();
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << WQ.size();
   })
-    
+
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
     DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
@@ -570,8 +570,7 @@ bool CACHE::add_pq(const PACKET& packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << PQ.size();
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << PQ.size();
   })
 
   // check occupancy

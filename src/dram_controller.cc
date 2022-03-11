@@ -18,14 +18,14 @@ void MEMORY_CONTROLLER::operate()
 {
   for (auto& channel : channels) {
     if (all_warmup_complete < NUM_CPUS) {
-      for (auto &entry : channel.RQ) {
+      for (auto& entry : channel.RQ) {
         for (auto ret : entry.to_return)
           ret->return_data(entry);
 
         entry = {};
       }
 
-      for (auto &entry : channel.WQ)
+      for (auto& entry : channel.WQ)
         entry = {};
     }
 
