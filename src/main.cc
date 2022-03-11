@@ -230,15 +230,15 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
 
   cache->total_miss_latency = 0;
 
-  cache->RQ_ACCESS = 0;
-  cache->RQ_MERGED = 0;
-  cache->RQ_TO_CACHE = 0;
+  cache->queues.RQ_ACCESS = 0;
+  cache->queues.RQ_MERGED = 0;
+  cache->queues.RQ_TO_CACHE = 0;
 
-  cache->WQ_ACCESS = 0;
-  cache->WQ_MERGED = 0;
-  cache->WQ_TO_CACHE = 0;
-  cache->WQ_FORWARD = 0;
-  cache->WQ_FULL = 0;
+  cache->queues.WQ_ACCESS = 0;
+  cache->queues.WQ_MERGED = 0;
+  cache->queues.WQ_TO_CACHE = 0;
+  cache->queues.WQ_FORWARD = 0;
+  cache->queues.WQ_FULL = 0;
 }
 
 void finish_warmup()

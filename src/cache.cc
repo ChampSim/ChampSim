@@ -52,9 +52,9 @@ void CACHE::handle_fill()
 
 void CACHE::handle_writeback()
 {
-  while (writes_available_this_cycle > 0 && !std::empty(WQ) && WQ.front().event_cycle <= current_cycle) {
+  while (writes_available_this_cycle > 0 && !std::empty(queues.WQ) && queues.WQ.front().event_cycle <= current_cycle) {
     // handle the oldest entry
-    PACKET& handle_pkt = WQ.front();
+    PACKET& handle_pkt = queues.WQ.front();
 
     // access cache
     uint32_t set = get_set(handle_pkt.address);
@@ -96,15 +96,15 @@ void CACHE::handle_writeback()
 
     // remove this entry from WQ
     writes_available_this_cycle--;
-    WQ.pop_front();
+    queues.WQ.pop_front();
   }
 }
 
 void CACHE::handle_read()
 {
-  while (reads_available_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle) {
+  while (reads_available_this_cycle > 0 && !std::empty(queues.RQ) && queues.RQ.front().event_cycle <= current_cycle) {
     // handle the oldest entry
-    PACKET& handle_pkt = RQ.front();
+    PACKET& handle_pkt = queues.RQ.front();
 
     // A (hopefully temporary) hack to know whether to send the evicted paddr or
     // vaddr to the prefetcher
@@ -123,16 +123,16 @@ void CACHE::handle_read()
     }
 
     // remove this entry from RQ
-    RQ.pop_front();
+    queues.RQ.pop_front();
     reads_available_this_cycle--;
   }
 }
 
 void CACHE::handle_prefetch()
 {
-  while (reads_available_this_cycle > 0 && !std::empty(PQ) && PQ.front().event_cycle <= current_cycle) {
+  while (reads_available_this_cycle > 0 && !std::empty(queues.PQ) && queues.PQ.front().event_cycle <= current_cycle) {
     // handle the oldest entry
-    PACKET& handle_pkt = PQ.front();
+    PACKET& handle_pkt = queues.PQ.front();
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt.address, set);
@@ -147,15 +147,15 @@ void CACHE::handle_prefetch()
     }
 
     // remove this entry from PQ
-    PQ.pop_front();
+    queues.PQ.pop_front();
     reads_available_this_cycle--;
   }
 }
 
-void CACHE::check_collision()
+void CACHE::TranslatingQueues::check_collision(std::size_t write_shamt, std::size_t read_shamt)
 {
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
-    if (auto found = std::find_if(std::begin(WQ), wq_it, eq_addr<PACKET>(wq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != wq_it) {
+    if (auto found = std::find_if(std::begin(WQ), wq_it, eq_addr<PACKET>(wq_it->address, write_shamt)); found != wq_it) {
       WQ_MERGED++;
       wq_it = WQ.erase(wq_it);
     } else {
@@ -165,14 +165,14 @@ void CACHE::check_collision()
   }
 
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); rq_it != std::end(RQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
+    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, write_shamt)); found_wq != std::end(WQ)) {
       rq_it->data = found_wq->data;
       for (auto ret : rq_it->to_return)
         ret->return_data(*rq_it);
 
       WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
-    } else if (auto found_rq = std::find_if(std::begin(RQ), rq_it, eq_addr<PACKET>(rq_it->address, OFFSET_BITS)); found_rq != rq_it) {
+    } else if (auto found_rq = std::find_if(std::begin(RQ), rq_it, eq_addr<PACKET>(rq_it->address, read_shamt)); found_rq != rq_it) {
       packet_dep_merge(found_rq->lq_index_depend_on_me, rq_it->lq_index_depend_on_me);
       packet_dep_merge(found_rq->sq_index_depend_on_me, rq_it->sq_index_depend_on_me);
       packet_dep_merge(found_rq->instr_depend_on_me, rq_it->instr_depend_on_me);
@@ -187,14 +187,14 @@ void CACHE::check_collision()
   }
 
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); pq_it != std::end(PQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found_wq != std::end(WQ)) {
+    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, write_shamt)); found_wq != std::end(WQ)) {
       pq_it->data = found_wq->data;
       for (auto ret : pq_it->to_return)
         ret->return_data(*pq_it);
 
       WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
-    } else if (auto found = std::find_if(std::begin(PQ), pq_it, eq_addr<PACKET>(pq_it->address, OFFSET_BITS)); found != pq_it) {
+    } else if (auto found = std::find_if(std::begin(PQ), pq_it, eq_addr<PACKET>(pq_it->address, read_shamt)); found != pq_it) {
       found->fill_level = std::min(found->fill_level, pq_it->fill_level);
       packet_dep_merge(found->to_return, pq_it->to_return);
 
@@ -402,7 +402,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
 void CACHE::operate()
 {
-  check_collision();
+  queues.check_collision(match_offset_bits ? 0 : OFFSET_BITS, OFFSET_BITS);
   operate_writes();
   operate_reads();
 
@@ -448,6 +448,14 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 bool CACHE::add_rq(const PACKET &packet)
 {
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
+  return queues.add_rq(fwd_pkt);
+}
+
+bool CACHE::TranslatingQueues::add_rq(const PACKET &packet)
+{
   assert(packet.address != 0);
   RQ_ACCESS++;
 
@@ -468,8 +476,6 @@ bool CACHE::add_rq(const PACKET &packet)
 
   // if there is no duplicate, add it to RQ
   RQ.push_back(packet);
-  RQ.back().forward_checked = false;
-  RQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -478,6 +484,14 @@ bool CACHE::add_rq(const PACKET &packet)
 }
 
 bool CACHE::add_wq(const PACKET &packet)
+{
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
+  return queues.add_wq(fwd_pkt);
+}
+
+bool CACHE::TranslatingQueues::add_wq(const PACKET &packet)
 {
   WQ_ACCESS++;
 
@@ -497,8 +511,6 @@ bool CACHE::add_wq(const PACKET &packet)
 
   // if there is no duplicate, add it to the write queue
   WQ.push_back(packet);
-  WQ.back().forward_checked = false;
-  WQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -522,14 +534,14 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
   if (virtual_prefetch) {
-    if (std::size(VAPQ) < PQ_SIZE) {
+    if (std::size(queues.VAPQ) < queues.PQ_SIZE) {
       pf_packet.event_cycle = current_cycle + VA_PREFETCH_TRANSLATION_LATENCY;
-      VAPQ.push_back(pf_packet);
+      queues.VAPQ.push_back(pf_packet);
       return 1;
     }
     return 0;
   } else {
-    auto success = add_pq(pf_packet);
+    auto success = queues.add_pq(pf_packet);
     if (success)
       ++pf_issued;
     return success;
@@ -555,15 +567,15 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
 void CACHE::va_translate_prefetches()
 {
   // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-  if (!std::empty(VAPQ) && VAPQ.front().event_cycle <= current_cycle) {
-    VAPQ.front().address = vmem.va_to_pa(cpu, VAPQ.front().v_address).first;
+  if (!std::empty(queues.VAPQ) && queues.VAPQ.front().event_cycle <= current_cycle) {
+    queues.VAPQ.front().address = vmem.va_to_pa(cpu, queues.VAPQ.front().v_address).first;
 
     // move the translated prefetch over to the regular PQ
-    int result = add_pq(VAPQ.front());
+    int result = add_pq(queues.VAPQ.front());
 
     // remove the prefetch from the VAPQ
     if (result != -2)
-      VAPQ.pop_front();
+      queues.VAPQ.pop_front();
 
     if (result > 0)
       pf_issued++;
@@ -571,6 +583,14 @@ void CACHE::va_translate_prefetches()
 }
 
 bool CACHE::add_pq(const PACKET &packet)
+{
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
+  return queues.add_pq(fwd_pkt);
+}
+
+bool CACHE::TranslatingQueues::add_pq(const PACKET &packet)
 {
   assert(packet.address != 0);
   PQ_ACCESS++;
@@ -592,8 +612,6 @@ bool CACHE::add_pq(const PACKET &packet)
 
   // if there is no duplicate, add it to PQ
   PQ.push_back(packet);
-  PQ.back().forward_checked = false;
-  PQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -640,11 +658,11 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
   else if (queue_type == 1)
-    return RQ.size();
+    return std::size(queues.RQ);
   else if (queue_type == 2)
-    return WQ.size();
+    return std::size(queues.WQ);
   else if (queue_type == 3)
-    return PQ.size();
+    return std::size(queues.PQ);
 
   return 0;
 }
@@ -654,11 +672,11 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return MSHR_SIZE;
   else if (queue_type == 1)
-    return RQ_SIZE;
+    return queues.RQ_SIZE;
   else if (queue_type == 2)
-    return WQ_SIZE;
+    return queues.WQ_SIZE;
   else if (queue_type == 3)
-    return PQ_SIZE;
+    return queues.PQ_SIZE;
 
   return 0;
 }
