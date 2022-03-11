@@ -559,11 +559,12 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
 void CACHE::va_translate_prefetches()
 {
   // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-  if (!std::empty(queues.VAPQ) && queues.VAPQ.front().event_cycle <= current_cycle) {
+  bool success = true;
+  while (success && !std::empty(queues.VAPQ) && queues.VAPQ.front().event_cycle <= current_cycle) {
     queues.VAPQ.front().address = vmem.va_to_pa(cpu, queues.VAPQ.front().v_address).first;
 
     // move the translated prefetch over to the regular PQ
-    auto success = add_pq(queues.VAPQ.front());
+    success = add_pq(queues.VAPQ.front());
     if (success) {
       // remove the prefetch from the VAPQ
       queues.VAPQ.pop_front();
