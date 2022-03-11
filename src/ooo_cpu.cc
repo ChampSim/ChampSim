@@ -91,14 +91,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.is_branch = 1;
     arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
     arch_instr.branch_type = BRANCH_OTHER;
+  } else {
+    assert(!arch_instr.is_branch);
+    assert(arch_instr.branch_type == NOT_BRANCH);
+    arch_instr.branch_taken = 0;
+  }
+  if (arch_instr.branch_taken != 1) {
+    // clear the branch target for non-taken instructions
+    arch_instr.branch_target = 0;
   }
 
   total_branch_types[arch_instr.branch_type]++;
-
-  if ((arch_instr.is_branch != 1) || (arch_instr.branch_taken != 1)) {
-    // clear the branch target for this instruction
-    arch_instr.branch_target = 0;
-  }
 
   // Stack Pointer Folding
   // The exact, true value of the stack pointer for any given instruction can
@@ -132,15 +135,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
     uint64_t predicted_branch_target = btb_result.first;
     uint8_t always_taken = btb_result.second;
-    uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((branch_prediction == 0) && (always_taken == 0)) {
+    arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+    if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
       predicted_branch_target = 0;
     }
 
     // call code prefetcher every time the branch predictor is used
     static_cast<CACHE*>(L1I_bus.lower_level)->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
-    if (predicted_branch_target != arch_instr.branch_target) {
+    if (predicted_branch_target != arch_instr.branch_target
+        || (arch_instr.branch_type == BRANCH_CONDITIONAL
+            && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       branch_mispredictions++;
       total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       branch_type_misses[arch_instr.branch_type]++;
@@ -214,12 +219,17 @@ void O3_CPU::translate_fetch()
     return;
 
   // scan through IFETCH_BUFFER to find instructions that need to be translated
+  std::size_t to_read = static_cast<CACHE*>(ITLB_bus.lower_level)->MAX_READ;
   auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
-  uint64_t find_addr = itlb_req_begin->ip;
-  auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
-                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
-  if (itlb_req_begin != itlb_req_end) {
-    do_translate_fetch(itlb_req_begin, itlb_req_end);
+  while (to_read > 0 && itlb_req_begin != IFETCH_BUFFER.end()) {
+    uint64_t find_addr = itlb_req_begin->ip;
+    auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
+                                     [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
+    if (itlb_req_begin != itlb_req_end) {
+      do_translate_fetch(itlb_req_begin, itlb_req_end);
+    }
+    --to_read;
+    itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
   }
 }
 
@@ -258,13 +268,18 @@ void O3_CPU::fetch_instruction()
 
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
+  std::size_t to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
   auto l1i_req_begin =
       std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
-  uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
-                                  [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
-  if (l1i_req_begin != l1i_req_end) {
-    do_fetch_instruction(l1i_req_begin, l1i_req_end);
+  while (to_read > 0 && l1i_req_begin != IFETCH_BUFFER.end()) {
+    uint64_t find_addr = l1i_req_begin->instruction_pa;
+    auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
+                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
+    if (l1i_req_begin != l1i_req_end) {
+      do_fetch_instruction(l1i_req_begin, l1i_req_end);
+    }
+    --to_read;
+    l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
   }
 }
 
@@ -321,7 +336,8 @@ void O3_CPU::decode_instruction()
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
-      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)) {
+      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
+          || (db_entry.branch_type == BRANCH_CONDITIONAL && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
@@ -778,7 +794,10 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET* packet) { PROCESSED.push_back(*packet); }
+void CacheBus::return_data(const PACKET& packet)
+{
+  PROCESSED.push_back(packet);
+}
 
 void O3_CPU::print_deadlock()
 {
@@ -848,7 +867,7 @@ int CacheBus::issue_read(PACKET data_packet)
   data_packet.cpu = cpu;
   data_packet.to_return = {this};
 
-  return lower_level->add_rq(&data_packet);
+  return lower_level->add_rq(data_packet);
 }
 
 int CacheBus::issue_write(PACKET data_packet)
@@ -856,5 +875,5 @@ int CacheBus::issue_write(PACKET data_packet)
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
 
-  return lower_level->add_wq(&data_packet);
+  return lower_level->add_wq(data_packet);
 }

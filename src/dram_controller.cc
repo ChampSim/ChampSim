@@ -21,7 +21,7 @@ void MEMORY_CONTROLLER::operate()
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
       for (auto ret : channel.active_request->pkt->to_return)
-        ret->return_data(&(*channel.active_request->pkt));
+        ret->return_data(*channel.active_request->pkt);
 
       channel.active_request->valid = false;
 
@@ -115,36 +115,37 @@ void MEMORY_CONTROLLER::operate()
   }
 }
 
-int MEMORY_CONTROLLER::add_rq(PACKET* packet)
+int MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 {
   if (all_warmup_complete < NUM_CPUS) {
-    for (auto ret : packet->to_return)
+    for (auto ret : packet.to_return)
       ret->return_data(packet);
 
     return -1; // Fast-forward
   }
 
-  auto& channel = channels[dram_get_channel(packet->address)];
+  auto& channel = channels[dram_get_channel(packet.address)];
 
   // Check for forwarding
-  auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
+  auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE));
   if (wq_it != std::end(channel.WQ)) {
-    packet->data = wq_it->data;
-    for (auto ret : packet->to_return)
-      ret->return_data(packet);
+    PACKET copy{packet};
+    copy.data = wq_it->data;
+    for (auto ret : copy.to_return)
+      ret->return_data(copy);
 
     return -1; // merged index
   }
 
   // Check for duplicates
-  auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
+  auto rq_it = std::find_if(std::begin(channel.RQ), std::end(channel.RQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE));
   if (rq_it != std::end(channel.RQ)) {
     auto instr_copy = std::move(rq_it->instr_depend_on_me);
     auto ret_copy = std::move(rq_it->to_return);
 
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet->instr_depend_on_me), std::end(packet->instr_depend_on_me),
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet.instr_depend_on_me), std::end(packet.instr_depend_on_me),
                    std::back_inserter(rq_it->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
-    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet->to_return), std::end(packet->to_return), std::back_inserter(rq_it->to_return));
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet.to_return), std::end(packet.to_return), std::back_inserter(rq_it->to_return));
 
     return std::distance(std::begin(channel.RQ), rq_it); // merged index
   }
@@ -155,21 +156,21 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
     return 0;
   }
 
-  *rq_it = *packet;
+  *rq_it = packet;
   rq_it->event_cycle = current_cycle;
 
-  return get_occupancy(1, packet->address);
+  return get_occupancy(1, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_wq(PACKET* packet)
+int MEMORY_CONTROLLER::add_wq(const PACKET& packet)
 {
   if (all_warmup_complete < NUM_CPUS)
     return -1; // Fast-forward
 
-  auto& channel = channels[dram_get_channel(packet->address)];
+  auto& channel = channels[dram_get_channel(packet.address)];
 
   // Check for duplicates
-  auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
+  auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet.address, LOG2_BLOCK_SIZE));
   if (wq_it != std::end(channel.WQ))
     return 0;
 
@@ -180,13 +181,13 @@ int MEMORY_CONTROLLER::add_wq(PACKET* packet)
     return -2;
   }
 
-  *wq_it = *packet;
+  *wq_it = packet;
   wq_it->event_cycle = current_cycle;
 
-  return get_occupancy(2, packet->address);
+  return get_occupancy(2, packet.address);
 }
 
-int MEMORY_CONTROLLER::add_pq(PACKET* packet) { return add_rq(packet); }
+int MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block
