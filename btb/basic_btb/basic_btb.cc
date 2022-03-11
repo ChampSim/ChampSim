@@ -14,10 +14,15 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 
+#define BRANCH_INFO_INDIRECT 0
+#define BRANCH_INFO_RETURN 1
+#define BRANCH_INFO_ALWAYS_TAKEN 2
+#define BRANCH_INFO_CONDITIONAL 3
+
 struct BASIC_BTB_ENTRY {
   uint64_t ip_tag;
   uint64_t target;
-  uint8_t always_taken;
+  uint8_t branch_info;
   uint64_t lru;
 };
 
@@ -131,7 +136,7 @@ void O3_CPU::initialize_btb()
     for (uint32_t j = 0; j < BASIC_BTB_WAYS; j++) {
       basic_btb[cpu][i][j].ip_tag = 0;
       basic_btb[cpu][i][j].target = 0;
-      basic_btb[cpu][i][j].always_taken = 0;
+      basic_btb[cpu][i][j].branch_info = BRANCH_INFO_ALWAYS_TAKEN;
       basic_btb[cpu][i][j].lru = 0;
     }
   }
@@ -151,48 +156,36 @@ void O3_CPU::initialize_btb()
   }
 }
 
-std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
+std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  uint8_t always_taken = false;
-  if (branch_type != BRANCH_CONDITIONAL) {
-    always_taken = true;
+  auto btb_entry = basic_btb_find_entry(cpu, ip);
+
+  if (btb_entry == NULL) {
+    // no prediction for this IP
+    return std::make_pair(0, false);
   }
 
-  if ((branch_type == BRANCH_DIRECT_CALL) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    // add something to the RAS
-    push_basic_btb_ras(cpu, ip);
-  }
+  basic_btb_update_lru(cpu, btb_entry);
 
-  if (branch_type == BRANCH_RETURN) {
+  if (btb_entry->branch_info == BRANCH_INFO_INDIRECT) {
+    return std::make_pair(basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], true);
+  } else if (btb_entry->branch_info == BRANCH_INFO_RETURN) {
     // peek at the top of the RAS
-    uint64_t target = peek_basic_btb_ras(cpu);
     // and adjust for the size of the call instr
-    target += basic_btb_get_call_size(cpu, target);
-
-    return std::make_pair(target, always_taken);
-  } else if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    return std::make_pair(basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], always_taken);
+    uint64_t target = peek_basic_btb_ras(cpu);
+    if (target) target += basic_btb_get_call_size(cpu, target);
+    return std::make_pair(target, true);
   } else {
-    // use BTB for all other branches + direct calls
-    auto btb_entry = basic_btb_find_entry(cpu, ip);
-
-    if (btb_entry == NULL) {
-      // no prediction for this IP
-      always_taken = true;
-      return std::make_pair(0, always_taken);
-    }
-
-    always_taken = btb_entry->always_taken;
-    basic_btb_update_lru(cpu, btb_entry);
-
-    return std::make_pair(btb_entry->target, always_taken);
+    return std::make_pair(btb_entry->target, btb_entry->branch_info != BRANCH_INFO_CONDITIONAL);
   }
-
-  return std::make_pair(0, always_taken);
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  if ((branch_type == BRANCH_DIRECT_CALL) || (branch_type == BRANCH_INDIRECT_CALL)) {
+    // add something to the RAS
+    push_basic_btb_ras(cpu, ip);
+  }
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;
@@ -203,7 +196,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       basic_btb_conditional_history[cpu] |= 1;
     }
   }
-
   if (branch_type == BRANCH_RETURN) {
     // recalibrate call-return offset
     // if our return prediction got us into the right ball park, but not the
@@ -213,27 +205,29 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (estimated_call_instr_size <= 10) {
       basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(call_ip)] = estimated_call_instr_size;
     }
-  } else if ((branch_type != BRANCH_INDIRECT) && (branch_type != BRANCH_INDIRECT_CALL)) {
-    // use BTB
-    auto btb_entry = basic_btb_find_entry(cpu, ip);
+  }
 
-    if (btb_entry == NULL) {
-      if ((branch_target != 0) && taken) {
-        // no prediction for this entry so far, so allocate one
-        uint64_t set = basic_btb_set_index(ip);
-        auto repl_entry = basic_btb_get_lru_entry(cpu, set);
+  // Update BTB
+  auto btb_entry = basic_btb_find_entry(cpu, ip);
 
-        repl_entry->ip_tag = ip;
-        repl_entry->target = branch_target;
-        repl_entry->always_taken = 1;
-        basic_btb_update_lru(cpu, repl_entry);
-      }
-    } else {
-      // update an existing entry
-      btb_entry->target = branch_target;
-      if (!taken) {
-        btb_entry->always_taken = 0;
-      }
+  if (btb_entry == NULL) {
+    if ((branch_target == 0) || !taken) {
+      return;
     }
+    // no prediction for this entry so far, so allocate one
+    uint64_t set = basic_btb_set_index(ip);
+    btb_entry = basic_btb_get_lru_entry(cpu, set);
+    btb_entry->ip_tag = ip;
+    btb_entry->branch_info = BRANCH_INFO_ALWAYS_TAKEN;
+    basic_btb_update_lru(cpu, btb_entry);
+  }
+  // update btb entry
+  btb_entry->target = branch_target;
+  if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
+    btb_entry->branch_info = BRANCH_INFO_INDIRECT;
+  } else if (branch_type == BRANCH_RETURN) {
+    btb_entry->branch_info = BRANCH_INFO_RETURN;
+  } else if (!taken) {
+    btb_entry->branch_info = BRANCH_INFO_CONDITIONAL;
   }
 }

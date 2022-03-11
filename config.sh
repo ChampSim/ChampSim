@@ -443,9 +443,9 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n}\n')
     wfp.write('\n')
 
-    wfp.write('\n'.join('uint8_t {1}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(*b) for b in bpred_predicts))
-    wfp.write('\nuint8_t impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type == bpred_t::{}) return {}(ip, predicted_target, always_taken, branch_type);'.format(*b) for b in bpred_predicts))
+    wfp.write('\n'.join('uint8_t {1}(uint64_t);'.format(*b) for b in bpred_predicts))
+    wfp.write('\nuint8_t impl_predict_branch(uint64_t ip)\n{\n    ')
+    wfp.write('\n    '.join('if (bpred_type == bpred_t::{}) return {}(ip);'.format(*b) for b in bpred_predicts))
     wfp.write('\n    throw std::invalid_argument("Branch predictor module not found");')
     wfp.write('\n    return 0;\n}\n\n')
 
@@ -468,9 +468,9 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n}\n')
     wfp.write('\n')
 
-    wfp.write('\n'.join('std::pair<uint64_t, uint8_t> {1}(uint64_t, uint8_t);'.format(*b) for b in btb_predicts))
-    wfp.write('\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_type);'.format(*b) for b in btb_predicts))
+    wfp.write('\n'.join('std::pair<uint64_t, uint8_t> {1}(uint64_t);'.format(*b) for b in btb_predicts))
+    wfp.write('\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip);'.format(*b) for b in btb_predicts))
     wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
     wfp.write('\n}\n')
     wfp.write('\n')

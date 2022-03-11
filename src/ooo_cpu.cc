@@ -127,9 +127,15 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     }
   }
 
-  // add this instruction to the IFETCH_BUFFER
+  // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
+  std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip);
+  uint64_t predicted_branch_target = btb_result.first;
+  uint8_t always_taken = btb_result.second;
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip);
+  if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
+    predicted_branch_target = 0;
+  }
 
-  // handle branch prediction
   if (arch_instr.is_branch) {
 
     DP(if (warmup_complete[cpu]) {
@@ -137,15 +143,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     });
 
     num_branch++;
-
-    std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
-    uint64_t predicted_branch_target = btb_result.first;
-    uint8_t always_taken = btb_result.second;
-    arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
-      predicted_branch_target = 0;
-    }
-
+    
     // call code prefetcher every time the branch predictor is used
     static_cast<CACHE*>(L1I_bus.lower_level)->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 

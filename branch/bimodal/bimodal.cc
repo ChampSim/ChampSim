@@ -14,7 +14,7 @@ void O3_CPU::initialize_branch_predictor()
   bimodal_table[this] = {};
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
   uint32_t hash = ip % BIMODAL_PRIME;
 
