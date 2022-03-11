@@ -235,8 +235,8 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
   auto copy{handle_pkt};
   copy.data = hit_block.data;
-  for (auto ret : handle_pkt.to_return)
-    ret->return_data(handle_pkt);
+  for (auto ret : copy.to_return)
+    ret->return_data(copy);
 
   // update prefetch stats and reset prefetch bit
   if (hit_block.prefetch) {
