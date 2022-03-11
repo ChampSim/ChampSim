@@ -902,10 +902,10 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET* packet)
+void CacheBus::return_data(PACKET packet)
 {
-  if (packet->type != PREFETCH) {
-    PROCESSED.push_back(*packet);
+  if (packet.type != PREFETCH) {
+    PROCESSED.push_back(packet);
   }
 }
 
@@ -966,7 +966,7 @@ int CacheBus::issue_read(PACKET data_packet)
   data_packet.cpu = cpu;
   data_packet.to_return = {this};
 
-  return lower_level->add_rq(&data_packet);
+  return lower_level->add_rq(data_packet);
 }
 
 int CacheBus::issue_write(PACKET data_packet)
@@ -974,5 +974,5 @@ int CacheBus::issue_write(PACKET data_packet)
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
 
-  return lower_level->add_wq(&data_packet);
+  return lower_level->add_wq(data_packet);
 }
