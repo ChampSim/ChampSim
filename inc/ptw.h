@@ -53,11 +53,11 @@ public:
                   uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
   // functions
-  bool add_rq(PACKET* packet) override;
-  bool add_wq(PACKET* packet) override { assert(0); }
-  bool add_pq(PACKET* packet) override { assert(0); }
+  bool add_rq(const PACKET &packet) override;
+  bool add_wq(const PACKET &packet) override { assert(0); }
+  bool add_pq(const PACKET &packet) override { assert(0); }
 
-  void return_data(PACKET* packet) override;
+  void return_data(const PACKET &packet) override;
   void operate() override;
 
   void handle_read();
