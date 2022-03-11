@@ -7,7 +7,7 @@ void CACHE::prefetcher_initialize() { std::cout << NAME << " next line prefetche
 uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
   uint64_t pf_addr = addr + (1 << LOG2_BLOCK_SIZE);
-  prefetch_line(ip, addr, pf_addr, true, 0);
+  prefetch_line(pf_addr, true, metadata_in);
   return metadata_in;
 }
 
