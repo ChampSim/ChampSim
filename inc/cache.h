@@ -48,6 +48,11 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool add_pq(const PACKET &packet);
   };
 
+  bool handle_fill(PACKET &fill_mshr);
+  bool handle_writeback(PACKET &handle_pkt);
+  bool handle_read(PACKET &handle_pkt);
+  bool handle_prefetch(PACKET &handle_pkt);
+
 public:
   uint32_t cpu;
   const std::string NAME;
@@ -55,7 +60,6 @@ public:
   const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   const uint32_t MAX_READ, MAX_WRITE;
-  uint32_t reads_available_this_cycle, writes_available_this_cycle;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
@@ -80,8 +84,6 @@ public:
 
   void return_data(const PACKET &packet) override;
   void operate() override;
-  void operate_writes();
-  void operate_reads();
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
@@ -95,11 +97,6 @@ public:
 
   void add_mshr(PACKET* packet);
   void va_translate_prefetches();
-
-  void handle_fill();
-  void handle_writeback();
-  void handle_read();
-  void handle_prefetch();
 
   void readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_pkt);
   bool readlike_miss(const PACKET& handle_pkt);

@@ -15,140 +15,102 @@
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 
-void CACHE::handle_fill()
+bool CACHE::handle_fill(PACKET &fill_mshr)
 {
-  while (writes_available_this_cycle > 0) {
-    auto fill_mshr = MSHR.begin();
-    if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
-      return;
+  cpu = fill_mshr.cpu;
 
-    // find victim
-    uint32_t set = get_set(fill_mshr->address);
+  // find victim
+  uint32_t set = get_set(fill_mshr.address);
 
-    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
-    auto set_end = std::next(set_begin, NUM_WAY);
-    auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
-    uint32_t way = std::distance(set_begin, first_inv);
-    if (way == NUM_WAY)
-      way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set * NUM_WAY], fill_mshr->ip, fill_mshr->address,
-                                         fill_mshr->type);
+  auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+  auto set_end = std::next(set_begin, NUM_WAY);
+  auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+  uint32_t way = std::distance(set_begin, first_inv);
+  if (way == NUM_WAY)
+    way = impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, set, &block.data()[set * NUM_WAY], fill_mshr.ip, fill_mshr.address, fill_mshr.type);
 
-    bool success = filllike_miss(set, way, *fill_mshr);
-    if (!success)
-      return;
+  bool success = filllike_miss(set, way, fill_mshr);
+  if (success && way != NUM_WAY) {
+    // update processed packets
+    fill_mshr.data = block[set * NUM_WAY + way].data;
 
-    if (way != NUM_WAY) {
-      // update processed packets
-      fill_mshr->data = block[set * NUM_WAY + way].data;
-
-      for (auto ret : fill_mshr->to_return)
-        ret->return_data(*fill_mshr);
-    }
-
-    MSHR.erase(fill_mshr);
-    writes_available_this_cycle--;
+    for (auto ret : fill_mshr.to_return)
+      ret->return_data(fill_mshr);
   }
+
+  return success;
 }
 
-void CACHE::handle_writeback()
+bool CACHE::handle_writeback(PACKET &handle_pkt)
 {
-  while (writes_available_this_cycle > 0 && !std::empty(queues.WQ) && queues.WQ.front().event_cycle <= current_cycle) {
-    // handle the oldest entry
-    PACKET& handle_pkt = queues.WQ.front();
+  cpu = handle_pkt.cpu;
 
-    // access cache
-    uint32_t set = get_set(handle_pkt.address);
-    uint32_t way = get_way(handle_pkt.address, set);
+  // access cache
+  uint32_t set = get_set(handle_pkt.address);
+  uint32_t way = get_way(handle_pkt.address, set);
 
-    BLOCK& fill_block = block[set * NUM_WAY + way];
+  BLOCK& fill_block = block[set * NUM_WAY + way];
 
-    if (way < NUM_WAY) // HIT
-    {
-      impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+  if (way < NUM_WAY) { // HIT
+    impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
-      // COLLECT STATS
-      sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-      sim_access[handle_pkt.cpu][handle_pkt.type]++;
+    // COLLECT STATS
+    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+    sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
-      // mark dirty
-      fill_block.dirty = 1;
-    } else // MISS
-    {
-      bool success;
-      if (handle_pkt.type == RFO && handle_pkt.to_return.empty()) {
-        success = readlike_miss(handle_pkt);
-      } else {
-        // find victim
-        auto set_begin = std::next(std::begin(block), set * NUM_WAY);
-        auto set_end = std::next(set_begin, NUM_WAY);
-        auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
-        way = std::distance(set_begin, first_inv);
-        if (way == NUM_WAY)
-          way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set * NUM_WAY], handle_pkt.ip, handle_pkt.address,
-                                             handle_pkt.type);
+    // mark dirty
+    fill_block.dirty = 1;
 
-        success = filllike_miss(set, way, handle_pkt);
-      }
-
-      if (!success)
-        return;
-    }
-
-    // remove this entry from WQ
-    writes_available_this_cycle--;
-    queues.WQ.pop_front();
-  }
-}
-
-void CACHE::handle_read()
-{
-  while (reads_available_this_cycle > 0 && !std::empty(queues.RQ) && queues.RQ.front().event_cycle <= current_cycle) {
-    // handle the oldest entry
-    PACKET& handle_pkt = queues.RQ.front();
-
-    // A (hopefully temporary) hack to know whether to send the evicted paddr or
-    // vaddr to the prefetcher
-    ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
-
-    uint32_t set = get_set(handle_pkt.address);
-    uint32_t way = get_way(handle_pkt.address, set);
-
-    if (way < NUM_WAY) // HIT
-    {
-      readlike_hit(set, way, handle_pkt);
+    return true;
+  } else { // MISS
+    if (handle_pkt.type == RFO && handle_pkt.to_return.empty()) {
+      return readlike_miss(handle_pkt);
     } else {
-      bool success = readlike_miss(handle_pkt);
-      if (!success)
-        return;
-    }
+      // find victim
+      auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+      auto set_end = std::next(set_begin, NUM_WAY);
+      auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+      way = std::distance(set_begin, first_inv);
+      if (way == NUM_WAY)
+        way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set * NUM_WAY], handle_pkt.ip, handle_pkt.address,
+            handle_pkt.type);
 
-    // remove this entry from RQ
-    queues.RQ.pop_front();
-    reads_available_this_cycle--;
+      return filllike_miss(set, way, handle_pkt);
+    }
   }
 }
 
-void CACHE::handle_prefetch()
+bool CACHE::handle_read(PACKET &handle_pkt)
 {
-  while (reads_available_this_cycle > 0 && !std::empty(queues.PQ) && queues.PQ.front().event_cycle <= current_cycle) {
-    // handle the oldest entry
-    PACKET& handle_pkt = queues.PQ.front();
+  cpu = handle_pkt.cpu;
 
-    uint32_t set = get_set(handle_pkt.address);
-    uint32_t way = get_way(handle_pkt.address, set);
+  // A (hopefully temporary) hack to know whether to send the evicted paddr or
+  // vaddr to the prefetcher
+  ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
-    if (way < NUM_WAY) // HIT
-    {
-      readlike_hit(set, way, handle_pkt);
-    } else {
-      bool success = readlike_miss(handle_pkt);
-      if (!success)
-        return;
-    }
+  uint32_t set = get_set(handle_pkt.address);
+  uint32_t way = get_way(handle_pkt.address, set);
 
-    // remove this entry from PQ
-    queues.PQ.pop_front();
-    reads_available_this_cycle--;
+  if (way < NUM_WAY) { // HIT
+    readlike_hit(set, way, handle_pkt);
+    return true;
+  } else {
+    return readlike_miss(handle_pkt);
+  }
+}
+
+bool CACHE::handle_prefetch(PACKET &handle_pkt)
+{
+  cpu = handle_pkt.cpu;
+
+  uint32_t set = get_set(handle_pkt.address);
+  uint32_t way = get_way(handle_pkt.address, set);
+
+  if (way < NUM_WAY) { // HIT
+    readlike_hit(set, way, handle_pkt);
+    return true;
+  } else {
+    return readlike_miss(handle_pkt);
   }
 }
 
@@ -395,27 +357,37 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
 void CACHE::operate()
 {
   queues.check_collision(match_offset_bits ? 0 : OFFSET_BITS, OFFSET_BITS);
-  operate_writes();
-  operate_reads();
+
+  auto write_bw = MAX_WRITE;
+  auto read_bw = MAX_READ;
+
+  for (bool success = true; success && write_bw > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle; --write_bw) {
+    success = handle_fill(MSHR.front());
+    if (success)
+      MSHR.pop_front();
+  }
+
+  for (bool success = true; success && write_bw > 0 && !std::empty(queues.WQ) && queues.WQ.front().event_cycle <= current_cycle; --write_bw) {
+    success = handle_writeback(queues.WQ.front());
+    if (success)
+      queues.WQ.pop_front();
+  }
+
+  for (bool success = true; success && read_bw > 0 && !std::empty(queues.RQ) && queues.RQ.front().event_cycle <= current_cycle; --read_bw) {
+    success = handle_read(queues.RQ.front());
+    if (success)
+      queues.RQ.pop_front();
+  }
+
+  va_translate_prefetches();
+
+  for (bool success = true; success && read_bw > 0 && !std::empty(queues.PQ) && queues.PQ.front().event_cycle <= current_cycle; --read_bw) {
+    success = handle_prefetch(queues.PQ.front());
+    if (success)
+      queues.PQ.pop_front();
+  }
 
   impl_prefetcher_cycle_operate();
-}
-
-void CACHE::operate_writes()
-{
-  // perform all writes
-  writes_available_this_cycle = MAX_WRITE;
-  handle_fill();
-  handle_writeback();
-}
-
-void CACHE::operate_reads()
-{
-  // perform all reads
-  reads_available_this_cycle = MAX_READ;
-  handle_read();
-  va_translate_prefetches();
-  handle_prefetch();
 }
 
 uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
