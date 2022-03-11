@@ -46,6 +46,8 @@ struct DRAM_CHANNEL {
   bool write_mode = false;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+
+  void check_collision();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
