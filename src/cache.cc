@@ -37,13 +37,8 @@ void CACHE::handle_fill()
     if (!success)
       return;
 
-    if (way != NUM_WAY) {
-      // update processed packets
-      fill_mshr->data = block[set * NUM_WAY + way].data;
-
-      for (auto ret : fill_mshr->to_return)
-        ret->return_data(&(*fill_mshr));
-    }
+    for (auto ret : fill_mshr->to_return)
+      ret->return_data(&(*fill_mshr));
 
     MSHR.erase(fill_mshr);
     writes_available_this_cycle--;
