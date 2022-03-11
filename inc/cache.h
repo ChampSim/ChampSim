@@ -57,7 +57,7 @@ public:
   int add_wq(PACKET packet) override;
   int add_pq(PACKET packet) override;
 
-  void return_data(PACKET packet) override;
+  void return_data(const PACKET &packet) override;
   void operate() override;
   void operate_writes();
   void operate_reads();

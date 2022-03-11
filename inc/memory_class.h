@@ -52,7 +52,7 @@ class MemoryRequestProducer
 {
 public:
   MemoryRequestConsumer* lower_level;
-  virtual void return_data(PACKET packet) = 0;
+  virtual void return_data(const PACKET &packet) = 0;
 
 protected:
   MemoryRequestProducer() {}

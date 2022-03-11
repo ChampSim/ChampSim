@@ -636,7 +636,7 @@ int CACHE::add_pq(PACKET packet)
   return PQ.occupancy();
 }
 
-void CACHE::return_data(PACKET packet)
+void CACHE::return_data(const PACKET &packet)
 {
   // check MSHR information
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));

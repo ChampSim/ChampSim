@@ -902,7 +902,7 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(PACKET packet)
+void CacheBus::return_data(const PACKET &packet)
 {
   if (packet.type != PREFETCH) {
     PROCESSED.push_back(packet);
