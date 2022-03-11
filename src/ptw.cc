@@ -160,7 +160,7 @@ void PageTableWalker::operate()
   RQ.operate();
 }
 
-int PageTableWalker::add_rq(PACKET* packet)
+bool PageTableWalker::add_rq(PACKET* packet)
 {
   assert(packet->address != 0);
 
@@ -170,13 +170,13 @@ int PageTableWalker::add_rq(PACKET* packet)
 
   // check occupancy
   if (RQ.full()) {
-    return -2; // cannot handle this request
+    return false; // cannot handle this request
   }
 
   // if there is no duplicate, add it to RQ
   RQ.push_back(*packet);
 
-  return RQ.occupancy();
+  return true;
 }
 
 void PageTableWalker::return_data(PACKET* packet)

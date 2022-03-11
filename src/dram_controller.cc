@@ -174,7 +174,7 @@ void DRAM_CHANNEL::check_collision()
   }
 }
 
-int MEMORY_CONTROLLER::add_rq(PACKET* packet)
+bool MEMORY_CONTROLLER::add_rq(PACKET* packet)
 {
   auto& channel = channels[dram_get_channel(packet->address)];
 
@@ -184,13 +184,13 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
     packet->event_cycle = current_cycle;
     *rq_it = *packet;
 
-    return get_occupancy(1, packet->address);
+    return true;
   }
 
-  return -2;
+  return false;
 }
 
-int MEMORY_CONTROLLER::add_wq(PACKET* packet)
+bool MEMORY_CONTROLLER::add_wq(PACKET* packet)
 {
   auto& channel = channels[dram_get_channel(packet->address)];
 
@@ -200,14 +200,14 @@ int MEMORY_CONTROLLER::add_wq(PACKET* packet)
     packet->event_cycle = current_cycle;
     *wq_it = *packet;
 
-    return get_occupancy(2, packet->address);
+    return true;
   }
 
   channel.WQ_FULL++;
-  return -2;
+  return false;
 }
 
-int MEMORY_CONTROLLER::add_pq(PACKET* packet) { return add_rq(packet); }
+bool MEMORY_CONTROLLER::add_pq(PACKET* packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block
