@@ -21,17 +21,17 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 {
   class BLOCK
   {
-    public:
-      bool valid = false;
-      bool prefetch = false;
-      bool dirty = false;
+  public:
+    bool valid = false;
+    bool prefetch = false;
+    bool dirty = false;
 
-      uint64_t address = 0;
-      uint64_t v_address = 0;
-      uint64_t data = 0;
-      uint64_t ip = 0;
-      uint64_t cpu = 0;
-      uint64_t instr_id = 0;
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+    uint64_t ip = 0;
+    uint64_t cpu = 0;
+    uint64_t instr_id = 0;
   };
 
 public:
