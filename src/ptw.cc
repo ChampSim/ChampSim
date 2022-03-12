@@ -54,8 +54,8 @@ void PageTableWalker::handle_read()
     packet.translation_level = packet.init_translation_level;
     packet.to_return = {this};
 
-    int rq_index = lower_level->add_rq(packet);
-    if (rq_index == -2)
+    bool success = lower_level->add_rq(packet);
+    if (!success)
       return;
 
     packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
@@ -138,8 +138,8 @@ void PageTableWalker::handle_fill()
         packet.to_return = {this};
         packet.translation_level = fill_mshr->translation_level - 1;
 
-        int rq_index = lower_level->add_rq(packet);
-        if (rq_index != -2) {
+        bool success = lower_level->add_rq(packet);
+        if (success) {
           fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
           fill_mshr->address = packet.address;
           fill_mshr->translation_level--;
