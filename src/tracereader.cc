@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string>
 
 #ifdef __GNUG__
 #include <iostream>
@@ -73,6 +74,7 @@ ooo_model_instr tracereader::impl_get()
 
     auto retval = instr_buffer.front();
     instr_buffer.pop_front();
+
     return retval;
 }
 

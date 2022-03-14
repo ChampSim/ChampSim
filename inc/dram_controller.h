@@ -46,6 +46,8 @@ struct DRAM_CHANNEL {
   bool write_mode = false;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+
+  void check_collision();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
@@ -62,9 +64,9 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
 
-  int add_rq(PACKET* packet) override;
-  int add_wq(PACKET* packet) override;
-  int add_pq(PACKET* packet) override;
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
   void operate() override;
 
