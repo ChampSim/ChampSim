@@ -1,7 +1,15 @@
 #include "cache.h"
 
-void CACHE::TranslatingQueues::check_collision(std::size_t write_shamt, std::size_t read_shamt)
+void CACHE::TranslatingQueues::operate()
 {
+  check_collision();
+}
+
+void CACHE::TranslatingQueues::check_collision()
+{
+  std::size_t write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
+  std::size_t read_shamt = OFFSET_BITS;
+
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
     if (auto found = std::find_if(std::begin(WQ), wq_it, eq_addr<PACKET>(wq_it->address, write_shamt)); found != wq_it) {
       WQ_MERGED++;

@@ -20,7 +20,8 @@ def norm_fname(fname):
 # Begin format strings
 ###
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, CACHE::TranslatingQueues{{{rq_size}, {pq_size}, {wq_size}}}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
+cache_fmtstr = '''CACHE::TranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {offset_bits}, {wq_check_full_addr:b}}};
+CACHE {name}{{"{name}", {frequency}, {fill_level}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name}}};\n'''
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
 
 cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
@@ -412,7 +413,13 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n}};\n')
 
     wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {{\n')
-    wfp.write(', '.join('&{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
+    wfp.write(', '.join('&{name}'.format(**elem) for elem in cores))
+    wfp.write(',\n')
+    wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem))
+    wfp.write(',\n')
+    wfp.write(', '.join('&{name}, &{name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
+    wfp.write(',\n')
+    wfp.write('&{name}'.format(**config_file['physical_memory']))
     wfp.write('\n}};\n')
 
 # Core modules file
@@ -586,7 +593,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
     wfp.write('#define NUM_CACHES ' + str(len(caches)) + 'u\n')
-    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(memory_system) + 1) + 'u\n')
+    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(caches) + len(memory_system) + 1) + 'u\n')
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:

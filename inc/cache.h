@@ -25,10 +25,12 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool handle_prefetch(PACKET &handle_pkt);
 
 public:
-  struct TranslatingQueues
+  struct TranslatingQueues : public champsim::operable
   {
     std::deque<PACKET> RQ, PQ, VAPQ, WQ;
     const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE;
+    const std::size_t OFFSET_BITS;
+    const bool match_offset_bits;
 
     uint64_t RQ_ACCESS = 0;
     uint64_t RQ_MERGED = 0;
@@ -44,13 +46,16 @@ public:
     uint64_t WQ_FORWARD = 0;
     uint64_t WQ_TO_CACHE = 0;
 
-    TranslatingQueues(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size) : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size) {}
-    void check_collision(std::size_t write_shamt, std::size_t read_shamt);
+    TranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
+    void operate() override;
 
     // functions
     bool add_rq(const PACKET &packet);
     bool add_wq(const PACKET &packet);
     bool add_pq(const PACKET &packet);
+
+    private:
+    void check_collision();
   };
 
   uint32_t cpu;
@@ -68,7 +73,7 @@ public:
   // prefetch stats
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
-  TranslatingQueues queues;
+  TranslatingQueues &queues;
   std::list<PACKET> MSHR;
 
   uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
@@ -113,11 +118,11 @@ public:
   // constructor
   CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v8, uint32_t hit_lat,
         uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, TranslatingQueues &&queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+        unsigned pref_act_mask, TranslatingQueues &queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
         MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
-        queues(std::move(queues)), repl_type(repl), pref_type(pref)
+        queues(queues), repl_type(repl), pref_type(pref)
   {
   }
 };

@@ -301,8 +301,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
 
 void CACHE::operate()
 {
-  queues.check_collision(match_offset_bits ? 0 : OFFSET_BITS, OFFSET_BITS);
-
   auto write_bw = MAX_WRITE;
   auto read_bw = MAX_READ;
 
