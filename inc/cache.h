@@ -19,7 +19,12 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
-  // queues
+  bool handle_fill(PACKET &fill_mshr);
+  bool handle_writeback(PACKET &handle_pkt);
+  bool handle_read(PACKET &handle_pkt);
+  bool handle_prefetch(PACKET &handle_pkt);
+
+public:
   struct TranslatingQueues
   {
     std::deque<PACKET> RQ, PQ, VAPQ, WQ;
@@ -48,12 +53,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool add_pq(const PACKET &packet);
   };
 
-  bool handle_fill(PACKET &fill_mshr);
-  bool handle_writeback(PACKET &handle_pkt);
-  bool handle_read(PACKET &handle_pkt);
-  bool handle_prefetch(PACKET &handle_pkt);
-
-public:
   uint32_t cpu;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
@@ -112,13 +111,13 @@ public:
   const pref_t pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat,
+  CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v8, uint32_t hit_lat,
         uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+        unsigned pref_act_mask, TranslatingQueues &&queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
         MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
-        queues(v6, v7, v5), repl_type(repl), pref_type(pref)
+        queues(std::move(queues)), repl_type(repl), pref_type(pref)
   {
   }
 };
