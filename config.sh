@@ -409,7 +409,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n}};\n')
 
     wfp.write('std::array<std::reference_wrapper<CACHE>, NUM_CACHES> caches {{\n')
-    wfp.write(', '.join('{name}'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
+    wfp.write(', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem))
     wfp.write('\n}};\n')
 
     wfp.write('std::array<std::reference_wrapper<champsim::operable>, NUM_OPERABLES> operables {{\n')

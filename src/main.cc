@@ -156,9 +156,9 @@ int main(int argc, char** argv)
     cpu.initialize_core();
   }
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
-    it->get().impl_prefetcher_initialize();
-    it->get().impl_replacement_initialize();
+  for (CACHE& cache : caches) {
+    cache.impl_prefetcher_initialize();
+    cache.impl_replacement_initialize();
   }
 
   std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
       // Read from trace
       for (O3_CPU& cpu : ooo_cpu) {
         while (cpu.fetch_stall == 0 && cpu.instrs_to_read_this_cycle > 0)
-          cpu.init_instruction(traces[cpu.cpu]->get()); // read from trace
+          cpu.init_instruction(traces[cpu.cpu]->get());
       }
 
       // Check for phase finish
@@ -233,8 +233,8 @@ int main(int argc, char** argv)
     for (O3_CPU& cpu : ooo_cpu)
       cpu.print_phase_stats();
 
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-      it->get().print_phase_stats();
+    for (CACHE& cache : caches)
+      cache.print_phase_stats();
   }
 
   std::cout << std::endl;
@@ -242,14 +242,14 @@ int main(int argc, char** argv)
   for (O3_CPU& cpu : ooo_cpu)
     cpu.print_roi_stats();
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    it->get().print_roi_stats();
+  for (CACHE& cache : caches)
+    cache.print_roi_stats();
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    it->get().impl_prefetcher_final_stats();
+  for (CACHE& cache : caches)
+    cache.impl_prefetcher_final_stats();
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    it->get().impl_replacement_final_stats();
+  for (CACHE& cache : caches)
+    cache.impl_replacement_final_stats();
 
   DRAM.print_phase_stats();
 
