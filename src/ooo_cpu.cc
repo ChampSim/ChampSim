@@ -43,7 +43,7 @@ void O3_CPU::operate()
         std::cout << "Heartbeat CPU " << cpu << " instructions: " << num_retired << " cycles: " << current_cycle;
         std::cout << " heartbeat IPC: " << (1.0*num_retired - last_heartbeat_instr) / (current_cycle - last_heartbeat_cycle);
         std::cout << " cumulative IPC: " << (1.0*(num_retired - begin_phase_instr)) / (current_cycle - begin_phase_cycle);
-        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         next_print_instruction += STAT_PRINTING_PERIOD;
 
         last_heartbeat_instr = num_retired;
@@ -146,7 +146,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.branch_target = 0;
   }
 
-  total_branch_types[arch_instr.branch_type]++;
+  sim_stats.back().total_branch_types[arch_instr.branch_type]++;
 
   // Stack Pointer Folding
   // The exact, true value of the stack pointer for any given instruction can
@@ -214,7 +214,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
   // fast warmup eliminates register dependencies between instructions
   // branch predictor, cache contents, and prefetchers are still warmed up
-  if (!warmup_complete[cpu]) {
+  if (warmup) {
     arch_instr.source_registers.clear();
     arch_instr.destination_registers.clear();
   }

@@ -256,7 +256,7 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
     return true;
   }
 
-  channel.WQ_FULL++;
+  channel.sim_stats.back().WQ_FULL++;
   return false;
 }
 
