@@ -13,7 +13,7 @@ public:
 
   double leap_operation = 0;
   uint64_t current_cycle = 0;
-    bool warmup = true;
+  bool warmup = true;
 
   explicit operable(double scale) : CLOCK_SCALE(scale - 1) {}
 
@@ -31,12 +31,12 @@ public:
     ++current_cycle;
   }
 
-    virtual void operate() = 0;
-    virtual void begin_phase() = 0;
-    virtual void end_phase(unsigned cpu) = 0;
-    virtual void print_roi_stats() = 0;
-    virtual void print_phase_stats() = 0;
-    virtual void print_deadlock() {}
+  virtual void operate() = 0;
+  virtual void begin_phase() = 0;
+  virtual void end_phase(unsigned cpu) = 0;
+  virtual void print_roi_stats() = 0;
+  virtual void print_phase_stats() = 0;
+  virtual void print_deadlock() {}
 };
 
 class by_next_operate

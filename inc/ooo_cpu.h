@@ -27,12 +27,11 @@ public:
   void return_data(const PACKET& packet);
 };
 
-struct branch_stats
-{
-    uint64_t total_rob_occupancy_at_branch_mispredict = 0;
+struct branch_stats {
+  uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
-    std::array<uint64_t, 8> total_branch_types = {};
-    std::array<uint64_t, 8> branch_type_misses = {};
+  std::array<uint64_t, 8> total_branch_types = {};
+  std::array<uint64_t, 8> branch_type_misses = {};
 };
 
 // cpu
@@ -56,9 +55,9 @@ public:
   uint64_t instrs_to_fetch_this_cycle = 0;
   uint64_t num_retired = 0;
 
-    using stats_type = branch_stats;
+  using stats_type = branch_stats;
 
-    std::vector<stats_type> roi_stats, sim_stats;
+  std::vector<stats_type> roi_stats, sim_stats;
 
   struct dib_entry_t {
     bool valid = false;
@@ -90,7 +89,7 @@ public:
   std::queue<champsim::circular_buffer<ooo_model_instr>::iterator> ready_to_execute; // Ready-To-Execute
 
   // branch
-  uint8_t  fetch_stall = 0;
+  uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
 
   CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;

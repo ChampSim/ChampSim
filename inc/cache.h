@@ -15,18 +15,16 @@
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
-struct cache_stats
-{
-    // prefetch stats
-    uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
+struct cache_stats {
+  // prefetch stats
+  uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
-    std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {}, misses = {};
+  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {}, misses = {};
 
-    uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0,
-             PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0,
-             WQ_ACCESS = 0, WQ_MERGED = 0, WQ_FULL = 0, WQ_TO_CACHE = 0, WQ_FORWARD = 0;
+  uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
+           WQ_FULL = 0, WQ_TO_CACHE = 0, WQ_FORWARD = 0;
 
-    uint64_t total_miss_latency = 0;
+  uint64_t total_miss_latency = 0;
 };
 
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
@@ -62,9 +60,9 @@ public:
   bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
-    using stats_type = cache_stats;
+  using stats_type = cache_stats;
 
-    std::vector<stats_type> sim_stats, roi_stats;
+  std::vector<stats_type> sim_stats, roi_stats;
 
   // queues
   std::deque<PACKET> RQ, PQ, VAPQ, WQ;

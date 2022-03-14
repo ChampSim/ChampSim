@@ -35,20 +35,19 @@ void O3_CPU::operate()
   translate_fetch();
   check_dib();
 
-    // heartbeat
-    if (show_heartbeat && (num_retired >= next_print_instruction))
-    {
-        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+  // heartbeat
+  if (show_heartbeat && (num_retired >= next_print_instruction)) {
+    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
 
-        std::cout << "Heartbeat CPU " << cpu << " instructions: " << num_retired << " cycles: " << current_cycle;
-        std::cout << " heartbeat IPC: " << (1.0*num_retired - last_heartbeat_instr) / (current_cycle - last_heartbeat_cycle);
-        std::cout << " cumulative IPC: " << (1.0*(num_retired - begin_phase_instr)) / (current_cycle - begin_phase_cycle);
-        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-        next_print_instruction += STAT_PRINTING_PERIOD;
+    std::cout << "Heartbeat CPU " << cpu << " instructions: " << num_retired << " cycles: " << current_cycle;
+    std::cout << " heartbeat IPC: " << (1.0 * num_retired - last_heartbeat_instr) / (current_cycle - last_heartbeat_cycle);
+    std::cout << " cumulative IPC: " << (1.0 * (num_retired - begin_phase_instr)) / (current_cycle - begin_phase_cycle);
+    std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+    next_print_instruction += STAT_PRINTING_PERIOD;
 
-        last_heartbeat_instr = num_retired;
-        last_heartbeat_cycle = current_cycle;
-    }
+    last_heartbeat_instr = num_retired;
+    last_heartbeat_cycle = current_cycle;
+  }
 
   DECODE_BUFFER.operate();
 }
@@ -62,21 +61,20 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::begin_phase()
 {
-    begin_phase_instr = num_retired;
-    begin_phase_cycle = current_cycle;
+  begin_phase_instr = num_retired;
+  begin_phase_cycle = current_cycle;
 
-    sim_stats.emplace_back();
+  sim_stats.emplace_back();
 }
 
 void O3_CPU::end_phase(unsigned cpu)
 {
-    if (cpu == this->cpu)
-    {
-        finish_phase_instr = num_retired;
-        finish_phase_cycle = current_cycle;
+  if (cpu == this->cpu) {
+    finish_phase_instr = num_retired;
+    finish_phase_cycle = current_cycle;
 
-        roi_stats.push_back(sim_stats.back());
-    }
+    roi_stats.push_back(sim_stats.back());
+  }
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
@@ -943,46 +941,45 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void O3_CPU::print_roi_stats()
-{
-}
+void O3_CPU::print_roi_stats() {}
 
 void O3_CPU::print_phase_stats()
 {
-    auto total_branch         = std::accumulate(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), 0ull);
-    auto total_mispredictions = std::accumulate(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), 0ull);
+  auto total_branch = std::accumulate(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), 0ull);
+  auto total_mispredictions = std::accumulate(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), 0ull);
 
-    std::cout << std::endl;
-    std::cout << "CPU " << cpu;
-    std::cout << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch << "%";
-    std::cout << " MPKI: " << (1000.0 * total_mispredictions) / sim_instr();
-    std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * sim_stats.back().total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
+  std::cout << std::endl;
+  std::cout << "CPU " << cpu;
+  std::cout << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch << "%";
+  std::cout << " MPKI: " << (1000.0 * total_mispredictions) / sim_instr();
+  std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * sim_stats.back().total_rob_occupancy_at_branch_mispredict) / total_mispredictions
+            << std::endl;
 
-    /*
-    std::vector<double> pcts;
-    std::transform(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), std::back_inserter(pcts), [instr=sim_instr()](auto x){ return 100.0*x/instr; });
-    std::cout << "Branch types" << std::endl;
-    std::cout << "NOT_BRANCH: "           << total_branch_types[NOT_BRANCH]           << " " << pcts[NOT_BRANCH]           << "%" << std::endl;
-    std::cout << "BRANCH_DIRECT_JUMP: "   << total_branch_types[BRANCH_DIRECT_JUMP]   << " " << pcts[BRANCH_DIRECT_JUMP]   << "%" << std::endl;
-    std::cout << "BRANCH_INDIRECT: "      << total_branch_types[BRANCH_INDIRECT]      << " " << pcts[BRANCH_INDIRECT]      << "%" << std::endl;
-    std::cout << "BRANCH_CONDITIONAL: "   << total_branch_types[BRANCH_CONDITIONAL]   << " " << pcts[BRANCH_CONDITIONAL]   << "%" << std::endl;
-    std::cout << "BRANCH_DIRECT_CALL: "   << total_branch_types[BRANCH_DIRECT_CALL]   << " " << pcts[BRANCH_DIRECT_CALL]   << "%" << std::endl;
-    std::cout << "BRANCH_INDIRECT_CALL: " << total_branch_types[BRANCH_INDIRECT_CALL] << " " << pcts[BRANCH_INDIRECT_CALL] << "%" << std::endl;
-    std::cout << "BRANCH_RETURN: "        << total_branch_types[BRANCH_RETURN]        << " " << pcts[BRANCH_RETURN]        << "%" << std::endl;
-    std::cout << "BRANCH_OTHER: "         << total_branch_types[BRANCH_OTHER]         << " " << pcts[BRANCH_OTHER]         << "%" << std::endl;
-    std::cout << std::endl;
-    */
+  /*
+  std::vector<double> pcts;
+  std::transform(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), std::back_inserter(pcts),
+  [instr=sim_instr()](auto x){ return 100.0*x/instr; }); std::cout << "Branch types" << std::endl; std::cout << "NOT_BRANCH: "           <<
+  total_branch_types[NOT_BRANCH]           << " " << pcts[NOT_BRANCH]           << "%" << std::endl; std::cout << "BRANCH_DIRECT_JUMP: "   <<
+  total_branch_types[BRANCH_DIRECT_JUMP]   << " " << pcts[BRANCH_DIRECT_JUMP]   << "%" << std::endl; std::cout << "BRANCH_INDIRECT: "      <<
+  total_branch_types[BRANCH_INDIRECT]      << " " << pcts[BRANCH_INDIRECT]      << "%" << std::endl; std::cout << "BRANCH_CONDITIONAL: "   <<
+  total_branch_types[BRANCH_CONDITIONAL]   << " " << pcts[BRANCH_CONDITIONAL]   << "%" << std::endl; std::cout << "BRANCH_DIRECT_CALL: "   <<
+  total_branch_types[BRANCH_DIRECT_CALL]   << " " << pcts[BRANCH_DIRECT_CALL]   << "%" << std::endl; std::cout << "BRANCH_INDIRECT_CALL: " <<
+  total_branch_types[BRANCH_INDIRECT_CALL] << " " << pcts[BRANCH_INDIRECT_CALL] << "%" << std::endl; std::cout << "BRANCH_RETURN: "        <<
+  total_branch_types[BRANCH_RETURN]        << " " << pcts[BRANCH_RETURN]        << "%" << std::endl; std::cout << "BRANCH_OTHER: "         <<
+  total_branch_types[BRANCH_OTHER]         << " " << pcts[BRANCH_OTHER]         << "%" << std::endl; std::cout << std::endl;
+  */
 
-    std::vector<double> mpkis;
-    std::transform(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), std::back_inserter(mpkis), [instr=sim_instr()](auto x){ return 1000.0*x/instr; });
-    std::cout << "Branch type MPKI" << std::endl;
-    std::cout << "BRANCH_DIRECT_JUMP: "   << mpkis[BRANCH_DIRECT_JUMP] << std::endl;
-    std::cout << "BRANCH_INDIRECT: "      << mpkis[BRANCH_INDIRECT] << std::endl;
-    std::cout << "BRANCH_CONDITIONAL: "   << mpkis[BRANCH_CONDITIONAL] << std::endl;
-    std::cout << "BRANCH_DIRECT_CALL: "   << mpkis[BRANCH_DIRECT_CALL] << std::endl;
-    std::cout << "BRANCH_INDIRECT_CALL: " << mpkis[BRANCH_INDIRECT_CALL] << std::endl;
-    std::cout << "BRANCH_RETURN: "        << mpkis[BRANCH_RETURN] << std::endl;
-    std::cout << std::endl;
+  std::vector<double> mpkis;
+  std::transform(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), std::back_inserter(mpkis),
+                 [instr = sim_instr()](auto x) { return 1000.0 * x / instr; });
+  std::cout << "Branch type MPKI" << std::endl;
+  std::cout << "BRANCH_DIRECT_JUMP: " << mpkis[BRANCH_DIRECT_JUMP] << std::endl;
+  std::cout << "BRANCH_INDIRECT: " << mpkis[BRANCH_INDIRECT] << std::endl;
+  std::cout << "BRANCH_CONDITIONAL: " << mpkis[BRANCH_CONDITIONAL] << std::endl;
+  std::cout << "BRANCH_DIRECT_CALL: " << mpkis[BRANCH_DIRECT_CALL] << std::endl;
+  std::cout << "BRANCH_INDIRECT_CALL: " << mpkis[BRANCH_INDIRECT_CALL] << std::endl;
+  std::cout << "BRANCH_RETURN: " << mpkis[BRANCH_RETURN] << std::endl;
+  std::cout << std::endl;
 }
 
 void CacheBus::return_data(const PACKET& packet)

@@ -2,7 +2,6 @@
 #include <array>
 #include <bitset>
 #include <chrono>
-#include <getopt.h>
 #include <functional>
 #include <getopt.h>
 #include <iomanip>
@@ -20,9 +19,7 @@
 #include "tracereader.h"
 #include "vmem.h"
 
-uint8_t MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS,
-        knob_cloudsuite = 0,
-        knob_low_bandwidth = 0;
+uint8_t MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0;
 
 extern uint8_t show_heartbeat;
 
@@ -43,11 +40,11 @@ std::vector<tracereader*> traces;
 
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
 {
-    auto diff = std::chrono::steady_clock::now() - start_time;
-    auto elapsed_hour   = std::chrono::duration_cast<std::chrono::hours>(diff);
-    auto elapsed_minute = std::chrono::duration_cast<std::chrono::minutes>(diff) - elapsed_hour;
-    auto elapsed_second = std::chrono::duration_cast<std::chrono::seconds>(diff) - elapsed_hour - elapsed_minute;
-    return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
+  auto diff = std::chrono::steady_clock::now() - start_time;
+  auto elapsed_hour = std::chrono::duration_cast<std::chrono::hours>(diff);
+  auto elapsed_minute = std::chrono::duration_cast<std::chrono::minutes>(diff) - elapsed_hour;
+  auto elapsed_second = std::chrono::duration_cast<std::chrono::seconds>(diff) - elapsed_hour - elapsed_minute;
+  return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
 uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
@@ -67,11 +64,10 @@ void signal_handler(int signal)
   exit(1);
 }
 
-struct phase_info
-{
-    std::string name;
-    bool is_warmup;
-    uint64_t length;
+struct phase_info {
+  std::string name;
+  bool is_warmup;
+  uint64_t length;
 };
 
 int main(int argc, char** argv)
@@ -165,108 +161,92 @@ int main(int argc, char** argv)
     (*it)->impl_replacement_initialize();
   }
 
-  std::vector<phase_info> phases{{
-    phase_info{"Warmup", true, warmup_instructions},
-    phase_info{"Simulation", false, simulation_instructions}
-  }};
+  std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
 
-    // simulation entry point
-    for (auto phase : phases)
-    {
-        // Initialize phase
-        for (auto op : operables)
-        {
-            op->warmup = phase.is_warmup;
-            op->begin_phase();
-        }
-
-        // Perform phase
-        std::bitset<NUM_CPUS> phase_complete = {};
-        while (!phase_complete.all())
-        {
-            // Operate
-            for (auto op : operables)
-            {
-                try
-                {
-                    op->_operate();
-                }
-                catch (champsim::deadlock &dl)
-                {
-                    //ooo_cpu[dl.which]->print_deadlock();
-                    //std::cout << std::endl;
-                    //for (auto c : caches)
-                    for (auto c : operables)
-                    {
-                        c->print_deadlock();
-                        std::cout << std::endl;
-                    }
-
-                    abort();
-                }
-            }
-            std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
-
-            // Read from trace
-            for (auto cpu : ooo_cpu)
-            {
-                while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
-                    cpu->init_instruction(traces[cpu->cpu]->get()); // read from trace
-            }
-
-            // Check for phase finish
-            auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
-            for (auto cpu : ooo_cpu)
-            {
-                // Phase complete
-                if (!phase_complete[cpu->cpu] && (cpu->sim_instr() >= phase.length))
-                {
-                    phase_complete.set(cpu->cpu);
-                    for (auto op : operables)
-                        op->end_phase(cpu->cpu);
-
-                    std::cout << phase.name << " finished CPU " << cpu->cpu;
-                    std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle() << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
-                    std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-                }
-            }
-        }
-
-        auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
-        for (auto cpu : ooo_cpu)
-        {
-            std::cout << std::endl;
-            std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle();
-            std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-            std::cout << std::endl;
-        }
+  // simulation entry point
+  for (auto phase : phases) {
+    // Initialize phase
+    for (auto op : operables) {
+      op->warmup = phase.is_warmup;
+      op->begin_phase();
     }
-   
-    std::cout << "ChampSim completed all CPUs" << std::endl;
 
-    if (NUM_CPUS > 1)
-    {
-        std::cout << std::endl;
-        std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
+    // Perform phase
+    std::bitset<NUM_CPUS> phase_complete = {};
+    while (!phase_complete.all()) {
+      // Operate
+      for (auto op : operables) {
+        try {
+          op->_operate();
+        } catch (champsim::deadlock& dl) {
+          // ooo_cpu[dl.which]->print_deadlock();
+          // std::cout << std::endl;
+          // for (auto c : caches)
+          for (auto c : operables) {
+            c->print_deadlock();
+            std::cout << std::endl;
+          }
 
-        for (auto cpu : ooo_cpu)
-            cpu->print_phase_stats();
-      
-        for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-            (*it)->print_phase_stats();
+          abort();
+        }
+      }
+      std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
+
+      // Read from trace
+      for (auto cpu : ooo_cpu) {
+        while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
+          cpu->init_instruction(traces[cpu->cpu]->get()); // read from trace
+      }
+
+      // Check for phase finish
+      auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+      for (auto cpu : ooo_cpu) {
+        // Phase complete
+        if (!phase_complete[cpu->cpu] && (cpu->sim_instr() >= phase.length)) {
+          phase_complete.set(cpu->cpu);
+          for (auto op : operables)
+            op->end_phase(cpu->cpu);
+
+          std::cout << phase.name << " finished CPU " << cpu->cpu;
+          std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle()
+                    << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
+          std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+        }
+      }
     }
-  
-   std::cout << std::endl;
-    std::cout << "Region of Interest Statistics" << std::endl;
+
+    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+    for (auto cpu : ooo_cpu) {
+      std::cout << std::endl;
+      std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle();
+      std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+      std::cout << std::endl;
+    }
+  }
+
+  std::cout << "ChampSim completed all CPUs" << std::endl;
+
+  if (NUM_CPUS > 1) {
+    std::cout << std::endl;
+    std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
+
     for (auto cpu : ooo_cpu)
-    {
-        for (auto cpu : ooo_cpu)
-            cpu->print_roi_stats();
+      cpu->print_phase_stats();
 
-        for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-            (*it)->print_roi_stats();
-    }
-      
+    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+      (*it)->print_phase_stats();
+  }
+
+  std::cout << std::endl;
+  std::cout << "Region of Interest Statistics" << std::endl;
+  for (auto cpu : ooo_cpu) {
+    for (auto cpu : ooo_cpu)
+      cpu->print_roi_stats();
+
+    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+      (*it)->print_roi_stats();
+  }
+
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
     (*it)->impl_prefetcher_final_stats();
 
@@ -277,4 +257,3 @@ int main(int argc, char** argv)
 
   return 0;
 }
-
