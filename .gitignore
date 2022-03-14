@@ -11,3 +11,5 @@ obj/
 **/*.o
 **/*.d
 
+config/__pycache__
+
