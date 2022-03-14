@@ -616,3 +616,4 @@ with open('Makefile', 'wt') as wfp:
             wfp.write(f'-include $(wildcard {d}/*.d)\n')
     wfp.write('\n')
 
+# vim: set filetype=python:
