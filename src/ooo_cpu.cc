@@ -245,8 +245,8 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   trace_packet.type = LOAD;
   trace_packet.instr_depend_on_me = {begin, end};
 
-  int rq_index = ITLB_bus.issue_read(trace_packet);
-  if (rq_index != -2) {
+  auto success = ITLB_bus.issue_read(trace_packet);
+  if (success) {
     // successfully sent to the ITLB, so mark all instructions in the IFETCH_BUFFER that match this ip as translated INFLIGHT
     for (ooo_model_instr& dep : trace_packet.instr_depend_on_me) {
       dep.translated = INFLIGHT;
@@ -295,8 +295,8 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.type = LOAD;
   fetch_packet.instr_depend_on_me = {begin, end};
 
-  int rq_index = L1I_bus.issue_read(fetch_packet);
-  if (rq_index != -2) {
+  auto success = L1I_bus.issue_read(fetch_packet);
+  if (success) {
     // mark all instructions from this cache line as having been fetched
     for (ooo_model_instr& dep : fetch_packet.instr_depend_on_me) {
       dep.fetched = INFLIGHT;
@@ -516,8 +516,8 @@ void O3_CPU::operate_lsq()
 
   for (auto& sq_entry : SQ) {
     if (store_bw > 0 && sq_entry.physical_address == 0 && !sq_entry.translate_issued && sq_entry.event_cycle < current_cycle) {
-      auto result = do_translate_store(sq_entry);
-      if (result != -2) {
+      auto success = do_translate_store(sq_entry);
+      if (success) {
         --store_bw;
         sq_entry.translate_issued = true;
       }
@@ -534,8 +534,8 @@ void O3_CPU::operate_lsq()
   }
 
   for (; store_bw > 0 && !std::empty(SQ) && (std::empty(ROB) || SQ.front().instr_id < ROB.front().instr_id) && SQ.front().event_cycle < current_cycle; --store_bw) {
-    auto result = do_complete_store(SQ.front());
-    if (result != -2)
+    auto success = do_complete_store(SQ.front());
+    if (success)
       SQ.pop_front(); // std::deque::erase() requires MoveAssignable :(
     else
       break;
@@ -546,8 +546,8 @@ void O3_CPU::operate_lsq()
   for (auto& lq_entry : LQ) {
     if (load_bw > 0 && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && lq_entry->physical_address == 0
         && !lq_entry->translate_issued && lq_entry->event_cycle < current_cycle) {
-      auto result = do_translate_load(*lq_entry);
-      if (result != -2) {
+      auto success = do_translate_load(*lq_entry);
+      if (success) {
         --load_bw;
         lq_entry->translate_issued = true;
       }
@@ -556,8 +556,8 @@ void O3_CPU::operate_lsq()
 
   for (auto& lq_entry : LQ) {
     if (load_bw > 0 && lq_entry.has_value() && lq_entry->physical_address != 0 && !lq_entry->fetch_issued && lq_entry->event_cycle < current_cycle) {
-      auto result = execute_load(*lq_entry);
-      if (result != -2) {
+      auto success = execute_load(*lq_entry);
+      if (success) {
         --load_bw;
         lq_entry->fetch_issued = true;
       }
@@ -565,7 +565,7 @@ void O3_CPU::operate_lsq()
   }
 }
 
-int O3_CPU::do_translate_store(const LSQ_ENTRY& sq_entry)
+bool O3_CPU::do_translate_store(const LSQ_ENTRY& sq_entry)
 {
   PACKET data_packet;
   data_packet.address = sq_entry.virtual_address;
@@ -605,7 +605,7 @@ void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
   }
 }
 
-int O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
+bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 {
   PACKET data_packet;
   data_packet.address = sq_entry.physical_address;
@@ -619,7 +619,7 @@ int O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   return L1D_bus.issue_write(data_packet);
 }
 
-int O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
+bool O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
 {
   PACKET data_packet;
   data_packet.address = lq_entry.virtual_address;
@@ -633,7 +633,7 @@ int O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
   return DTLB_bus.issue_read(data_packet);
 }
 
-int O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
+bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 {
   PACKET data_packet;
   data_packet.address = lq_entry.physical_address;
@@ -861,7 +861,7 @@ void O3_CPU::print_deadlock()
   }
 }
 
-int CacheBus::issue_read(PACKET data_packet)
+bool CacheBus::issue_read(PACKET data_packet)
 {
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
@@ -870,7 +870,7 @@ int CacheBus::issue_read(PACKET data_packet)
   return lower_level->add_rq(data_packet);
 }
 
-int CacheBus::issue_write(PACKET data_packet)
+bool CacheBus::issue_write(PACKET data_packet)
 {
   data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;

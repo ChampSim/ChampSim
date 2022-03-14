@@ -64,12 +64,8 @@ public:
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
-      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
-
-  std::list<PACKET> MSHR; // MSHR
+  std::deque<PACKET> RQ, PQ, VAPQ, WQ;
+  std::list<PACKET> MSHR;
 
   uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
            roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
@@ -80,14 +76,15 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(const PACKET& packet) override;
-  int add_wq(const PACKET& packet) override;
-  int add_pq(const PACKET& packet) override;
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
   void return_data(const PACKET& packet) override;
   void operate() override;
   void operate_writes();
   void operate_reads();
+  void check_collision();
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

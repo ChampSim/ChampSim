@@ -22,8 +22,8 @@ class CacheBus : public MemoryRequestProducer
 public:
   std::deque<PACKET> PROCESSED;
   CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
-  int issue_read(PACKET packet);
-  int issue_write(PACKET packet);
+  bool issue_read(PACKET packet);
+  bool issue_write(PACKET packet);
   void return_data(const PACKET& packet);
 };
 
@@ -128,10 +128,10 @@ public:
 
   void initialize_core();
   void do_finish_store(LSQ_ENTRY& sq_entry);
-  int do_complete_store(const LSQ_ENTRY& sq_entry);
-  int execute_load(const LSQ_ENTRY& lq_entry);
-  int do_translate_store(const LSQ_ENTRY& sq_entry);
-  int do_translate_load(const LSQ_ENTRY& lq_entry);
+  bool do_complete_store(const LSQ_ENTRY& sq_entry);
+  bool execute_load(const LSQ_ENTRY& lq_entry);
+  bool do_translate_store(const LSQ_ENTRY& sq_entry);
+  bool do_translate_load(const LSQ_ENTRY& lq_entry);
   void complete_inflight_instruction();
   void handle_memory_return();
   void retire_rob();
