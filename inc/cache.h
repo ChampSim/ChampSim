@@ -1,6 +1,7 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <deque>
 #include <functional>
 #include <list>
 #include <string>
@@ -9,7 +10,6 @@
 #include "champsim.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
-#include "ooo_cpu.h"
 #include "operable.h"
 
 // virtual address space prefetching
@@ -26,8 +26,6 @@ struct cache_stats {
 
   uint64_t total_miss_latency = 0;
 };
-
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {

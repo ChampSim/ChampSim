@@ -32,8 +32,8 @@ champsim::deprecated_clock_cycle current_core_cycle;
 
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
-extern std::array<CACHE*, NUM_CACHES> caches;
+extern std::array<std::reference_wrapper<O3_CPU>, NUM_CPUS> ooo_cpu;
+extern std::array<std::reference_wrapper<CACHE>, NUM_CACHES> caches;
 extern std::array<std::reference_wrapper<champsim::operable>, NUM_OPERABLES> operables;
 
 std::vector<tracereader*> traces;
@@ -55,7 +55,7 @@ uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
     std::cout << "WARNING: Use 'this->current_cycle' instead." << std::endl;
     deprecate_printed = true;
   }
-  return ooo_cpu[cpu_idx]->current_cycle;
+  return ooo_cpu[cpu_idx].get().current_cycle;
 }
 
 void signal_handler(int signal)
@@ -152,13 +152,13 @@ int main(int argc, char** argv)
   // end trace file setup
 
   // SHARED CACHE
-  for (O3_CPU* cpu : ooo_cpu) {
-    cpu->initialize_core();
+  for (O3_CPU& cpu : ooo_cpu) {
+    cpu.initialize_core();
   }
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
-    (*it)->impl_prefetcher_initialize();
-    (*it)->impl_replacement_initialize();
+    it->get().impl_prefetcher_initialize();
+    it->get().impl_replacement_initialize();
   }
 
   std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
         try {
           op._operate();
         } catch (champsim::deadlock& dl) {
-          // ooo_cpu[dl.which]->print_deadlock();
+          // ooo_cpu[dl.which].print_deadlock();
           // std::cout << std::endl;
           // for (auto c : caches)
           for (champsim::operable& c : operables) {
@@ -193,32 +193,32 @@ int main(int argc, char** argv)
       std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
       // Read from trace
-      for (auto cpu : ooo_cpu) {
-        while (cpu->fetch_stall == 0 && cpu->instrs_to_read_this_cycle > 0)
-          cpu->init_instruction(traces[cpu->cpu]->get()); // read from trace
+      for (O3_CPU& cpu : ooo_cpu) {
+        while (cpu.fetch_stall == 0 && cpu.instrs_to_read_this_cycle > 0)
+          cpu.init_instruction(traces[cpu.cpu]->get()); // read from trace
       }
 
       // Check for phase finish
       auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
-      for (auto cpu : ooo_cpu) {
+      for (O3_CPU& cpu : ooo_cpu) {
         // Phase complete
-        if (!phase_complete[cpu->cpu] && (cpu->sim_instr() >= phase.length)) {
-          phase_complete.set(cpu->cpu);
+        if (!phase_complete[cpu.cpu] && (cpu.sim_instr() >= phase.length)) {
+          phase_complete.set(cpu.cpu);
           for (champsim::operable& op : operables)
-            op.end_phase(cpu->cpu);
+            op.end_phase(cpu.cpu);
 
-          std::cout << phase.name << " finished CPU " << cpu->cpu;
-          std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle()
-                    << " cumulative IPC: " << 1.0 * cpu->sim_instr() / cpu->sim_cycle();
+          std::cout << phase.name << " finished CPU " << cpu.cpu;
+          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
+                    << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
           std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         }
       }
     }
 
     auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
-    for (auto cpu : ooo_cpu) {
+    for (O3_CPU& cpu : ooo_cpu) {
       std::cout << std::endl;
-      std::cout << phase.name << " complete CPU " << cpu->cpu << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle();
+      std::cout << phase.name << " complete CPU " << cpu.cpu << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle();
       std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
       std::cout << std::endl;
     }
@@ -230,26 +230,26 @@ int main(int argc, char** argv)
     std::cout << std::endl;
     std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
 
-    for (auto cpu : ooo_cpu)
-      cpu->print_phase_stats();
+    for (O3_CPU& cpu : ooo_cpu)
+      cpu.print_phase_stats();
 
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-      (*it)->print_phase_stats();
+      it->get().print_phase_stats();
   }
 
   std::cout << std::endl;
   std::cout << "Region of Interest Statistics" << std::endl;
-  for (auto cpu : ooo_cpu)
-    cpu->print_roi_stats();
+  for (O3_CPU& cpu : ooo_cpu)
+    cpu.print_roi_stats();
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    (*it)->print_roi_stats();
+    it->get().print_roi_stats();
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    (*it)->impl_prefetcher_final_stats();
+    it->get().impl_prefetcher_final_stats();
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    (*it)->impl_replacement_final_stats();
+    it->get().impl_replacement_final_stats();
 
   DRAM.print_phase_stats();
 
