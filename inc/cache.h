@@ -33,6 +33,21 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+  class BLOCK
+  {
+  public:
+    bool valid = false;
+    bool prefetch = false;
+    bool dirty = false;
+
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+    uint64_t ip = 0;
+    uint64_t cpu = 0;
+    uint64_t instr_id = 0;
+  };
+
 public:
   uint32_t cpu;
   const std::string NAME;
@@ -52,22 +67,19 @@ public:
     std::vector<stats_type> sim_stats, roi_stats;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
-      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
-
-  std::list<PACKET> MSHR; // MSHR
+  std::deque<PACKET> RQ, PQ, VAPQ, WQ;
+  std::list<PACKET> MSHR;
 
   // functions
-  int add_rq(PACKET* packet) override;
-  int add_wq(PACKET* packet) override;
-  int add_pq(PACKET* packet) override;
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
-  void return_data(PACKET* packet) override;
+  void return_data(const PACKET& packet) override;
   void operate() override;
   void operate_writes();
   void operate_reads();
+  void check_collision();
 
   void begin_phase() override;
   void end_phase(unsigned cpu) override;

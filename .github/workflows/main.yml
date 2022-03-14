@@ -1,11 +1,11 @@
 name: lint
   
 on:
-  # Triggers the workflow on push or pull request events for master and develop
+  # Triggers the workflow on push events for master and develop
   push:
-    branches: [ master,develop ]
-  pull_request:
-    branches: [ master,develop ]
+    branches:
+      - master
+      - develop
 
 jobs:
   build: 
@@ -18,9 +18,8 @@ jobs:
           style: file
           clangFormatVersion: 13.0.0
           inplace: True
-      - uses: EndBug/add-and-commit@v4
+      - uses: EndBug/add-and-commit@v9
         with:
-          author_name: Auto-Formatter
-          author_email: format@example.com
           message: 'Formatted with clang-format'
+          default_author: github_actions
           add: 'src inc prefetcher branch replacement btb'

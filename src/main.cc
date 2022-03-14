@@ -63,7 +63,7 @@ uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
 
 void signal_handler(int signal)
 {
-  cout << "Caught signal: " << signal << endl;
+  std::cout << "Caught signal: " << signal << std::endl;
   exit(1);
 }
 
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
   sigIntHandler.sa_flags = 0;
   sigaction(SIGINT, &sigIntHandler, NULL);
 
-  cout << endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << endl << endl;
+  std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
 
   show_heartbeat = 1;
 
@@ -119,9 +119,10 @@ int main(int argc, char** argv)
     }
   }
 
-  cout << "Warmup Instructions: " << warmup_instructions << endl;
-  cout << "Simulation Instructions: " << simulation_instructions << endl;
-  cout << "Number of CPUs: " << NUM_CPUS << endl;
+  // consequences of knobs
+  std::cout << "Warmup Instructions: " << warmup_instructions << std::endl;
+  std::cout << "Simulation Instructions: " << simulation_instructions << std::endl;
+  std::cout << "Number of CPUs: " << NUM_CPUS << std::endl;
 
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
   std::cout << "Off-chip DRAM Size: ";
@@ -240,7 +241,7 @@ int main(int argc, char** argv)
             std::cout << std::endl;
         }
     }
-
+   
     std::cout << "ChampSim completed all CPUs" << std::endl;
 
     if (NUM_CPUS > 1)
@@ -250,12 +251,12 @@ int main(int argc, char** argv)
 
         for (auto cpu : ooo_cpu)
             cpu->print_phase_stats();
-
+      
         for (auto it = caches.rbegin(); it != caches.rend(); ++it)
             (*it)->print_phase_stats();
     }
-
-    std::cout << std::endl;
+  
+   std::cout << std::endl;
     std::cout << "Region of Interest Statistics" << std::endl;
     for (auto cpu : ooo_cpu)
     {
@@ -265,7 +266,7 @@ int main(int argc, char** argv)
         for (auto it = caches.rbegin(); it != caches.rend(); ++it)
             (*it)->print_roi_stats();
     }
-
+      
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
     (*it)->impl_prefetcher_final_stats();
 
