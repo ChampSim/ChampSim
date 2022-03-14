@@ -49,8 +49,8 @@ def get_pref_string(pref_data):
     retval += '\n}\n'
     retval += '\n'
 
-    retval += '\n'.join('void {prefetcher_branch_operate}(uint64_t, uint8_t, uint64_t);\n'.format(**p) for p in pref_data.values() if '_is_instruction_prefetcher' in p)
-    retval += '\n'.join('void {prefetcher_branch_operate}(uint64_t, uint8_t, uint64_t) {{ assert(false); }}\n'.format(**p) for p in pref_data.values() if '_is_instruction_prefetcher' not in p)
+    retval += '\n'.join('void {prefetcher_branch_operate}(uint64_t, uint8_t, uint64_t);\n'.format(**p) for p in pref_data.values() if p['_is_instruction_prefetcher'])
+    retval += '\n'.join('void {prefetcher_branch_operate}(uint64_t, uint8_t, uint64_t) {{ assert(false); }}\n'.format(**p) for p in pref_data.values() if not p['_is_instruction_prefetcher'])
     retval += '\nvoid impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)\n{\n    '
     retval += '\n    '.join('if (pref_type[p{}]) {prefetcher_branch_operate}(ip, branch_type, branch_target);'.format(k,**p) for k,p in pref_data.items())
     retval += '\n}\n'
