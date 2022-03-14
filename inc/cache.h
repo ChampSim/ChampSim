@@ -49,10 +49,13 @@ public:
     TranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
     void operate() override;
 
-    // functions
     bool add_rq(const PACKET &packet);
     bool add_wq(const PACKET &packet);
     bool add_pq(const PACKET &packet);
+
+    bool rq_has_ready();
+    bool wq_has_ready();
+    bool pq_has_ready();
 
     private:
     void check_collision();

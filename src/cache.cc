@@ -310,13 +310,13 @@ void CACHE::operate()
       MSHR.pop_front();
   }
 
-  for (bool success = true; success && write_bw > 0 && !std::empty(queues.WQ) && queues.WQ.front().event_cycle <= current_cycle; --write_bw) {
+  for (bool success = true; success && write_bw > 0 && !std::empty(queues.WQ) && queues.wq_has_ready(); --write_bw) {
     success = handle_writeback(queues.WQ.front());
     if (success)
       queues.WQ.pop_front();
   }
 
-  for (bool success = true; success && read_bw > 0 && !std::empty(queues.RQ) && queues.RQ.front().event_cycle <= current_cycle; --read_bw) {
+  for (bool success = true; success && read_bw > 0 && !std::empty(queues.RQ) && queues.rq_has_ready(); --read_bw) {
     success = handle_read(queues.RQ.front());
     if (success)
       queues.RQ.pop_front();
@@ -324,7 +324,7 @@ void CACHE::operate()
 
   va_translate_prefetches();
 
-  for (bool success = true; success && read_bw > 0 && !std::empty(queues.PQ) && queues.PQ.front().event_cycle <= current_cycle; --read_bw) {
+  for (bool success = true; success && read_bw > 0 && !std::empty(queues.PQ) && queues.pq_has_ready(); --read_bw) {
     success = handle_prefetch(queues.PQ.front());
     if (success)
       queues.PQ.pop_front();

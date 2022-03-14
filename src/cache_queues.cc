@@ -149,3 +149,18 @@ bool CACHE::TranslatingQueues::add_pq(const PACKET &packet)
   PQ_TO_CACHE++;
   return true;
 }
+
+bool CACHE::TranslatingQueues::wq_has_ready()
+{
+  return WQ.front().event_cycle <= current_cycle;
+}
+
+bool CACHE::TranslatingQueues::rq_has_ready()
+{
+  return RQ.front().event_cycle <= current_cycle;
+}
+
+bool CACHE::TranslatingQueues::pq_has_ready()
+{
+  return PQ.front().event_cycle <= current_cycle;
+}
