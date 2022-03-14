@@ -34,7 +34,7 @@ extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<CACHE*, NUM_CACHES> caches;
-extern std::array<champsim::operable*, NUM_OPERABLES> operables;
+extern std::array<std::reference_wrapper<champsim::operable>, NUM_OPERABLES> operables;
 
 std::vector<tracereader*> traces;
 
@@ -166,24 +166,24 @@ int main(int argc, char** argv)
   // simulation entry point
   for (auto phase : phases) {
     // Initialize phase
-    for (auto op : operables) {
-      op->warmup = phase.is_warmup;
-      op->begin_phase();
+    for (champsim::operable& op : operables) {
+      op.warmup = phase.is_warmup;
+      op.begin_phase();
     }
 
     // Perform phase
     std::bitset<NUM_CPUS> phase_complete = {};
     while (!phase_complete.all()) {
       // Operate
-      for (auto op : operables) {
+      for (champsim::operable& op : operables) {
         try {
-          op->_operate();
+          op._operate();
         } catch (champsim::deadlock& dl) {
           // ooo_cpu[dl.which]->print_deadlock();
           // std::cout << std::endl;
           // for (auto c : caches)
-          for (auto c : operables) {
-            c->print_deadlock();
+          for (champsim::operable& c : operables) {
+            c.print_deadlock();
             std::cout << std::endl;
           }
 
@@ -204,8 +204,8 @@ int main(int argc, char** argv)
         // Phase complete
         if (!phase_complete[cpu->cpu] && (cpu->sim_instr() >= phase.length)) {
           phase_complete.set(cpu->cpu);
-          for (auto op : operables)
-            op->end_phase(cpu->cpu);
+          for (champsim::operable& op : operables)
+            op.end_phase(cpu->cpu);
 
           std::cout << phase.name << " finished CPU " << cpu->cpu;
           std::cout << " instructions: " << cpu->sim_instr() << " cycles: " << cpu->sim_cycle()
@@ -239,13 +239,11 @@ int main(int argc, char** argv)
 
   std::cout << std::endl;
   std::cout << "Region of Interest Statistics" << std::endl;
-  for (auto cpu : ooo_cpu) {
-    for (auto cpu : ooo_cpu)
-      cpu->print_roi_stats();
+  for (auto cpu : ooo_cpu)
+    cpu->print_roi_stats();
 
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-      (*it)->print_roi_stats();
-  }
+  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+    (*it)->print_roi_stats();
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
     (*it)->impl_prefetcher_final_stats();

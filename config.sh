@@ -389,6 +389,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('#include "operable.h"\n')
     wfp.write('#include "' + os.path.basename(constants_header_name) + '"\n')
     wfp.write('#include <array>\n')
+    wfp.write('#include <functional>\n')
     wfp.write('#include <vector>\n')
 
     wfp.write(vmem_fmtstr.format(attrs=config_file['virtual_memory']))
@@ -411,8 +412,8 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
     wfp.write('\n}};\n')
 
-    wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {{\n')
-    wfp.write(', '.join('&{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
+    wfp.write('std::array<std::reference_wrapper<champsim::operable>, NUM_OPERABLES> operables {{\n')
+    wfp.write(', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
     wfp.write('\n}};\n')
 
 # Core modules file

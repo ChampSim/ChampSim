@@ -42,7 +42,7 @@ public:
 class by_next_operate
 {
 public:
-  bool operator()(operable* lhs, operable* rhs) const { return lhs->leap_operation < rhs->leap_operation; }
+  bool operator()(const operable &lhs, const operable &rhs) const { return lhs.leap_operation < rhs.leap_operation; }
 };
 
 } // namespace champsim
