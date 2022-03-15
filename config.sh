@@ -20,7 +20,7 @@ def norm_fname(fname):
 # Begin format strings
 ###
 
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
+ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
 
 cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
 
@@ -349,19 +349,15 @@ memory_system = dict(**caches, **ptws)
 
 # Give each element a fill level
 active_keys = list(itertools.chain.from_iterable((cpu['ITLB'], cpu['DTLB'], cpu['L1I'], cpu['L1D']) for cpu in cores))
-for k in active_keys:
-    memory_system[k]['fill_level'] = 1
-
 for fill_level in range(1,len(memory_system)+1):
     for k in active_keys:
-        if memory_system[k]['lower_level'] != 'DRAM':
-            memory_system[memory_system[k]['lower_level']]['fill_level'] = max(memory_system[memory_system[k]['lower_level']].get('fill_level',0), fill_level+1)
+        memory_system[k]['_fill_level'] = fill_level
     active_keys = [memory_system[k]['lower_level'] for k in active_keys if memory_system[k]['lower_level'] != 'DRAM']
 
 # Remove name index
 memory_system = list(memory_system.values())
 
-memory_system.sort(key=operator.itemgetter('fill_level'), reverse=True)
+memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
 
 # Check for lower levels in the array
 for i in reversed(range(len(memory_system))):
@@ -381,7 +377,7 @@ for elem in memory_system:
 ###
 
 # Instantiation file
-cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {fill_level}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name}}};\n'
+cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name}}};\n'
 transl_queue_fmtstr = 'CACHE::TranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {offset_bits}, {wq_check_full_addr:b}, nullptr}};\n'
 nontransl_queue_fmtstr = 'CACHE::NonTranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {offset_bits}, {wq_check_full_addr:b}}};\n'
 with open(instantiation_file_name, 'wt') as wfp:

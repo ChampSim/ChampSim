@@ -7,10 +7,10 @@
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
                                  uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
                                  MemoryRequestConsumer* ll)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
+    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
       MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
       PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
       PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
@@ -45,7 +45,6 @@ void PageTableWalker::handle_read()
     }
 
     PACKET packet = handle_pkt;
-    packet.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
     packet.address = ptw_addr;
     packet.v_address = handle_pkt.address;
     packet.cpu = cpu;
@@ -250,8 +249,7 @@ void PageTableWalker::print_deadlock()
     for (PACKET entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
       std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " translation_level: " << +entry.translation_level;
-      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
+      std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {
     std::cout << NAME << " MSHR empty" << std::endl;

@@ -127,7 +127,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
   // update prefetcher on load instruction
-  if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+  if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     hit_block.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
   }
@@ -168,9 +168,6 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
   if (mshr_entry != MSHR.end()) // miss already inflight
   {
-    // update fill location
-    mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-
     packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
     packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
     packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
@@ -178,7 +175,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
-      if (mshr_entry->pf_origin_level == fill_level)
+      if (mshr_entry->prefetch_from_this)
         pf_useful++;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
@@ -194,10 +191,9 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
     auto fwd_pkt = handle_pkt;
 
-    if (fwd_pkt.fill_level <= fill_level)
+    fwd_pkt.prefetch_from_this = false;
+    if (!std::empty(fwd_pkt.to_return))
       fwd_pkt.to_return = {this};
-    else
-      fwd_pkt.to_return.clear();
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -209,7 +205,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
       return false;
 
     // Allocate an MSHR
-    if (handle_pkt.fill_level <= fill_level) {
+    if (!std::empty(fwd_pkt.to_return)) {
       mshr_entry = MSHR.insert(std::end(MSHR), handle_pkt);
       mshr_entry->cycle_enqueued = current_cycle;
       mshr_entry->event_cycle = std::numeric_limits<uint64_t>::max();
@@ -217,7 +213,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
-  if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+  if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
   }
@@ -248,7 +244,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
     if (fill_block.dirty) {
       PACKET writeback_packet;
 
-      writeback_packet.fill_level = lower_level->fill_level;
       writeback_packet.cpu = handle_pkt.cpu;
       writeback_packet.address = fill_block.address;
       writeback_packet.data = fill_block.data;
@@ -271,7 +266,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
       pf_fill++;
 
     fill_block.valid = true;
-    fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
+    fill_block.prefetch = handle_pkt.prefetch_from_this;
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
     fill_block.v_address = handle_pkt.v_address;
@@ -382,12 +377,14 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
 
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
-  pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
-  pf_packet.pf_origin_level = fill_level;
+  pf_packet.prefetch_from_this = true;
   pf_packet.pf_metadata = prefetch_metadata;
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
+
+  if (fill_this_level)
+    pf_packet.to_return = {this};
 
   auto success = queues.add_pq(pf_packet);
   if (success)
@@ -486,7 +483,9 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-bool CACHE::should_activate_prefetcher(int type) { return (1 << static_cast<int>(type)) & pref_activate_mask; }
+bool CACHE::should_activate_prefetcher(const PACKET &pkt) const {
+  return (1 << pkt.type) & pref_activate_mask && !pkt.prefetch_from_this;
+}
 
 void CACHE::print_deadlock()
 {
@@ -496,7 +495,7 @@ void CACHE::print_deadlock()
     for (PACKET entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
       std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
+      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {
     std::cout << NAME << " MSHR empty" << std::endl;
@@ -505,7 +504,7 @@ void CACHE::print_deadlock()
   if (!std::empty(queues.RQ)) {
       std::cout << NAME << " RQ head " << " instr_id: " << queues.RQ.front().instr_id;
       std::cout << " address: " << std::hex << queues.RQ.front().address << " v_addr: " << queues.RQ.front().v_address << std::dec << " type: " << +queues.RQ.front().type;
-      std::cout << " fill_level: " << +queues.RQ.front().fill_level << " event_cycle: " << queues.RQ.front().event_cycle << std::endl;
+      std::cout << " event_cycle: " << queues.RQ.front().event_cycle << std::endl;
   } else {
     std::cout << NAME << " RQ empty" << std::endl;
   }
@@ -513,7 +512,7 @@ void CACHE::print_deadlock()
   if (!std::empty(queues.WQ)) {
       std::cout << NAME << " WQ head " << " instr_id: " << queues.WQ.front().instr_id;
       std::cout << " address: " << std::hex << queues.WQ.front().address << " v_addr: " << queues.WQ.front().v_address << std::dec << " type: " << +queues.WQ.front().type;
-      std::cout << " fill_level: " << +queues.WQ.front().fill_level << " event_cycle: " << queues.WQ.front().event_cycle << std::endl;
+      std::cout << " event_cycle: " << queues.WQ.front().event_cycle << std::endl;
   } else {
     std::cout << NAME << " WQ empty" << std::endl;
   }
@@ -521,7 +520,7 @@ void CACHE::print_deadlock()
   if (!std::empty(queues.PQ)) {
       std::cout << NAME << " PQ head " << " instr_id: " << queues.PQ.front().instr_id;
       std::cout << " address: " << std::hex << queues.PQ.front().address << " v_addr: " << queues.PQ.front().v_address << std::dec << " type: " << +queues.PQ.front().type;
-      std::cout << " fill_level: " << +queues.PQ.front().fill_level << " event_cycle: " << queues.PQ.front().event_cycle << std::endl;
+      std::cout << " event_cycle: " << queues.PQ.front().event_cycle << std::endl;
   } else {
     std::cout << NAME << " PQ empty" << std::endl;
   }

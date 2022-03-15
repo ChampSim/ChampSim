@@ -808,7 +808,6 @@ void O3_CPU::print_deadlock()
 
 bool CacheBus::issue_read(PACKET data_packet)
 {
-  data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
   data_packet.to_return = {this};
 
@@ -817,7 +816,6 @@ bool CacheBus::issue_read(PACKET data_packet)
 
 bool CacheBus::issue_write(PACKET data_packet)
 {
-  data_packet.fill_level = lower_level->fill_level;
   data_packet.cpu = cpu;
 
   return lower_level->add_wq(data_packet);

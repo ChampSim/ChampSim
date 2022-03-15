@@ -59,7 +59,6 @@ void CACHE::NonTranslatingQueues::check_collision()
       WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
     } else if (auto found = std::find_if(std::begin(PQ), pq_it, eq_addr<PACKET>(pq_it->address, read_shamt)); found != pq_it) {
-      found->fill_level = std::min(found->fill_level, pq_it->fill_level);
       packet_dep_merge(found->to_return, pq_it->to_return);
 
       PQ_MERGED++;

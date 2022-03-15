@@ -62,7 +62,7 @@ public:
 
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-  MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
+  MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
 
   bool add_rq(const PACKET &packet) override;
   bool add_wq(const PACKET &packet) override;

@@ -118,7 +118,7 @@ public:
   bool readlike_miss(const PACKET& handle_pkt);
   bool filllike_miss(std::size_t set, std::size_t way, const PACKET& handle_pkt);
 
-  bool should_activate_prefetcher(int type);
+  bool should_activate_prefetcher(const PACKET &pkt) const;
 
   void print_deadlock() override;
 
@@ -128,10 +128,10 @@ public:
   const pref_t pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint32_t v8, uint32_t hit_lat,
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8, uint32_t hit_lat,
         uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, NonTranslatingQueues &queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
-      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
+      : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
         MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
         queues(queues), repl_type(repl), pref_type(pref)

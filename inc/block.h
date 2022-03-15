@@ -18,8 +18,9 @@ public:
   bool scheduled = false;
   bool forward_checked = false;
   bool translate_issued = false;
+  bool prefetch_from_this = false;
 
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0;
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
 
   uint32_t pf_metadata = 0;
   uint32_t cpu = NUM_CPUS;
