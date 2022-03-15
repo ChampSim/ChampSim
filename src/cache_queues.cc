@@ -84,6 +84,11 @@ void CACHE::TranslatingQueues::issue_translation()
       wq_entry.translate_issued = true;
       wq_entry.event_cycle += TRANSLATION_LATENCY;
       //}
+
+      DP(if (warmup_complete[wq_entry.cpu]) {
+        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << wq_entry.instr_id << std::hex;
+        std::cout << " full_addr: " << wq_entry.address << " v_address: " << wq_entry.v_address << std::dec << " type: " << +wq_entry.type << " occupancy: " << std::size(WQ) << std::endl;
+      })
     }
   }
   std::sort(std::begin(WQ), std::end(WQ), min_event_cycle<PACKET>{});
@@ -96,6 +101,11 @@ void CACHE::TranslatingQueues::issue_translation()
       rq_entry.translate_issued = true;
       rq_entry.event_cycle += TRANSLATION_LATENCY;
       //}
+
+      DP(if (warmup_complete[rq_entry.cpu]) {
+        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << rq_entry.instr_id << std::hex;
+        std::cout << " full_addr: " << rq_entry.address << " v_address: " << rq_entry.v_address << std::dec << " type: " << +rq_entry.type << " occupancy: " << std::size(RQ) << std::endl;
+      })
     }
   }
   std::sort(std::begin(RQ), std::end(RQ), min_event_cycle<PACKET>{});
@@ -108,6 +118,11 @@ void CACHE::TranslatingQueues::issue_translation()
       pq_entry.translate_issued = true;
       pq_entry.event_cycle += TRANSLATION_LATENCY;
       //}
+
+      DP(if (warmup_complete[pq_entry.cpu]) {
+        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << pq_entry.instr_id << std::hex;
+        std::cout << " full_addr: " << pq_entry.address << " v_address: " << pq_entry.v_address << std::dec << " type: " << +pq_entry.type << " occupancy: " << std::size(PQ) << std::endl;
+      })
     }
   }
   std::sort(std::begin(PQ), std::end(PQ), min_event_cycle<PACKET>{});
@@ -117,12 +132,6 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
 {
   assert(packet.address != 0);
   RQ_ACCESS++;
-
-  DP(if (warmup_complete[packet.cpu]) {
-    std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << RQ.size();
-  })
 
   // check occupancy
   if (std::size(RQ) >= RQ_SIZE) {
@@ -145,12 +154,6 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
 bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
 {
   WQ_ACCESS++;
-
-  DP(if (warmup_complete[packet.cpu]) {
-    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << WQ.size();
-  })
 
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
@@ -175,12 +178,6 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
 {
   assert(packet.address != 0);
   PQ_ACCESS++;
-
-  DP(if (warmup_complete[packet.cpu]) {
-    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << PQ.size();
-  })
 
   // check occupancy
   if (std::size(PQ) >= PQ_SIZE) {

@@ -116,7 +116,7 @@ bool CACHE::handle_prefetch(PACKET &handle_pkt)
 void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_pkt)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
-    std::cout << "[" << NAME << "] " << __func__ << " hit";
+    std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
@@ -154,7 +154,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 bool CACHE::readlike_miss(const PACKET& handle_pkt)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
-    std::cout << "[" << NAME << "] " << __func__ << " miss";
+    std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
@@ -228,7 +228,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle_pkt)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
-    std::cout << "[" << NAME << "] " << __func__ << " miss";
+    std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
@@ -352,6 +352,11 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 bool CACHE::add_rq(const PACKET &packet)
 {
+  DP(if (warmup_complete[packet.cpu]) {
+    std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ);
+  })
+
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
@@ -360,6 +365,11 @@ bool CACHE::add_rq(const PACKET &packet)
 
 bool CACHE::add_wq(const PACKET &packet)
 {
+  DP(if (warmup_complete[packet.cpu]) {
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.WQ);
+  })
+
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
@@ -403,6 +413,11 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
 
 bool CACHE::add_pq(const PACKET &packet)
 {
+  DP(if (warmup_complete[packet.cpu]) {
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.PQ);
+  })
+
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
@@ -480,10 +495,34 @@ void CACHE::print_deadlock()
     std::size_t j = 0;
     for (PACKET entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << (entry.address >> LOG2_BLOCK_SIZE) << " full_addr: " << entry.address << std::dec << " type: " << +entry.type;
+      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << +entry.type;
       std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {
     std::cout << NAME << " MSHR empty" << std::endl;
+  }
+
+  if (!std::empty(queues.RQ)) {
+      std::cout << NAME << " RQ head " << " instr_id: " << queues.RQ.front().instr_id;
+      std::cout << " address: " << std::hex << queues.RQ.front().address << " v_addr: " << queues.RQ.front().v_address << std::dec << " type: " << +queues.RQ.front().type;
+      std::cout << " fill_level: " << +queues.RQ.front().fill_level << " event_cycle: " << queues.RQ.front().event_cycle << std::endl;
+  } else {
+    std::cout << NAME << " RQ empty" << std::endl;
+  }
+
+  if (!std::empty(queues.WQ)) {
+      std::cout << NAME << " WQ head " << " instr_id: " << queues.WQ.front().instr_id;
+      std::cout << " address: " << std::hex << queues.WQ.front().address << " v_addr: " << queues.WQ.front().v_address << std::dec << " type: " << +queues.WQ.front().type;
+      std::cout << " fill_level: " << +queues.WQ.front().fill_level << " event_cycle: " << queues.WQ.front().event_cycle << std::endl;
+  } else {
+    std::cout << NAME << " WQ empty" << std::endl;
+  }
+
+  if (!std::empty(queues.PQ)) {
+      std::cout << NAME << " PQ head " << " instr_id: " << queues.PQ.front().instr_id;
+      std::cout << " address: " << std::hex << queues.PQ.front().address << " v_addr: " << queues.PQ.front().v_address << std::dec << " type: " << +queues.PQ.front().type;
+      std::cout << " fill_level: " << +queues.PQ.front().fill_level << " event_cycle: " << queues.PQ.front().event_cycle << std::endl;
+  } else {
+    std::cout << NAME << " PQ empty" << std::endl;
   }
 }
