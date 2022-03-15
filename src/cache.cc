@@ -12,7 +12,6 @@
 #define NDEBUG
 #endif
 
-extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 
 bool CACHE::handle_fill(PACKET &fill_mshr)
@@ -322,8 +321,6 @@ void CACHE::operate()
       queues.RQ.pop_front();
   }
 
-  va_translate_prefetches();
-
   for (bool success = true; success && read_bw > 0 && !std::empty(queues.PQ) && queues.pq_has_ready(); --read_bw) {
     success = handle_prefetch(queues.PQ.front());
     if (success)
@@ -382,19 +379,10 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
-  if (virtual_prefetch) {
-    if (std::size(queues.VAPQ) < queues.PQ_SIZE) {
-      pf_packet.event_cycle = current_cycle + VA_PREFETCH_TRANSLATION_LATENCY;
-      queues.VAPQ.push_back(pf_packet);
-      return 1;
-    }
-    return 0;
-  } else {
-    auto success = queues.add_pq(pf_packet);
-    if (success)
-      ++pf_issued;
-    return success;
-  }
+  auto success = queues.add_pq(pf_packet);
+  if (success)
+    ++pf_issued;
+  return success;
 }
 
 int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -411,23 +399,6 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
     deprecate_printed = true;
   }
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
-}
-
-void CACHE::va_translate_prefetches()
-{
-  // TEMPORARY SOLUTION: mark prefetches as translated after a fixed latency
-  bool success = true;
-  while (success && !std::empty(queues.VAPQ) && queues.VAPQ.front().event_cycle <= current_cycle) {
-    queues.VAPQ.front().address = vmem.va_to_pa(cpu, queues.VAPQ.front().v_address).first;
-
-    // move the translated prefetch over to the regular PQ
-    success = add_pq(queues.VAPQ.front());
-    if (success) {
-      // remove the prefetch from the VAPQ
-      queues.VAPQ.pop_front();
-      pf_issued++;
-    }
-  }
 }
 
 bool CACHE::add_pq(const PACKET &packet)
