@@ -1,21 +1,25 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <deque>
 #include <functional>
 #include <list>
 #include <string>
 #include <vector>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
-#include "ooo_cpu.h"
 #include "operable.h"
+
+#define FILL_L1 1
+#define FILL_L2 2
+#define FILL_LLC 4
+#define FILL_DRC 8
+#define FILL_DRAM 16
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
-
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {

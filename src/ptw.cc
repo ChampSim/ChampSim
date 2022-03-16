@@ -1,6 +1,7 @@
 #include "ptw.h"
 
 #include "champsim.h"
+#include "champsim_constants.h"
 #include "util.h"
 #include "vmem.h"
 
