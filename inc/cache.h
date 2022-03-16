@@ -13,7 +13,7 @@
 #include "operable.h"
 
 // virtual address space prefetching
-#define VA_PREFETCH_TRANSLATION_LATENCY 2
+constexpr uint64_t VA_PREFETCH_TRANSLATION_LATENCY = 2;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
