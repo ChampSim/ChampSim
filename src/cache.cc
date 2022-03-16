@@ -8,10 +8,6 @@
 #include "util.h"
 #include "vmem.h"
 
-#ifndef SANITY_CHECK
-#define NDEBUG
-#endif
-
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 
@@ -336,9 +332,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   }
 
   bool bypass = (way == NUM_WAY);
-#ifndef LLC_BYPASS
-  assert(!bypass);
-#endif
   assert(handle_pkt.type != WRITEBACK || !bypass);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
