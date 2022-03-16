@@ -203,14 +203,12 @@ void CACHE::check_collision()
 void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[handle_pkt.cpu]) {
-      std::cout << "[" << NAME << "] " << __func__ << " hit";
-      std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << handle_pkt.address;
-      std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-      std::cout << " type: " << +handle_pkt.type;
-      std::cout << " cycle: " << current_cycle << std::endl;
-    }
+    std::cout << "[" << NAME << "] " << __func__ << " hit";
+    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " cycle: " << current_cycle << std::endl;
   }
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
@@ -244,14 +242,12 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 bool CACHE::readlike_miss(PACKET& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[handle_pkt.cpu]) {
-      std::cout << "[" << NAME << "] " << __func__ << " miss";
-      std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << handle_pkt.address;
-      std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-      std::cout << " type: " << +handle_pkt.type;
-      std::cout << " cycle: " << current_cycle << std::endl;
-    }
+    std::cout << "[" << NAME << "] " << __func__ << " miss";
+    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " cycle: " << current_cycle << std::endl;
   }
 
   // check mshr
@@ -321,14 +317,12 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[handle_pkt.cpu]) {
-      std::cout << "[" << NAME << "] " << __func__ << " miss";
-      std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << handle_pkt.address;
-      std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-      std::cout << " type: " << +handle_pkt.type;
-      std::cout << " cycle: " << current_cycle << std::endl;
-    }
+    std::cout << "[" << NAME << "] " << __func__ << " miss";
+    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " cycle: " << current_cycle << std::endl;
   }
 
   bool bypass = (way == NUM_WAY);
@@ -448,10 +442,8 @@ bool CACHE::add_rq(const PACKET& packet)
   RQ_ACCESS++;
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu]) {
-      std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << RQ.size();
-    }
+    std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << RQ.size();
   }
 
   // check occupancy
@@ -459,8 +451,7 @@ bool CACHE::add_rq(const PACKET& packet)
     RQ_FULL++;
 
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[packet.cpu])
-        std::cout << " FULL" << std::endl;
+      std::cout << " FULL" << std::endl;
     }
 
     return false; // cannot handle this request
@@ -472,8 +463,7 @@ bool CACHE::add_rq(const PACKET& packet)
   RQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu])
-      std::cout << " ADDED" << std::endl;
+    std::cout << " ADDED" << std::endl;
   }
 
   RQ_TO_CACHE++;
@@ -485,17 +475,14 @@ bool CACHE::add_wq(const PACKET& packet)
   WQ_ACCESS++;
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu]) {
-      std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << WQ.size();
-    }
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << WQ.size();
   }
 
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[packet.cpu])
-        std::cout << " FULL" << std::endl;
+      std::cout << " FULL" << std::endl;
     }
 
     ++WQ_FULL;
@@ -508,8 +495,7 @@ bool CACHE::add_wq(const PACKET& packet)
   WQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu])
-      std::cout << " ADDED" << std::endl;
+    std::cout << " ADDED" << std::endl;
   }
 
   WQ_TO_CACHE++;
@@ -584,18 +570,15 @@ bool CACHE::add_pq(const PACKET& packet)
   PQ_ACCESS++;
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu]) {
-      std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-      std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << PQ.size();
-    }
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << PQ.size();
   }
 
   // check occupancy
   if (std::size(PQ) >= PQ_SIZE) {
 
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[packet.cpu])
-        std::cout << " FULL" << std::endl;
+      std::cout << " FULL" << std::endl;
     }
 
     PQ_FULL++;
@@ -608,8 +591,7 @@ bool CACHE::add_pq(const PACKET& packet)
   PQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu])
-      std::cout << " ADDED" << std::endl;
+    std::cout << " ADDED" << std::endl;
   }
 
   PQ_TO_CACHE++;
@@ -638,13 +620,11 @@ void CACHE::return_data(const PACKET& packet)
   mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[packet.cpu]) {
-      std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
-      std::cout << " address: " << std::hex << (mshr_entry->address >> OFFSET_BITS) << " full_addr: " << mshr_entry->address;
-      std::cout << " data: " << mshr_entry->data << std::dec;
-      std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0, 0);
-      std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
-    }
+    std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
+    std::cout << " address: " << std::hex << (mshr_entry->address >> OFFSET_BITS) << " full_addr: " << mshr_entry->address;
+    std::cout << " data: " << mshr_entry->data << std::dec;
+    std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0, 0);
+    std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
   }
 
   // Order this entry after previously-returned entries, but before non-returned

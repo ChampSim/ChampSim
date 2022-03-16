@@ -28,14 +28,12 @@ void PageTableWalker::handle_read()
     PACKET& handle_pkt = RQ.front();
 
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[handle_pkt.cpu]) {
-        std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-        std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
-        std::cout << " full_v_addr: " << handle_pkt.v_address;
-        std::cout << " data: " << handle_pkt.data << std::dec;
-        std::cout << " translation_level: " << +handle_pkt.translation_level;
-        std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl;
-      }
+      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
+      std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
+      std::cout << " full_v_addr: " << handle_pkt.v_address;
+      std::cout << " data: " << handle_pkt.data << std::dec;
+      std::cout << " translation_level: " << +handle_pkt.translation_level;
+      std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl;
     }
 
     auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
@@ -92,15 +90,13 @@ void PageTableWalker::handle_fill()
         fill_mshr->address = fill_mshr->v_address;
 
         if constexpr (champsim::debug_print) {
-          if (warmup_complete[fill_mshr->cpu]) {
-            std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
-            std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
-            std::cout << " full_v_addr: " << fill_mshr->v_address;
-            std::cout << " data: " << fill_mshr->data << std::dec;
-            std::cout << " translation_level: " << +fill_mshr->translation_level;
-            std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
-            std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
-          }
+          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
+          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+          std::cout << " full_v_addr: " << fill_mshr->v_address;
+          std::cout << " data: " << fill_mshr->data << std::dec;
+          std::cout << " translation_level: " << +fill_mshr->translation_level;
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         }
 
         for (auto ret : fill_mshr->to_return)
@@ -127,15 +123,13 @@ void PageTableWalker::handle_fill()
           PSCL2.fill_cache(addr, fill_mshr->v_address);
 
         if constexpr (champsim::debug_print) {
-          if (warmup_complete[fill_mshr->cpu]) {
-            std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
-            std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
-            std::cout << " full_v_addr: " << fill_mshr->v_address;
-            std::cout << " data: " << fill_mshr->data << std::dec;
-            std::cout << " translation_level: " << +fill_mshr->translation_level;
-            std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
-            std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
-          }
+          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
+          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
+          std::cout << " full_v_addr: " << fill_mshr->v_address;
+          std::cout << " data: " << fill_mshr->data << std::dec;
+          std::cout << " translation_level: " << +fill_mshr->translation_level;
+          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
+          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         }
 
         PACKET packet = *fill_mshr;
@@ -193,15 +187,13 @@ void PageTableWalker::return_data(const PACKET& packet)
       mshr_entry.event_cycle = current_cycle;
 
       if constexpr (champsim::debug_print) {
-        if (warmup_complete[cpu]) {
-          std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
-          std::cout << " address: " << std::hex << mshr_entry.address;
-          std::cout << " v_address: " << mshr_entry.v_address;
-          std::cout << " data: " << mshr_entry.data << std::dec;
-          std::cout << " translation_level: " << +mshr_entry.translation_level;
-          std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
-          std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
-        }
+        std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
+        std::cout << " address: " << std::hex << mshr_entry.address;
+        std::cout << " v_address: " << mshr_entry.v_address;
+        std::cout << " data: " << mshr_entry.data << std::dec;
+        std::cout << " translation_level: " << +mshr_entry.translation_level;
+        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
+        std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
       }
     }
   }

@@ -133,9 +133,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   if (arch_instr.is_branch) {
 
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[cpu]) {
-        std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
-      }
+      std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
     }
 
     num_branch++;
@@ -419,9 +417,7 @@ void O3_CPU::schedule_instruction()
         ready_to_execute.push(rob_it);
 
         if constexpr (champsim::debug_print) {
-          if (warmup_complete[cpu]) {
-            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
-          }
+          std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
         }
       }
     }
@@ -491,9 +487,7 @@ void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator r
   rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[cpu]) {
-      std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
-    }
+    std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
   }
 }
 
@@ -588,10 +582,8 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
       rob_it->executed = INFLIGHT;
 
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[cpu]) {
-        std::cout << "[ROB] " << __func__ << " instr_id: " << rob_it->instr_id;
-        std::cout << " scheduled all num_mem_ops: " << rob_it->num_mem_ops << std::endl;
-      }
+      std::cout << "[ROB] " << __func__ << " instr_id: " << rob_it->instr_id;
+      std::cout << " scheduled all num_mem_ops: " << rob_it->num_mem_ops << std::endl;
     }
   }
 }
@@ -653,9 +645,7 @@ bool O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   data_packet.sq_index_depend_on_me = {sq_it};
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[cpu]) {
-      std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl;
-    }
+    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl;
   }
 
   return DTLB_bus.issue_read(data_packet);
@@ -668,11 +658,9 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   assert(sq_it->rob_index->num_mem_ops >= 0);
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[cpu]) {
-      std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
-      std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
-      std::cout << " event_cycle: " << sq_it->event_cycle << std::endl;
-    }
+    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
+    std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
+    std::cout << " event_cycle: " << sq_it->event_cycle << std::endl;
   }
 
   // resolve RAW dependency after DTLB access
@@ -706,9 +694,7 @@ bool O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
   data_packet.lq_index_depend_on_me = {lq_it};
 
   if constexpr (champsim::debug_print) {
-    if (warmup_complete[cpu]) {
-      std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " is issued for translating" << std::endl;
-    }
+    std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " is issued for translating" << std::endl;
   }
 
   return DTLB_bus.issue_read(data_packet);
@@ -772,9 +758,7 @@ void O3_CPU::complete_inflight_instruction()
           ready_to_execute.push(dependent);
 
           if constexpr (champsim::debug_print) {
-            if (warmup_complete[cpu]) {
-              std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
-            }
+            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
           }
         }
       }
@@ -912,9 +896,7 @@ void O3_CPU::retire_rob()
 
     // release ROB entry
     if constexpr (champsim::debug_print) {
-      if (warmup_complete[cpu]) {
-        std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl;
-      }
+      std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl;
     }
 
     ROB.pop_front();
