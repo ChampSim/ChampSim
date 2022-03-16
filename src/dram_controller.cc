@@ -18,14 +18,14 @@ void MEMORY_CONTROLLER::operate()
 {
   for (auto& channel : channels) {
     if (all_warmup_complete < NUM_CPUS) {
-      for (auto &entry : channel.RQ) {
+      for (auto& entry : channel.RQ) {
         for (auto ret : entry.to_return)
           ret->return_data(entry);
 
         entry = {};
       }
 
-      for (auto &entry : channel.WQ)
+      for (auto& entry : channel.WQ)
         entry = {};
     }
 
@@ -174,7 +174,7 @@ void DRAM_CHANNEL::check_collision()
   }
 }
 
-bool MEMORY_CONTROLLER::add_rq(const PACKET &packet)
+bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
@@ -190,7 +190,7 @@ bool MEMORY_CONTROLLER::add_rq(const PACKET &packet)
   return false;
 }
 
-bool MEMORY_CONTROLLER::add_wq(const PACKET &packet)
+bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
@@ -207,7 +207,7 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET &packet)
   return false;
 }
 
-bool MEMORY_CONTROLLER::add_pq(const PACKET &packet) { return add_rq(packet); }
+bool MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block

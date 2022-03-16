@@ -21,6 +21,23 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool handle_read(PACKET &handle_pkt);
   bool handle_prefetch(PACKET &handle_pkt);
 
+  class BLOCK
+  {
+  public:
+    bool valid = false;
+    bool prefetch = false;
+    bool dirty = false;
+
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+    uint64_t ip = 0;
+    uint64_t cpu = 0;
+    uint64_t instr_id = 0;
+
+    uint32_t pf_metadata = 0;
+  };
+
 public:
   struct NonTranslatingQueues : public champsim::operable
   {

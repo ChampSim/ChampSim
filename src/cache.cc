@@ -29,10 +29,8 @@ bool CACHE::handle_fill(PACKET &fill_mshr)
     way = impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, set, &block.data()[set * NUM_WAY], fill_mshr.ip, fill_mshr.address, fill_mshr.type);
 
   bool success = filllike_miss(set, way, fill_mshr);
-  if (success && way != NUM_WAY) {
-    // update processed packets
-    fill_mshr.data = block[set * NUM_WAY + way].data;
 
+  if (success) {
     for (auto ret : fill_mshr.to_return)
       ret->return_data(fill_mshr);
   }
@@ -355,7 +353,7 @@ bool CACHE::add_rq(const PACKET &packet)
   return queues.add_rq(packet);
 }
 
-bool CACHE::add_wq(const PACKET &packet)
+bool CACHE::add_wq(const PACKET& packet)
 {
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
@@ -412,7 +410,7 @@ bool CACHE::add_pq(const PACKET &packet)
   return queues.add_pq(packet);
 }
 
-void CACHE::return_data(const PACKET &packet)
+void CACHE::return_data(const PACKET& packet)
 {
   // check MSHR information
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));

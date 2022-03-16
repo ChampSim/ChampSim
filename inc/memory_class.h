@@ -13,20 +13,6 @@
 #define TRANSLATION 4
 #define NUM_TYPES 5
 
-// CACHE BLOCK
-class BLOCK
-{
-public:
-  bool valid = false, prefetch = false, dirty = false;
-
-  uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0;
-
-  uint32_t pf_metadata = 0;
-
-  // replacement state
-  uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
-};
-
 class MemoryRequestConsumer
 {
 public:
@@ -43,7 +29,7 @@ class MemoryRequestProducer
 {
 public:
   MemoryRequestConsumer* lower_level;
-  virtual void return_data(const PACKET &packet) = 0;
+  virtual void return_data(const PACKET& packet) = 0;
 
 protected:
   MemoryRequestProducer() {}
