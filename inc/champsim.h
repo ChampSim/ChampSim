@@ -1,12 +1,7 @@
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
 
-#include <array>
-#include <cstdint>
 #include <exception>
-#include <iostream>
-
-#include "champsim_constants.h"
 
 #define INFLIGHT 1
 #define COMPLETED 2
@@ -16,8 +11,6 @@
 #define FILL_LLC 4
 #define FILL_DRC 8
 #define FILL_DRAM 16
-
-extern uint8_t warmup_complete[NUM_CPUS];
 
 namespace champsim
 {
