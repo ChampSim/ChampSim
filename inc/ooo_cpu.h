@@ -24,7 +24,7 @@ public:
   CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet);
+  void return_data(const PACKET &packet);
 };
 
 struct LSQ_ENTRY {
@@ -36,7 +36,6 @@ struct LSQ_ENTRY {
   ooo_model_instr& rob_entry;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-  bool translate_issued = false;
   bool fetch_issued = false;
 
   uint64_t physical_address = 0;
@@ -100,7 +99,7 @@ public:
   uint64_t total_branch_types[8] = {};
   uint64_t branch_type_misses[8] = {};
 
-  CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
+  CacheBus L1I_bus, L1D_bus;
 
   void operate() override;
 
@@ -116,8 +115,7 @@ public:
   void schedule_memory_instruction();
   void execute_memory_instruction();
   void do_check_dib(ooo_model_instr& instr);
-  void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
-  void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
+  bool do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& rob_it);
@@ -130,8 +128,6 @@ public:
   void do_finish_store(LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
-  bool do_translate_store(const LSQ_ENTRY& sq_entry);
-  bool do_translate_load(const LSQ_ENTRY& lq_entry);
   void complete_inflight_instruction();
   void handle_memory_return();
   void retire_rob();
@@ -147,13 +143,13 @@ public:
          std::size_t decode_buffer_size, std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width,
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
-         unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
+         unsigned execute_latency, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size),
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(cpu, rob_size, itlb), DTLB_bus(cpu, rob_size, dtlb),
+        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
         L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }

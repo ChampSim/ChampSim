@@ -81,7 +81,6 @@ struct ooo_model_instr {
   uint8_t branch_type = NOT_BRANCH;
   uint64_t branch_target = 0;
 
-  uint8_t translated = 0;
   uint8_t fetched = 0;
   uint8_t decoded = 0;
   uint8_t scheduled = 0;
@@ -98,9 +97,6 @@ struct ooo_model_instr {
 
   // these are indices of instructions in the ROB that depend on me
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
-
-  // memory addresses that may cause dependencies between instructions
-  uint64_t instruction_pa = 0;
 
 private:
   template <typename T>

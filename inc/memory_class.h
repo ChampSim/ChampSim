@@ -26,8 +26,10 @@ class PACKET
 public:
   bool scheduled = false;
   bool forward_checked = false;
+  bool translate_issued = false;
+  bool prefetch_from_this = false;
 
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0;
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
 
   uint32_t pf_metadata = 0;
   uint32_t cpu = std::numeric_limits<uint32_t>::max();
@@ -48,14 +50,13 @@ struct is_valid<PACKET> {
 class MemoryRequestConsumer
 {
 public:
-  const unsigned fill_level;
-  virtual bool add_rq(const PACKET& packet) = 0;
-  virtual bool add_wq(const PACKET& packet) = 0;
-  virtual bool add_pq(const PACKET& packet) = 0;
+  virtual bool add_rq(const PACKET &packet) = 0;
+  virtual bool add_wq(const PACKET &packet) = 0;
+  virtual bool add_pq(const PACKET &packet) = 0;
   virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
   virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
-  explicit MemoryRequestConsumer(unsigned fill_level) : fill_level(fill_level) {}
+  explicit MemoryRequestConsumer() {}
 };
 
 class MemoryRequestProducer

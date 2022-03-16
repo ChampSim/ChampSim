@@ -33,6 +33,8 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
 
+void init_structures();
+
 std::vector<tracereader*> traces;
 
 uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
@@ -230,15 +232,15 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
 
   cache->total_miss_latency = 0;
 
-  cache->RQ_ACCESS = 0;
-  cache->RQ_MERGED = 0;
-  cache->RQ_TO_CACHE = 0;
+  cache->queues.RQ_ACCESS = 0;
+  cache->queues.RQ_MERGED = 0;
+  cache->queues.RQ_TO_CACHE = 0;
 
-  cache->WQ_ACCESS = 0;
-  cache->WQ_MERGED = 0;
-  cache->WQ_TO_CACHE = 0;
-  cache->WQ_FORWARD = 0;
-  cache->WQ_FULL = 0;
+  cache->queues.WQ_ACCESS = 0;
+  cache->queues.WQ_MERGED = 0;
+  cache->queues.WQ_TO_CACHE = 0;
+  cache->queues.WQ_FORWARD = 0;
+  cache->queues.WQ_FULL = 0;
 }
 
 void finish_warmup()
@@ -375,7 +377,8 @@ int main(int argc, char** argv)
   }
   // end trace file setup
 
-  // SHARED CACHE
+  init_structures();
+
   for (O3_CPU* cpu : ooo_cpu) {
     cpu->initialize_core();
   }

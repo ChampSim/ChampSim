@@ -49,15 +49,15 @@ public:
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+  PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
                   uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
 
   // functions
-  bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET& packet) override { assert(0); }
-  bool add_pq(const PACKET& packet) override { assert(0); }
+  bool add_rq(const PACKET &packet) override;
+  bool add_wq(const PACKET &packet) override { assert(0); }
+  bool add_pq(const PACKET &packet) override { assert(0); }
 
-  void return_data(const PACKET& packet) override;
+  void return_data(const PACKET &packet) override;
   void operate() override;
 
   void handle_read();

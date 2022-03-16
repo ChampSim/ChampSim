@@ -20,10 +20,9 @@ def norm_fname(fname):
 # Begin format strings
 ###
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
+ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
 
-cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
+cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
@@ -137,8 +136,8 @@ for cpu in cores:
 # Assign defaults that are unique per core
 for cpu in cores:
     cpu['PTW'] = ChainMap(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
-    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], '_is_instruction_cache': True}, default_l1i.copy())
-    caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C']}, default_l1d.copy())
+    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_is_instruction_cache': True}, default_l1i.copy())
+    caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
     caches[cpu['ITLB']] = ChainMap(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
     caches[cpu['DTLB']] = ChainMap(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
 
@@ -189,21 +188,25 @@ for cpu in cores:
     cache_name = cpu['ITLB']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
+        caches[cache_name]['_needs_translate'] = False
         cache_name = caches[cache_name]['lower_level']
 
     cache_name = cpu['DTLB']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
+        caches[cache_name]['_needs_translate'] = False
         cache_name = caches[cache_name]['lower_level']
 
     cache_name = cpu['L1I']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
+        caches[cache_name]['_needs_translate'] = 'lower_translate' in caches[cache_name] or caches[cache_name].get('virtual_prefetch', False)
         cache_name = caches[cache_name]['lower_level']
 
     cache_name = cpu['L1D']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
+        caches[cache_name]['_needs_translate'] = 'lower_translate' in caches[cache_name] or caches[cache_name].get('virtual_prefetch', False)
         cache_name = caches[cache_name]['lower_level']
 
 ###
@@ -346,19 +349,15 @@ memory_system = dict(**caches, **ptws)
 
 # Give each element a fill level
 active_keys = list(itertools.chain.from_iterable((cpu['ITLB'], cpu['DTLB'], cpu['L1I'], cpu['L1D']) for cpu in cores))
-for k in active_keys:
-    memory_system[k]['fill_level'] = 1
-
 for fill_level in range(1,len(memory_system)+1):
     for k in active_keys:
-        if memory_system[k]['lower_level'] != 'DRAM':
-            memory_system[memory_system[k]['lower_level']]['fill_level'] = max(memory_system[memory_system[k]['lower_level']].get('fill_level',0), fill_level+1)
+        memory_system[k]['_fill_level'] = fill_level
     active_keys = [memory_system[k]['lower_level'] for k in active_keys if memory_system[k]['lower_level'] != 'DRAM']
 
 # Remove name index
 memory_system = list(memory_system.values())
 
-memory_system.sort(key=operator.itemgetter('fill_level'), reverse=True)
+memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
 
 # Check for lower levels in the array
 for i in reversed(range(len(memory_system))):
@@ -378,6 +377,9 @@ for elem in memory_system:
 ###
 
 # Instantiation file
+cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name}}};\n'
+transl_queue_fmtstr = 'CACHE::TranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {hit_latency}, {offset_bits}, {wq_check_full_addr:b}}};\n'
+nontransl_queue_fmtstr = 'CACHE::NonTranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {hit_latency}, {offset_bits}, {wq_check_full_addr:b}}};\n'
 with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('/***\n * THIS FILE IS AUTOMATICALLY GENERATED\n * Do not edit this file. It will be overwritten when the configure script is run.\n ***/\n\n')
     wfp.write('#include "cache.h"\n')
@@ -398,6 +400,11 @@ with open(instantiation_file_name, 'wt') as wfp:
         if 'pscl5_set' in elem:
             wfp.write(ptw_fmtstr.format(**elem))
         else:
+            if elem.get('_needs_translate'):
+                wfp.write(transl_queue_fmtstr.format(**elem))
+            else:
+                wfp.write(nontransl_queue_fmtstr.format(**elem))
+
             wfp.write(cache_fmtstr.format(**elem))
 
     for cpu in cores:
@@ -412,8 +419,21 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n}};\n')
 
     wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {{\n')
-    wfp.write(', '.join('&{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
+    wfp.write(', '.join('&{name}'.format(**elem) for elem in cores))
+    wfp.write(',\n')
+    wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem))
+    wfp.write(',\n')
+    wfp.write(', '.join('&{name}, &{name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
+    wfp.write(',\n')
+    wfp.write('&{name}'.format(**config_file['physical_memory']))
     wfp.write('\n}};\n')
+
+    wfp.write('\n')
+    wfp.write('void init_structures() {\n')
+    for elem in memory_system:
+        if elem.get('_needs_translate'):
+            wfp.write('  {name}_queues.lower_level = &{lower_translate};\n'.format(**elem))
+    wfp.write('}\n')
 
 # Core modules file
 bpred_names        = {c['bpred_name'] for c in cores}
@@ -586,7 +606,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
     wfp.write('#define NUM_CACHES ' + str(len(caches)) + 'u\n')
-    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(memory_system) + 1) + 'u\n')
+    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(caches) + len(memory_system) + 1) + 'u\n')
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:
