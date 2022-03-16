@@ -131,18 +131,16 @@ void CACHE::TranslatingQueues::issue_translation()
 
 void CACHE::TranslatingQueues::detect_misses()
 {
+  // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
   auto wq_it = std::find_if_not(std::begin(WQ), std::end(WQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  //std::cout << "Detected " << std::distance(std::begin(WQ), wq_it) << " misses" << std::endl;
   std::for_each(std::begin(WQ), wq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(WQ), wq_it, std::end(WQ));
 
   auto rq_it = std::find_if_not(std::begin(RQ), std::end(RQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  //std::cout << "Detected " << std::distance(std::begin(RQ), rq_it) << " misses" << std::endl;
   std::for_each(std::begin(RQ), rq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(RQ), rq_it, std::end(RQ));
 
   auto pq_it = std::find_if_not(std::begin(PQ), std::end(PQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  //std::cout << "Detected " << std::distance(std::begin(PQ), pq_it) << " misses" << std::endl;
   std::for_each(std::begin(PQ), pq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(PQ), pq_it, std::end(PQ));
 }
@@ -161,7 +159,7 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
     return false; // cannot handle this request
   }
 
-  // if there is no duplicate, add it to RQ
+  // Insert the packet ahead of the translation misses
   auto ins_loc = std::find_if(std::begin(RQ), std::end(RQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
@@ -187,7 +185,7 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
     return false;
   }
 
-  // if there is no duplicate, add it to the write queue
+  // Insert the packet ahead of the translation misses
   auto ins_loc = std::find_if(std::begin(WQ), std::end(WQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
@@ -217,7 +215,7 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
     return false; // cannot handle this request
   }
 
-  // if there is no duplicate, add it to PQ
+  // Insert the packet ahead of the translation misses
   auto ins_loc = std::find_if(std::begin(PQ), std::end(PQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
@@ -270,6 +268,7 @@ void CACHE::TranslatingQueues::return_data(const PACKET &packet)
     std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
   });
 
+  // Find all packets that match the page of the returned packet
   for (auto &wq_entry : WQ) {
     if ((wq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       wq_entry.address = splice_bits(packet.data, wq_entry.v_address, LOG2_PAGE_SIZE); // translated address
