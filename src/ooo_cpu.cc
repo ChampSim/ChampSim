@@ -248,11 +248,9 @@ void O3_CPU::fetch_instruction()
 bool O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   PACKET fetch_packet;
-  fetch_packet.address = begin->ip;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
-  fetch_packet.type = LOAD;
   for (auto it = begin; it != end; ++it)
     fetch_packet.instr_depend_on_me.push_back(it);
 
@@ -601,11 +599,9 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 bool O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
   PACKET data_packet;
-  data_packet.address = lq_it->virtual_address;
   data_packet.v_address = lq_it->virtual_address;
   data_packet.instr_id = lq_it->instr_id;
   data_packet.ip = lq_it->ip;
-  data_packet.type = LOAD;
   data_packet.lq_index_depend_on_me = {lq_it};
 
   return L1D_bus.issue_read(data_packet);
@@ -724,11 +720,9 @@ void O3_CPU::retire_rob()
       PACKET data_packet;
       auto sq_it = dmem_it->q_entry;
 
-      data_packet.address = sq_it->virtual_address;
       data_packet.v_address = sq_it->virtual_address;
       data_packet.instr_id = sq_it->instr_id;
       data_packet.ip = sq_it->ip;
-      data_packet.type = RFO;
 
       auto success = L1D_bus.issue_write(data_packet);
       if (!success)
@@ -794,7 +788,7 @@ void O3_CPU::print_deadlock()
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (is_valid<LSQ_ENTRY>{}(*lq_it))
       std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << lq_it->instr_id << " address: " << std::hex
-                << lq_it->physical_address << std::dec << " fetched: " << +lq_it->fetched << std::endl;
+                << lq_it->virtual_address << std::dec << " fetched: " << +lq_it->fetched << std::endl;
   }
 
   // print SQ entry
@@ -802,13 +796,15 @@ void O3_CPU::print_deadlock()
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
     if (is_valid<LSQ_ENTRY>{}(*sq_it))
       std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
-                << sq_it->physical_address << std::dec << " fetched: " << +sq_it->fetched << std::endl;
+                << sq_it->virtual_address << std::dec << " fetched: " << +sq_it->fetched << std::endl;
   }
 }
 
 bool CacheBus::issue_read(PACKET data_packet)
 {
+  data_packet.address = data_packet.v_address;
   data_packet.cpu = cpu;
+  data_packet.type = LOAD;
   data_packet.to_return = {this};
 
   return lower_level->add_rq(data_packet);
@@ -816,7 +812,9 @@ bool CacheBus::issue_read(PACKET data_packet)
 
 bool CacheBus::issue_write(PACKET data_packet)
 {
+  data_packet.address = data_packet.v_address;
   data_packet.cpu = cpu;
+  data_packet.type = RFO;
 
   return lower_level->add_wq(data_packet);
 }

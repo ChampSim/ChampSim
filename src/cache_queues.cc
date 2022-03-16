@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "util.h"
-#include "vmem.h"
+
+extern uint8_t warmup_complete[NUM_CPUS];
 
 void CACHE::NonTranslatingQueues::operate()
 {
@@ -11,6 +12,7 @@ void CACHE::TranslatingQueues::operate()
 {
   NonTranslatingQueues::operate();
   issue_translation();
+  detect_misses();
 }
 
 void CACHE::NonTranslatingQueues::check_collision()
@@ -70,61 +72,79 @@ void CACHE::NonTranslatingQueues::check_collision()
   }
 }
 
-// virtual address space prefetching
-constexpr uint64_t TRANSLATION_LATENCY = 2;
-extern VirtualMemory vmem;
 void CACHE::TranslatingQueues::issue_translation()
 {
   for (auto &wq_entry : WQ) {
     if (!wq_entry.translate_issued && wq_entry.address == wq_entry.v_address) {
-      wq_entry.address = vmem.va_to_pa(wq_entry.cpu, wq_entry.v_address).first;
-      //auto success = lower_level->add_rq(wq_entry);
-      //if (success) {
-      wq_entry.translate_issued = true;
-      wq_entry.event_cycle += TRANSLATION_LATENCY;
-      //}
+      auto fwd_pkt = wq_entry;
+      fwd_pkt.to_return = {this};
+      auto success = lower_level->add_rq(fwd_pkt);
+      if (success) {
+        DP(if (warmup_complete[wq_entry.cpu]) {
+          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << wq_entry.instr_id;
+          std::cout << " address: "  << std::hex << wq_entry.address << " v_address: " << wq_entry.v_address << std::dec;
+          std::cout << " type: " << +wq_entry.type << " occupancy: " << std::size(WQ) << std::endl;
+        })
 
-      DP(if (warmup_complete[wq_entry.cpu]) {
-        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << wq_entry.instr_id << std::hex;
-        std::cout << " full_addr: " << wq_entry.address << " v_address: " << wq_entry.v_address << std::dec << " type: " << +wq_entry.type << " occupancy: " << std::size(WQ) << std::endl;
-      })
+        wq_entry.translate_issued = true;
+        wq_entry.address = 0;
+      }
     }
   }
-  std::sort(std::begin(WQ), std::end(WQ), min_event_cycle<PACKET>{});
 
   for (auto &rq_entry : RQ) {
     if (!rq_entry.translate_issued && rq_entry.address == rq_entry.v_address) {
-      rq_entry.address = vmem.va_to_pa(rq_entry.cpu, rq_entry.v_address).first;
-      //auto success = lower_level->add_rq(rq_entry);
-      //if (success) {
-      rq_entry.translate_issued = true;
-      rq_entry.event_cycle += TRANSLATION_LATENCY;
-      //}
+      auto fwd_pkt = rq_entry;
+      fwd_pkt.to_return = {this};
+      auto success = lower_level->add_rq(fwd_pkt);
+      if (success) {
+        DP(if (warmup_complete[rq_entry.cpu]) {
+          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << rq_entry.instr_id;
+          std::cout << " address: " << std::hex << rq_entry.address << " v_address: " << rq_entry.v_address << std::dec;
+          std::cout << " type: " << +rq_entry.type << " occupancy: " << std::size(RQ) << std::endl;
+        })
 
-      DP(if (warmup_complete[rq_entry.cpu]) {
-        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << rq_entry.instr_id << std::hex;
-        std::cout << " full_addr: " << rq_entry.address << " v_address: " << rq_entry.v_address << std::dec << " type: " << +rq_entry.type << " occupancy: " << std::size(RQ) << std::endl;
-      })
+        rq_entry.translate_issued = true;
+        rq_entry.address = 0;
+      }
     }
   }
-  std::sort(std::begin(RQ), std::end(RQ), min_event_cycle<PACKET>{});
 
   for (auto &pq_entry : PQ) {
     if (!pq_entry.translate_issued && pq_entry.address == pq_entry.v_address) {
-      pq_entry.address = vmem.va_to_pa(pq_entry.cpu, pq_entry.v_address).first;
-      //auto success = lower_level->add_rq(pq_entry);
-      //if (success) {
-      pq_entry.translate_issued = true;
-      pq_entry.event_cycle += TRANSLATION_LATENCY;
-      //}
+      auto fwd_pkt = pq_entry;
+      fwd_pkt.to_return = {this};
+      auto success = lower_level->add_rq(fwd_pkt);
+      if (success) {
+        DP(if (warmup_complete[pq_entry.cpu]) {
+          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << pq_entry.instr_id;
+          std::cout << " address: " << std::hex << pq_entry.address << " v_address: " << pq_entry.v_address << std::dec;
+          std::cout << " type: " << +pq_entry.type << " occupancy: " << std::size(PQ) << std::endl;
+        })
 
-      DP(if (warmup_complete[pq_entry.cpu]) {
-        std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << pq_entry.instr_id << std::hex;
-        std::cout << " full_addr: " << pq_entry.address << " v_address: " << pq_entry.v_address << std::dec << " type: " << +pq_entry.type << " occupancy: " << std::size(PQ) << std::endl;
-      })
+        pq_entry.translate_issued = true;
+        pq_entry.address = 0;
+      }
     }
   }
-  std::sort(std::begin(PQ), std::end(PQ), min_event_cycle<PACKET>{});
+}
+
+void CACHE::TranslatingQueues::detect_misses()
+{
+  auto wq_it = std::find_if_not(std::begin(WQ), std::end(WQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
+  //std::cout << "Detected " << std::distance(std::begin(WQ), wq_it) << " misses" << std::endl;
+  std::for_each(std::begin(WQ), wq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  std::rotate(std::begin(WQ), wq_it, std::end(WQ));
+
+  auto rq_it = std::find_if_not(std::begin(RQ), std::end(RQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
+  //std::cout << "Detected " << std::distance(std::begin(RQ), rq_it) << " misses" << std::endl;
+  std::for_each(std::begin(RQ), rq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  std::rotate(std::begin(RQ), rq_it, std::end(RQ));
+
+  auto pq_it = std::find_if_not(std::begin(PQ), std::end(PQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
+  //std::cout << "Detected " << std::distance(std::begin(PQ), pq_it) << " misses" << std::endl;
+  std::for_each(std::begin(PQ), pq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  std::rotate(std::begin(PQ), pq_it, std::end(PQ));
 }
 
 bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
@@ -142,7 +162,12 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   }
 
   // if there is no duplicate, add it to RQ
-  RQ.push_back(packet);
+  auto ins_loc = std::find_if(std::begin(RQ), std::end(RQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.translate_issued = false;
+  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
+  RQ.insert(ins_loc, fwd_pkt);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -163,7 +188,12 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
   }
 
   // if there is no duplicate, add it to the write queue
-  WQ.push_back(packet);
+  auto ins_loc = std::find_if(std::begin(WQ), std::end(WQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.translate_issued = false;
+  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
+  WQ.insert(ins_loc, fwd_pkt);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -188,7 +218,12 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
   }
 
   // if there is no duplicate, add it to PQ
-  PQ.push_back(packet);
+  auto ins_loc = std::find_if(std::begin(PQ), std::end(PQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto fwd_pkt = packet;
+  fwd_pkt.forward_checked = false;
+  fwd_pkt.translate_issued = false;
+  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
+  PQ.insert(ins_loc, fwd_pkt);
 
   DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
 
@@ -213,35 +248,46 @@ bool CACHE::NonTranslatingQueues::pq_has_ready() const
 
 bool CACHE::TranslatingQueues::wq_has_ready() const
 {
-  return WQ.front().event_cycle <= current_cycle && WQ.front().address != WQ.front().v_address;
+  return NonTranslatingQueues::wq_has_ready() && WQ.front().address != 0 && WQ.front().address != WQ.front().v_address;
 }
 
 bool CACHE::TranslatingQueues::rq_has_ready() const
 {
-  return RQ.front().event_cycle <= current_cycle && RQ.front().address != RQ.front().v_address;
+  return NonTranslatingQueues::rq_has_ready() && RQ.front().address != 0 && RQ.front().address != RQ.front().v_address;
 }
 
 bool CACHE::TranslatingQueues::pq_has_ready() const
 {
-  return PQ.front().event_cycle <= current_cycle && PQ.front().address != PQ.front().v_address;
+  return NonTranslatingQueues::pq_has_ready() && PQ.front().address != 0 && PQ.front().address != PQ.front().v_address;
 }
 
 void CACHE::TranslatingQueues::return_data(const PACKET &packet)
 {
-  eq_addr<PACKET> checker{packet.address, OFFSET_BITS};
+  DP(if (warmup_complete[packet.cpu]) {
+    std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
+    std::cout << " address: " << std::hex << packet.address;
+    std::cout << " data: " << packet.data << std::dec;
+    std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
+  });
+
   for (auto &wq_entry : WQ) {
-    if (checker(wq_entry)) {
+    if ((wq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       wq_entry.address = splice_bits(packet.data, wq_entry.v_address, LOG2_PAGE_SIZE); // translated address
+      wq_entry.event_cycle = std::min(wq_entry.event_cycle, current_cycle + (warmup_complete[wq_entry.cpu] ? HIT_LATENCY : 0));
     }
   }
+
   for (auto &rq_entry : RQ) {
-    if (checker(rq_entry)) {
+    if ((rq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       rq_entry.address = splice_bits(packet.data, rq_entry.v_address, LOG2_PAGE_SIZE); // translated address
+      rq_entry.event_cycle = std::min(rq_entry.event_cycle, current_cycle + (warmup_complete[rq_entry.cpu] ? HIT_LATENCY : 0));
     }
   }
+
   for (auto &pq_entry : PQ) {
-    if (checker(pq_entry)) {
+    if ((pq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       pq_entry.address = splice_bits(packet.data, pq_entry.v_address, LOG2_PAGE_SIZE); // translated address
+      pq_entry.event_cycle = std::min(pq_entry.event_cycle, current_cycle + (warmup_complete[pq_entry.cpu] ? HIT_LATENCY : 0));
     }
   }
 }

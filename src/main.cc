@@ -33,6 +33,8 @@ extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
 
+void init_structures();
+
 std::vector<tracereader*> traces;
 
 uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
@@ -375,7 +377,8 @@ int main(int argc, char** argv)
   }
   // end trace file setup
 
-  // SHARED CACHE
+  init_structures();
+
   for (O3_CPU* cpu : ooo_cpu) {
     cpu->initialize_core();
   }

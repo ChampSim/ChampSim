@@ -349,13 +349,10 @@ bool CACHE::add_rq(const PACKET &packet)
 {
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ) << std::endl;
   })
 
-  auto fwd_pkt = packet;
-  fwd_pkt.forward_checked = false;
-  fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
-  return queues.add_rq(fwd_pkt);
+  return queues.add_rq(packet);
 }
 
 bool CACHE::add_wq(const PACKET &packet)
@@ -365,10 +362,7 @@ bool CACHE::add_wq(const PACKET &packet)
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.WQ);
   })
 
-  auto fwd_pkt = packet;
-  fwd_pkt.forward_checked = false;
-  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
-  return queues.add_wq(fwd_pkt);
+  return queues.add_wq(packet);
 }
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -415,10 +409,7 @@ bool CACHE::add_pq(const PACKET &packet)
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.PQ);
   })
 
-  auto fwd_pkt = packet;
-  fwd_pkt.forward_checked = false;
-  fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
-  return queues.add_pq(fwd_pkt);
+  return queues.add_pq(packet);
 }
 
 void CACHE::return_data(const PACKET &packet)
@@ -444,9 +435,8 @@ void CACHE::return_data(const PACKET &packet)
 
   DP(if (warmup_complete[packet.cpu]) {
     std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
-    std::cout << " address: " << std::hex << (mshr_entry->address >> OFFSET_BITS) << " full_addr: " << mshr_entry->address;
+    std::cout << " address: " << std::hex << mshr_entry->address;
     std::cout << " data: " << mshr_entry->data << std::dec;
-    std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0, 0);
     std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
   });
 

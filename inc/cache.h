@@ -26,6 +26,7 @@ public:
   {
     std::deque<PACKET> RQ, PQ, WQ;
     const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE;
+    const uint64_t HIT_LATENCY;
     const std::size_t OFFSET_BITS;
     const bool match_offset_bits;
 
@@ -43,7 +44,7 @@ public:
     uint64_t WQ_FORWARD = 0;
     uint64_t WQ_TO_CACHE = 0;
 
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
+    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
     void operate() override;
 
     bool add_rq(const PACKET &packet);
@@ -63,6 +64,7 @@ public:
     void operate() override;
 
     void issue_translation();
+    void detect_misses();
 
     bool rq_has_ready() const override;
     bool wq_has_ready() const override;
@@ -70,13 +72,13 @@ public:
 
     void return_data(const PACKET &packet) override;
 
-    TranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t offset_bits, bool match_offset, MemoryRequestConsumer* ll) : NonTranslatingQueues(freq_scale, rq_size, pq_size, wq_size, offset_bits, match_offset), MemoryRequestProducer(ll) {}
+    using NonTranslatingQueues::NonTranslatingQueues;
   };
 
   uint32_t cpu;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
-  const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
+  const uint32_t FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   const uint32_t MAX_READ, MAX_WRITE;
   const bool prefetch_as_load;
@@ -128,11 +130,11 @@ public:
   const pref_t pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8, uint32_t hit_lat,
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8,
         uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, NonTranslatingQueues &queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
+        MSHR_SIZE(v8), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
         MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
         queues(queues), repl_type(repl), pref_type(pref)
   {
