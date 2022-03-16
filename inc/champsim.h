@@ -9,19 +9,11 @@
 #include "champsim_constants.h"
 
 // USEFUL MACROS
-//#define DEBUG_PRINT
 #define SANITY_CHECK
 #define LLC_BYPASS
 #define DRC_BYPASS
 #define NO_CRC2_COMPILE
 
-#ifdef DEBUG_PRINT
-#define DP(x) x
-#else
-#define DP(x)
-#endif
-
-// CACHE
 #define INFLIGHT 1
 #define COMPLETED 2
 
@@ -43,6 +35,12 @@ struct deadlock : public std::exception {
 struct deprecated_clock_cycle {
   uint64_t operator[](std::size_t cpu_idx);
 };
+
+#ifdef DEBUG_PRINT
+constexpr bool debug_print = true;
+#else
+constexpr bool debug_print = false;
+#endif
 } // namespace champsim
 
 extern champsim::deprecated_clock_cycle current_core_cycle;

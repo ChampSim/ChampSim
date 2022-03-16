@@ -7,7 +7,7 @@
 #include "champsim.h"
 #include "instruction.h"
 
-#define DEADLOCK_CYCLE 1000000
+constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
@@ -132,9 +132,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // handle branch prediction
   if (arch_instr.is_branch) {
 
-    DP(if (warmup_complete[cpu]) {
-      cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl;
-    });
+    if constexpr (champsim::debug_print) {
+      if (warmup_complete[cpu]) {
+        std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
+      }
+    }
 
     num_branch++;
 
@@ -416,9 +418,11 @@ void O3_CPU::schedule_instruction()
         assert(ready_to_execute.size() < ROB.size());
         ready_to_execute.push(rob_it);
 
-        DP(if (warmup_complete[cpu]) {
-          std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
-        });
+        if constexpr (champsim::debug_print) {
+          if (warmup_complete[cpu]) {
+            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << rob_it->instr_id << " is added to ready_to_execute" << std::endl;
+          }
+        }
       }
     }
 
@@ -486,9 +490,11 @@ void O3_CPU::do_execution(champsim::circular_buffer<ooo_model_instr>::iterator r
   // ADD LATENCY
   rob_it->event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
-  DP(if (warmup_complete[cpu]) {
-    std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
-  });
+  if constexpr (champsim::debug_print) {
+    if (warmup_complete[cpu]) {
+      std::cout << "[ROB] " << __func__ << " non-memory instr_id: " << rob_it->instr_id << " event_cycle: " << rob_it->event_cycle << std::endl;
+    }
+  }
 }
 
 void O3_CPU::schedule_memory_instruction()
@@ -581,10 +587,12 @@ void O3_CPU::do_memory_scheduling(champsim::circular_buffer<ooo_model_instr>::it
     if (rob_it->executed == 0) // it could be already set to COMPLETED due to store-to-load forwarding
       rob_it->executed = INFLIGHT;
 
-    DP(if (warmup_complete[cpu]) {
-      cout << "[ROB] " << __func__ << " instr_id: " << rob_it->instr_id;
-      cout << " scheduled all num_mem_ops: " << rob_it->num_mem_ops << endl;
-    });
+    if constexpr (champsim::debug_print) {
+      if (warmup_complete[cpu]) {
+        std::cout << "[ROB] " << __func__ << " instr_id: " << rob_it->instr_id;
+        std::cout << " scheduled all num_mem_ops: " << rob_it->num_mem_ops << std::endl;
+      }
+    }
   }
 }
 
@@ -644,7 +652,11 @@ bool O3_CPU::do_translate_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   data_packet.type = RFO;
   data_packet.sq_index_depend_on_me = {sq_it};
 
-  DP(if (warmup_complete[cpu]) { std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl; })
+  if constexpr (champsim::debug_print) {
+    if (warmup_complete[cpu]) {
+      std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << " is issued for translating" << std::endl;
+    }
+  }
 
   return DTLB_bus.issue_read(data_packet);
 }
@@ -655,11 +667,13 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
   sq_it->rob_index->event_cycle = current_cycle;
   assert(sq_it->rob_index->num_mem_ops >= 0);
 
-  DP(if (warmup_complete[cpu]) {
-    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
-    std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
-    std::cout << " event_cycle: " << sq_it->event_cycle << std::endl;
-  });
+  if constexpr (champsim::debug_print) {
+    if (warmup_complete[cpu]) {
+      std::cout << "[SQ] " << __func__ << " instr_id: " << sq_it->instr_id << std::hex;
+      std::cout << " full_address: " << sq_it->physical_address << std::dec << " remain_mem_ops: " << sq_it->rob_index->num_mem_ops;
+      std::cout << " event_cycle: " << sq_it->event_cycle << std::endl;
+    }
+  }
 
   // resolve RAW dependency after DTLB access
   // check if this store has dependent loads
@@ -691,9 +705,11 @@ bool O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
   data_packet.type = LOAD;
   data_packet.lq_index_depend_on_me = {lq_it};
 
-  DP(if (warmup_complete[cpu]) {
-    std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " rob_index: " << lq_it->rob_index << " is issued for translating" << std::endl;
-  })
+  if constexpr (champsim::debug_print) {
+    if (warmup_complete[cpu]) {
+      std::cout << "[LQ] " << __func__ << " instr_id: " << lq_it->instr_id << " is issued for translating" << std::endl;
+    }
+  }
 
   return DTLB_bus.issue_read(data_packet);
 }
@@ -755,9 +771,11 @@ void O3_CPU::complete_inflight_instruction()
           assert(ready_to_execute.size() < ROB.size());
           ready_to_execute.push(dependent);
 
-          DP(if (warmup_complete[cpu]) {
-            std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
-          })
+          if constexpr (champsim::debug_print) {
+            if (warmup_complete[cpu]) {
+              std::cout << "[ready_to_execute] " << __func__ << " instr_id: " << dependent->instr_id << " is added to ready_to_execute" << std::endl;
+            }
+          }
         }
       }
     }
@@ -893,7 +911,11 @@ void O3_CPU::retire_rob()
     }
 
     // release ROB entry
-    DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
+    if constexpr (champsim::debug_print) {
+      if (warmup_complete[cpu]) {
+        std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl;
+      }
+    }
 
     ROB.pop_front();
     num_retired++;
