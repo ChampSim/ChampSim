@@ -12,17 +12,19 @@
 #include "memory_class.h"
 #include "operable.h"
 
-#define FILL_L1 1
-#define FILL_L2 2
-#define FILL_LLC 4
-#define FILL_DRC 8
-#define FILL_DRAM 16
-
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+  enum FILL_LEVEL {
+    FILL_L1 = 1,
+    FILL_L2 = 2,
+    FILL_LLC = 4,
+    FILL_DRC = 8,
+    FILL_DRAM = 16
+  };
+
   class BLOCK
   {
   public:
