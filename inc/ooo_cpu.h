@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "champsim.h"
-#include "delay_queue.hpp"
 #include "instruction.h"
 #include "memory_class.h"
 #include "operable.h"
@@ -74,9 +73,9 @@ public:
   dib_t DIB{dib_set * dib_way};
 
   // reorder buffer, load/store queue, register file
-  champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
+  std::deque<ooo_model_instr> IFETCH_BUFFER;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
-  champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
+  std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
 
   std::vector<std::optional<LSQ_ENTRY>> LQ;
@@ -85,9 +84,9 @@ public:
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   // Constants
-  const std::size_t DISPATCH_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
+  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
-  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
+  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
 
   // branch
   uint8_t fetch_stall = 0;
@@ -115,7 +114,7 @@ public:
   void schedule_memory_instruction();
   void execute_memory_instruction();
   void do_check_dib(ooo_model_instr& instr);
-  bool do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
+  bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& rob_it);
@@ -145,10 +144,10 @@ public:
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type)
-      : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size),
-        DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
+      : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
+        LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
-        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
+        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), DECODE_LATENCY(decode_latency),
         SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency),
         L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {

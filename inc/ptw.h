@@ -1,12 +1,13 @@
 #ifndef PTW_H
 #define PTW_H
 
+#include <cassert>
+#include <deque>
 #include <list>
 #include <map>
 #include <optional>
 #include <string>
 
-#include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
 
@@ -36,9 +37,10 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 public:
   const std::string NAME;
   const uint32_t cpu;
-  const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint32_t RQ_SIZE, MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint64_t HIT_LATENCY;
 
-  champsim::delay_queue<PACKET> RQ;
+  std::deque<PACKET> RQ;
 
   std::list<PACKET> MSHR;
 

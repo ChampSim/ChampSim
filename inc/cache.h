@@ -1,13 +1,13 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <cassert>
 #include <functional>
 #include <list>
 #include <string>
 #include <vector>
 
 #include "champsim.h"
-#include "delay_queue.hpp"
 #include "memory_class.h"
 #include "ooo_cpu.h"
 #include "operable.h"

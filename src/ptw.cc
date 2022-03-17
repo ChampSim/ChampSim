@@ -10,8 +10,8 @@ extern uint8_t warmup_complete[NUM_CPUS];
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
                                  uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
                                  MemoryRequestConsumer* ll)
-    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
-      MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
+    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12),
+      MAX_FILL(v13), HIT_LATENCY(latency), PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
       PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
       PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
       PSCL2{"PSCL2", 1, v8, v9},                                  // Translation from L5->L1
@@ -23,7 +23,7 @@ void PageTableWalker::handle_read()
 {
   int reads_this_cycle = MAX_READ;
 
-  while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
+  while (reads_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle && std::size(MSHR) != MSHR_SIZE) {
     PACKET& handle_pkt = RQ.front();
 
     DP(if (warmup_complete[handle_pkt.cpu]) {
@@ -156,7 +156,6 @@ void PageTableWalker::operate()
 {
   handle_fill();
   handle_read();
-  RQ.operate();
 }
 
 bool PageTableWalker::add_rq(const PACKET& packet)
@@ -168,12 +167,13 @@ bool PageTableWalker::add_rq(const PACKET& packet)
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
-  if (RQ.full()) {
+  if (std::size(RQ) >= RQ_SIZE) {
     return false; // cannot handle this request
   }
 
   // if there is no duplicate, add it to RQ
   RQ.push_back(packet);
+  RQ.back().event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
 
   return true;
 }
@@ -204,7 +204,7 @@ uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
   else if (queue_type == 1)
-    return RQ.occupancy();
+    return std::size(RQ);
   return 0;
 }
 
@@ -213,7 +213,7 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return MSHR_SIZE;
   else if (queue_type == 1)
-    return RQ.size();
+    return RQ_SIZE;
   return 0;
 }
 

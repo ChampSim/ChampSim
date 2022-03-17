@@ -9,9 +9,6 @@
 #include <limits>
 #include <vector>
 
-#include "circular_buffer.hpp"
-#include "util.h"
-
 // instruction format
 #define NUM_INSTR_DESTINATIONS_SPARC 4
 #define NUM_INSTR_DESTINATIONS 2
