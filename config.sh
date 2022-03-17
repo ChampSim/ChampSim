@@ -136,7 +136,7 @@ for cpu in cores:
 # Assign defaults that are unique per core
 for cpu in cores:
     cpu['PTW'] = ChainMap(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
-    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_is_instruction_cache': True}, default_l1i.copy())
+    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_needs_translate': True, '_is_instruction_cache': True}, default_l1i.copy())
     caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
     caches[cpu['ITLB']] = ChainMap(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
     caches[cpu['DTLB']] = ChainMap(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
@@ -144,7 +144,7 @@ for cpu in cores:
     # L2C
     cache_name = caches[cpu['L1D']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC'}, default_l2c.copy())
+        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': caches[cpu['DTLB']]['lower_level']}, default_l2c.copy())
 
     # STLB
     cache_name = caches[cpu['DTLB']]['lower_level']
@@ -200,13 +200,13 @@ for cpu in cores:
     cache_name = cpu['L1I']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
-        caches[cache_name]['_needs_translate'] = 'lower_translate' in caches[cache_name] or caches[cache_name].get('virtual_prefetch', False)
+        caches[cache_name]['_needs_translate'] = caches[cache_name].get('_needs_translate', False) or caches[cache_name].get('virtual_prefetch', False)
         cache_name = caches[cache_name]['lower_level']
 
     cache_name = cpu['L1D']
     while cache_name in caches:
         caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
-        caches[cache_name]['_needs_translate'] = 'lower_translate' in caches[cache_name] or caches[cache_name].get('virtual_prefetch', False)
+        caches[cache_name]['_needs_translate'] = caches[cache_name].get('_needs_translate', False) or caches[cache_name].get('virtual_prefetch', False)
         cache_name = caches[cache_name]['lower_level']
 
 ###
