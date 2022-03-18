@@ -7,7 +7,7 @@
 #include "champsim.h"
 #include "instruction.h"
 
-#define DEADLOCK_CYCLE 1000000
+constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
 extern uint8_t warmup_complete[NUM_CPUS];
 
@@ -126,9 +126,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // handle branch prediction
   if (arch_instr.is_branch) {
 
-    DP(if (warmup_complete[cpu]) {
-        std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
-    });
+    if constexpr (champsim::debug_print) {
+      std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
+    }
 
     num_branch++;
 
@@ -461,9 +461,9 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
     if (sq_entry.instr_id == rob_entry.instr_id)
       sq_entry.event_cycle = current_cycle + (warmup_complete[cpu] ? EXEC_LATENCY : 0);
 
-  DP(if (warmup_complete[cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[ROB] " << __func__ << " instr_id: " << rob_entry.instr_id << " event_cycle: " << rob_entry.event_cycle << std::endl;
-  });
+  }
 }
 
 void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
@@ -484,17 +484,15 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
         q_entry->reset();
         instr.num_mem_ops--;
 
-        DP(if (warmup_complete[cpu]) {
+        if constexpr (champsim::debug_print)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl;
-        })
       } else {
         assert(sq_it->instr_id < instr.instr_id); // The found SQ entry is a prior store
         sq_it->lq_depend_on_me.push_back(*q_entry); // Forward the load when the store finishes
         (*q_entry)->producer_id = sq_it->instr_id; // The load waits on the store to finish
 
-        DP(if (warmup_complete[cpu]) {
+        if constexpr (champsim::debug_print)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << sq_it->instr_id << std::endl;
-        })
       }
     }
   }
@@ -504,10 +502,10 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     SQ.push_back(
         {instr.instr_id, dmem, instr.ip, current_cycle + SCHEDULING_LATENCY, std::ref(instr), {instr.asid[0], instr.asid[1]}}); // add it to the store queue
 
-  DP(if (warmup_complete[cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " loads: " << std::size(instr.source_memory)
               << " stores: " << std::size(instr.destination_memory) << std::endl;
-  });
+  }
 }
 
 void O3_CPU::operate_lsq()
@@ -574,7 +572,9 @@ bool O3_CPU::do_translate_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
   data_packet.type = RFO;
 
-  DP(if (warmup_complete[cpu]) { std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::endl; })
+  if constexpr (champsim::debug_print) {
+    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::endl;
+  }
 
   return DTLB_bus.issue_read(data_packet);
 }
@@ -585,11 +585,11 @@ void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
   sq_entry.rob_entry.event_cycle = current_cycle;
   assert(sq_entry.rob_entry.num_mem_ops >= 0);
 
-  DP(if (warmup_complete[cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
     std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.num_mem_ops;
     std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl;
-  });
+  }
 
   // Release dependent loads
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
@@ -614,7 +614,9 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
   data_packet.type = RFO;
 
-  DP(if (warmup_complete[cpu]) { std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::endl; })
+  if constexpr (champsim::debug_print) {
+    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::endl;
+  }
 
   return L1D_bus.issue_write(data_packet);
 }
@@ -628,7 +630,9 @@ bool O3_CPU::do_translate_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
   data_packet.type = LOAD;
 
-  DP(if (warmup_complete[cpu]) { std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << std::endl; })
+  if constexpr (champsim::debug_print) {
+    std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << std::endl;
+  }
 
   return DTLB_bus.issue_read(data_packet);
 }
@@ -642,7 +646,9 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
   data_packet.type = LOAD;
 
-  DP(if (warmup_complete[cpu]) { std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << std::endl; })
+  if constexpr (champsim::debug_print) {
+    std::cout << "[LQ] " << __func__ << " instr_id: " << lq_entry.instr_id << std::endl;
+  }
 
   return L1D_bus.issue_read(data_packet);
 }
@@ -734,11 +740,11 @@ void O3_CPU::handle_memory_return()
         sq_entry.physical_address = splice_bits(dtlb_it->data, sq_entry.virtual_address, LOG2_PAGE_SIZE); // translated address
         sq_entry.event_cycle = current_cycle;
 
-        DP(if (warmup_complete[cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[DTLB_SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
           std::cout << " full_address: " << sq_entry.physical_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.num_mem_ops;
           std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl;
-        });
+        }
       }
     }
 
@@ -748,11 +754,11 @@ void O3_CPU::handle_memory_return()
         lq_entry->physical_address = splice_bits(dtlb_it->data, lq_entry->virtual_address, LOG2_PAGE_SIZE); // translated address
         lq_entry->event_cycle = current_cycle;
 
-        DP(if (warmup_complete[cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[DTLB_LQ] " << __func__ << " instr_id: " << lq_entry->instr_id << std::hex;
           std::cout << " full_address: " << lq_entry->physical_address << std::dec << " remain_mem_ops: " << lq_entry->rob_entry.num_mem_ops;
           std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl;
-        });
+        }
       }
     }
   }
@@ -766,11 +772,11 @@ void O3_CPU::handle_memory_return()
         lq_entry->rob_entry.event_cycle = current_cycle;
         lq_entry.reset();
 
-        DP(if (warmup_complete[cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[L1D_LQ] " << __func__ << " instr_id: " << lq_entry->instr_id << std::hex;
           std::cout << " full_address: " << lq_entry->physical_address << std::dec << " remain_mem_ops: " << lq_entry->rob_entry.num_mem_ops;
           std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl;
-        });
+        }
       }
     }
   }
@@ -782,7 +788,9 @@ void O3_CPU::retire_rob()
   unsigned retire_bandwidth = RETIRE_WIDTH;
 
   while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED)) {
-    DP(if (warmup_complete[cpu]) { std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl; });
+    if constexpr (champsim::debug_print) {
+      std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl;
+    }
 
     ROB.pop_front();
     num_retired++;
