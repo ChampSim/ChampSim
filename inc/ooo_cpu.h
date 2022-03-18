@@ -9,11 +9,16 @@
 #include <vector>
 
 #include "block.h"
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "delay_queue.hpp"
 #include "instruction.h"
 #include "memory_class.h"
 #include "operable.h"
+
+enum STATUS {
+  INFLIGHT = 1,
+  COMPLETED = 2
+};
 
 class CacheBus : public MemoryRequestProducer
 {

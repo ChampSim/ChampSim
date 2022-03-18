@@ -1,49 +1,46 @@
 #ifndef SPP_H
 #define SPP_H
 
-// SPP functional knobs
-#define LOOKAHEAD_ON
-#define FILTER_ON
-#define GHR_ON
-#define SPP_SANITY_CHECK
+#include <cstdint>
+#include <iostream>
 
-//#define SPP_DEBUG_PRINT
-#ifdef SPP_DEBUG_PRINT
-#define SPP_DP(x) x
-#else
-#define SPP_DP(x)
-#endif
+// SPP functional knobs
+constexpr bool LOOKAHEAD_ON = true;
+constexpr bool FILTER_ON = true;
+constexpr bool GHR_ON = true;
+constexpr bool SPP_SANITY_CHECK = true;
+constexpr bool SPP_DEBUG_PRINT = false;
 
 // Signature table parameters
-#define ST_SET 1
-#define ST_WAY 256
-#define ST_TAG_BIT 16
-#define ST_TAG_MASK ((1 << ST_TAG_BIT) - 1)
-#define SIG_SHIFT 3
-#define SIG_BIT 12
-#define SIG_MASK ((1 << SIG_BIT) - 1)
-#define SIG_DELTA_BIT 7
+constexpr std::size_t ST_SET = 1;
+constexpr std::size_t ST_WAY = 256;
+constexpr unsigned ST_TAG_BIT = 16;
+constexpr uint32_t ST_TAG_MASK = ((1 << ST_TAG_BIT) - 1);
+constexpr unsigned SIG_SHIFT = 3;
+constexpr unsigned SIG_BIT = 12;
+constexpr uint32_t SIG_MASK = ((1 << SIG_BIT) - 1);
+constexpr unsigned SIG_DELTA_BIT = 7;
 
 // Pattern table parameters
-#define PT_SET 512
-#define PT_WAY 4
-#define C_SIG_BIT 4
-#define C_DELTA_BIT 4
-#define C_SIG_MAX ((1 << C_SIG_BIT) - 1)
-#define C_DELTA_MAX ((1 << C_DELTA_BIT) - 1)
+constexpr std::size_t PT_SET = 512;
+constexpr std::size_t PT_WAY = 4;
+constexpr unsigned C_SIG_BIT = 4;
+constexpr unsigned C_DELTA_BIT = 4;
+constexpr uint32_t C_SIG_MAX = ((1 << C_SIG_BIT) - 1);
+constexpr uint32_t C_DELTA_MAX = ((1 << C_DELTA_BIT) - 1);
 
 // Prefetch filter parameters
-#define QUOTIENT_BIT 10
-#define REMAINDER_BIT 6
-#define HASH_BIT (QUOTIENT_BIT + REMAINDER_BIT + 1)
-#define FILTER_SET (1 << QUOTIENT_BIT)
-#define FILL_THRESHOLD 90
-#define PF_THRESHOLD 25
+constexpr unsigned QUOTIENT_BIT = 10;
+constexpr unsigned REMAINDER_BIT = 6;
+constexpr unsigned HASH_BIT = (QUOTIENT_BIT + REMAINDER_BIT + 1);
+constexpr std::size_t FILTER_SET = (1 << QUOTIENT_BIT);
+constexpr uint32_t FILL_THRESHOLD = 90;
+constexpr uint32_t PF_THRESHOLD = 25;
 
 // Global register parameters
-#define GLOBAL_COUNTER_BIT 10
-#define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1)
-#define MAX_GHR_ENTRY 8
+constexpr unsigned GLOBAL_COUNTER_BIT = 10;
+constexpr uint32_t GLOBAL_COUNTER_MAX = ((1 << GLOBAL_COUNTER_BIT) - 1);
+constexpr std::size_t MAX_GHR_ENTRY = 8;
 
 enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
@@ -56,11 +53,11 @@ public:
 
   SIGNATURE_TABLE()
   {
-    cout << "Initialize SIGNATURE TABLE" << endl;
-    cout << "ST_SET: " << ST_SET << endl;
-    cout << "ST_WAY: " << ST_WAY << endl;
-    cout << "ST_TAG_BIT: " << ST_TAG_BIT << endl;
-    cout << "ST_TAG_MASK: " << hex << ST_TAG_MASK << dec << endl;
+    std::cout << "Initialize SIGNATURE TABLE" << std::endl;
+    std::cout << "ST_SET: " << ST_SET << std::endl;
+    std::cout << "ST_WAY: " << ST_WAY << std::endl;
+    std::cout << "ST_TAG_BIT: " << ST_TAG_BIT << std::endl;
+    std::cout << "ST_TAG_MASK: " << std::hex << ST_TAG_MASK << std::dec << std::endl;
 
     for (uint32_t set = 0; set < ST_SET; set++)
       for (uint32_t way = 0; way < ST_WAY; way++) {
@@ -83,12 +80,12 @@ public:
 
   PATTERN_TABLE()
   {
-    cout << endl << "Initialize PATTERN TABLE" << endl;
-    cout << "PT_SET: " << PT_SET << endl;
-    cout << "PT_WAY: " << PT_WAY << endl;
-    cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << endl;
-    cout << "C_SIG_BIT: " << C_SIG_BIT << endl;
-    cout << "C_DELTA_BIT: " << C_DELTA_BIT << endl;
+    std::cout << std::endl << "Initialize PATTERN TABLE" << std::endl;
+    std::cout << "PT_SET: " << PT_SET << std::endl;
+    std::cout << "PT_WAY: " << PT_WAY << std::endl;
+    std::cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << std::endl;
+    std::cout << "C_SIG_BIT: " << C_SIG_BIT << std::endl;
+    std::cout << "C_DELTA_BIT: " << C_DELTA_BIT << std::endl;
 
     for (uint32_t set = 0; set < PT_SET; set++) {
       for (uint32_t way = 0; way < PT_WAY; way++) {
@@ -112,8 +109,8 @@ public:
 
   PREFETCH_FILTER()
   {
-    cout << endl << "Initialize PREFETCH FILTER" << endl;
-    cout << "FILTER_SET: " << FILTER_SET << endl;
+    std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
+    std::cout << "FILTER_SET: " << FILTER_SET << std::endl;
 
     for (uint32_t set = 0; set < FILTER_SET; set++) {
       remainder_tag[set] = 0;
