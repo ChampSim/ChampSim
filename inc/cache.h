@@ -17,13 +17,7 @@ constexpr uint64_t VA_PREFETCH_TRANSLATION_LATENCY = 2;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
-  enum FILL_LEVEL {
-    FILL_L1 = 1,
-    FILL_L2 = 2,
-    FILL_LLC = 4,
-    FILL_DRC = 8,
-    FILL_DRAM = 16
-  };
+  enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
 
   class BLOCK
   {

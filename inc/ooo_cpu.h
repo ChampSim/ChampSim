@@ -15,10 +15,7 @@
 #include "memory_class.h"
 #include "operable.h"
 
-enum STATUS {
-  INFLIGHT = 1,
-  COMPLETED = 2
-};
+enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CacheBus : public MemoryRequestProducer
 {
