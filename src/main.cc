@@ -31,7 +31,7 @@ extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<CACHE*, NUM_CACHES> caches;
-extern std::array<champsim::operable*, NUM_OPERABLES> operables;
+extern std::array<champsim::operable*, 2*std::size(ooo_cpu) + 2*std::size(caches) + 1> operables;
 
 void init_structures();
 

@@ -2,7 +2,6 @@
 #define DRAM_H
 
 #include <array>
-#include <cmath>
 #include <limits>
 
 #include "champsim_constants.h"

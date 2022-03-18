@@ -1,4 +1,6 @@
 #include "cache.h"
+
+#include "champsim.h"
 #include "util.h"
 
 extern uint8_t warmup_complete[NUM_CPUS];
@@ -80,11 +82,11 @@ void CACHE::TranslatingQueues::issue_translation()
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
-        DP(if (warmup_complete[wq_entry.cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << wq_entry.instr_id;
           std::cout << " address: "  << std::hex << wq_entry.address << " v_address: " << wq_entry.v_address << std::dec;
           std::cout << " type: " << +wq_entry.type << " occupancy: " << std::size(WQ) << std::endl;
-        })
+        }
 
         wq_entry.translate_issued = true;
         wq_entry.address = 0;
@@ -98,11 +100,11 @@ void CACHE::TranslatingQueues::issue_translation()
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
-        DP(if (warmup_complete[rq_entry.cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << rq_entry.instr_id;
           std::cout << " address: " << std::hex << rq_entry.address << " v_address: " << rq_entry.v_address << std::dec;
           std::cout << " type: " << +rq_entry.type << " occupancy: " << std::size(RQ) << std::endl;
-        })
+        }
 
         rq_entry.translate_issued = true;
         rq_entry.address = 0;
@@ -116,11 +118,11 @@ void CACHE::TranslatingQueues::issue_translation()
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
-        DP(if (warmup_complete[pq_entry.cpu]) {
+        if constexpr (champsim::debug_print) {
           std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << pq_entry.instr_id;
           std::cout << " address: " << std::hex << pq_entry.address << " v_address: " << pq_entry.v_address << std::dec;
           std::cout << " type: " << +pq_entry.type << " occupancy: " << std::size(PQ) << std::endl;
-        })
+        }
 
         pq_entry.translate_issued = true;
         pq_entry.address = 0;
@@ -154,7 +156,9 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   if (std::size(RQ) >= RQ_SIZE) {
     RQ_FULL++;
 
-    DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     return false; // cannot handle this request
   }
@@ -167,7 +171,9 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
   RQ.insert(ins_loc, fwd_pkt);
 
-  DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   RQ_TO_CACHE++;
   return true;
@@ -179,7 +185,9 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
 
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
-    DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     ++WQ_FULL;
     return false;
@@ -193,7 +201,9 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
   fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
   WQ.insert(ins_loc, fwd_pkt);
 
-  DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   WQ_TO_CACHE++;
   WQ_ACCESS++;
@@ -209,7 +219,9 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
   // check occupancy
   if (std::size(PQ) >= PQ_SIZE) {
 
-    DP(if (warmup_complete[packet.cpu]) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     PQ_FULL++;
     return false; // cannot handle this request
@@ -223,7 +235,9 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
   fwd_pkt.event_cycle = current_cycle + warmup_complete[packet.cpu] ? HIT_LATENCY : 0;
   PQ.insert(ins_loc, fwd_pkt);
 
-  DP(if (warmup_complete[packet.cpu]) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   PQ_TO_CACHE++;
   return true;
@@ -261,12 +275,12 @@ bool CACHE::TranslatingQueues::pq_has_ready() const
 
 void CACHE::TranslatingQueues::return_data(const PACKET &packet)
 {
-  DP(if (warmup_complete[packet.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
     std::cout << " address: " << std::hex << packet.address;
     std::cout << " data: " << packet.data << std::dec;
     std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
-  });
+  }
 
   // Find all packets that match the page of the returned packet
   for (auto &wq_entry : WQ) {

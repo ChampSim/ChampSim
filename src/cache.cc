@@ -8,10 +8,6 @@
 #include "util.h"
 #include "vmem.h"
 
-#ifndef SANITY_CHECK
-#define NDEBUG
-#endif
-
 extern uint8_t warmup_complete[NUM_CPUS];
 
 bool CACHE::handle_fill(PACKET &fill_mshr)
@@ -113,14 +109,14 @@ bool CACHE::handle_prefetch(PACKET &handle_pkt)
 
 void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_pkt)
 {
-  DP(if (warmup_complete[handle_pkt.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
@@ -151,14 +147,14 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
 bool CACHE::readlike_miss(const PACKET& handle_pkt)
 {
-  DP(if (warmup_complete[handle_pkt.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   // check mshr
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
@@ -221,19 +217,16 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle_pkt)
 {
-  DP(if (warmup_complete[handle_pkt.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   bool bypass = (way == NUM_WAY);
-#ifndef LLC_BYPASS
-  assert(!bypass);
-#endif
   assert(handle_pkt.type != WRITEBACK || !bypass);
 
   auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
@@ -345,20 +338,20 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
 bool CACHE::add_rq(const PACKET &packet)
 {
-  DP(if (warmup_complete[packet.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ) << std::endl;
-  })
+  }
 
   return queues.add_rq(packet);
 }
 
 bool CACHE::add_wq(const PACKET& packet)
 {
-  DP(if (warmup_complete[packet.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.WQ);
-  })
+  }
 
   return queues.add_wq(packet);
 }
@@ -402,10 +395,10 @@ int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool
 
 bool CACHE::add_pq(const PACKET &packet)
 {
-  DP(if (warmup_complete[packet.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.PQ);
-  })
+  }
 
   return queues.add_pq(packet);
 }
@@ -431,12 +424,12 @@ void CACHE::return_data(const PACKET& packet)
   mshr_entry->pf_metadata = packet.pf_metadata;
   mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
 
-  DP(if (warmup_complete[packet.cpu]) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
     std::cout << " address: " << std::hex << mshr_entry->address;
     std::cout << " data: " << mshr_entry->data << std::dec;
     std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
-  });
+  }
 
   // Order this entry after previously-returned entries, but before non-returned
   // entries

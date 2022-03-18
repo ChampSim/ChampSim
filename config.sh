@@ -29,36 +29,6 @@ vmem_fmtstr = 'VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1
 
 module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += {2}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc)) $(patsubst %.c,%.o,$(wildcard {1}/*.c))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
-define_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}ul\n'
-define_nonint_fmtstr = '#define {{names[{name}]}} {{config[{name}]}}\n'
-define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
-
-###
-# Begin named constants
-###
-
-const_names = {
-    'block_size': 'BLOCK_SIZE',
-    'page_size': 'PAGE_SIZE',
-    'heartbeat_frequency': 'STAT_PRINTING_PERIOD',
-    'num_cores': 'NUM_CPUS',
-    'physical_memory': {
-        'io_freq': 'DRAM_IO_FREQ',
-        'channels': 'DRAM_CHANNELS',
-        'ranks': 'DRAM_RANKS',
-        'banks': 'DRAM_BANKS',
-        'rows': 'DRAM_ROWS',
-        'columns': 'DRAM_COLUMNS',
-        'channel_width': 'DRAM_CHANNEL_WIDTH',
-        'wq_size': 'DRAM_WQ_SIZE',
-        'rq_size': 'DRAM_RQ_SIZE',
-        'tRP': 'tRP_DRAM_NANOSECONDS',
-        'tRCD': 'tRCD_DRAM_NANOSECONDS',
-        'tCAS': 'tCAS_DRAM_NANOSECONDS',
-        'turn_around_time': 'DBUS_TURN_AROUND_NANOSECONDS'
-    }
-}
-
 ###
 # Begin default core model definition
 ###
@@ -418,7 +388,7 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem))
     wfp.write('\n}};\n')
 
-    wfp.write('std::array<champsim::operable*, NUM_OPERABLES> operables {{\n')
+    wfp.write('std::array<champsim::operable*, 2*NUM_CPUS + 2*NUM_CACHES + 1> operables {{\n')
     wfp.write(', '.join('&{name}'.format(**elem) for elem in cores))
     wfp.write(',\n')
     wfp.write(', '.join('&{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem))
@@ -599,20 +569,27 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#ifndef CHAMPSIM_CONSTANTS_H\n')
     wfp.write('#define CHAMPSIM_CONSTANTS_H\n')
     wfp.write('#include "util.h"\n')
-    wfp.write(define_fmtstr.format(name='block_size').format(names=const_names, config=config_file))
-    wfp.write(define_log_fmtstr.format(name='block_size').format(names=const_names, config=config_file))
-    wfp.write(define_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
-    wfp.write(define_log_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
-    wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
-    wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
-    wfp.write('#define NUM_CACHES ' + str(len(caches)) + 'u\n')
-    wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(caches) + len(memory_system) + 1) + 'u\n')
+    wfp.write('constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**config_file))
+    wfp.write('constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file))
+    wfp.write('constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**config_file))
+    wfp.write('constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**config_file))
+    wfp.write('constexpr std::size_t NUM_CACHES = ' + str(len(caches)) + ';\n')
+    wfp.write('constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n')
+    wfp.write('constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n')
 
-    for k in const_names['physical_memory']:
-        if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:
-            wfp.write(define_nonint_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
-        else:
-            wfp.write(define_fmtstr.format(name=k).format(names=const_names['physical_memory'], config=config_file['physical_memory']))
+    wfp.write('constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr double tRP_DRAM_NANOSECONDS = {tRP};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr double tRCD_DRAM_NANOSECONDS = {tRCD};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr double tCAS_DRAM_NANOSECONDS = {tCAS};\n'.format(**config_file['physical_memory']))
+    wfp.write('constexpr double DBUS_TURN_AROUND_NANOSECONDS = {turn_around_time};\n'.format(**config_file['physical_memory']))
 
     wfp.write('#endif\n')
 

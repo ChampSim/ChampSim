@@ -1,21 +1,21 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <deque>
 #include <functional>
 #include <list>
 #include <string>
 #include <vector>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
-#include "ooo_cpu.h"
 #include "operable.h"
-
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+  enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
+
   bool handle_fill(PACKET &fill_mshr);
   bool handle_writeback(PACKET &handle_pkt);
   bool handle_read(PACKET &handle_pkt);
