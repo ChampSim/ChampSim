@@ -23,7 +23,7 @@ class CacheBus : public MemoryRequestProducer
 
 public:
   std::deque<PACKET> PROCESSED;
-  CacheBus(uint32_t cpu, std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu), PROCESSED(q_size) {}
+  CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
   void return_data(const PACKET& packet);
@@ -155,8 +155,8 @@ public:
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(cpu, rob_size, itlb), DTLB_bus(cpu, rob_size, dtlb),
-        L1I_bus(cpu, rob_size, l1i), L1D_bus(cpu, rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type)
+        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(cpu, itlb), DTLB_bus(cpu, dtlb),
+        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };
