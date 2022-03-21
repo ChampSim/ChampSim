@@ -7,6 +7,8 @@ import operator
 import copy
 from collections import ChainMap
 
+import config.makefile as makefile
+
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 config_cache_name = '.champsimconfig_cache'
@@ -27,8 +29,6 @@ cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
-
-module_make_fmtstr = '{1}/%.o: CFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += -I{1}\n{1}/%.o: CXXFLAGS += {2}\nobj/{0}: $(patsubst %.cc,%.o,$(wildcard {1}/*.cc)) $(patsubst %.c,%.o,$(wildcard {1}/*.c))\n\t@mkdir -p $(dir $@)\n\tar -rcs $@ $^\n\n'
 
 ###
 # Begin default core model definition
@@ -575,36 +575,8 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#endif\n')
 
 # Makefile
-with open('Makefile', 'wt') as wfp:
-    wfp.write('CC := ' + config_file.get('CC', 'gcc') + '\n')
-    wfp.write('CXX := ' + config_file.get('CXX', 'g++') + '\n')
-    wfp.write('CFLAGS := ' + config_file.get('CFLAGS', '-Wall -O3') + ' -std=gnu99\n')
-    wfp.write('CXXFLAGS := ' + config_file.get('CXXFLAGS', '-Wall -O3') + ' -std=c++17\n')
-    wfp.write('CPPFLAGS := ' + config_file.get('CPPFLAGS', '') + ' -Iinc -MMD -MP\n')
-    wfp.write('LDFLAGS := ' + config_file.get('LDFLAGS', '') + '\n')
-    wfp.write('LDLIBS := ' + config_file.get('LDLIBS', '') + '\n')
-    wfp.write('\n')
-    wfp.write('.phony: all clean\n\n')
-    wfp.write('all: ' + config_file['executable_name'] + '\n\n')
-    wfp.write('clean: \n')
-    wfp.write('\t$(RM) ' + constants_header_name + '\n')
-    wfp.write('\t$(RM) ' + instantiation_file_name + '\n')
-    wfp.write('\t$(RM) ' + 'inc/cache_modules.inc' + '\n')
-    wfp.write('\t$(RM) ' + 'inc/ooo_cpu_modules.inc' + '\n')
-    wfp.write('\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n\n')
-    for v in libfilenames.values():
-        wfp.write('\t find {0} -name \*.o -delete\n\t find {0} -name \*.d -delete\n'.format(*v))
-    wfp.write('\n')
-    wfp.write(config_file['executable_name'] + ': $(patsubst %.cc,%.o,$(wildcard src/*.cc)) ' + ' '.join('obj/' + k for k in libfilenames) + '\n')
-    wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
-
-    for k,v in libfilenames.items():
-        wfp.write(module_make_fmtstr.format(k, *v))
-
-    wfp.write('-include $(wildcard src/*.d)\n')
-    for v in libfilenames.values():
-        wfp.write('-include $(wildcard {0}/*.d)\n'.format(*v))
-    wfp.write('\n')
+with open('_configuration.mk', 'wt') as wfp:
+    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file))
 
 # Configuration cache
 with open(config_cache_name, 'wt') as wfp:
