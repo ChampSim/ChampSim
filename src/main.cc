@@ -292,7 +292,7 @@ void signal_handler(int signal)
   exit(1);
 }
 
-int main(int argc, char** argv)
+int champsim_main(int argc, char** argv)
 {
   // interrupt signal hanlder
   struct sigaction sigIntHandler;
@@ -500,3 +500,9 @@ int main(int argc, char** argv)
 
   return 0;
 }
+
+int main(int argc, char** argv)
+{
+  return champsim_main(argc, argv);
+}
+
