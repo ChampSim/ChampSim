@@ -11,7 +11,6 @@ import config.makefile as makefile
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
-config_cache_name = '.champsimconfig_cache'
 
 fname_translation_table = str.maketrans('./-','_DH')
 
@@ -64,7 +63,6 @@ default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 
 os.makedirs(os.path.dirname(config_file['executable_name']), exist_ok=True)
 os.makedirs(os.path.dirname(instantiation_file_name), exist_ok=True)
 os.makedirs(os.path.dirname(constants_header_name), exist_ok=True)
-os.makedirs('obj', exist_ok=True)
 
 ###
 # Establish default optional values
@@ -289,18 +287,6 @@ for cpu in cores:
         opts += ' -Dupdate_btb=' + cpu['btb_update']
         opts += ' -Dbtb_prediction=' + cpu['btb_predict']
         libfilenames['btb_' + cpu['btb_name'] + '.a'] = (fname, opts)
-
-# Check cache of previous configuration
-if os.path.exists(config_cache_name):
-    with open(config_cache_name) as rfp:
-        config_cache = json.load(rfp)
-else:
-    config_cache = {k:'' for k in libfilenames}
-
-# Prune modules whose configurations have changed (force make to rebuild it)
-for f in os.listdir('obj'):
-    if f in libfilenames and f in config_cache and config_cache[f] != libfilenames[f]:
-        os.remove('obj/' + f)
 
 ###
 # Perform final preparations for file writing
@@ -577,8 +563,4 @@ with open(constants_header_name, 'wt') as wfp:
 # Makefile
 with open('_configuration.mk', 'wt') as wfp:
     wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file))
-
-# Configuration cache
-with open(config_cache_name, 'wt') as wfp:
-    json.dump(libfilenames, wfp)
 
