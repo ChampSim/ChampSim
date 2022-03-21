@@ -1,6 +1,6 @@
 CPPFLAGS += -Iinc
-CFLAGS += -Wall -O3
-CXXFLAGS += -Wall -O3
+CFLAGS += --std=c++17 -Wall -O3
+CXXFLAGS += --std=c++17 -Wall -O3
 .phony: all exec clean test
 
 cppsrc = $(wildcard src/*.cc)
@@ -10,11 +10,13 @@ all: exec
 
 include _configuration.mk
 
-$(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc)) : CPPFLAGS += -MMD -MP
+exec_obj = $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc))
+$(exec_obj) : CPPFLAGS += -MMD -MP
 
-$(executable_name): $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.cc,%.o,$(csrc))
+$(executable_name): $(exec_obj)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-test:
-	$(MAKE) -C test
+test_obj = $(filter-out src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
+test: $(test_obj)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
 

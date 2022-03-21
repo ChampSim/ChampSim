@@ -11,3 +11,5 @@ bin/
 **/*.o
 **/*.d
 
+test/000-test-main
+
