@@ -127,7 +127,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   if (arch_instr.is_branch) {
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken << std::endl;
+      std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken
+                << std::endl;
     }
 
     num_branch++;
@@ -487,9 +488,9 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
         if constexpr (champsim::debug_print)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl;
       } else {
-        assert(sq_it->instr_id < instr.instr_id); // The found SQ entry is a prior store
+        assert(sq_it->instr_id < instr.instr_id);   // The found SQ entry is a prior store
         sq_it->lq_depend_on_me.push_back(*q_entry); // Forward the load when the store finishes
-        (*q_entry)->producer_id = sq_it->instr_id; // The load waits on the store to finish
+        (*q_entry)->producer_id = sq_it->instr_id;  // The load waits on the store to finish
 
         if constexpr (champsim::debug_print)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << sq_it->instr_id << std::endl;
@@ -531,7 +532,8 @@ void O3_CPU::operate_lsq()
     }
   }
 
-  for (; store_bw > 0 && !std::empty(SQ) && (std::empty(ROB) || SQ.front().instr_id < ROB.front().instr_id) && SQ.front().event_cycle < current_cycle; --store_bw) {
+  for (; store_bw > 0 && !std::empty(SQ) && (std::empty(ROB) || SQ.front().instr_id < ROB.front().instr_id) && SQ.front().event_cycle < current_cycle;
+       --store_bw) {
     auto success = do_complete_store(SQ.front());
     if (success)
       SQ.pop_front(); // std::deque::erase() requires MoveAssignable :(
@@ -802,10 +804,7 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
-void CacheBus::return_data(const PACKET& packet)
-{
-  PROCESSED.push_back(packet);
-}
+void CacheBus::return_data(const PACKET& packet) { PROCESSED.push_back(packet); }
 
 void O3_CPU::print_deadlock()
 {
@@ -844,8 +843,7 @@ void O3_CPU::print_deadlock()
   // print LQ entry
   std::cout << "Load Queue Entry" << std::endl;
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
-    if (lq_it->has_value())
-    {
+    if (lq_it->has_value()) {
       std::cout << "[LQ] entry: " << std::distance(std::begin(LQ), lq_it) << " instr_id: " << (*lq_it)->instr_id << " address: " << std::hex
                 << (*lq_it)->physical_address << std::dec << " translate_issued: " << std::boolalpha << (*lq_it)->translate_issued
                 << " translated: " << ((*lq_it)->physical_address != 0) << " fetched: " << (*lq_it)->fetch_issued << std::noboolalpha
