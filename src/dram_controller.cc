@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "champsim_constants.h"
+#include "instruction.h"
 #include "util.h"
 
 extern uint8_t all_warmup_complete;
@@ -154,17 +155,21 @@ void DRAM_CHANNEL::check_collision()
 
         *rq_it = {};
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
-        packet_dep_merge(found->lq_index_depend_on_me, rq_it->lq_index_depend_on_me);
-        packet_dep_merge(found->sq_index_depend_on_me, rq_it->sq_index_depend_on_me);
-        packet_dep_merge(found->instr_depend_on_me, rq_it->instr_depend_on_me);
-        packet_dep_merge(found->to_return, rq_it->to_return);
+        auto instr_copy = std::move(found->instr_depend_on_me);
+        auto ret_copy = std::move(found->to_return);
+
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
+            std::back_inserter(found->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return), std::back_inserter(found->to_return));
 
         *rq_it = {};
       } else if (auto found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
-        packet_dep_merge(found->lq_index_depend_on_me, rq_it->lq_index_depend_on_me);
-        packet_dep_merge(found->sq_index_depend_on_me, rq_it->sq_index_depend_on_me);
-        packet_dep_merge(found->instr_depend_on_me, rq_it->instr_depend_on_me);
-        packet_dep_merge(found->to_return, rq_it->to_return);
+        auto instr_copy = std::move(found->instr_depend_on_me);
+        auto ret_copy = std::move(found->to_return);
+
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
+            std::back_inserter(found->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return), std::back_inserter(found->to_return));
 
         *rq_it = {};
       } else {

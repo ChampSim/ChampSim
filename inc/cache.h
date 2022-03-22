@@ -15,6 +15,18 @@
 // virtual address space prefetching
 constexpr uint64_t VA_PREFETCH_TRANSLATION_LATENCY = 2;
 
+// CACHE BLOCK
+class BLOCK
+{
+public:
+  bool valid = false, prefetch = false, dirty = false;
+
+  uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0;
+
+  // replacement state
+  uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+};
+
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
   enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
