@@ -1,185 +1,68 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "champsim.h"
-#include "instruction.h"
-#include "circular_buffer.hpp"
+#include <algorithm>
+#include <vector>
 
-#include <list>
+#include "circular_buffer.hpp"
+#include "instruction.h"
 
 class MemoryRequestProducer;
-class LSQ_ENTRY;
+struct LSQ_ENTRY;
 
 // message packet
-class PACKET {
-  public:
-    uint8_t scheduled = 0,
-            translated = 0,
-            fetched = 0,
-            prefetched = 0;
-
-    int fill_level = -1,
-        pf_origin_level,
-        producer = -1,
-        delta = 0,
-        depth = 0,
-        signature = 0,
-        confidence = 0;
-
-    uint32_t pf_metadata;
-
-    uint8_t  is_producer = 0, 
-             returned = 0,
-             asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()},
-             type = 0;
-
-    std::list<LSQ_ENTRY*> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
-    std::list<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
-
-    uint32_t cpu = NUM_CPUS;
-
-    uint64_t address = 0,
-             full_addr = 0,
-             v_address = 0,
-             full_v_addr = 0,
-             data = 0,
-             instr_id = 0,
-             ip = 0,
-             event_cycle = std::numeric_limits<uint64_t>::max(),
-             cycle_enqueued = 0;
-
-    std::list<MemoryRequestProducer*> to_return;
-};
-
-template <typename LIST>
-void packet_dep_merge(LIST &dest, LIST &src)
+class PACKET
 {
-    if (src.empty())
-        return;
+public:
+  bool scheduled = false;
+  bool forward_checked = false;
 
-    if (dest.empty())
-    {
-        dest = src;
-        return;
-    }
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0;
 
-    auto s_begin = src.begin();
-    auto s_end   = src.end();
-    auto d_begin = dest.begin();
-    auto d_end   = dest.end();
+  uint32_t pf_metadata = 0;
+  uint32_t cpu = std::numeric_limits<uint32_t>::max();
 
-    while (s_begin != s_end && d_begin != d_end)
-    {
-        if (*s_begin > *d_begin)
-        {
-            ++d_begin;
-        }
-        else if (*s_begin == *d_begin)
-        {
-            ++s_begin;
-        }
-        else
-        {
-            dest.insert(d_begin, *s_begin);
-            ++s_begin;
-        }
-    }
+  uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
 
-    dest.insert(d_begin, s_begin, s_end);
-}
+  std::vector<std::vector<LSQ_ENTRY>::iterator> lq_index_depend_on_me = {}, sq_index_depend_on_me = {};
+  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> instr_depend_on_me;
+  std::vector<MemoryRequestProducer*> to_return;
 
-// packet queue
-struct PACKET_QUEUE {
-    string NAME;
-    uint32_t SIZE;
-
-    uint8_t  is_RQ = 0,
-             is_WQ = 0,
-             write_mode = 0;
-
-    uint32_t cpu = 0,
-             head = 0,
-             tail = 0,
-             occupancy = 0,
-             num_returned = 0,
-             next_schedule_index = 0,
-             next_process_index = 0;
-
-    uint64_t next_schedule_cycle = std::numeric_limits<uint64_t>::max(),
-             next_process_cycle = std::numeric_limits<uint64_t>::max(),
-             ACCESS = 0,
-             FORWARD = 0,
-             MERGED = 0,
-             TO_CACHE = 0,
-             ROW_BUFFER_HIT = 0,
-             ROW_BUFFER_MISS = 0,
-             FULL = 0;
-
-    PACKET *entry;
-
-    // constructor
-    PACKET_QUEUE(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
-        entry = new PACKET[SIZE];
-    };
-
-    PACKET_QUEUE() {}
-
-    // destructor
-    ~PACKET_QUEUE() {
-        delete[] entry;
-    };
-
-    // functions
-    int check_queue(PACKET* packet);
-    void add_queue(PACKET* packet),
-         remove_queue(PACKET* packet);
-};
-
-// load/store queue
-struct LSQ_ENTRY {
-    uint64_t instr_id = 0,
-             producer_id = std::numeric_limits<uint64_t>::max(),
-             virtual_address = 0,
-             physical_address = 0,
-             ip = 0,
-             event_cycle = 0;
-
-    ooo_model_instr* rob_index = NULL;
-
-    uint8_t translated = 0,
-            fetched = 0,
-            asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+  uint8_t translation_level = 0, init_translation_level = 0;
 };
 
 template <>
-class is_valid<LSQ_ENTRY>
-{
-    public:
-        bool operator() (const LSQ_ENTRY &test)
-        {
-            return test.virtual_address != 0;
-        }
+struct is_valid<PACKET> {
+  bool operator()(const PACKET& test) { return test.address != 0; }
 };
 
-// reorder buffer
-template <typename T>
-struct CORE_BUFFER {
-    const string NAME;
-    const uint32_t SIZE;
-    uint32_t head = 0, tail = 0, occupancy = 0;
+template <typename LIST>
+void packet_dep_merge(LIST& dest, const LIST& src)
+{
+  dest.reserve(std::size(dest) + std::size(src));
+  auto middle = std::end(dest);
+  dest.insert(middle, std::begin(src), std::end(src));
+  std::inplace_merge(std::begin(dest), middle, std::end(dest));
+  auto uniq_end = std::unique(std::begin(dest), std::end(dest));
+  dest.erase(uniq_end, std::end(dest));
+}
 
-    T *entry;
+// load/store queue
+struct LSQ_ENTRY {
+  bool valid = false;
+  uint64_t instr_id = 0;
+  uint64_t virtual_address = 0;
+  uint64_t ip = 0;
+  uint64_t event_cycle = 0;
 
-    // constructor
-    CORE_BUFFER(string v1, uint32_t v2) : NAME(v1), SIZE(v2) {
-        entry = new T[SIZE];
-    };
+  champsim::circular_buffer<ooo_model_instr>::iterator rob_index;
 
-    // destructor
-    ~CORE_BUFFER() {
-        delete[] entry;
-    };
+  uint8_t translated = 0;
+  uint8_t fetched = 0;
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+  uint64_t physical_address = 0;
+  uint64_t producer_id = std::numeric_limits<uint64_t>::max();
 };
 
 #endif
-

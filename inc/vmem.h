@@ -1,38 +1,36 @@
 #ifndef VMEM_H
 #define VMEM_H
 
-#include <iostream>
+#include <cstdint>
 #include <deque>
 #include <map>
 
-#define VMEM_RAND_FACTOR 91827349653
 // reserve 1MB of space
 #define VMEM_RESERVE_CAPACITY 1048576
 
+#define PTE_BYTES 8
+
 class VirtualMemory
 {
- private:
-  uint32_t num_cpus;
-  uint32_t page_size;
-  uint32_t log2_page_size;
-  uint64_t num_ppages;
-  std::deque<uint64_t> ppage_free_list;
-  uint64_t get_next_free_ppage();
+private:
+  std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
+  std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
 
-  std::map<uint64_t, uint64_t>* vpage_to_ppage_map;
-  
-  uint32_t pt_levels;
-  std::map<uint64_t, uint64_t>** page_table;
-  
-  uint64_t rand_state;
-  uint64_t vmem_rand();
- public:
-  // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(uint32_t number_of_cpus, uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed);
-  uint32_t get_paget_table_level_count();
-  uint64_t va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-  uint64_t get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
+  uint64_t next_pte_page;
+
+public:
+  const uint64_t minor_fault_penalty;
+  const uint32_t pt_levels;
+  const uint32_t page_size; // Size of a PTE page
+  std::deque<uint64_t> ppage_free_list;
+
+  // capacity and pg_size are measured in bytes, and capacity must be a multiple
+  // of pg_size
+  VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed, uint64_t minor_fault_penalty);
+  uint64_t shamt(uint32_t level) const;
+  uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
+  std::pair<uint64_t, bool> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
+  std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
 };
 
 #endif
-

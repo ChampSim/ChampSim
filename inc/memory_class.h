@@ -1,120 +1,72 @@
 #ifndef MEMORY_CLASS_H
 #define MEMORY_CLASS_H
 
-#include "champsim.h"
-#include "block.h"
-
+#include <algorithm>
+#include <cstdint>
+#include <functional>
 #include <limits>
+#include <vector>
+
+#include "util.h"
 
 // CACHE ACCESS TYPE
-#define LOAD      0
-#define RFO       1
-#define PREFETCH  2
+#define LOAD 0
+#define RFO 1
+#define PREFETCH 2
 #define WRITEBACK 3
-#define NUM_TYPES 4
+#define TRANSLATION 4
+#define NUM_TYPES 5
 
-extern uint32_t tRP,  // Row Precharge (RP) latency
-                tRCD, // Row address to Column address (RCD) latency
-                tCAS; // Column Address Strobe (CAS) latency
+class MemoryRequestProducer;
+struct ooo_model_instr;
 
-extern uint64_t l2pf_access;
+// message packet
+class PACKET
+{
+public:
+  bool scheduled = false;
+  bool forward_checked = false;
 
-// CACHE BLOCK
-class BLOCK {
-  public:
-    uint8_t valid = 0,
-            prefetch = 0,
-            dirty = 0,
-            used = 0;
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0;
 
-    int delta = 0,
-        depth = 0,
-        signature = 0,
-        confidence = 0;
+  uint32_t pf_metadata = 0;
+  uint32_t cpu = std::numeric_limits<uint32_t>::max();
 
-    uint64_t address = 0,
-             full_addr = 0,
-             v_address,
-             full_v_addr,
-             tag = 0,
-             data = 0,
-             ip,
-             cpu = 0,
-             instr_id = 0;
+  uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
 
-    // replacement state
-    uint32_t lru = std::numeric_limits<uint32_t>::max();
+  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
+  std::vector<MemoryRequestProducer*> to_return;
 
-    BLOCK() {}
+  uint8_t translation_level = 0, init_translation_level = 0;
+};
 
-    BLOCK(const PACKET &packet) :
-        valid(1),
-        prefetch(packet.type == PREFETCH),
-        dirty(0),
-        used(0),
-        delta(packet.delta),
-        depth(packet.depth),
-        signature(packet.signature),
-        confidence(packet.confidence),
-        address(packet.address),
-        full_addr(packet.full_addr),
-        v_address(packet.v_address),
-        full_v_addr(packet.full_v_addr),
-        tag(packet.address),
-        data(packet.data),
-        ip(packet.ip),
-        cpu(packet.cpu),
-        instr_id(packet.instr_id)
-    {}
+template <>
+struct is_valid<PACKET> {
+  bool operator()(const PACKET& test) { return test.address != 0; }
 };
 
 class MemoryRequestConsumer
 {
-    public:
-        virtual int  add_rq(PACKET *packet) = 0;
-        virtual int  add_wq(PACKET *packet) = 0;
-        virtual int  add_pq(PACKET *packet) = 0;
-        virtual void increment_WQ_FULL(uint64_t address) = 0;
-        virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-        virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+public:
+  const unsigned fill_level;
+  virtual bool add_rq(const PACKET& packet) = 0;
+  virtual bool add_wq(const PACKET& packet) = 0;
+  virtual bool add_pq(const PACKET& packet) = 0;
+  virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
+  virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+
+  explicit MemoryRequestConsumer(unsigned fill_level) : fill_level(fill_level) {}
 };
 
 class MemoryRequestProducer
 {
-    public:
-        MemoryRequestConsumer *lower_level;
-        virtual void return_data(PACKET *packet) = 0;
-    protected:
-        MemoryRequestProducer() {}
-        explicit MemoryRequestProducer(MemoryRequestConsumer *ll) : lower_level(ll) {}
-};
+public:
+  MemoryRequestConsumer* lower_level;
+  virtual void return_data(const PACKET& packet) = 0;
 
-// DRAM CACHE BLOCK
-class DRAM_ARRAY {
-  public:
-    BLOCK **block;
-
-    DRAM_ARRAY() {
-        block = NULL;
-    };
-};
-
-struct BANK_REQUEST {
-    uint64_t cycle_available = 0,
-             address = 0,
-             full_addr = 0;
-
-    uint32_t open_row = std::numeric_limits<uint32_t>::max();
-
-    uint8_t working = 0,
-            working_type = 0,
-            row_buffer_hit = 0,
-            drc_hit = 0,
-            is_write = 0,
-            is_read = 0;
-
-    int request_index = -1;
+protected:
+  MemoryRequestProducer() {}
+  explicit MemoryRequestProducer(MemoryRequestConsumer* ll) : lower_level(ll) {}
 };
 
 #endif
-
