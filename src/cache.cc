@@ -5,6 +5,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "instruction.h"
 #include "util.h"
 #include "vmem.h"
 
@@ -162,10 +163,13 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
   if (mshr_entry != MSHR.end()) // miss already inflight
   {
-    packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
-    packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
-    packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
-    packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
+    auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
+    auto ret_copy = std::move(mshr_entry->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
+                   std::back_inserter(mshr_entry->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
+                   std::back_inserter(mshr_entry->to_return));
 
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
