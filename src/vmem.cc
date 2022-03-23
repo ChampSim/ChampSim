@@ -2,11 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 #include <numeric>
 #include <random>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "util.h"
 
 VirtualMemory::VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed, uint64_t minor_fault_penalty)
