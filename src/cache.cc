@@ -7,12 +7,9 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "instruction.h"
 #include "util.h"
 #include "vmem.h"
-
-#ifndef SANITY_CHECK
-#define NDEBUG
-#endif
 
 extern VirtualMemory vmem;
 
@@ -149,8 +146,10 @@ void CACHE::handle_prefetch()
 
 void CACHE::check_collision()
 {
+  // Check WQ for duplicates, merging if they are found
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
     if (auto found = std::find_if(std::begin(WQ), wq_it, eq_addr<PACKET>(wq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != wq_it) {
+      // Merge with earlier write
       sim_stats.back().WQ_MERGED++;
       wq_it = WQ.erase(wq_it);
     } else {
@@ -159,9 +158,11 @@ void CACHE::check_collision()
     }
   }
 
+  // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); rq_it != std::end(RQ);) {
     if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, match_offset_bits ? 0 : OFFSET_BITS));
         found_wq != std::end(WQ)) {
+      // Forward from earlier write
       rq_it->data = found_wq->data;
       for (auto ret : rq_it->to_return)
         ret->return_data(*rq_it);
@@ -169,10 +170,14 @@ void CACHE::check_collision()
       sim_stats.back().WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
     } else if (auto found_rq = std::find_if(std::begin(RQ), rq_it, eq_addr<PACKET>(rq_it->address, OFFSET_BITS)); found_rq != rq_it) {
-      packet_dep_merge(found_rq->lq_index_depend_on_me, rq_it->lq_index_depend_on_me);
-      packet_dep_merge(found_rq->sq_index_depend_on_me, rq_it->sq_index_depend_on_me);
-      packet_dep_merge(found_rq->instr_depend_on_me, rq_it->instr_depend_on_me);
-      packet_dep_merge(found_rq->to_return, rq_it->to_return);
+      // Merge with earlier read
+      auto instr_copy = std::move(found_rq->instr_depend_on_me);
+      auto ret_copy = std::move(found_rq->to_return);
+
+      std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
+                     std::back_inserter(found_rq->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+      std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return),
+                     std::back_inserter(found_rq->to_return));
 
       sim_stats.back().RQ_MERGED++;
       rq_it = RQ.erase(rq_it);
@@ -182,9 +187,11 @@ void CACHE::check_collision()
     }
   }
 
+  // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); pq_it != std::end(PQ);) {
     if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, match_offset_bits ? 0 : OFFSET_BITS));
         found_wq != std::end(WQ)) {
+      // Forward from earlier write
       pq_it->data = found_wq->data;
       for (auto ret : pq_it->to_return)
         ret->return_data(*pq_it);
@@ -192,8 +199,11 @@ void CACHE::check_collision()
       sim_stats.back().WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
     } else if (auto found = std::find_if(std::begin(PQ), pq_it, eq_addr<PACKET>(pq_it->address, OFFSET_BITS)); found != pq_it) {
+      // Merge with earlier prefetch
       found->fill_level = std::min(found->fill_level, pq_it->fill_level);
-      packet_dep_merge(found->to_return, pq_it->to_return);
+
+      auto ret_copy = std::move(found->to_return);
+      std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(pq_it->to_return), std::end(pq_it->to_return), std::back_inserter(found->to_return));
 
       sim_stats.back().PQ_MERGED++;
       pq_it = PQ.erase(pq_it);
@@ -206,14 +216,14 @@ void CACHE::check_collision()
 
 void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " hit";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
@@ -244,14 +254,14 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
 bool CACHE::readlike_miss(PACKET& handle_pkt)
 {
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   // check mshr
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
@@ -262,10 +272,13 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     // update fill location
     mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
 
-    packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
-    packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
-    packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
-    packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
+    auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
+    auto ret_copy = std::move(mshr_entry->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
+                   std::back_inserter(mshr_entry->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
+                   std::back_inserter(mshr_entry->to_return));
 
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
@@ -319,19 +332,16 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
-  });
+  }
 
   bool bypass = (way == NUM_WAY);
-#ifndef LLC_BYPASS
-  assert(!bypass);
-#endif
   assert(handle_pkt.type != WRITEBACK || !bypass);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
@@ -446,16 +456,18 @@ bool CACHE::add_rq(const PACKET& packet)
   assert(packet.address != 0);
   sim_stats.back().RQ_ACCESS++;
 
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << RQ.size();
-  })
+  }
 
   // check occupancy
   if (std::size(RQ) >= RQ_SIZE) {
     sim_stats.back().RQ_FULL++;
 
-    DP(if (!warmup) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     return false; // cannot handle this request
   }
@@ -465,7 +477,9 @@ bool CACHE::add_rq(const PACKET& packet)
   RQ.back().forward_checked = false;
   RQ.back().event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
 
-  DP(if (!warmup) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   sim_stats.back().RQ_TO_CACHE++;
   return true;
@@ -475,14 +489,16 @@ bool CACHE::add_wq(const PACKET& packet)
 {
   sim_stats.back().WQ_ACCESS++;
 
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << WQ.size();
-  })
+  }
 
   // Check for room in the queue
   if (std::size(WQ) >= WQ_SIZE) {
-    DP(if (!warmup) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     ++sim_stats.back().WQ_FULL;
     return false;
@@ -493,7 +509,9 @@ bool CACHE::add_wq(const PACKET& packet)
   WQ.back().forward_checked = false;
   WQ.back().event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
 
-  DP(if (!warmup) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   sim_stats.back().WQ_TO_CACHE++;
   sim_stats.back().WQ_ACCESS++;
@@ -566,15 +584,17 @@ bool CACHE::add_pq(const PACKET& packet)
   assert(packet.address != 0);
   sim_stats.back().PQ_ACCESS++;
 
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << PQ.size();
-  })
+  }
 
   // check occupancy
   if (std::size(PQ) >= PQ_SIZE) {
 
-    DP(if (!warmup) std::cout << " FULL" << std::endl;)
+    if constexpr (champsim::debug_print) {
+      std::cout << " FULL" << std::endl;
+    }
 
     sim_stats.back().PQ_FULL++;
     return false; // cannot handle this request
@@ -585,7 +605,9 @@ bool CACHE::add_pq(const PACKET& packet)
   PQ.back().forward_checked = false;
   PQ.back().event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
 
-  DP(if (!warmup) std::cout << " ADDED" << std::endl;)
+  if constexpr (champsim::debug_print) {
+    std::cout << " ADDED" << std::endl;
+  }
 
   sim_stats.back().PQ_TO_CACHE++;
   return true;
@@ -612,13 +634,13 @@ void CACHE::return_data(const PACKET& packet)
   mshr_entry->pf_metadata = packet.pf_metadata;
   mshr_entry->event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
 
-  DP(if (!warmup) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
     std::cout << " address: " << std::hex << (mshr_entry->address >> OFFSET_BITS) << " full_addr: " << mshr_entry->address;
     std::cout << " data: " << mshr_entry->data << std::dec;
     std::cout << " index: " << std::distance(MSHR.begin(), mshr_entry) << " occupancy: " << get_occupancy(0, 0);
     std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
-  });
+  }
 
   // Order this entry after previously-returned entries, but before non-returned
   // entries

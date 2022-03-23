@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -71,7 +72,6 @@ struct ooo_model_instr {
   uint64_t event_cycle = 0;
 
   bool is_branch = 0;
-  bool is_memory = 0;
   bool branch_taken = 0;
   bool branch_prediction = 0;
   bool branch_mispredicted = 0; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
@@ -93,20 +93,11 @@ struct ooo_model_instr {
   std::vector<uint8_t> destination_registers = {}; // output registers
   std::vector<uint8_t> source_registers = {};      // input registers
 
-  struct lsq_info {
-    uint64_t address;
-    bool added = false;
-    std::vector<LSQ_ENTRY>::iterator q_entry;
-
-    explicit lsq_info(uint64_t address) : address(address){};
-  };
-
-  std::vector<lsq_info> destination_memory = {};
-  std::vector<lsq_info> source_memory = {};
+  std::vector<uint64_t> destination_memory = {};
+  std::vector<uint64_t> source_memory = {};
 
   // these are indices of instructions in the ROB that depend on me
-  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> registers_instrs_depend_on_me;
-  std::vector<champsim::circular_buffer<ooo_model_instr>::iterator> memory_instrs_depend_on_me;
+  std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
 
   // memory addresses that may cause dependencies between instructions
   uint64_t instruction_pa = 0;
@@ -117,13 +108,8 @@ private:
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
-
-    for (auto addr : instr.destination_memory)
-      if (addr != 0)
-        destination_memory.emplace_back(addr);
-    for (auto addr : instr.source_memory)
-      if (addr != 0)
-        source_memory.emplace_back(addr);
+    std::remove_copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::back_inserter(this->destination_memory), 0);
+    std::remove_copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::back_inserter(this->source_memory), 0);
   }
 
 public:
@@ -137,12 +123,6 @@ public:
   {
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }
-};
-
-// For compatability with eq_addr
-template <>
-struct is_valid<ooo_model_instr::lsq_info> {
-  bool operator()(const ooo_model_instr::lsq_info& test) { return true; }
 };
 
 #endif

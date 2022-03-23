@@ -208,8 +208,7 @@ int main(int argc, char** argv)
             op.end_phase(cpu.cpu);
 
           std::cout << phase.name << " finished CPU " << cpu.cpu;
-          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
-                    << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
+          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle() << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
           std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         }
       }
