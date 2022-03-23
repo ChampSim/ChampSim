@@ -120,7 +120,7 @@ for cpu in cores:
     # STLB
     cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_l2c.copy())
+        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
 
     # LLC
     cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
