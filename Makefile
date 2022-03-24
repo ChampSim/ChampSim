@@ -19,8 +19,9 @@ executable_name ?= bin/champsim
 all: $(executable_name)
 
 clean:
-	find src $(module_dirs) -name \*.o -delete
-	find src $(module_dirs) -name \*.d -delete
+	find src test $(module_dirs) -name \*.o -delete
+	find src test $(module_dirs) -name \*.d -delete
+	$(RM) test/000-test-main
 
 configclean: clean
 	$(RM) inc/champsim_constants.h src/core_inst.cc inc/cache_modules.inc inc/ooo_cpu_modules.inc _configuration.mk
