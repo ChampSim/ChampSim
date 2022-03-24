@@ -2,9 +2,7 @@
 #include <array>
 #include <fstream>
 #include <functional>
-#include <getopt.h>
 #include <iomanip>
-#include <signal.h>
 #include <string.h>
 #include <vector>
 
@@ -19,8 +17,6 @@
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0;
 
-uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
-
 auto start_time = time(NULL);
 
 // For backwards compatibility with older module source.
@@ -31,8 +27,6 @@ extern VirtualMemory vmem;
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::array<CACHE*, NUM_CACHES> caches;
 extern std::array<champsim::operable*, NUM_OPERABLES> operables;
-
-std::vector<tracereader*> traces;
 
 uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
 {
@@ -139,7 +133,7 @@ void print_branch_stats()
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     std::cout << std::endl << "CPU " << i << " Branch Prediction Accuracy: ";
     std::cout << (100.0 * (ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
-    std::cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
+    std::cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr);
     std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict) / ooo_cpu[i]->branch_mispredictions
               << std::endl;
 
@@ -286,57 +280,9 @@ void finish_warmup()
   }
 }
 
-void signal_handler(int signal)
+int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
-  std::cout << "Caught signal: " << signal << std::endl;
-  exit(1);
-}
-
-int champsim_main(int argc, char** argv)
-{
-  // interrupt signal hanlder
-  struct sigaction sigIntHandler;
-  sigIntHandler.sa_handler = signal_handler;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
-  sigaction(SIGINT, &sigIntHandler, NULL);
-
   std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
-
-  // initialize knobs
-  uint8_t show_heartbeat = 1;
-  uint8_t knob_cloudsuite = 0;
-
-  // check to see if knobs changed using getopt_long()
-  int traces_encountered = 0;
-  static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
-                                         {"simulation_instructions", required_argument, 0, 'i'},
-                                         {"hide_heartbeat", no_argument, 0, 'h'},
-                                         {"cloudsuite", no_argument, 0, 'c'},
-                                         {"traces", no_argument, &traces_encountered, 1},
-                                         {0, 0, 0, 0}};
-
-  int c;
-  while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered) {
-    switch (c) {
-    case 'w':
-      warmup_instructions = atol(optarg);
-      break;
-    case 'i':
-      simulation_instructions = atol(optarg);
-      break;
-    case 'h':
-      show_heartbeat = 0;
-      break;
-    case 'c':
-      knob_cloudsuite = 1;
-      break;
-    case 0:
-      break;
-    default:
-      abort();
-    }
-  }
 
   // consequences of knobs
   std::cout << "Warmup Instructions: " << warmup_instructions << std::endl;
@@ -357,20 +303,21 @@ int champsim_main(int argc, char** argv)
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
-  for (int i = optind; i < argc; i++) {
-    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+  std::vector<tracereader*> traces;
+  for (auto name : trace_names) {
+    std::cout << "CPU " << traces.size() << " runs " << name << std::endl;
 
-    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
+    traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
     if (traces.size() > NUM_CPUS) {
       printf("\n*** Too many traces for the configured number of cores ***\n\n");
-      assert(0);
+      return 1;
     }
   }
 
   if (traces.size() != NUM_CPUS) {
     printf("\n*** Not enough traces for the configured number of cores ***\n\n");
-    assert(0);
+    return 1;
   }
   // end trace file setup
 
