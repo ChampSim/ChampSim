@@ -35,6 +35,8 @@ void CACHE::handle_fill()
     if (!success)
       return;
 
+    sim_stats.back().total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
+
     for (auto ret : fill_mshr->to_return)
       ret->return_data(*fill_mshr);
 
@@ -386,9 +388,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
   }
-
-  if (handle_pkt.cycle_enqueued != 0)
-    sim_stats.back().total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
   // update prefetcher
   cpu = handle_pkt.cpu;
