@@ -89,59 +89,29 @@ void CACHE::NonTranslatingQueues::check_collision()
 
 void CACHE::TranslatingQueues::issue_translation()
 {
-  for (auto &wq_entry : WQ) {
-    if (!wq_entry.translate_issued && wq_entry.address == wq_entry.v_address) {
-      auto fwd_pkt = wq_entry;
+  do_issue_translation(WQ);
+  do_issue_translation(RQ);
+  do_issue_translation(PQ);
+}
+
+template <typename R>
+void CACHE::TranslatingQueues::do_issue_translation(R &queue)
+{
+  for (auto &q_entry : queue) {
+    if (!q_entry.translate_issued && q_entry.address == q_entry.v_address) {
+      auto fwd_pkt = q_entry;
       fwd_pkt.type = LOAD;
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
         if constexpr (champsim::debug_print) {
-          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << wq_entry.instr_id;
-          std::cout << " address: "  << std::hex << wq_entry.address << " v_address: " << wq_entry.v_address << std::dec;
-          std::cout << " type: " << +wq_entry.type << " occupancy: " << std::size(WQ) << std::endl;
+          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << q_entry.instr_id;
+          std::cout << " address: "  << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
+          std::cout << " type: " << +q_entry.type << " occupancy: " << std::size(queue) << std::endl;
         }
 
-        wq_entry.translate_issued = true;
-        wq_entry.address = 0;
-      }
-    }
-  }
-
-  for (auto &rq_entry : RQ) {
-    if (!rq_entry.translate_issued && rq_entry.address == rq_entry.v_address) {
-      auto fwd_pkt = rq_entry;
-      fwd_pkt.type = LOAD;
-      fwd_pkt.to_return = {this};
-      auto success = lower_level->add_rq(fwd_pkt);
-      if (success) {
-        if constexpr (champsim::debug_print) {
-          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << rq_entry.instr_id;
-          std::cout << " address: " << std::hex << rq_entry.address << " v_address: " << rq_entry.v_address << std::dec;
-          std::cout << " type: " << +rq_entry.type << " occupancy: " << std::size(RQ) << std::endl;
-        }
-
-        rq_entry.translate_issued = true;
-        rq_entry.address = 0;
-      }
-    }
-  }
-
-  for (auto &pq_entry : PQ) {
-    if (!pq_entry.translate_issued && pq_entry.address == pq_entry.v_address) {
-      auto fwd_pkt = pq_entry;
-      fwd_pkt.type = LOAD;
-      fwd_pkt.to_return = {this};
-      auto success = lower_level->add_rq(fwd_pkt);
-      if (success) {
-        if constexpr (champsim::debug_print) {
-          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << pq_entry.instr_id;
-          std::cout << " address: " << std::hex << pq_entry.address << " v_address: " << pq_entry.v_address << std::dec;
-          std::cout << " type: " << +pq_entry.type << " occupancy: " << std::size(PQ) << std::endl;
-        }
-
-        pq_entry.translate_issued = true;
-        pq_entry.address = 0;
+        q_entry.translate_issued = true;
+        q_entry.address = 0;
       }
     }
   }
@@ -149,18 +119,18 @@ void CACHE::TranslatingQueues::issue_translation()
 
 void CACHE::TranslatingQueues::detect_misses()
 {
+  do_detect_misses(WQ);
+  do_detect_misses(RQ);
+  do_detect_misses(PQ);
+}
+
+template <typename R>
+void CACHE::TranslatingQueues::do_detect_misses(R &queue)
+{
   // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
-  auto wq_it = std::find_if_not(std::begin(WQ), std::end(WQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  std::for_each(std::begin(WQ), wq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
-  std::rotate(std::begin(WQ), wq_it, std::end(WQ));
-
-  auto rq_it = std::find_if_not(std::begin(RQ), std::end(RQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  std::for_each(std::begin(RQ), rq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
-  std::rotate(std::begin(RQ), rq_it, std::end(RQ));
-
-  auto pq_it = std::find_if_not(std::begin(PQ), std::end(PQ), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  std::for_each(std::begin(PQ), pq_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
-  std::rotate(std::begin(PQ), pq_it, std::end(PQ));
+  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
+  std::for_each(std::begin(queue), q_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  std::rotate(std::begin(queue), q_it, std::end(queue));
 }
 
 bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)

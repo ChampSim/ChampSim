@@ -83,6 +83,12 @@ public:
     void issue_translation();
     void detect_misses();
 
+    template <typename R>
+      void do_issue_translation(R& queue);
+
+    template <typename R>
+      void do_detect_misses(R& queue);
+
     bool rq_has_ready() const override;
     bool wq_has_ready() const override;
     bool pq_has_ready() const override;
