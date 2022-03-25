@@ -85,7 +85,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
               << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][2] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->roi_access[cpu][3] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][3]
+    std::cout << " WRITE     ACCESS: " << std::setw(10) << cache->roi_access[cpu][3] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][3]
               << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][3] << std::endl;
 
     std::cout << cache->NAME;
@@ -132,7 +132,7 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
               << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][2] << std::endl;
 
     std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->sim_access[cpu][3] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][3]
+    std::cout << " WRITE     ACCESS: " << std::setw(10) << cache->sim_access[cpu][3] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][3]
               << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][3] << std::endl;
   }
 }

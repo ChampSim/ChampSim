@@ -9,13 +9,14 @@
 
 #include "util.h"
 
-// CACHE ACCESS TYPE
-#define LOAD 0
-#define RFO 1
-#define PREFETCH 2
-#define WRITEBACK 3
-#define TRANSLATION 4
-#define NUM_TYPES 5
+enum access_type {
+  LOAD = 0,
+  RFO,
+  PREFETCH,
+  WRITE,
+  TRANSLATION,
+  NUM_TYPES,
+};
 
 class MemoryRequestProducer;
 struct ooo_model_instr;

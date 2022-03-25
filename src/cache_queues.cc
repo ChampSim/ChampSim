@@ -92,6 +92,7 @@ void CACHE::TranslatingQueues::issue_translation()
   for (auto &wq_entry : WQ) {
     if (!wq_entry.translate_issued && wq_entry.address == wq_entry.v_address) {
       auto fwd_pkt = wq_entry;
+      fwd_pkt.type = LOAD;
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
@@ -110,6 +111,7 @@ void CACHE::TranslatingQueues::issue_translation()
   for (auto &rq_entry : RQ) {
     if (!rq_entry.translate_issued && rq_entry.address == rq_entry.v_address) {
       auto fwd_pkt = rq_entry;
+      fwd_pkt.type = LOAD;
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
@@ -128,6 +130,7 @@ void CACHE::TranslatingQueues::issue_translation()
   for (auto &pq_entry : PQ) {
     if (!pq_entry.translate_issued && pq_entry.address == pq_entry.v_address) {
       auto fwd_pkt = pq_entry;
+      fwd_pkt.type = LOAD;
       fwd_pkt.to_return = {this};
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {

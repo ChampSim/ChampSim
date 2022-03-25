@@ -724,7 +724,7 @@ bool CacheBus::issue_write(PACKET data_packet)
 {
   data_packet.address = data_packet.v_address;
   data_packet.cpu = cpu;
-  data_packet.type = RFO;
+  data_packet.type = WRITE;
 
   return lower_level->add_wq(data_packet);
 }

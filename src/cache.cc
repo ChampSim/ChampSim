@@ -189,6 +189,9 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
     auto fwd_pkt = handle_pkt;
 
+    if (fwd_pkt.type == WRITE)
+      fwd_pkt.type = RFO;
+
     fwd_pkt.prefetch_from_this = false;
     if (!std::empty(fwd_pkt.to_return))
       fwd_pkt.to_return = {this};
@@ -231,7 +234,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   }
 
   bool bypass = (way == NUM_WAY);
-  assert(handle_pkt.type != WRITEBACK || !bypass);
+  assert(handle_pkt.type != WRITE || !bypass);
 
   auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   if (!bypass) {
@@ -244,7 +247,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
       writeback_packet.data = fill_block.data;
       writeback_packet.instr_id = handle_pkt.instr_id;
       writeback_packet.ip = 0;
-      writeback_packet.type = WRITEBACK;
+      writeback_packet.type = WRITE;
       writeback_packet.pf_metadata = fill_block.pf_metadata;
 
       auto success = lower_level->add_wq(writeback_packet);
@@ -262,7 +265,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
 
     fill_block.valid = true;
     fill_block.prefetch = handle_pkt.prefetch_from_this;
-    fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+    fill_block.dirty = (handle_pkt.type == WRITE || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
     fill_block.v_address = handle_pkt.v_address;
     fill_block.data = handle_pkt.data;
