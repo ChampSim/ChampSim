@@ -57,7 +57,7 @@ bool CACHE::handle_writeback(PACKET &handle_pkt)
 
     return true;
   } else { // MISS
-    if (handle_pkt.type == RFO && handle_pkt.to_return.empty()) {
+    if (match_offset_bits) {
       return readlike_miss(handle_pkt);
     } else {
       // find victim
@@ -265,7 +265,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
 
     fill_block.valid = true;
     fill_block.prefetch = handle_pkt.prefetch_from_this;
-    fill_block.dirty = (handle_pkt.type == WRITE || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+    fill_block.dirty = (handle_pkt.type == WRITE);
     fill_block.address = handle_pkt.address;
     fill_block.v_address = handle_pkt.v_address;
     fill_block.data = handle_pkt.data;
