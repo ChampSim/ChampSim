@@ -32,8 +32,6 @@
 #define BRANCH_RETURN 6
 #define BRANCH_OTHER 7
 
-struct LSQ_ENTRY;
-
 struct input_instr {
   // instruction pointer or PC (Program Counter)
   uint64_t ip = 0;
