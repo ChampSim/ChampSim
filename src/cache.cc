@@ -34,7 +34,7 @@ void CACHE::handle_fill()
     if (!success)
       return;
 
-    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
+    total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
     for (auto ret : fill_mshr->to_return)
       ret->return_data(*fill_mshr);
