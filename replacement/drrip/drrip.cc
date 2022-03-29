@@ -7,7 +7,7 @@
 constexpr unsigned maxRRPV = 3;
 constexpr std::size_t NUM_POLICY = 2;
 constexpr std::size_t SDM_SIZE = 32;
-constexpr std::size_t TOTAL_SDM_SETS = NUM_CPUS* NUM_POLICY* SDM_SIZE;
+constexpr std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
 constexpr unsigned BIP_MAX = 32;
 constexpr unsigned PSEL_WIDTH = 10;
 constexpr std::size_t PSEL_MAX = (1 << PSEL_WIDTH) - 1;
@@ -35,7 +35,7 @@ void CACHE::initialize_replacement()
     rand_sets[this].insert(loc, val);
   }
 
-  rrpv.insert({this, std::vector<unsigned>(NUM_SET*NUM_WAY)});
+  rrpv.insert({this, std::vector<unsigned>(NUM_SET * NUM_WAY)});
 }
 
 // called on every cache hit and cache fill
@@ -59,7 +59,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   auto end = std::next(begin, NUM_POLICY * SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) { // follower sets
+  if (leader == end) {                                 // follower sets
     if (PSEL[std::make_pair(this, cpu)] > PSEL_THRS) { // follow BIP
       rrpv[this][set * NUM_WAY + way] = maxRRPV;
 
