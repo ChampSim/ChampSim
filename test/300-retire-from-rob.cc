@@ -1,35 +1,6 @@
 #include "catch.hpp"
-
-#include <deque>
-#include <limits>
-
-#include "memory_class.h"
+#include "mocks.hpp"
 #include "ooo_cpu.h"
-#include "operable.h"
-
-/*
- * A MemoryRequestConsumer that simply returns all packets on the next cycle
- */
-class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
-{
-  std::deque<PACKET> packets;
-  public:
-    do_nothing_MRC() : MemoryRequestConsumer(1), champsim::operable(1) {}
-
-    void operate() {
-      for (const PACKET &pkt : packets)
-        for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
-      packets.clear();
-    }
-
-    bool add_rq(const PACKET &pkt) { packets.push_back(pkt); return true; }
-    bool add_wq(const PACKET &pkt) { packets.push_back(pkt); return true; }
-    bool add_pq(const PACKET &pkt) { packets.push_back(pkt); return true; }
-
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) { return std::size(packets); }
-    uint32_t get_size(uint8_t queue_type, uint64_t address) { return std::numeric_limits<uint32_t>::max(); }
-};
 
 SCENARIO("Completed instructions are retired") {
   GIVEN("An empty ROB") {
