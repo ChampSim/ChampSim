@@ -10,7 +10,7 @@
 #include "vmem.h"
 
 extern VirtualMemory vmem;
-extern uint8_t warmup_complete[NUM_CPUS];
+extern bool warmup_complete[NUM_CPUS];
 
 void CACHE::handle_fill()
 {
@@ -33,6 +33,8 @@ void CACHE::handle_fill()
     bool success = filllike_miss(set, way, *fill_mshr);
     if (!success)
       return;
+
+    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
     for (auto ret : fill_mshr->to_return)
       ret->return_data(*fill_mshr);
@@ -387,9 +389,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
   }
-
-  if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
   // update prefetcher
   cpu = handle_pkt.cpu;

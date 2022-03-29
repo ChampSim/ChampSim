@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -15,7 +16,7 @@
 #include "tracereader.h"
 #include "vmem.h"
 
-uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0;
+bool warmup_complete[NUM_CPUS] = {};
 
 auto start_time = time(NULL);
 
@@ -332,8 +333,9 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
   }
 
   // simulation entry point
-  while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
-
+  bool warmup_finished = false;
+  std::bitset<NUM_CPUS> simulation_complete;
+  while (!simulation_complete.all()) {
     uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time), elapsed_minute = elapsed_second / 60, elapsed_hour = elapsed_minute / 60;
     elapsed_minute -= elapsed_hour * 60;
     elapsed_second -= (elapsed_hour * 3600 + elapsed_minute * 60);
@@ -363,11 +365,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
       // heartbeat information
       if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
-        float cumulative_ipc;
-        if (warmup_complete[i])
-          cumulative_ipc = (1.0 * (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
-        else
-          cumulative_ipc = (1.0 * ooo_cpu[i]->num_retired) / ooo_cpu[i]->current_cycle;
+        float cumulative_ipc = (1.0 * (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
         float heartbeat_ipc = (1.0 * ooo_cpu[i]->num_retired - ooo_cpu[i]->last_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->last_sim_cycle);
 
         std::cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
@@ -381,20 +379,15 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
       // check for warmup
       // warmup complete
-      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired > warmup_instructions)) {
-        warmup_complete[i] = 1;
-        all_warmup_complete++;
-      }
-      if (all_warmup_complete == NUM_CPUS) { // this part is called only once
-                                             // when all cores are warmed up
-        all_warmup_complete++;
+      warmup_complete[i] = (ooo_cpu[i]->num_retired > warmup_instructions);
+      if (std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x){ return x; }) && !warmup_finished) {
         finish_warmup();
+        warmup_finished = true;
       }
 
       // simulation complete
-      if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
-          && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
-        simulation_complete[i] = 1;
+      if (warmup_finished && !simulation_complete[i] && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
+        simulation_complete.set(i);
         ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
         ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
 
