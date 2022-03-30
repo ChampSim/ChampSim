@@ -159,8 +159,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '};'
         yield ''
 
-    for cpu in cores:
-        yield 'O3_CPU {}{{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
+    yield 'std::vector<O3_CPU> ooo_cpu {{'
+    yield ''
+
+    for i,cpu in enumerate(cores):
+        yield 'O3_CPU {{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
         yield '.index({index})'.format(**cpu)
         yield '.freq_scale({frequency})'.format(**cpu)
@@ -177,12 +180,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))
 
-        yield '};'
+        if i > 0:
+            yield '},'
+        else:
+            yield '}'
         yield ''
-
-    yield 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{'
-    yield ', '.join('{name}'.format(**elem) for elem in cores)
     yield '}};'
+    yield ''
 
     yield 'std::vector<std::reference_wrapper<CACHE>> caches {{'
     yield ', '.join('{name}'.format(**elem) for elem in caches)
@@ -193,6 +197,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '}};'
 
     yield 'std::vector<std::reference_wrapper<champsim::operable>> operables {{'
-    yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
+    yield ', '.join('ooo_cpu.at({})'.format(i) for i in range(len(cores)))
+    yield ','
+    yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(ptws, caches, (pmem,)))
     yield '}};'
     yield ''

@@ -39,7 +39,7 @@
 
 #include "core_inst.inc"
 
-int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
+int champsim_main(std::vector<O3_CPU>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
                   std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
