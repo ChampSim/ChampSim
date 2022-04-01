@@ -101,8 +101,7 @@ void PageTableWalker::handle_fill()
         for (auto ret : fill_mshr->to_return)
           ret->return_data(*fill_mshr);
 
-        if (!warmup)
-          total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
+        total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
         MSHR.erase(fill_mshr);
       }
