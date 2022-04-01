@@ -1,3 +1,5 @@
+#include "champsim.h"
+
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -8,7 +10,6 @@
 #include <vector>
 
 #include "cache.h"
-#include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
@@ -281,7 +282,8 @@ void finish_warmup()
   }
 }
 
-int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite, std::vector<std::string> trace_names)
+int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
+                  std::vector<std::string> trace_names)
 {
   std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
 
@@ -380,7 +382,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
       // check for warmup
       // warmup complete
       warmup_complete[i] = (ooo_cpu[i]->num_retired > warmup_instructions);
-      if (std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x){ return x; }) && !warmup_finished) {
+      if (std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x) { return x; }) && !warmup_finished) {
         finish_warmup();
         warmup_finished = true;
       }
@@ -440,4 +442,3 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
   return 0;
 }
-

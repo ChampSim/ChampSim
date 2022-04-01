@@ -4,7 +4,8 @@
 #include <string>
 #include <vector>
 
-int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite, std::vector<std::string> trace_names);
+int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
+                  std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -61,4 +62,3 @@ int main(int argc, char** argv)
 
   return champsim_main(warmup_instructions, simulation_instructions, show_heartbeat, knob_cloudsuite, trace_names);
 }
-
