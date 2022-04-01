@@ -2,14 +2,17 @@ inc/champsim_constants.h
 inc/cache_modules.inc
 inc/ooo_cpu_modules.inc
 src/core_inst.cc
-.champsimconfig_cache
-Makefile
+_configuration.mk
+
+**/__pycache__/
 
 bin/
-obj/
 
 **/*.o
 **/*.d
 
 config/__pycache__
+
+test/000-test-main
+
 

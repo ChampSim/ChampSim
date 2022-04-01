@@ -6,7 +6,7 @@
 #include "instruction.h"
 #include "util.h"
 
-extern uint8_t all_warmup_complete;
+extern bool warmup_complete[NUM_CPUS];
 
 struct is_unscheduled {
   bool operator()(const PACKET& lhs) { return !lhs.scheduled; }
@@ -18,7 +18,7 @@ struct next_schedule : public invalid_is_maximal<PACKET, min_event_cycle<PACKET>
 void MEMORY_CONTROLLER::operate()
 {
   for (auto& channel : channels) {
-    if (all_warmup_complete < NUM_CPUS) {
+    if (!std::all_of(std::begin(warmup_complete), std::end(warmup_complete), [](auto x) { return x; })) {
       for (auto& entry : channel.RQ) {
         for (auto ret : entry.to_return)
           ret->return_data(entry);

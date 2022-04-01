@@ -8,6 +8,7 @@ import copy
 from collections import ChainMap
 
 import config.modules as modules
+import config.makefile as makefile
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
@@ -28,7 +29,7 @@ vmem_fmtstr = 'VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1
 # Begin default core model definition
 ###
 
-default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -50,15 +51,6 @@ default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 3
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
 default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
-
-###
-# Ensure directories are present
-###
-
-os.makedirs(os.path.dirname(config_file['executable_name']), exist_ok=True)
-os.makedirs(os.path.dirname(instantiation_file_name), exist_ok=True)
-os.makedirs(os.path.dirname(constants_header_name), exist_ok=True)
-os.makedirs('obj', exist_ok=True)
 
 ###
 # Establish default optional values
@@ -114,7 +106,7 @@ for cpu in cores:
     # STLB
     cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_l2c.copy())
+        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
 
     # LLC
     cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
@@ -339,61 +331,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#endif\n')
 
 # Makefile
-module_file_info = tuple( (v['fname'], v['opts']) for k,v in itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()) ) # Associate modules with paths
-with open('Makefile', 'wt') as wfp:
-    wfp.write('CC := ' + config_file.get('CC', 'gcc') + '\n')
-    wfp.write('CXX := ' + config_file.get('CXX', 'g++') + '\n')
-    #wfp.write('CFLAGS := ' + config_file.get('CFLAGS', '-Wall -O3') + ' -std=gnu99\n')
-    wfp.write('CXXFLAGS := ' + config_file.get('CXXFLAGS', '-Wall -O3') + ' -std=c++17\n')
-    wfp.write('CPPFLAGS := ' + config_file.get('CPPFLAGS', '') + ' -Iinc -MMD -MP\n')
-    wfp.write('LDFLAGS := ' + config_file.get('LDFLAGS', '') + '\n')
-    wfp.write('LDLIBS := ' + config_file.get('LDLIBS', '') + '\n')
-    wfp.write('\n')
-    wfp.write('.phony: all clean\n\n')
-
-    wfp.write('executable_name ?= ' + config_file['executable_name'] + '\n\n')
-    wfp.write('all: $(executable_name)\n\n')
-    wfp.write('clean: \n')
-    wfp.write('\t$(RM) ' + constants_header_name + '\n')
-    wfp.write('\t$(RM) ' + instantiation_file_name + '\n')
-    wfp.write('\t$(RM) ' + 'inc/cache_modules.inc' + '\n')
-    wfp.write('\t$(RM) ' + 'inc/ooo_cpu_modules.inc' + '\n')
-    wfp.write('\t find . -name \*.o -delete\n\t find . -name \*.d -delete\n\t $(RM) -r obj\n\n')
-    for topdir, _ in module_file_info:
-        dir = [topdir]
-        for b,dd,files in os.walk(topdir):
-            dir.extend(os.path.join(b,d) for d in dd)
-        for d in dir:
-            wfp.write(f'\t find {d} -name \*.o -delete\n\t find {d} -name \*.d -delete\n')
-    wfp.write('\n')
-
-    wfp.write('cxxsources = $(wildcard src/*.cc)\n')
-    wfp.write('\n')
-
-    for topdir, opts in module_file_info:
-        dir = [topdir]
-        for b,dd,files in os.walk(topdir):
-            dir.extend(os.path.join(b,d) for d in dd)
-            for f in files:
-                if os.path.splitext(f)[1] in ['.cc', '.cpp', '.C']:
-                    name = os.path.join(b,f)
-                    wfp.write(f'cxxsources += {name}\n')
-        for d in dir:
-            wfp.write(f'{d}/%.o: CPPFLAGS += -I{d}\n')
-            wfp.write('\n'.join(f'{d}/%.o: CXXFLAGS += {opt}' for opt in opts))
-        wfp.write('\n')
-        wfp.write('\n')
-
-    wfp.write('$(executable_name): $(patsubst %.cc,%.o,$(cxxsources))\n')
-    wfp.write('\t$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)\n\n')
-
-    wfp.write('-include $(wildcard src/*.d)\n')
-    for topdir, _ in module_file_info:
-        dir = [topdir]
-        for b,dd,files in os.walk(topdir):
-            dir.extend(os.path.join(b,d) for d in dd)
-        for d in dir:
-            wfp.write(f'-include $(wildcard {d}/*.d)\n')
-    wfp.write('\n')
+with open('_configuration.mk', 'wt') as wfp:
+    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file))
 
 # vim: set filetype=python:
