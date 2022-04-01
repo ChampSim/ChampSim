@@ -25,20 +25,6 @@ vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_pe
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
-cache_builder_parts = {
-    'frequency': '.frequency({frequency})',
-    'sets': '.sets({sets})',
-    'ways': '.ways({ways})',
-    'pq_size': '.pq_size({pq_size})',
-    'mshr_size': '.mshr_size({mshr_size})',
-    'latency': '.latency({latency})',
-    'hit_latency': '.hit_latency({hit_latency})',
-    'fill_latency': '.fill_latency({fill_latency})',
-    'max_read': '.max_read({max_read})',
-    'max_write': '.max_write({max_write})',
-    'offset_bits': '.offset_bits({offset_bits})'
-}
-
 core_builder_parts = {
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
     'decode_buffer_size': '.decode_buffer_size({dispatch_buffer_size})',
@@ -58,7 +44,24 @@ core_builder_parts = {
     'decode_latency': '.decode_latency({decode_latency})',
     'dispatch_latency': '.dispatch_latency({dispatch_latency})',
     'schedule_latency': '.schedule_latency({schedule_latency})',
-    'execute_latency': '.execute_latency({execute_latency})'
+    'execute_latency': '.execute_latency({execute_latency})',
+    'dib_set': '  .dib_set({DIB[sets]})',
+    'dib_way': '  .dib_way({DIB[ways]})',
+    'dib_window': '  .dib_window({DIB[window_size]})'
+}
+
+cache_builder_parts = {
+    'frequency': '.frequency({frequency})',
+    'sets': '.sets({sets})',
+    'ways': '.ways({ways})',
+    'pq_size': '.pq_size({pq_size})',
+    'mshr_size': '.mshr_size({mshr_size})',
+    'latency': '.latency({latency})',
+    'hit_latency': '.hit_latency({hit_latency})',
+    'fill_latency': '.fill_latency({fill_latency})',
+    'max_read': '.max_read({max_read})',
+    'max_write': '.max_write({max_write})',
+    'offset_bits': '.offset_bits({offset_bits})'
 }
 
 default_ptw_queue = {
@@ -102,8 +105,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             **pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
 
-    for ptw in ptws:
-        yield 'PageTableWalker {name}{{PageTableWalker::Builder{{}}'.format(**ptw)
+    yield 'std::tuple< std::vector<O3_CPU>, std::vector<CACHE>, std::vector<PageTableWalker> > init_structures() {'
+
+    yield 'std::vector<PageTableWalker> ptws {{'
+    yield ''
+
+    for i,ptw in enumerate(ptws):
+        yield 'PageTableWalker{PageTableWalker::Builder{}'
         yield '.name("{name}")'.format(**ptw)
         yield '.cpu({cpu})'.format(**ptw)
 
@@ -128,11 +136,21 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
         yield '.virtual_memory(&vmem)'
-        yield '};'
+
+        if i < (len(ptws)-1):
+            yield '},'
+        else:
+            yield '}'
         yield ''
 
-    for elem in caches:
-        yield 'CACHE {}{{CACHE::Builder{{ {} }}'.format(elem['name'], elem.get('_defaults', ''))
+    yield '}};'
+    yield ''
+
+    yield 'std::vector<CACHE> caches {{'
+    yield ''
+
+    for i,elem in enumerate(caches):
+        yield 'CACHE{{CACHE::Builder{{ {} }}'.format(elem.get('_defaults', ''))
         yield '.name("{name}")'.format(**elem)
 
         local_cache_builder_parts = {
@@ -156,8 +174,14 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if 'lower_translate' in elem:
             yield '.lower_translate({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate']))
 
-        yield '};'
+        if i < (len(caches)-1):
+            yield '},'
+        else:
+            yield '}'
         yield ''
+
+    yield '}};'
+    yield ''
 
     yield 'std::vector<O3_CPU> ooo_cpu {{'
     yield ''
@@ -165,14 +189,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     for i,cpu in enumerate(cores):
         yield 'O3_CPU {{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
+        l1i_idx = [c['name'] for c in caches].index(cpu['L1I'])
+        l1d_idx = [c['name'] for c in caches].index(cpu['L1D'])
+
         yield '.index({index})'.format(**cpu)
         yield '.freq_scale({frequency})'.format(**cpu)
         yield '.dib_set({DIB[sets]})'.format(**cpu)
         yield '.dib_way({DIB[ways]})'.format(**cpu)
         yield '.dib_window({DIB[window_size]})'.format(**cpu)
-        yield '.l1i(&{L1I})'.format(**cpu)
-        yield '.l1i_bandwidth({L1I}.MAX_TAG)'.format(**cpu)
-        yield '.l1d_bandwidth({L1D}.MAX_TAG)'.format(**cpu)
+        yield '.l1i(&caches.at({}))'.format(l1i_idx)
+        yield '.l1i_bandwidth(caches.at({}).MAX_TAG)'.format(l1i_idx)
+        yield '.l1d_bandwidth(caches.at({}).MAX_TAG)'.format(l1d_idx)
 
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
         yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
@@ -180,25 +207,14 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))
 
-        if i > 0:
+        if i < (len(cores)-1):
             yield '},'
         else:
             yield '}'
         yield ''
+
     yield '}};'
     yield ''
 
-    yield 'std::vector<std::reference_wrapper<CACHE>> caches {{'
-    yield ', '.join('{name}'.format(**elem) for elem in caches)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptws {{'
-    yield ', '.join('{name}'.format(**elem) for elem in ptws)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<champsim::operable>> operables {{'
-    yield ', '.join('ooo_cpu.at({})'.format(i) for i in range(len(cores)))
-    yield ','
-    yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(ptws, caches, (pmem,)))
-    yield '}};'
-    yield ''
+    yield '    return {std::move(ooo_cpu), std::move(caches), std::move(ptws)};'
+    yield '}'

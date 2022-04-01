@@ -88,6 +88,13 @@ int main(int argc, char** argv)
   sigIntHandler.sa_flags = 0;
   sigaction(SIGINT, &sigIntHandler, NULL);
 
+  auto [ooo_cpu, caches, ptws] = init_structures();
+  std::vector<std::reference_wrapper<champsim::operable>> operables;
+  std::copy(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables));
+  std::copy(std::begin(caches), std::end(caches), std::back_inserter(operables));
+  std::copy(std::begin(ptws), std::end(ptws), std::back_inserter(operables));
+  operables.push_back(DRAM);
+
   // initialize knobs
   uint8_t knob_cloudsuite = 0;
   uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
