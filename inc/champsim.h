@@ -1,6 +1,7 @@
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
 
+#include <cstdint>
 #include <exception>
 
 namespace champsim

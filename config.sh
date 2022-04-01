@@ -331,7 +331,8 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#endif\n')
 
 # Makefile
+module_info = tuple(itertools.chain(repl_data.values(), pref_data.values(), branch_data.values(), btb_data.values()))
 with open('_configuration.mk', 'wt') as wfp:
-    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file))
+    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, module_info, **config_file))
 
 # vim: set filetype=python:
