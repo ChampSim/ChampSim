@@ -256,11 +256,3 @@ void PageTableWalker::print_deadlock()
     std::cout << NAME << " MSHR empty" << std::endl;
   }
 }
-
-void PageTableWalker::begin_phase() {}
-
-void PageTableWalker::end_phase(unsigned cpu) {}
-
-void PageTableWalker::print_roi_stats() {}
-
-void PageTableWalker::print_phase_stats() {}

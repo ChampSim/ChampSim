@@ -32,10 +32,10 @@ public:
   }
 
   virtual void operate() = 0;
-  virtual void begin_phase() = 0;
-  virtual void end_phase(unsigned cpu) = 0;
-  virtual void print_roi_stats() = 0;
-  virtual void print_phase_stats() = 0;
+  virtual void begin_phase() {};
+  virtual void end_phase(unsigned cpu) {};
+  virtual void print_roi_stats() {};
+  virtual void print_phase_stats() {};
   virtual void print_deadlock() {}
 };
 
