@@ -1,0 +1,38 @@
+name: Run Tests
+
+on:
+  push:
+    branches: 
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/test.yml'
+
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/test.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2.3.4
+
+    - name: Configure
+      run: ./config.sh
+
+    - name: Run tests
+      run: make test
+
