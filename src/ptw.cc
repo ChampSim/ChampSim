@@ -6,7 +6,7 @@
 #include "vmem.h"
 
 extern VirtualMemory vmem;
-extern uint8_t warmup_complete[NUM_CPUS];
+extern bool warmup_complete[NUM_CPUS];
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
                                  uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
@@ -101,8 +101,7 @@ void PageTableWalker::handle_fill()
         for (auto ret : fill_mshr->to_return)
           ret->return_data(*fill_mshr);
 
-        if (warmup_complete[cpu])
-          total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
+        total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
 
         MSHR.erase(fill_mshr);
       }

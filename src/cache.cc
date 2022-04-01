@@ -9,7 +9,7 @@
 #include "util.h"
 #include "vmem.h"
 
-extern uint8_t warmup_complete[NUM_CPUS];
+extern bool warmup_complete[NUM_CPUS];
 
 bool CACHE::handle_fill(PACKET &fill_mshr)
 {
@@ -26,6 +26,8 @@ bool CACHE::handle_fill(PACKET &fill_mshr)
     way = impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, set, &block.data()[set * NUM_WAY], fill_mshr.ip, fill_mshr.address, fill_mshr.type);
 
   bool success = filllike_miss(set, way, fill_mshr);
+
+  total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
 
   if (success) {
     for (auto ret : fill_mshr.to_return)
@@ -277,9 +279,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   } else {
     impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, 0, handle_pkt.pf_metadata); // FIXME ignored result
   }
-
-  if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
-    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
 
   // update replacement policy
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
