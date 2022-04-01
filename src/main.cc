@@ -18,7 +18,7 @@
 #include "vmem.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0;
+        knob_cloudsuite = 0, knob_low_bandwidth = 0;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
@@ -332,7 +332,6 @@ int main(int argc, char** argv)
       break;
     case 'c':
       knob_cloudsuite = 1;
-      MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
       break;
     case 0:
       break;
