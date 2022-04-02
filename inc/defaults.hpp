@@ -11,6 +11,9 @@ namespace champsim
 namespace defaults
 {
     const auto default_core = O3_CPU::Builder{}
+        .dib_set(32)
+        .dib_way(8)
+        .dib_window(16)
         .ifetch_buffer_size(64)
         .decode_buffer_size(32)
         .dispatch_buffer_size(32)
