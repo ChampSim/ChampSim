@@ -346,7 +346,7 @@ bool CACHE::add_rq(const PACKET &packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ) << std::endl;
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.RQ) << " current_cycle: " << current_cycle;
   }
 
   return queues.add_rq(packet);
@@ -356,7 +356,7 @@ bool CACHE::add_wq(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.WQ);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.WQ) << " current_cycle: " << current_cycle;
   }
 
   return queues.add_wq(packet);
@@ -403,7 +403,7 @@ bool CACHE::add_pq(const PACKET &packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.PQ);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type << " occupancy: " << std::size(queues.PQ) << " current_cycle: " << current_cycle;
   }
 
   return queues.add_pq(packet);
