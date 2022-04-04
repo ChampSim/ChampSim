@@ -10,22 +10,39 @@
 class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 {
   std::deque<PACKET> packets;
+  uint64_t ret_data = 0x11111111;
+  const uint64_t latency = 0;
+  unsigned mpacket_count = 0;
+
+  void add(PACKET pkt) {
+    pkt.event_cycle = current_cycle + latency;
+    packets.push_back(pkt);
+    ++mpacket_count;
+  }
+
   public:
-    do_nothing_MRC() : MemoryRequestConsumer(), champsim::operable(1) {}
+    do_nothing_MRC(uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), latency(latency) {}
+    do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() {
-      for (const PACKET &pkt : packets)
-        for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
+      for (PACKET &pkt : packets) {
+        if (pkt.event_cycle <= current_cycle) {
+          pkt.data = ++ret_data;
+          for (auto ret : pkt.to_return)
+            ret->return_data(pkt);
+        }
+      }
       packets.clear();
     }
 
-    bool add_rq(const PACKET &pkt) override { packets.push_back(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { packets.push_back(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { packets.push_back(pkt); return true; }
+    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
     uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
+
+    unsigned packet_count() const { return mpacket_count; }
 };
 
 /*
