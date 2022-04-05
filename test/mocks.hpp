@@ -9,7 +9,7 @@
  */
 class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 {
-  std::deque<PACKET> packets;
+  std::deque<PACKET> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
   unsigned mpacket_count = 0;
@@ -25,14 +25,15 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() {
-      for (PACKET &pkt : packets) {
-        if (pkt.event_cycle <= current_cycle) {
-          pkt.data = ++ret_data;
-          for (auto ret : pkt.to_return)
-            ret->return_data(pkt);
-        }
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      std::move(std::begin(packets), end, std::back_inserter(ready_packets));
+
+      for (PACKET &pkt : ready_packets) {
+        pkt.data = ++ret_data;
+        for (auto ret : pkt.to_return)
+          ret->return_data(pkt);
       }
-      packets.clear();
+      ready_packets.clear();
     }
 
     bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
