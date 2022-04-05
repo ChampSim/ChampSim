@@ -1,24 +1,51 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <deque>
 #include <functional>
 #include <list>
 #include <string>
 #include <vector>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "delay_queue.hpp"
 #include "memory_class.h"
-#include "ooo_cpu.h"
 #include "operable.h"
 
 // virtual address space prefetching
-#define VA_PREFETCH_TRANSLATION_LATENCY 2
+constexpr uint64_t VA_PREFETCH_TRANSLATION_LATENCY = 2;
 
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
+// CACHE BLOCK
+class BLOCK
+{
+public:
+  bool valid = false, prefetch = false, dirty = false;
+
+  uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0;
+
+  // replacement state
+  uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+};
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+  enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
+
+  class BLOCK
+  {
+  public:
+    bool valid = false;
+    bool prefetch = false;
+    bool dirty = false;
+
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+    uint64_t ip = 0;
+    uint64_t cpu = 0;
+    uint64_t instr_id = 0;
+  };
+
 public:
   uint32_t cpu;
   const std::string NAME;
@@ -37,12 +64,8 @@ public:
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
-      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
-
-  std::list<PACKET> MSHR; // MSHR
+  std::deque<PACKET> RQ, PQ, VAPQ, WQ;
+  std::list<PACKET> MSHR;
 
   uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
            roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
@@ -53,14 +76,15 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(PACKET* packet) override;
-  int add_wq(PACKET* packet) override;
-  int add_pq(PACKET* packet) override;
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
-  void return_data(PACKET* packet) override;
+  void return_data(const PACKET& packet) override;
   void operate() override;
   void operate_writes();
   void operate_reads();
+  void check_collision();
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

@@ -17,7 +17,7 @@ constexpr int COUNTER_THRESH = (COUNTER_MAX + COUNTER_MIN + 1)/2;
 
 void O3_CPU::initialize_branch_predictor()
 {
-    std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl;
+  std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl;
 
     std::fill(std::begin(gs_history_table[this]), std::end(gs_history_table[this]), COUNTER_THRESH); // weakly taken
 }
