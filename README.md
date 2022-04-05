@@ -60,45 +60,8 @@ $ bin/champsim --warmup_instructions 200000000 --simulation_instructions 5000000
 
 # How to create traces
 
-We STRONGLY recommend creating your own traces, covering a wide variety of program types and behaviors.
-
-The included Pin Tool champsim_tracer.cpp can be used to generate new traces.
-We used Pin 3.2 (pin-3.2-81205-gcc-linux), and it may require 
-installing libdwarf.so, libelf.so, or other libraries, if you do not already 
-have them. Please refer to the Pin documentation (https://software.intel.com/sites/landingpage/pintool/docs/81205/Pin/html/)
-for working with Pin 3.2.
-
-Get this version of Pin:
-```
-wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-3.2-81205-gcc-linux.tar.gz
-```
-
-**Use the Pin tool like this**
-```
-pin -t obj-intel64/champsim_tracer.so -- <your program here>
-```
-
-The tracer has three options you can set:
-```
--o
-Specify the output file for your trace.
-The default is default_trace.champsim
-
--s <number>
-Specify the number of instructions to skip in the program before tracing begins.
-The default value is 0.
-
--t <number>
-The number of instructions to trace, after -s instructions have been skipped.
-The default value is 1,000,000.
-```
-For example, you could trace 200,000 instructions of the program ls, after
-skipping the first 100,000 instructions, with this command:
-```
-pin -t obj/champsim_tracer.so -o traces/ls_trace.champsim -s 100000 -t 200000 -- ls
-```
-Traces created with the champsim_tracer.so are approximately 64 bytes per instruction,
-but they generally compress down to less than a byte per instruction using xz compression.
+Program traces are available in a variety of locations, however, many ChampSim users wish to trace their own programs for research purposes.
+Example tracing utilities are provided in the `tracer/` directory.
 
 # Evaluate Simulation
 

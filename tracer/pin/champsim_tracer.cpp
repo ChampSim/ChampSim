@@ -43,7 +43,7 @@ trace_instr_format_t curr_instr;
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE,  "pintool", "o", "champsim.trace", 
+KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE,  "pintool", "o", "champsim.trace", 
         "specify file name for Champsim tracer output");
 
 KNOB<UINT64> KnobSkipInstructions(KNOB_MODE_WRITEONCE, "pintool", "s", "0", 
@@ -61,12 +61,12 @@ KNOB<UINT64> KnobTraceInstructions(KNOB_MODE_WRITEONCE, "pintool", "t", "1000000
  */
 INT32 Usage()
 {
-    cerr << "This tool creates a register and memory access trace" << endl 
-        << "Specify the output trace file with -o" << endl 
-        << "Specify the number of instructions to skip before tracing with -s" << endl
-        << "Specify the number of instructions to trace with -t" << endl << endl;
+  std::cerr << "This tool creates a register and memory access trace" << std::endl 
+        << "Specify the output trace file with -o" << std::endl 
+        << "Specify the number of instructions to skip before tracing with -s" << std::endl
+        << "Specify the number of instructions to trace with -t" << std::endl << std::endl;
 
-    cerr << KNOB_BASE::StringKnobSummary() << endl;
+  std::cerr << KNOB_BASE::StringKnobSummary() << std::endl;
 
     return -1;
 }
@@ -165,8 +165,8 @@ void RegRead(UINT32 i, UINT32 index)
     }
     */
 
-    //cout << r << " " << REG_StringShort((REG)r) << " " ;
-    //cout << REG_StringShort((REG)r) << " " ;
+    //std::cout << r << " " << REG_StringShort((REG)r) << " " ;
+    //std::cout << REG_StringShort((REG)r) << " " ;
 
     //printf("%d ", (int)r);
 
@@ -207,8 +207,8 @@ void RegWrite(REG i, UINT32 index)
     }
     */
 
-    //cout << "<" << r << " " << REG_StringShort((REG)r) << "> ";
-    //cout << "<" << REG_StringShort((REG)r) << "> ";
+    //std::cout << "<" << r << " " << REG_StringShort((REG)r) << "> ";
+    //std::cout << "<" << REG_StringShort((REG)r) << "> ";
 
     //printf("<%d> ", (int)r);
 
@@ -349,10 +349,10 @@ VOID Instruction(INS ins, VOID *v)
     {
         if (INS_MemoryOperandIsRead(ins, memOp)) 
         {
-            UINT32 read_size = INS_MemoryReadSize(ins);
+            //UINT32 read_size = INS_MemoryReadSize(ins);
 
             INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryRead,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, read_size,
+                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, 0,//read_size,
                     IARG_END);
         }
         if (INS_MemoryOperandIsWritten(ins, memOp)) 
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
     out = fopen(fileName, "ab");
     if (!out) 
     {
-        cout << "Couldn't open output trace file. Exiting." << endl;
+      std::cout << "Couldn't open output trace file. Exiting." << std::endl;
         exit(1);
     }
 
@@ -413,10 +413,10 @@ int main(int argc, char *argv[])
     // Register function to be called when the application exits
     PIN_AddFiniFunction(Fini, 0);
 
-    //cerr <<  "===============================================" << endl;
-    //cerr <<  "This application is instrumented by the Champsim Trace Generator" << endl;
-    //cerr <<  "Trace saved in " << KnobOutputFile.Value() << endl;
-    //cerr <<  "===============================================" << endl;
+    //std::cerr <<  "===============================================" << std::endl;
+    //std::cerr <<  "This application is instrumented by the Champsim Trace Generator" << std::endl;
+    //std::cerr <<  "Trace saved in " << KnobOutputFile.Value() << std::endl;
+    //std::cerr <<  "===============================================" << std::endl;
 
     // Start the program, never returns
     PIN_StartProgram();
