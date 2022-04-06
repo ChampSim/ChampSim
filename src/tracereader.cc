@@ -92,8 +92,10 @@ public:
   {
     ooo_model_instr trace_read_instr = read_single_instr<cloudsuite_instr>();
 
-    if (!last_instr.has_value())
+    if (!last_instr.has_value()) {
       last_instr = trace_read_instr;
+      trace_read_instr = read_single_instr<input_instr>();
+    }
 
     last_instr->branch_target = trace_read_instr.ip;
     ooo_model_instr retval = last_instr.value();
@@ -114,8 +116,10 @@ public:
   {
     ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
 
-    if (!last_instr.has_value())
+    if (!last_instr.has_value()) {
       last_instr = trace_read_instr;
+      trace_read_instr = read_single_instr<input_instr>();
+    }
 
     last_instr->branch_target = trace_read_instr.ip;
     ooo_model_instr retval = last_instr.value();
