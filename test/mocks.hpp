@@ -79,8 +79,10 @@ class to_wq_MRP : public MemoryRequestProducer, public champsim::operable
     void operate() override {}
 
     bool issue(const PACKET &pkt) {
-      packets.push_back({pkt, current_cycle, 0});
-      return lower_level->add_wq(pkt);
+      auto copy = pkt;
+      copy.to_return = {this};
+      packets.push_back({copy, current_cycle, 0});
+      return lower_level->add_wq(copy);
     }
 
     void return_data(const PACKET &pkt) override {
@@ -109,8 +111,10 @@ class to_rq_MRP : public MemoryRequestProducer, public champsim::operable
     void operate() override {}
 
     bool issue(const PACKET &pkt) {
-      packets.push_back({pkt, current_cycle, 0});
-      return lower_level->add_rq(pkt);
+      auto copy = pkt;
+      copy.to_return = {this};
+      packets.push_back({copy, current_cycle, 0});
+      return lower_level->add_rq(copy);
     }
 
     void return_data(const PACKET &pkt) override {
@@ -139,8 +143,10 @@ class to_pq_MRP : public MemoryRequestProducer, public champsim::operable
     void operate() override {}
 
     bool issue(const PACKET &pkt) {
-      packets.push_back({pkt, current_cycle, 0});
-      return lower_level->add_pq(pkt);
+      auto copy = pkt;
+      copy.to_return = {this};
+      packets.push_back({copy, current_cycle, 0});
+      return lower_level->add_pq(copy);
     }
 
     void return_data(const PACKET &pkt) override {

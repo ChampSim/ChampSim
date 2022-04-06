@@ -36,7 +36,6 @@ SCENARIO("A cache returns a miss after the specified latency") {
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.instr_id = id++;
-      test.to_return = {&mock_ul};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
