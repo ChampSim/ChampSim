@@ -194,9 +194,10 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     if (fwd_pkt.type == WRITE)
       fwd_pkt.type = RFO;
 
-    fwd_pkt.prefetch_from_this = false;
-    if (!std::empty(fwd_pkt.to_return))
+    if (handle_pkt.fill_this_level)
       fwd_pkt.to_return = {this};
+    else
+      fwd_pkt.to_return.clear();
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -369,13 +370,11 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
   pf_packet.prefetch_from_this = true;
+  pf_packet.fill_this_level = fill_this_level;
   pf_packet.pf_metadata = prefetch_metadata;
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
-
-  if (fill_this_level)
-    pf_packet.to_return = {this};
 
   auto success = queues.add_pq(pf_packet);
   if (success)

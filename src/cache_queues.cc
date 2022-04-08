@@ -154,6 +154,8 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
+  fwd_pkt.prefetch_from_this = false;
+  fwd_pkt.fill_this_level = true;
   fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
   RQ.insert(ins_loc, fwd_pkt);
 
@@ -184,6 +186,8 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
+  fwd_pkt.prefetch_from_this = false;
+  fwd_pkt.fill_this_level = true;
   fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
   WQ.insert(ins_loc, fwd_pkt);
 
@@ -218,6 +222,7 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
+  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
   PQ.insert(ins_loc, fwd_pkt);
 
