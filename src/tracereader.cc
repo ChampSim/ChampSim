@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
+tracereader::tracereader(uint8_t cpu, std::string _ts, bool _rt) : cpu(cpu), trace_string(_ts), repeat_trace(_rt)
 {
   std::string last_dot = trace_string.substr(trace_string.find_last_of("."));
 
@@ -51,11 +51,22 @@ ooo_model_instr tracereader::read_single_instr()
 
   while (!fread(&trace_read_instr, sizeof(T), 1, trace_file)) {
     // reached end of file for this trace
-    std::cout << "*** Reached end of trace: " << trace_string << std::endl;
+    std::cout << "*** Reached end of trace: " << trace_string;
 
-    // close the trace file and re-open it
+    // close the trace file
     close();
-    open(trace_string);
+
+    if (repeat_trace) {
+      // re-open it
+      std::cout << " -> re-open it" << std::endl;
+      open(trace_string);
+    } else {
+      // return
+      std::cout << " -> return" << std::endl;
+      ooo_model_instr nop;
+      nop.drained = true;
+      return nop;
+    }
   }
 
   // copy the instruction into the performance model's instruction format
@@ -86,7 +97,7 @@ class cloudsuite_tracereader : public tracereader
   std::optional<ooo_model_instr> last_instr;
 
 public:
-  cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+  cloudsuite_tracereader(uint8_t cpu, std::string _tn, bool _rt) : tracereader(cpu, _tn, _rt) {}
 
   ooo_model_instr get()
   {
@@ -108,11 +119,14 @@ class input_tracereader : public tracereader
   std::optional<ooo_model_instr> last_instr;
 
 public:
-  input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
+  input_tracereader(uint8_t cpu, std::string _tn, bool _rt) : tracereader(cpu, _tn, _rt) {}
 
   ooo_model_instr get()
   {
     ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
+
+    if (!repeat_trace && trace_read_instr.drained)
+      return trace_read_instr;
 
     if (!last_instr.has_value())
       last_instr = trace_read_instr;
@@ -125,11 +139,11 @@ public:
   }
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat_trace)
 {
   if (is_cloudsuite) {
-    return new cloudsuite_tracereader(cpu, fname);
+    return new cloudsuite_tracereader(cpu, fname, 1);
   } else {
-    return new input_tracereader(cpu, fname);
+    return new input_tracereader(cpu, fname, repeat_trace);
   }
 }

@@ -41,6 +41,11 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
+  if (arch_instr.drained) {
+    trace_drained = 1;
+    return;
+  }
+
   instrs_to_read_this_cycle--;
 
   arch_instr.instr_id = instr_unique_id;
