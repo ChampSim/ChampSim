@@ -67,6 +67,8 @@ struct cloudsuite_instr {
 };
 
 struct ooo_model_instr {
+  bool drained = false;
+
   uint64_t instr_id = 0;
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
@@ -113,6 +115,8 @@ private:
   }
 
 public:
+  ooo_model_instr() = default;
+
   ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr)
   {
     asid[0] = cpu;

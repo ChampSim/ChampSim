@@ -283,7 +283,7 @@ void finish_warmup()
 }
 
 int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
-                  std::vector<std::string> trace_names)
+                  bool repeat_trace, std::vector<std::string> trace_names)
 {
   std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
 
@@ -310,7 +310,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
   for (auto name : trace_names) {
     std::cout << "CPU " << traces.size() << " runs " << name << std::endl;
 
-    traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
+    traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite, repeat_trace));
 
     if (traces.size() > NUM_CPUS) {
       printf("\n*** Too many traces for the configured number of cores ***\n\n");
@@ -361,7 +361,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
+      while ((ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) && (ooo_cpu[i]->trace_drained == 0)) {
         ooo_cpu[i]->init_instruction(traces[i]->get());
       }
 
@@ -388,8 +388,10 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
       }
 
       // simulation complete
-      if (warmup_finished && !simulation_complete[i] && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
+      if ((warmup_finished && !simulation_complete[i] && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) || (ooo_cpu[i]->trace_drained == 1)) {
         simulation_complete.set(i);
+
+        ooo_cpu[i]->trace_drained = 2;
         ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
         ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
 

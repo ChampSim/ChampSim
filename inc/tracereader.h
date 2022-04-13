@@ -12,9 +12,11 @@ protected:
   std::string decomp_program;
   std::string trace_string;
 
+  bool repeat_trace;
+
 public:
   tracereader(const tracereader& other) = delete;
-  tracereader(uint8_t cpu, std::string _ts);
+  tracereader(uint8_t cpu, std::string _ts, bool _rt);
   ~tracereader();
   void open(std::string trace_string);
   void close();
@@ -25,4 +27,4 @@ public:
   virtual ooo_model_instr get() = 0;
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat_trace);

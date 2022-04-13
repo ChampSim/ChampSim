@@ -5,7 +5,7 @@
 #include <vector>
 
 int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
-                  std::vector<std::string> trace_names);
+                  bool repeat_trace, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -23,6 +23,7 @@ int main(int argc, char** argv)
   sigaction(SIGINT, &sigIntHandler, NULL);
 
   // initialize knobs
+  uint8_t repeat_trace = 1;
   uint8_t show_heartbeat = 1;
   uint8_t knob_cloudsuite = 0;
   uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
@@ -33,6 +34,7 @@ int main(int argc, char** argv)
                                          {"simulation_instructions", required_argument, 0, 'i'},
                                          {"hide_heartbeat", no_argument, 0, 'h'},
                                          {"cloudsuite", no_argument, 0, 'c'},
+                                         {"drain_trace", no_argument, 0, 'd'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
 
@@ -51,6 +53,9 @@ int main(int argc, char** argv)
     case 'c':
       knob_cloudsuite = 1;
       break;
+    case 'd':
+      repeat_trace = 0;
+      break;
     case 0:
       break;
     default:
@@ -60,5 +65,5 @@ int main(int argc, char** argv)
 
   std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
 
-  return champsim_main(warmup_instructions, simulation_instructions, show_heartbeat, knob_cloudsuite, trace_names);
+  return champsim_main(warmup_instructions, simulation_instructions, show_heartbeat, knob_cloudsuite, repeat_trace, trace_names);
 }

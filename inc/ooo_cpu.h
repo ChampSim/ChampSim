@@ -51,6 +51,7 @@ class O3_CPU : public champsim::operable
 {
 public:
   uint32_t cpu = 0;
+  int trace_drained = 0;
 
   // instruction
   uint64_t instr_unique_id = 0;
