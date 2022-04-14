@@ -47,6 +47,49 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 };
 
 /*
+ * A MemoryRequestConsumer that returns only a particular address
+ */
+class filter_MRC : public MemoryRequestConsumer, public champsim::operable
+{
+  std::deque<PACKET> packets, ready_packets;
+  const uint64_t ret_addr;
+  const uint64_t latency = 0;
+  unsigned mpacket_count = 0;
+
+  void add(PACKET pkt) {
+    if (pkt.address == ret_addr) {
+      pkt.event_cycle = current_cycle + latency;
+      packets.push_back(pkt);
+      ++mpacket_count;
+    }
+  }
+
+  public:
+    filter_MRC(uint64_t ret_addr_, uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(latency) {}
+    filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
+
+    void operate() {
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      std::move(std::begin(packets), end, std::back_inserter(ready_packets));
+
+      for (PACKET &pkt : ready_packets) {
+        for (auto ret : pkt.to_return)
+          ret->return_data(pkt);
+      }
+      ready_packets.clear();
+    }
+
+    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
+
+    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
+    uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
+
+    unsigned packet_count() const { return mpacket_count; }
+};
+
+/*
  * A MemoryRequestProducer that counts how many returns it receives
  */
 class counting_MRP : public MemoryRequestProducer
