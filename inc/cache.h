@@ -64,6 +64,9 @@ public:
     NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
     void operate() override;
 
+    template <typename R>
+      bool do_add_queue(R &queue, std::size_t queue_size, const PACKET &packet);
+
     bool add_rq(const PACKET &packet);
     bool add_wq(const PACKET &packet);
     bool add_pq(const PACKET &packet);
@@ -98,7 +101,7 @@ public:
     using NonTranslatingQueues::NonTranslatingQueues;
   };
 
-  uint32_t cpu;
+  uint32_t cpu = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   const uint32_t FILL_LATENCY, OFFSET_BITS;

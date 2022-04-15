@@ -133,15 +133,13 @@ void CACHE::TranslatingQueues::do_detect_misses(R &queue)
   std::rotate(std::begin(queue), q_it, std::end(queue));
 }
 
-bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
+template <typename R>
+bool CACHE::NonTranslatingQueues::do_add_queue(R &queue, std::size_t queue_size, const PACKET &packet)
 {
   assert(packet.address != 0);
-  RQ_ACCESS++;
 
   // check occupancy
-  if (std::size(RQ) >= RQ_SIZE) {
-    RQ_FULL++;
-
+  if (std::size(queue) >= queue_size) {
     if constexpr (champsim::debug_print) {
       std::cout << " FULL" << std::endl;
     }
@@ -150,88 +148,63 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   }
 
   // Insert the packet ahead of the translation misses
-  auto ins_loc = std::find_if(std::begin(RQ), std::end(RQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto ins_loc = std::find_if(std::begin(queue), std::end(queue), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
   fwd_pkt.prefetch_from_this = false;
-  fwd_pkt.fill_this_level = true;
   fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
-  RQ.insert(ins_loc, fwd_pkt);
+  queue.insert(ins_loc, fwd_pkt);
 
   if constexpr (champsim::debug_print) {
     std::cout << " ADDED event_cycle: " << fwd_pkt.event_cycle << std::endl;
   }
 
-  RQ_TO_CACHE++;
   return true;
+}
+
+bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
+{
+  RQ_ACCESS++;
+
+  auto fwd_pkt = packet;
+  fwd_pkt.fill_this_level = true;
+  auto result = do_add_queue(RQ, RQ_SIZE, fwd_pkt);
+
+  if (result)
+    RQ_TO_CACHE++;
+  else
+    RQ_FULL++;
+
+  return result;
 }
 
 bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
 {
   WQ_ACCESS++;
 
-  // Check for room in the queue
-  if (std::size(WQ) >= WQ_SIZE) {
-    if constexpr (champsim::debug_print) {
-      std::cout << " FULL" << std::endl;
-    }
-
-    ++WQ_FULL;
-    return false;
-  }
-
-  // Insert the packet ahead of the translation misses
-  auto ins_loc = std::find_if(std::begin(WQ), std::end(WQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
-  fwd_pkt.forward_checked = false;
-  fwd_pkt.translate_issued = false;
-  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.fill_this_level = true;
-  fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
-  WQ.insert(ins_loc, fwd_pkt);
+  auto result = do_add_queue(WQ, WQ_SIZE, fwd_pkt);
 
-  if constexpr (champsim::debug_print) {
-    std::cout << " ADDED event_cycle: " << fwd_pkt.event_cycle << std::endl;
-  }
+  if (result)
+    WQ_TO_CACHE++;
+  else
+    WQ_FULL++;
 
-  WQ_TO_CACHE++;
-  WQ_ACCESS++;
-
-  return true;
+  return result;
 }
 
 bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
 {
-  assert(packet.address != 0);
   PQ_ACCESS++;
-
-  // check occupancy
-  if (std::size(PQ) >= PQ_SIZE) {
-
-    if constexpr (champsim::debug_print) {
-      std::cout << " FULL" << std::endl;
-    }
-
+  auto result = do_add_queue(PQ, PQ_SIZE, packet);
+  if (result)
+    PQ_TO_CACHE++;
+  else
     PQ_FULL++;
-    return false; // cannot handle this request
-  }
 
-  // Insert the packet ahead of the translation misses
-  auto ins_loc = std::find_if(std::begin(PQ), std::end(PQ), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
-  auto fwd_pkt = packet;
-  fwd_pkt.forward_checked = false;
-  fwd_pkt.translate_issued = false;
-  fwd_pkt.prefetch_from_this = false;
-  fwd_pkt.event_cycle = current_cycle + (warmup_complete[packet.cpu] ? HIT_LATENCY : 0);
-  PQ.insert(ins_loc, fwd_pkt);
-
-  if constexpr (champsim::debug_print) {
-    std::cout << " ADDED event_cycle: " << fwd_pkt.event_cycle << std::endl;
-  }
-
-  PQ_TO_CACHE++;
-  return true;
+  return result;
 }
 
 bool CACHE::NonTranslatingQueues::wq_has_ready() const
