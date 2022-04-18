@@ -18,6 +18,40 @@ void CACHE::TranslatingQueues::operate()
   detect_misses();
 }
 
+template <typename Iter>
+bool do_collision_for_merge(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+{
+  auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
+  if (found != end) {
+    auto instr_copy = std::move(found->instr_depend_on_me);
+    auto ret_copy = std::move(found->to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet.instr_depend_on_me), std::end(packet.instr_depend_on_me),
+        std::back_inserter(found->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet.to_return), std::end(packet.to_return),
+        std::back_inserter(found->to_return));
+
+    return true;
+  }
+
+  return false;
+}
+
+template <typename Iter>
+bool do_collision_for_return(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+{
+  auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
+  if (found != end) {
+    packet.data = found->data;
+    for (auto ret : packet.to_return)
+      ret->return_data(packet);
+
+    return true;
+  }
+
+  return false;
+}
+
 void CACHE::NonTranslatingQueues::check_collision()
 {
   std::size_t write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
@@ -25,8 +59,7 @@ void CACHE::NonTranslatingQueues::check_collision()
 
   // Check WQ for duplicates, merging if they are found
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
-    if (auto found = std::find_if(std::begin(WQ), wq_it, eq_addr<PACKET>(wq_it->address, match_offset_bits ? 0 : OFFSET_BITS)); found != wq_it) {
-      // Merge with earlier write
+    if (do_collision_for_merge(std::begin(WQ), wq_it, *wq_it, write_shamt)) {
       WQ_MERGED++;
       wq_it = WQ.erase(wq_it);
     } else {
@@ -37,24 +70,10 @@ void CACHE::NonTranslatingQueues::check_collision()
 
   // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); rq_it != std::end(RQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(rq_it->address, write_shamt)); found_wq != std::end(WQ)) {
-      // Forward from earlier write
-      rq_it->data = found_wq->data;
-      for (auto ret : rq_it->to_return)
-        ret->return_data(*rq_it);
-
+    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt)) {
       WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
-    } else if (auto found_rq = std::find_if(std::begin(RQ), rq_it, eq_addr<PACKET>(rq_it->address, read_shamt)); found_rq != rq_it) {
-      // Merge with earlier read
-      auto instr_copy = std::move(found_rq->instr_depend_on_me);
-      auto ret_copy = std::move(found_rq->to_return);
-
-      std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
-                     std::back_inserter(found_rq->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
-      std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return),
-                     std::back_inserter(found_rq->to_return));
-
+    } else if (do_collision_for_merge(std::begin(RQ), rq_it, *rq_it, read_shamt)) {
       RQ_MERGED++;
       rq_it = RQ.erase(rq_it);
     } else {
@@ -65,19 +84,10 @@ void CACHE::NonTranslatingQueues::check_collision()
 
   // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); pq_it != std::end(PQ);) {
-    if (auto found_wq = std::find_if(std::begin(WQ), std::end(WQ), eq_addr<PACKET>(pq_it->address, write_shamt)); found_wq != std::end(WQ)) {
-      // Forward from earlier write
-      pq_it->data = found_wq->data;
-      for (auto ret : pq_it->to_return)
-        ret->return_data(*pq_it);
-
+    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt)) {
       WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
-    } else if (auto found = std::find_if(std::begin(PQ), pq_it, eq_addr<PACKET>(pq_it->address, read_shamt)); found != pq_it) {
-      // Merge with earlier prefetch
-      auto ret_copy = std::move(found->to_return);
-      std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(pq_it->to_return), std::end(pq_it->to_return), std::back_inserter(found->to_return));
-
+    } else if (do_collision_for_merge(std::begin(PQ), pq_it, *pq_it, read_shamt)) {
       PQ_MERGED++;
       pq_it = PQ.erase(pq_it);
     } else {
