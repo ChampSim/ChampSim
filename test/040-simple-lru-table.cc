@@ -1,10 +1,9 @@
 #include "catch.hpp"
-#include "mocks.hpp"
-#include "ptw.h"
+#include "util.h"
 
-SCENARIO("An empty PSCL misses") {
-  GIVEN("An empty PSCL") {
-    PagingStructureCache uut{1, 1, 1, 0};
+SCENARIO("An empty simple_lru_table misses") {
+  GIVEN("An empty simple_lru_table") {
+    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
 
     WHEN("We check for a hit") {
       auto result = uut.check_hit(0xdeadbeef);
@@ -16,12 +15,12 @@ SCENARIO("An empty PSCL misses") {
   }
 }
 
-SCENARIO("A PSCL can hit") {
-  GIVEN("A PSCL with one element") {
+SCENARIO("A simple_lru_table can hit") {
+  GIVEN("A simple_lru_table with one element") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    PagingStructureCache uut{1, 1, 1, 0};
-    uut.fill_cache(data, index);
+    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
+    uut.fill_cache(index, data);
 
     WHEN("We check for a hit") {
       auto result = uut.check_hit(index);
@@ -34,12 +33,12 @@ SCENARIO("A PSCL can hit") {
   }
 }
 
-SCENARIO("A PSCL can miss") {
-  GIVEN("A PSCL with one element") {
+SCENARIO("A simple_lru_table can miss") {
+  GIVEN("A simple_lru_table with one element") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    PagingStructureCache uut{1, 1, 1, 0};
-    uut.fill_cache(data, index);
+    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
+    uut.fill_cache(index, data);
 
     WHEN("We check for a hit") {
       auto result = uut.check_hit(index-1);
@@ -51,13 +50,13 @@ SCENARIO("A PSCL can miss") {
   }
 }
 
-SCENARIO("A PSCL can hit with respect to the shamt") {
-  GIVEN("A PSCL with one element") {
+SCENARIO("A simple_lru_table can hit with respect to the shamt") {
+  GIVEN("A simple_lru_table with one element") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
     constexpr std::size_t shamt = 8;
-    PagingStructureCache uut{1, 1, 1, shamt};
-    uut.fill_cache(data, index);
+    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    uut.fill_cache(index, data);
 
     WHEN("We check for a hit inside the shamt") {
       auto new_index = 0xdeadbe88;
@@ -80,16 +79,16 @@ SCENARIO("A PSCL can hit with respect to the shamt") {
   }
 }
 
-SCENARIO("A PSCL replaces LRU") {
-  GIVEN("A PSCL with two elements") {
+SCENARIO("A simple_lru_table replaces LRU") {
+  GIVEN("A simple_lru_table with two elements") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    PagingStructureCache uut{1, 1, 2, 0};
-    uut.fill_cache(data, index);
-    uut.fill_cache(data+1, index+1);
+    champsim::simple_lru_table<uint64_t> uut{1, 2, 0};
+    uut.fill_cache(index, data);
+    uut.fill_cache(index+1, data+1);
 
     WHEN("We add a new element") {
-      uut.fill_cache(data+2, index+2);
+      uut.fill_cache(index+2, data+2);
 
       THEN("A check to the first-added element misses") {
         auto result = uut.check_hit(index);
@@ -114,16 +113,16 @@ SCENARIO("A PSCL replaces LRU") {
   }
 }
 
-SCENARIO("A PSCL exhibits set-associative behavior") {
-  GIVEN("A PSCL with two elements") {
+SCENARIO("A simple_lru_table exhibits set-associative behavior") {
+  GIVEN("A simple_lru_table with two elements") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    PagingStructureCache uut{1, 2, 1, 0};
-    uut.fill_cache(data, index);
-    uut.fill_cache(data+1, index+1);
+    champsim::simple_lru_table<uint64_t> uut{2, 1, 0};
+    uut.fill_cache(index, data);
+    uut.fill_cache(index+1, data+1);
 
     WHEN("We add a new element to the same set as the first element") {
-      uut.fill_cache(data+2, index+2);
+      uut.fill_cache(index+2, data+2);
 
       THEN("A check to the first-added element misses") {
         auto result = uut.check_hit(index);
@@ -147,7 +146,7 @@ SCENARIO("A PSCL exhibits set-associative behavior") {
     }
 
     AND_WHEN("We add a new element to the same set as the second element") {
-      uut.fill_cache(data+3, index+3);
+      uut.fill_cache(index+3, data+3);
 
       THEN("A check to the first-added element hits") {
         auto result = uut.check_hit(index);

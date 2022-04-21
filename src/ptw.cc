@@ -6,10 +6,10 @@
 
 extern bool warmup_complete[NUM_CPUS];
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, PagingStructureCache &&pscl5, PagingStructureCache &&pscl4, PagingStructureCache &&pscl3, PagingStructureCache &&pscl2, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, champsim::simple_lru_table<uint64_t> &&pscl5, champsim::simple_lru_table<uint64_t> &&pscl4, champsim::simple_lru_table<uint64_t> &&pscl3, champsim::simple_lru_table<uint64_t> &&pscl2, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
                                  MemoryRequestConsumer* ll, VirtualMemory &_vmem)
     : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), RQ{v10, latency},
-      pscl{{std::forward<PagingStructureCache>(pscl5), std::forward<PagingStructureCache>(pscl4), std::forward<PagingStructureCache>(pscl3), std::forward<PagingStructureCache>(pscl2)}},
+      pscl{{std::forward<champsim::simple_lru_table<uint64_t>>(pscl5), std::forward<champsim::simple_lru_table<uint64_t>>(pscl4), std::forward<champsim::simple_lru_table<uint64_t>>(pscl3), std::forward<champsim::simple_lru_table<uint64_t>>(pscl2)}},
       vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, _vmem.pt_levels).first)
 {
 }
@@ -32,10 +32,10 @@ void PageTableWalker::handle_read()
 
     auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
     auto ptw_level = vmem.pt_levels - 1;
-    for (const auto &cache : pscl) {
-      if (auto check_addr = cache.check_hit(handle_pkt.address); check_addr.has_value()) {
-        ptw_addr = splice_bits(check_addr.value(), vmem.get_offset(handle_pkt.address, cache.level) * PTE_BYTES, LOG2_PAGE_SIZE);
-        ptw_level = cache.level - 1;
+    for (auto cache = std::begin(pscl); cache != std::end(pscl); ++cache) {
+      if (auto check_addr = cache->check_hit(handle_pkt.address); check_addr.has_value()) {
+        ptw_addr = splice_bits(check_addr.value(), vmem.get_offset(handle_pkt.address, std::distance(cache, std::end(pscl))) * PTE_BYTES, LOG2_PAGE_SIZE);
+        ptw_level = std::distance(cache, std::end(pscl)) - 1;
       }
     }
 
@@ -116,10 +116,8 @@ void PageTableWalker::handle_fill()
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         }
 
-        for (auto &cache : pscl) {
-          if (fill_mshr->translation_level == cache.level)
-            cache.fill_cache(addr, fill_mshr->v_address);
-        }
+        const auto pscl_idx = (1+std::size(pscl)) - fill_mshr->translation_level;
+        pscl.at(pscl_idx).fill_cache(addr, fill_mshr->v_address);
 
         PACKET packet = *fill_mshr;
         packet.cpu = cpu;
@@ -206,29 +204,6 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
   else if (queue_type == 1)
     return RQ.size();
   return 0;
-}
-
-void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)
-{
-  auto set_idx = (vaddr >> shamt) & bitmask(lg2(NUM_SET));
-  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-  auto set_end = std::next(set_begin, NUM_WAY);
-  auto fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
-
-  *fill_block = {true, vaddr, next_level_paddr, ++access_count};
-}
-
-std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address) const
-{
-  auto set_idx = (address >> shamt) & bitmask(lg2(NUM_SET));
-  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-  auto set_end = std::next(set_begin, NUM_WAY);
-  auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, shamt});
-
-  if (hit_block != set_end)
-    return hit_block->data;
-
-  return {};
 }
 
 void PageTableWalker::print_deadlock()

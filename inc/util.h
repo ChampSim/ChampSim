@@ -1,8 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
 
@@ -131,5 +133,50 @@ struct ord_event_cycle {
     return !second_validtest(rhs) || (first_validtest(lhs) && lhs.event_cycle < rhs.event_cycle);
   }
 };
+
+namespace champsim {
+
+template <typename T>
+class simple_lru_table
+{
+  struct block_t {
+    bool valid = false;
+    uint64_t address;
+    uint64_t last_used = 0;
+    T data;
+  };
+
+  const std::size_t NUM_SET, NUM_WAY, shamt;
+  uint64_t access_count = 0;
+  std::vector<block_t> block{NUM_SET * NUM_WAY};
+
+  public:
+  simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
+
+  std::optional<T> check_hit(uint64_t index) const
+  {
+    auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
+    auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{index, shamt});
+
+    if (hit_block != set_end)
+      return hit_block->data;
+
+    return std::nullopt;
+  }
+
+  void fill_cache(uint64_t index, T data)
+  {
+    auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
+    auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    auto fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
+
+    *fill_block = {true, index, ++access_count, data};
+  }
+};
+
+}
 
 #endif
