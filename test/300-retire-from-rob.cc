@@ -5,7 +5,7 @@
 SCENARIO("Completed instructions are retired") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, 32, 8, 2, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
+    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
 
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
@@ -23,7 +23,7 @@ SCENARIO("Completed instructions are retired") {
 
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, 32, 8, 2, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
+    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
 
     uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
 
@@ -55,7 +55,7 @@ SCENARIO("Completed instructions are retired") {
 
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, 32, 8, 2, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 5, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
+    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 5, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
 
     std::vector test_instructions( 2, ooo_model_instr{0,input_instr{}} );
 
@@ -93,7 +93,7 @@ SCENARIO("Completed instructions are retired") {
 
   GIVEN("A ROB with twice as many instructions as retire bandwidth") {
     do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, 32, 8, 2, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
+    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, O3_CPU::bpred_t::bbranchDbimodal, O3_CPU::btb_t::bbtbDbasic_btb);
 
     std::vector test_instructions( 2, ooo_model_instr{0,input_instr{}} );
 
