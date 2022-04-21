@@ -27,7 +27,7 @@ ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {{{pscl5_set
 cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
-vmem_fmtstr = 'VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
+vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
 
 ###
 # Begin default core model definition
