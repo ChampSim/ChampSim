@@ -74,55 +74,6 @@ struct min_event_cycle : invalid_is_maximal<T, cmp_event_cycle<T>> {
 };
 
 template <typename T, typename U = T>
-struct cmp_lru {
-  bool operator()(const T& lhs, const U& rhs) { return lhs.lru < rhs.lru; }
-};
-
-/*
- * A comparator to determine the LRU element. To use this comparator, the type
- * must have a member variable named "lru" and have a specialization of
- * is_valid<>.
- *
- * To use:
- *     auto lru_elem = std::max_element(std::begin(set), std::end(set),
- * lru_comparator<BLOCK>());
- *
- * The MRU element can be found using std::min_element instead.
- */
-template <typename T, typename U = T>
-struct lru_comparator : invalid_is_maximal<T, cmp_lru<T, U>, U> {
-  using first_argument_type = T;
-  using second_argument_type = U;
-};
-
-/*
- * A functor to reorder elements to a new LRU order.
- * The type must have a member variable named "lru".
- *
- * To use:
- *     std::for_each(std::begin(set), std::end(set),
- * lru_updater<BLOCK>(hit_element));
- */
-template <typename T>
-struct lru_updater {
-  const decltype(T::lru) val;
-  explicit lru_updater(decltype(T::lru) val) : val(val) {}
-
-  template <typename U>
-  explicit lru_updater(U iter) : val(iter->lru)
-  {
-  }
-
-  void operator()(T& x)
-  {
-    if (x.lru == val)
-      x.lru = 0;
-    else
-      ++x.lru;
-  }
-};
-
-template <typename T, typename U = T>
 struct ord_event_cycle {
   using first_argument_type = T;
   using second_argument_type = U;
@@ -153,15 +104,17 @@ class simple_lru_table
   public:
   simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
 
-  std::optional<T> check_hit(uint64_t index) const
+  std::optional<T> check_hit(uint64_t index)
   {
     auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
     auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
     auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{index, shamt});
 
-    if (hit_block != set_end)
+    if (hit_block != set_end) {
+      hit_block->last_used = ++access_count;
       return hit_block->data;
+    }
 
     return std::nullopt;
   }

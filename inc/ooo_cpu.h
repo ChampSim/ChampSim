@@ -14,6 +14,7 @@
 #include "instruction.h"
 #include "memory_class.h"
 #include "operable.h"
+#include "util.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -65,16 +66,8 @@ public:
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
   uint64_t num_retired = 0;
 
-  struct dib_entry_t {
-    bool valid = false;
-    unsigned lru = 999999;
-    uint64_t address = 0;
-  };
-
   // instruction buffer
-  using dib_t = std::vector<dib_entry_t>;
-  const std::size_t dib_set, dib_way, dib_window;
-  dib_t DIB{dib_set * dib_way};
+  champsim::simple_lru_table<bool> DIB; //<bool> used here as placeholder. Data is not actually used.
 
   // reorder buffer, load/store queue, register file
   champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
@@ -145,13 +138,13 @@ public:
   const bpred_t bpred_type;
   const btb_t btb_type;
 
-  O3_CPU(uint32_t cpu, double freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window, std::size_t ifetch_buffer_size,
+  O3_CPU(uint32_t cpu, double freq_scale, champsim::simple_lru_table<bool> &&dib, std::size_t ifetch_buffer_size,
          std::size_t decode_buffer_size, std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width,
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type)
-      : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size),
+      : champsim::operable(freq_scale), cpu(cpu), DIB{std::forward<champsim::simple_lru_table<bool>>(dib)}, IFETCH_BUFFER(ifetch_buffer_size),
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),

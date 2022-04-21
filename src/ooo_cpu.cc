@@ -194,11 +194,7 @@ void O3_CPU::check_dib()
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
   // Check DIB to see if we recently fetched this line
-  auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
-  auto dib_set_end = std::next(dib_set_begin, dib_way);
-  auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
-
-  if (way != dib_set_end) {
+  if (auto dib_result = DIB.check_hit(instr.ip); dib_result) {
     // The cache line is in the L0, so we can mark this as complete
     instr.translated = COMPLETED;
     instr.fetched = COMPLETED;
@@ -208,9 +204,6 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
 
     // It can be acted on immediately
     instr.event_cycle = current_cycle;
-
-    // Update LRU
-    std::for_each(dib_set_begin, dib_set_end, lru_updater<dib_entry_t>(way));
   }
 }
 
@@ -361,22 +354,7 @@ void O3_CPU::decode_instruction()
 
 void O3_CPU::do_dib_update(const ooo_model_instr& instr)
 {
-  // Search DIB to see if we need to add this instruction
-  auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
-  auto dib_set_end = std::next(dib_set_begin, dib_way);
-  auto way = std::find_if(dib_set_begin, dib_set_end, eq_addr<dib_t::value_type>(instr.ip, lg2(dib_window)));
-
-  // If we did not find the entry in the DIB, find a victim
-  if (way == dib_set_end) {
-    way = std::max_element(dib_set_begin, dib_set_end, lru_comparator<dib_entry_t>());
-    assert(way != dib_set_end);
-
-    // update way
-    way->valid = true;
-    way->address = instr.ip;
-  }
-
-  std::for_each(dib_set_begin, dib_set_end, lru_updater<dib_entry_t>(way));
+  DIB.fill_cache(instr.ip, true);
 }
 
 void O3_CPU::dispatch_instruction()

@@ -116,7 +116,7 @@ void PageTableWalker::handle_fill()
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         }
 
-        const auto pscl_idx = (1+std::size(pscl)) - fill_mshr->translation_level;
+        const auto pscl_idx = std::size(pscl) - fill_mshr->translation_level;
         pscl.at(pscl_idx).fill_cache(addr, fill_mshr->v_address);
 
         PACKET packet = *fill_mshr;
