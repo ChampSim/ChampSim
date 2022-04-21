@@ -3,20 +3,14 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "util.h"
-#include "vmem.h"
 
-extern VirtualMemory vmem;
 extern bool warmup_complete[NUM_CPUS];
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
-                                 uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
-                                 MemoryRequestConsumer* ll)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
-      MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
-      PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
-      PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
-      PSCL2{"PSCL2", 1, v8, v9},                                  // Translation from L5->L1
-      CR3_addr(vmem.get_pte_pa(cpu, 0, vmem.pt_levels).first)
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, PagingStructureCache &&pscl5, PagingStructureCache &&pscl4, PagingStructureCache &&pscl3, PagingStructureCache &&pscl2, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
+                                 MemoryRequestConsumer* ll, VirtualMemory &_vmem)
+    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), RQ{v10, latency},
+      pscl{{std::forward<PagingStructureCache>(pscl5), std::forward<PagingStructureCache>(pscl4), std::forward<PagingStructureCache>(pscl3), std::forward<PagingStructureCache>(pscl2)}},
+      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, _vmem.pt_levels).first)
 {
 }
 
@@ -38,10 +32,10 @@ void PageTableWalker::handle_read()
 
     auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
     auto ptw_level = vmem.pt_levels - 1;
-    for (auto pscl : {&PSCL5, &PSCL4, &PSCL3, &PSCL2}) {
-      if (auto check_addr = pscl->check_hit(handle_pkt.address); check_addr.has_value()) {
-        ptw_addr = check_addr.value();
-        ptw_level = pscl->level - 1;
+    for (const auto &cache : pscl) {
+      if (auto check_addr = cache.check_hit(handle_pkt.address); check_addr.has_value()) {
+        ptw_addr = splice_bits(check_addr.value(), vmem.get_offset(handle_pkt.address, cache.level) * PTE_BYTES, LOG2_PAGE_SIZE);
+        ptw_level = cache.level - 1;
       }
     }
 
@@ -86,9 +80,6 @@ void PageTableWalker::handle_fill()
         fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
         MSHR.sort(ord_event_cycle<PACKET>{});
       } else {
-        fill_mshr->data = addr;
-        fill_mshr->address = fill_mshr->v_address;
-
         if constexpr (champsim::debug_print) {
           std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
           std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
@@ -98,6 +89,9 @@ void PageTableWalker::handle_fill()
           std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
         }
+
+        fill_mshr->data = addr;
+        fill_mshr->address = fill_mshr->v_address;
 
         for (auto ret : fill_mshr->to_return)
           ret->return_data(*fill_mshr);
@@ -112,15 +106,6 @@ void PageTableWalker::handle_fill()
         fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
         MSHR.sort(ord_event_cycle<PACKET>{});
       } else {
-        if (fill_mshr->translation_level == PSCL5.level)
-          PSCL5.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL4.level)
-          PSCL4.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL3.level)
-          PSCL3.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL2.level)
-          PSCL2.fill_cache(addr, fill_mshr->v_address);
-
         if constexpr (champsim::debug_print) {
           std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
           std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
@@ -129,6 +114,11 @@ void PageTableWalker::handle_fill()
           std::cout << " translation_level: " << +fill_mshr->translation_level;
           std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
           std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
+        }
+
+        for (auto &cache : pscl) {
+          if (fill_mshr->translation_level == cache.level)
+            cache.fill_cache(addr, fill_mshr->v_address);
         }
 
         PACKET packet = *fill_mshr;
@@ -220,24 +210,23 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
 
 void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)
 {
-  auto set_idx = (vaddr >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
+  auto set_idx = (vaddr >> shamt) & bitmask(lg2(NUM_SET));
   auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
-  auto fill_block = std::max_element(set_begin, set_end, lru_comparator<block_t, block_t>());
+  auto fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
 
-  *fill_block = {true, vaddr, next_level_paddr, fill_block->lru};
-  std::for_each(set_begin, set_end, lru_updater<block_t>(fill_block));
+  *fill_block = {true, vaddr, next_level_paddr, ++access_count};
 }
 
-std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address)
+std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address) const
 {
-  auto set_idx = (address >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
+  auto set_idx = (address >> shamt) & bitmask(lg2(NUM_SET));
   auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
-  auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, vmem.shamt(level + 1)});
+  auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, shamt});
 
   if (hit_block != set_end)
-    return splice_bits(hit_block->data, vmem.get_offset(address, level) * PTE_BYTES, LOG2_PAGE_SIZE);
+    return hit_block->data;
 
   return {};
 }

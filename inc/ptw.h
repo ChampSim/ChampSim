@@ -9,6 +9,7 @@
 #include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
+#include "vmem.h"
 
 class PagingStructureCache
 {
@@ -16,18 +17,19 @@ class PagingStructureCache
     bool valid = false;
     uint64_t address;
     uint64_t data;
-    uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+    uint64_t last_used = 0;
   };
 
-  const std::string NAME;
+  const std::size_t shamt;
   const uint32_t NUM_SET, NUM_WAY;
+  uint64_t access_count = 0;
   std::vector<block_t> block{NUM_SET * NUM_WAY};
 
 public:
   const std::size_t level;
-  PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
+  PagingStructureCache(uint8_t v2, uint32_t v3, uint32_t v4, std::size_t shamt) : shamt(shamt), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
 
-  std::optional<uint64_t> check_hit(uint64_t address);
+  std::optional<uint64_t> check_hit(uint64_t address) const;
   void fill_cache(uint64_t next_level_paddr, uint64_t vaddr);
 };
 
@@ -44,13 +46,13 @@ public:
 
   uint64_t total_miss_latency = 0;
 
-  PagingStructureCache PSCL5, PSCL4, PSCL3, PSCL2;
+  std::vector<PagingStructureCache> pscl;
+  VirtualMemory &vmem;
 
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-                  uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
+  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, PagingStructureCache &&pscl5, PagingStructureCache &&pscl4, PagingStructureCache &&pscl3, PagingStructureCache &&pscl2, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory &_vmem);
 
   // functions
   bool add_rq(const PACKET& packet) override;
