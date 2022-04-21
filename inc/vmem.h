@@ -30,8 +30,8 @@ public:
   uint64_t shamt(uint32_t level) const;
   uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
   std::size_t available_ppages() const { return std::size(ppage_free_list); }
-  std::pair<uint64_t, bool> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-  std::pair<uint64_t, bool> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
+  std::pair<uint64_t, uint64_t> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
+  std::pair<uint64_t, uint64_t> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level);
 };
 
 #endif

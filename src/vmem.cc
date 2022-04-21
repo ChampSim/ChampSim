@@ -28,7 +28,7 @@ uint64_t VirtualMemory::shamt(uint32_t level) const { return LOG2_PAGE_SIZE + lg
 
 uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const { return (vaddr >> shamt(level)) & bitmask(lg2(page_size / PTE_BYTES)); }
 
-std::pair<uint64_t, bool> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
+std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
   auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> LOG2_PAGE_SIZE}, ppage_free_list.front()});
 
@@ -36,10 +36,10 @@ std::pair<uint64_t, bool> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vad
   if (fault)
     ppage_free_list.pop_front();
 
-  return {splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault};
+  return {splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
 }
 
-std::pair<uint64_t, bool> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
+std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
 {
   std::tuple key{cpu_num, vaddr >> shamt(level + 1), level};
   auto [ppage, fault] = page_table.insert({key, next_pte_page});
@@ -53,5 +53,5 @@ std::pair<uint64_t, bool> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t v
     }
   }
 
-  return {splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size)), fault};
+  return {splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size)), fault ? minor_fault_penalty : 0};
 }
