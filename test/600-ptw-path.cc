@@ -138,5 +138,62 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
         REQUIRE(mock_ul.packets.back().return_time > 0);
       }
     }
+
+    WHEN("The PTW receives a less-nearby request") {
+      mock_ll.addresses.clear();
+
+      PACKET test = seed;
+      test.address = 0xffff'ffff'8000'0000;
+      test.v_address = test.address;
+      auto test_result = mock_ul.issue(test);
+      REQUIRE(test_result);
+
+      for (auto i = 0; i < 10000; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("3 requests are issued") {
+        REQUIRE(std::size(mock_ll.addresses) == 3);
+        REQUIRE(mock_ul.packets.back().return_time > 0);
+      }
+    }
+
+    WHEN("The PTW receives a distant request") {
+      mock_ll.addresses.clear();
+
+      PACKET test = seed;
+      test.address = 0xffff'ff00'0000'0000;
+      test.v_address = test.address;
+      auto test_result = mock_ul.issue(test);
+      REQUIRE(test_result);
+
+      for (auto i = 0; i < 10000; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("4 requests are issued") {
+        REQUIRE(std::size(mock_ll.addresses) == 4);
+        REQUIRE(mock_ul.packets.back().return_time > 0);
+      }
+    }
+
+    WHEN("The PTW receives a very distant request") {
+      mock_ll.addresses.clear();
+
+      PACKET test = seed;
+      test.address = 0xfffe'0000'0000'0000;
+      test.v_address = test.address;
+      auto test_result = mock_ul.issue(test);
+      REQUIRE(test_result);
+
+      for (auto i = 0; i < 10000; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("5 requests are issued") {
+        REQUIRE(std::size(mock_ll.addresses) == 5);
+        REQUIRE(mock_ul.packets.back().return_time > 0);
+      }
+    }
   }
 }
