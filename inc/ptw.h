@@ -43,6 +43,7 @@ public:
 
   void handle_read();
   void handle_fill();
+  bool step_translation(uint64_t addr, uint8_t transl_level, const PACKET &source);
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

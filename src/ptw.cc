@@ -38,25 +38,13 @@ void PageTableWalker::handle_read()
     }
 
     PACKET packet = handle_pkt;
-    packet.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
-    packet.address = splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE);
     packet.v_address = handle_pkt.address;
-    packet.cpu = cpu;
-    packet.type = TRANSLATION;
     packet.init_translation_level = walk_init_level;
-    packet.translation_level = packet.init_translation_level;
-    packet.to_return = {this};
+    packet.cycle_enqueued = current_cycle;
 
-    bool success = lower_level->add_rq(packet);
+    bool success = step_translation(splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
     if (!success)
       return;
-
-    packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
-    packet.type = handle_pkt.type;
-
-    auto it = MSHR.insert(std::end(MSHR), packet);
-    it->cycle_enqueued = current_cycle;
-    it->event_cycle = std::numeric_limits<uint64_t>::max();
 
     RQ.pop_front();
     reads_this_cycle--;
@@ -68,63 +56,73 @@ void PageTableWalker::handle_fill()
   int fill_this_cycle = MAX_FILL;
 
   while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
-    auto fill_mshr = MSHR.begin();
-    uint64_t penalty;
+    auto fill_mshr = MSHR.front();
 
     // Return the translated physical address to STLB. Does not contain last 12 bits
-    if (fill_mshr->translation_level == 0)
-      std::tie(fill_mshr->data, penalty) = vmem.va_to_pa(cpu, fill_mshr->v_address);
+    uint64_t penalty;
+    if (fill_mshr.translation_level == 0)
+      std::tie(fill_mshr.data, penalty) = vmem.va_to_pa(cpu, fill_mshr.v_address);
     else
-      std::tie(fill_mshr->data, penalty) = vmem.get_pte_pa(cpu, fill_mshr->v_address, fill_mshr->translation_level);
-    fill_mshr->event_cycle = current_cycle + (warmup_complete[cpu] ? penalty : 0);
+      std::tie(fill_mshr.data, penalty) = vmem.get_pte_pa(cpu, fill_mshr.v_address, fill_mshr.translation_level);
+    fill_mshr.event_cycle = current_cycle + (warmup_complete[cpu] ? penalty : 0);
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
-      std::cout << " address: " << std::hex << fill_mshr->address;
-      std::cout << " v_address: " << fill_mshr->v_address;
-      std::cout << " data: " << fill_mshr->data << std::dec;
-      std::cout << " pt_page offset: " << ((fill_mshr->data & bitmask(LOG2_PAGE_SIZE)) >> lg2(PTE_BYTES));
-      std::cout << " translation_level: " << +fill_mshr->translation_level;
-      std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
-      std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
+      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
+      std::cout << " address: " << std::hex << fill_mshr.address;
+      std::cout << " v_address: " << fill_mshr.v_address;
+      std::cout << " data: " << fill_mshr.data << std::dec;
+      std::cout << " pt_page offset: " << ((fill_mshr.data & bitmask(LOG2_PAGE_SIZE)) >> lg2(PTE_BYTES));
+      std::cout << " translation_level: " << +fill_mshr.translation_level;
+      std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
     }
 
-    if (fill_mshr->event_cycle <= current_cycle) {
-      if (fill_mshr->translation_level == 0) {
-        fill_mshr->address = fill_mshr->v_address;
+    if (fill_mshr.event_cycle <= current_cycle) {
+      if (fill_mshr.translation_level == 0) {
+        fill_mshr.address = fill_mshr.v_address;
 
-        for (auto ret : fill_mshr->to_return)
-          ret->return_data(*fill_mshr);
+        for (auto ret : fill_mshr.to_return)
+          ret->return_data(fill_mshr);
 
-        total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
-
-        MSHR.erase(fill_mshr);
+        total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
       } else {
-        const auto pscl_idx = std::size(pscl) - fill_mshr->translation_level;
-        pscl.at(pscl_idx).fill_cache(fill_mshr->v_address, fill_mshr->data);
+        const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
+        pscl.at(pscl_idx).fill_cache(fill_mshr.v_address, fill_mshr.data);
 
-        PACKET packet = *fill_mshr;
-        packet.cpu = cpu;
-        packet.type = TRANSLATION;
-        packet.address = fill_mshr->data;
-        packet.to_return = {this};
-        packet.translation_level = fill_mshr->translation_level - 1;
-
-        bool success = lower_level->add_rq(packet);
-        if (success) {
-          fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
-          fill_mshr->address = packet.address;
-          fill_mshr->translation_level--;
-
-          MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
-        }
+        auto success = step_translation(fill_mshr.data, fill_mshr.translation_level-1, fill_mshr);
+        if (!success)
+          return;
       }
+
+      MSHR.pop_front();
     } else {
       MSHR.sort(ord_event_cycle<PACKET>{});
     }
 
     fill_this_cycle--;
   }
+}
+
+bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET &source)
+{
+  auto fwd_pkt = source;
+  fwd_pkt.address = addr;
+  fwd_pkt.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
+  fwd_pkt.cpu = cpu;
+  fwd_pkt.type = TRANSLATION;
+  fwd_pkt.to_return = {this};
+  fwd_pkt.translation_level = transl_level;
+
+  bool success = lower_level->add_rq(fwd_pkt);
+  if (success) {
+    fwd_pkt.to_return = source.to_return; // Set the return for MSHR packet same as read packet.
+    fwd_pkt.type = source.type;
+    fwd_pkt.event_cycle = std::numeric_limits<uint64_t>::max();
+    MSHR.push_back(fwd_pkt);
+
+    return true;
+  }
+
+  return false;
 }
 
 void PageTableWalker::operate()
