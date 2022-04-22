@@ -35,7 +35,6 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 {
 public:
   const std::string NAME;
-  const uint32_t cpu;
   const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
 
   champsim::delay_queue<PACKET> RQ;

@@ -11,7 +11,7 @@ extern bool warmup_complete[NUM_CPUS];
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6,
                                  uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
                                  MemoryRequestConsumer* ll)
-    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
+    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), MSHR_SIZE(v11), MAX_READ(v12),
       MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
       PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
       PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
@@ -48,7 +48,6 @@ void PageTableWalker::handle_read()
     PACKET packet = handle_pkt;
     packet.address = ptw_addr;
     packet.v_address = handle_pkt.address;
-    packet.cpu = cpu;
     packet.type = TRANSLATION;
     packet.init_translation_level = ptw_level;
     packet.translation_level = packet.init_translation_level;
@@ -80,8 +79,8 @@ void PageTableWalker::handle_fill()
     {
       // Return the translated physical address to STLB. Does not contain last
       // 12 bits
-      auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->v_address);
-      if (warmup_complete[cpu] && fault) {
+      auto [addr, fault] = vmem.va_to_pa(fill_mshr->cpu, fill_mshr->v_address);
+      if (warmup_complete[fill_mshr->cpu] && fault) {
         fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
         MSHR.sort(ord_event_cycle<PACKET>{});
       } else {
@@ -106,8 +105,8 @@ void PageTableWalker::handle_fill()
         MSHR.erase(fill_mshr);
       }
     } else {
-      auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->v_address, fill_mshr->translation_level);
-      if (warmup_complete[cpu] && fault) {
+      auto [addr, fault] = vmem.get_pte_pa(fill_mshr->cpu, fill_mshr->v_address, fill_mshr->translation_level);
+      if (warmup_complete[fill_mshr->cpu] && fault) {
         fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
         MSHR.sort(ord_event_cycle<PACKET>{});
       } else {
@@ -131,7 +130,6 @@ void PageTableWalker::handle_fill()
         }
 
         PACKET packet = *fill_mshr;
-        packet.cpu = cpu;
         packet.type = TRANSLATION;
         packet.address = addr;
         packet.to_return = {this};
