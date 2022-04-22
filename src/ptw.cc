@@ -6,11 +6,9 @@
 
 extern bool warmup_complete[NUM_CPUS];
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, champsim::simple_lru_table<uint64_t> &&pscl5, champsim::simple_lru_table<uint64_t> &&pscl4, champsim::simple_lru_table<uint64_t> &&pscl3, champsim::simple_lru_table<uint64_t> &&pscl2, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency,
-                                 MemoryRequestConsumer* ll, VirtualMemory &_vmem)
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>> &&_pscl, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory &_vmem)
     : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), RQ{v10, latency},
-      pscl{{std::forward<champsim::simple_lru_table<uint64_t>>(pscl5), std::forward<champsim::simple_lru_table<uint64_t>>(pscl4), std::forward<champsim::simple_lru_table<uint64_t>>(pscl3), std::forward<champsim::simple_lru_table<uint64_t>>(pscl2)}},
-      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, _vmem.pt_levels).first)
+      pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl)+1).first)
 {
 }
 
@@ -21,31 +19,31 @@ void PageTableWalker::handle_read()
   while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
     PACKET& handle_pkt = RQ.front();
 
-    if constexpr (champsim::debug_print) {
-      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-      std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
-      std::cout << " full_v_addr: " << handle_pkt.v_address;
-      std::cout << " data: " << handle_pkt.data << std::dec;
-      std::cout << " translation_level: " << +handle_pkt.translation_level;
-      std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl;
-    }
-
-    auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
-    auto ptw_level = vmem.pt_levels - 1;
+    auto walk_base = CR3_addr;
+    auto walk_init_level = std::size(pscl);
     for (auto cache = std::begin(pscl); cache != std::end(pscl); ++cache) {
       if (auto check_addr = cache->check_hit(handle_pkt.address); check_addr.has_value()) {
-        ptw_addr = splice_bits(check_addr.value(), vmem.get_offset(handle_pkt.address, std::distance(cache, std::end(pscl))) * PTE_BYTES, LOG2_PAGE_SIZE);
-        ptw_level = std::distance(cache, std::end(pscl)) - 1;
+        walk_base = check_addr.value();
+        walk_init_level = std::distance(cache, std::end(pscl)) - 1;
       }
+    }
+    auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init_level+1) * PTE_BYTES;
+
+    if constexpr (champsim::debug_print) {
+      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
+      std::cout << " address: " << std::hex << walk_base;
+      std::cout << " v_address: " << handle_pkt.v_address << std::dec;
+      std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
+      std::cout << " translation_level: " << +walk_init_level << std::endl;
     }
 
     PACKET packet = handle_pkt;
     packet.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
-    packet.address = ptw_addr;
+    packet.address = splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE);
     packet.v_address = handle_pkt.address;
     packet.cpu = cpu;
     packet.type = TRANSLATION;
-    packet.init_translation_level = ptw_level;
+    packet.init_translation_level = walk_init_level;
     packet.translation_level = packet.init_translation_level;
     packet.to_return = {this};
 
@@ -78,13 +76,14 @@ void PageTableWalker::handle_fill()
       std::tie(fill_mshr->data, penalty) = vmem.va_to_pa(cpu, fill_mshr->v_address);
     else
       std::tie(fill_mshr->data, penalty) = vmem.get_pte_pa(cpu, fill_mshr->v_address, fill_mshr->translation_level);
-    fill_mshr->event_cycle = current_cycle + warmup_complete[cpu] ? penalty : 0;
+    fill_mshr->event_cycle = current_cycle + (warmup_complete[cpu] ? penalty : 0);
 
     if constexpr (champsim::debug_print) {
       std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
       std::cout << " address: " << std::hex << fill_mshr->address;
-      std::cout << " full_v_addr: " << fill_mshr->v_address;
+      std::cout << " v_address: " << fill_mshr->v_address;
       std::cout << " data: " << fill_mshr->data << std::dec;
+      std::cout << " pt_page offset: " << ((fill_mshr->data & bitmask(LOG2_PAGE_SIZE)) >> lg2(PTE_BYTES));
       std::cout << " translation_level: " << +fill_mshr->translation_level;
       std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
       std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
@@ -102,7 +101,7 @@ void PageTableWalker::handle_fill()
         MSHR.erase(fill_mshr);
       } else {
         const auto pscl_idx = std::size(pscl) - fill_mshr->translation_level;
-        pscl.at(pscl_idx).fill_cache(fill_mshr->data, fill_mshr->v_address);
+        pscl.at(pscl_idx).fill_cache(fill_mshr->v_address, fill_mshr->data);
 
         PACKET packet = *fill_mshr;
         packet.cpu = cpu;
