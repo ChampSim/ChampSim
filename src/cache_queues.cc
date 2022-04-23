@@ -18,19 +18,12 @@ void CACHE::TranslatingQueues::operate()
   detect_misses();
 }
 
-template <typename Iter>
-bool do_collision_for_merge(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+template <typename Iter, typename F>
+bool do_collision_for(Iter begin, Iter end, PACKET &packet, unsigned shamt, F &&func)
 {
   auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
   if (found != end) {
-    auto instr_copy = std::move(found->instr_depend_on_me);
-    auto ret_copy = std::move(found->to_return);
-
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(packet.instr_depend_on_me), std::end(packet.instr_depend_on_me),
-        std::back_inserter(found->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
-    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(packet.to_return), std::end(packet.to_return),
-        std::back_inserter(found->to_return));
-
+    func(packet, *found);
     return true;
   }
 
@@ -38,18 +31,27 @@ bool do_collision_for_merge(Iter begin, Iter end, PACKET &packet, unsigned shamt
 }
 
 template <typename Iter>
+bool do_collision_for_merge(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+{
+  return do_collision_for(begin, end, packet, shamt, [](PACKET &source, PACKET &destination) {
+    auto instr_copy = std::move(destination.instr_depend_on_me);
+    auto ret_copy = std::move(destination.to_return);
+
+    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
+        std::back_inserter(destination.instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(source.to_return), std::end(source.to_return),
+        std::back_inserter(destination.to_return));
+  });
+}
+
+template <typename Iter>
 bool do_collision_for_return(Iter begin, Iter end, PACKET &packet, unsigned shamt)
 {
-  auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
-  if (found != end) {
-    packet.data = found->data;
-    for (auto ret : packet.to_return)
-      ret->return_data(packet);
-
-    return true;
-  }
-
-  return false;
+  return do_collision_for(begin, end, packet, shamt, [](PACKET &source, PACKET &destination) {
+    source.data = destination.data;
+    for (auto ret : source.to_return)
+      ret->return_data(source);
+  });
 }
 
 void CACHE::NonTranslatingQueues::check_collision()
