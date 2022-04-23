@@ -4,8 +4,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 struct miss_testbed
 {
   constexpr static uint64_t hit_latency = 5;
@@ -23,7 +21,8 @@ struct miss_testbed
   void setup()
   {
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     // Create a test packet
     PACKET seed;

@@ -1,15 +1,15 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iterator>
+#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util.h"
 #include "vmem.h"
-
-extern bool warmup_complete[NUM_CPUS];
 
 bool CACHE::handle_fill(PACKET &fill_mshr)
 {
@@ -27,7 +27,7 @@ bool CACHE::handle_fill(PACKET &fill_mshr)
 
   bool success = filllike_miss(set, way, fill_mshr);
 
-  total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
+  sim_stats.back().total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
 
   if (success) {
     for (auto ret : fill_mshr.to_return)
@@ -51,8 +51,7 @@ bool CACHE::handle_writeback(PACKET &handle_pkt)
     impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
     // COLLECT STATS
-    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-    sim_access[handle_pkt.cpu][handle_pkt.type]++;
+    sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
 
     // mark dirty
     fill_block.dirty = 1;
@@ -68,8 +67,7 @@ bool CACHE::handle_writeback(PACKET &handle_pkt)
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
       way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY)
-        way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set * NUM_WAY], handle_pkt.ip, handle_pkt.address,
-            handle_pkt.type);
+        way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set * NUM_WAY], handle_pkt.ip, handle_pkt.address, handle_pkt.type);
 
       return filllike_miss(set, way, handle_pkt);
     }
@@ -133,8 +131,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
   impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
   // COLLECT STATS
-  sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-  sim_access[handle_pkt.cpu][handle_pkt.type]++;
+  sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
 
   auto copy{handle_pkt};
   copy.data = hit_block.data;
@@ -143,7 +140,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
   // update prefetch stats and reset prefetch bit
   if (hit_block.prefetch) {
-    pf_useful++;
+    sim_stats.back().pf_useful++;
     hit_block.prefetch = 0;
   }
 }
@@ -176,7 +173,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this)
-        pf_useful++;
+        sim_stats.back().pf_useful++;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
       *mshr_entry = handle_pkt;
@@ -261,10 +258,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
     auto evicting_address = (ever_seen_data ? fill_block.address : fill_block.v_address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
     if (fill_block.prefetch)
-      pf_useless++;
+      sim_stats.back().pf_useless++;
 
     if (handle_pkt.type == PREFETCH)
-      pf_fill++;
+      sim_stats.back().pf_fill++;
 
     fill_block.valid = true;
     fill_block.prefetch = handle_pkt.prefetch_from_this;
@@ -285,8 +282,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
   // COLLECT STATS
-  sim_miss[handle_pkt.cpu][handle_pkt.type]++;
-  sim_access[handle_pkt.cpu][handle_pkt.type]++;
+  sim_stats.back().misses[handle_pkt.cpu][handle_pkt.type]++;
 
   return true;
 }
@@ -365,7 +361,7 @@ bool CACHE::add_wq(const PACKET& packet)
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-  pf_requested++;
+  sim_stats.back().pf_requested++;
 
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
@@ -378,7 +374,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
 
   auto success = queues.add_pq(pf_packet);
   if (success)
-    ++pf_issued;
+    ++sim_stats.back().pf_issued;
   return success;
 }
 
@@ -427,7 +423,7 @@ void CACHE::return_data(const PACKET& packet)
   // MSHR holds the most updated information about this request
   mshr_entry->data = packet.data;
   mshr_entry->pf_metadata = packet.pf_metadata;
-  mshr_entry->event_cycle = current_cycle + (warmup_complete[cpu] ? FILL_LATENCY : 0);
+  mshr_entry->event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry->instr_id;
@@ -469,9 +465,84 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET &pkt) const {
-  return (1 << pkt.type) & pref_activate_mask && !pkt.prefetch_from_this;
+void CACHE::begin_phase()
+{
+  roi_stats.emplace_back();
+  sim_stats.emplace_back();
 }
+
+void CACHE::end_phase(unsigned cpu)
+{
+  roi_stats.back().hits[cpu] = sim_stats.back().hits[cpu];
+  roi_stats.back().misses[cpu] = sim_stats.back().misses[cpu];
+
+  roi_stats.back().pf_requested = sim_stats.back().pf_requested;
+  roi_stats.back().pf_issued = sim_stats.back().pf_issued;
+  roi_stats.back().pf_useful = sim_stats.back().pf_useful;
+  roi_stats.back().pf_useless = sim_stats.back().pf_useless;
+  roi_stats.back().pf_fill = sim_stats.back().pf_fill;
+
+  roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
+}
+
+void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
+{
+  uint64_t TOTAL_HIT = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull),
+           TOTAL_MISS = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull);
+
+  std::cout << name << " TOTAL       ";
+  std::cout << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
+  std::cout << "HIT: " << std::setw(10) << TOTAL_HIT << "  ";
+  std::cout << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
+
+  std::cout << name << " LOAD        ";
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][LOAD] + stats.misses[cpu][LOAD] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][LOAD] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][LOAD] << std::endl;
+
+  std::cout << name << " RFO         ";
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][RFO] + stats.misses[cpu][RFO] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][RFO] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][RFO] << std::endl;
+
+  std::cout << name << " PREFETCH    ";
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][PREFETCH] + stats.misses[cpu][PREFETCH] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][PREFETCH] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][PREFETCH] << std::endl;
+
+  std::cout << name << " WRITE       ";
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][WRITE] + stats.misses[cpu][WRITE] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][WRITE] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][WRITE] << std::endl;
+
+  std::cout << name << " TRANSLATION ";
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][TRANSLATION] + stats.misses[cpu][TRANSLATION] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][TRANSLATION] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][TRANSLATION] << std::endl;
+
+  std::cout << name << " PREFETCH  ";
+  std::cout << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
+  std::cout << "ISSUED: " << std::setw(10) << stats.pf_issued << "  ";
+  std::cout << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
+  std::cout << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
+
+  std::cout << name << " AVERAGE MISS LATENCY: " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << " cycles" << std::endl;
+  // std::cout << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
+}
+
+void CACHE::print_roi_stats()
+{
+  for (std::size_t i = 0; i < NUM_CPUS; ++i)
+    print_cache_stats(NAME, i, roi_stats.back());
+}
+
+void CACHE::print_phase_stats()
+{
+  for (std::size_t i = 0; i < NUM_CPUS; ++i)
+    print_cache_stats(NAME, i, sim_stats.back());
+}
+
+bool CACHE::should_activate_prefetcher(const PACKET &pkt) const { return (1 << static_cast<int>(pkt.type)) & pref_activate_mask; }
 
 void CACHE::print_deadlock()
 {

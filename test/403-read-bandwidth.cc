@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("The read queue respects the read bandwidth") {
   GIVEN("A cache with a few elements") {
     constexpr uint64_t hit_latency = 2;
@@ -22,7 +20,10 @@ SCENARIO("The read queue respects the read bandwidth") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     // Get a list of packets
     static auto id = 1;
@@ -89,7 +90,10 @@ SCENARIO("The prefetch queue respects the read bandwidth") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     // Get a list of packets
     static auto id = 1;

@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 template <typename Q>
 void issue_wq(Q &uut, PACKET pkt)
 {
@@ -68,7 +66,8 @@ void wq_to_wq()
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     issue(uut, address, issue_wq<decltype(uut)>);
 
@@ -93,7 +92,8 @@ void rq_to_rq()
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     issue(uut, address, &ul0, issue_rq<decltype(uut)>);
 
@@ -118,7 +118,8 @@ void wq_to_rq()
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     issue(uut, address, issue_wq<decltype(uut)>);
 
@@ -146,7 +147,8 @@ void pq_to_pq()
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     issue(uut, address, &ul0, issue_pq<decltype(uut)>);
 
@@ -171,7 +173,8 @@ void wq_to_pq()
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     issue(uut, address, issue_wq<decltype(uut)>);
 

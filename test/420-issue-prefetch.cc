@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("A prefetch can be issued") {
   GIVEN("One issued prefetch") {
     constexpr uint64_t hit_latency = 2;
@@ -21,7 +19,10 @@ SCENARIO("A prefetch can be issued") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     // Request a prefetch
     constexpr uint64_t seed_addr = 0xdeadbeef;

@@ -13,6 +13,12 @@ void signal_handler(int signal)
   abort();
 }
 
+struct phase_info {
+  std::string name;
+  bool is_warmup;
+  uint64_t length;
+};
+
 int main(int argc, char** argv)
 {
   // interrupt signal hanlder

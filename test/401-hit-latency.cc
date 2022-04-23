@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("A cache returns a hit after the specified latency") {
   GIVEN("A cache with one filled block") {
     constexpr uint64_t hit_latency = 7;
@@ -20,7 +18,12 @@ SCENARIO("A cache returns a hit after the specified latency") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+
+    // Initialize stats
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     // Create a test packet
     static auto id = 1;
@@ -28,6 +31,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     seed.address = 0xdeadbeef;
     seed.instr_id = id++;
     seed.cpu = 0;
+    seed.to_return = {&mock_ul};
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);

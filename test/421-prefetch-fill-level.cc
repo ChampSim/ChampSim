@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("A prefetch can be issued that creates an MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 1;
@@ -18,7 +16,10 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
@@ -50,7 +51,10 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);

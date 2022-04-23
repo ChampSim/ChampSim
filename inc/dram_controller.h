@@ -33,6 +33,12 @@ struct BANK_REQUEST {
   std::vector<PACKET>::iterator pkt;
 };
 
+struct dram_stats {
+  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
+
+  unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+};
+
 struct DRAM_CHANNEL {
   std::vector<PACKET> WQ{DRAM_WQ_SIZE};
   std::vector<PACKET> RQ{DRAM_RQ_SIZE};
@@ -40,11 +46,11 @@ struct DRAM_CHANNEL {
   std::array<BANK_REQUEST, DRAM_RANKS* DRAM_BANKS> bank_request = {};
   std::array<BANK_REQUEST, DRAM_RANKS* DRAM_BANKS>::iterator active_request = std::end(bank_request);
 
-  uint64_t dbus_cycle_available = 0, dbus_cycle_congested = 0, dbus_count_congested = 0;
-
   bool write_mode = false;
+  uint64_t dbus_cycle_available = 0;
 
-  unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+  using stats_type = dram_stats;
+  std::vector<stats_type> roi_stats, sim_stats;
 
   void check_collision();
 };
@@ -63,11 +69,15 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
 
-  bool add_rq(const PACKET &packet) override;
-  bool add_wq(const PACKET &packet) override;
-  bool add_pq(const PACKET &packet) override;
-
   void operate() override;
+  void begin_phase() override;
+  void end_phase(unsigned cpu) override;
+  void print_roi_stats() override;
+  void print_phase_stats() override;
+
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

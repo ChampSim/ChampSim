@@ -12,6 +12,36 @@
 #include "memory_class.h"
 #include "operable.h"
 
+struct cache_stats {
+  // prefetch stats
+  uint64_t pf_requested = 0;
+  uint64_t pf_issued = 0;
+  uint64_t pf_useful = 0;
+  uint64_t pf_useless = 0;
+  uint64_t pf_fill = 0;
+
+  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {};
+  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> misses = {};
+
+  uint64_t total_miss_latency = 0;
+};
+
+struct cache_queue_stats {
+  uint64_t RQ_ACCESS = 0;
+  uint64_t RQ_MERGED = 0;
+  uint64_t RQ_FULL = 0;
+  uint64_t RQ_TO_CACHE = 0;
+  uint64_t PQ_ACCESS = 0;
+  uint64_t PQ_MERGED = 0;
+  uint64_t PQ_FULL = 0;
+  uint64_t PQ_TO_CACHE = 0;
+  uint64_t WQ_ACCESS = 0;
+  uint64_t WQ_MERGED = 0;
+  uint64_t WQ_FULL = 0;
+  uint64_t WQ_TO_CACHE = 0;
+  uint64_t WQ_FORWARD = 0;
+};
+
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
   enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
@@ -47,19 +77,9 @@ public:
     const std::size_t OFFSET_BITS;
     const bool match_offset_bits;
 
-    uint64_t RQ_ACCESS = 0;
-    uint64_t RQ_MERGED = 0;
-    uint64_t RQ_FULL = 0;
-    uint64_t RQ_TO_CACHE = 0;
-    uint64_t PQ_ACCESS = 0;
-    uint64_t PQ_MERGED = 0;
-    uint64_t PQ_FULL = 0;
-    uint64_t PQ_TO_CACHE = 0;
-    uint64_t WQ_ACCESS = 0;
-    uint64_t WQ_MERGED = 0;
-    uint64_t WQ_FULL = 0;
-    uint64_t WQ_FORWARD = 0;
-    uint64_t WQ_TO_CACHE = 0;
+    using stats_type = cache_queue_stats;
+
+    std::vector<stats_type> sim_stats, roi_stats;
 
     NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
     void operate() override;
@@ -74,6 +94,9 @@ public:
     virtual bool rq_has_ready() const;
     virtual bool wq_has_ready() const;
     virtual bool pq_has_ready() const;
+
+    void begin_phase() override;
+    void end_phase(unsigned cpu) override;
 
     private:
     void check_collision();
@@ -113,16 +136,12 @@ public:
   bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
-  // prefetch stats
-  uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
+  using stats_type = cache_stats;
+
+  std::vector<stats_type> sim_stats, roi_stats;
 
   NonTranslatingQueues &queues;
   std::list<PACKET> MSHR;
-
-  uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
-           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
-
-  uint64_t total_miss_latency = 0;
 
   // functions
   bool add_rq(const PACKET &packet) override;
@@ -131,6 +150,11 @@ public:
 
   void return_data(const PACKET &packet) override;
   void operate() override;
+
+  void begin_phase() override;
+  void end_phase(unsigned cpu) override;
+  void print_roi_stats() override;
+  void print_phase_stats() override;
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("A prefetch can hit the cache") {
   GIVEN("A cache with one element") {
     constexpr uint64_t hit_latency = 1;
@@ -21,7 +19,10 @@ SCENARIO("A prefetch can hit the cache") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     PACKET seed;
     seed.address = 0xdeadbeef;
@@ -66,7 +67,10 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut_queues.warmup = false;
+    uut.begin_phase();
+    uut_queues.begin_phase();
 
     PACKET seed;
     seed.address = 0xdeadbeef;

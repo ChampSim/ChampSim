@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("Cache queues detect translation misses in WQ") {
   GIVEN("A write queue with one item") {
     constexpr uint64_t hit_latency = 5;
@@ -13,7 +11,8 @@ SCENARIO("Cache queues detect translation misses in WQ") {
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     WHEN("A packet is sent") {
       // Create a test packet
@@ -69,7 +68,8 @@ SCENARIO("Cache queues detect translation misses in RQ") {
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     WHEN("A packet is sent") {
       // Create a test packet
@@ -125,7 +125,8 @@ SCENARIO("Cache queues detect translation misses in PQ") {
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+    uut.begin_phase();
 
     WHEN("A packet is sent") {
       // Create a test packet
