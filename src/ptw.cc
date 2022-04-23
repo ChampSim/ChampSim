@@ -4,8 +4,6 @@
 #include "champsim_constants.h"
 #include "util.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>> &&_pscl, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory &_vmem)
     : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), RQ{v10, latency},
       pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl)+1).first)
@@ -64,7 +62,7 @@ void PageTableWalker::handle_fill()
       std::tie(fill_mshr.data, penalty) = vmem.va_to_pa(cpu, fill_mshr.v_address);
     else
       std::tie(fill_mshr.data, penalty) = vmem.get_pte_pa(cpu, fill_mshr.v_address, fill_mshr.translation_level);
-    fill_mshr.event_cycle = current_cycle + (warmup_complete[cpu] ? penalty : 0);
+    fill_mshr.event_cycle = current_cycle + (warmup ? 0 : penalty);
 
     if constexpr (champsim::debug_print) {
       std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
