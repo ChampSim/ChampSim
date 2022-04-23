@@ -32,17 +32,17 @@ public:
   }
 
   virtual void operate() = 0;
-  virtual void begin_phase() {};
-  virtual void end_phase(unsigned cpu) {};
-  virtual void print_roi_stats() {};
-  virtual void print_phase_stats() {};
+  virtual void begin_phase(){};
+  virtual void end_phase(unsigned cpu){};
+  virtual void print_roi_stats(){};
+  virtual void print_phase_stats(){};
   virtual void print_deadlock() {}
 };
 
 class by_next_operate
 {
 public:
-  bool operator()(const operable &lhs, const operable &rhs) const { return lhs.leap_operation < rhs.leap_operation; }
+  bool operator()(const operable& lhs, const operable& rhs) const { return lhs.leap_operation < rhs.leap_operation; }
 };
 
 } // namespace champsim

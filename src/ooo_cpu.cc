@@ -850,7 +850,8 @@ void O3_CPU::retire_rob()
 
 void O3_CPU::print_roi_stats()
 {
-  std::cout << "CPU " << cpu << " cumulative IPC: " << 1.0 * roi_instr() / roi_cycle() << " instructions: " << roi_instr() << " cycles: " << roi_cycle() << std::endl;
+  std::cout << "CPU " << cpu << " cumulative IPC: " << 1.0 * roi_instr() / roi_cycle() << " instructions: " << roi_instr() << " cycles: " << roi_cycle()
+            << std::endl;
 }
 
 void O3_CPU::print_phase_stats()
