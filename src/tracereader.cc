@@ -1,135 +1,98 @@
 #include "tracereader.h"
 
-#include <cassert>
-#include <cstdio>
-#include <fstream>
-#include <iostream>
-#include <optional>
+#include <algorithm>
+#include <cstring>
 #include <string>
 
-tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
+#ifdef __GNUG__
+#include <iostream>
+#endif
+
+void detail::pclose_file(FILE* f) { pclose(f); }
+
+FILE* tracereader::get_fptr(std::string fname)
 {
-  std::string last_dot = trace_string.substr(trace_string.find_last_of("."));
+  std::string cmd_fmtstr = "%1$s %2$s";
+  if (fname.substr(0, 4) == "http")
+    cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s";
 
-  if (trace_string.substr(0, 4) == "http") {
-    // Check file exists
-    char testfile_command[4096];
-    sprintf(testfile_command, "wget -q --spider %s", trace_string.c_str());
-    FILE* testfile = popen(testfile_command, "r");
-    if (pclose(testfile)) {
-      std::cerr << "TRACE FILE NOT FOUND" << std::endl;
-      assert(0);
-    }
-    cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s -dc";
-  } else {
-    std::ifstream testfile(trace_string);
-    if (!testfile.good()) {
-      std::cerr << "TRACE FILE NOT FOUND" << std::endl;
-      assert(0);
-    }
-    cmd_fmtstr = "%1$s -dc %2$s";
+  std::string decomp_program = "cat";
+  if (fname.back() == 'z') {
+    std::string last_dot = fname.substr(fname.find_last_of("."));
+    if (last_dot[1] == 'g') // gzip format
+      decomp_program = "gzip -dc";
+    else if (last_dot[1] == 'x') // xz
+      decomp_program = "xz -dc";
   }
 
-  if (last_dot[1] == 'g') // gzip format
-    decomp_program = "gzip";
-  else if (last_dot[1] == 'x') // xz
-    decomp_program = "xz";
-  else {
-    std::cout << "ChampSim does not support traces other than gz or xz compression!" << std::endl;
-    assert(0);
-  }
-
-  open(trace_string);
+  char gunzip_command[4096];
+  sprintf(gunzip_command, cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
+  return popen(gunzip_command, "r");
 }
 
-tracereader::~tracereader() { close(); }
+template <typename T>
+void tracereader::refresh_buffer()
+{
+  std::array<T, buffer_size - refresh_thresh> trace_read_buf;
+  std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
+  std::size_t bytes_read;
+
+  // Read from trace file
+#ifdef __GNUG__
+  std::istream trace_file{&filebuf};
+  trace_file.read(std::data(raw_buf), std::size(raw_buf));
+  bytes_read = trace_file.gcount();
+  eof_ = trace_file.eof();
+#else
+  bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
+  eof_ = (bytes_left > 0);
+#endif
+
+  // Transform bytes into trace format instructions
+  std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
+
+  // Inflate trace format into core model instructions
+  auto cpu = this->cpu;
+  auto begin = std::begin(trace_read_buf);
+  auto end = std::next(begin, bytes_read / sizeof(T));
+  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu](T t) { return ooo_model_instr{cpu, t}; });
+
+  // Set branch targets
+  for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
+    std::prev(it)->branch_target = it->ip;
+}
 
 template <typename T>
-ooo_model_instr tracereader::read_single_instr()
+ooo_model_instr tracereader::impl_get()
 {
-  T trace_read_instr;
+  if (std::size(instr_buffer) <= refresh_thresh)
+    refresh_buffer<T>();
 
-  while (!fread(&trace_read_instr, sizeof(T), 1, trace_file)) {
-    // reached end of file for this trace
-    std::cout << "*** Reached end of trace: " << trace_string << std::endl;
+  auto retval = instr_buffer.front();
+  instr_buffer.pop_front();
 
-    // close the trace file and re-open it
-    close();
-    open(trace_string);
-  }
-
-  // copy the instruction into the performance model's instruction format
-  ooo_model_instr retval(cpu, trace_read_instr);
   return retval;
 }
 
-void tracereader::open(std::string trace_string)
+supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
-  char gunzip_command[4096];
-  sprintf(gunzip_command, cmd_fmtstr.c_str(), decomp_program.c_str(), trace_string.c_str());
-  trace_file = popen(gunzip_command, "r");
-  if (trace_file == NULL) {
-    std::cerr << std::endl << "*** CANNOT OPEN TRACE FILE: " << trace_string << " ***" << std::endl;
-    assert(0);
-  }
+  if (is_cloudsuite)
+    return bulk_tracereader<cloudsuite_instr>{cpu, fname};
+  else
+    return bulk_tracereader<input_instr>{cpu, fname};
 }
 
-void tracereader::close()
+ooo_model_instr get_instr::operator()(bulk_tracereader<input_instr>& tr) { return tr.impl_get<input_instr>(); }
+ooo_model_instr get_instr::operator()(bulk_tracereader<cloudsuite_instr>& tr) { return tr.impl_get<cloudsuite_instr>(); }
+
+bool get_eof::operator()(const bulk_tracereader<input_instr>& tr)
 {
-  if (trace_file != NULL) {
-    pclose(trace_file);
-  }
+  return tr.eof_ && std::size(tr.instr_buffer) <= bulk_tracereader<input_instr>::refresh_thresh;
+}
+bool get_eof::operator()(const bulk_tracereader<cloudsuite_instr>& tr)
+{
+  return tr.eof_ && std::size(tr.instr_buffer) <= bulk_tracereader<cloudsuite_instr>::refresh_thresh;
 }
 
-class cloudsuite_tracereader : public tracereader
-{
-  std::optional<ooo_model_instr> last_instr;
-
-public:
-  cloudsuite_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
-
-  ooo_model_instr get()
-  {
-    ooo_model_instr trace_read_instr = read_single_instr<cloudsuite_instr>();
-
-    if (!last_instr.has_value())
-      last_instr = trace_read_instr;
-
-    last_instr->branch_target = trace_read_instr.ip;
-    ooo_model_instr retval = last_instr.value();
-
-    last_instr = trace_read_instr;
-    return retval;
-  }
-};
-
-class input_tracereader : public tracereader
-{
-  std::optional<ooo_model_instr> last_instr;
-
-public:
-  input_tracereader(uint8_t cpu, std::string _tn) : tracereader(cpu, _tn) {}
-
-  ooo_model_instr get()
-  {
-    ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
-
-    if (!last_instr.has_value())
-      last_instr = trace_read_instr;
-
-    last_instr->branch_target = trace_read_instr.ip;
-    ooo_model_instr retval = last_instr.value();
-
-    last_instr = trace_read_instr;
-    return retval;
-  }
-};
-
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
-{
-  if (is_cloudsuite) {
-    return new cloudsuite_tracereader(cpu, fname);
-  } else {
-    return new input_tracereader(cpu, fname);
-  }
-}
+std::string get_trace_string::operator()(const bulk_tracereader<input_instr>& tr) { return tr.trace_string; }
+std::string get_trace_string::operator()(const bulk_tracereader<cloudsuite_instr>& tr) { return tr.trace_string; }
