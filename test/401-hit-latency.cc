@@ -3,8 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("A cache returns a hit after the specified latency") {
   GIVEN("A cache with one filled block") {
     constexpr uint64_t hit_latency = 4;
@@ -19,15 +17,19 @@ SCENARIO("A cache returns a hit after the specified latency") {
     uut.impl_replacement_initialize();
 
     // Turn off warmup
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
+    uut.warmup = false;
+
+    // Initialize stats
+    uut.begin_phase();
 
     // Create a test packet
     PACKET seed;
     seed.address = 0xdeadbeef;
     seed.cpu = 0;
+    seed.to_return = {&mock_ul};
 
     // Issue it to the uut
-    auto seed_result = uut.add_rq(seed);
+    auto seed_result = mock_ul.issue(seed);
     REQUIRE(seed_result);
 
     // Run the uut for a bunch of cycles to clear it out of the RQ and fill the cache
@@ -36,10 +38,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
         elem->_operate();
 
     WHEN("A packet with the same address is sent") {
-      PACKET test;
-      test.address = seed.address;
-      test.cpu = 0;
-      test.to_return = {&mock_ul};
+      auto test = seed;
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -49,7 +48,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
-        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + hit_latency);
+        REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
       }
     }
   }

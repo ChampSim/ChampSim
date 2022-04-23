@@ -15,16 +15,32 @@
 // virtual address space prefetching
 constexpr uint64_t VA_PREFETCH_TRANSLATION_LATENCY = 2;
 
-// CACHE BLOCK
-class BLOCK
-{
-public:
-  bool valid = false, prefetch = false, dirty = false;
+struct cache_stats {
+  // prefetch stats
+  uint64_t pf_requested = 0;
+  uint64_t pf_issued = 0;
+  uint64_t pf_useful = 0;
+  uint64_t pf_useless = 0;
+  uint64_t pf_fill = 0;
 
-  uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0;
+  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {};
+  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> misses = {};
 
-  // replacement state
-  uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+  uint64_t RQ_ACCESS = 0;
+  uint64_t RQ_MERGED = 0;
+  uint64_t RQ_FULL = 0;
+  uint64_t RQ_TO_CACHE = 0;
+  uint64_t PQ_ACCESS = 0;
+  uint64_t PQ_MERGED = 0;
+  uint64_t PQ_FULL = 0;
+  uint64_t PQ_TO_CACHE = 0;
+  uint64_t WQ_ACCESS = 0;
+  uint64_t WQ_MERGED = 0;
+  uint64_t WQ_FULL = 0;
+  uint64_t WQ_TO_CACHE = 0;
+  uint64_t WQ_FORWARD = 0;
+
+  uint64_t total_miss_latency = 0;
 };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -60,20 +76,13 @@ public:
   bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
-  // prefetch stats
-  uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
+  using stats_type = cache_stats;
+
+  std::vector<stats_type> sim_stats, roi_stats;
 
   // queues
   std::deque<PACKET> RQ, PQ, VAPQ, WQ;
   std::list<PACKET> MSHR;
-
-  uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
-           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
-
-  uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
-           WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0;
-
-  uint64_t total_miss_latency = 0;
 
   // functions
   bool add_rq(const PACKET& packet) override;
@@ -86,6 +95,11 @@ public:
   void operate_reads();
   void check_collision();
 
+  void begin_phase() override;
+  void end_phase(unsigned cpu) override;
+  void print_roi_stats() override;
+  void print_phase_stats() override;
+
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
@@ -96,7 +110,6 @@ public:
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
   int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
 
-  void add_mshr(PACKET* packet);
   void va_translate_prefetches();
 
   void handle_fill();

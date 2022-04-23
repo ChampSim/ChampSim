@@ -29,6 +29,13 @@ public:
   void return_data(const PACKET& packet);
 };
 
+struct branch_stats {
+  uint64_t total_rob_occupancy_at_branch_mispredict = 0;
+
+  std::array<uint64_t, 8> total_branch_types = {};
+  std::array<uint64_t, 8> branch_type_misses = {};
+};
+
 struct LSQ_ENTRY {
   uint64_t instr_id = 0;
   uint64_t virtual_address = 0;
@@ -52,18 +59,24 @@ class O3_CPU : public champsim::operable
 public:
   uint32_t cpu = 0;
 
+  // cycle
+  uint64_t begin_phase_cycle = 0;
+  uint64_t begin_phase_instr = 0;
+  uint64_t finish_phase_cycle = 0;
+  uint64_t finish_phase_instr = 0;
+  uint64_t last_heartbeat_cycle = 0;
+  uint64_t last_heartbeat_instr = 0;
+  uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
+
   // instruction
   uint64_t instr_unique_id = 0;
-  uint64_t begin_sim_cycle = 0;
-  uint64_t begin_sim_instr = 0;
-  uint64_t last_sim_cycle = 0;
-  uint64_t last_sim_instr = 0;
-  uint64_t finish_sim_cycle = 0;
-  uint64_t finish_sim_instr = 0;
   uint64_t instrs_to_read_this_cycle = 0;
   uint64_t instrs_to_fetch_this_cycle = 0;
-  uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
   uint64_t num_retired = 0;
+
+  using stats_type = branch_stats;
+
+  std::vector<stats_type> roi_stats, sim_stats;
 
   struct dib_entry_t {
     bool valid = false;
@@ -95,12 +108,6 @@ public:
   // branch
   uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
-  uint64_t num_branch = 0;
-  uint64_t branch_mispredictions = 0;
-  uint64_t total_rob_occupancy_at_branch_mispredict;
-
-  uint64_t total_branch_types[8] = {};
-  uint64_t branch_type_misses[8] = {};
 
   const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
@@ -108,6 +115,10 @@ public:
   CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
 
   void operate() override;
+  void begin_phase() override;
+  void end_phase(unsigned cpu) override;
+  void print_roi_stats() override;
+  void print_phase_stats() override;
 
   void initialize_core();
   void initialize_instruction();
@@ -141,6 +152,11 @@ public:
   bool execute_load(const LSQ_ENTRY& lq_entry);
   bool do_translate_store(const LSQ_ENTRY& sq_entry);
   bool do_translate_load(const LSQ_ENTRY& lq_entry);
+
+  uint64_t roi_instr() const { return finish_phase_instr - begin_phase_instr; }
+  uint64_t roi_cycle() const { return finish_phase_cycle - begin_phase_cycle; }
+  uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
+  uint64_t sim_cycle() const { return current_cycle - begin_phase_cycle; }
 
   void print_deadlock() override;
 
