@@ -5,27 +5,75 @@
 
 extern bool warmup_complete[NUM_CPUS];
 
-SCENARIO("Cache queues forward WQ to WQ") {
+template <typename Q>
+void issue_wq(Q &uut, PACKET pkt)
+{
+  // Issue it to the uut
+  auto result = uut.add_wq(pkt);
+  REQUIRE(result);
+
+  uut._operate();
+}
+
+template <typename Q>
+void issue_rq(Q &uut, PACKET pkt)
+{
+  // Issue it to the uut
+  auto result = uut.add_rq(pkt);
+  REQUIRE(result);
+
+  uut._operate();
+}
+
+template <typename Q>
+void issue_pq(Q &uut, PACKET pkt)
+{
+  // Issue it to the uut
+  auto result = uut.add_pq(pkt);
+  REQUIRE(result);
+
+  uut._operate();
+}
+
+template <typename Q, typename F>
+void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
+{
+  // Create a test packet
+  PACKET seed;
+  seed.address = seed_addr;
+  seed.v_address = 0;
+  seed.cpu = 0;
+  seed.to_return = {ret};
+
+  std::invoke(func, uut, seed);
+}
+
+template <typename Q, typename F>
+void issue(Q &uut, uint64_t seed_addr, F func)
+{
+  // Create a test packet
+  PACKET seed;
+  seed.address = seed_addr;
+  seed.v_address = 0;
+  seed.cpu = 0;
+
+  std::invoke(func, uut, seed);
+}
+
+template <typename Q>
+void wq_to_wq()
+{
   GIVEN("A write queue with one item") {
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
 
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.cpu = 0;
-
-    // Issue it to the uut
-    auto seed_result = uut.add_wq(seed);
-    REQUIRE(seed_result);
+    issue(uut, address, issue_wq<decltype(uut)>);
 
     WHEN("A packet with the same address is sent") {
-      auto test_result = uut.add_wq(seed);
-      REQUIRE(test_result);
-
-      uut._operate();
+      issue(uut, address, issue_wq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
@@ -34,9 +82,12 @@ SCENARIO("Cache queues forward WQ to WQ") {
   }
 }
 
-SCENARIO("Cache queues forward RQ to RQ") {
+template <typename Q>
+void rq_to_rq()
+{
   GIVEN("A read queue with one item") {
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
@@ -44,23 +95,10 @@ SCENARIO("Cache queues forward RQ to RQ") {
     // Turn off warmup
     std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
 
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.cpu = 0;
-    seed.to_return = {&ul0};
-
-    // Issue it to the uut
-    auto seed_result = uut.add_rq(seed);
-    REQUIRE(seed_result);
+    issue(uut, address, &ul0, issue_rq<decltype(uut)>);
 
     WHEN("A packet with the same address is sent") {
-      auto test = seed;
-      test.to_return = {&ul1};
-      auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
-
-      uut._operate();
+      issue(uut, address, &ul1, issue_rq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.RQ) == 1);
@@ -72,31 +110,21 @@ SCENARIO("Cache queues forward RQ to RQ") {
   }
 }
 
-SCENARIO("Cache queues forward WQ to RQ") {
+template <typename Q>
+void wq_to_rq()
+{
   GIVEN("A write queue with one item") {
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
-
-    counting_MRP counter;
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
 
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.cpu = 0;
-
-    // Issue it to the uut
-    auto seed_result = uut.add_wq(seed);
-    REQUIRE(seed_result);
+    issue(uut, address, issue_wq<decltype(uut)>);
 
     WHEN("A packet with the same address is sent to the read queue") {
-      auto test = seed;
-      test.to_return = {&counter};
-      auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
-
-      uut._operate();
+      counting_MRP counter;
+      issue(uut, address, &counter, issue_rq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
@@ -107,9 +135,12 @@ SCENARIO("Cache queues forward WQ to RQ") {
   }
 }
 
-SCENARIO("Cache queues forward PQ to PQ") {
+template <typename Q>
+void pq_to_pq()
+{
   GIVEN("A prefetch queue with one item") {
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
@@ -117,23 +148,10 @@ SCENARIO("Cache queues forward PQ to PQ") {
     // Turn off warmup
     std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
 
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.cpu = 0;
-    seed.to_return = {&ul0};
-
-    // Issue it to the uut
-    auto seed_result = uut.add_pq(seed);
-    REQUIRE(seed_result);
+    issue(uut, address, &ul0, issue_pq<decltype(uut)>);
 
     WHEN("A packet with the same address is sent") {
-      auto test = seed;
-      test.to_return = {&ul1};
-      auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
-
-      uut._operate();
+      issue(uut, address, &ul1, issue_pq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.PQ) == 1);
@@ -145,31 +163,21 @@ SCENARIO("Cache queues forward PQ to PQ") {
   }
 }
 
-SCENARIO("Cache queues forward WQ to PQ") {
+template <typename Q>
+void wq_to_pq()
+{
   GIVEN("A write queue with one item") {
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
-
-    counting_MRP counter;
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     std::fill(std::begin(warmup_complete), std::end(warmup_complete), true);
 
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.cpu = 0;
-
-    // Issue it to the uut
-    auto seed_result = uut.add_wq(seed);
-    REQUIRE(seed_result);
+    issue(uut, address, issue_wq<decltype(uut)>);
 
     WHEN("A packet with the same address is sent to the prefetch queue") {
-      auto test = seed;
-      test.to_return = {&counter};
-      auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
-
-      uut._operate();
+      counting_MRP counter;
+      issue(uut, address, &counter, issue_pq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
@@ -178,4 +186,44 @@ SCENARIO("Cache queues forward WQ to PQ") {
       }
     }
   }
+}
+
+SCENARIO("Non-translating cache queues forward WQ to WQ") {
+  wq_to_wq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward WQ to WQ") {
+  wq_to_wq<CACHE::TranslatingQueues>();
+}
+
+SCENARIO("Non-translating cache queues forward RQ to RQ") {
+  rq_to_rq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward RQ to RQ") {
+  rq_to_rq<CACHE::TranslatingQueues>();
+}
+
+SCENARIO("Non-translating cache queues forward WQ to RQ") {
+  wq_to_rq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward WQ to RQ") {
+  wq_to_rq<CACHE::TranslatingQueues>();
+}
+
+SCENARIO("Non-translating cache queues forward PQ to PQ") {
+  pq_to_pq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward PQ to PQ") {
+  pq_to_pq<CACHE::TranslatingQueues>();
+}
+
+SCENARIO("Non-translating cache queues forward WQ to PQ") {
+  wq_to_pq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward WQ to PQ") {
+  wq_to_pq<CACHE::TranslatingQueues>();
 }
