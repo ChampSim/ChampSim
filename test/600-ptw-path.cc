@@ -7,8 +7,6 @@
 
 #include <array>
 
-extern bool warmup_complete[NUM_CPUS];
-
 SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
@@ -19,7 +17,8 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), false);
+    uut.warmup = false;
+    uut.begin_phase();
 
     WHEN("The PTW receives a request") {
       PACKET test;
@@ -53,7 +52,8 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), false);
+    uut.warmup = false;
+    uut.begin_phase();
 
     WHEN("The PTW receives a request") {
       PACKET test;
@@ -89,7 +89,8 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    std::fill(std::begin(warmup_complete), std::end(warmup_complete), false);
+    uut.warmup = false;
+    uut.begin_phase();
 
     PACKET seed;
     seed.address = 0xffff'ffff'ffff'ffff;
