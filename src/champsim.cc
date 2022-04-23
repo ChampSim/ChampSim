@@ -306,7 +306,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
-  std::vector<tracereader*> traces;
+  std::vector<supported_tracereader> traces;
   for (auto name : trace_names) {
     std::cout << "CPU " << traces.size() << " runs " << name << std::endl;
 
@@ -361,8 +361,15 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
-        ooo_cpu[i]->init_instruction(traces[i]->get());
+      while (std::size(ooo_cpu[i]->input_queue) < ooo_cpu[i]->IN_QUEUE_SIZE) {
+        ooo_cpu[i]->input_queue.push_back(std::visit(get_instr{}, traces[i]));
+
+        // Reopen trace if we've reached the end of the file
+        if (std::visit(get_eof{}, traces[i])) {
+          auto name = std::visit(get_trace_string{}, traces[i]);
+          std::cout << "*** Reached end of trace: " << name << std::endl;
+          traces[i] = get_tracereader(name, i, knob_cloudsuite);
+        }
       }
 
       // heartbeat information

@@ -28,6 +28,7 @@ void O3_CPU::operate()
   fetch_instruction(); // fetch
   translate_fetch();
   check_dib();
+  initialize_instruction();
 
   DECODE_BUFFER.operate();
 }
@@ -39,7 +40,16 @@ void O3_CPU::initialize_core()
   impl_btb_initialize();
 }
 
-void O3_CPU::init_instruction(ooo_model_instr arch_instr)
+void O3_CPU::initialize_instruction()
+{
+    while (fetch_stall == 0 && instrs_to_read_this_cycle > 0 && !std::empty(input_queue))
+    {
+        do_init_instruction(input_queue.front());
+        input_queue.pop_front();
+    }
+}
+
+void O3_CPU::do_init_instruction(ooo_model_instr &arch_instr)
 {
   instrs_to_read_this_cycle--;
 
