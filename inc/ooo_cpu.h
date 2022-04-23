@@ -100,11 +100,15 @@ public:
   uint64_t total_branch_types[8] = {};
   uint64_t branch_type_misses[8] = {};
 
+  const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
+  std::deque<ooo_model_instr> input_queue;
+
   CacheBus L1I_bus, L1D_bus;
 
   void operate() override;
 
-  void init_instruction(ooo_model_instr instr);
+  void initialize_core();
+  void initialize_instruction();
   void check_dib();
   void translate_fetch();
   void fetch_instruction();
@@ -114,24 +118,24 @@ public:
   void schedule_instruction();
   void execute_instruction();
   void schedule_memory_instruction();
-  void execute_memory_instruction();
+  void operate_lsq();
+  void complete_inflight_instruction();
+  void handle_memory_return();
+  void retire_rob();
+
+  void do_init_instruction(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   bool do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& rob_it);
   void do_memory_scheduling(ooo_model_instr& instr);
-  void operate_lsq();
   void do_complete_execution(ooo_model_instr& instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
-  void initialize_core();
   void do_finish_store(LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
-  void complete_inflight_instruction();
-  void handle_memory_return();
-  void retire_rob();
 
   void print_deadlock() override;
 
