@@ -109,6 +109,9 @@ public:
   uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
 
+  const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
+  std::deque<ooo_model_instr> input_queue;
+
   CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
 
   void operate() override;
@@ -118,7 +121,7 @@ public:
   void print_phase_stats() override;
 
   void initialize_core();
-  void init_instruction(ooo_model_instr instr);
+  void initialize_instruction();
   void check_dib();
   void translate_fetch();
   void fetch_instruction();
@@ -128,12 +131,12 @@ public:
   void schedule_instruction();
   void execute_instruction();
   void schedule_memory_instruction();
-  void execute_memory_instruction();
   void operate_lsq();
   void complete_inflight_instruction();
   void handle_memory_return();
   void retire_rob();
 
+  void do_init_instruction(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);

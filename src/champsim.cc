@@ -81,7 +81,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
-  std::vector<tracereader*> traces;
+  std::vector<supported_tracereader> traces;
   for (auto name : trace_names) {
     std::cout << "CPU " << traces.size() << " runs " << name << std::endl;
 
@@ -142,8 +142,16 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
       // Read from trace
       for (O3_CPU& cpu : ooo_cpu) {
-        while (cpu.fetch_stall == 0 && cpu.instrs_to_read_this_cycle > 0)
-          cpu.init_instruction(traces[cpu.cpu]->get());
+        while (std::size(cpu.input_queue) < cpu.IN_QUEUE_SIZE) {
+          cpu.input_queue.push_back(std::visit(get_instr{}, traces[cpu.cpu]));
+
+          // Reopen trace if we've reached the end of the file
+          if (std::visit(get_eof{}, traces[cpu.cpu])) {
+            auto name = std::visit(get_trace_string{}, traces[cpu.cpu]);
+            std::cout << "*** Reached end of trace: " << name << std::endl;
+            traces[cpu.cpu] = get_tracereader(name, cpu.cpu, knob_cloudsuite);
+          }
+        }
       }
 
       // Check for phase finish
