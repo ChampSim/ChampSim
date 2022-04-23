@@ -102,8 +102,8 @@ public:
   uint64_t total_branch_types[8] = {};
   uint64_t branch_type_misses[8] = {};
 
-    const std::size_t IN_QUEUE_SIZE = 2*FETCH_WIDTH;
-    std::deque<ooo_model_instr> input_queue;
+  const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
+  std::deque<ooo_model_instr> input_queue;
 
   CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
 
@@ -125,7 +125,7 @@ public:
   void handle_memory_return();
   void retire_rob();
 
-  void do_init_instruction(ooo_model_instr &instr);
+  void do_init_instruction(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
