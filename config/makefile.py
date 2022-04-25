@@ -4,7 +4,7 @@ import os
 def module_make(directory, opts):
     retval = '{0}/%.o: CPPFLAGS += -I{0}\n'.format(directory)
 
-    for opt in opts.split():
+    for opt in opts:
         retval += '{0}/%.o: CXXFLAGS += {1}\n'.format(directory, opt)
 
     for base,dirs,files in os.walk(directory):
@@ -16,7 +16,7 @@ def module_make(directory, opts):
 
     return retval
 
-def get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file):
+def get_makefile_string(constants_header_name, instantiation_file_name, module_info, **config_file):
     retval = ''
 
     for k in ('CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
@@ -27,8 +27,8 @@ def get_makefile_string(constants_header_name, instantiation_file_name, libfilen
     if 'executable_name' in config_file:
         retval += 'executable_name ?= ' + config_file['executable_name'] + '\n\n'
 
-    retval += 'module_dirs = ' + ' '.join(map(operator.itemgetter(0), libfilenames.values())) + '\n\n'
-    retval += '\n'.join(module_make(*v) for v in libfilenames.values())
+    retval += 'module_dirs = ' + ' '.join(map(operator.itemgetter('fname'), module_info)) + '\n\n'
+    retval += '\n'.join(module_make(v['fname'], v['opts']) for v in module_info)
     retval += '\n'
 
     return retval
