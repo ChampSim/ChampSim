@@ -165,7 +165,7 @@ public:
 
   const std::bitset<NUM_BRANCH_MODULES> bpred_type;
   const std::bitset<NUM_BTB_MODULES> btb_type;
-    
+
   O3_CPU(uint32_t cpu, double freq_scale, std::size_t dib_set, std::size_t dib_way, std::size_t dib_window, std::size_t ifetch_buffer_size,
          std::size_t decode_buffer_size, std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width,
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
