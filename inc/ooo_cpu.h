@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <bitset>
 #include <deque>
 #include <functional>
 #include <limits>
@@ -155,15 +156,15 @@ public:
 
 #include "ooo_cpu_modules.inc"
 
-  const bpred_t bpred_type;
-  const btb_t btb_type;
+  const std::bitset<NUM_BRANCH_MODULES> bpred_type;
+  const std::bitset<NUM_BTB_MODULES> btb_type;
 
   O3_CPU(uint32_t cpu, double freq_scale, champsim::simple_lru_table<bool> &&dib, std::size_t ifetch_buffer_size,
          std::size_t decode_buffer_size, std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width,
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
-         bpred_t bpred_type, btb_t btb_type)
+         std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
       : champsim::operable(freq_scale), cpu(cpu), DIB{std::forward<champsim::simple_lru_table<bool>>(dib)}, IFETCH_BUFFER(ifetch_buffer_size),
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),

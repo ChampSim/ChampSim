@@ -7,7 +7,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
   GIVEN("A cache with one filled block") {
     constexpr uint64_t hit_latency = 4;
     do_nothing_MRC mock_ll;
-    CACHE uut{"uut", 1, 1, 1, 8, 32, 32, 32, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), &mock_ll, CACHE::pref_t::pprefetcherDno, CACHE::repl_t::rreplacementDlru};
+    CACHE uut{"uut", 1, 1, 1, 8, 32, 32, 32, 32, hit_latency, 3, 1, 1, LOG2_BLOCK_SIZE, 0, 0, 0, 5, &mock_ll, (1 << CACHE::pprefetcherDno), (1 << CACHE::rreplacementDlru)};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &uut, &mock_ul}};

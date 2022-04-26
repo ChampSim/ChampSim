@@ -7,24 +7,20 @@ import operator
 import copy
 from collections import ChainMap
 
+import config.modules as modules
 import config.makefile as makefile
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 
-fname_translation_table = str.maketrans('./-','_DH')
-
-def norm_fname(fname):
-    return os.path.relpath(os.path.expandvars(os.path.expanduser(fname)))
-
 ###
 # Begin format strings
 ###
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level}, vmem);\n'
+cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, &{lower_level}, {pref_enum_string}, {repl_enum_string});\n'
+ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, &{lower_level}, vmem);\n'
 
-cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name});\n'
+cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string});\n'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
@@ -166,119 +162,45 @@ for cpu in cores:
         caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
         cache_name = caches[cache_name]['lower_level']
 
+# Try the local module directories, then try to interpret as a path
+def default_dir(dirname, f):
+    fname = os.path.join(dirname, f)
+    if not os.path.exists(fname):
+        fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
+    if not os.path.exists(fname):
+        print('Path "' + fname + '" does not exist. Exiting...')
+        sys.exit(1)
+    return fname
+
+def wrap_list(attr):
+    if not isinstance(attr, list):
+        attr = [attr]
+    return attr
+
+for cache in caches.values():
+    cache['replacement'] = [default_dir('replacement', f) for f in wrap_list(cache.get('replacement', []))]
+    cache['prefetcher']  = [default_dir('prefetcher', f) for f in wrap_list(cache.get('prefetcher', []))]
+
+for cpu in cores:
+    cpu['branch_predictor'] = [default_dir('branch', f) for f in wrap_list(cpu.get('branch_predictor', []))]
+    cpu['btb']              = [default_dir('btb', f) for f in wrap_list(cpu.get('btb', []))]
+
 ###
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
-# Associate modules with paths
-libfilenames = {}
-
-for cache in caches.values():
-    # Resolve cache replacment function names
-    if cache['replacement'] is not None:
-        fname = os.path.join('replacement', cache['replacement'])
-        if not os.path.exists(fname):
-            fname = norm_fname(cache['replacement'])
-        if not os.path.exists(fname):
-            print('Path "' + fname + '" does not exist. Exiting...')
-            sys.exit(1)
-
-        cache['replacement_name'] = 'r' + fname.translate(fname_translation_table)
-        cache['replacement_initialize'] = 'repl_' + cache['replacement_name'] + '_initialize'
-        cache['replacement_find_victim'] = 'repl_' + cache['replacement_name'] + '_victim'
-        cache['replacement_update_replacement_state'] = 'repl_' + cache['replacement_name'] + '_update'
-        cache['replacement_replacement_final_stats'] = 'repl_' + cache['replacement_name'] + '_final_stats'
-
-        opts = ''
-        opts += ' -Dinitialize_replacement=' + cache['replacement_initialize']
-        opts += ' -Dfind_victim=' + cache['replacement_find_victim']
-        opts += ' -Dupdate_replacement_state=' + cache['replacement_update_replacement_state']
-        opts += ' -Dreplacement_final_stats=' + cache['replacement_replacement_final_stats']
-        libfilenames['repl_' + cache['replacement_name'] + '.a'] = (fname, opts)
-
-    # Resolve prefetcher function names
-    if cache['prefetcher'] is not None:
-        fname = os.path.join('prefetcher', cache['prefetcher'])
-        if not os.path.exists(fname):
-            fname = norm_fname(cache['prefetcher'])
-        if not os.path.exists(fname):
-            print('Path "' + fname + '" does not exist. Exiting...')
-            sys.exit(1)
-
-        cache['prefetcher_name'] = 'p' + fname.translate(fname_translation_table)
-
-        prefix = 'ipref_' if cache.get('_is_instruction_cache') else 'pref_'
-        cache['prefetcher_initialize'] = prefix + cache['prefetcher_name'] + '_initialize'
-        cache['prefetcher_branch_operate'] = prefix + cache['prefetcher_name'] + '_branch_operate'
-        cache['prefetcher_cache_operate'] = prefix + cache['prefetcher_name'] + '_cache_operate'
-        cache['prefetcher_cache_fill'] = prefix + cache['prefetcher_name'] + '_cache_fill'
-        cache['prefetcher_cycle_operate'] = prefix + cache['prefetcher_name'] + '_cycle_operate'
-        cache['prefetcher_final_stats'] = prefix + cache['prefetcher_name'] + '_final_stats'
-
-        opts = ''
-        # These function names should be used in future designs
-        opts += ' -Dprefetcher_initialize=' + cache['prefetcher_initialize']
-        opts += ' -Dprefetcher_branch_operate=' + cache['prefetcher_branch_operate']
-        opts += ' -Dprefetcher_cache_operate=' + cache['prefetcher_cache_operate']
-        opts += ' -Dprefetcher_cache_fill=' + cache['prefetcher_cache_fill']
-        opts += ' -Dprefetcher_cycle_operate=' + cache['prefetcher_cycle_operate']
-        opts += ' -Dprefetcher_final_stats=' + cache['prefetcher_final_stats']
-        # These function names are deprecated, but we still permit them
-        opts += ' -Dl1i_prefetcher_branch_operate=' + cache['prefetcher_branch_operate']
-        opts += ' -Dl1d_prefetcher_initialize=' + cache['prefetcher_initialize']
-        opts += ' -Dl2c_prefetcher_initialize=' + cache['prefetcher_initialize']
-        opts += ' -Dllc_prefetcher_initialize=' + cache['prefetcher_initialize']
-        opts += ' -Dl1d_prefetcher_operate=' + cache['prefetcher_cache_operate']
-        opts += ' -Dl2c_prefetcher_operate=' + cache['prefetcher_cache_operate']
-        opts += ' -Dllc_prefetcher_operate=' + cache['prefetcher_cache_operate']
-        opts += ' -Dl1d_prefetcher_cache_fill=' + cache['prefetcher_cache_fill']
-        opts += ' -Dl2c_prefetcher_cache_fill=' + cache['prefetcher_cache_fill']
-        opts += ' -Dllc_prefetcher_cache_fill=' + cache['prefetcher_cache_fill']
-        opts += ' -Dl1d_prefetcher_final_stats=' + cache['prefetcher_final_stats']
-        opts += ' -Dl2c_prefetcher_final_stats=' + cache['prefetcher_final_stats']
-        opts += ' -Dllc_prefetcher_final_stats=' + cache['prefetcher_final_stats']
-        libfilenames['pref_' + cache['prefetcher_name'] + '.a'] = (fname, opts)
+repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cache['replacement'] for cache in caches.values())}
+pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in itertools.chain.from_iterable(zip(cache['prefetcher'], itertools.repeat(cache.get('_is_instruction_cache',False))) for cache in caches.values())}
+branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cpu['branch_predictor'] for cpu in cores)}
+btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cpu['btb'] for cpu in cores)}
 
 for cpu in cores:
-    # Resolve branch predictor function names
-    if cpu['branch_predictor'] is not None:
-        fname = os.path.join('branch', cpu['branch_predictor'])
-        if not os.path.exists(fname):
-            fname = norm_fname(cpu['branch_predictor'])
-        if not os.path.exists(fname):
-            print('Path "' + fname + '" does not exist. Exiting...')
-            sys.exit(1)
+    cpu['branch_predictor'] = [module_name for module_name,data in branch_data.items() if data['fname'] in cpu['branch_predictor']]
+    cpu['btb']              = [module_name for module_name,data in btb_data.items() if data['fname'] in cpu['btb']]
 
-        cpu['bpred_name'] = 'b' + fname.translate(fname_translation_table)
-        cpu['bpred_initialize'] = 'bpred_' + cpu['bpred_name'] + '_initialize'
-        cpu['bpred_last_result'] = 'bpred_' + cpu['bpred_name'] + '_last_result'
-        cpu['bpred_predict'] = 'bpred_' + cpu['bpred_name'] + '_predict'
-
-        opts = ''
-        opts += ' -Dinitialize_branch_predictor=' + cpu['bpred_initialize']
-        opts += ' -Dlast_branch_result=' + cpu['bpred_last_result']
-        opts += ' -Dpredict_branch=' + cpu['bpred_predict']
-        libfilenames['bpred_' + cpu['bpred_name'] + '.a'] = (fname, opts)
-
-    # Resolve BTB function names
-    if cpu['btb'] is not None:
-        fname = os.path.join('btb', cpu['btb'])
-        if not os.path.exists(fname):
-            fname = norm_fname(cpu['btb'])
-        if not os.path.exists(fname):
-            print('Path "' + fname + '" does not exist. Exiting...')
-            sys.exit(1)
-
-        cpu['btb_name'] = 'b' + fname.translate(fname_translation_table)
-        cpu['btb_initialize'] = 'btb_' + cpu['btb_name'] + '_initialize'
-        cpu['btb_update'] = 'btb_' + cpu['btb_name'] + '_update'
-        cpu['btb_predict'] = 'btb_' + cpu['btb_name'] + '_predict'
-
-        opts = ''
-        opts += ' -Dinitialize_btb=' + cpu['btb_initialize']
-        opts += ' -Dupdate_btb=' + cpu['btb_update']
-        opts += ' -Dbtb_prediction=' + cpu['btb_predict']
-        libfilenames['btb_' + cpu['btb_name'] + '.a'] = (fname, opts)
+for cache in caches.values():
+    cache['replacement'] = [module_name for module_name,data in repl_data.items() if data['fname'] in cache['replacement']]
+    cache['prefetcher']  = [module_name for module_name,data in pref_data.items() if data['fname'] in cache['prefetcher']]
 
 ###
 # Perform final preparations for file writing
@@ -316,11 +238,6 @@ for i in reversed(range(len(memory_system))):
             print('Could not find cache "' + ul['lower_level'] + '" in cache array. Exiting...')
             sys.exit(1)
 
-# prune Nones
-for elem in memory_system:
-    if elem['lower_level'] is not None:
-        elem['lower_level'] = '&'+elem['lower_level'] # append address operator for C++
-
 ###
 # Begin file writing
 ###
@@ -348,10 +265,16 @@ with open(instantiation_file_name, 'wt') as wfp:
         if 'pscl5_set' in elem:
             wfp.write(ptw_fmtstr.format(**elem))
         else:
-            wfp.write(cache_fmtstr.format(**elem))
+            wfp.write(cache_fmtstr.format(\
+                repl_enum_string=' | '.join(f'(1 << CACHE::r{k})' for k in elem['replacement']),\
+                pref_enum_string=' | '.join(f'(1 << CACHE::p{k})' for k in elem['prefetcher']),\
+                **elem))
 
-    for cpu in cores:
-        wfp.write(cpu_fmtstr.format(**cpu))
+    for i,cpu in enumerate(cores):
+        wfp.write(cpu_fmtstr.format(\
+            branch_enum_string=' | '.join(f'(1 << O3_CPU::b{k})' for k in cpu['branch_predictor']),\
+            btb_enum_string=' | '.join(f'(1 << O3_CPU::t{k})' for k in cpu['btb']),
+            **cpu))
 
     wfp.write('std::array<std::reference_wrapper<O3_CPU>, NUM_CPUS> ooo_cpu {{\n')
     wfp.write(', '.join('{name}'.format(**elem) for elem in cores))
@@ -366,168 +289,20 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n}};\n')
 
 # Core modules file
-bpred_names        = {c['bpred_name'] for c in cores}
-bpred_inits        = {(c['bpred_name'], c['bpred_initialize']) for c in cores}
-bpred_last_results = {(c['bpred_name'], c['bpred_last_result']) for c in cores}
-bpred_predicts     = {(c['bpred_name'], c['bpred_predict']) for c in cores}
-btb_names          = {c['btb_name'] for c in cores}
-btb_inits          = {(c['btb_name'], c['btb_initialize']) for c in cores}
-btb_updates        = {(c['btb_name'], c['btb_update']) for c in cores}
-btb_predicts       = {(c['btb_name'], c['btb_predict']) for c in cores}
 with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
-    wfp.write('enum class bpred_t\n{\n    ')
-    wfp.write(',\n    '.join(bpred_names))
-    wfp.write('\n};\n\n')
+    wfp.write(modules.get_branch_string(branch_data))
+    wfp.write(modules.get_btb_string(btb_data))
 
-    wfp.write('\n'.join('void {1}();'.format(*b) for b in bpred_inits))
-    wfp.write('\nvoid impl_branch_predictor_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type == bpred_t::{}) return {}();'.format(*b) for b in bpred_inits))
-    wfp.write('\n    throw std::invalid_argument("Branch predictor module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(*b) for b in bpred_last_results))
-    wfp.write('\nvoid impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type == bpred_t::{}) return {}(ip, target, taken, branch_type);'.format(*b) for b in bpred_last_results))
-    wfp.write('\n    throw std::invalid_argument("Branch predictor module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('uint8_t {1}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(*b) for b in bpred_predicts))
-    wfp.write('\nuint8_t impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (bpred_type == bpred_t::{}) return {}(ip, predicted_target, always_taken, branch_type);'.format(*b) for b in bpred_predicts))
-    wfp.write('\n    throw std::invalid_argument("Branch predictor module not found");')
-    wfp.write('\n    return 0;\n}\n\n')
-
-    wfp.write('enum class btb_t\n{\n    ')
-    wfp.write(',\n    '.join(btb_names))
-    wfp.write('\n};\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*b) for b in btb_inits))
-    wfp.write('\nvoid impl_btb_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}();'.format(*b) for b in btb_inits))
-    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(*b) for b in btb_updates))
-    wfp.write('\nvoid impl_update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_target, taken, branch_type);'.format(*b) for b in btb_updates))
-    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('std::pair<uint64_t, uint8_t> {1}(uint64_t, uint8_t);'.format(*b) for b in btb_predicts))
-    wfp.write('\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_type);'.format(*b) for b in btb_predicts))
-    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-# Cache modules file
-repl_names   = {c['replacement_name'] for c in caches.values()}
-repl_inits   = {(c['replacement_name'], c['replacement_initialize']) for c in caches.values()}
-repl_victims = {(c['replacement_name'], c['replacement_find_victim']) for c in caches.values()}
-repl_updates = {(c['replacement_name'], c['replacement_update_replacement_state']) for c in caches.values()}
-repl_finals  = {(c['replacement_name'], c['replacement_replacement_final_stats']) for c in caches.values()}
-pref_names   = {c['prefetcher_name'] for c in caches.values()}
-pref_inits   = {(c['prefetcher_name'], c['prefetcher_initialize']) for c in caches.values()}
-pref_branch  = {(c['prefetcher_name'], c['prefetcher_branch_operate'], c.get('_is_instruction_cache')) for c in caches.values()}
-pref_ops     = {(c['prefetcher_name'], c['prefetcher_cache_operate']) for c in caches.values()}
-pref_fill    = {(c['prefetcher_name'], c['prefetcher_cache_fill']) for c in caches.values()}
-pref_cycles  = {(c['prefetcher_name'], c['prefetcher_cycle_operate']) for c in caches.values()}
-pref_finals  = {(c['prefetcher_name'], c['prefetcher_final_stats']) for c in caches.values()}
 with open('inc/cache_modules.inc', 'wt') as wfp:
-    wfp.write('enum class repl_t\n{\n    ')
-    wfp.write(',\n    '.join(repl_names))
-    wfp.write('\n};\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*r) for r in repl_inits))
-    wfp.write('\nvoid impl_replacement_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (repl_type == repl_t::{}) return {}();'.format(*r) for r in repl_inits))
-    wfp.write('\n    throw std::invalid_argument("Replacement policy module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('uint32_t {1}(uint32_t, uint64_t, uint32_t, const BLOCK*, uint64_t, uint64_t, uint32_t);'.format(*r) for r in repl_victims))
-    wfp.write('\nuint32_t impl_replacement_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)\n{\n    ')
-    wfp.write('\n    '.join('if (repl_type == repl_t::{}) return {}(cpu, instr_id, set, current_set, ip, full_addr, type);'.format(*r) for r in repl_victims))
-    wfp.write('\n    throw std::invalid_argument("Replacement policy module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}(uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t);'.format(*r) for r in repl_updates))
-    wfp.write('\nvoid impl_replacement_update_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)\n{\n    ')
-    wfp.write('\n    '.join('if (repl_type == repl_t::{}) return {}(cpu, set, way, full_addr, ip, victim_addr, type, hit);'.format(*r) for r in repl_updates))
-    wfp.write('\n    throw std::invalid_argument("Replacement policy module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*r) for r in repl_finals))
-    wfp.write('\nvoid impl_replacement_final_stats()\n{\n    ')
-    wfp.write('\n    '.join('if (repl_type == repl_t::{}) return {}();'.format(*r) for r in repl_finals))
-    wfp.write('\n    throw std::invalid_argument("Replacement policy module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('enum class pref_t\n{\n    ')
-    wfp.write(',\n    '.join(pref_names))
-    wfp.write('\n};\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*p) for p in pref_inits))
-    wfp.write('\nvoid impl_prefetcher_initialize()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}();'.format(*p) for p in pref_inits))
-    wfp.write('\n    throw std::invalid_argument("Data prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    for n,f,is_instr in pref_branch:
-        if is_instr:
-            wfp.write('void {}(uint64_t, uint8_t, uint64_t);\n'.format(f))
-        else:
-            wfp.write('void {}(uint64_t, uint8_t, uint64_t) {{ assert(false); }}\n'.format(f))
-    wfp.write('\nvoid impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}(ip, branch_type, branch_target);'.format(*i) for i in pref_branch))
-    wfp.write('\n    throw std::invalid_argument("Instruction prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('uint32_t {1}(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t);'.format(*p) for p in pref_ops))
-    wfp.write('\nuint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}(addr, ip, cache_hit, type, metadata_in);'.format(*p) for p in pref_ops))
-    wfp.write('\n    throw std::invalid_argument("Data prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('uint32_t {1}(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);'.format(*p) for p in pref_fill))
-    wfp.write('\nuint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}(addr, set, way, prefetch, evicted_addr, metadata_in);'.format(*p) for p in pref_fill))
-    wfp.write('\n    throw std::invalid_argument("Data prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*p) for p in pref_cycles))
-    wfp.write('\nvoid impl_prefetcher_cycle_operate()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}();'.format(*p) for p in pref_cycles))
-    wfp.write('\n    throw std::invalid_argument("Data prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
-
-    wfp.write('\n'.join('void {1}();'.format(*p) for p in pref_finals))
-    wfp.write('\nvoid impl_prefetcher_final_stats()\n{\n    ')
-    wfp.write('\n    '.join('if (pref_type == pref_t::{}) return {}();'.format(*p) for p in pref_finals))
-    wfp.write('\n    throw std::invalid_argument("Data prefetcher module not found");')
-    wfp.write('\n}\n')
-    wfp.write('\n')
+    wfp.write(modules.get_repl_string(repl_data))
+    wfp.write(modules.get_pref_string(pref_data))
 
 # Constants header
 with open(constants_header_name, 'wt') as wfp:
     wfp.write('/***\n * THIS FILE IS AUTOMATICALLY GENERATED\n * Do not edit this file. It will be overwritten when the configure script is run.\n ***/\n\n')
     wfp.write('#ifndef CHAMPSIM_CONSTANTS_H\n')
     wfp.write('#define CHAMPSIM_CONSTANTS_H\n')
+    wfp.write('#include <cstdlib>\n')
     wfp.write('#include "util.h"\n')
     wfp.write('constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**config_file))
     wfp.write('constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file))
@@ -537,6 +312,10 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('constexpr std::size_t NUM_OPERABLES = 2*NUM_CPUS + NUM_CACHES + 1;\n')
     wfp.write('constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n')
     wfp.write('constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n')
+    wfp.write(f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n')
+    wfp.write(f'constexpr static std::size_t NUM_BTB_MODULES = {len(btb_data)};\n')
+    wfp.write(f'constexpr static std::size_t NUM_REPLACEMENT_MODULES = {len(repl_data)};\n')
+    wfp.write(f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n')
 
     wfp.write('constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**config_file['physical_memory']))
     wfp.write('constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**config_file['physical_memory']))
@@ -555,6 +334,8 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#endif\n')
 
 # Makefile
+module_info = tuple(itertools.chain(repl_data.values(), pref_data.values(), branch_data.values(), btb_data.values()))
 with open('_configuration.mk', 'wt') as wfp:
-    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, libfilenames, **config_file))
+    wfp.write(makefile.get_makefile_string(constants_header_name, instantiation_file_name, module_info, **config_file))
 
+# vim: set filetype=python:

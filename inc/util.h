@@ -100,11 +100,11 @@ class simple_lru_table
   uint64_t access_count = 0;
   std::vector<block_t> block{NUM_SET * NUM_WAY};
 
-  std::pair<std::vector<block_t>::iterator, std::vector<block_t>::iterator> get_set_span(uint64_t index)
+  auto get_set_span(uint64_t index)
   {
     auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
     auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-    return {set_begin, std::next(set_begin, NUM_WAY)};
+    return std::pair{set_begin, std::next(set_begin, NUM_WAY)};
   }
 
   public:
@@ -113,7 +113,7 @@ class simple_lru_table
   std::optional<T> check_hit(uint64_t index)
   {
     auto [set_begin, set_end] = get_set_span(index);
-    auto hit_block = std::find_if(set_begin, set_end, [index, shamt](auto x){ return x.last_used > 0 && (x.address >> shamt) == (index >> shamt); }));
+    auto hit_block = std::find_if(set_begin, set_end, [index, shamt=this->shamt](auto x){ return x.last_used > 0 && (x.address >> shamt) == (index >> shamt); });
 
     if (hit_block != set_end) {
       hit_block->last_used = ++access_count;
@@ -128,7 +128,7 @@ class simple_lru_table
     auto [set_begin, set_end] = get_set_span(index);
     auto fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
 
-    *fill_block = {true, index, ++access_count, data};
+    *fill_block = {index, ++access_count, data};
   }
 };
 
