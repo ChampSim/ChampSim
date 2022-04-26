@@ -170,3 +170,41 @@ SCENARIO("A simple_lru_table exhibits set-associative behavior") {
     }
   }
 }
+
+SCENARIO("A simple_lru_table misses after invalidation") {
+  GIVEN("A simple_lru_table with one element") {
+    constexpr uint64_t index = 0xdeadbeef;
+    constexpr uint64_t data  = 0xcafebabe;
+    constexpr std::size_t shamt = 8;
+    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    uut.fill_cache(index, data);
+
+    WHEN("We invalidate the block") {
+      uut.invalidate(index);
+
+      THEN("A subsequent check results in a miss") {
+        auto result = uut.check_hit(index);
+        REQUIRE_FALSE(result.has_value());
+      }
+    }
+  }
+}
+
+SCENARIO("A simple_lru_table returns the evicted block on invalidation") {
+  GIVEN("A simple_lru_table with one element") {
+    constexpr uint64_t index = 0xdeadbeef;
+    constexpr uint64_t data  = 0xcafebabe;
+    constexpr std::size_t shamt = 8;
+    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    uut.fill_cache(index, data);
+
+    WHEN("We invalidate the block") {
+      auto result = uut.invalidate(index);
+
+      THEN("The returned value is the original block") {
+        REQUIRE(result.has_value());
+        REQUIRE(result.value() == data);
+      }
+    }
+  }
+}

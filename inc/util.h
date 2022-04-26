@@ -107,28 +107,47 @@ class simple_lru_table
     return std::pair{set_begin, std::next(set_begin, NUM_WAY)};
   }
 
+  auto match_func(uint64_t index)
+  {
+    return [index, shamt=this->shamt](auto x){ return x.last_used > 0 && (x.address >> shamt) == (index >> shamt); };
+  }
+
   public:
   simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
 
   std::optional<T> check_hit(uint64_t index)
   {
     auto [set_begin, set_end] = get_set_span(index);
-    auto hit_block = std::find_if(set_begin, set_end, [index, shamt=this->shamt](auto x){ return x.last_used > 0 && (x.address >> shamt) == (index >> shamt); });
+    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
 
-    if (hit_block != set_end) {
-      hit_block->last_used = ++access_count;
-      return hit_block->data;
-    }
+    if (hit_block == set_end)
+      return std::nullopt;
 
-    return std::nullopt;
+    hit_block->last_used = ++access_count;
+    return hit_block->data;
   }
 
   void fill_cache(uint64_t index, T data)
   {
     auto [set_begin, set_end] = get_set_span(index);
-    auto fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
+    auto fill_block = std::find_if(set_begin, set_end, match_func(index));
+
+    if (fill_block == set_end)
+      fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
 
     *fill_block = {index, ++access_count, data};
+  }
+
+  std::optional<T> invalidate(uint64_t index)
+  {
+    auto [set_begin, set_end] = get_set_span(index);
+    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
+
+    if (hit_block == set_end)
+      return std::nullopt;
+
+    auto oldval = std::exchange(*hit_block, {0, 0, {}});
+    return oldval.data;
   }
 };
 
