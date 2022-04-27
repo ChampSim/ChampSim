@@ -20,7 +20,7 @@ instantiation_file_name = 'src/core_inst.cc'
 cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, &{lower_level}, {pref_enum_string}, {repl_enum_string});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, &{lower_level}, vmem);\n'
 
-cpu_fmtstr = 'O3_CPU {name}({index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string});\n'
+cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string}}}'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
 vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
@@ -270,11 +270,11 @@ with open(instantiation_file_name, 'wt') as wfp:
                 pref_enum_string=' | '.join(f'(1 << CACHE::p{k})' for k in elem['prefetcher']),\
                 **elem))
 
-    for i,cpu in enumerate(cores):
-        wfp.write(cpu_fmtstr.format(\
-            branch_enum_string=' | '.join(f'(1 << O3_CPU::b{k})' for k in cpu['branch_predictor']),\
+    wfp.write(',\n'.join(
+        'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
+            branch_enum_string=' | '.join(f'(1 << O3_CPU::b{k})' for k in cpu['branch_predictor']),
             btb_enum_string=' | '.join(f'(1 << O3_CPU::t{k})' for k in cpu['btb']),
-            **cpu))
+            **cpu) + ';\n' for cpu in cores))
 
     wfp.write('std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{\n')
     wfp.write(', '.join('{name}'.format(**elem) for elem in cores))
@@ -284,8 +284,8 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write(', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem))
     wfp.write('\n}};\n')
 
-    wfp.write('std::vector<std::reference_wrapper<champsim::operable>> operables {{\n')
-    wfp.write(', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, memory_system, (config_file['physical_memory'],))))
+    wfp.write('std::vector<std::reference_wrapper<PageTableWalker>> ptws {{\n')
+    wfp.write(', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' in elem))
     wfp.write('\n}};\n')
 
 # Core modules file

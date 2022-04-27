@@ -10,6 +10,7 @@
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
+#include "ptw.h"
 #include "vmem.h"
 
 // For backwards compatibility with older module source.
@@ -19,7 +20,7 @@ extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
 extern std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu;
 extern std::vector<std::reference_wrapper<CACHE>> caches;
-extern std::vector<std::reference_wrapper<champsim::operable>> operables;
+extern std::vector<std::reference_wrapper<PageTableWalker>> ptws;
 
 struct phase_info {
   std::string name;
@@ -112,9 +113,7 @@ int main(int argc, char** argv)
     printf("\n*** Number of traces does not match the number of cores ***\n\n");
     return 1;
   }
-  // end trace file setup
 
-  // SHARED CACHE
   for (O3_CPU& cpu : ooo_cpu) {
     cpu.initialize_core();
   }
@@ -123,6 +122,12 @@ int main(int argc, char** argv)
     cache.impl_prefetcher_initialize();
     cache.impl_replacement_initialize();
   }
+
+  std::vector<std::reference_wrapper<champsim::operable>> operables;
+  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
+  operables.push_back(std::ref<champsim::operable>(DRAM));
 
   champsim_main(ooo_cpu, operables, phases, show_heartbeat, knob_cloudsuite, trace_names);
 
