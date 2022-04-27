@@ -11,12 +11,15 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 {
   std::deque<PACKET> packets;
   public:
+    std::deque<uint64_t> addresses;
     do_nothing_MRC() : MemoryRequestConsumer(1), champsim::operable(1) {}
 
     void operate() {
-      for (const PACKET &pkt : packets)
+      for (const PACKET &pkt : packets) {
+        addresses.push_back(pkt.address);
         for (auto ret : pkt.to_return)
           ret->return_data(pkt);
+      }
       packets.clear();
     }
 

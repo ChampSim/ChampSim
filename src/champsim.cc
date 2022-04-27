@@ -76,8 +76,8 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
   std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
   std::cout << std::endl;
-  std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
-  std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
+  std::cout << "VirtualMemory physical capacity: " << vmem.available_ppages() * vmem.page_size;
+  std::cout << " num_ppages: " << vmem.available_ppages() << std::endl;
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
