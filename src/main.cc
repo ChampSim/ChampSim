@@ -4,13 +4,30 @@
 #include <string>
 #include <vector>
 
+#include "cache.h"
+#include "champsim.h"
+#include "champsim_constants.h"
+#include "dram_controller.h"
+#include "ooo_cpu.h"
+#include "operable.h"
+#include "vmem.h"
+
+// For backwards compatibility with older module source.
+champsim::deprecated_clock_cycle current_core_cycle;
+
+extern MEMORY_CONTROLLER DRAM;
+extern VirtualMemory vmem;
+extern std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu;
+extern std::vector<std::reference_wrapper<CACHE>> caches;
+extern std::vector<std::reference_wrapper<champsim::operable>> operables;
+
 struct phase_info {
   std::string name;
   bool is_warmup;
   uint64_t length;
 };
 
-int champsim_main(std::vector<phase_info> &phases, bool show_heartbeat, bool knob_cloudsuite, std::vector<std::string> trace_names);
+int champsim_main(std::vector<std::reference_wrapper<O3_CPU>> &cpus, std::vector<std::reference_wrapper<champsim::operable>> &operables, std::vector<phase_info> &phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -67,5 +84,74 @@ int main(int argc, char** argv)
 
   std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
 
-  return champsim_main(phases, show_heartbeat, knob_cloudsuite, trace_names);
+  std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
+
+  std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
+  std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
+  std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
+
+  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  std::cout << "Off-chip DRAM Size: ";
+  if (dram_size > 1024)
+    std::cout << dram_size / 1024 << " GiB";
+  else
+    std::cout << dram_size << " MiB";
+  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
+
+  std::cout << std::endl;
+  std::cout << "VirtualMemory physical capacity: " << vmem.available_ppages() * vmem.page_size;
+  std::cout << " num_ppages: " << vmem.available_ppages() << std::endl;
+  std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
+
+  std::cout << std::endl;
+  int i = 0;
+  for (auto name : trace_names)
+    std::cout << "CPU " << i++ << " runs " << name << std::endl;
+
+  if (std::size(trace_names) != std::size(ooo_cpu)) {
+    printf("\n*** Number of traces does not match the number of cores ***\n\n");
+    return 1;
+  }
+  // end trace file setup
+
+  // SHARED CACHE
+  for (O3_CPU& cpu : ooo_cpu) {
+    cpu.initialize_core();
+  }
+
+  for (CACHE& cache : caches) {
+    cache.impl_prefetcher_initialize();
+    cache.impl_replacement_initialize();
+  }
+
+  champsim_main(ooo_cpu, operables, phases, show_heartbeat, knob_cloudsuite, trace_names);
+
+  std::cout << "ChampSim completed all CPUs" << std::endl;
+
+  if (std::size(ooo_cpu) > 1) {
+    std::cout << std::endl;
+    std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
+
+    for (O3_CPU& cpu : ooo_cpu)
+      cpu.print_phase_stats();
+
+    for (CACHE& cache : caches)
+      cache.print_phase_stats();
+  }
+
+  std::cout << std::endl;
+  std::cout << "Region of Interest Statistics" << std::endl;
+  for (O3_CPU& cpu : ooo_cpu)
+    cpu.print_roi_stats();
+
+  for (CACHE& cache : caches)
+    cache.print_roi_stats();
+
+  for (CACHE& cache : caches)
+    cache.impl_prefetcher_final_stats();
+
+  for (CACHE& cache : caches)
+    cache.impl_replacement_final_stats();
+
+  DRAM.print_phase_stats();
 }
