@@ -11,7 +11,7 @@
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
-uint8_t show_heartbeat;
+bool show_heartbeat;
 
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 

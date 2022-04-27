@@ -31,6 +31,8 @@ extern std::array<std::reference_wrapper<O3_CPU>, NUM_CPUS> ooo_cpu;
 extern std::array<std::reference_wrapper<CACHE>, NUM_CACHES> caches;
 extern std::array<std::reference_wrapper<champsim::operable>, NUM_OPERABLES> operables;
 
+extern bool show_heartbeat;
+
 uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
 {
   static bool deprecate_printed = false;
@@ -57,9 +59,10 @@ struct phase_info {
   uint64_t length;
 };
 
-int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
+int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat_, bool knob_cloudsuite,
                   std::vector<std::string> trace_names)
 {
+  show_heartbeat = show_heartbeat_;
   std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
 
   // consequences of knobs
