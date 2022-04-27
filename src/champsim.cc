@@ -59,16 +59,15 @@ struct phase_info {
   uint64_t length;
 };
 
-int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat_, bool knob_cloudsuite,
-                  std::vector<std::string> trace_names)
+int champsim_main(std::vector<phase_info> &phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   show_heartbeat = show_heartbeat_;
   std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
 
   // consequences of knobs
-  std::cout << "Warmup Instructions: " << warmup_instructions << std::endl;
-  std::cout << "Simulation Instructions: " << simulation_instructions << std::endl;
-  std::cout << "Number of CPUs: " << NUM_CPUS << std::endl;
+  std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
+  std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
+  std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
 
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
   std::cout << "Off-chip DRAM Size: ";
@@ -89,15 +88,10 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
     std::cout << "CPU " << traces.size() << " runs " << name << std::endl;
 
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
-
-    if (traces.size() > NUM_CPUS) {
-      printf("\n*** Too many traces for the configured number of cores ***\n\n");
-      return 1;
-    }
   }
 
-  if (traces.size() != NUM_CPUS) {
-    printf("\n*** Not enough traces for the configured number of cores ***\n\n");
+  if (traces.size() != std::size(ooo_cpu)) {
+    printf("\n*** Number of traces does not match the number of cores ***\n\n");
     return 1;
   }
   // end trace file setup
@@ -112,19 +106,17 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
     cache.impl_replacement_initialize();
   }
 
-  std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
-
   // simulation entry point
-  for (auto phase : phases) {
+  for (auto [phase_name, is_warmup, length] : phases) {
     // Initialize phase
     for (champsim::operable& op : operables) {
-      op.warmup = phase.is_warmup;
+      op.warmup = is_warmup;
       op.begin_phase();
     }
 
     // Perform phase
-    std::bitset<NUM_CPUS> phase_complete = {};
-    while (!phase_complete.all()) {
+    std::vector<bool> phase_complete(std::size(ooo_cpu), false);
+    while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
       // Operate
       for (champsim::operable& op : operables) {
         try {
@@ -161,12 +153,12 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
       auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
       for (O3_CPU& cpu : ooo_cpu) {
         // Phase complete
-        if (!phase_complete[cpu.cpu] && (cpu.sim_instr() >= phase.length)) {
-          phase_complete.set(cpu.cpu);
+        if (!phase_complete[cpu.cpu] && (cpu.sim_instr() >= length)) {
+          phase_complete[cpu.cpu] = true;
           for (champsim::operable& op : operables)
             op.end_phase(cpu.cpu);
 
-          std::cout << phase.name << " finished CPU " << cpu.cpu;
+          std::cout << phase_name << " finished CPU " << cpu.cpu;
           std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle() << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
           std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         }
@@ -176,7 +168,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
     auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
     for (O3_CPU& cpu : ooo_cpu) {
       std::cout << std::endl;
-      std::cout << phase.name << " complete CPU " << cpu.cpu << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle();
+      std::cout << phase_name << " complete CPU " << cpu.cpu << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle();
       std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
       std::cout << std::endl;
     }
@@ -184,7 +176,7 @@ int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions
 
   std::cout << "ChampSim completed all CPUs" << std::endl;
 
-  if (NUM_CPUS > 1) {
+  if (std::size(ooo_cpu) > 1) {
     std::cout << std::endl;
     std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
 

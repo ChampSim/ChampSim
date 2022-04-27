@@ -4,20 +4,19 @@
 #include <string>
 #include <vector>
 
-int champsim_main(uint64_t warmup_instructions, uint64_t simulation_instructions, bool show_heartbeat, bool knob_cloudsuite,
-                  std::vector<std::string> trace_names);
+struct phase_info {
+  std::string name;
+  bool is_warmup;
+  uint64_t length;
+};
+
+int champsim_main(std::vector<phase_info> &phases, bool show_heartbeat, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
   std::cout << "Caught signal: " << signal << std::endl;
   abort();
 }
-
-struct phase_info {
-  std::string name;
-  bool is_warmup;
-  uint64_t length;
-};
 
 int main(int argc, char** argv)
 {
@@ -66,5 +65,7 @@ int main(int argc, char** argv)
 
   std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
 
-  return champsim_main(warmup_instructions, simulation_instructions, show_heartbeat, knob_cloudsuite, trace_names);
+  std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
+
+  return champsim_main(phases, show_heartbeat, knob_cloudsuite, trace_names);
 }
