@@ -85,7 +85,8 @@ struct ord_event_cycle {
   }
 };
 
-namespace champsim {
+namespace champsim
+{
 
 template <typename T>
 class simple_lru_table
@@ -109,10 +110,12 @@ class simple_lru_table
 
   auto match_func(uint64_t index)
   {
-    return [index, shamt=this->shamt](auto x){ return x.last_used > 0 && (x.address >> shamt) == (index >> shamt); };
+    return [index, shamt = this->shamt](auto x) {
+      return x.last_used > 0 && (x.address >> shamt) == (index >> shamt);
+    };
   }
 
-  public:
+public:
   simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
 
   std::optional<T> check_hit(uint64_t index)
@@ -133,7 +136,7 @@ class simple_lru_table
     auto fill_block = std::find_if(set_begin, set_end, match_func(index));
 
     if (fill_block == set_end)
-      fill_block = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
+      fill_block = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
     *fill_block = {index, ++access_count, data};
   }
@@ -151,6 +154,6 @@ class simple_lru_table
   }
 };
 
-}
+} // namespace champsim
 
 #endif

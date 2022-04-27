@@ -96,7 +96,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
       match->type = type;
       match->used = 1;
     } else {
-      match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
+      match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
         uint32_t SHCT_idx = match->ip % SHCT_PRIME;

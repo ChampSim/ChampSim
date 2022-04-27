@@ -19,6 +19,7 @@ private:
   uint64_t next_pte_page;
 
   std::deque<uint64_t> ppage_free_list;
+
 public:
   const uint64_t minor_fault_penalty;
   const uint32_t pt_levels;

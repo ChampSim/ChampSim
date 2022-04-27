@@ -4,9 +4,10 @@
 #include "champsim_constants.h"
 #include "util.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>> &&_pscl, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory &_vmem)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), RQ{v10, latency},
-      pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl)+1).first)
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
+                                 uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
+    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
+      MAX_FILL(v13), RQ{v10, latency}, pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }
 
@@ -25,7 +26,7 @@ void PageTableWalker::handle_read()
         walk_init_level = std::distance(cache, std::end(pscl)) - 1;
       }
     }
-    auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init_level+1) * PTE_BYTES;
+    auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init_level + 1) * PTE_BYTES;
 
     if constexpr (champsim::debug_print) {
       std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
@@ -86,7 +87,7 @@ void PageTableWalker::handle_fill()
         const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
         pscl.at(pscl_idx).fill_cache(fill_mshr.v_address, fill_mshr.data);
 
-        auto success = step_translation(fill_mshr.data, fill_mshr.translation_level-1, fill_mshr);
+        auto success = step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
         if (!success)
           return;
       }
@@ -100,7 +101,7 @@ void PageTableWalker::handle_fill()
   }
 }
 
-bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET &source)
+bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
