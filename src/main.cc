@@ -28,7 +28,8 @@ struct phase_info {
   uint64_t length;
 };
 
-int champsim_main(std::vector<std::reference_wrapper<O3_CPU>> &cpus, std::vector<std::reference_wrapper<champsim::operable>> &operables, std::vector<phase_info> &phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names);
+int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
+                  std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -124,9 +125,9 @@ int main(int argc, char** argv)
   }
 
   std::vector<std::reference_wrapper<champsim::operable>> operables;
-  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
-  std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(operables), [](auto &x){ return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
   operables.push_back(std::ref<champsim::operable>(DRAM));
 
   champsim_main(ooo_cpu, operables, phases, show_heartbeat, knob_cloudsuite, trace_names);

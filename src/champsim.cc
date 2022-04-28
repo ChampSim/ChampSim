@@ -35,7 +35,8 @@ struct phase_info {
   uint64_t length;
 };
 
-int champsim_main(std::vector<std::reference_wrapper<O3_CPU>> &ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>> &operables, std::vector<phase_info> &phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names)
+int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
+                  std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   show_heartbeat = show_heartbeat_;
   std::vector<supported_tracereader> traces;
