@@ -11,7 +11,7 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_lev
 {
 }
 
-bool PageTableWalker::handle_read(const PACKET &handle_pkt)
+bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 {
   auto walk_base = CR3_addr;
   auto walk_init_level = std::size(pscl);
@@ -43,7 +43,7 @@ bool PageTableWalker::handle_read(const PACKET &handle_pkt)
   return true;
 }
 
-bool PageTableWalker::handle_fill(const PACKET &fill_mshr)
+bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
