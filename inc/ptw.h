@@ -42,8 +42,8 @@ public:
   void return_data(const PACKET& packet) override;
   void operate() override;
 
-  void handle_read();
-  void handle_fill();
+  bool handle_read(const PACKET &pkt);
+  bool handle_fill(const PACKET &pkt);
   bool step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source);
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
