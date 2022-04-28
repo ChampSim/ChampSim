@@ -5,9 +5,9 @@
 #include "util.h"
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
-                                 uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
-      MAX_FILL(v13), RQ{v10, latency}, pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
+                                 uint32_t v11, uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
+    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12),
+      MAX_FILL(v13), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }
 
@@ -111,7 +111,7 @@ void PageTableWalker::operate()
   }
 
   int reads_this_cycle = MAX_READ;
-  while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
+  while (reads_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle && std::size(MSHR) != MSHR_SIZE) {
     auto success = handle_read(RQ.front());
     if (!success)
       break;
@@ -119,7 +119,6 @@ void PageTableWalker::operate()
     RQ.pop_front();
     reads_this_cycle--;
   }
-  RQ.operate();
 }
 
 bool PageTableWalker::add_rq(const PACKET& packet)
@@ -131,12 +130,13 @@ bool PageTableWalker::add_rq(const PACKET& packet)
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
-  if (RQ.full()) {
+  if (std::size(RQ) >= RQ_SIZE)
     return false; // cannot handle this request
-  }
 
   // if there is no duplicate, add it to RQ
-  RQ.push_back(packet);
+  auto fwd_pkt = packet;
+  fwd_pkt.event_cycle = current_cycle + 1;
+  RQ.push_back(fwd_pkt);
 
   return true;
 }
@@ -164,15 +164,15 @@ void PageTableWalker::return_data(const PACKET& packet)
     }
   }
 
-  MSHR.sort(ord_event_cycle<PACKET>());
+  std::sort(std::begin(MSHR), std::end(MSHR), ord_event_cycle<PACKET>{});
 }
 
 uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
 {
   if (queue_type == 0)
-    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+    return std::size(MSHR);
   else if (queue_type == 1)
-    return RQ.occupancy();
+    return std::size(RQ);
   return 0;
 }
 
@@ -181,7 +181,7 @@ uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
   if (queue_type == 0)
     return MSHR_SIZE;
   else if (queue_type == 1)
-    return RQ.size();
+    return RQ_SIZE;
   return 0;
 }
 

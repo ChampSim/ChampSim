@@ -1,15 +1,14 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <list>
+#include <cassert>
+#include <deque>
 #include <map>
 #include <optional>
 #include <string>
 
-#include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
-#include "util.h"
 #include "vmem.h"
 
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -17,11 +16,10 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 public:
   const std::string NAME;
   const uint32_t cpu;
-  const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint32_t RQ_SIZE, MSHR_SIZE, MAX_READ, MAX_FILL;
 
-  champsim::delay_queue<PACKET> RQ;
-
-  std::list<PACKET> MSHR;
+  std::deque<PACKET> RQ;
+  std::deque<PACKET> MSHR;
 
   uint64_t total_miss_latency = 0;
 
@@ -32,7 +30,7 @@ public:
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
   PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
+                  uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
   bool add_rq(const PACKET& packet) override;
