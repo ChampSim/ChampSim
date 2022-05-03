@@ -18,10 +18,14 @@ void pclose_file(FILE* f);
 class tracereader
 {
 public:
+  const std::string trace_string;
   tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu) {}
+  virtual ~tracereader() = default;
+
+  virtual ooo_model_instr operator()() = 0;
+  bool eof() const;
 
 protected:
-  std::string trace_string;
   static FILE* get_fptr(std::string fname);
 
   std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
@@ -43,31 +47,4 @@ protected:
   ooo_model_instr impl_get();
 };
 
-template <typename T>
-class bulk_tracereader : public tracereader
-{
-public:
-  using tracereader::tracereader;
-  friend class get_instr;
-  friend class get_eof;
-  friend class get_trace_string;
-};
-
-using supported_tracereader = std::variant<bulk_tracereader<input_instr>, bulk_tracereader<cloudsuite_instr>>;
-
-struct get_instr {
-  ooo_model_instr operator()(bulk_tracereader<input_instr>& tr);
-  ooo_model_instr operator()(bulk_tracereader<cloudsuite_instr>& tr);
-};
-
-struct get_eof {
-  bool operator()(const bulk_tracereader<input_instr>& tr);
-  bool operator()(const bulk_tracereader<cloudsuite_instr>& tr);
-};
-
-struct get_trace_string {
-  std::string operator()(const bulk_tracereader<input_instr>& tr);
-  std::string operator()(const bulk_tracereader<cloudsuite_instr>& tr);
-};
-
-supported_tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);

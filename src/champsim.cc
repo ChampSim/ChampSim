@@ -39,7 +39,7 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
                   std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   show_heartbeat = show_heartbeat_;
-  std::vector<supported_tracereader> traces;
+  std::vector<std::unique_ptr<tracereader>> traces;
   for (auto name : trace_names)
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
@@ -75,11 +75,11 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
       // Read from trace
       for (O3_CPU& cpu : ooo_cpu) {
         while (std::size(cpu.input_queue) < cpu.IN_QUEUE_SIZE) {
-          cpu.input_queue.push_back(std::visit(get_instr{}, traces[cpu.cpu]));
+          cpu.input_queue.push_back((*traces[cpu.cpu])());
 
           // Reopen trace if we've reached the end of the file
-          if (std::visit(get_eof{}, traces[cpu.cpu])) {
-            auto name = std::visit(get_trace_string{}, traces[cpu.cpu]);
+          if (traces[cpu.cpu]->eof()) {
+            auto name = traces[cpu.cpu]->trace_string;
             std::cout << "*** Reached end of trace: " << name << std::endl;
             traces[cpu.cpu] = get_tracereader(name, cpu.cpu, knob_cloudsuite);
           }
