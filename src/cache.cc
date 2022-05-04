@@ -559,25 +559,31 @@ void CACHE::print_deadlock()
   }
 
   if (!std::empty(queues.RQ)) {
-      std::cout << NAME << " RQ head " << " instr_id: " << queues.RQ.front().instr_id;
-      std::cout << " address: " << std::hex << queues.RQ.front().address << " v_addr: " << queues.RQ.front().v_address << std::dec << " type: " << +queues.RQ.front().type;
-      std::cout << " event_cycle: " << queues.RQ.front().event_cycle << std::endl;
+    for (const auto &entry : queues.RQ) {
+      std::cout << "[" << NAME << " RQ] " << " instr_id: " << entry.instr_id;
+      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    }
   } else {
     std::cout << NAME << " RQ empty" << std::endl;
   }
 
   if (!std::empty(queues.WQ)) {
-      std::cout << NAME << " WQ head " << " instr_id: " << queues.WQ.front().instr_id;
-      std::cout << " address: " << std::hex << queues.WQ.front().address << " v_addr: " << queues.WQ.front().v_address << std::dec << " type: " << +queues.WQ.front().type;
-      std::cout << " event_cycle: " << queues.WQ.front().event_cycle << std::endl;
+    for (const auto &entry : queues.WQ) {
+      std::cout << "[" << NAME << " WQ] " << " instr_id: " << entry.instr_id;
+      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    }
   } else {
     std::cout << NAME << " WQ empty" << std::endl;
   }
 
   if (!std::empty(queues.PQ)) {
-      std::cout << NAME << " PQ head " << " instr_id: " << queues.PQ.front().instr_id;
-      std::cout << " address: " << std::hex << queues.PQ.front().address << " v_addr: " << queues.PQ.front().v_address << std::dec << " type: " << +queues.PQ.front().type;
-      std::cout << " event_cycle: " << queues.PQ.front().event_cycle << std::endl;
+    for (const auto &entry : queues.PQ) {
+      std::cout << "[" << NAME << " PQ] " << " instr_id: " << entry.instr_id;
+      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    }
   } else {
     std::cout << NAME << " PQ empty" << std::endl;
   }

@@ -19,7 +19,7 @@ public:
   bool valid = false;
   uint8_t type = 0, used = 0;
   uint64_t address = 0, cl_addr = 0, ip = 0;
-  uint32_t lru = 9999999;
+  uint64_t last_used = 0;
 };
 
 // sampler
@@ -96,7 +96,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
       match->type = type;
       match->used = 1;
     } else {
-      match = std::max_element(s_set_begin, s_set_end, lru_comparator<SAMPLER_class, SAMPLER_class>());
+      match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
         uint32_t SHCT_idx = match->ip % SHCT_PRIME;
@@ -112,9 +112,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     }
 
     // update LRU state
-    for (auto it = s_set_begin; it != s_set_end; ++it)
-      it->lru++;
-    match->lru = 0;
+    match->last_used = current_cycle;
   }
 
   if (hit)

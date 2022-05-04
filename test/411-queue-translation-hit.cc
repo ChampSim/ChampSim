@@ -26,6 +26,7 @@ SCENARIO("Cache queues issue translations in WQ") {
 
       auto old_event_cycle = uut.current_cycle;
 
+      mock_ll._operate();
       uut._operate();
 
       THEN("The packet is issued for translation") {
@@ -69,6 +70,7 @@ SCENARIO("Cache queues issue translations in RQ") {
 
       auto old_event_cycle = uut.current_cycle;
 
+      mock_ll._operate();
       uut._operate();
 
       THEN("The packet is issued for translation") {
@@ -112,6 +114,7 @@ SCENARIO("Cache queues issue translations in PQ") {
 
       auto old_event_cycle = uut.current_cycle;
 
+      mock_ll._operate();
       uut._operate();
 
       THEN("The packet is issued for translation") {

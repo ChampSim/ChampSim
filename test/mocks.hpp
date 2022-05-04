@@ -12,24 +12,25 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
   std::deque<PACKET> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
-  unsigned mpacket_count = 0;
 
   void add(PACKET pkt) {
     pkt.event_cycle = current_cycle + latency;
+    pkt.data = ++ret_data;
+    addresses.push_back(pkt.address);
     packets.push_back(pkt);
-    ++mpacket_count;
   }
 
   public:
+    std::deque<uint64_t> addresses{};
     do_nothing_MRC(uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), latency(latency) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
-    void operate() {
+    void operate() override {
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
+      packets.erase(std::begin(packets), end);
 
       for (PACKET &pkt : ready_packets) {
-        pkt.data = ++ret_data;
         for (auto ret : pkt.to_return)
           ret->return_data(pkt);
       }
@@ -43,7 +44,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
     uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
 
-    unsigned packet_count() const { return mpacket_count; }
+    unsigned packet_count() const { return std::size(addresses); }
 };
 
 /*
@@ -68,7 +69,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
     filter_MRC(uint64_t ret_addr_, uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(latency) {}
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
-    void operate() {
+    void operate() override {
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 

@@ -1,6 +1,7 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <bitset>
 #include <deque>
 #include <functional>
 #include <list>
@@ -176,16 +177,16 @@ public:
 
 #include "cache_modules.inc"
 
-  const repl_t repl_type;
-  const pref_t pref_type;
+  const std::bitset<NUM_REPLACEMENT_MODULES> repl_type;
+  const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // constructor
   CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8,
-        uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, NonTranslatingQueues &queues, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+        uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask,
+        NonTranslatingQueues &queues, MemoryRequestConsumer* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         MSHR_SIZE(v8), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
-        MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
+        MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_mask),
         queues(queues), repl_type(repl), pref_type(pref)
   {
   }

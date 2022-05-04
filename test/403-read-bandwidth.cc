@@ -10,7 +10,7 @@ SCENARIO("The read queue respects the read bandwidth") {
     constexpr std::size_t read_bandwidth = 2;
     do_nothing_MRC mock_ll;
     CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut", 1, 1, 8, 32, fill_latency, read_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pref_t::pprefetcherDno, CACHE::repl_t::rreplacementDlru};
+    CACHE uut{"403-uut", 1, 1, 8, 32, fill_latency, read_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut}, mock_ul{&uut};
 
     std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
@@ -79,7 +79,7 @@ SCENARIO("The prefetch queue respects the read bandwidth") {
     constexpr std::size_t read_bandwidth = 2;
     do_nothing_MRC mock_ll;
     CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut", 1, 1, 8, 32, fill_latency, read_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pref_t::pprefetcherDno, CACHE::repl_t::rreplacementDlru};
+    CACHE uut{"403-uut", 1, 1, 8, 32, fill_latency, read_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut};
     to_pq_MRP mock_ul{&uut};
 
