@@ -92,7 +92,7 @@ int main(int argc, char** argv)
   std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
   std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
 
-  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  auto dram_size = DRAM.size() / 1024 / 1024; // in MiB
   std::cout << "Off-chip DRAM Size: ";
   if (dram_size > 1024)
     std::cout << dram_size / 1024 << " GiB";

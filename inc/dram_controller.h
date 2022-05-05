@@ -82,6 +82,8 @@ public:
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
+  std::size_t size() const;
+
   uint32_t dram_get_channel(uint64_t address);
   uint32_t dram_get_rank(uint64_t address);
   uint32_t dram_get_bank(uint64_t address);

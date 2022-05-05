@@ -2,16 +2,20 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <numeric>
 
 #include "champsim_constants.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_fault_penalty)
+VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_fault_penalty, MEMORY_CONTROLLER &dram)
     : ppage_free_list(((1ull << (paddr_bits - LOG2_PAGE_SIZE)) - (VMEM_RESERVE_CAPACITY / PAGE_SIZE)), PAGE_SIZE), minor_fault_penalty(minor_fault_penalty),
       pt_levels(page_table_levels), page_size(page_table_page_size)
 {
   assert(page_table_page_size == (1ul << lg2(page_table_page_size)) && page_table_page_size > 1024);
+
+  if (paddr_bits > lg2(dram.size()))
+    std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
 
   // populate the free list
   ppage_free_list.front() = VMEM_RESERVE_CAPACITY;

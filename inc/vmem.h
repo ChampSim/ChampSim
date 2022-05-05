@@ -5,6 +5,8 @@
 #include <deque>
 #include <map>
 
+#include "dram_controller.h"
+
 // reserve 1MB of space
 #define VMEM_RESERVE_CAPACITY 1048576
 
@@ -27,7 +29,7 @@ public:
 
   // capacity and pg_size are measured in bytes, and capacity must be a multiple
   // of pg_size
-  VirtualMemory(unsigned paddr_bits, uint64_t pg_size, uint32_t page_table_levels, uint64_t minor_fault_penalty);
+  VirtualMemory(unsigned paddr_bits, uint64_t pg_size, uint32_t page_table_levels, uint64_t minor_fault_penalty, MEMORY_CONTROLLER &dram);
   uint64_t shamt(uint32_t level) const;
   uint64_t get_offset(uint64_t vaddr, uint32_t level) const;
   std::size_t available_ppages() const { return std::size(ppage_free_list); }
