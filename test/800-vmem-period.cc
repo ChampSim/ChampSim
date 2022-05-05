@@ -11,7 +11,7 @@ SCENARIO("The virtual memory generates a full period of page numbers") {
     WHEN("All pages are exhausted") {
       std::vector<uint64_t> given_pages;
 
-      constexpr std::size_t expected_pages = (((1ull << vmem_size_bits) - VMEM_RESERVE_CAPACITY) >> 12) - 1;
+      constexpr std::size_t expected_pages = (((1ull << vmem_size_bits) - VMEM_RESERVE_CAPACITY) >> 12);
       uint64_t req_page = (1 << 12);
       for (std::size_t i = 0; i < expected_pages; ++i) {
         given_pages.push_back(uut.va_to_pa(0, req_page).first);

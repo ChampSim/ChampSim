@@ -17,12 +17,6 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
   // populate the free list
   ppage_free_list.front() = VMEM_RESERVE_CAPACITY;
   std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
-
-  // then shuffle it
-  std::shuffle(std::begin(ppage_free_list), std::end(ppage_free_list), std::mt19937_64{random_seed});
-
-  next_pte_page = ppage_free_list.front();
-  ppage_free_list.pop_front();
 }
 
 uint64_t VirtualMemory::shamt(uint32_t level) const { return LOG2_PAGE_SIZE + lg2(page_size / PTE_BYTES) * (level); }
@@ -42,6 +36,11 @@ std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t
 
 std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
 {
+  if (next_pte_page == 0) {
+    next_pte_page = ppage_free_list.front();
+    ppage_free_list.pop_front();
+  }
+
   std::tuple key{cpu_num, vaddr >> shamt(level + 1), level};
   auto [ppage, fault] = page_table.insert({key, next_pte_page});
 

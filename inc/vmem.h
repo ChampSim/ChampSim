@@ -16,7 +16,7 @@ private:
   std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
 
-  uint64_t next_pte_page;
+  uint64_t next_pte_page = 0;
 
   std::deque<uint64_t> ppage_free_list;
 
