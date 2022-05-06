@@ -6,7 +6,8 @@
 SCENARIO("The virtual memory generates a full period of page numbers") {
   GIVEN("A large virtual memory") {
     constexpr unsigned vmem_size_bits = 33;
-    VirtualMemory uut{vmem_size_bits, 1 << 12, 5, 1, 200};
+    MEMORY_CONTROLLER dram{1};
+    VirtualMemory uut{vmem_size_bits, 1 << 12, 5, 200, dram};
 
     WHEN("All pages are exhausted") {
       std::vector<uint64_t> given_pages;
