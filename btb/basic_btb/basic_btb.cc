@@ -11,10 +11,15 @@
 #include <deque>
 #include <map>
 
-#define BRANCH_INFO_INDIRECT 0
-#define BRANCH_INFO_RETURN 1
-#define BRANCH_INFO_ALWAYS_TAKEN 2
-#define BRANCH_INFO_CONDITIONAL 3
+#include "ooo_cpu.h"
+#include "util.h"
+
+enum branch_info {
+  BRANCH_INFO_INDIRECT,
+  BRANCH_INFO_RETURN,
+  BRANCH_INFO_ALWAYS_TAKEN,
+  BRANCH_INFO_CONDITIONAL,
+};
 
 struct BASIC_BTB_ENTRY {
   uint64_t ip_tag;
@@ -69,7 +74,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   if (btb_entry == set_end)
     return {0, true};
 
-  if (btb_entry->branch_type == BRANCH_RETURN) {
+  if (btb_entry->branch_info == BRANCH_INFO_RETURN) {
     if (std::empty(RAS[this]))
       return {0, true};
 
@@ -80,20 +85,20 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     return {target + size, true};
   }
 
-  if ((btb_entry->branch_type == BRANCH_INDIRECT) || (btb_entry->branch_type == BRANCH_INDIRECT_CALL)) {
+  if (btb_entry->branch_info == BRANCH_INFO_INDIRECT) {
     auto hash = (ip >> 2) ^ CONDITIONAL_HISTORY[this].to_ullong();
     return {INDIRECT_BTB[this][hash % std::size(INDIRECT_BTB[this])], true};
   }
 
   btb_entry->last_cycle_used = current_cycle;
 
-  return {btb_entry->target, btb_entry->always_taken};
+  return {btb_entry->target, btb_entry->branch_info != BRANCH_INFO_CONDITIONAL};
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // add something to the RAS
-  if (btb_entry->branch_type == BRANCH_DIRECT_CALL || btb_entry->branch_type == BRANCH_INDIRECT_CALL) {
+  if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     RAS[this].push_back(ip);
     if (std::size(RAS[this]) > RAS_SIZE)
       RAS[this].pop_front();
@@ -121,17 +126,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
-  if (branch_type != BRANCH_INDIRECT && branch_type != BRANCH_INDIRECT_CALL) {
-    auto set_idx = (ip >> 2) % BTB_SET;
-    auto set_begin = std::next(std::begin(BTB[this]), set_idx * BTB_WAY);
-    auto set_end = std::next(set_begin, BTB_WAY);
-    auto btb_entry = std::find_if(set_begin, set_end, [ip](auto x) { return x.ip_tag == ip; });
+  auto set_idx = (ip >> 2) % BTB_SET;
+  auto set_begin = std::next(std::begin(BTB[this]), set_idx * BTB_WAY);
+  auto set_end = std::next(set_begin, BTB_WAY);
+  auto btb_entry = std::find_if(set_begin, set_end, [ip](auto x) { return x.ip_tag == ip; });
 
-    // no prediction for this entry so far, so allocate one
-    if (btb_entry == set_end && (branch_target != 0) && taken) {
-      btb_entry = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_cycle_used < y.last_cycle_used; });
-      *btb_entry = {};
-    }
+  // no prediction for this entry so far, so allocate one
+  if (btb_entry == set_end && (branch_target != 0) && taken) {
+    btb_entry = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_cycle_used < y.last_cycle_used; });
+    *btb_entry = {};
+  }
 
   // update btb entry
   btb_entry->ip_tag = ip;

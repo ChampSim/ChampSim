@@ -34,10 +34,10 @@ def get_btb_string(btb_data):
     retval += '\n}\n'
     retval += '\n'
 
-    retval += '\n'.join('std::pair<uint64_t, uint8_t> {btb_predict}(uint64_t, uint8_t);'.format(**b) for b in btb_data.values())
-    retval += '\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, uint8_t branch_type)\n{\n    '
+    retval += '\n'.join('std::pair<uint64_t, uint8_t> {btb_predict}(uint64_t);'.format(**b) for b in btb_data.values())
+    retval += '\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)\n{\n    '
     retval += 'std::pair<uint64_t, uint8_t> result;\n    '
-    retval += '\n    '.join('if (btb_type[t{}]) result = {btb_predict}(ip, branch_type);'.format(k,**b) for k,b in btb_data.items())
+    retval += '\n    '.join('if (btb_type[t{}]) result = {btb_predict}(ip);'.format(k,**b) for k,b in btb_data.items())
     retval += '\n    return result;'
     retval += '\n}\n'
     retval += '\n'
