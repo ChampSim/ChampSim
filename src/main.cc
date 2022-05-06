@@ -1,11 +1,7 @@
-#include <algorithm>
-#include <array>
-#include <fstream>
-#include <functional>
 #include <getopt.h>
-#include <iomanip>
+#include <iostream>
 #include <signal.h>
-#include <string.h>
+#include <string>
 #include <vector>
 
 #include "cache.h"
@@ -14,283 +10,31 @@
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
-#include "tracereader.h"
+#include "ptw.h"
 #include "vmem.h"
-
-uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0;
-
-uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
-
-auto start_time = time(NULL);
 
 // For backwards compatibility with older module source.
 champsim::deprecated_clock_cycle current_core_cycle;
 
 extern MEMORY_CONTROLLER DRAM;
 extern VirtualMemory vmem;
-extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
-extern std::array<CACHE*, NUM_CACHES> caches;
-extern std::array<champsim::operable*, NUM_OPERABLES> operables;
+extern std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu;
+extern std::vector<std::reference_wrapper<CACHE>> caches;
+extern std::vector<std::reference_wrapper<PageTableWalker>> ptws;
 
-std::vector<tracereader*> traces;
+struct phase_info {
+  std::string name;
+  bool is_warmup;
+  uint64_t length;
+};
 
-uint64_t champsim::deprecated_clock_cycle::operator[](std::size_t cpu_idx)
-{
-  static bool deprecate_printed = false;
-  if (!deprecate_printed) {
-    std::cout << "WARNING: The use of 'current_core_cycle[cpu]' is deprecated." << std::endl;
-    std::cout << "WARNING: Use 'this->current_cycle' instead." << std::endl;
-    deprecate_printed = true;
-  }
-  return ooo_cpu[cpu_idx]->current_cycle;
-}
-
-void record_roi_stats(uint32_t cpu, CACHE* cache)
-{
-  for (uint32_t i = 0; i < NUM_TYPES; i++) {
-    cache->roi_access[cpu][i] = cache->sim_access[cpu][i];
-    cache->roi_hit[cpu][i] = cache->sim_hit[cpu][i];
-    cache->roi_miss[cpu][i] = cache->sim_miss[cpu][i];
-  }
-}
-
-void print_roi_stats(uint32_t cpu, CACHE* cache)
-{
-  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
-
-  for (uint32_t i = 0; i < NUM_TYPES; i++) {
-    TOTAL_ACCESS += cache->roi_access[cpu][i];
-    TOTAL_HIT += cache->roi_hit[cpu][i];
-    TOTAL_MISS += cache->roi_miss[cpu][i];
-  }
-
-  if (TOTAL_ACCESS > 0) {
-    std::cout << cache->NAME;
-    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS
-              << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->roi_access[cpu][0] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][0]
-              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][0] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->roi_access[cpu][1] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][1]
-              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][1] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->roi_access[cpu][2] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][2]
-              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][2] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->roi_access[cpu][3] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][3]
-              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][3] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " TRANSLATION ACCESS: " << std::setw(10) << cache->roi_access[cpu][4] << "  HIT: " << std::setw(10) << cache->roi_hit[cpu][4]
-              << "  MISS: " << std::setw(10) << cache->roi_miss[cpu][4] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " PREFETCH  REQUESTED: " << std::setw(10) << cache->pf_requested << "  ISSUED: " << std::setw(10) << cache->pf_issued;
-    std::cout << "  USEFUL: " << std::setw(10) << cache->pf_useful << "  USELESS: " << std::setw(10) << cache->pf_useless << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " AVERAGE MISS LATENCY: " << (1.0 * (cache->total_miss_latency)) / TOTAL_MISS << " cycles" << std::endl;
-    // std::cout << " AVERAGE MISS LATENCY: " <<
-    // (cache->total_miss_latency)/TOTAL_MISS << " cycles " <<
-    // cache->total_miss_latency << "/" << TOTAL_MISS<< std::endl;
-  }
-}
-
-void print_sim_stats(uint32_t cpu, CACHE* cache)
-{
-  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
-
-  for (uint32_t i = 0; i < NUM_TYPES; i++) {
-    TOTAL_ACCESS += cache->sim_access[cpu][i];
-    TOTAL_HIT += cache->sim_hit[cpu][i];
-    TOTAL_MISS += cache->sim_miss[cpu][i];
-  }
-
-  if (TOTAL_ACCESS > 0) {
-    std::cout << cache->NAME;
-    std::cout << " TOTAL     ACCESS: " << std::setw(10) << TOTAL_ACCESS << "  HIT: " << std::setw(10) << TOTAL_HIT << "  MISS: " << std::setw(10) << TOTAL_MISS
-              << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " LOAD      ACCESS: " << std::setw(10) << cache->sim_access[cpu][0] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][0]
-              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][0] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " RFO       ACCESS: " << std::setw(10) << cache->sim_access[cpu][1] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][1]
-              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][1] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " PREFETCH  ACCESS: " << std::setw(10) << cache->sim_access[cpu][2] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][2]
-              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][2] << std::endl;
-
-    std::cout << cache->NAME;
-    std::cout << " WRITEBACK ACCESS: " << std::setw(10) << cache->sim_access[cpu][3] << "  HIT: " << std::setw(10) << cache->sim_hit[cpu][3]
-              << "  MISS: " << std::setw(10) << cache->sim_miss[cpu][3] << std::endl;
-  }
-}
-
-void print_branch_stats()
-{
-  for (uint32_t i = 0; i < NUM_CPUS; i++) {
-    std::cout << std::endl << "CPU " << i << " Branch Prediction Accuracy: ";
-    std::cout << (100.0 * (ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
-    std::cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
-    std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict) / ooo_cpu[i]->branch_mispredictions
-              << std::endl;
-
-    // std::cout << "Branch types" << endl;
-    // std::cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " << (100.0*ooo_cpu[i]->total_branch_types[0])/(ooo_cpu[i]->num_retired -
-    // ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << " " <<
-    // (100.0*ooo_cpu[i]->total_branch_types[1])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_INDIRECT: "
-    // << ooo_cpu[i]->total_branch_types[2] << " " << (100.0*ooo_cpu[i]->total_branch_types[2])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%"
-    // << std::endl; std::cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << " " <<
-    // (100.0*ooo_cpu[i]->total_branch_types[3])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_DIRECT_CALL:
-    // " << ooo_cpu[i]->total_branch_types[4] << " " << (100.0*ooo_cpu[i]->total_branch_types[4])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%"
-    // << std::endl; std::cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << " " <<
-    // (100.0*ooo_cpu[i]->total_branch_types[5])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl; std::cout << "BRANCH_RETURN: " <<
-    // ooo_cpu[i]->total_branch_types[6] << " " <<  (100.0*ooo_cpu[i]->total_branch_types[6])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" <<
-    // std::endl; std::cout << "BRANCH_OTHER: " << ooo_cpu[i]->total_branch_types[7] << " " <<
-    // (100.0*ooo_cpu[i]->total_branch_types[7])/(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) << "%" << std::endl << std::endl;
-
-    std::cout << "Branch type MPKI" << std::endl;
-    std::cout << "BRANCH_DIRECT_JUMP: " << (1000.0 * ooo_cpu[i]->branch_type_misses[1] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_INDIRECT: " << (1000.0 * ooo_cpu[i]->branch_type_misses[2] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_CONDITIONAL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[3] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_DIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[4] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl;
-    std::cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr))
-              << std::endl;
-    std::cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << std::endl
-              << std::endl;
-  }
-}
-
-void print_dram_stats()
-{
-  uint64_t total_congested_cycle = 0;
-  uint64_t total_congested_count = 0;
-
-  std::cout << std::endl;
-  std::cout << "DRAM Statistics" << std::endl;
-  for (uint32_t i = 0; i < DRAM_CHANNELS; i++) {
-    std::cout << " CHANNEL " << i << std::endl;
-
-    auto& channel = DRAM.channels[i];
-    std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << channel.RQ_ROW_BUFFER_HIT << " ";
-    std::cout << " ROW_BUFFER_MISS: " << std::setw(10) << channel.RQ_ROW_BUFFER_MISS;
-    std::cout << std::endl;
-
-    std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
-    if (channel.dbus_count_congested)
-      std::cout << std::setw(10) << ((double)channel.dbus_cycle_congested / channel.dbus_count_congested);
-    else
-      std::cout << "-";
-    std::cout << std::endl;
-
-    std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << channel.WQ_ROW_BUFFER_HIT << " ";
-    std::cout << " ROW_BUFFER_MISS: " << std::setw(10) << channel.WQ_ROW_BUFFER_MISS << " ";
-    std::cout << " FULL: " << std::setw(10) << channel.WQ_FULL;
-    std::cout << std::endl;
-
-    std::cout << std::endl;
-
-    total_congested_cycle += channel.dbus_cycle_congested;
-    total_congested_count += channel.dbus_count_congested;
-  }
-
-  if (DRAM_CHANNELS > 1) {
-    std::cout << " DBUS AVG_CONGESTED_CYCLE: ";
-    if (total_congested_count)
-      std::cout << std::setw(10) << ((double)total_congested_cycle / total_congested_count);
-    else
-      std::cout << "-";
-
-    std::cout << std::endl;
-  }
-}
-
-void reset_cache_stats(uint32_t cpu, CACHE* cache)
-{
-  for (uint32_t i = 0; i < NUM_TYPES; i++) {
-    cache->sim_access[cpu][i] = 0;
-    cache->sim_hit[cpu][i] = 0;
-    cache->sim_miss[cpu][i] = 0;
-  }
-
-  cache->pf_requested = 0;
-  cache->pf_issued = 0;
-  cache->pf_useful = 0;
-  cache->pf_useless = 0;
-  cache->pf_fill = 0;
-
-  cache->total_miss_latency = 0;
-
-  cache->RQ_ACCESS = 0;
-  cache->RQ_MERGED = 0;
-  cache->RQ_TO_CACHE = 0;
-
-  cache->WQ_ACCESS = 0;
-  cache->WQ_MERGED = 0;
-  cache->WQ_TO_CACHE = 0;
-  cache->WQ_FORWARD = 0;
-  cache->WQ_FULL = 0;
-}
-
-void finish_warmup()
-{
-  uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time), elapsed_minute = elapsed_second / 60, elapsed_hour = elapsed_minute / 60;
-  elapsed_minute -= elapsed_hour * 60;
-  elapsed_second -= (elapsed_hour * 3600 + elapsed_minute * 60);
-
-  // reset core latency
-  // note: since re-ordering he function calls in the main simulation loop, it's
-  // no longer necessary to add
-  //       extra latency for scheduling and execution, unless you want these
-  //       steps to take longer than 1 cycle.
-  // PAGE_TABLE_LATENCY = 100;
-  // SWAP_LATENCY = 100000;
-
-  std::cout << std::endl;
-  for (uint32_t i = 0; i < NUM_CPUS; i++) {
-    std::cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
-    std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-
-    ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle;
-    ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
-
-    // reset branch stats
-    ooo_cpu[i]->num_branch = 0;
-    ooo_cpu[i]->branch_mispredictions = 0;
-    ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict = 0;
-
-    for (uint32_t j = 0; j < 8; j++) {
-      ooo_cpu[i]->total_branch_types[j] = 0;
-      ooo_cpu[i]->branch_type_misses[j] = 0;
-    }
-
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-      reset_cache_stats(i, *it);
-  }
-  std::cout << std::endl;
-
-  // reset DRAM stats
-  for (uint32_t i = 0; i < DRAM_CHANNELS; i++) {
-    DRAM.channels[i].WQ_ROW_BUFFER_HIT = 0;
-    DRAM.channels[i].WQ_ROW_BUFFER_MISS = 0;
-    DRAM.channels[i].RQ_ROW_BUFFER_HIT = 0;
-    DRAM.channels[i].RQ_ROW_BUFFER_MISS = 0;
-  }
-}
+int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
+                  std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
   std::cout << "Caught signal: " << signal << std::endl;
-  exit(1);
+  abort();
 }
 
 int main(int argc, char** argv)
@@ -302,10 +46,10 @@ int main(int argc, char** argv)
   sigIntHandler.sa_flags = 0;
   sigaction(SIGINT, &sigIntHandler, NULL);
 
-  std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
-
   // initialize knobs
   uint8_t show_heartbeat = 1;
+  uint8_t knob_cloudsuite = 0;
+  uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
   // check to see if knobs changed using getopt_long()
   int traces_encountered = 0;
@@ -330,7 +74,6 @@ int main(int argc, char** argv)
       break;
     case 'c':
       knob_cloudsuite = 1;
-      MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
       break;
     case 0:
       break;
@@ -339,10 +82,15 @@ int main(int argc, char** argv)
     }
   }
 
-  // consequences of knobs
-  std::cout << "Warmup Instructions: " << warmup_instructions << std::endl;
-  std::cout << "Simulation Instructions: " << simulation_instructions << std::endl;
-  std::cout << "Number of CPUs: " << NUM_CPUS << std::endl;
+  std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
+
+  std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
+
+  std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
+
+  std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
+  std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
+  std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
 
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
   std::cout << "Off-chip DRAM Size: ";
@@ -353,151 +101,63 @@ int main(int argc, char** argv)
   std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
 
   std::cout << std::endl;
-  std::cout << "VirtualMemory physical capacity: " << std::size(vmem.ppage_free_list) * vmem.page_size;
-  std::cout << " num_ppages: " << std::size(vmem.ppage_free_list) << std::endl;
+  std::cout << "VirtualMemory physical capacity: " << vmem.available_ppages() * vmem.page_size;
+  std::cout << " num_ppages: " << vmem.available_ppages() << std::endl;
   std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
-  for (int i = optind; i < argc; i++) {
-    std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
+  int i = 0;
+  for (auto name : trace_names)
+    std::cout << "CPU " << i++ << " runs " << name << std::endl;
 
-    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
-
-    if (traces.size() > NUM_CPUS) {
-      printf("\n*** Too many traces for the configured number of cores ***\n\n");
-      assert(0);
-    }
+  if (std::size(trace_names) != std::size(ooo_cpu)) {
+    printf("\n*** Number of traces does not match the number of cores ***\n\n");
+    return 1;
   }
 
-  if (traces.size() != NUM_CPUS) {
-    printf("\n*** Not enough traces for the configured number of cores ***\n\n");
-    assert(0);
-  }
-  // end trace file setup
-
-  // SHARED CACHE
-  for (O3_CPU* cpu : ooo_cpu) {
-    cpu->initialize_core();
+  for (O3_CPU& cpu : ooo_cpu) {
+    cpu.initialize_core();
   }
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
-    (*it)->impl_prefetcher_initialize();
-    (*it)->impl_replacement_initialize();
+  for (CACHE& cache : caches) {
+    cache.impl_prefetcher_initialize();
+    cache.impl_replacement_initialize();
   }
 
-  // simulation entry point
-  while (std::any_of(std::begin(simulation_complete), std::end(simulation_complete), std::logical_not<uint8_t>())) {
+  std::vector<std::reference_wrapper<champsim::operable>> operables;
+  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
+  std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
+  operables.push_back(std::ref<champsim::operable>(DRAM));
 
-    uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time), elapsed_minute = elapsed_second / 60, elapsed_hour = elapsed_minute / 60;
-    elapsed_minute -= elapsed_hour * 60;
-    elapsed_second -= (elapsed_hour * 3600 + elapsed_minute * 60);
+  champsim_main(ooo_cpu, operables, phases, show_heartbeat, knob_cloudsuite, trace_names);
 
-    for (auto op : operables) {
-      try {
-        op->_operate();
-      } catch (champsim::deadlock& dl) {
-        // ooo_cpu[dl.which]->print_deadlock();
-        // std::cout << std::endl;
-        // for (auto c : caches)
-        for (auto c : operables) {
-          c->print_deadlock();
-          std::cout << std::endl;
-        }
+  std::cout << "ChampSim completed all CPUs" << std::endl;
 
-        abort();
-      }
-    }
-    std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
+  if (std::size(ooo_cpu) > 1) {
+    std::cout << std::endl;
+    std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
 
-    for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
-      // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
-        ooo_cpu[i]->init_instruction(traces[i]->get());
-      }
+    for (O3_CPU& cpu : ooo_cpu)
+      cpu.print_phase_stats();
 
-      // heartbeat information
-      if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
-        float cumulative_ipc;
-        if (warmup_complete[i])
-          cumulative_ipc = (1.0 * (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
-        else
-          cumulative_ipc = (1.0 * ooo_cpu[i]->num_retired) / ooo_cpu[i]->current_cycle;
-        float heartbeat_ipc = (1.0 * ooo_cpu[i]->num_retired - ooo_cpu[i]->last_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->last_sim_cycle);
-
-        std::cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
-        std::cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc;
-        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-        ooo_cpu[i]->next_print_instruction += STAT_PRINTING_PERIOD;
-
-        ooo_cpu[i]->last_sim_instr = ooo_cpu[i]->num_retired;
-        ooo_cpu[i]->last_sim_cycle = ooo_cpu[i]->current_cycle;
-      }
-
-      // check for warmup
-      // warmup complete
-      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired > warmup_instructions)) {
-        warmup_complete[i] = 1;
-        all_warmup_complete++;
-      }
-      if (all_warmup_complete == NUM_CPUS) { // this part is called only once
-                                             // when all cores are warmed up
-        all_warmup_complete++;
-        finish_warmup();
-      }
-
-      // simulation complete
-      if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
-          && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
-        simulation_complete[i] = 1;
-        ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
-        ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
-
-        std::cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle;
-        std::cout << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
-        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-
-        for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-          record_roi_stats(i, *it);
-      }
-    }
+    for (CACHE& cache : caches)
+      cache.print_phase_stats();
   }
 
-  uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time), elapsed_minute = elapsed_second / 60, elapsed_hour = elapsed_minute / 60;
-  elapsed_minute -= elapsed_hour * 60;
-  elapsed_second -= (elapsed_hour * 3600 + elapsed_minute * 60);
+  std::cout << std::endl;
+  std::cout << "Region of Interest Statistics" << std::endl;
+  for (O3_CPU& cpu : ooo_cpu)
+    cpu.print_roi_stats();
 
-  std::cout << std::endl << "ChampSim completed all CPUs" << std::endl;
-  if (NUM_CPUS > 1) {
-    std::cout << std::endl << "Total Simulation Statistics (not including warmup)" << std::endl;
-    for (uint32_t i = 0; i < NUM_CPUS; i++) {
-      std::cout << std::endl
-                << "CPU " << i << " cumulative IPC: "
-                << (float)(ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr) / (ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle);
-      std::cout << " instructions: " << ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr
-                << " cycles: " << ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle << std::endl;
-      for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-        print_sim_stats(i, *it);
-    }
-  }
+  for (CACHE& cache : caches)
+    cache.print_roi_stats();
 
-  std::cout << std::endl << "Region of Interest Statistics" << std::endl;
-  for (uint32_t i = 0; i < NUM_CPUS; i++) {
-    std::cout << std::endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
-    std::cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << std::endl;
-    for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-      print_roi_stats(i, *it);
-  }
+  for (CACHE& cache : caches)
+    cache.impl_prefetcher_final_stats();
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    (*it)->impl_prefetcher_final_stats();
+  for (CACHE& cache : caches)
+    cache.impl_replacement_final_stats();
 
-  for (auto it = caches.rbegin(); it != caches.rend(); ++it)
-    (*it)->impl_replacement_final_stats();
-
-#ifndef CRC2_COMPILE
-  print_dram_stats();
-  print_branch_stats();
-#endif
-
-  return 0;
+  DRAM.print_phase_stats();
 }
