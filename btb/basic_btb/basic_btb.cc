@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bitset>
 #include <deque>
+#include <map>
 
 #include "ooo_cpu.h"
 #include "util.h"
