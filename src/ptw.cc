@@ -2,11 +2,12 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "instruction.h"
 #include "util.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
                                  uint32_t v11, uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12),
+    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12),
       MAX_FILL(v13), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }
@@ -36,11 +37,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   packet.init_translation_level = walk_init_level;
   packet.cycle_enqueued = current_cycle;
 
-  bool success = step_translation(splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
-  if (!success)
-    return false;
-
-  return true;
+  return step_translation(splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
@@ -63,29 +60,32 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
       ret->return_data(ret_pkt);
 
     total_miss_latency += current_cycle - ret_pkt.cycle_enqueued;
+    return true;
   } else {
     const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
     pscl.at(pscl_idx).fill_cache(fill_mshr.v_address, fill_mshr.data);
 
-    auto success = step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
-    if (!success)
-      return false;
+    return step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
   }
-
-  return true;
 }
 
 bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
-  fwd_pkt.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
-  fwd_pkt.cpu = cpu;
   fwd_pkt.type = TRANSLATION;
   fwd_pkt.to_return = {this};
   fwd_pkt.translation_level = transl_level;
 
-  bool success = lower_level->add_rq(fwd_pkt);
+  auto matches_and_inflight = [addr](const auto &x) {
+    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
+  };
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);
+
+  bool success = true;
+  if (mshr_entry == std::end(MSHR))
+    success = lower_level->add_rq(fwd_pkt);
+
   if (success) {
     fwd_pkt.to_return = source.to_return; // Set the return for MSHR packet same as read packet.
     fwd_pkt.type = source.type;
@@ -193,8 +193,7 @@ void PageTableWalker::print_deadlock()
     for (PACKET entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
       std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " translation_level: " << +entry.translation_level;
-      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
+      std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {
     std::cout << NAME << " MSHR empty" << std::endl;

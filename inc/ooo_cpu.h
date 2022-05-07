@@ -28,7 +28,7 @@ public:
   CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet);
+  void return_data(const PACKET &packet);
 };
 
 struct branch_stats {
@@ -47,10 +47,8 @@ struct LSQ_ENTRY {
   ooo_model_instr& rob_entry;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-  bool translate_issued = false;
   bool fetch_issued = false;
 
-  uint64_t physical_address = 0;
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me;
 };
@@ -106,7 +104,7 @@ public:
   const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
 
-  CacheBus ITLB_bus, DTLB_bus, L1I_bus, L1D_bus;
+  CacheBus L1I_bus, L1D_bus;
 
   void operate() override;
   void begin_phase() override;
@@ -132,8 +130,7 @@ public:
 
   void do_init_instruction(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
-  void do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
-  void do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
+  bool do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& rob_it);
@@ -144,8 +141,6 @@ public:
   void do_finish_store(LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
-  bool do_translate_store(const LSQ_ENTRY& sq_entry);
-  bool do_translate_load(const LSQ_ENTRY& lq_entry);
 
   uint64_t roi_instr() const { return finish_phase_instr - begin_phase_instr; }
   uint64_t roi_cycle() const { return finish_phase_cycle - begin_phase_cycle; }
@@ -163,14 +158,12 @@ public:
          std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width,
          unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
          unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
-         MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
-         std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
-      : champsim::operable(freq_scale), cpu(cpu), DIB{std::forward<champsim::simple_lru_table<bool>>(dib)}, IFETCH_BUFFER(ifetch_buffer_size),
+         MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
+      : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, IFETCH_BUFFER(ifetch_buffer_size),
         DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(cpu, itlb), DTLB_bus(cpu, dtlb), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d),
-        bpred_type(bpred_type), btb_type(btb_type)
+        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };

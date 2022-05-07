@@ -67,7 +67,7 @@ public:
 
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-  MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
+  MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
 
   void operate() override;
   void begin_phase() override;
