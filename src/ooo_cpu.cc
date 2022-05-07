@@ -261,10 +261,12 @@ void O3_CPU::fetch_instruction()
 {
   // Fetch a single cache line
   std::size_t to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
-  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x){ return !x.fetched; });
+  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
-    auto no_match_ip = [find_ip=l1i_req_begin->ip](const ooo_model_instr& x) { return (find_ip >> LOG2_BLOCK_SIZE) != (x.ip >> LOG2_BLOCK_SIZE); };
+    auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
+      return (find_ip >> LOG2_BLOCK_SIZE) != (x.ip >> LOG2_BLOCK_SIZE);
+    };
     auto l1i_req_end = std::find_if(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
 
     // Issue to L1I
@@ -276,7 +278,7 @@ void O3_CPU::fetch_instruction()
     }
 
     --to_read;
-    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x){ return !x.fetched; });
+    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
   }
 }
 
@@ -507,7 +509,8 @@ void O3_CPU::operate_lsq()
   auto load_bw = LQ_WIDTH;
 
   for (auto& lq_entry : LQ) {
-    if (load_bw > 0 && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued && lq_entry->event_cycle < current_cycle) {
+    if (load_bw > 0 && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued
+        && lq_entry->event_cycle < current_cycle) {
       auto success = execute_load(*lq_entry);
       if (success) {
         --load_bw;
@@ -766,8 +769,8 @@ void O3_CPU::print_deadlock()
   std::cout << std::endl << "Store Queue Entry" << std::endl;
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
     std::cout << "[SQ] entry: " << std::distance(std::begin(SQ), sq_it) << " instr_id: " << sq_it->instr_id << " address: " << std::hex
-              << sq_it->virtual_address << std::dec << " fetched: "  << std::boolalpha << sq_it->fetch_issued << std::noboolalpha << " event_cycle: " << sq_it->event_cycle
-              << " LQ waiting: ";
+              << sq_it->virtual_address << std::dec << " fetched: " << std::boolalpha << sq_it->fetch_issued << std::noboolalpha
+              << " event_cycle: " << sq_it->event_cycle << " LQ waiting: ";
     for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
       std::cout << lq_entry->instr_id << " ";
     std::cout << std::endl;

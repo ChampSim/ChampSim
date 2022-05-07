@@ -5,10 +5,10 @@
 #include "instruction.h"
 #include "util.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
-                                 uint32_t v11, uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12),
-      MAX_FILL(v13), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
+                                 uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
+    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), pscl{_pscl}, vmem(_vmem),
+      CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }
 
@@ -77,7 +77,7 @@ bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, cons
   fwd_pkt.to_return = {this};
   fwd_pkt.translation_level = transl_level;
 
-  auto matches_and_inflight = [addr](const auto &x) {
+  auto matches_and_inflight = [addr](const auto& x) {
     return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
   };
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);

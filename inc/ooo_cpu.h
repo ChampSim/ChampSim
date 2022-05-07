@@ -28,7 +28,7 @@ public:
   CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET &packet);
+  void return_data(const PACKET& packet);
 };
 
 struct branch_stats {
@@ -159,11 +159,11 @@ public:
          unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
          unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
          MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
-      : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, IFETCH_BUFFER(ifetch_buffer_size),
-        DECODE_BUFFER(decode_buffer_size, decode_latency), LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size),
-        FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
-        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
+      : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, IFETCH_BUFFER(ifetch_buffer_size), DECODE_BUFFER(decode_buffer_size, decode_latency),
+        LQ(lq_size), DISPATCH_BUFFER_SIZE(dispatch_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width),
+        DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width),
+        RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency), SCHEDULING_LATENCY(schedule_latency),
+        EXEC_LATENCY(execute_latency), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };
