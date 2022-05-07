@@ -28,15 +28,15 @@ public:
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
+  PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11, uint32_t v12,
+                  uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
-  bool add_rq(const PACKET &packet) override;
-  bool add_wq(const PACKET &packet) override { assert(0); }
-  bool add_pq(const PACKET &packet) override { assert(0); }
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override { assert(0); }
+  bool add_pq(const PACKET& packet) override { assert(0); }
 
-  void return_data(const PACKET &packet) override;
+  void return_data(const PACKET& packet) override;
   void operate() override;
 
   bool handle_read(const PACKET& pkt);

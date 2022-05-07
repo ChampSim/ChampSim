@@ -1,13 +1,9 @@
 #include "cache.h"
-
 #include "champsim.h"
 #include "instruction.h"
 #include "util.h"
 
-void CACHE::NonTranslatingQueues::operate()
-{
-  check_collision();
-}
+void CACHE::NonTranslatingQueues::operate() { check_collision(); }
 
 void CACHE::TranslatingQueues::operate()
 {
@@ -17,7 +13,7 @@ void CACHE::TranslatingQueues::operate()
 }
 
 template <typename Iter, typename F>
-bool do_collision_for(Iter begin, Iter end, PACKET &packet, unsigned shamt, F &&func)
+bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
   auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
   if (found != end) {
@@ -29,23 +25,23 @@ bool do_collision_for(Iter begin, Iter end, PACKET &packet, unsigned shamt, F &&
 }
 
 template <typename Iter>
-bool do_collision_for_merge(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
-  return do_collision_for(begin, end, packet, shamt, [](PACKET &source, PACKET &destination) {
+  return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
     auto instr_copy = std::move(destination.instr_depend_on_me);
     auto ret_copy = std::move(destination.to_return);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-        std::back_inserter(destination.instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+                   std::back_inserter(destination.instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(source.to_return), std::end(source.to_return),
-        std::back_inserter(destination.to_return));
+                   std::back_inserter(destination.to_return));
   });
 }
 
 template <typename Iter>
-bool do_collision_for_return(Iter begin, Iter end, PACKET &packet, unsigned shamt)
+bool do_collision_for_return(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
-  return do_collision_for(begin, end, packet, shamt, [](PACKET &source, PACKET &destination) {
+  return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
     source.data = destination.data;
     for (auto ret : source.to_return)
       ret->return_data(source);
@@ -105,9 +101,9 @@ void CACHE::TranslatingQueues::issue_translation()
 }
 
 template <typename R>
-void CACHE::TranslatingQueues::do_issue_translation(R &queue)
+void CACHE::TranslatingQueues::do_issue_translation(R& queue)
 {
-  for (auto &q_entry : queue) {
+  for (auto& q_entry : queue) {
     if (!q_entry.translate_issued && q_entry.address == q_entry.v_address) {
       auto fwd_pkt = q_entry;
       fwd_pkt.type = LOAD;
@@ -116,7 +112,7 @@ void CACHE::TranslatingQueues::do_issue_translation(R &queue)
       if (success) {
         if constexpr (champsim::debug_print) {
           std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << q_entry.instr_id;
-          std::cout << " address: "  << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
+          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
           std::cout << " type: " << +q_entry.type << " occupancy: " << std::size(queue) << std::endl;
         }
 
@@ -135,16 +131,16 @@ void CACHE::TranslatingQueues::detect_misses()
 }
 
 template <typename R>
-void CACHE::TranslatingQueues::do_detect_misses(R &queue)
+void CACHE::TranslatingQueues::do_detect_misses(R& queue)
 {
   // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
-  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x){ return x.event_cycle < this->current_cycle && x.address == 0; });
-  std::for_each(std::begin(queue), q_it, [](auto &x){ x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x) { return x.event_cycle < this->current_cycle && x.address == 0; });
+  std::for_each(std::begin(queue), q_it, [](auto& x) { x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(queue), q_it, std::end(queue));
 }
 
 template <typename R>
-bool CACHE::NonTranslatingQueues::do_add_queue(R &queue, std::size_t queue_size, const PACKET &packet)
+bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet)
 {
   assert(packet.address != 0);
 
@@ -158,7 +154,7 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R &queue, std::size_t queue_size,
   }
 
   // Insert the packet ahead of the translation misses
-  auto ins_loc = std::find_if(std::begin(queue), std::end(queue), [](auto x){ return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto ins_loc = std::find_if(std::begin(queue), std::end(queue), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
@@ -173,7 +169,7 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R &queue, std::size_t queue_size,
   return true;
 }
 
-bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
+bool CACHE::NonTranslatingQueues::add_rq(const PACKET& packet)
 {
   sim_stats.back().RQ_ACCESS++;
 
@@ -189,7 +185,7 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET &packet)
   return result;
 }
 
-bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
+bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
 {
   sim_stats.back().WQ_ACCESS++;
 
@@ -205,7 +201,7 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET &packet)
   return result;
 }
 
-bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
+bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
 {
   sim_stats.back().PQ_ACCESS++;
   auto result = do_add_queue(PQ, PQ_SIZE, packet);
@@ -217,20 +213,11 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET &packet)
   return result;
 }
 
-bool CACHE::NonTranslatingQueues::wq_has_ready() const
-{
-  return WQ.front().event_cycle <= current_cycle;
-}
+bool CACHE::NonTranslatingQueues::wq_has_ready() const { return WQ.front().event_cycle <= current_cycle; }
 
-bool CACHE::NonTranslatingQueues::rq_has_ready() const
-{
-  return RQ.front().event_cycle <= current_cycle;
-}
+bool CACHE::NonTranslatingQueues::rq_has_ready() const { return RQ.front().event_cycle <= current_cycle; }
 
-bool CACHE::NonTranslatingQueues::pq_has_ready() const
-{
-  return PQ.front().event_cycle <= current_cycle;
-}
+bool CACHE::NonTranslatingQueues::pq_has_ready() const { return PQ.front().event_cycle <= current_cycle; }
 
 bool CACHE::TranslatingQueues::wq_has_ready() const
 {
@@ -247,7 +234,7 @@ bool CACHE::TranslatingQueues::pq_has_ready() const
   return NonTranslatingQueues::pq_has_ready() && PQ.front().address != 0 && PQ.front().address != PQ.front().v_address;
 }
 
-void CACHE::TranslatingQueues::return_data(const PACKET &packet)
+void CACHE::TranslatingQueues::return_data(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
@@ -257,21 +244,21 @@ void CACHE::TranslatingQueues::return_data(const PACKET &packet)
   }
 
   // Find all packets that match the page of the returned packet
-  for (auto &wq_entry : WQ) {
+  for (auto& wq_entry : WQ) {
     if ((wq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       wq_entry.address = splice_bits(packet.data, wq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       wq_entry.event_cycle = std::min(wq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
     }
   }
 
-  for (auto &rq_entry : RQ) {
+  for (auto& rq_entry : RQ) {
     if ((rq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       rq_entry.address = splice_bits(packet.data, rq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       rq_entry.event_cycle = std::min(rq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
     }
   }
 
-  for (auto &pq_entry : PQ) {
+  for (auto& pq_entry : PQ) {
     if ((pq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       pq_entry.address = splice_bits(packet.data, pq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       pq_entry.event_cycle = std::min(pq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));

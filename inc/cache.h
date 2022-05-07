@@ -47,10 +47,10 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 {
   enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
 
-  bool handle_fill(PACKET &fill_mshr);
-  bool handle_writeback(PACKET &handle_pkt);
-  bool handle_read(PACKET &handle_pkt);
-  bool handle_prefetch(PACKET &handle_pkt);
+  bool handle_fill(PACKET& fill_mshr);
+  bool handle_writeback(PACKET& handle_pkt);
+  bool handle_read(PACKET& handle_pkt);
+  bool handle_prefetch(PACKET& handle_pkt);
 
   class BLOCK
   {
@@ -70,8 +70,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   };
 
 public:
-  struct NonTranslatingQueues : public champsim::operable
-  {
+  struct NonTranslatingQueues : public champsim::operable {
     std::deque<PACKET> RQ, PQ, WQ;
     const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE;
     const uint64_t HIT_LATENCY;
@@ -82,15 +81,20 @@ public:
 
     std::vector<stats_type> sim_stats, roi_stats;
 
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits, bool match_offset) : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits), match_offset_bits(match_offset) {}
+    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits,
+                         bool match_offset)
+        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits),
+          match_offset_bits(match_offset)
+    {
+    }
     void operate() override;
 
     template <typename R>
-      bool do_add_queue(R &queue, std::size_t queue_size, const PACKET &packet);
+    bool do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet);
 
-    bool add_rq(const PACKET &packet);
-    bool add_wq(const PACKET &packet);
-    bool add_pq(const PACKET &packet);
+    bool add_rq(const PACKET& packet);
+    bool add_wq(const PACKET& packet);
+    bool add_pq(const PACKET& packet);
 
     virtual bool rq_has_ready() const;
     virtual bool wq_has_ready() const;
@@ -99,28 +103,27 @@ public:
     void begin_phase() override;
     void end_phase(unsigned cpu) override;
 
-    private:
+  private:
     void check_collision();
   };
 
-  struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer
-  {
+  struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
     void operate() override;
 
     void issue_translation();
     void detect_misses();
 
     template <typename R>
-      void do_issue_translation(R& queue);
+    void do_issue_translation(R& queue);
 
     template <typename R>
-      void do_detect_misses(R& queue);
+    void do_detect_misses(R& queue);
 
     bool rq_has_ready() const override;
     bool wq_has_ready() const override;
     bool pq_has_ready() const override;
 
-    void return_data(const PACKET &packet) override;
+    void return_data(const PACKET& packet) override;
 
     using NonTranslatingQueues::NonTranslatingQueues;
   };
@@ -141,15 +144,15 @@ public:
 
   std::vector<stats_type> sim_stats, roi_stats;
 
-  NonTranslatingQueues &queues;
+  NonTranslatingQueues& queues;
   std::list<PACKET> MSHR;
 
   // functions
-  bool add_rq(const PACKET &packet) override;
-  bool add_wq(const PACKET &packet) override;
-  bool add_pq(const PACKET &packet) override;
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
-  void return_data(const PACKET &packet) override;
+  void return_data(const PACKET& packet) override;
   void operate() override;
 
   void begin_phase() override;
@@ -171,7 +174,7 @@ public:
   bool readlike_miss(const PACKET& handle_pkt);
   bool filllike_miss(std::size_t set, std::size_t way, const PACKET& handle_pkt);
 
-  bool should_activate_prefetcher(const PACKET &pkt) const;
+  bool should_activate_prefetcher(const PACKET& pkt) const;
 
   void print_deadlock() override;
 
@@ -181,13 +184,12 @@ public:
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8,
-        uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask,
-        NonTranslatingQueues &queues, MemoryRequestConsumer* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
-      : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        MSHR_SIZE(v8), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read),
-        MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_mask),
-        queues(queues), repl_type(repl), pref_type(pref)
+  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits,
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, NonTranslatingQueues& queues, MemoryRequestConsumer* ll,
+        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
+      : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), FILL_LATENCY(fill_lat),
+        OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
+        virtual_prefetch(va_pref), pref_activate_mask(pref_mask), queues(queues), repl_type(repl), pref_type(pref)
   {
   }
 };
