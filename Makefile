@@ -13,6 +13,7 @@ csrc = $(wildcard src/*.c)
 #  - Each module's compilation flags
 #  - Each module's source files, appended to $(cppsrc) and $(csrc)
 #  - $(executable_name), if specified
+#  - $(generated_files)
 include _configuration.mk
 
 executable_name ?= bin/champsim
@@ -20,12 +21,11 @@ executable_name ?= bin/champsim
 all: $(executable_name)
 
 clean:
-	find src test $(module_dirs) -name \*.o -delete
-	find src test $(module_dirs) -name \*.d -delete
+	find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete
 	$(RM) test/000-test-main
 
 configclean: clean
-	$(RM) inc/champsim_constants.h src/core_inst.cc inc/cache_modules.inc inc/ooo_cpu_modules.inc _configuration.mk
+	$(RM) $(generated_files) _configuration.mk
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc))
 
