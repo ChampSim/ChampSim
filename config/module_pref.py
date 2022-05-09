@@ -12,26 +12,12 @@ def get_pref_data(module_name, is_instruction_cache):
     retval['prefetcher_final_stats'] = prefix + module_name + '_final_stats'
 
     retval['opts'] = (
-    # These function names should be used in future designs
     '-Dprefetcher_initialize=' + retval['prefetcher_initialize'],
     '-Dprefetcher_cache_operate=' + retval['prefetcher_cache_operate'],
     '-Dprefetcher_branch_operate=' + retval['prefetcher_branch_operate'],
     '-Dprefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
     '-Dprefetcher_cycle_operate=' + retval['prefetcher_cycle_operate'],
     '-Dprefetcher_final_stats=' + retval['prefetcher_final_stats'],
-    # These function names are deprecated, but we still permit them
-    '-Dl1d_prefetcher_initialize=' + retval['prefetcher_initialize'],
-    '-Dl2c_prefetcher_initialize=' + retval['prefetcher_initialize'],
-    '-Dllc_prefetcher_initialize=' + retval['prefetcher_initialize'],
-    '-Dl1d_prefetcher_operate=' + retval['prefetcher_cache_operate'],
-    '-Dl2c_prefetcher_operate=' + retval['prefetcher_cache_operate'],
-    '-Dllc_prefetcher_operate=' + retval['prefetcher_cache_operate'],
-    '-Dl1d_prefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
-    '-Dl2c_prefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
-    '-Dllc_prefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
-    '-Dl1d_prefetcher_final_stats=' + retval['prefetcher_final_stats'],
-    '-Dl2c_prefetcher_final_stats=' + retval['prefetcher_final_stats'],
-    '-Dllc_prefetcher_final_stats=' + retval['prefetcher_final_stats']
     )
 
     return retval
