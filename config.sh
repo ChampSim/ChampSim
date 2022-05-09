@@ -209,10 +209,18 @@ for cpu in cores:
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
-repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cache['replacement'] for cache in caches.values())}
-pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in itertools.chain.from_iterable(zip(cache['prefetcher'], itertools.repeat(cache.get('_is_instruction_cache',False))) for cache in caches.values())}
-branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cpu['branch_predictor'] for cpu in cores)}
-btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in itertools.chain.from_iterable(cpu['btb'] for cpu in cores)}
+def default_modules(dirname):
+    return tuple(os.path.join(dirname, d) for d in os.listdir(dirname) if os.path.isdir(os.path.join(dirname, d)))
+
+repl_module_names = itertools.chain(default_modules('replacement'), *(c['replacement'] for c in caches.values()))
+pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))
+branch_module_names = itertools.chain(default_modules('branch'), *(c['branch_predictor'] for c in cores))
+btb_module_names = itertools.chain(default_modules('btb'), *(c['btb'] for c in cores))
+
+repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in repl_module_names}
+pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in pref_module_names}
+branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in branch_module_names}
+btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in btb_module_names}
 
 for cpu in cores:
     cpu['branch_predictor'] = [module_name for module_name,data in branch_data.items() if data['fname'] in cpu['branch_predictor']]
