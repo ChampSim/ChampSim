@@ -11,8 +11,6 @@
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
-bool show_heartbeat;
-
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 
 void O3_CPU::operate()
@@ -58,7 +56,7 @@ void O3_CPU::operate()
   DECODE_BUFFER.operate();
 }
 
-void O3_CPU::initialize_core()
+void O3_CPU::initialize()
 {
   // BRANCH PREDICTOR & BTB
   impl_branch_predictor_initialize();

@@ -74,6 +74,8 @@ public:
   uint64_t instrs_to_fetch_this_cycle = 0;
   uint64_t num_retired = 0;
 
+  bool show_heartbeat = true;
+
   using stats_type = branch_stats;
 
   std::vector<stats_type> roi_stats, sim_stats;
@@ -106,13 +108,13 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
 
+  void initialize() override;
   void operate() override;
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
   void print_roi_stats() override;
   void print_phase_stats() override;
 
-  void initialize_core();
   void initialize_instruction();
   void check_dib();
   void translate_fetch();

@@ -469,6 +469,12 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
+void CACHE::initialize()
+{
+  impl_prefetcher_initialize();
+  impl_replacement_initialize();
+}
+
 void CACHE::begin_phase()
 {
   roi_stats.emplace_back();

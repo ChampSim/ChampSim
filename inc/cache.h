@@ -155,6 +155,7 @@ public:
   void return_data(const PACKET& packet) override;
   void operate() override;
 
+  void initialize() override;
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
   void print_roi_stats() override;

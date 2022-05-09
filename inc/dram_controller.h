@@ -69,6 +69,7 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale) {}
 
+  void initialize() override;
   void operate() override;
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
