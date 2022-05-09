@@ -23,8 +23,9 @@ public:
 };
 
 // sampler
-std::map<CACHE*, std::vector<std::size_t>> rand_sets;
+std::map<CACHE*, std::vector<std::size_t>> ship_rand_sets;
 std::map<CACHE*, std::vector<SAMPLER_class>> sampler;
+std::map<CACHE*, std::vector<int>> ship_rrpv_values;
 
 // prediction table structure
 std::map<std::pair<CACHE*, std::size_t>, std::array<unsigned, SHCT_SIZE>> SHCT;
@@ -37,32 +38,34 @@ void CACHE::initialize_replacement()
   ;
   for (std::size_t i = 0; i < SAMPLER_SET; i++) {
     std::size_t val = (rand_seed / 65536) % NUM_SET;
-    std::vector<std::size_t>::iterator loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
+    std::vector<std::size_t>::iterator loc = std::lower_bound(std::begin(ship_rand_sets[this]), std::end(ship_rand_sets[this]), val);
 
-    while (loc != std::end(rand_sets[this]) && *loc == val) {
+    while (loc != std::end(ship_rand_sets[this]) && *loc == val) {
       rand_seed = rand_seed * 1103515245 + 12345;
       val = (rand_seed / 65536) % NUM_SET;
-      loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
+      loc = std::lower_bound(std::begin(ship_rand_sets[this]), std::end(ship_rand_sets[this]), val);
     }
 
-    rand_sets[this].insert(loc, val);
+    ship_rand_sets[this].insert(loc, val);
   }
 
   sampler.emplace(this, SAMPLER_SET * NUM_WAY);
+
+  ship_rrpv_values[this] = std::vector<int>(NUM_SET*NUM_WAY, maxRRPV);
 }
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
-  auto begin = std::next(std::begin(block), set * NUM_WAY);
+  auto begin = std::next(std::begin(ship_rrpv_values[this]), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find_if(begin, end, [](BLOCK x) { return x.lru == maxRRPV; }); // hijack the lru field
+  auto victim = std::find(begin, end, maxRRPV);
   while (victim == end) {
     for (auto it = begin; it != end; ++it)
-      it->lru++;
+      ++(*it);
 
-    victim = std::find_if(begin, end, [](BLOCK x) { return x.lru == maxRRPV; });
+    victim = std::find(begin, end, maxRRPV);
   }
 
   return std::distance(begin, victim);
@@ -73,17 +76,17 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
                                      uint8_t hit)
 {
   // handle writeback access
-  if (type == WRITEBACK) {
+  if (type == WRITE) {
     if (!hit)
-      block[set * NUM_WAY + way].lru = maxRRPV - 1;
+      ship_rrpv_values[this][set * NUM_WAY + way] = maxRRPV - 1;
 
     return;
   }
 
   // update sampler
-  auto s_idx = std::find(std::begin(rand_sets[this]), std::end(rand_sets[this]), set);
-  if (s_idx != std::end(rand_sets[this])) {
-    auto s_set_begin = std::next(std::begin(sampler[this]), std::distance(std::begin(rand_sets[this]), s_idx));
+  auto s_idx = std::find(std::begin(ship_rand_sets[this]), std::end(ship_rand_sets[this]), set);
+  if (s_idx != std::end(ship_rand_sets[this])) {
+    auto s_set_begin = std::next(std::begin(sampler[this]), std::distance(std::begin(ship_rand_sets[this]), s_idx));
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
@@ -116,14 +119,14 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   }
 
   if (hit)
-    block[set * NUM_WAY + way].lru = 0;
+    ship_rrpv_values[this][set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
     uint32_t SHCT_idx = ip % SHCT_PRIME;
 
-    block[set * NUM_WAY + way].lru = maxRRPV - 1;
+    ship_rrpv_values[this][set * NUM_WAY + way] = maxRRPV - 1;
     if (SHCT[std::make_pair(this, cpu)][SHCT_idx] == SHCT_MAX)
-      block[set * NUM_WAY + way].lru = maxRRPV;
+      ship_rrpv_values[this][set * NUM_WAY + way] = maxRRPV;
   }
 }
 

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <bitset>
+#include <map>
 
 #include "ooo_cpu.h"
 
@@ -35,7 +36,7 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
 uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
   auto gs_hash = gs_table_hash(ip, branch_history_vector[this]);
-  return gs_history_table[cpu][gs_hash] >= COUNTER_THRESH;
+  return gs_history_table[this][gs_hash] >= COUNTER_THRESH;
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
@@ -43,9 +44,9 @@ void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t tak
   auto gs_hash = gs_table_hash(ip, branch_history_vector[this]);
 
   if (taken)
-    gs_history_table[cpu][gs_hash] = std::min(gs_history_table[cpu][gs_hash] + 1, COUNTER_MAX);
+    gs_history_table[this][gs_hash] = std::min(gs_history_table[this][gs_hash] + 1, COUNTER_MAX);
   else
-    gs_history_table[cpu][gs_hash] = std::max(gs_history_table[cpu][gs_hash] - 1, COUNTER_MIN);
+    gs_history_table[this][gs_hash] = std::max(gs_history_table[this][gs_hash] - 1, COUNTER_MIN);
 
   // update branch history vector
   branch_history_vector[this] <<= 1;

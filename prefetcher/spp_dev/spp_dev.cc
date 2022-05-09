@@ -235,35 +235,34 @@ void SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset, u
       }
     }
   }
-}
 
-if constexpr (GHR_ON) {
-  if (ST_hit == 0) {
-    uint32_t GHR_found = GHR.check_entry(page_offset);
-    if (GHR_found < MAX_GHR_ENTRY) {
-      sig_delta = (GHR.delta[GHR_found] < 0) ? (((-1) * GHR.delta[GHR_found]) + (1 << (SIG_DELTA_BIT - 1))) : GHR.delta[GHR_found];
-      sig[set][match] = ((GHR.sig[GHR_found] << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
-      curr_sig = sig[set][match];
-    }
-  }
-}
-
-// Update LRU
-for (uint32_t way = 0; way < ST_WAY; way++) {
-  if (lru[set][way] < lru[set][match]) {
-    lru[set][way]++;
-
-    if constexpr (SPP_SANITY_CHECK) {
-      // Assertion
-      if (lru[set][way] >= ST_WAY) {
-        std::cout << "[ST] LRU value is wrong! set: " << set << " way: " << way << " lru: " << lru[set][way] << std::endl;
-        assert(0);
+  if constexpr (GHR_ON) {
+    if (ST_hit == 0) {
+      uint32_t GHR_found = GHR.check_entry(page_offset);
+      if (GHR_found < MAX_GHR_ENTRY) {
+        sig_delta = (GHR.delta[GHR_found] < 0) ? (((-1) * GHR.delta[GHR_found]) + (1 << (SIG_DELTA_BIT - 1))) : GHR.delta[GHR_found];
+        sig[set][match] = ((GHR.sig[GHR_found] << SIG_SHIFT) ^ sig_delta) & SIG_MASK;
+        curr_sig = sig[set][match];
       }
     }
   }
-}
-}
-lru[set][match] = 0; // Promote to the MRU position
+
+  // Update LRU
+  for (uint32_t way = 0; way < ST_WAY; way++) {
+    if (lru[set][way] < lru[set][match]) {
+      lru[set][way]++;
+
+      if constexpr (SPP_SANITY_CHECK) {
+        // Assertion
+        if (lru[set][way] >= ST_WAY) {
+          std::cout << "[ST] LRU value is wrong! set: " << set << " way: " << way << " lru: " << lru[set][way] << std::endl;
+          assert(0);
+        }
+      }
+    }
+  }
+
+  lru[set][match] = 0; // Promote to the MRU position
 }
 
 void PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
@@ -363,28 +362,16 @@ void PATTERN_TABLE::read_pattern(uint32_t curr_sig, int* delta_q, uint32_t* conf
     }
     pf_q_tail++;
 
+    lookahead_conf = max_conf;
+    if (lookahead_conf >= PF_THRESHOLD)
+      depth++;
+
     if constexpr (SPP_DEBUG_PRINT) {
-      std::cout << "[PT] " << __func__ << " HIGH CONF: " << pf_conf << " sig: " << std::hex << curr_sig << std::dec << " set: " << set << " way: " << way;
-      std::cout << " delta: " << delta[set][way] << " c_delta: " << c_delta[set][way] << " c_sig: " << c_sig[set];
-      std::cout << " conf: " << local_conf << " depth: " << depth << std::endl;
+      std::cout << "global_accuracy: " << GHR.global_accuracy << " lookahead_conf: " << lookahead_conf << std::endl;
     }
   } else {
-    if constexpr (SPP_DEBUG_PRINT) {
-      std::cout << "[PT] " << __func__ << "  LOW CONF: " << pf_conf << " sig: " << std::hex << curr_sig << std::dec << " set: " << set << " way: " << way;
-      std::cout << " delta: " << delta[set][way] << " c_delta: " << c_delta[set][way] << " c_sig: " << c_sig[set];
-      std::cout << " conf: " << local_conf << " depth: " << depth << std::endl;
-    }
+    confidence_q[pf_q_tail] = 0;
   }
-}
-lookahead_conf = max_conf;
-if (lookahead_conf >= PF_THRESHOLD)
-  depth++;
-
-if constexpr (SPP_DEBUG_PRINT) {
-  std::cout << "global_accuracy: " << GHR.global_accuracy << " lookahead_conf: " << lookahead_conf << std::endl;
-}
-}
-else confidence_q[pf_q_tail] = 0;
 }
 
 bool PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request)
@@ -476,70 +463,8 @@ bool PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request)
     std::cout << "[FILTER] Invalid filter request type: " << filter_request << std::endl;
     assert(0);
   }
-  break;
 
-case SPP_LLC_PREFETCH:
-  if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
-    if constexpr (SPP_DEBUG_PRINT) {
-      std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << std::hex << check_addr << " cache_line: " << cache_line
-                << std::dec;
-      std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << std::endl;
-    }
-
-    return false; // False return indicates "Do not prefetch"
-  } else {
-    // NOTE: SPP_LLC_PREFETCH has relatively low confidence (FILL_THRESHOLD <=
-    // SPP_LLC_PREFETCH < PF_THRESHOLD) Therefore, it is safe to prefetch this
-    // cache line in the large LLC and save precious L2C capacity If this
-    // prefetch request becomes more confident and SPP eventually issues
-    // SPP_L2C_PREFETCH, we can get this cache line immediately from the LLC
-    // (not from DRAM) To allow this fast prefetch from LLC, SPP does not set
-    // the valid bit for SPP_LLC_PREFETCH
-
-    // valid[quotient] = 1;
-    // useful[quotient] = 0;
-
-    if constexpr (SPP_DEBUG_PRINT) {
-      std::cout << "[FILTER] " << __func__ << " don't set valid for check_addr: " << std::hex << check_addr << " cache_line: " << cache_line << std::dec;
-      std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << std::endl;
-    }
-  }
-  break;
-
-case L2C_DEMAND:
-  if ((remainder_tag[quotient] == remainder) && (useful[quotient] == 0)) {
-    useful[quotient] = 1;
-    if (valid[quotient])
-      GHR.pf_useful++; // This cache line was prefetched by SPP and actually
-                       // used in the program
-
-    if constexpr (SPP_DEBUG_PRINT) {
-      std::cout << "[FILTER] " << __func__ << " set useful for check_addr: " << std::hex << check_addr << " cache_line: " << cache_line << std::dec;
-      std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient];
-      std::cout << " GHR.pf_issued: " << GHR.pf_issued << " GHR.pf_useful: " << GHR.pf_useful << std::endl;
-    }
-  }
-  break;
-
-case L2C_EVICT:
-  // Decrease global pf_useful counter when there is a useless prefetch
-  // (prefetched but not used)
-  if (valid[quotient] && !useful[quotient] && GHR.pf_useful)
-    GHR.pf_useful--;
-
-  // Reset filter entry
-  valid[quotient] = 0;
-  useful[quotient] = 0;
-  remainder_tag[quotient] = 0;
-  break;
-
-default:
-  // Assertion
-  cout << "[FILTER] Invalid filter request type: " << filter_request << endl;
-  assert(0);
-}
-
-return true;
+  return true;
 }
 
 void GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta)
