@@ -81,9 +81,6 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
 
     tracing_on = (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()));
 
-    if(!tracing_on) 
-        return;
-
     // reset the current instruction
     curr_instr = {};
     curr_instr.ip = (unsigned long long int)ip;
@@ -91,9 +88,7 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
 
 void EndInstruction()
 {
-    if(instrCount > KnobSkipInstructions.Value()) {
-        tracing_on = true;
-
+    if (tracing_on) {
         if(instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
         {
             // keep tracing
@@ -122,108 +117,53 @@ void BranchOrNot(UINT32 taken)
 
 void RegRead(UINT32 r, UINT32 index)
 {
-    if(!tracing_on) return;
+    auto begin = curr_instr.source_registers;
+    auto end = begin + NUM_INSTR_SOURCES;
 
     // check to see if this register is already in the list
-    int already_found = 0;
-    for(int i=0; i<NUM_INSTR_SOURCES; i++)
-    {
-        if(curr_instr.source_registers[i] == ((unsigned char)r))
-        {
-            already_found = 1;
-            break;
-        }
-    }
-    if(already_found == 0)
-    {
-        for(int i=0; i<NUM_INSTR_SOURCES; i++)
-        {
-            if(curr_instr.source_registers[i] == 0)
-            {
-                curr_instr.source_registers[i] = (unsigned char)r;
-                break;
-            }
-        }
+    auto found_reg = std::find(begin, end, r);
+    if (found_reg == end) {
+      found_reg = std::find(begin, end, 0);
+      *found_reg = r;
     }
 }
 
 void RegWrite(REG r, UINT32 index)
 {
-    if(!tracing_on) return;
+    auto begin = curr_instr.destination_registers;
+    auto end = begin + NUM_INSTR_DESTINATIONS;
 
-    int already_found = 0;
-    for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
-    {
-        if(curr_instr.destination_registers[i] == ((unsigned char)r))
-        {
-            already_found = 1;
-            break;
-        }
-    }
-    if(already_found == 0)
-    {
-        for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
-        {
-            if(curr_instr.destination_registers[i] == 0)
-            {
-                curr_instr.destination_registers[i] = (unsigned char)r;
-                break;
-            }
-        }
+    // check to see if this register is already in the list
+    auto found_reg = std::find(begin, end, r);
+    if (found_reg == end) {
+      found_reg = std::find(begin, end, 0);
+      *found_reg = r;
     }
 }
 
 void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
 {
-    if(!tracing_on) return;
+    auto begin = curr_instr.source_memory;
+    auto end = begin + NUM_INSTR_SOURCES;
 
     // check to see if this memory read location is already in the list
-    int already_found = 0;
-    for(int i=0; i<NUM_INSTR_SOURCES; i++)
-    {
-        if(curr_instr.source_memory[i] == ((unsigned long long int)addr))
-        {
-            already_found = 1;
-            break;
-        }
-    }
-    if(already_found == 0)
-    {
-        for(int i=0; i<NUM_INSTR_SOURCES; i++)
-        {
-            if(curr_instr.source_memory[i] == 0)
-            {
-                curr_instr.source_memory[i] = (unsigned long long int)addr;
-                break;
-            }
-        }
+    auto found_reg = std::find(begin, end, (unsigned long long int) addr);
+    if (found_reg == end) {
+      found_reg = std::find(begin, end, 0);
+      *found_reg = (unsigned long long int) addr;
     }
 }
 
 void MemoryWrite(VOID* addr, UINT32 index)
 {
-    if(!tracing_on) return;
+    auto begin = curr_instr.destination_memory;
+    auto end = begin + NUM_INSTR_DESTINATIONS;
 
-    // check to see if this memory write location is already in the list
-    int already_found = 0;
-    for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
-    {
-        if(curr_instr.destination_memory[i] == ((unsigned long long int)addr))
-        {
-            already_found = 1;
-            break;
-        }
-    }
-    if(already_found == 0)
-    {
-        for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
-        {
-            if(curr_instr.destination_memory[i] == 0)
-            {
-                curr_instr.destination_memory[i] = (unsigned long long int)addr;
-                break;
-            }
-        }
+    // check to see if this memory read location is already in the list
+    auto found_reg = std::find(begin, end, (unsigned long long int) addr);
+    if (found_reg == end) {
+      found_reg = std::find(begin, end, 0);
+      *found_reg = (unsigned long long int) addr;
     }
 }
 
