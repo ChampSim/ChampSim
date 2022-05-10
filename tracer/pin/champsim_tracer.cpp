@@ -115,55 +115,23 @@ void BranchOrNot(UINT32 taken)
     curr_instr.branch_taken = taken;
 }
 
-void RegRead(UINT32 r, UINT32 index)
+void RegInstrument(VOID* begin, VOID* end, UINT32 r)
 {
-    auto begin = curr_instr.source_registers;
-    auto end = begin + NUM_INSTR_SOURCES;
-
     // check to see if this register is already in the list
-    auto found_reg = std::find(begin, end, r);
-    if (found_reg == end) {
-      found_reg = std::find(begin, end, 0);
+    auto found_reg = std::find((unsigned char*)begin, (unsigned char*)end, r);
+    if (found_reg == (unsigned char*)end) {
+      found_reg = std::find((unsigned char*)begin, (unsigned char*)end, 0);
       *found_reg = r;
     }
 }
 
-void RegWrite(REG r, UINT32 index)
+void MemInstrument(VOID* begin, VOID* end, ADDRINT addr)
 {
-    auto begin = curr_instr.destination_registers;
-    auto end = begin + NUM_INSTR_DESTINATIONS;
-
-    // check to see if this register is already in the list
-    auto found_reg = std::find(begin, end, r);
-    if (found_reg == end) {
-      found_reg = std::find(begin, end, 0);
-      *found_reg = r;
-    }
-}
-
-void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
-{
-    auto begin = curr_instr.source_memory;
-    auto end = begin + NUM_INSTR_SOURCES;
-
     // check to see if this memory read location is already in the list
-    auto found_reg = std::find(begin, end, (unsigned long long int) addr);
+    auto found_reg = std::find((unsigned long long int *)begin, (unsigned long long int *)end, addr);
     if (found_reg == end) {
-      found_reg = std::find(begin, end, 0);
-      *found_reg = (unsigned long long int) addr;
-    }
-}
-
-void MemoryWrite(VOID* addr, UINT32 index)
-{
-    auto begin = curr_instr.destination_memory;
-    auto end = begin + NUM_INSTR_DESTINATIONS;
-
-    // check to see if this memory read location is already in the list
-    auto found_reg = std::find(begin, end, (unsigned long long int) addr);
-    if (found_reg == end) {
-      found_reg = std::find(begin, end, 0);
-      *found_reg = (unsigned long long int) addr;
+      found_reg = std::find((unsigned long long int *)begin, (unsigned long long int *)end, 0);
+      *found_reg = addr;
     }
 }
 
@@ -187,10 +155,9 @@ VOID Instruction(INS ins, VOID *v)
     for(UINT32 i=0; i<readRegCount; i++) 
     {
         UINT32 regNum = INS_RegR(ins, i);
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegRead,
-                IARG_UINT32, regNum, IARG_UINT32, i,
-                IARG_END);
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegInstrument,
+            IARG_PTR, curr_instr.source_registers, IARG_PTR, curr_instr.source_registers + NUM_INSTR_SOURCES,
+            IARG_UINT32, regNum, IARG_END);
     }
 
     // instrument register writes
@@ -198,10 +165,9 @@ VOID Instruction(INS ins, VOID *v)
     for(UINT32 i=0; i<writeRegCount; i++) 
     {
         UINT32 regNum = INS_RegW(ins, i);
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegWrite,
-                IARG_UINT32, regNum, IARG_UINT32, i,
-                IARG_END);
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegInstrument,
+            IARG_PTR, curr_instr.destination_registers, IARG_PTR, curr_instr.destination_registers + NUM_INSTR_DESTINATIONS,
+            IARG_UINT32, regNum, IARG_END);
     }
 
     // instrument memory reads and writes
@@ -211,17 +177,13 @@ VOID Instruction(INS ins, VOID *v)
     for (UINT32 memOp = 0; memOp < memOperands; memOp++) 
     {
         if (INS_MemoryOperandIsRead(ins, memOp)) 
-        {
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryRead,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, 0,
-                    IARG_END);
-        }
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemInstrument,
+                IARG_PTR, curr_instr.source_memory, IARG_PTR, curr_instr.source_memory + NUM_INSTR_SOURCES,
+                IARG_MEMORYOP_EA, memOp, IARG_END);
         if (INS_MemoryOperandIsWritten(ins, memOp)) 
-        {
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryWrite,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp,
-                    IARG_END);
-        }
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemInstrument,
+                IARG_PTR, curr_instr.destination_memory, IARG_PTR, curr_instr.destination_memory + NUM_INSTR_DESTINATIONS,
+                IARG_MEMORYOP_EA, memOp, IARG_END);
     }
 
     // finalize each instruction with this function
