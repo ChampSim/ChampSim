@@ -15,16 +15,16 @@
 #define NUM_INSTR_SOURCES 4
 
 typedef struct trace_instr_format {
-    unsigned long long int ip;  // instruction pointer (program counter) value
+    unsigned long long int ip = 0;  // instruction pointer (program counter) value
 
-    unsigned char is_branch;    // is this branch
-    unsigned char branch_taken; // if so, is this taken
+    unsigned char is_branch = 0;    // is this branch
+    unsigned char branch_taken = 0; // if so, is this taken
 
-    unsigned char destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
-    unsigned char source_registers[NUM_INSTR_SOURCES];           // input registers
+    unsigned char destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
+    unsigned char source_registers[NUM_INSTR_SOURCES] = {};           // input registers
 
-    unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
-    unsigned long long int source_memory[NUM_INSTR_SOURCES];           // input memory
+    unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
+    unsigned long long int source_memory[NUM_INSTR_SOURCES] = {};           // input memory
 } trace_instr_format_t;
 
 /* ================================================================== */
@@ -78,46 +78,20 @@ INT32 Usage()
 void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
 {
     instrCount++;
-    //printf("[%p %u %s ", ip, opcode, (char*)opstring);
 
-    if(instrCount > KnobSkipInstructions.Value()) 
-    {
-        tracing_on = true;
-
-        if(instrCount > (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
-            tracing_on = false;
-    }
+    tracing_on = (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()));
 
     if(!tracing_on) 
         return;
 
     // reset the current instruction
+    curr_instr = {};
     curr_instr.ip = (unsigned long long int)ip;
-
-    curr_instr.is_branch = 0;
-    curr_instr.branch_taken = 0;
-
-    for(int i=0; i<NUM_INSTR_DESTINATIONS; i++) 
-    {
-        curr_instr.destination_registers[i] = 0;
-        curr_instr.destination_memory[i] = 0;
-    }
-
-    for(int i=0; i<NUM_INSTR_SOURCES; i++) 
-    {
-        curr_instr.source_registers[i] = 0;
-        curr_instr.source_memory[i] = 0;
-    }
 }
 
 void EndInstruction()
 {
-    //printf("%d]\n", (int)instrCount);
-
-    //printf("\n");
-
-    if(instrCount > KnobSkipInstructions.Value())
-    {
+    if(instrCount > KnobSkipInstructions.Value()) {
         tracing_on = true;
 
         if(instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
@@ -142,33 +116,13 @@ void EndInstruction()
 
 void BranchOrNot(UINT32 taken)
 {
-    //printf("[%d] ", taken);
-
     curr_instr.is_branch = 1;
-    if(taken != 0)
-    {
-        curr_instr.branch_taken = 1;
-    }
+    curr_instr.branch_taken = taken;
 }
 
-void RegRead(UINT32 i, UINT32 index)
+void RegRead(UINT32 r, UINT32 index)
 {
     if(!tracing_on) return;
-
-    REG r = (REG)i;
-
-    /*
-       if(r == 26)
-       {
-    // 26 is the IP, which is read and written by branches
-    return;
-    }
-    */
-
-    //std::cout << r << " " << REG_StringShort((REG)r) << " " ;
-    //std::cout << REG_StringShort((REG)r) << " " ;
-
-    //printf("%d ", (int)r);
 
     // check to see if this register is already in the list
     int already_found = 0;
@@ -193,24 +147,9 @@ void RegRead(UINT32 i, UINT32 index)
     }
 }
 
-void RegWrite(REG i, UINT32 index)
+void RegWrite(REG r, UINT32 index)
 {
     if(!tracing_on) return;
-
-    REG r = (REG)i;
-
-    /*
-       if(r == 26)
-       {
-    // 26 is the IP, which is read and written by branches
-    return;
-    }
-    */
-
-    //std::cout << "<" << r << " " << REG_StringShort((REG)r) << "> ";
-    //std::cout << "<" << REG_StringShort((REG)r) << "> ";
-
-    //printf("<%d> ", (int)r);
 
     int already_found = 0;
     for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
@@ -232,19 +171,11 @@ void RegWrite(REG i, UINT32 index)
             }
         }
     }
-    /*
-       if(index==0)
-       {
-       curr_instr.destination_register = (unsigned long long int)r;
-       }
-       */
 }
 
 void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
 {
     if(!tracing_on) return;
-
-    //printf("0x%llx,%u ", (unsigned long long int)addr, read_size);
 
     // check to see if this memory read location is already in the list
     int already_found = 0;
@@ -273,8 +204,6 @@ void MemoryWrite(VOID* addr, UINT32 index)
 {
     if(!tracing_on) return;
 
-    //printf("(0x%llx) ", (unsigned long long int) addr);
-
     // check to see if this memory write location is already in the list
     int already_found = 0;
     for(int i=0; i<NUM_INSTR_DESTINATIONS; i++)
@@ -296,12 +225,6 @@ void MemoryWrite(VOID* addr, UINT32 index)
             }
         }
     }
-    /*
-       if(index==0)
-       {
-       curr_instr.destination_memory = (long long int)addr;
-       }
-       */
 }
 
 /* ===================================================================== */
@@ -349,10 +272,8 @@ VOID Instruction(INS ins, VOID *v)
     {
         if (INS_MemoryOperandIsRead(ins, memOp)) 
         {
-            //UINT32 read_size = INS_MemoryReadSize(ins);
-
             INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryRead,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, 0,//read_size,
+                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, 0,
                     IARG_END);
         }
         if (INS_MemoryOperandIsWritten(ins, memOp)) 
@@ -413,17 +334,8 @@ int main(int argc, char *argv[])
     // Register function to be called when the application exits
     PIN_AddFiniFunction(Fini, 0);
 
-    //std::cerr <<  "===============================================" << std::endl;
-    //std::cerr <<  "This application is instrumented by the Champsim Trace Generator" << std::endl;
-    //std::cerr <<  "Trace saved in " << KnobOutputFile.Value() << std::endl;
-    //std::cerr <<  "===============================================" << std::endl;
-
     // Start the program, never returns
     PIN_StartProgram();
 
     return 0;
 }
-
-/* ===================================================================== */
-/* eof */
-/* ===================================================================== */
