@@ -35,9 +35,6 @@ UINT64 instrCount = 0;
 
 FILE* out;
 
-bool output_file_closed = false;
-bool tracing_on = false;
-
 trace_instr_format_t curr_instr;
 
 /* ===================================================================== */
@@ -75,38 +72,21 @@ INT32 Usage()
 // Analysis routines
 /* ===================================================================== */
 
-void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
+void ResetCurrentInstruction(VOID *ip)
 {
-    instrCount++;
-
-    tracing_on = (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()));
-
-    // reset the current instruction
     curr_instr = {};
     curr_instr.ip = (unsigned long long int)ip;
 }
 
-void EndInstruction()
+BOOL ShouldWrite()
 {
-    if (tracing_on) {
-        if(instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
-        {
-            // keep tracing
-            fwrite(&curr_instr, sizeof(trace_instr_format_t), 1, out);
-        }
-        else
-        {
-            tracing_on = false;
-            // close down the file, we're done tracing
-            if(!output_file_closed)
-            {
-                fclose(out);
-                output_file_closed = true;
-            }
+  ++instrCount;
+  return (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()));
+}
 
-            exit(0);
-        }
-    }
+void WriteCurrentInstruction()
+{
+  fwrite(&curr_instr, sizeof(trace_instr_format_t), 1, out);
 }
 
 void BranchOrNot(UINT32 taken)
@@ -143,8 +123,7 @@ void MemInstrument(VOID* begin, VOID* end, ADDRINT addr)
 VOID Instruction(INS ins, VOID *v)
 {
     // begin each instruction with this function
-    UINT32 opcode = INS_Opcode(ins);
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BeginInstruction, IARG_INST_PTR, IARG_UINT32, opcode, IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)ResetCurrentInstruction, IARG_INST_PTR, IARG_END);
 
     // instrument branch instructions
     if(INS_IsBranch(ins))
@@ -187,7 +166,8 @@ VOID Instruction(INS ins, VOID *v)
     }
 
     // finalize each instruction with this function
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)EndInstruction, IARG_END);
+    INS_InsertIfCall(ins, IPOINT_BEFORE, (AFUNPTR)ShouldWrite, IARG_END);
+    INS_InsertThenCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteCurrentInstruction, IARG_END);
 }
 
 /*!
@@ -199,12 +179,7 @@ VOID Instruction(INS ins, VOID *v)
  */
 VOID Fini(INT32 code, VOID *v)
 {
-    // close the file if it hasn't already been closed
-    if(!output_file_closed) 
-    {
-        fclose(out);
-        output_file_closed = true;
-    }
+  fclose(out);
 }
 
 /*!
