@@ -80,11 +80,6 @@ cores = config_file.get('ooo_cpu', [{}])
 # Index the cache array by names
 caches = {c['name']: c for c in config_file.get('cache',[])}
 
-# Default branch predictor and BTB
-for i in range(len(cores)):
-    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
-    cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
-
 # Copy or trim cores as necessary to fill out the specified number of cores
 original_size = len(cores)
 if original_size <= config_file['num_cores']:
@@ -92,6 +87,11 @@ if original_size <= config_file['num_cores']:
         cores.append(copy.deepcopy(cores[(i-1) % original_size]))
 else:
     cores = cores[:(config_file['num_cores'] - original_size)]
+
+# Default branch predictor and BTB
+for i in range(len(cores)):
+    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
+    cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
