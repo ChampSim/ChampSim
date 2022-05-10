@@ -97,24 +97,12 @@ void BranchOrNot(UINT32 taken)
     curr_instr.branch_taken = taken;
 }
 
-void RegInstrument(VOID* begin, VOID* end, UINT32 r)
+template <typename T>
+void WriteToSet(T* begin, T* end, UINT32 r)
 {
-    // check to see if this register is already in the list
-    auto found_reg = std::find((unsigned char*)begin, (unsigned char*)end, r);
-    if (found_reg == (unsigned char*)end) {
-      found_reg = std::find((unsigned char*)begin, (unsigned char*)end, 0);
-      *found_reg = r;
-    }
-}
-
-void MemInstrument(VOID* begin, VOID* end, ADDRINT addr)
-{
-    // check to see if this memory read location is already in the list
-    auto found_reg = std::find((unsigned long long int *)begin, (unsigned long long int *)end, addr);
-    if (found_reg == end) {
-      found_reg = std::find((unsigned long long int *)begin, (unsigned long long int *)end, 0);
-      *found_reg = addr;
-    }
+  auto set_end = std::find(begin, end, 0);
+  auto found_reg = std::find(begin, set_end, r); // check to see if this register is already in the list
+  *found_reg = r;
 }
 
 /* ===================================================================== */
@@ -136,7 +124,7 @@ VOID Instruction(INS ins, VOID *v)
     for(UINT32 i=0; i<readRegCount; i++) 
     {
         UINT32 regNum = INS_RegR(ins, i);
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegInstrument,
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteToSet<unsigned char>,
             IARG_PTR, curr_instr.source_registers, IARG_PTR, curr_instr.source_registers + NUM_INSTR_SOURCES,
             IARG_UINT32, regNum, IARG_END);
     }
@@ -146,7 +134,7 @@ VOID Instruction(INS ins, VOID *v)
     for(UINT32 i=0; i<writeRegCount; i++) 
     {
         UINT32 regNum = INS_RegW(ins, i);
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RegInstrument,
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteToSet<unsigned char>,
             IARG_PTR, curr_instr.destination_registers, IARG_PTR, curr_instr.destination_registers + NUM_INSTR_DESTINATIONS,
             IARG_UINT32, regNum, IARG_END);
     }
@@ -158,11 +146,11 @@ VOID Instruction(INS ins, VOID *v)
     for (UINT32 memOp = 0; memOp < memOperands; memOp++) 
     {
         if (INS_MemoryOperandIsRead(ins, memOp)) 
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemInstrument,
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteToSet<unsigned long long int>,
                 IARG_PTR, curr_instr.source_memory, IARG_PTR, curr_instr.source_memory + NUM_INSTR_SOURCES,
                 IARG_MEMORYOP_EA, memOp, IARG_END);
         if (INS_MemoryOperandIsWritten(ins, memOp)) 
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemInstrument,
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)WriteToSet<unsigned long long int>,
                 IARG_PTR, curr_instr.destination_memory, IARG_PTR, curr_instr.destination_memory + NUM_INSTR_DESTINATIONS,
                 IARG_MEMORYOP_EA, memOp, IARG_END);
     }
