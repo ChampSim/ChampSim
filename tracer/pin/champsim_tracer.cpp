@@ -33,7 +33,7 @@ typedef struct trace_instr_format {
 
 UINT64 instrCount = 0;
 
-FILE* out;
+std::ofstream outfile;
 
 trace_instr_format_t curr_instr;
 
@@ -86,7 +86,9 @@ BOOL ShouldWrite()
 
 void WriteCurrentInstruction()
 {
-  fwrite(&curr_instr, sizeof(trace_instr_format_t), 1, out);
+  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
+  std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
+  outfile.write(buf, sizeof(trace_instr_format_t));
 }
 
 void BranchOrNot(UINT32 taken)
@@ -179,7 +181,7 @@ VOID Instruction(INS ins, VOID *v)
  */
 VOID Fini(INT32 code, VOID *v)
 {
-  fclose(out);
+  outfile.close();
 }
 
 /*!
@@ -196,10 +198,8 @@ int main(int argc, char *argv[])
     if( PIN_Init(argc,argv) )
         return Usage();
 
-    const char* fileName = KnobOutputFile.Value().c_str();
-
-    out = fopen(fileName, "ab");
-    if (!out) 
+    outfile.open(KnobOutputFile.Value().c_str(), std::ios_base::binary | std::ios_base::trunc);
+    if (!outfile)
     {
       std::cout << "Couldn't open output trace file. Exiting." << std::endl;
         exit(1);
