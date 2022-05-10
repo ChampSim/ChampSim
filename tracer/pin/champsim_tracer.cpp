@@ -11,21 +11,9 @@
 #include <string.h>
 #include <string>
 
-#define NUM_INSTR_DESTINATIONS 2
-#define NUM_INSTR_SOURCES 4
+#include "../../inc/trace_instruction.h"
 
-typedef struct trace_instr_format {
-    unsigned long long int ip = 0;  // instruction pointer (program counter) value
-
-    unsigned char is_branch = 0;    // is this branch
-    unsigned char branch_taken = 0; // if so, is this taken
-
-    unsigned char destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
-    unsigned char source_registers[NUM_INSTR_SOURCES] = {};           // input registers
-
-    unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-    unsigned long long int source_memory[NUM_INSTR_SOURCES] = {};           // input memory
-} trace_instr_format_t;
+using trace_instr_format_t = input_instr;
 
 /* ================================================================== */
 // Global variables 

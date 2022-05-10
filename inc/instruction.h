@@ -8,11 +8,7 @@
 #include <vector>
 
 #include "circular_buffer.hpp"
-
-// instruction format
-#define NUM_INSTR_DESTINATIONS_SPARC 4
-#define NUM_INSTR_DESTINATIONS 2
-#define NUM_INSTR_SOURCES 4
+#include "trace_instruction.h"
 
 // special registers that help us identify branches
 #define REG_STACK_POINTER 6
@@ -28,40 +24,6 @@
 #define BRANCH_INDIRECT_CALL 5
 #define BRANCH_RETURN 6
 #define BRANCH_OTHER 7
-
-class LSQ_ENTRY;
-
-struct input_instr {
-  // instruction pointer or PC (Program Counter)
-  uint64_t ip = 0;
-
-  // branch info
-  uint8_t is_branch = 0;
-  uint8_t branch_taken = 0;
-
-  uint8_t destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
-  uint8_t source_registers[NUM_INSTR_SOURCES] = {};           // input registers
-
-  uint64_t destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-  uint64_t source_memory[NUM_INSTR_SOURCES] = {};           // input memory
-};
-
-struct cloudsuite_instr {
-  // instruction pointer or PC (Program Counter)
-  uint64_t ip = 0;
-
-  // branch info
-  uint8_t is_branch = 0;
-  uint8_t branch_taken = 0;
-
-  uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
-  uint8_t source_registers[NUM_INSTR_SOURCES] = {};                 // input registers
-
-  uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
-  uint64_t source_memory[NUM_INSTR_SOURCES] = {};                 // input memory
-
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-};
 
 struct ooo_model_instr {
   uint64_t instr_id = 0, ip = 0, event_cycle = 0;
