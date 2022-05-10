@@ -51,7 +51,7 @@ void CACHE::initialize_replacement()
 
   sampler.emplace(this, SAMPLER_SET * NUM_WAY);
 
-  ship_rrpv_values[this] = std::vector<int>(NUM_SET*NUM_WAY, maxRRPV);
+  ship_rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, maxRRPV);
 }
 
 // find replacement victim

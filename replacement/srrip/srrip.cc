@@ -1,15 +1,11 @@
 #include "cache.h"
-
 #include <unordered_map>
 
 constexpr int maxRRPV = 3;
 std::unordered_map<CACHE*, std::vector<int>> srrip_rrpv_values;
 
 // initialize replacement state
-void CACHE::initialize_replacement()
-{
-  srrip_rrpv_values[this] = std::vector<int>(NUM_SET*NUM_WAY, maxRRPV);
-}
+void CACHE::initialize_replacement() { srrip_rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, maxRRPV); }
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
