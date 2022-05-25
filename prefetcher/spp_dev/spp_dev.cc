@@ -9,21 +9,21 @@ GLOBAL_REGISTER GHR;
 
 void CACHE::prefetcher_initialize()
 {
-    std::cout << "Initialize SIGNATURE TABLE" << std::endl;
-    std::cout << "ST_SET: " << ST_SET << std::endl;
-    std::cout << "ST_WAY: " << ST_WAY << std::endl;
-    std::cout << "ST_TAG_BIT: " << ST_TAG_BIT << std::endl;
-    std::cout << "ST_TAG_MASK: " << std::hex << ST_TAG_MASK << std::dec << std::endl;
+  std::cout << "Initialize SIGNATURE TABLE" << std::endl;
+  std::cout << "ST_SET: " << ST_SET << std::endl;
+  std::cout << "ST_WAY: " << ST_WAY << std::endl;
+  std::cout << "ST_TAG_BIT: " << ST_TAG_BIT << std::endl;
+  std::cout << "ST_TAG_MASK: " << std::hex << ST_TAG_MASK << std::dec << std::endl;
 
-    std::cout << std::endl << "Initialize PATTERN TABLE" << std::endl;
-    std::cout << "PT_SET: " << PT_SET << std::endl;
-    std::cout << "PT_WAY: " << PT_WAY << std::endl;
-    std::cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << std::endl;
-    std::cout << "C_SIG_BIT: " << C_SIG_BIT << std::endl;
-    std::cout << "C_DELTA_BIT: " << C_DELTA_BIT << std::endl;
+  std::cout << std::endl << "Initialize PATTERN TABLE" << std::endl;
+  std::cout << "PT_SET: " << PT_SET << std::endl;
+  std::cout << "PT_WAY: " << PT_WAY << std::endl;
+  std::cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << std::endl;
+  std::cout << "C_SIG_BIT: " << C_SIG_BIT << std::endl;
+  std::cout << "C_DELTA_BIT: " << C_DELTA_BIT << std::endl;
 
-    std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
-    std::cout << "FILTER_SET: " << FILTER_SET << std::endl;
+  std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
+  std::cout << "FILTER_SET: " << FILTER_SET << std::endl;
 }
 
 void CACHE::prefetcher_cycle_operate() {}
