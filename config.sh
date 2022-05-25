@@ -299,7 +299,7 @@ for elem in memory_system:
             pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
             **elem)
 
-instantiation_file += ',\n'.join(
+instantiation_file += ''.join(
         'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
             branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['branch_predictor']),
             btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['btb']),
