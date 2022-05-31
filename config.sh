@@ -38,7 +38,7 @@ ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {{{{{pscl5_set}, {pscl5_wa
 
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string}}}'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});\n'
 vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
 
 ###
@@ -156,31 +156,29 @@ freqs = [max(freqs)/x for x in freqs]
 for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
     src['frequency'] = freq
 
+class IterLowerLevels:
+    def __init__(self, system, name):
+        self.system = system
+        self.name = name
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.name not in self.system:
+            raise StopIteration
+        old_name = self.name
+        self.name = self.system[self.name].get('lower_level')
+        return self.system[old_name]
+
 # TLBs use page offsets, Caches use block offsets
-for cpu in cores:
-    cache_name = cpu['ITLB']
-    while cache_name in caches:
-        caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
-        caches[cache_name]['_needs_translate'] = False
-        cache_name = caches[cache_name]['lower_level']
+for tlb in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
+    tlb['offset_bits'] = 'lg2(' + str(config_file['page_size']) + ')'
+    tlb['_needs_translate'] = False
 
-    cache_name = cpu['DTLB']
-    while cache_name in caches:
-        caches[cache_name]['offset_bits'] = 'LOG2_PAGE_SIZE'
-        caches[cache_name]['_needs_translate'] = False
-        cache_name = caches[cache_name]['lower_level']
-
-    cache_name = cpu['L1I']
-    while cache_name in caches:
-        caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
-        caches[cache_name]['_needs_translate'] = caches[cache_name].get('_needs_translate', False) or caches[cache_name].get('virtual_prefetch', False)
-        cache_name = caches[cache_name]['lower_level']
-
-    cache_name = cpu['L1D']
-    while cache_name in caches:
-        caches[cache_name]['offset_bits'] = 'LOG2_BLOCK_SIZE'
-        caches[cache_name]['_needs_translate'] = caches[cache_name].get('_needs_translate', False) or caches[cache_name].get('virtual_prefetch', False)
-        cache_name = caches[cache_name]['lower_level']
+for cache in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D'))):
+    cache['offset_bits'] = 'lg2(' + str(config_file['block_size']) + ')'
+    cache['_needs_translate'] = cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False)
 
 # Try the local module directories, then try to interpret as a path
 def default_dir(dirname, f):
@@ -243,24 +241,13 @@ for i in range(len(cores)):
 memory_system = dict(**caches, **ptws)
 
 # Give each element a fill level
-active_keys = list(itertools.chain.from_iterable((cpu['ITLB'], cpu['DTLB'], cpu['L1I'], cpu['L1D']) for cpu in cores))
-for fill_level in range(1,len(memory_system)+1):
-    for k in active_keys:
-        memory_system[k]['_fill_level'] = fill_level
-    active_keys = [memory_system[k]['lower_level'] for k in active_keys if memory_system[k]['lower_level'] != 'DRAM']
+for fill_level, elem in itertools.chain.from_iterable(enumerate(IterLowerLevels(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
+    elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
 
 # Remove name index
 memory_system = list(memory_system.values())
 
 memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
-
-# Check for lower levels in the array
-for i in reversed(range(len(memory_system))):
-    ul = memory_system[i]
-    if ul['lower_level'] != 'DRAM':
-        if not any((ul['lower_level'] == ll['name']) for ll in memory_system[:i]):
-            print('Could not find cache "' + ul['lower_level'] + '" in cache array. Exiting...')
-            sys.exit(1)
 
 ###
 # Begin file writing
@@ -278,7 +265,6 @@ instantiation_file = generated_warning + '''
 #include "vmem.h"
 #include "operable.h"
 #include "util.h"
-#include "''' + os.path.basename(constants_header_name) + '''"
 #include <array>
 #include <functional>
 #include <vector>
@@ -286,7 +272,7 @@ instantiation_file = generated_warning + '''
 
 instantiation_file += vmem_fmtstr.format(attrs=config_file['virtual_memory'])
 instantiation_file += '\n'
-instantiation_file += pmem_fmtstr.format(attrs=config_file['physical_memory'])
+instantiation_file += pmem_fmtstr.format(**config_file['physical_memory'])
 for elem in memory_system:
     if 'pscl5_set' in elem:
         instantiation_file += ptw_fmtstr.format(**elem)
@@ -368,10 +354,6 @@ constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**c
 constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**config_file['physical_memory'])
 constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**config_file['physical_memory'])
 constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr double tRP_DRAM_NANOSECONDS = {tRP};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr double tRCD_DRAM_NANOSECONDS = {tRCD};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr double tCAS_DRAM_NANOSECONDS = {tCAS};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr double DBUS_TURN_AROUND_NANOSECONDS = {turn_around_time};\n'.format(**config_file['physical_memory'])
 constants_file += '#endif\n'
 write_if_different(constants_header_name, constants_file)
 
