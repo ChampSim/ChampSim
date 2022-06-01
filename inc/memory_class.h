@@ -9,13 +9,14 @@
 
 #include "util.h"
 
-// CACHE ACCESS TYPE
-#define LOAD 0
-#define RFO 1
-#define PREFETCH 2
-#define WRITEBACK 3
-#define TRANSLATION 4
-#define NUM_TYPES 5
+enum access_type {
+  LOAD = 0,
+  RFO,
+  PREFETCH,
+  WRITE,
+  TRANSLATION,
+  NUM_TYPES,
+};
 
 class MemoryRequestProducer;
 struct ooo_model_instr;
@@ -28,6 +29,7 @@ public:
   bool forward_checked = false;
   bool translate_issued = false;
   bool prefetch_from_this = false;
+  bool fill_this_level = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
 
@@ -50,9 +52,9 @@ struct is_valid<PACKET> {
 class MemoryRequestConsumer
 {
 public:
-  virtual bool add_rq(const PACKET &packet) = 0;
-  virtual bool add_wq(const PACKET &packet) = 0;
-  virtual bool add_pq(const PACKET &packet) = 0;
+  virtual bool add_rq(const PACKET& packet) = 0;
+  virtual bool add_wq(const PACKET& packet) = 0;
+  virtual bool add_pq(const PACKET& packet) = 0;
   virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
   virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 

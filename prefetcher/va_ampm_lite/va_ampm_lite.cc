@@ -186,7 +186,7 @@ void va_ampm_reset_cl_prefetch(uint64_t v_addr)
   va_ampm_reset_prefetch(region_index, page_offset);
 }
 
-void CACHE::l2c_prefetcher_initialize()
+void CACHE::prefetcher_initialize()
 {
   std::cout << "CPU " << cpu << " L2C Virtual Address Space AMPM-Lite Prefetcher" << std::endl;
 
@@ -196,7 +196,7 @@ void CACHE::l2c_prefetcher_initialize()
   }
 }
 
-uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
   uint64_t current_vpn = addr >> LOG2_PAGE_SIZE;
   int region_index = va_ampm_find_region(current_vpn);
@@ -258,7 +258,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
   return metadata_in;
 }
 
-uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }
