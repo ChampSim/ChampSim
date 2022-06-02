@@ -15,7 +15,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 
 void O3_CPU::operate()
 {
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
+  instrs_to_read_this_cycle = std::min<std::size_t>(FETCH_WIDTH, IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER));
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -52,8 +52,6 @@ void O3_CPU::operate()
     last_heartbeat_instr = num_retired;
     last_heartbeat_cycle = current_cycle;
   }
-
-  DECODE_BUFFER.operate();
 }
 
 void O3_CPU::initialize()
@@ -280,7 +278,7 @@ void O3_CPU::fetch_instruction()
   }
 }
 
-bool O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
+bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
   PACKET fetch_packet;
   fetch_packet.v_address = begin->ip;
@@ -300,12 +298,9 @@ bool O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 void O3_CPU::promote_to_decode()
 {
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
-  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().fetched == COMPLETED) {
-    if (warmup || IFETCH_BUFFER.front().decoded)
-      DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.front());
-    else
-      DECODE_BUFFER.push_back(IFETCH_BUFFER.front());
-
+  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && std::size(DECODE_BUFFER) < DECODE_BUFFER_SIZE && IFETCH_BUFFER.front().fetched == COMPLETED) {
+    IFETCH_BUFFER.front().event_cycle = current_cycle + ((warmup || IFETCH_BUFFER.front().decoded) ? 0 : DECODE_LATENCY);
+    DECODE_BUFFER.push_back(std::move(IFETCH_BUFFER.front()));
     IFETCH_BUFFER.pop_front();
 
     available_fetch_bandwidth--;
@@ -321,7 +316,7 @@ void O3_CPU::decode_instruction()
   std::size_t available_decode_bandwidth = DECODE_WIDTH;
 
   // Send decoded instructions to dispatch
-  while (available_decode_bandwidth > 0 && DECODE_BUFFER.has_ready() && std::size(DISPATCH_BUFFER) < DISPATCH_BUFFER_SIZE) {
+  while (available_decode_bandwidth > 0 && !std::empty(DECODE_BUFFER) && DECODE_BUFFER.front().event_cycle <= current_cycle && std::size(DISPATCH_BUFFER) < DISPATCH_BUFFER_SIZE) {
     ooo_model_instr& db_entry = DECODE_BUFFER.front();
     do_dib_update(db_entry);
 

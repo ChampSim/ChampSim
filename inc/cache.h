@@ -2,14 +2,15 @@
 #define CACHE_H
 
 #include <bitset>
+#include <cassert>
 #include <deque>
 #include <functional>
 #include <list>
 #include <string>
 #include <vector>
 
+#include "champsim.h"
 #include "champsim_constants.h"
-#include "delay_queue.hpp"
 #include "memory_class.h"
 #include "operable.h"
 
