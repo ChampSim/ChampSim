@@ -22,8 +22,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {};
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> misses = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
   uint64_t total_miss_latency = 0;
 };

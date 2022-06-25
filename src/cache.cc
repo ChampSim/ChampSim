@@ -51,7 +51,7 @@ bool CACHE::handle_writeback(PACKET& handle_pkt)
     impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
     // COLLECT STATS
-    sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
+    sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
 
     // mark dirty
     fill_block.dirty = 1;
@@ -132,7 +132,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
   impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
   // COLLECT STATS
-  sim_stats.back().hits[handle_pkt.cpu][handle_pkt.type]++;
+  sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
 
   auto copy{handle_pkt};
   copy.data = hit_block.data;
@@ -283,7 +283,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
   // COLLECT STATS
-  sim_stats.back().misses[handle_pkt.cpu][handle_pkt.type]++;
+  sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;
 
   return true;
 }
@@ -483,8 +483,10 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned cpu)
 {
-  roi_stats.back().hits[cpu] = sim_stats.back().hits[cpu];
-  roi_stats.back().misses[cpu] = sim_stats.back().misses[cpu];
+  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
+    roi_stats.back().hits.at(type).at(cpu) = sim_stats.back().hits.at(type).at(cpu);
+    roi_stats.back().misses.at(type).at(cpu) = sim_stats.back().misses.at(type).at(cpu);
+  }
 
   roi_stats.back().pf_requested = sim_stats.back().pf_requested;
   roi_stats.back().pf_issued = sim_stats.back().pf_issued;
@@ -497,8 +499,11 @@ void CACHE::end_phase(unsigned cpu)
 
 void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
 {
-  uint64_t TOTAL_HIT = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull),
-           TOTAL_MISS = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull);
+  uint64_t TOTAL_HIT = 0, TOTAL_MISS = 0;
+  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
+    TOTAL_HIT += stats.hits.at(type).at(cpu);
+    TOTAL_MISS += stats.misses.at(type).at(cpu);
+  }
 
   std::cout << name << " TOTAL       ";
   std::cout << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
@@ -506,29 +511,29 @@ void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
   std::cout << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
 
   std::cout << name << " LOAD        ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][LOAD] + stats.misses[cpu][LOAD] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][LOAD] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][LOAD] << std::endl;
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[LOAD][cpu] + stats.misses[LOAD][cpu] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[LOAD][cpu] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[LOAD][cpu] << std::endl;
 
   std::cout << name << " RFO         ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][RFO] + stats.misses[cpu][RFO] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][RFO] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][RFO] << std::endl;
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[RFO][cpu] + stats.misses[RFO][cpu] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[RFO][cpu] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[RFO][cpu] << std::endl;
 
   std::cout << name << " PREFETCH    ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][PREFETCH] + stats.misses[cpu][PREFETCH] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][PREFETCH] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][PREFETCH] << std::endl;
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[PREFETCH][cpu] + stats.misses[PREFETCH][cpu] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[PREFETCH][cpu] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[PREFETCH][cpu] << std::endl;
 
   std::cout << name << " WRITE       ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][WRITE] + stats.misses[cpu][WRITE] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][WRITE] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][WRITE] << std::endl;
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[WRITE][cpu] + stats.misses[WRITE][cpu] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[WRITE][cpu] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[WRITE][cpu] << std::endl;
 
   std::cout << name << " TRANSLATION ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[cpu][TRANSLATION] + stats.misses[cpu][TRANSLATION] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[cpu][TRANSLATION] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[cpu][TRANSLATION] << std::endl;
+  std::cout << "ACCESS: " << std::setw(10) << stats.hits[TRANSLATION][cpu] + stats.misses[TRANSLATION][cpu] << "  ";
+  std::cout << "HIT: " << std::setw(10) << stats.hits[TRANSLATION][cpu] << "  ";
+  std::cout << "MISS: " << std::setw(10) << stats.misses[TRANSLATION][cpu] << std::endl;
 
   std::cout << name << " PREFETCH  ";
   std::cout << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
