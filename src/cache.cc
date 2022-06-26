@@ -497,64 +497,48 @@ void CACHE::end_phase(unsigned cpu)
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 }
 
-void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
+template<typename Ostr>
+void print_cache_stats(Ostr& stream, std::string name, uint32_t cpu, CACHE::stats_type stats)
 {
+  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{{std::pair{"LOAD", LOAD}, std::pair{"RFO", RFO}, std::pair{"PREFETCH", PREFETCH}, std::pair{"WRITE", WRITE}, std::pair{"TRANSLATION", TRANSLATION}}};
   uint64_t TOTAL_HIT = 0, TOTAL_MISS = 0;
-  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    TOTAL_HIT += stats.hits.at(type).at(cpu);
-    TOTAL_MISS += stats.misses.at(type).at(cpu);
+  for (const auto& type : types) {
+    TOTAL_HIT += stats.hits.at(type.second).at(cpu);
+    TOTAL_MISS += stats.misses.at(type.second).at(cpu);
   }
 
-  std::cout << name << " TOTAL       ";
-  std::cout << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
-  std::cout << "HIT: " << std::setw(10) << TOTAL_HIT << "  ";
-  std::cout << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
+  stream << name << " TOTAL       ";
+  stream << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
+  stream << "HIT: " << std::setw(10) << TOTAL_HIT << "  ";
+  stream << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
 
-  std::cout << name << " LOAD        ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[LOAD][cpu] + stats.misses[LOAD][cpu] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[LOAD][cpu] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[LOAD][cpu] << std::endl;
+  for (const auto& type : types) {
+    stream << name << " " << std::setw(11) << type.first << " ";
+    stream << "ACCESS: " << std::setw(10) << stats.hits[type.second][cpu] + stats.misses[type.second][cpu] << "  ";
+    stream << "HIT: " << std::setw(10) << stats.hits[type.second][cpu] << "  ";
+    stream << "MISS: " << std::setw(10) << stats.misses[type.second][cpu] << std::endl;
+  }
 
-  std::cout << name << " RFO         ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[RFO][cpu] + stats.misses[RFO][cpu] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[RFO][cpu] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[RFO][cpu] << std::endl;
+  stream << name << " PREFETCH  ";
+  stream << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
+  stream << "ISSUED: " << std::setw(10) << stats.pf_issued << "  ";
+  stream << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
+  stream << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
 
-  std::cout << name << " PREFETCH    ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[PREFETCH][cpu] + stats.misses[PREFETCH][cpu] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[PREFETCH][cpu] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[PREFETCH][cpu] << std::endl;
-
-  std::cout << name << " WRITE       ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[WRITE][cpu] + stats.misses[WRITE][cpu] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[WRITE][cpu] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[WRITE][cpu] << std::endl;
-
-  std::cout << name << " TRANSLATION ";
-  std::cout << "ACCESS: " << std::setw(10) << stats.hits[TRANSLATION][cpu] + stats.misses[TRANSLATION][cpu] << "  ";
-  std::cout << "HIT: " << std::setw(10) << stats.hits[TRANSLATION][cpu] << "  ";
-  std::cout << "MISS: " << std::setw(10) << stats.misses[TRANSLATION][cpu] << std::endl;
-
-  std::cout << name << " PREFETCH  ";
-  std::cout << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
-  std::cout << "ISSUED: " << std::setw(10) << stats.pf_issued << "  ";
-  std::cout << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
-  std::cout << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
-
-  std::cout << name << " AVERAGE MISS LATENCY: " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << " cycles" << std::endl;
-  // std::cout << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
+  stream << name << " AVERAGE MISS LATENCY: " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << " cycles" << std::endl;
+  // stream << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
 }
 
 void CACHE::print_roi_stats()
 {
   for (std::size_t i = 0; i < NUM_CPUS; ++i)
-    print_cache_stats(NAME, i, roi_stats.back());
+    print_cache_stats(std::cout, NAME, i, roi_stats.back());
 }
 
 void CACHE::print_phase_stats()
 {
   for (std::size_t i = 0; i < NUM_CPUS; ++i)
-    print_cache_stats(NAME, i, sim_stats.back());
+    print_cache_stats(std::cout, NAME, i, sim_stats.back());
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return (1 << static_cast<int>(pkt.type)) & pref_activate_mask; }
