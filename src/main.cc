@@ -86,6 +86,7 @@ int main(int argc, char** argv)
   // initialize knobs
   uint8_t knob_cloudsuite = 0;
   uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
+  bool knob_json_out = false;
 
   // check to see if knobs changed using getopt_long()
   int traces_encountered = 0;
@@ -93,6 +94,7 @@ int main(int argc, char** argv)
                                          {"simulation_instructions", required_argument, 0, 'i'},
                                          {"hide_heartbeat", no_argument, 0, 'h'},
                                          {"cloudsuite", no_argument, 0, 'c'},
+                                         {"json", no_argument, 0, 'j'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
 
@@ -112,6 +114,8 @@ int main(int argc, char** argv)
     case 'c':
       knob_cloudsuite = 1;
       break;
+    case 'j':
+      knob_json_out = true;
     case 0:
       break;
     default:
@@ -150,7 +154,11 @@ int main(int argc, char** argv)
 
   std::cout << "ChampSim completed all CPUs" << std::endl;
 
-  print_stats(champsim::plain_printer{std::cout});
+  if (knob_json_out)
+    print_stats(champsim::json_printer{std::cout});
+  else
+    print_stats(champsim::plain_printer{std::cout});
+
 
   return 0;
 }
