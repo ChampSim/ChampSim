@@ -31,11 +31,17 @@ public:
   void return_data(const PACKET& packet);
 };
 
-struct branch_stats {
+struct cpu_stats {
+  std::string name;
+  uint64_t begin_instrs = 0, begin_cycles = 0;
+  uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
   std::array<uint64_t, 8> total_branch_types = {};
   std::array<uint64_t, 8> branch_type_misses = {};
+
+  uint64_t instrs() const { return end_instrs - begin_instrs; }
+  uint64_t cycles() const { return end_cycles - begin_cycles; }
 };
 
 struct LSQ_ENTRY {
@@ -76,7 +82,7 @@ public:
 
   bool show_heartbeat = true;
 
-  using stats_type = branch_stats;
+  using stats_type = cpu_stats;
 
   std::vector<stats_type> roi_stats, sim_stats;
 
@@ -112,8 +118,6 @@ public:
   void operate() override;
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
 
   void initialize_instruction();
   void check_dib();
@@ -144,10 +148,10 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  uint64_t roi_instr() const { return finish_phase_instr - begin_phase_instr; }
-  uint64_t roi_cycle() const { return finish_phase_cycle - begin_phase_cycle; }
+  uint64_t roi_instr() const { return roi_stats.back().instrs(); }
+  uint64_t roi_cycle() const { return roi_stats.back().cycles(); }
   uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
-  uint64_t sim_cycle() const { return current_cycle - begin_phase_cycle; }
+  uint64_t sim_cycle() const { return current_cycle - sim_stats.back().begin_cycles; }
 
   void print_deadlock() override;
 

@@ -15,6 +15,7 @@
 #include "operable.h"
 
 struct cache_stats {
+  std::string name;
   // prefetch stats
   uint64_t pf_requested = 0;
   uint64_t pf_issued = 0;
@@ -159,8 +160,6 @@ public:
   void initialize() override;
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;

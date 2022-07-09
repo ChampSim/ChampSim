@@ -149,8 +149,11 @@ void MEMORY_CONTROLLER::initialize()
 
 void MEMORY_CONTROLLER::begin_phase()
 {
-  for (auto& chan : channels)
+  std::size_t chan_idx = 0;
+  for (auto& chan : channels) {
     chan.sim_stats.emplace_back();
+    chan.sim_stats.back().name = "Channel " + std::to_string(chan_idx++);
+  }
 }
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)

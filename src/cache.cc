@@ -479,6 +479,9 @@ void CACHE::begin_phase()
 {
   roi_stats.emplace_back();
   sim_stats.emplace_back();
+
+  roi_stats.back().name = NAME;
+  sim_stats.back().name = NAME;
 }
 
 void CACHE::end_phase(unsigned cpu)

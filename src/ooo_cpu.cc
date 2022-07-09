@@ -66,11 +66,20 @@ void O3_CPU::begin_phase()
   begin_phase_instr = num_retired;
   begin_phase_cycle = current_cycle;
 
-  sim_stats.emplace_back();
+  // Record where the next phase begins
+  stats_type stats;
+  stats.name = "CPU " + std::to_string(cpu);
+  stats.begin_instrs = num_retired;
+  stats.begin_cycles = current_cycle;
+  sim_stats.push_back(stats);
 }
 
 void O3_CPU::end_phase(unsigned cpu)
 {
+  // Record where the phase ended (overwrite if this is later)
+  sim_stats.back().end_instrs = num_retired;
+  sim_stats.back().end_cycles = current_cycle;
+
   if (cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
