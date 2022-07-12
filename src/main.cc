@@ -1,3 +1,4 @@
+#include <fstream>
 #include <getopt.h>
 #include <iostream>
 #include <signal.h>
@@ -64,6 +65,7 @@ int main(int argc, char** argv)
   uint8_t knob_cloudsuite = 0;
   uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
   bool knob_json_out = false;
+  std::ofstream json_file;
 
   // check to see if knobs changed using getopt_long()
   int traces_encountered = 0;
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
                                          {"simulation_instructions", required_argument, 0, 'i'},
                                          {"hide_heartbeat", no_argument, 0, 'h'},
                                          {"cloudsuite", no_argument, 0, 'c'},
-                                         {"json", no_argument, 0, 'j'},
+                                         {"json", optional_argument, 0, 'j'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
 
@@ -93,6 +95,8 @@ int main(int argc, char** argv)
       break;
     case 'j':
       knob_json_out = true;
+      if (optarg)
+        json_file.open(optarg);
     case 0:
       break;
     default:
@@ -131,11 +135,20 @@ int main(int argc, char** argv)
 
   std::cout << "ChampSim completed all CPUs" << std::endl;
 
-  if (knob_json_out)
-    print_stats(champsim::json_printer{std::cout});
-  else
-    print_stats(champsim::plain_printer{std::cout});
+  print_stats(champsim::plain_printer{std::cout});
 
+  for (CACHE& cache : caches)
+    cache.impl_prefetcher_final_stats();
+
+  for (CACHE& cache : caches)
+    cache.impl_replacement_final_stats();
+
+  if (knob_json_out) {
+    if (json_file.is_open())
+      print_stats(champsim::json_printer{json_file});
+    else
+      print_stats(champsim::json_printer{std::cout});
+  }
 
   return 0;
 }
