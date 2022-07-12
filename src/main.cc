@@ -39,39 +39,16 @@ void signal_handler(int signal)
 template <typename P>
 void print_stats(P&& printer)
 {
-  if (std::size(ooo_cpu) > 1) {
-    std::cout << std::endl;
-    std::cout << "Total Simulation Statistics (not including warmup)" << std::endl;
+  champsim::phase_stats stats;
 
-    std::vector<O3_CPU::stats_type> cpu_sim_stats;
-    std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(cpu_sim_stats), [](O3_CPU &cpu){ return cpu.sim_stats.back(); });
-    printer.print(cpu_sim_stats);
+  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.sim_cpu_stats), [](O3_CPU &cpu){ return cpu.sim_stats.back(); });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats), [](CACHE &cache){ return cache.sim_stats.back(); });
+  std::transform(std::begin(DRAM.channels), std::end(DRAM.channels), std::back_inserter(stats.sim_dram_stats), [](DRAM_CHANNEL &chan){ return chan.sim_stats.back(); });
+  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.roi_cpu_stats), [](O3_CPU &cpu){ return cpu.roi_stats.back(); });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats), [](CACHE &cache){ return cache.roi_stats.back(); });
+  std::transform(std::begin(DRAM.channels), std::end(DRAM.channels), std::back_inserter(stats.roi_dram_stats), [](DRAM_CHANNEL &chan){ return chan.roi_stats.back(); });
 
-    std::vector<CACHE::stats_type> cache_sim_stats;
-    std::transform(std::begin(caches), std::end(caches), std::back_inserter(cache_sim_stats), [](CACHE &cache){ return cache.sim_stats.back(); });
-    printer.print(cache_sim_stats);
-  }
-
-  std::cout << std::endl;
-  std::cout << "Region of Interest Statistics" << std::endl;
-
-  std::vector<O3_CPU::stats_type> cpu_roi_stats;
-  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(cpu_roi_stats), [](O3_CPU &cpu){ return cpu.roi_stats.back(); });
-  printer.print(cpu_roi_stats);
-
-  std::vector<CACHE::stats_type> cache_roi_stats;
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(cache_roi_stats), [](CACHE &cache){ return cache.roi_stats.back(); });
-  printer.print(cache_roi_stats);
-
-  for (CACHE& cache : caches)
-    cache.impl_prefetcher_final_stats();
-
-  for (CACHE& cache : caches)
-    cache.impl_replacement_final_stats();
-
-  std::vector<DRAM_CHANNEL::stats_type> dram_sim_stats;
-  std::transform(std::begin(DRAM.channels), std::end(DRAM.channels), std::back_inserter(dram_sim_stats), [](DRAM_CHANNEL &chan){ return chan.sim_stats.back(); });
-  printer.print(dram_sim_stats);
+  printer.print(stats);
 }
 
 int main(int argc, char** argv)

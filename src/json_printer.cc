@@ -28,7 +28,7 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
   stream << indent() << "\"cycles\": " << stats.cycles() << "," << std::endl;
   stream << indent() << "\"Avg ROB occupancy at mispredict\": " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << ", " << std::endl;
 
-  stream << "  \"mispredict\": {" << std::endl;
+  stream << indent() << "\"mispredict\": {" << std::endl;
   ++indent_level;
   for (std::size_t i = 0; i < std::size(types); ++i) {
     if (i != 0)
@@ -39,7 +39,7 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
   --indent_level;
   stream << indent() << "}" << std::endl;
   --indent_level;
-  stream << indent() << "}" << std::endl;
+  stream << indent() << "}";
 }
 
 void champsim::json_printer::print(CACHE::stats_type stats)
@@ -52,7 +52,7 @@ void champsim::json_printer::print(CACHE::stats_type stats)
       std::pair{"TRANSLATION", TRANSLATION}
   }};
 
-  stream << indent() << "{" << std::endl;
+  stream << indent() << "\"" << stats.name << "\": {" << std::endl;
   ++indent_level;
   for (const auto& type : types) {
     stream << indent() << "\"" << type.first << "\": {" << std::endl;
@@ -88,42 +88,52 @@ void champsim::json_printer::print(CACHE::stats_type stats)
     TOTAL_MISS += std::accumulate(std::begin(stats.misses.at(type.second)), std::end(stats.misses.at(type.second)), TOTAL_MISS);
   stream << indent() << "\"miss latency\": " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << std::endl;
   --indent_level;
-  stream << "}";
+  stream << indent() << "}";
 }
 
 void champsim::json_printer::print(DRAM_CHANNEL::stats_type stats)
 {
   stream << indent() << "{" << std::endl;
   ++indent_level;
-  stream << indent() << "  \"RQ ROW_BUFFER_HIT\": " << stats.RQ_ROW_BUFFER_HIT << "," << std::endl;
-  stream << indent() << "  \"RQ ROW_BUFFER_MISS\": " << stats.RQ_ROW_BUFFER_MISS << "," << std::endl;
-  stream << indent() << "  \"WQ ROW_BUFFER_HIT\": " << stats.WQ_ROW_BUFFER_HIT << "," << std::endl;
-  stream << indent() << "  \"WQ ROW_BUFFER_MISS\": " << stats.WQ_ROW_BUFFER_MISS << "," << std::endl;
-  stream << indent() << "  \"WQ FULL\": " << stats.WQ_FULL << "," << std::endl;
+  stream << indent() << "\"RQ ROW_BUFFER_HIT\": " << stats.RQ_ROW_BUFFER_HIT << "," << std::endl;
+  stream << indent() << "\"RQ ROW_BUFFER_MISS\": " << stats.RQ_ROW_BUFFER_MISS << "," << std::endl;
+  stream << indent() << "\"WQ ROW_BUFFER_HIT\": " << stats.WQ_ROW_BUFFER_HIT << "," << std::endl;
+  stream << indent() << "\"WQ ROW_BUFFER_MISS\": " << stats.WQ_ROW_BUFFER_MISS << "," << std::endl;
+  stream << indent() << "\"WQ FULL\": " << stats.WQ_FULL << "," << std::endl;
   if (stats.dbus_count_congested > 0)
-    stream << indent() << "  \"AVG DBUS CONGESTED CYCLE\": " << (1.0 * stats.dbus_cycle_congested) / stats.dbus_count_congested << std::endl;
+    stream << indent() << "\"AVG DBUS CONGESTED CYCLE\": " << (1.0 * stats.dbus_cycle_congested) / stats.dbus_count_congested << std::endl;
   else
-    stream << indent() << "  \"AVG DBUS CONGESTED CYCLE\": null" << std::endl;
+    stream << indent() << "\"AVG DBUS CONGESTED CYCLE\": null" << std::endl;
   --indent_level;
-  stream << indent() << "}" << std::endl;
+  stream << indent() << "}";
 }
 
 void champsim::json_printer::print(std::vector<O3_CPU::stats_type> stats_list)
 {
   stream << indent() << "\"cores\": [" << std::endl;
   ++indent_level;
-  for (const auto &stats : stats_list)
+
+  bool first = true;
+  for (const auto &stats : stats_list) {
+    if (!first)
+      stream << "," << std::endl;
     print(stats);
+    first = false;
+  }
+  stream << std::endl;
+
   --indent_level;
-  stream << indent() << "]" << std::endl;
+  stream << indent() << "]";
 }
 
 void champsim::json_printer::print(std::vector<CACHE::stats_type> stats_list)
 {
+  bool first = true;
   for (const auto &stats : stats_list) {
-    stream << indent() << "\"" << stats.name << "\": ";
+    if (!first)
+      stream << "," << std::endl;
     print(stats);
-    stream << "," << std::endl;
+    first = false;
   }
 }
 
@@ -131,10 +141,54 @@ void champsim::json_printer::print(std::vector<DRAM_CHANNEL::stats_type> stats_l
 {
   stream << indent() << "\"DRAM\": [" << std::endl;
   ++indent_level;
-  for (const auto &stats : stats_list)
+
+  bool first = true;
+  for (const auto &stats : stats_list) {
+    if (!first)
+      stream << "," << std::endl;
     print(stats);
+    first = false;
+  }
+  stream << std::endl;
+
   --indent_level;
   stream << indent() << "]" << std::endl;
 }
 
+void champsim::json_printer::print(champsim::phase_stats& stats)
+{
+  stream << indent() << "{" << std::endl;
+  ++indent_level;
+  stream << indent() << "\"roi\": {" << std::endl;
+  ++indent_level;
+
+  print(stats.roi_cpu_stats);
+  stream << "," << std::endl;
+
+  print(stats.roi_cache_stats);
+  stream << "," << std::endl;
+
+  print(stats.roi_dram_stats);
+  stream << std::endl;
+
+  --indent_level;
+  stream << indent() << "}" << std::endl;
+
+  stream << indent() << "\"sim\": {" << std::endl;
+  ++indent_level;
+
+  print(stats.sim_cpu_stats);
+  stream << "," << std::endl;
+
+  print(stats.sim_cache_stats);
+  stream << "," << std::endl;
+
+  print(stats.sim_dram_stats);
+  stream << std::endl;
+
+  --indent_level;
+  stream << indent() << "}" << std::endl;
+  --indent_level;
+  stream << indent() << "}" << std::endl;
+}
 

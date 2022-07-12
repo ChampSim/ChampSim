@@ -87,3 +87,26 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
   stream << "  FULL: " << std::setw(10) << stats.WQ_FULL << std::endl;
   stream << std::endl;
 }
+
+void champsim::plain_printer::print(champsim::phase_stats& stats)
+{
+  if (NUM_CPUS > 1) {
+    stream << std::endl;
+    stream << "Total Simulation Statistics (not including warmup)" << std::endl;
+
+    for (const auto& stat : stats.roi_cpu_stats)
+      print(stat);
+
+    for (const auto& stat : stats.roi_cache_stats)
+      print(stat);
+  }
+
+  stream << std::endl;
+  stream << "Region of Interest Statistics" << std::endl;
+
+  for (const auto& stat : stats.sim_cpu_stats)
+    print(stat);
+
+  for (const auto& stat : stats.sim_cache_stats)
+    print(stat);
+}
