@@ -47,7 +47,7 @@ jobs:
         name: champsim-singlecore-results
         path: single_core_result.txt
 
-  single_core:
+  multi_core:
     runs-on: ubuntu-latest
 
     steps:
