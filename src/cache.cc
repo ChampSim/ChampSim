@@ -232,10 +232,12 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
         pf_useful++;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
+      auto to_return = mshr_entry->to_return;
       *mshr_entry = handle_pkt;
 
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
+      mshr_entry->to_return = to_return;
     }
   } else {
     if (mshr_full)  // not enough MSHR resource
