@@ -177,10 +177,12 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
         sim_stats.back().pf_useful++;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
+      auto to_return = std::move(mshr_entry->to_return);
       *mshr_entry = handle_pkt;
 
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
+      mshr_entry->to_return = std::move(to_return);
     }
   } else {
     if (mshr_full)  // not enough MSHR resource
