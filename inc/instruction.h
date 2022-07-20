@@ -9,30 +9,22 @@
 #include <limits>
 #include <vector>
 
-#include "circular_buffer.hpp"
-#include "util.h"
-
-// instruction format
-#define NUM_INSTR_DESTINATIONS_SPARC 4
-#define NUM_INSTR_DESTINATIONS 2
-#define NUM_INSTR_SOURCES 4
-
 // special registers that help us identify branches
 #define REG_STACK_POINTER 6
 #define REG_FLAGS 25
 #define REG_INSTRUCTION_POINTER 26
 
 // branch types
-#define NOT_BRANCH 0
-#define BRANCH_DIRECT_JUMP 1
-#define BRANCH_INDIRECT 2
-#define BRANCH_CONDITIONAL 3
-#define BRANCH_DIRECT_CALL 4
-#define BRANCH_INDIRECT_CALL 5
-#define BRANCH_RETURN 6
-#define BRANCH_OTHER 7
-
-struct LSQ_ENTRY;
+enum branch_type {
+  NOT_BRANCH = 0,
+  BRANCH_DIRECT_JUMP = 1,
+  BRANCH_INDIRECT = 2,
+  BRANCH_CONDITIONAL = 3,
+  BRANCH_DIRECT_CALL = 4,
+  BRANCH_INDIRECT_CALL = 5,
+  BRANCH_RETURN = 6,
+  BRANCH_OTHER = 7
+};
 
 struct input_instr {
   // instruction pointer or PC (Program Counter)
@@ -42,11 +34,11 @@ struct input_instr {
   uint8_t is_branch = 0;
   uint8_t branch_taken = 0;
 
-  uint8_t destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
-  uint8_t source_registers[NUM_INSTR_SOURCES] = {};           // input registers
+  uint8_t destination_registers[2] = {}; // output registers
+  uint8_t source_registers[4] = {};      // input registers
 
-  uint64_t destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-  uint64_t source_memory[NUM_INSTR_SOURCES] = {};           // input memory
+  uint64_t destination_memory[2] = {}; // output memory
+  uint64_t source_memory[4] = {};      // input memory
 };
 
 struct cloudsuite_instr {
@@ -57,11 +49,11 @@ struct cloudsuite_instr {
   uint8_t is_branch = 0;
   uint8_t branch_taken = 0;
 
-  uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
-  uint8_t source_registers[NUM_INSTR_SOURCES] = {};                 // input registers
+  uint8_t destination_registers[4] = {}; // output registers
+  uint8_t source_registers[4] = {};      // input registers
 
-  uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
-  uint64_t source_memory[NUM_INSTR_SOURCES] = {};                 // input memory
+  uint64_t destination_memory[4] = {}; // output memory
+  uint64_t source_memory[4] = {};      // input memory
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 };
@@ -81,7 +73,6 @@ struct ooo_model_instr {
   uint8_t branch_type = NOT_BRANCH;
   uint64_t branch_target = 0;
 
-  uint8_t translated = 0;
   uint8_t fetched = 0;
   uint8_t decoded = 0;
   uint8_t scheduled = 0;
@@ -98,9 +89,6 @@ struct ooo_model_instr {
 
   // these are indices of instructions in the ROB that depend on me
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
-
-  // memory addresses that may cause dependencies between instructions
-  uint64_t instruction_pa = 0;
 
 private:
   template <typename T>

@@ -31,6 +31,7 @@ public:
     ++current_cycle;
   }
 
+  virtual void initialize(){};
   virtual void operate() = 0;
   virtual void begin_phase(){};
   virtual void end_phase(unsigned cpu){};

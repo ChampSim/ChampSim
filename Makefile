@@ -1,6 +1,7 @@
 CPPFLAGS += -Iinc
 CFLAGS += --std=c++17 -Wall -O3
 CXXFLAGS += --std=c++17 -Wall -O3
+CPPFLAGS += -MMD -MP
 
 .phony: all clean configclean test
 
@@ -12,6 +13,7 @@ csrc = $(wildcard src/*.c)
 #  - Each module's compilation flags
 #  - Each module's source files, appended to $(cppsrc) and $(csrc)
 #  - $(executable_name), if specified
+#  - $(generated_files)
 include _configuration.mk
 
 executable_name ?= bin/champsim
@@ -19,15 +21,13 @@ executable_name ?= bin/champsim
 all: $(executable_name)
 
 clean:
-	find src test $(module_dirs) -name \*.o -delete
-	find src test $(module_dirs) -name \*.d -delete
+	find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete
 	$(RM) test/000-test-main
 
 configclean: clean
-	$(RM) inc/champsim_constants.h src/core_inst.cc inc/cache_modules.inc inc/ooo_cpu_modules.inc _configuration.mk
+	$(RM) $(generated_files) _configuration.mk
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc))
-$(exec_obj) : CPPFLAGS += -MMD -MP
 
 $(executable_name): $(exec_obj)
 	mkdir -p $(dir $@)
@@ -37,5 +37,5 @@ test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc
 test: $(test_obj)
 	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
 
--include $(wildcard src/*.d) $(foreach dir,$(module_dirs),$(wildcard $(dir)/*.d))
+-include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(module_dirs),$(wildcard $(dir)/*.d))
 

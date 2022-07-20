@@ -16,13 +16,12 @@ def module_make(directory, opts):
 
     return retval
 
-def get_makefile_string(constants_header_name, instantiation_file_name, module_info, **config_file):
+def get_makefile_string(module_info, **config_file):
     retval = ''
 
     for k in ('CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
         if k in config_file:
             retval += k + ' += ' + config_file[k] + '\n'
-    retval += '\n'
 
     if 'executable_name' in config_file:
         retval += 'executable_name ?= ' + config_file['executable_name'] + '\n\n'

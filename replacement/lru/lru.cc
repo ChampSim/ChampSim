@@ -21,7 +21,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
                                      uint8_t hit)
 {
   // Mark the way as being used on the current cycle
-  if (!hit || type != WRITEBACK) // Skip this for writeback hits
+  if (!hit || type != WRITE) // Skip this for writeback hits
     last_used_cycles[this][set * NUM_WAY + way] = current_cycle;
 }
 

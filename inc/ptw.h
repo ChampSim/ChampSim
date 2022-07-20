@@ -15,8 +15,8 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 {
 public:
   const std::string NAME;
-  const uint32_t cpu;
   const uint32_t RQ_SIZE, MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint64_t HIT_LATENCY;
 
   std::deque<PACKET> RQ;
   std::deque<PACKET> MSHR;
@@ -29,8 +29,8 @@ public:
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
+  PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11, uint32_t v12,
+                  uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
   bool add_rq(const PACKET& packet) override;

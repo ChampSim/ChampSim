@@ -43,7 +43,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
                                      uint8_t hit)
 {
   // do not update replacement state for writebacks
-  if (type == WRITEBACK) {
+  if (type == WRITE) {
     rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
     return;
   }

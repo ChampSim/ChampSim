@@ -53,12 +53,6 @@ public:
 
   SIGNATURE_TABLE()
   {
-    std::cout << "Initialize SIGNATURE TABLE" << std::endl;
-    std::cout << "ST_SET: " << ST_SET << std::endl;
-    std::cout << "ST_WAY: " << ST_WAY << std::endl;
-    std::cout << "ST_TAG_BIT: " << ST_TAG_BIT << std::endl;
-    std::cout << "ST_TAG_MASK: " << std::hex << ST_TAG_MASK << std::dec << std::endl;
-
     for (uint32_t set = 0; set < ST_SET; set++)
       for (uint32_t way = 0; way < ST_WAY; way++) {
         valid[set][way] = 0;
@@ -80,13 +74,6 @@ public:
 
   PATTERN_TABLE()
   {
-    std::cout << std::endl << "Initialize PATTERN TABLE" << std::endl;
-    std::cout << "PT_SET: " << PT_SET << std::endl;
-    std::cout << "PT_WAY: " << PT_WAY << std::endl;
-    std::cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << std::endl;
-    std::cout << "C_SIG_BIT: " << C_SIG_BIT << std::endl;
-    std::cout << "C_DELTA_BIT: " << C_DELTA_BIT << std::endl;
-
     for (uint32_t set = 0; set < PT_SET; set++) {
       for (uint32_t way = 0; way < PT_WAY; way++) {
         delta[set][way] = 0;
@@ -109,9 +96,6 @@ public:
 
   PREFETCH_FILTER()
   {
-    std::cout << std::endl << "Initialize PREFETCH FILTER" << std::endl;
-    std::cout << "FILTER_SET: " << FILTER_SET << std::endl;
-
     for (uint32_t set = 0; set < FILTER_SET; set++) {
       remainder_tag[set] = 0;
       valid[set] = 0;

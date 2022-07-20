@@ -90,8 +90,4 @@ std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, boo
     return std::make_unique<bulk_tracereader<input_instr>>(cpu, fname);
 }
 
-bool tracereader::eof() const
-{
-  return eof_ && std::size(instr_buffer) <= refresh_thresh;
-}
-
+bool tracereader::eof() const { return eof_ && std::size(instr_buffer) <= refresh_thresh; }
