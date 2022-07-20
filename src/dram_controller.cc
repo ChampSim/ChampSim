@@ -343,7 +343,4 @@ uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-std::size_t MEMORY_CONTROLLER::size() const
-{
-  return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE;
-}
+std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
