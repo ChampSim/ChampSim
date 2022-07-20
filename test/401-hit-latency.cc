@@ -3,12 +3,6 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-#include "dram_controller.h"
-#include "vmem.h"
-
-MEMORY_CONTROLLER dram{1};
-VirtualMemory vmem{20, 1 << 12, 5, 200, dram};
-
 SCENARIO("A cache returns a hit after the specified latency") {
   GIVEN("A cache with one filled block") {
     constexpr uint64_t hit_latency = 7;
