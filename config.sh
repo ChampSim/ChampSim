@@ -11,6 +11,11 @@ from collections import ChainMap
 import config.modules as modules
 import config.makefile as makefile
 
+# Read the config file
+def parse_file(fname):
+    with open(fname) as rfp:
+        return json.load(rfp)
+
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 core_modules_file_name = 'inc/ooo_cpu_modules.inc'
@@ -49,8 +54,7 @@ default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 100
 
 # Read the config file
 if len(sys.argv) >= 2:
-    with open(sys.argv[1]) as rfp:
-        config_file = ChainMap(json.load(rfp), default_root)
+    config_file = ChainMap(*map(parse_file, reversed(sys.argv[1:])), default_root)
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
     config_file = ChainMap(default_root)
