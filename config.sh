@@ -276,7 +276,7 @@ instantiation_file = generated_warning + '''
 
 instantiation_file += pmem_fmtstr.format(**config_file['physical_memory'])
 instantiation_file += '\n'
-instantiation_file += vmem_fmtstr.format(dram_name=config_file['physical_memory'], **config_file['virtual_memory'])
+instantiation_file += vmem_fmtstr.format(dram_name=config_file['physical_memory']['name'], **config_file['virtual_memory'])
 instantiation_file += '\n'
 
 for elem in memory_system:
