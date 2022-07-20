@@ -44,7 +44,7 @@ ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {{{{{pscl5_set}, {pscl5_wa
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string}}}'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});\n'
-vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
+vmem_fmtstr = 'VirtualMemory vmem(lg2({size}), 1 << 12, {num_levels}, {minor_fault_penalty}, {dram_name});\n'
 
 ###
 # Begin default core model definition
@@ -274,9 +274,11 @@ instantiation_file = generated_warning + '''
 #include <vector>
 '''
 
-instantiation_file += vmem_fmtstr.format(attrs=config_file['virtual_memory'])
-instantiation_file += '\n'
 instantiation_file += pmem_fmtstr.format(**config_file['physical_memory'])
+instantiation_file += '\n'
+instantiation_file += vmem_fmtstr.format(dram_name=config_file['physical_memory']['name'], **config_file['virtual_memory'])
+instantiation_file += '\n'
+
 for elem in memory_system:
     if 'pscl5_set' in elem:
         instantiation_file += ptw_fmtstr.format(**elem)
