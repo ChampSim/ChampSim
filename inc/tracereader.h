@@ -1,28 +1,50 @@
 #include <cstdio>
+#include <deque>
+#include <memory>
 #include <string>
+#include <variant>
+
+#ifdef __GNUG__
+#include <ext/stdio_filebuf.h>
+#endif
+
+namespace detail
+{
+void pclose_file(FILE* f);
+}
 
 #include "instruction.h"
 
 class tracereader
 {
-protected:
-  FILE* trace_file = NULL;
-  uint8_t cpu;
-  std::string cmd_fmtstr;
-  std::string decomp_program;
-  std::string trace_string;
-
 public:
-  tracereader(const tracereader& other) = delete;
-  tracereader(uint8_t cpu, std::string _ts);
-  ~tracereader();
-  void open(std::string trace_string);
-  void close();
+  const std::string trace_string;
+  tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu) {}
+  virtual ~tracereader() = default;
+
+  virtual ooo_model_instr operator()() = 0;
+  bool eof() const;
+
+protected:
+  static FILE* get_fptr(std::string fname);
+
+  std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
+#ifdef __GNUG__
+  __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
+#endif
+
+  uint8_t cpu;
+  bool eof_ = false;
+
+  constexpr static std::size_t buffer_size = 128;
+  constexpr static std::size_t refresh_thresh = 1;
+  std::deque<ooo_model_instr> instr_buffer;
 
   template <typename T>
-  ooo_model_instr read_single_instr();
+  void refresh_buffer();
 
-  virtual ooo_model_instr get() = 0;
+  template <typename T>
+  ooo_model_instr impl_get();
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);

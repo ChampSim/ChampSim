@@ -1,8 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
 
@@ -72,55 +74,6 @@ struct min_event_cycle : invalid_is_maximal<T, cmp_event_cycle<T>> {
 };
 
 template <typename T, typename U = T>
-struct cmp_lru {
-  bool operator()(const T& lhs, const U& rhs) { return lhs.lru < rhs.lru; }
-};
-
-/*
- * A comparator to determine the LRU element. To use this comparator, the type
- * must have a member variable named "lru" and have a specialization of
- * is_valid<>.
- *
- * To use:
- *     auto lru_elem = std::max_element(std::begin(set), std::end(set),
- * lru_comparator<BLOCK>());
- *
- * The MRU element can be found using std::min_element instead.
- */
-template <typename T, typename U = T>
-struct lru_comparator : invalid_is_maximal<T, cmp_lru<T, U>, U> {
-  using first_argument_type = T;
-  using second_argument_type = U;
-};
-
-/*
- * A functor to reorder elements to a new LRU order.
- * The type must have a member variable named "lru".
- *
- * To use:
- *     std::for_each(std::begin(set), std::end(set),
- * lru_updater<BLOCK>(hit_element));
- */
-template <typename T>
-struct lru_updater {
-  const decltype(T::lru) val;
-  explicit lru_updater(decltype(T::lru) val) : val(val) {}
-
-  template <typename U>
-  explicit lru_updater(U iter) : val(iter->lru)
-  {
-  }
-
-  void operator()(T& x)
-  {
-    if (x.lru == val)
-      x.lru = 0;
-    else
-      ++x.lru;
-  }
-};
-
-template <typename T, typename U = T>
 struct ord_event_cycle {
   using first_argument_type = T;
   using second_argument_type = U;
@@ -131,5 +84,76 @@ struct ord_event_cycle {
     return !second_validtest(rhs) || (first_validtest(lhs) && lhs.event_cycle < rhs.event_cycle);
   }
 };
+
+namespace champsim
+{
+
+template <typename T>
+class simple_lru_table
+{
+  struct block_t {
+    uint64_t address;
+    uint64_t last_used = 0;
+    T data;
+  };
+
+  const std::size_t NUM_SET, NUM_WAY, shamt;
+  uint64_t access_count = 0;
+  std::vector<block_t> block{NUM_SET * NUM_WAY};
+
+  auto get_set_span(uint64_t index)
+  {
+    auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
+    auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+    return std::pair{set_begin, std::next(set_begin, NUM_WAY)};
+  }
+
+  auto match_func(uint64_t index)
+  {
+    return [index, shamt = this->shamt](auto x) {
+      return x.last_used > 0 && (x.address >> shamt) == (index >> shamt);
+    };
+  }
+
+public:
+  simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
+
+  std::optional<T> check_hit(uint64_t index)
+  {
+    auto [set_begin, set_end] = get_set_span(index);
+    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
+
+    if (hit_block == set_end)
+      return std::nullopt;
+
+    hit_block->last_used = ++access_count;
+    return hit_block->data;
+  }
+
+  void fill_cache(uint64_t index, T data)
+  {
+    auto [set_begin, set_end] = get_set_span(index);
+    auto fill_block = std::find_if(set_begin, set_end, match_func(index));
+
+    if (fill_block == set_end)
+      fill_block = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
+
+    *fill_block = {index, ++access_count, data};
+  }
+
+  std::optional<T> invalidate(uint64_t index)
+  {
+    auto [set_begin, set_end] = get_set_span(index);
+    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
+
+    if (hit_block == set_end)
+      return std::nullopt;
+
+    auto oldval = std::exchange(*hit_block, {0, 0, {}});
+    return oldval.data;
+  }
+};
+
+} // namespace champsim
 
 #endif
