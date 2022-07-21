@@ -146,11 +146,6 @@ caches = dict(filter(lambda x: x[0] in accessible_names, caches.items()))
 for cache in caches.values():
     cache['hit_latency'] = cache.get('hit_latency') or (cache['latency'] - cache['fill_latency'])
 
-# Create prefetch activation masks
-type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
-for cache in caches.values():
-    cache['prefetch_activate_mask'] = functools.reduce(operator.or_, (1 << i for i,t in enumerate(type_list) if t in cache['prefetch_activate'].split(',')))
-
 # Scale frequencies
 def scale_frequencies(it):
     it_a, it_b = itertools.tee(it, 2)

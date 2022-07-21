@@ -41,10 +41,12 @@ def get_instantiation_string(cores, memory_system, pmem, vmem):
             instantiation_file += queue_fmtstr.format(
                 _type = 'TranslatingQueues' if elem.get('_needs_translate') else 'NonTranslatingQueues',
                 **elem)
-            instantiation_file += cache_fmtstr.format(\
+            instantiation_file += cache_fmtstr.format(
+                prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
                 repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['replacement']),\
                 pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
                 **elem)
+
 
     instantiation_file += ''.join(
             'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
