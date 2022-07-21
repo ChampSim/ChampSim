@@ -18,7 +18,7 @@ def parse_file(fname):
 
 def chain(*dicts):
     def merge_dicts(x,y):
-        merges = dict(merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict))
+        merges = dict(itertools.chain.from_iterable(merge_dicts(v, y[k]).items() for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)))
         return { **y, **x, **merges }
 
     return functools.reduce(merge_dicts, dicts)
