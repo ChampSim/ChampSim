@@ -13,7 +13,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{20, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-0", 0, {{1,1,0}, {1,1,0}, {1,1,0}, {1,1,0}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
+    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1,0}, {1,1,0}, {1,1,0}, {1,1,0}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
@@ -49,7 +49,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{33, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-1", 0, {{1,1,vmem.shamt(4)}, {1,1,vmem.shamt(3)}, {1,1,vmem.shamt(2)}, {1,1,vmem.shamt(1)}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
+    PageTableWalker uut{"600-uut-1", 0, 1, {{1,1,vmem.shamt(4)}, {1,1,vmem.shamt(3)}, {1,1,vmem.shamt(2)}, {1,1,vmem.shamt(1)}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
@@ -87,7 +87,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{33, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-2", 0, {{1,1,vmem.shamt(4)}, {1,1,vmem.shamt(3)}, {1,1,vmem.shamt(2)}, {1,1,vmem.shamt(1)}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
+    PageTableWalker uut{"600-uut-2", 0, 1, {{1,1,vmem.shamt(4)}, {1,1,vmem.shamt(3)}, {1,1,vmem.shamt(2)}, {1,1,vmem.shamt(1)}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
