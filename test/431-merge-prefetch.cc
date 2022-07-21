@@ -55,46 +55,44 @@ struct merge_testbed
 };
 
 SCENARIO("A prefetch that hits an MSHR is dropped") {
-  constexpr std::array<std::pair<uint8_t, std::string_view>, 4> types{{std::pair{LOAD, "load"}, std::pair{RFO, "RFO"}, std::pair{WRITE, "write"}, std::pair{TRANSLATION, "translation"}}};
-  for (auto [type, str] : types) {
-    GIVEN("A cache with a " + std::string{str} + " miss") {
-      merge_testbed testbed{type};
+  using namespace std::literals;
+  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  GIVEN("A cache with a " + std::string{str} + " miss") {
+    merge_testbed testbed{type};
 
-      REQUIRE(std::size(testbed.uut.MSHR) == 1);
-      CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
+    REQUIRE(std::size(testbed.uut.MSHR) == 1);
+    CHECK(testbed.uut.MSHR.front().instr_id == 0);
+    CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
 
-      WHEN("A prefetch is issued") {
-        testbed.issue_type(PREFETCH);
+    WHEN("A prefetch is issued") {
+      testbed.issue_type(PREFETCH);
 
-        THEN("The " + std::string{str} + " is in the MSHR") {
-          REQUIRE(std::size(testbed.uut.MSHR) == 1);
-          CHECK(testbed.uut.MSHR.front().instr_id == 0);
-          CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
-        }
+      THEN("The " + std::string{str} + " is in the MSHR") {
+        REQUIRE(std::size(testbed.uut.MSHR) == 1);
+        CHECK(testbed.uut.MSHR.front().instr_id == 0);
+        CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
       }
     }
   }
 }
 
 SCENARIO("A prefetch MSHR that gets hit is promoted") {
-  constexpr std::array<std::pair<uint8_t, std::string_view>, 4> types{{std::pair{LOAD, "load"}, std::pair{RFO, "RFO"}, std::pair{WRITE, "write"}, std::pair{TRANSLATION, "translation"}}};
-  for (auto [type, str] : types) {
-    GIVEN("A cache with a prefetch miss") {
-      merge_testbed testbed{PREFETCH};
+  using namespace std::literals;
+  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  GIVEN("A cache with a prefetch miss") {
+    merge_testbed testbed{PREFETCH};
 
-      REQUIRE(std::size(testbed.uut.MSHR) == 1);
-      CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
+    REQUIRE(std::size(testbed.uut.MSHR) == 1);
+    CHECK(testbed.uut.MSHR.front().instr_id == 0);
+    CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
 
-      WHEN("A " + std::string{str} + " is issued") {
-        testbed.issue_type(type);
+    WHEN("A " + std::string{str} + " is issued") {
+      testbed.issue_type(type);
 
-        THEN("The " + std::string{str} + " is in the MSHR") {
-          REQUIRE(std::size(testbed.uut.MSHR) == 1);
-          //CHECK(testbed.uut.MSHR.front().instr_id == 1);
-          CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
-        }
+      THEN("The " + std::string{str} + " is in the MSHR") {
+        REQUIRE(std::size(testbed.uut.MSHR) == 1);
+        //CHECK(testbed.uut.MSHR.front().instr_id == 1);
+        CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
       }
     }
   }
