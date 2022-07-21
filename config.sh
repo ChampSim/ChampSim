@@ -150,27 +150,17 @@ freqs = [max(freqs)/x for x in freqs]
 for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
     src['frequency'] = freq
 
-class IterLowerLevels:
-    def __init__(self, system, name):
-        self.system = system
-        self.name = name
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.name not in self.system:
-            raise StopIteration
-        old_name = self.name
-        self.name = self.system[self.name].get('lower_level')
-        return self.system[old_name]
+def iter_system(system, name, key='lower_level'):
+    while name in system:
+        yield system[name]
+        name = system[name][key]
 
 # TLBs use page offsets, Caches use block offsets
-for tlb in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
+for tlb in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
     tlb['offset_bits'] = 'lg2(' + str(config_file['page_size']) + ')'
     tlb['_needs_translate'] = False
 
-for cache in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D'))):
+for cache in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D'))):
     cache['offset_bits'] = 'lg2(' + str(config_file['block_size']) + ')'
     cache['_needs_translate'] = cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False)
 
@@ -235,7 +225,7 @@ for i in range(len(cores)):
 memory_system = dict(**caches, **ptws)
 
 # Give each element a fill level
-for fill_level, elem in itertools.chain.from_iterable(enumerate(IterLowerLevels(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
+for fill_level, elem in itertools.chain.from_iterable(enumerate(iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
     elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
 
 # Remove name index
