@@ -6,6 +6,7 @@ import functools
 import operator
 import copy
 import difflib
+import math
 
 import config.instantiation_file as instantiation_file
 import config.modules as modules
@@ -85,12 +86,8 @@ cores = config_file.get('ooo_cpu', [{}])
 caches = {c['name']: c for c in config_file.get('cache',[])}
 
 # Copy or trim cores as necessary to fill out the specified number of cores
-original_size = len(cores)
-if original_size <= config_file['num_cores']:
-    for i in range(original_size, config_file['num_cores']):
-        cores.append(copy.deepcopy(cores[(i-1) % original_size]))
-else:
-    cores = cores[:(config_file['num_cores'] - original_size)]
+cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
+cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
 
 # Default branch predictor and BTB
 for i in range(len(cores)):
