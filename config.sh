@@ -123,12 +123,14 @@ for cpu in cores:
     if cache_name != 'DRAM':
         caches[cache_name] = ChainMap(caches[cache_name], default_llc.copy())
 
+def iter_system(system, name, key='lower_level'):
+    while name in system:
+        yield system[name]
+        name = system[name][key]
+
 # Remove caches that are inaccessible
-accessible = [False]*len(caches)
-for i,ll in enumerate(caches.values()):
-    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in caches.values()) # The cache is accessible from another cache
-    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in cores) # The cache is accessible from a core
-caches = dict(itertools.compress(caches.items(), accessible))
+accessible_names = tuple(map(lambda x: x['name'], itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D')))))
+caches = dict(filter(lambda x: x[0] in accessible_names, caches.items()))
 
 # Establish latencies in caches
 for cache in caches.values():
@@ -149,11 +151,6 @@ freqs = list(itertools.chain(
 freqs = [max(freqs)/x for x in freqs]
 for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
     src['frequency'] = freq
-
-def iter_system(system, name, key='lower_level'):
-    while name in system:
-        yield system[name]
-        name = system[name][key]
 
 # TLBs use page offsets, Caches use block offsets
 for tlb in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
