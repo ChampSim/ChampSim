@@ -51,7 +51,7 @@ def write_if_different(fname, new_file_string):
 # Begin default core model definition
 ###
 
-default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'PTW': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -84,6 +84,7 @@ cores = config_file.get('ooo_cpu', [{}])
 
 # Index the cache array by names
 caches = {c['name']: c for c in config_file.get('cache',[])}
+ptws = {p['name']: p for p in config_file.get('ptws',[])}
 
 # Copy or trim cores as necessary to fill out the specified number of cores
 cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
@@ -106,10 +107,14 @@ for cpu in cores:
             cpu[cache_name] = chain(cpu[cache_name], {'name': cpu['name'] + '_' + cache_name}, config_file[cache_name].copy())
             caches[cpu[cache_name]['name']] = cpu[cache_name]
             cpu[cache_name] = cpu[cache_name]['name']
+    if isinstance(cpu['PTW'], dict):
+        cpu['PTW'] = chain(cpu['PTW'], {'name': cpu['name'] + '_PTW'}, config_file['PTW'].copy())
+        ptws[cpu['PTW']['name']] = cpu['PTW']
+        cpu['PTW'] = cpu['PTW']['name']
 
 # Assign defaults that are unique per core
 for cpu in cores:
-    cpu['PTW'] = chain(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
+    ptws[cpu['PTW']] = chain(ptws[cpu['PTW']], config_file.get('PTW', {}), {'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
     caches[cpu['L1I']] = chain(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_needs_translate': True, '_is_instruction_cache': True}, default_l1i.copy())
     caches[cpu['L1D']] = chain(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
     caches[cpu['ITLB']] = chain(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
@@ -123,7 +128,7 @@ for cpu in cores:
     # STLB
     cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = chain(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
+        caches[cache_name] = chain(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']}, default_stlb.copy())
 
     # LLC
     cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
@@ -151,7 +156,7 @@ def scale_frequencies(it):
         x['frequency'] = max_freq / x['frequency']
 
 config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
-scale_frequencies(itertools.chain(cores, caches.values(), (c['PTW'] for c in cores), (config_file['physical_memory'],)))
+scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (config_file['physical_memory'],)))
 
 # TLBs use page offsets, Caches use block offsets
 for tlb in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
@@ -214,15 +219,8 @@ for cache in caches.values():
 # Perform final preparations for file writing
 ###
 
-# Add PTW to memory system
-ptws = {}
-for i in range(len(cores)):
-    ptws[cores[i]['PTW']['name']] = cores[i]['PTW']
-    cores[i]['PTW'] = cores[i]['PTW']['name']
-
-memory_system = dict(**caches, **ptws)
-
 # Give each element a fill level
+memory_system = dict(**caches, **ptws)
 for fill_level, elem in itertools.chain.from_iterable(enumerate(iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
     elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
 
