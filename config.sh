@@ -6,7 +6,6 @@ import functools
 import operator
 import copy
 import difflib
-from collections import ChainMap
 
 import config.instantiation_file as instantiation_file
 import config.modules as modules
@@ -16,6 +15,17 @@ import config.makefile as makefile
 def parse_file(fname):
     with open(fname) as rfp:
         return json.load(rfp)
+
+def chain(*dicts):
+    def merge_dicts(x,y):
+        for k,v in x.items():
+            if isinstance(v, dict) and isinstance(y.get(k), dict):
+                y[k] = merge_dicts(v, y[k])
+            else:
+                y[k] = v
+        return y
+
+    return functools.reduce(merge_dicts, dicts)
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
@@ -44,10 +54,10 @@ default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 100
 
 # Read the config file
 if len(sys.argv) >= 2:
-    config_file = ChainMap(*map(parse_file, reversed(sys.argv[1:])), default_root)
+    config_file = chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
 else:
     print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_file = ChainMap(default_root)
+    config_file = default_root.copy()
 
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
@@ -66,8 +76,8 @@ default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 
 # Establish default optional values
 ###
 
-config_file['physical_memory'] = ChainMap(config_file['physical_memory'], default_pmem.copy())
-config_file['virtual_memory'] = ChainMap(config_file['virtual_memory'], default_vmem.copy())
+config_file['physical_memory'] = chain(config_file['physical_memory'], default_pmem.copy())
+config_file['virtual_memory'] = chain(config_file['virtual_memory'], default_vmem.copy())
 
 cores = config_file.get('ooo_cpu', [{}])
 
@@ -84,44 +94,44 @@ else:
 
 # Default branch predictor and BTB
 for i in range(len(cores)):
-    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
-    cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
+    cores[i] = chain(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
+    cores[i]['DIB'] = chain(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
-caches['LLC'] = ChainMap(caches.get('LLC',{}), config_file['LLC'].copy(), {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc.copy())
+caches['LLC'] = chain(caches.get('LLC',{}), config_file['LLC'].copy(), {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc.copy())
 
 # If specified in the core, move definition to cache array
 for cpu in cores:
     # Assign defaults that are unique per core
     for cache_name in ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB'):
         if isinstance(cpu[cache_name], dict):
-            cpu[cache_name] = ChainMap(cpu[cache_name], {'name': cpu['name'] + '_' + cache_name}, config_file[cache_name].copy())
+            cpu[cache_name] = chain(cpu[cache_name], {'name': cpu['name'] + '_' + cache_name}, config_file[cache_name].copy())
             caches[cpu[cache_name]['name']] = cpu[cache_name]
             cpu[cache_name] = cpu[cache_name]['name']
 
 # Assign defaults that are unique per core
 for cpu in cores:
-    cpu['PTW'] = ChainMap(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
-    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_needs_translate': True, '_is_instruction_cache': True}, default_l1i.copy())
-    caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
-    caches[cpu['ITLB']] = ChainMap(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
-    caches[cpu['DTLB']] = ChainMap(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
+    cpu['PTW'] = chain(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
+    caches[cpu['L1I']] = chain(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_needs_translate': True, '_is_instruction_cache': True}, default_l1i.copy())
+    caches[cpu['L1D']] = chain(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
+    caches[cpu['ITLB']] = chain(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
+    caches[cpu['DTLB']] = chain(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
 
     # L2C
     cache_name = caches[cpu['L1D']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': caches[cpu['DTLB']]['lower_level']}, default_l2c.copy())
+        caches[cache_name] = chain(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': caches[cpu['DTLB']]['lower_level']}, default_l2c.copy())
 
     # STLB
     cache_name = caches[cpu['DTLB']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
+        caches[cache_name] = chain(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
 
     # LLC
     cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
     if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], default_llc.copy())
+        caches[cache_name] = chain(caches[cache_name], default_llc.copy())
 
 def iter_system(system, name, key='lower_level'):
     while name in system:
