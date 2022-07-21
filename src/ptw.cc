@@ -6,9 +6,9 @@
 #include "util.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
                                  uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency), pscl{_pscl},
+    : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency), pscl{_pscl},
       vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }

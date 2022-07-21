@@ -152,15 +152,14 @@ for cache in caches.values():
     cache['prefetch_activate_mask'] = functools.reduce(operator.or_, (1 << i for i,t in enumerate(type_list) if t in cache['prefetch_activate'].split(',')))
 
 # Scale frequencies
+def scale_frequencies(it):
+    it_a, it_b = itertools.tee(it, 2)
+    max_freq = max(x['frequency'] for x in it_a)
+    for x in it_b:
+        x['frequency'] = max_freq / x['frequency']
+
 config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
-freqs = list(itertools.chain(
-    [cpu['frequency'] for cpu in cores],
-    [cache['frequency'] for cache in caches.values()],
-    (config_file['physical_memory']['frequency'],)
-))
-freqs = [max(freqs)/x for x in freqs]
-for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
-    src['frequency'] = freq
+scale_frequencies(itertools.chain(cores, caches.values(), (c['PTW'] for c in cores), (config_file['physical_memory'],)))
 
 # TLBs use page offsets, Caches use block offsets
 for tlb in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):

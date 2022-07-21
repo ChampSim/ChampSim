@@ -2,7 +2,7 @@
 # Begin format strings
 ###
 
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem);\n'
+ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem);\n'
 
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string}}}'
 

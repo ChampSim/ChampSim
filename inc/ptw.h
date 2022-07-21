@@ -29,7 +29,7 @@ public:
   const uint64_t CR3_addr;
   std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11, uint32_t v12,
+  PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11, uint32_t v12,
                   uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
