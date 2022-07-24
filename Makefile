@@ -34,6 +34,7 @@ $(executable_name): $(exec_obj)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
+test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 test: $(test_obj)
 	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
 
