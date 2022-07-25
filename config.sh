@@ -107,6 +107,11 @@ for cpu in cores:
         cpu['PTW'] = cpu['PTW']['name']
 
 # Assign defaults that are unique per core
+def combine_defaults(*iterables):
+    iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
+    iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
+    return {kv[0]: chain(*kv[1]) for kv in iterable}
+
 for cpu in cores:
     cpu['DIB'] = chain(cpu['DIB'], default_dib)
     ptws[cpu['PTW']] = chain(ptws[cpu['PTW']], config_file.get('PTW', {}), {'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw)
@@ -154,13 +159,13 @@ config_file['physical_memory']['io_freq'] = config_file['physical_memory']['freq
 scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (config_file['physical_memory'],)))
 
 # TLBs use page offsets, Caches use block offsets
-for tlb in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
-    tlb['offset_bits'] = 'lg2(' + str(config_file['page_size']) + ')'
-    tlb['_needs_translate'] = False
-
-for cache in itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D'))):
-    cache['offset_bits'] = 'lg2(' + str(config_file['block_size']) + ')'
-    cache['_needs_translate'] = cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False)
+tlb_path = itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
+l1d_path = itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
+caches = combine_defaults(
+        ({'offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False, **c} for c in tlb_path),
+        ({'offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False), **c} for c in l1d_path),
+        caches.values()
+        )
 
 # Try the local module directories, then try to interpret as a path
 def default_dir(dirname, f):
