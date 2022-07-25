@@ -186,7 +186,10 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
     uint64_t predicted_branch_target = btb_result.first;
     uint8_t always_taken = btb_result.second;
     arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
+    if (always_taken) {
+      arch_instr.branch_prediction = true;
+    }
+    if (arch_instr.branch_prediction == 0) {
       predicted_branch_target = 0;
     }
 
