@@ -46,7 +46,7 @@ def write_if_different(fname, new_file_string):
 # Begin default core model definition
 ###
 
-default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'PTW': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'PTW': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}}
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -72,8 +72,8 @@ default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 
 # Establish default optional values
 ###
 
-config_file['physical_memory'] = chain(config_file['physical_memory'], default_pmem)
-config_file['virtual_memory'] = chain(config_file['virtual_memory'], default_vmem)
+pmem = chain(config_file.get('physical_memory', {}), default_pmem)
+vmem = chain(config_file.get('virtual_memory', {}), default_vmem)
 
 cores = config_file.get('ooo_cpu', [{}])
 
@@ -91,7 +91,7 @@ cores = [chain(cpu, {'name': 'cpu'+str(i), 'index': i}, dict(filter(lambda x: x[
 
 # Append LLC to cache array
 # LLC operates at maximum freqency of cores, if not already specified
-caches['LLC'] = chain(caches.get('LLC',{}), config_file['LLC'], {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc)
+caches['LLC'] = chain(caches.get('LLC',{}), config_file.get('LLC',{}), {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc)
 
 # If specified in the core, move definition to cache array
 for cpu in cores:
@@ -155,8 +155,8 @@ def scale_frequencies(it):
     for x in it_b:
         x['frequency'] = max_freq / x['frequency']
 
-config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
-scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (config_file['physical_memory'],)))
+pmem['io_freq'] = pmem['frequency'] # Save value
+scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
 # TLBs use page offsets, Caches use block offsets
 tlb_path = itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
@@ -233,7 +233,7 @@ memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
 # Begin file writing
 ###
 # Instantiation file
-write_if_different(instantiation_file_name, generated_warning + instantiation_file.get_instantiation_string(cores, memory_system, config_file['physical_memory'], config_file['virtual_memory']))
+write_if_different(instantiation_file_name, generated_warning + instantiation_file.get_instantiation_string(cores, memory_system, pmem, vmem))
 
 # Core modules file
 write_if_different(core_modules_file_name, generated_warning + modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data))
@@ -259,15 +259,15 @@ constants_file += f'constexpr static std::size_t NUM_BTB_MODULES = {len(btb_data
 constants_file += f'constexpr static std::size_t NUM_REPLACEMENT_MODULES = {len(repl_data)};\n'
 constants_file += f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n'
 
-constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**config_file['physical_memory'])
+constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**pmem)
+constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**pmem)
 constants_file += '#endif\n'
 write_if_different(constants_header_name, constants_file)
 
