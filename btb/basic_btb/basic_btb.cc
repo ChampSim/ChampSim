@@ -81,7 +81,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 
   // no prediction for this IP
   if (btb_entry == set_end)
-    return {0, true};
+    return {0, false};
 
   btb_entry->last_cycle_used = current_cycle;
 
