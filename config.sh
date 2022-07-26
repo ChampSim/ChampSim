@@ -18,7 +18,7 @@ def parse_file(fname):
 
 def chain(*dicts):
     def merge_dicts(x,y):
-        merges = dict(itertools.chain.from_iterable(merge_dicts(v, y[k]).items() for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)))
+        merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
         return { **y, **x, **merges }
 
     return functools.reduce(merge_dicts, dicts)
@@ -80,10 +80,7 @@ cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
 cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
 
 # Default core elements
-cores = [chain(cpu, {'name': 'cpu'+str(i), 'index': i}, default_core) for i,cpu in enumerate(cores)]
-
-for cpu in cores:
-    cpu['DIB'] = chain(cpu.get('DIB',{}), config_file.get('DIB',{}), default_dib)
+cores = [chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
 
 # Assign defaults that are unique per core
 def combine_named(*iterables):
@@ -126,7 +123,7 @@ def named_l2c_defaults(cpu):
     return {'name': read_element_name(cpu, 'L2C'), 'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': caches[cpu['DTLB']]['lower_level'], **default_l2c}
 
 def named_stlb_defaults(cpu):
-    return {'name': read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': cpu['PTW'], **default_stlb}
+    return {'name': read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'PTW'), **default_stlb}
 
 caches = combine_named(
         caches.values(),
@@ -147,8 +144,8 @@ def named_ptw_defaults(cpu):
 
 ptws = combine_named(
                  config_file.get('ptws',[]),
-                 map(lambda c: {'name': read_element_name(c,'PTW'), **c.get('PTW', {})}, filter(lambda c: isinstance(c['PTW'], dict), cores)),
-                 map(lambda c: {'name': read_element_name(c,'PTW'), **config_file.get('PTW', {})}, cores),
+                 ({'name': read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+                 ({'name': read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
                  map(named_ptw_defaults, cores),
                 )
 
