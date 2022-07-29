@@ -81,7 +81,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 
   // no prediction for this IP
   if (btb_entry == set_end)
-    return {0, true};
+    return {0, false};
 
   btb_entry->last_cycle_used = current_cycle;
 
@@ -124,6 +124,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       btb_entry->always_taken = ((branch_target != 0) && taken); // Mark the branch always taken if it was taken this time
     }
 
-    *btb_entry = {ip, branch_target, btb_entry->always_taken && taken, current_cycle};
+    *btb_entry = {ip, (branch_target) ? branch_target : btb_entry->target, btb_entry->always_taken && taken, current_cycle};
   }
 }
