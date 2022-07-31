@@ -86,7 +86,10 @@ void champsim::json_printer::print(CACHE::stats_type stats)
   uint64_t TOTAL_MISS = 0;
   for (const auto& type : types)
     TOTAL_MISS += std::accumulate(std::begin(stats.misses.at(type.second)), std::end(stats.misses.at(type.second)), TOTAL_MISS);
-  stream << indent() << "\"miss latency\": " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << std::endl;
+  if (TOTAL_MISS > 0)
+    stream << indent() << "\"miss latency\": " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << std::endl;
+  else
+    stream << indent() << "\"miss latency\": null"  << std::endl;
   --indent_level;
   stream << indent() << "}";
 }
@@ -172,7 +175,7 @@ void champsim::json_printer::print(champsim::phase_stats& stats)
   stream << std::endl;
 
   --indent_level;
-  stream << indent() << "}" << std::endl;
+  stream << indent() << "}," << std::endl;
 
   stream << indent() << "\"sim\": {" << std::endl;
   ++indent_level;
