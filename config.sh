@@ -152,8 +152,8 @@ scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)
 tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
 l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
 caches = combine_named(
-        ({'offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False, **c} for c in tlb_path),
-        ({'offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False), **c} for c in l1d_path),
+        ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
+        ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_needs_translate', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
         caches.values()
         )
 
