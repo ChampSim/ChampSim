@@ -10,6 +10,7 @@ import math
 import config.instantiation_file as instantiation_file
 import config.modules as modules
 import config.makefile as makefile
+import config.util as util
 
 # Read the config file
 def parse_file(fname):
@@ -61,7 +62,7 @@ default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size
 default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
 default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
 default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru', 'lower_level': 'DRAM' }
+default_llc  = { 'latency': 20, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru', 'lower_level': 'DRAM' }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
 default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
@@ -149,20 +150,23 @@ ptws = combine_named(
                  map(named_ptw_defaults, cores),
                 )
 
+def named_llc_defaults(name, uls):
+    uls = list(uls)
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'mshr_size': 64*len(uls), 'max_read': len(uls), 'max_write': len(uls), **default_llc}
+
 third_level_names = [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]
+upper_levels = sorted(caches.values(), key=operator.itemgetter('lower_level'))
+upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
+upper_levels = filter(lambda u: u[0] in third_level_names, upper_levels)
+
 caches = combine_named(
         caches.values(),
-        ({'name': c, 'frequency': max(x['frequency'] for x in caches.values() if x['lower_level'] in third_level_names), **default_llc} for c in third_level_names),
-        ({'name': 'LLC', **config_file.get('LLC', {})},)
+        ({'name': 'LLC', **config_file.get('LLC', {})},),
+        (named_llc_defaults(*ul) for ul in upper_levels)
         )
 
-def iter_system(system, name, key='lower_level'):
-    while name in system:
-        yield system[name]
-        name = system[name].get(key)
-
 # Remove caches that are inaccessible
-accessible_names = tuple(map(lambda x: x['name'], itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D')))))
+accessible_names = tuple(map(lambda x: x['name'], itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D')))))
 caches = dict(filter(lambda x: x[0] in accessible_names, caches.items()))
 
 # Establish latencies in caches
@@ -180,8 +184,8 @@ pmem['io_freq'] = pmem['frequency'] # Save value
 scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
 # TLBs use page offsets, Caches use block offsets
-tlb_path = itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
-l1d_path = itertools.chain.from_iterable(iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
+tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
+l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
 caches = combine_named(
         ({'offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False, **c} for c in tlb_path),
         ({'offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False), **c} for c in l1d_path),

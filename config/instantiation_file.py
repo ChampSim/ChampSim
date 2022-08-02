@@ -1,6 +1,7 @@
-###
-# Begin format strings
-###
+import itertools
+import operator
+
+from . import util
 
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem);\n'
 
@@ -30,7 +31,7 @@ file_header = '''
 def get_instantiation_string(cores, caches, ptws, pmem, vmem):
     # Give each element a fill level
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
-    for fill_level, elem in itertools.chain.from_iterable(enumerate(iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
+    for fill_level, elem in itertools.chain.from_iterable(enumerate(util.iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
         elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
 
     # Remove name index
