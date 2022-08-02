@@ -7,6 +7,7 @@ import operator
 import difflib
 import math
 
+import config.defaults as defaults
 import config.instantiation_file as instantiation_file
 import config.modules as modules
 import config.makefile as makefile
@@ -56,16 +57,8 @@ config_file = chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
 
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
-default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no_instr', 'replacement': 'lru'}
-default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_llc  = { 'latency': 20, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru', 'lower_level': 'DRAM' }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
-default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
 
 ###
 # Establish default optional values
@@ -89,100 +82,52 @@ def combine_named(*iterables):
     iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
     return {kv[0]: chain(*kv[1]) for kv in iterable}
 
-def read_element_name(cpu, elem):
-    return cpu.get(elem) if isinstance(cpu.get(elem), str) else cpu.get(elem,{}).get('name', cpu['name']+'_'+elem)
+def upper_levels_for(system, names):
+    upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
+    upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
+    yield from ((k,v) for k,v in upper_levels if k in names)
 
-# Defaults for first-level caches
-def named_l1i_defaults(cpu):
-    return {'name': read_element_name(cpu, 'L1I'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'L2C'), 'lower_translate': read_element_name(cpu, 'ITLB'), '_needs_translate': True, '_is_instruction_cache': True, **default_l1i}
-
-def named_l1d_defaults(cpu):
-    return {'name': read_element_name(cpu, 'L1D'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'L2C'), 'lower_translate': read_element_name(cpu, 'DTLB'), '_needs_translate': True, **default_l1d}
-
-def named_itlb_defaults(cpu):
-    return {'name': read_element_name(cpu, 'ITLB'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'STLB'), **default_itlb}
-
-def named_dtlb_defaults(cpu):
-    return {'name': read_element_name(cpu, 'DTLB'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'STLB'), **default_dtlb}
-
-# Defaults for second-level caches
-def named_l2c_defaults(cpu):
-    return {'name': read_element_name(cpu, 'L2C'), 'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': read_element_name(cpu, 'STLB'), **default_l2c}
-
-def sequence_l2c_defaults(name, uls):
-    uls = list(uls)
-    intern_default_l2c  = { 'latency': 10, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 512*len(uls), 'ways': 8, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 32*len(uls), 'max_read': math.ceil(0.5*len(uls)), 'max_write': math.ceil(0.5*len(uls)), **intern_default_l2c}
-
-def named_stlb_defaults(cpu):
-    return {'name': read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'PTW'), **default_stlb}
-
-def sequence_stlb_defaults(name, uls):
-    uls = list(uls)
-    intern_default_stlb  = { 'latency': 8, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 64*len(uls), 'ways': 12, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 8*len(uls), 'max_read': math.ceil(0.5*len(uls)), 'max_write': math.ceil(0.5*len(uls)), **intern_default_stlb}
-
-# Defaults for third-level caches
-def named_ptw_defaults(cpu):
-    return {'name': read_element_name(cpu, 'PTW'), 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': read_element_name(cpu, 'L1D'), **default_ptw}
-
-def named_llc_defaults(name, uls):
-    uls = list(uls)
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'mshr_size': 64*len(uls), 'max_read': len(uls), 'max_write': len(uls), **default_llc}
-
+# Establish defaults for first-level caches
 caches = combine_named(
         config_file.get('cache', []),
         # Copy values from the core specification and config root, if these are dicts
-        ({'name': read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
-        ({'name': read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(config_file.get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(config_file.get(cn[1]), dict)),
         # Apply defaults named after the cores
-        map(named_l1i_defaults, cores),
-        map(named_l1d_defaults, cores),
-        map(named_itlb_defaults, cores),
-        map(named_dtlb_defaults, cores)
+        map(defaults.named_l1i_defaults, cores),
+        map(defaults.named_l1d_defaults, cores),
+        map(defaults.named_itlb_defaults, cores),
+        map(defaults.named_dtlb_defaults, cores)
         )
 
-cores = [chain({n: read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
+cores = [chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
 
-second_level_names = [caches[c['L1D']]['lower_level'] for c in cores]
-l2c_upper_levels = sorted(caches.values(), key=operator.itemgetter('lower_level'))
-l2c_upper_levels = itertools.groupby(l2c_upper_levels, key=operator.itemgetter('lower_level'))
-l2c_upper_levels = filter(lambda u: u[0] in second_level_names, l2c_upper_levels)
-
-stlb_level_names = [caches[c['DTLB']]['lower_level'] for c in cores]
-stlb_upper_levels = sorted(caches.values(), key=operator.itemgetter('lower_level'))
-stlb_upper_levels = itertools.groupby(stlb_upper_levels, key=operator.itemgetter('lower_level'))
-stlb_upper_levels = filter(lambda u: u[0] in stlb_level_names, stlb_upper_levels)
-
+# Establish defaults for second-level caches
 caches = combine_named(
         caches.values(),
         # Copy values from the core specification and config root, if these are dicts
-        ({'name': read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
-        ({'name': read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(config_file.get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(config_file.get(cn[1]), dict)),
         # Apply defaults named after the second-level caches
-        (sequence_l2c_defaults(*ul) for ul in l2c_upper_levels),
-        (sequence_stlb_defaults(*ul) for ul in stlb_upper_levels),
+        (defaults.sequence_l2c_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['L1D']]['lower_level'] for c in cores])),
+        (defaults.sequence_stlb_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['DTLB']]['lower_level'] for c in cores])),
         # Apply defaults named after the cores
-        map(named_l2c_defaults, cores),
-        map(named_stlb_defaults, cores),
+        map(defaults.named_l2c_defaults, cores),
+        map(defaults.named_stlb_defaults, cores),
         )
 
+# Establish defaults for third-level caches
 ptws = combine_named(
                  config_file.get('ptws',[]),
-                 ({'name': read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
-                 ({'name': read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
-                 map(named_ptw_defaults, cores),
+                 ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+                 ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
+                 map(defaults.named_ptw_defaults, cores),
                 )
-
-third_level_names = [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]
-upper_levels = sorted(caches.values(), key=operator.itemgetter('lower_level'))
-upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
-upper_levels = filter(lambda u: u[0] in third_level_names, upper_levels)
 
 caches = combine_named(
         caches.values(),
         ({'name': 'LLC', **config_file.get('LLC', {})},),
-        (named_llc_defaults(*ul) for ul in upper_levels)
+        (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
         )
 
 # Remove caches that are inaccessible
