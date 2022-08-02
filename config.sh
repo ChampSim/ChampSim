@@ -237,24 +237,11 @@ for cache in caches.values():
     cache['prefetcher']  = [module_name for module_name,data in pref_data.items() if data['fname'] in cache['prefetcher']]
 
 ###
-# Perform final preparations for file writing
-###
-
-# Give each element a fill level
-memory_system = dict(**caches, **ptws)
-for fill_level, elem in itertools.chain.from_iterable(enumerate(iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
-    elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
-
-# Remove name index
-memory_system = list(memory_system.values())
-
-memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
-
-###
 # Begin file writing
 ###
+
 # Instantiation file
-write_if_different(instantiation_file_name, generated_warning + instantiation_file.get_instantiation_string(cores, memory_system, pmem, vmem))
+write_if_different(instantiation_file_name, generated_warning + instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem))
 
 # Core modules file
 write_if_different(core_modules_file_name, generated_warning + modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data))

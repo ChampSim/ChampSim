@@ -27,7 +27,16 @@ file_header = '''
     #include <vector>
     '''
 
-def get_instantiation_string(cores, memory_system, pmem, vmem):
+def get_instantiation_string(cores, caches, ptws, pmem, vmem):
+    # Give each element a fill level
+    memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
+    for fill_level, elem in itertools.chain.from_iterable(enumerate(iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
+        elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
+
+    # Remove name index
+    memory_system = list(memory_system.values())
+    memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
+
     instantiation_file = file_header
     instantiation_file += pmem_fmtstr.format(**pmem)
     instantiation_file += '\n'
