@@ -5,8 +5,11 @@
 
 # Fetch-Directed Instruction Prefetching
 This branch is based on the description of a system using Fetch-Directed Instruction Prefetching (FDIP) as described in ["Re-establishing Fetch-Directed Instruction Prefetching: An Industry Perspective"](https://ieeexplore.ieee.org/document/9408197) seen in ISPASS 2021.
+
 The size of the Fetch-Target-Queue (FTQ) is defined in src/ooo_cpu.cc, but to quickly disable FDIP compile the binary with ftq0.llc_pref similar to the following:
+```
   ./build_champsim.sh hashed_perceptron no no no ftq0 lru 1 
+```
 
 # Clone ChampSim repository
 ```
