@@ -157,7 +157,15 @@ caches = combine_named(
         caches.values()
         )
 
-# Try the local module directories, then try to interpret as a path
+###
+# Check to make sure modules exist and they correspond to any already-built modules.
+###
+
+# Get the paths to built-in modules
+def default_modules(dirname):
+    return tuple(os.path.join(dirname, d) for d in os.listdir(dirname) if os.path.isdir(os.path.join(dirname, d)))
+
+# Try the built-in module directories, then try to interpret as a path
 def default_dir(dirname, f):
     fname = os.path.join(dirname, f)
     if not os.path.exists(fname):
@@ -179,13 +187,6 @@ for cache in caches.values():
 for cpu in cores:
     cpu['branch_predictor'] = [default_dir('branch', f) for f in wrap_list(cpu.get('branch_predictor', []))]
     cpu['btb']              = [default_dir('btb', f) for f in wrap_list(cpu.get('btb', []))]
-
-###
-# Check to make sure modules exist and they correspond to any already-built modules.
-###
-
-def default_modules(dirname):
-    return tuple(os.path.join(dirname, d) for d in os.listdir(dirname) if os.path.isdir(os.path.join(dirname, d)))
 
 repl_module_names = itertools.chain(default_modules('replacement'), *(c['replacement'] for c in caches.values()))
 pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))
@@ -219,7 +220,7 @@ write_if_different(core_modules_file_name, generated_warning + modules.get_branc
 write_if_different(cache_modules_file_name, generated_warning + modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data))
 
 # Constants header
-constants_file = generated_warning
+constants_file = ''
 constants_file += '#ifndef CHAMPSIM_CONSTANTS_H\n'
 constants_file += '#define CHAMPSIM_CONSTANTS_H\n'
 constants_file += '#include <cstdlib>\n'
@@ -246,7 +247,7 @@ constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n
 constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**pmem)
 constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**pmem)
 constants_file += '#endif\n'
-write_if_different(constants_header_name, constants_file)
+write_if_different(constants_header_name, generated_warning + constants_file)
 
 # Makefile
 module_info = tuple(itertools.chain(repl_data.values(), pref_data.values(), branch_data.values(), btb_data.values()))
