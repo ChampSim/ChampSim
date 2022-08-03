@@ -1,0 +1,340 @@
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+
+#include "ooo_cpu.h"
+
+// -----------------------------------------------------------------------------
+// TAGE implementation for ChampSim
+// -----------------------------------------------------------------------------
+//
+// Implement regular geometric history series to make prediction.
+// To demonstrate the difference of branch history, this code support both
+// taken-only target history and standard branch direction history.
+// Some optimization is ported from existing TAGE implementations.
+//
+// The predictor was not fully tuned. But, author thinks this predictor realizes
+// decent prediction accuracy for most workloads.
+//
+// -----------------------------------------------------------------------------
+
+// GHR default config
+#define GHR_MIN_HIST_DEFAULT 4
+#define GHR_MAX_HIST_DEFAULT 280
+
+// THR default config
+#define THR_MIN_HIST_DEFAULT 4
+#define THR_MAX_HIST_DEFAULT 260
+
+#ifndef USE_THR
+#define USE_THR 1
+#endif
+#ifndef MIN_HIST
+#define MIN_HIST (USE_THR ? THR_MIN_HIST_DEFAULT : GHR_MIN_HIST_DEFAULT)
+#endif
+#ifndef MAX_HIST
+#define MAX_HIST (USE_THR ? THR_MAX_HIST_DEFAULT : GHR_MAX_HIST_DEFAULT)
+#endif
+
+class TAGE
+{
+    static const int NTAB=8;
+    static const int NTAG=13;
+    static const int NIDX=10;
+    static const int SIZE=1<<NIDX;
+    static const int BIM_SIZE=1<<13;
+
+    static const int THR_MIN_HIST = MIN_HIST;
+    static const int THR_MAX_HIST = MAX_HIST;
+    static const int GHR_MIN_HIST = MIN_HIST;
+    static const int GHR_MAX_HIST = MAX_HIST;
+
+    uint64_t phr;
+    uint64_t ghr[32];
+    uint64_t thr[32];
+
+    int L[NTAB];
+
+    int use_alt;
+    int bim[BIM_SIZE];
+    struct gentry {
+        int tag;
+        int c;
+        int u;
+    } table[NTAB][SIZE];
+
+    int tick;
+    int hit_pred, alt_pred, final_pred;
+    int hit_weak, alt_weak, hit_conf, alt_conf;
+    int hit_bank, alt_bank;
+    int bidx, gidx[NTAB], gtag[NTAB];
+
+public:
+    void init()
+    {
+        use_alt = 0;
+        tick = 0;
+
+        if(USE_THR)
+        {
+            double alpha = pow((double)THR_MAX_HIST / (double)THR_MIN_HIST, 1.0 / (NTAB-1));
+            for(int i=0; i<NTAB; i++)
+            {
+                L[i] = (int)((THR_MIN_HIST * pow(alpha, i)) + 0.5);
+            }
+        }
+        else
+        {
+            double alpha = pow((double)GHR_MAX_HIST / (double)GHR_MIN_HIST, 1.0 / (NTAB-1));
+            for(int i=0; i<NTAB; i++)
+            {
+                L[i] = (int)((GHR_MIN_HIST * pow(alpha, i)) + 0.5);
+            }
+        }
+    }
+
+    // folding branch history for TAGE lookup / update
+    void calc_index(uint64_t pc)
+    {
+        bidx = ((pc >> 2) ^ (pc >> 4)) & (BIM_SIZE-1) ;
+        for(int i=0; i<NTAB; i++)
+        {
+            gidx[i] = (pc >> 2) ^ (pc << i);
+            gtag[i] = (pc >> 2);
+            if(USE_THR)
+            {
+                for(int h=0; h<L[i]; h+=NIDX)
+                {
+                    int mask = ((h + NIDX) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gidx[i] ^= (thr[h/32] >> (h%32)) & mask;
+                }
+                for(int h=0; h<L[i]; h+=NTAG)
+                {
+                    int mask = ((h + NTAG) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gtag[i] ^= (thr[h/32] >> (h%32)) & mask;
+                }
+                for(int h=0; h<L[i]; h+=NTAG-1)
+                {
+                    int mask = ((h + NTAG-1) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gtag[i] ^= ((thr[h/32] >> (h%32)) & mask) << 1;
+                }
+            }
+            else
+            {
+                int mask = L[i] < NIDX ? ((1 << L[i])-1) : 0xffffffff;
+                gidx[i] ^= phr & mask ;
+                for(int h=0; h<L[i]; h+=NIDX)
+                {
+                    int mask = ((h + NIDX) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gidx[i] ^= (ghr[h/32] >> (h%32)) & mask;
+                }
+                for(int h=0; h<L[i]; h+=NTAG)
+                {
+                    int mask = ((h + NTAG) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gtag[i] ^= (ghr[h/32] >> (h%32)) & mask;
+                }
+                for(int h=0; h<L[i]; h+=NTAG-1)
+                {
+                    int mask = ((h + NTAG-1) > L[i]) ? ((1 << (L[i]- h)) - 1) : 0xffffffff;
+                    gtag[i] ^= ((ghr[h/32] >> (h%32)) & mask) << 1;
+                }
+            }
+            gidx[i] &= ((1 << NIDX) - 1);
+            gtag[i] &= ((1 << NTAG) - 1);
+        }
+    }
+
+    int abs(int v)
+    {
+        if(v < 0) return -v;
+        return v;
+    }
+
+    bool predict(uint64_t pc)
+    {
+        // calculate indexes
+        calc_index(pc);
+
+        // first pass
+        hit_bank = alt_bank = -1;
+        hit_pred = alt_pred = bim[bidx] >= 0;
+        hit_weak = false;
+        hit_conf = true;
+        for(int i=0; i<NTAB; i++)
+        {
+            if(table[i][gidx[i]].tag == gtag[i])
+            {
+                alt_bank = hit_bank;
+                hit_bank = i;
+                alt_conf = hit_conf;
+                hit_conf = abs(2 * table[i][gidx[i]].c + 1) >= 7;
+                alt_pred = hit_pred;
+                hit_pred = table[i][gidx[i]].c >= 0;
+                alt_weak = hit_weak;
+                hit_weak = abs(2 * table[i][gidx[i]].c + 1) <= 1;
+            }
+        }
+
+        // choose alt pred if longest matching entry is weak and global counter support it
+        final_pred = (hit_weak && (use_alt >= 0)) ? alt_pred : hit_pred;
+        return final_pred;
+    }
+
+    void update(uint64_t pc, bool taken)
+    {
+        // counter update
+        if(hit_bank >= 0)
+        {
+            // To simplify the code, this predictor doesn't support some optimizations.
+            // (e.g., per-PC USE_ALT counter, alt pred update for weak longest matching entry).
+
+            // counter up/down
+            table[hit_bank][gidx[hit_bank]].c += taken ? 1 : -1;
+            if(table[hit_bank][gidx[hit_bank]].c >  3) table[hit_bank][gidx[hit_bank]].c =  3;
+            if(table[hit_bank][gidx[hit_bank]].c < -4) table[hit_bank][gidx[hit_bank]].c = -4;
+
+            // useful counter update
+            if(hit_pred != alt_pred)
+            {
+                if(hit_weak)
+                {
+                    if(hit_pred == taken) use_alt--;
+                    if(alt_pred == taken) use_alt++;
+                    if(use_alt >  7) use_alt =  7;
+                    if(use_alt > -8) use_alt = -8;
+                }
+
+                if(hit_pred == taken)
+                {
+                    if(table[hit_bank][gidx[hit_bank]].u < 3) table[hit_bank][gidx[hit_bank]].u++;
+                }
+            }
+
+            // reset U-bit by direction flip
+            if(abs(2 * table[hit_bank][gidx[hit_bank]].c + 1) == 1)
+            {
+                table[hit_bank][gidx[hit_bank]].u = 0;
+            }
+
+            // reset U-bit for longest matching entry if second longest matching entry is high confidence and useful
+            if(alt_conf && (alt_bank >= 0) && (alt_pred == hit_pred) && (table[alt_bank][gidx[alt_bank]].u > 0))
+            {
+                table[hit_bank][gidx[hit_bank]].u = 0;
+            }
+        }
+        else
+        {
+            // bimodal update
+            bim[bidx] += taken ? 1 : -1;
+            if(bim[bidx] >  1) bim[bidx] =  1;
+            if(bim[bidx] < -2) bim[bidx] = -2;
+        }
+        
+        // allocation occur when both final prediction and longest matching entry made wrong prediction
+        if((final_pred != taken) && (hit_pred != taken))
+        {
+            int T = 0; // allow up to 2 allocations
+            for(int i=hit_bank+1; i<NTAB; i++)
+            {
+                if(T >= 2) break; // no more allocation
+
+                if(rand() & 3) // skip allocation (25%)
+                {
+                    if(table[i][gidx[i]].u == 0)
+                    {
+                        if(abs(2 * table[i][gidx[i]].c + 1) < 4)
+                        {
+                            // allocate
+                            table[i][gidx[i]].tag = gtag[i];
+                            table[i][gidx[i]].c = taken ? 0 : -1;
+                            table[i][gidx[i]].u = 0;
+                            T++; i++;
+                            if(tick > 2) tick-=2;
+                        }
+                        else
+                        {
+                            // decay
+                            table[i][gidx[i]].c += (table[i][gidx[i]].c >= 0) ? -1 : 1;
+                        }
+                    }
+                    tick++;
+                }
+            }
+        }
+
+        // when allocation fails frequently, reset ubit for all entries
+        if(tick > 256)
+        {
+            for(int i=0; i<NTAB; i++)
+            {
+                for(int j=0; j<SIZE; j++)
+                {
+                    if(table[i][j].u > 0)
+                    {
+                        table[i][j].u--;
+                    }
+                }
+            }
+            tick = 0;
+        }
+    }
+
+    // Updates branch history for taken-only history (THR) and direction history (GHR).
+    // Although code update both, the predictor use either GHR or THR.
+    void update_history(uint64_t pc, uint64_t target, bool taken)
+    {
+        uint64_t hash;
+
+        // path history
+        phr <<= 1;
+        phr |= ((pc >> 4) ^ (pc >> 2)) & 1;
+
+        // branch direction history
+        hash = taken ? 1 : 0;
+        for(int i=0; i<32; i=i+1) // 32 * 32 = 1024-bit total
+        {
+            static const int width = 1;
+            ghr[i] <<= width;
+            ghr[i] ^= hash;
+            hash = (ghr[i] >> 32) & ((1 << width)-1);
+        }
+
+        // taken only history
+        if(taken)
+        {
+            hash = ((pc >> 2) ^ (target >> 3)) & 0xff;
+            for(int i=0; i<32; i=i+1) // 32 * 32 = 1024-bit total
+            {
+                thr[i] <<= 2;
+                thr[i] ^= hash;
+                hash = (thr[i] >> 32) & 3;
+            }
+        }
+    }
+} tage[NUM_CPUS];
+
+void O3_CPU::initialize_branch_predictor ()
+{
+    for (int i=0; i<NUM_CPUS; i++)
+    {
+        tage[i].init();
+    }
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t pc)
+{
+    return tage[cpu].predict(pc);
+}
+
+void O3_CPU::last_branch_result(uint64_t pc, uint8_t taken, uint64_t target, uint8_t type)
+{
+    if((type == BRANCH_CONDITIONAL) || (type == BRANCH_OTHER))
+    {
+        tage[cpu].update(pc, taken);
+    }
+    if(taken || target) // target==0 indicates BTB miss, not-taken branch
+    {
+        tage[cpu].update_history(pc, target, taken);
+    }
+}
