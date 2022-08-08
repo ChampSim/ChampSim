@@ -19,6 +19,8 @@ def get_repl_data(module_name):
 
 def get_repl_string(repl_data):
     retval = ''
+    retval += f'constexpr static std::size_t NUM_REPLACEMENT_MODULES = {len(repl_data)};\n'
+
     for i,b in enumerate(repl_data):
         retval += f'constexpr static unsigned long long r{b} = 1 << {i};\n'
     retval += '\n'

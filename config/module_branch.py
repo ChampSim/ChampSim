@@ -17,6 +17,7 @@ def get_branch_data(module_name):
 
 def get_branch_string(branch_data):
     retval = ''
+    retval += f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n'
 
     for i,b in enumerate(branch_data):
         retval += f'constexpr static unsigned long long b{b} = 1 << {i};\n'

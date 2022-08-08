@@ -17,6 +17,7 @@ def get_btb_data(module_name):
 
 def get_btb_string(btb_data):
     retval = ''
+    retval += f'constexpr static std::size_t NUM_BTB_MODULES = {len(btb_data)};\n'
 
     for i,b in enumerate(btb_data):
         retval += f'constexpr static unsigned long long t{b} = 1 << {i};\n'

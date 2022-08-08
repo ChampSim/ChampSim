@@ -24,6 +24,7 @@ def get_pref_data(module_name, is_instruction_cache):
 
 def get_pref_string(pref_data):
     retval = ''
+    retval += f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n'
 
     for i,b in enumerate(pref_data):
         retval += f'constexpr static unsigned long long p{b} = 1 << {i};\n'

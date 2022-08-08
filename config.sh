@@ -229,13 +229,8 @@ constants_file += 'constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**con
 constants_file += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file)
 constants_file += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**config_file)
 constants_file += 'constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**config_file)
-constants_file += 'constexpr std::size_t NUM_CACHES = ' + str(len(caches)) + ';\n'
 constants_file += 'constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n'
 constants_file += 'constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n'
-constants_file += f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_BTB_MODULES = {len(btb_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_REPLACEMENT_MODULES = {len(repl_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n'
 
 constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**pmem)
 constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**pmem)
