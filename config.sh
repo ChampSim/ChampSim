@@ -175,18 +175,13 @@ def default_dir(dirname, f):
         sys.exit(1)
     return fname
 
-def wrap_list(attr):
-    if not isinstance(attr, list):
-        attr = [attr]
-    return attr
-
 for cache in caches.values():
-    cache['replacement'] = [default_dir('replacement', f) for f in wrap_list(cache.get('replacement', []))]
-    cache['prefetcher']  = [default_dir('prefetcher', f) for f in wrap_list(cache.get('prefetcher', []))]
+    cache['replacement'] = [default_dir('replacement', f) for f in util.wrap_list(cache.get('replacement', []))]
+    cache['prefetcher']  = [default_dir('prefetcher', f) for f in util.wrap_list(cache.get('prefetcher', []))]
 
 for cpu in cores:
-    cpu['branch_predictor'] = [default_dir('branch', f) for f in wrap_list(cpu.get('branch_predictor', []))]
-    cpu['btb']              = [default_dir('btb', f) for f in wrap_list(cpu.get('btb', []))]
+    cpu['branch_predictor'] = [default_dir('branch', f) for f in util.wrap_list(cpu.get('branch_predictor', []))]
+    cpu['btb']              = [default_dir('btb', f) for f in util.wrap_list(cpu.get('btb', []))]
 
 repl_module_names = itertools.chain(default_modules('replacement'), *(c['replacement'] for c in caches.values()))
 pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))

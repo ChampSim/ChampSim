@@ -1,18 +1,24 @@
 import itertools, operator
 import os
 
-def module_make(directory, opts):
-    retval = '{0}/%.o: CPPFLAGS += -I{0}\n'.format(directory)
+from . import util
+
+def module_opts(directory, opts):
+    retval = '{}/%.o: CPPFLAGS += -I{}\n'.format(directory, directory)
 
     for opt in opts:
-        retval += '{0}/%.o: CXXFLAGS += {1}\n'.format(directory, opt)
+        retval += '{}/%.o: CXXFLAGS += {}\n'.format(directory, opt)
 
+    return retval;
+
+def module_sources(directory, exes):
+    retval = ''
+
+    retval += '{}/%.o: {}/%.cc\n'.format(directory, directory)
     for base,dirs,files in os.walk(directory):
-        for f in files:
-            if os.path.splitext(f)[1] in ('.c',):
-                retval += 'csrc += ' + os.path.join(base,f) + '\n'
-            if os.path.splitext(f)[1] in ('.cc',):
-                retval += 'cppsrc += ' + os.path.join(base,f) + '\n'
+        for f,ext in map(os.path.splitext, files):
+            if ext in ('.cc',):
+                retval += ' '.join(exes) + ': ' + os.path.join(base,f) + '.o\n'
 
     return retval
 
@@ -23,11 +29,14 @@ def get_makefile_string(module_info, **config_file):
         if k in config_file:
             retval += k + ' += ' + config_file[k] + '\n'
 
-    if 'executable_name' in config_file:
-        retval += 'executable_name ?= ' + config_file['executable_name'] + '\n\n'
+    executables = util.wrap_list(config_file.get('executable_name', 'bin/champsim'))
+
+    retval += 'executable_name = ' + ' '.join(executables) + '\n\n'
 
     retval += 'module_dirs = ' + ' '.join(map(operator.itemgetter('fname'), module_info)) + '\n\n'
-    retval += '\n'.join(module_make(v['fname'], v['opts']) for v in module_info)
+    retval += '\n'.join(module_opts(v['fname'], v['opts']) for v in module_info)
+    retval += '\n'
+    retval += '\n'.join(module_sources(v['fname'], executables) for v in module_info)
     retval += '\n'
 
     return retval

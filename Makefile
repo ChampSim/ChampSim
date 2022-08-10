@@ -1,22 +1,18 @@
 CPPFLAGS += -Iinc
-CFLAGS += --std=c++17 -Wall -O3
 CXXFLAGS += --std=c++17 -Wall -O3
 CPPFLAGS += -MMD -MP
 
 .phony: all clean configclean test
 
 cppsrc = $(wildcard src/*.cc)
-csrc = $(wildcard src/*.c)
 
 # Generated configuration makefile contains:
 #  - $(module_dirs)
 #  - Each module's compilation flags
 #  - Each module's source files, appended to $(cppsrc) and $(csrc)
-#  - $(executable_name), if specified
+#  - $(executable_name)
 #  - $(generated_files)
 include _configuration.mk
-
-executable_name ?= bin/champsim
 
 all: $(executable_name)
 
@@ -27,11 +23,11 @@ clean:
 configclean: clean
 	$(RM) $(generated_files) _configuration.mk
 
-exec_obj = $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc))
-
-$(executable_name): $(exec_obj)
+$(executable_name): $(wildcard src/*.cc)
 	mkdir -p $(dir $@)
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+exec_obj = $(patsubst %.cc,%.o,$(cppsrc))
 
 test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
 test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer

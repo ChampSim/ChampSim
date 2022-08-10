@@ -7,3 +7,8 @@ def iter_system(system, name, key='lower_level'):
         yield system[name]
         name = system[name].get(key)
 
+def wrap_list(attr):
+    if not isinstance(attr, list):
+        attr = [attr]
+    return attr
+
