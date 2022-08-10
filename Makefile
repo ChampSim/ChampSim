@@ -10,7 +10,6 @@ cppsrc = $(wildcard src/*.cc)
 #  - Each module's compilation flags
 #  - Each module's source files, appended to $(cppsrc) and $(csrc)
 #  - $(executable_name)
-#  - $(generated_files)
 include _configuration.mk
 
 all: makedirs $(executable_name)
