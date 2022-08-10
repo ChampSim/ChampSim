@@ -14,11 +14,6 @@ import config.modules as modules
 import config.makefile as makefile
 import config.util as util
 
-# Read the config file
-def parse_file(fname):
-    with open(fname) as rfp:
-        return json.load(rfp)
-
 def chain(*dicts):
     def merge_dicts(x,y):
         merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
@@ -233,10 +228,14 @@ def parse_config(config_file):
     return makefile.get_makefile_string(genfile_dir, module_info, **config_file)
 
 # Read the config file
+def parse_file(fname):
+    with open(fname) as rfp:
+        return json.load(rfp)
+
 if len(sys.argv) == 1:
     print("No configuration specified. Building default ChampSim with no prefetching.")
-parsed_file = chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
+parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(sys.argv[1:])), (default_root,))
 
-write_if_different('_configuration.mk', parse_config(parsed_file))
+write_if_different('_configuration.mk', '\n#####\n\n'.join(parse_config(chain(*c)) for c in parsed_files))
 
 # vim: set filetype=python:
