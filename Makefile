@@ -1,8 +1,7 @@
 CPPFLAGS += -Iinc
 CXXFLAGS += --std=c++17 -Wall -O3
-CPPFLAGS += -MMD -MP
 
-.phony: all clean configclean test
+.phony: all clean configclean test makedirs
 
 cppsrc = $(wildcard src/*.cc)
 
@@ -14,18 +13,21 @@ cppsrc = $(wildcard src/*.cc)
 #  - $(generated_files)
 include _configuration.mk
 
-all: $(executable_name)
+all: makedirs $(executable_name)
 
 clean:
-	find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete
+	find src test .csconfig \( -name '*.o' -o -name '*.d' \) -delete
 	$(RM) test/000-test-main
 
 configclean: clean
-	$(RM) $(generated_files) _configuration.mk
+	$(RM) -r .csconfig _configuration.mk
+
+makedirs:
+	mkdir -p $(module_dirs)
 
 $(executable_name): $(wildcard src/*.cc)
 	mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CPPFLAGS) $(patsubst %,-I%,$(module_dirs)) -MMD -MP $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc))
 
@@ -34,5 +36,5 @@ test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 test: $(test_obj)
 	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
 
--include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(module_dirs),$(wildcard $(dir)/*.d))
+-include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
 

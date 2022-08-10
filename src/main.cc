@@ -1,3 +1,5 @@
+#include <array>
+#include <functional>
 #include <getopt.h>
 #include <iostream>
 #include <signal.h>
@@ -11,14 +13,12 @@
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "ptw.h"
-
-extern MEMORY_CONTROLLER DRAM;
-extern std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu;
-extern std::vector<std::reference_wrapper<CACHE>> caches;
-extern std::vector<std::reference_wrapper<PageTableWalker>> ptws;
-extern std::vector<std::reference_wrapper<champsim::operable>> operables;
+#include "vmem.h"
+#include "util.h"
 
 void init_structures();
+
+#include "core_inst.inc"
 
 struct phase_info {
   std::string name;
