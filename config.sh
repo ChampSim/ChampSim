@@ -18,13 +18,6 @@ def parse_file(fname):
     with open(fname) as rfp:
         return json.load(rfp)
 
-def chain(*dicts):
-    def merge_dicts(x,y):
-        merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
-        return { **y, **x, **merges }
-
-    return functools.reduce(merge_dicts, dicts)
-
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
 core_modules_file_name = 'inc/ooo_cpu_modules.inc'
@@ -53,7 +46,7 @@ default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 100
 # Read the config file
 if len(sys.argv) == 1:
     print("No configuration specified. Building default ChampSim with no prefetching.")
-config_file = chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
+config_file = util.chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
 
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
@@ -64,8 +57,8 @@ default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200
 # Establish default optional values
 ###
 
-pmem = chain(config_file.get('physical_memory', {}), default_pmem)
-vmem = chain(config_file.get('virtual_memory', {}), default_vmem)
+pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
+vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
 
 cores = config_file.get('ooo_cpu', [{}])
 
@@ -74,21 +67,16 @@ cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
 cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
 
 # Default core elements
-cores = [chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
+cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
 
 # Assign defaults that are unique per core
-def combine_named(*iterables):
-    iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
-    iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
-    return {kv[0]: chain(*kv[1]) for kv in iterable}
-
 def upper_levels_for(system, names):
     upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
     upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
     yield from ((k,v) for k,v in upper_levels if k in names)
 
 # Establish defaults for first-level caches
-caches = combine_named(
+caches = util.combine_named(
         config_file.get('cache', []),
         # Copy values from the core specification and config root, if these are dicts
         ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
@@ -100,10 +88,10 @@ caches = combine_named(
         map(defaults.named_dtlb_defaults, cores)
         )
 
-cores = [chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
+cores = [util.chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
 
 # Establish defaults for second-level caches
-caches = combine_named(
+caches = util.combine_named(
         caches.values(),
         # Copy values from the core specification and config root, if these are dicts
         ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
@@ -117,14 +105,14 @@ caches = combine_named(
         )
 
 # Establish defaults for third-level caches
-ptws = combine_named(
+ptws = util.combine_named(
                  config_file.get('ptws',[]),
                  ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
                  ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
                  map(defaults.named_ptw_defaults, cores),
                 )
 
-caches = combine_named(
+caches = util.combine_named(
         caches.values(),
         ({'name': 'LLC', **config_file.get('LLC', {})},),
         (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
@@ -151,7 +139,7 @@ scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)
 # TLBs use page offsets, Caches use block offsets
 tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
 l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
-caches = combine_named(
+caches = util.combine_named(
         ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
         ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_needs_translate', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
         caches.values()

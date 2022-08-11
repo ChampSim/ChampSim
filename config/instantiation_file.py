@@ -29,14 +29,16 @@ file_header = '''
     '''
 
 def get_instantiation_string(cores, caches, ptws, pmem, vmem):
-    # Give each element a fill level
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
-    for fill_level, elem in itertools.chain.from_iterable(enumerate(util.iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
-        elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
+
+    # Give each element a fill level
+    fill_levels = itertools.chain(*(enumerate(c['name'] for c in util.iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
+    fill_levels = sorted(fill_levels, key=operator.itemgetter(1))
+    fill_levels = ({'name': n, '_fill_level': max(l[0] for l in fl)} for n,fl in itertools.groupby(fill_levels, key=operator.itemgetter(1)))
+    memory_system = util.combine_named(fill_levels, memory_system.values())
 
     # Remove name index
-    memory_system = list(memory_system.values())
-    memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
+    memory_system = sorted(memory_system.values(), key=operator.itemgetter('_fill_level'), reverse=True)
 
     instantiation_file = file_header
     instantiation_file += pmem_fmtstr.format(**pmem)
