@@ -9,6 +9,7 @@ import math
 
 import config.defaults as defaults
 import config.instantiation_file as instantiation_file
+import config.constants_file as constants_file
 import config.modules as modules
 import config.makefile as makefile
 import config.util as util
@@ -208,29 +209,7 @@ write_if_different(core_modules_file_name, generated_warning + modules.get_branc
 write_if_different(cache_modules_file_name, generated_warning + modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data))
 
 # Constants header
-constants_file = ''
-constants_file += '#ifndef CHAMPSIM_CONSTANTS_H\n'
-constants_file += '#define CHAMPSIM_CONSTANTS_H\n'
-constants_file += '#include <cstdlib>\n'
-constants_file += '#include "util.h"\n'
-constants_file += 'constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**config_file)
-constants_file += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file)
-constants_file += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**config_file)
-constants_file += 'constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**config_file)
-constants_file += 'constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n'
-constants_file += 'constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n'
-
-constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**pmem)
-constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**pmem)
-constants_file += '#endif\n'
-write_if_different(constants_header_name, generated_warning + constants_file)
+write_if_different(constants_header_name, generated_warning + constants_file.get_constants_file(config_file, pmem))
 
 # Makefile
 module_info = tuple(itertools.chain(repl_data.values(), pref_data.values(), branch_data.values(), btb_data.values()))
