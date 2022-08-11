@@ -15,14 +15,16 @@ cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}
 queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};\n'
 
 def get_instantiation_string(cores, caches, ptws, pmem, vmem):
-    # Give each element a fill level
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
-    for fill_level, elem in itertools.chain.from_iterable(enumerate(util.iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
-        elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
+
+    # Give each element a fill level
+    fill_levels = itertools.chain(*(enumerate(c['name'] for c in util.iter_system(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
+    fill_levels = sorted(fill_levels, key=operator.itemgetter(1))
+    fill_levels = ({'name': n, '_fill_level': max(l[0] for l in fl)} for n,fl in itertools.groupby(fill_levels, key=operator.itemgetter(1)))
+    memory_system = util.combine_named(fill_levels, memory_system.values())
 
     # Remove name index
-    memory_system = list(memory_system.values())
-    memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
+    memory_system = sorted(memory_system.values(), key=operator.itemgetter('_fill_level'), reverse=True)
 
     instantiation_file = ''
     instantiation_file += pmem_fmtstr.format(**pmem)
@@ -39,15 +41,15 @@ def get_instantiation_string(cores, caches, ptws, pmem, vmem):
                 **elem)
             instantiation_file += cache_fmtstr.format(
                 prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
-                repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['replacement']),\
-                pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
+                repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']),\
+                pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']),\
                 **elem)
 
 
     instantiation_file += ''.join(
             'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
-                branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['branch_predictor']),
-                btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['btb']),
+                branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']),
+                btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']),
                 **cpu) + ';\n' for cpu in cores)
 
     instantiation_file += 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{\n'

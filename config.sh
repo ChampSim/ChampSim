@@ -10,16 +10,10 @@ import hashlib
 
 import config.defaults as defaults
 import config.instantiation_file as instantiation_file
+import config.constants_file as constants_file
 import config.modules as modules
 import config.makefile as makefile
 import config.util as util
-
-def chain(*dicts):
-    def merge_dicts(x,y):
-        merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
-        return { **y, **x, **merges }
-
-    return functools.reduce(merge_dicts, dicts)
 
 constants_header_name = 'champsim_constants.h'
 instantiation_file_name = 'core_inst.inc'
@@ -52,11 +46,6 @@ default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, '
 default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
 
 # Assign defaults that are unique per core
-def combine_named(*iterables):
-    iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
-    iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
-    return {kv[0]: chain(*kv[1]) for kv in iterable}
-
 def upper_levels_for(system, names):
     upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
     upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
@@ -70,8 +59,8 @@ def scale_frequencies(it):
         x['frequency'] = max_freq / x['frequency']
 
 def parse_config(config_file):
-    pmem = chain(config_file.get('physical_memory', {}), default_pmem)
-    vmem = chain(config_file.get('virtual_memory', {}), default_vmem)
+    pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
+    vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
 
     cores = config_file.get('ooo_cpu', [{}])
 
@@ -80,10 +69,10 @@ def parse_config(config_file):
     cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
 
     # Default core elements
-    cores = [chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
+    cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
 
     # Establish defaults for first-level caches
-    caches = combine_named(
+    caches = util.combine_named(
             config_file.get('cache', []),
             # Copy values from the core specification and config root, if these are dicts
             ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
@@ -95,10 +84,10 @@ def parse_config(config_file):
             map(defaults.named_dtlb_defaults, cores)
             )
 
-    cores = [chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
+    cores = [util.chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
 
     # Establish defaults for second-level caches
-    caches = combine_named(
+    caches = util.combine_named(
             caches.values(),
             # Copy values from the core specification and config root, if these are dicts
             ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
@@ -112,14 +101,14 @@ def parse_config(config_file):
             )
 
     # Establish defaults for third-level caches
-    ptws = combine_named(
+    ptws = util.combine_named(
                      config_file.get('ptws',[]),
                      ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
                      ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
                      map(defaults.named_ptw_defaults, cores),
                     )
 
-    caches = combine_named(
+    caches = util.combine_named(
             caches.values(),
             ({'name': 'LLC', **config_file.get('LLC', {})},),
             (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
@@ -139,46 +128,35 @@ def parse_config(config_file):
     # TLBs use page offsets, Caches use block offsets
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
-    caches = combine_named(
+    caches = util.combine_named(
             ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
             ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_needs_translate', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
             caches.values()
             )
 
-    ###
-    # Check to make sure modules exist and they correspond to any already-built modules.
-    ###
+    # Get module path names and unique module names
+    caches = util.combine_named(caches.values(), ({
+            'name': c['name'],
+            '_replacement_modpaths': [modules.default_dir('replacement', f) for f in util.wrap_list(c.get('replacement', []))],
+            '_prefetcher_modpaths':  [modules.default_dir('prefetcher', f) for f in util.wrap_list(c.get('prefetcher', []))],
+            '_replacement_modnames': [modules.get_module_name(modules.default_dir('replacement', f)) for f in util.wrap_list(c.get('replacement', []))],
+            '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir('prefetcher', f)) for f in util.wrap_list(c.get('prefetcher', []))]
+            } for c in caches.values()))
 
-    for cache in caches.values():
-        cache['replacement'] = [modules.default_dir('replacement', f) for f in util.wrap_list(cache.get('replacement', []))]
-        cache['prefetcher']  = [modules.default_dir('prefetcher', f) for f in util.wrap_list(cache.get('prefetcher', []))]
+    cores = list(util.combine_named(cores, ({
+            'name': c['name'],
+            '_branch_predictor_modpaths': [modules.default_dir('branch', f) for f in util.wrap_list(c.get('branch_predictor', []))],
+            '_btb_modpaths':  [modules.default_dir('btb', f) for f in util.wrap_list(c.get('btb', []))],
+            '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir('branch', f)) for f in util.wrap_list(c.get('branch_predictor', []))],
+            '_btb_modnames':  [modules.get_module_name(modules.default_dir('btb', f)) for f in util.wrap_list(c.get('btb', []))]
+            } for c in cores)).values())
 
-    for cpu in cores:
-        cpu['branch_predictor'] = [modules.default_dir('branch', f) for f in util.wrap_list(cpu.get('branch_predictor', []))]
-        cpu['btb']              = [modules.default_dir('btb', f) for f in util.wrap_list(cpu.get('btb', []))]
+    repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), 'replacement', modules.get_repl_data);
+    pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), 'prefetcher', modules.get_pref_data);
+    branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, 'branch', modules.get_branch_data);
+    btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, 'btb', modules.get_btb_data);
 
-    repl_module_names = itertools.chain(modules.default_modules('replacement'), *(c['replacement'] for c in caches.values()))
-    pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in modules.default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))
-    branch_module_names = itertools.chain(modules.default_modules('branch'), *(c['branch_predictor'] for c in cores))
-    btb_module_names = itertools.chain(modules.default_modules('btb'), *(c['btb'] for c in cores))
-
-    repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in repl_module_names}
-    pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in pref_module_names}
-    branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in branch_module_names}
-    btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in btb_module_names}
-
-    for cpu in cores:
-        cpu['branch_predictor'] = [module_name for module_name,data in branch_data.items() if data['fname'] in cpu['branch_predictor']]
-        cpu['btb']              = [module_name for module_name,data in btb_data.items() if data['fname'] in cpu['btb']]
-
-    for cache in caches.values():
-        cache['replacement'] = [module_name for module_name,data in repl_data.items() if data['fname'] in cache['replacement']]
-        cache['prefetcher']  = [module_name for module_name,data in pref_data.items() if data['fname'] in cache['prefetcher']]
-
-    ###
-    # Begin file writing
-    ###
-
+    # Get unique build number
     champsimhash = hashlib.shake_128()
     champsimhash.update(json.dumps(cores).encode('utf-8'))
     champsimhash.update(json.dumps(caches).encode('utf-8'))
@@ -200,29 +178,7 @@ def parse_config(config_file):
     write_if_different(os.path.join(genfile_dir, cache_modules_file_name), cxx_generated_warning + modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data))
 
     # Constants header
-    constants_file = ''
-    constants_file += '#ifndef CHAMPSIM_CONSTANTS_H\n'
-    constants_file += '#define CHAMPSIM_CONSTANTS_H\n'
-    constants_file += '#include <cstdlib>\n'
-    constants_file += '#include "util.h"\n'
-    constants_file += 'constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**config_file)
-    constants_file += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file)
-    constants_file += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**config_file)
-    constants_file += 'constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**config_file)
-    constants_file += 'constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n'
-    constants_file += 'constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n'
-
-    constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**pmem)
-    constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**pmem)
-    constants_file += '#endif\n'
-    write_if_different(os.path.join(genfile_dir, constants_header_name), cxx_generated_warning + constants_file)
+    write_if_different(os.path.join(genfile_dir, constants_header_name), cxx_generated_warning + constants_file.get_constants_file(config_file, pmem))
 
     # Makefile
     module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
@@ -237,6 +193,6 @@ if len(sys.argv) == 1:
     print("No configuration specified. Building default ChampSim with no prefetching.")
 parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(sys.argv[1:])), (default_root,))
 
-write_if_different('_configuration.mk', make_generated_warning + '\n#####\n\n'.join(parse_config(chain(*c)) for c in parsed_files))
+write_if_different('_configuration.mk', make_generated_warning + '\n#####\n\n'.join(parse_config(util.chain(*c)) for c in parsed_files))
 
 # vim: set filetype=python:
