@@ -1,6 +1,6 @@
 
-def get_pref_data(module_name, is_instruction_cache):
-    retval = {'_is_instruction_prefetcher': is_instruction_cache}
+def get_pref_data(module_name, is_instruction_cache=False):
+    retval = {}
 
     prefix = 'ipref_' if is_instruction_cache else 'pref_'
     # Resolve prefetcher function names

@@ -150,50 +150,31 @@ caches = util.combine_named(
 # Check to make sure modules exist and they correspond to any already-built modules.
 ###
 
-# Get the paths to built-in modules
-def default_modules(dirname):
-    return tuple(os.path.join(dirname, d) for d in os.listdir(dirname) if os.path.isdir(os.path.join(dirname, d)))
-
-# Try the built-in module directories, then try to interpret as a path
-def default_dir(dirname, f):
-    fname = os.path.join(dirname, f)
-    if not os.path.exists(fname):
-        fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
-    if not os.path.exists(fname):
-        print('Path "' + fname + '" does not exist. Exiting...')
-        sys.exit(1)
-    return fname
-
 def wrap_list(attr):
     if not isinstance(attr, list):
         attr = [attr]
     return attr
 
-for cache in caches.values():
-    cache['replacement'] = [default_dir('replacement', f) for f in wrap_list(cache.get('replacement', []))]
-    cache['prefetcher']  = [default_dir('prefetcher', f) for f in wrap_list(cache.get('prefetcher', []))]
+caches = util.combine_named(caches.values(), ({
+        'name': c['name'],
+        '_replacement_modpaths': [modules.default_dir('replacement', f) for f in wrap_list(c.get('replacement', []))],
+        '_prefetcher_modpaths':  [modules.default_dir('prefetcher', f) for f in wrap_list(c.get('prefetcher', []))],
+        '_replacement_modnames': [modules.get_module_name(modules.default_dir('replacement', f)) for f in wrap_list(c.get('replacement', []))],
+        '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir('prefetcher', f)) for f in wrap_list(c.get('prefetcher', []))]
+        } for c in caches.values()))
 
-for cpu in cores:
-    cpu['branch_predictor'] = [default_dir('branch', f) for f in wrap_list(cpu.get('branch_predictor', []))]
-    cpu['btb']              = [default_dir('btb', f) for f in wrap_list(cpu.get('btb', []))]
+cores = list(util.combine_named(cores, ({
+        'name': c['name'],
+        '_branch_predictor_modpaths': [modules.default_dir('branch', f) for f in wrap_list(c.get('branch_predictor', []))],
+        '_btb_modpaths':  [modules.default_dir('btb', f) for f in wrap_list(c.get('btb', []))],
+        '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir('branch', f)) for f in wrap_list(c.get('branch_predictor', []))],
+        '_btb_modnames':  [modules.get_module_name(modules.default_dir('btb', f)) for f in wrap_list(c.get('btb', []))]
+        } for c in cores)).values())
 
-repl_module_names = itertools.chain(default_modules('replacement'), *(c['replacement'] for c in caches.values()))
-pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))
-branch_module_names = itertools.chain(default_modules('branch'), *(c['branch_predictor'] for c in cores))
-btb_module_names = itertools.chain(default_modules('btb'), *(c['btb'] for c in cores))
-
-repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in repl_module_names}
-pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in pref_module_names}
-branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in branch_module_names}
-btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in btb_module_names}
-
-for cpu in cores:
-    cpu['branch_predictor'] = [module_name for module_name,data in branch_data.items() if data['fname'] in cpu['branch_predictor']]
-    cpu['btb']              = [module_name for module_name,data in btb_data.items() if data['fname'] in cpu['btb']]
-
-for cache in caches.values():
-    cache['replacement'] = [module_name for module_name,data in repl_data.items() if data['fname'] in cache['replacement']]
-    cache['prefetcher']  = [module_name for module_name,data in pref_data.items() if data['fname'] in cache['prefetcher']]
+repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), 'replacement', modules.get_repl_data);
+pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), 'prefetcher', modules.get_pref_data);
+branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, 'branch', modules.get_branch_data);
+btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, 'btb', modules.get_btb_data);
 
 ###
 # Begin file writing

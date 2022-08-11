@@ -55,15 +55,15 @@ def get_instantiation_string(cores, caches, ptws, pmem, vmem):
                 **elem)
             instantiation_file += cache_fmtstr.format(
                 prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
-                repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['replacement']),\
-                pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
+                repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']),\
+                pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']),\
                 **elem)
 
 
     instantiation_file += ''.join(
             'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
-                branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['branch_predictor']),
-                btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['btb']),
+                branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']),
+                btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']),
                 **cpu) + ';\n' for cpu in cores)
 
     instantiation_file += 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{\n'
