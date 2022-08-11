@@ -22,8 +22,10 @@ clean:
 configclean: clean
 	$(RM) -r .csconfig _configuration.mk
 
-$(executable_name): $(wildcard src/*.cc) | $(dirname $@)
-	$(CXX) $(CPPFLAGS) -MMD -MP $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+$(cppsrc:.cc=.o): CPPFLAGS += -MMD -MP
+
+$(executable_name): $(cppsrc:.cc=.o) | $(dirname $@)
+	$(LINK.cc) $(OUTPUT_OPTION) $^
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc))
 
