@@ -8,7 +8,6 @@ all: all_execs
 cppsrc = $(wildcard src/*.cc)
 
 # Generated configuration makefile contains:
-#  - $(module_dirs)
 #  - Each module's compilation flags
 #  - Each module's source files, appended to $(cppsrc) and $(csrc)
 #  - $(executable_name)
@@ -23,9 +22,8 @@ clean:
 configclean: clean
 	$(RM) -r .csconfig _configuration.mk
 
-$(executable_name): $(wildcard src/*.cc)
-	mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(patsubst %,-I%,$(module_dirs)) -MMD -MP $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+$(executable_name): $(wildcard src/*.cc) | $(dirname $@)
+	$(CXX) $(CPPFLAGS) -MMD -MP $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc))
 

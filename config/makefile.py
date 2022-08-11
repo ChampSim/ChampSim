@@ -3,21 +3,28 @@ import os
 
 from . import util
 
-def module_opts(source_dir, dest_dir, opts, exe):
-    retval = '{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, source_dir)
+def module_opts(source_dir, genfile_dir, name, opts, exe):
+    dest_dir = os.path.join(genfile_dir, name)
+
+    retval = ''
+
+    varname = os.path.split(genfile_dir)[1] + '_' + name + '_objs'
+    for base,dirs,files in os.walk(source_dir):
+        for f,ext in map(os.path.splitext, files):
+            if ext in ('.cc',):
+                retval += varname + ' += ' + os.path.join(dest_dir,f) + '.o\n'
+
+    retval += '$(' + varname + '): | ' + dest_dir + '\n'
+    retval += '{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, source_dir)
     retval += '{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, dest_dir)
-    retval += '{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, os.path.split(dest_dir)[0])
 
     for opt in opts:
         retval += '{}/%.o: CXXFLAGS += {}\n'.format(dest_dir, opt)
 
-    retval += '{}/%.o: {}/%.cc\n\tmkdir -p $(dir $@)\n\t$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<\n\n'.format(dest_dir, source_dir)
+    retval += '{}/%.o: {}/%.cc\n\t$(COMPILE.cc) $(OUTPUT_OPTION) $<\n'.format(dest_dir, source_dir)
+    retval += '{}:\n\t-mkdir $@\n\n'.format(dest_dir)
 
-    retval += exe + ': module_dirs += ' + dest_dir + '\n'
-    for base,dirs,files in os.walk(source_dir):
-        for f,ext in map(os.path.splitext, files):
-            if ext in ('.cc',):
-                retval += exe + ': ' + os.path.join(dest_dir,f) + '.o\n'
+    retval += exe + ': $(' + varname + ')\n'
 
     return retval
 
@@ -31,9 +38,10 @@ def get_makefile_string(genfile_dir, module_info, **config_file):
     executable = config_file.get('executable_name', 'bin/champsim')
 
     retval += 'executable_name += ' + executable + '\n'
-    retval += executable + ': module_dirs += ' + genfile_dir + '\n'
+    retval += executable + ': CPPFLAGS += -I' + genfile_dir + '\n'
+    retval += os.path.split(executable)[0] + '/:\n\t-mkdir $@\n\n'
 
-    retval += '\n'.join(module_opts(v['fname'], os.path.join(genfile_dir, k), v['opts'], executable) for k,v in module_info.items())
+    retval += '\n'.join(module_opts(v['fname'], genfile_dir, k, v['opts'], executable) for k,v in module_info.items())
 
     return retval
 
