@@ -6,7 +6,10 @@ from . import util
 def module_opts(source_dir, genfile_dir, name, opts, exe):
     dest_dir = os.path.join(genfile_dir, name)
 
-    retval = ''
+    retval = '###\n'
+    retval += '# Build ID: ' + os.path.split(genfile_dir)[1] + '\n'
+    retval += '# Module: ' + name + '\n'
+    retval += '###\n\n'
 
     varname = os.path.split(genfile_dir)[1] + '_' + name + '_objs'
     for base,dirs,files in os.walk(source_dir):
@@ -29,7 +32,10 @@ def module_opts(source_dir, genfile_dir, name, opts, exe):
     return retval
 
 def get_makefile_string(genfile_dir, module_info, **config_file):
-    retval = ''
+
+    retval = '######\n'
+    retval += '# Build ID: ' + os.path.split(genfile_dir)[1] + '\n'
+    retval += '######\n\n'
 
     for k in ('CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
         if k in config_file:
