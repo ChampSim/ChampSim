@@ -22,6 +22,9 @@ clean:
 configclean: clean
 	$(RM) -r .csconfig _configuration.mk
 
+$(sort $(required_dirs)): | $(dir $@)
+	-mkdir $@
+
 $(cppsrc:.cc=.o): CPPFLAGS += -MMD -MP
 
 $(executable_name): $(cppsrc:.cc=.o) | $(dirname $@)

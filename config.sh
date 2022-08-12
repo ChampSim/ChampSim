@@ -15,7 +15,7 @@ import config.modules as modules
 import config.makefile as makefile
 import config.util as util
 
-constants_header_name = 'champsim_constants.h'
+constants_file_name = 'champsim_constants.h'
 instantiation_file_name = 'core_inst.inc'
 core_modules_file_name = 'ooo_cpu_modules.inc'
 cache_modules_file_name = 'cache_modules.inc'
@@ -156,6 +156,8 @@ def parse_config(config_file):
     branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, 'branch', modules.get_branch_data);
     btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, 'btb', modules.get_btb_data);
 
+    module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
+
     # Get unique build number
     champsimhash = hashlib.shake_128()
     champsimhash.update(json.dumps(cores).encode('utf-8'))
@@ -164,35 +166,43 @@ def parse_config(config_file):
     champsimhash.update(json.dumps(pmem).encode('utf-8'))
     champsimhash.update(json.dumps(vmem).encode('utf-8'))
     champsimhash.update(json.dumps(config_file).encode('utf-8'))
+    build_id = champsimhash.hexdigest(4)
 
-    genfile_dir = os.path.join('.csconfig', champsimhash.hexdigest(4))
-    os.makedirs(genfile_dir, exist_ok=True)
-
-    # Instantiation file
-    write_if_different(os.path.join(genfile_dir, instantiation_file_name), cxx_generated_warning + instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem))
-
-    # Core modules file
-    write_if_different(os.path.join(genfile_dir, core_modules_file_name), cxx_generated_warning + modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data))
-
-    # Cache modules file
-    write_if_different(os.path.join(genfile_dir, cache_modules_file_name), cxx_generated_warning + modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data))
-
-    # Constants header
-    write_if_different(os.path.join(genfile_dir, constants_header_name), cxx_generated_warning + constants_file.get_constants_file(config_file, pmem))
-
-    # Makefile
-    module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
-    return makefile.get_makefile_string(genfile_dir, module_info, **config_file)
+    return (
+            build_id,                                                                                       # Unique build ID
+            instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem), # Instantiation file
+            modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data),                      # Core modules file
+            modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data),                        # Cache modules file
+            constants_file.get_constants_file(config_file, pmem),                                           # Constants header
+            makefile.get_makefile_string(build_id, module_info, **config_file)                              # Makefile
+           )
 
 # Read the config file
 def parse_file(fname):
     with open(fname) as rfp:
         return json.load(rfp)
 
-if len(sys.argv) == 1:
-    print("No configuration specified. Building default ChampSim with no prefetching.")
-parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(sys.argv[1:])), (default_root,))
+def write_files(iterable):
+    objdir_name = '.csconfig'
+    makefile_parts = make_generated_warning + 'objdir=' + objdir_name + '\n\n'
 
-write_if_different('_configuration.mk', make_generated_warning + '\n#####\n\n'.join(parse_config(util.chain(*c)) for c in parsed_files))
+    for build_id, inst, core_modules, cache_modules, const, mkpart in iterable:
+        os.makedirs(os.path.join(objdir_name, build_id), exist_ok=True)
+        makefile_parts += mkpart + '\n#####\n\n'
+
+        write_if_different(os.path.join(objdir_name, build_id, instantiation_file_name), cxx_generated_warning + inst)
+        write_if_different(os.path.join(objdir_name, build_id, core_modules_file_name), cxx_generated_warning + core_modules)
+        write_if_different(os.path.join(objdir_name, build_id, cache_modules_file_name), cxx_generated_warning + cache_modules)
+        write_if_different(os.path.join(objdir_name, build_id, constants_file_name), cxx_generated_warning + const)
+
+    write_if_different('_configuration.mk', makefile_parts)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        print("No configuration specified. Building default ChampSim with no prefetching.")
+    parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(sys.argv[1:])), (default_root,))
+
+    write_files(parse_config(util.chain(*c)) for c in parsed_files)
 
 # vim: set filetype=python:
