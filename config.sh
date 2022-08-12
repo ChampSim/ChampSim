@@ -7,6 +7,7 @@ import operator
 import difflib
 import math
 import hashlib
+import argparse
 
 import config.defaults as defaults
 import config.instantiation_file as instantiation_file
@@ -58,7 +59,16 @@ def scale_frequencies(it):
     for x in it_b:
         x['frequency'] = max_freq / x['frequency']
 
-def parse_config(config_file):
+def merge_names(x,y):
+    if x is None:
+        return y
+    if y is None:
+        return x
+    return x + '_' + y
+
+def parse_config(*configs):
+    config_file = util.chain(*configs, merge_funcs={'name': merge_names})
+
     pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
     vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
 
@@ -182,9 +192,11 @@ def parse_file(fname):
     with open(fname) as rfp:
         return json.load(rfp)
 
-def write_files(iterable):
-    objdir_name = '.csconfig'
-    makefile_parts = make_generated_warning + 'objdir=' + objdir_name + '\n\n'
+def write_files(iterable, bindir_name, objdir_name):
+    makefile_parts = make_generated_warning
+    makefile_parts += 'bindir=' + bindir_name + '\n'
+    makefile_parts += 'objdir=' + objdir_name + '\n'
+    makefile_parts += '\n'
 
     for build_id, inst, core_modules, cache_modules, const, mkpart in iterable:
         os.makedirs(os.path.join(objdir_name, build_id), exist_ok=True)
@@ -199,10 +211,21 @@ def write_files(iterable):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        print("No configuration specified. Building default ChampSim with no prefetching.")
-    parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(sys.argv[1:])), (default_root,))
+    parser = argparse.ArgumentParser(description='Configure ChampSim')
 
-    write_files(parse_config(util.chain(*c)) for c in parsed_files)
+    parser.add_argument('--prefix', default='.')
+    parser.add_argument('--bindir')
+    parser.add_argument('files', nargs='*')
+
+    args = parser.parse_args()
+
+    bindir_name = args.bindir or os.path.join(args.prefix, 'bin')
+    objdir_name = os.path.join(args.prefix, '.csconfig')
+
+    if len(args.files) == 0:
+        print("No configuration specified. Building default ChampSim with no prefetching.")
+    parsed_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), (default_root,))
+
+    write_files((parse_config(*c) for c in parsed_files), bindir_name, objdir_name)
 
 # vim: set filetype=python:

@@ -16,18 +16,18 @@ include _configuration.mk
 all_execs: $(executable_name)
 
 clean:
-	find src test .csconfig \( -name '*.o' -o -name '*.d' \) -delete
+	find src test $(objdir) \( -name '*.o' -o -name '*.d' \) -delete
 	$(RM) test/000-test-main
 
 configclean: clean
-	$(RM) -r .csconfig _configuration.mk
+	$(RM) -r $(objdir) _configuration.mk
 
 $(sort $(required_dirs)): | $(dir $@)
 	-mkdir $@
 
 $(cppsrc:.cc=.o): CPPFLAGS += -MMD -MP
 
-$(executable_name): $(cppsrc:.cc=.o) | $(dirname $@)
+$(executable_name): $(cppsrc:.cc=.o) | $(bindir)
 	$(LINK.cc) $(OUTPUT_OPTION) $^
 
 exec_obj = $(patsubst %.cc,%.o,$(cppsrc))

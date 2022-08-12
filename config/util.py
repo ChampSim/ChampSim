@@ -15,9 +15,10 @@ def wrap_list(attr):
         attr = [attr]
     return attr
 
-def chain(*dicts):
+def chain(*dicts, merge_funcs=dict()):
     def merge_dicts(x,y):
         merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
+        merges.update({k:f(x.get(k),y.get(k)) for k,f in merge_funcs.items()})
         return { **y, **x, **merges }
 
     return functools.reduce(merge_dicts, dicts)

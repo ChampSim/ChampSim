@@ -7,7 +7,7 @@ def generate_dirs(path):
     head, tail = os.path.split(path)
     if head != '':
         yield from generate_dirs(head)
-    yield os.path.join(head, tail) + '/'
+    yield os.path.join(head, tail)
 
 def module_opts(source_dir, build_id, name, opts, exe):
     dest_dir = os.path.join(build_id, name)
@@ -24,7 +24,7 @@ def module_opts(source_dir, build_id, name, opts, exe):
             if ext in ('.cc',):
                 retval += varname + ' += $(objdir)/' + os.path.join(dest_dir,f) + '.o\n'
 
-    retval += '$(' + varname + '): | $(objdir)/' + dest_dir + '/\n'
+    retval += '$(' + varname + '): | $(objdir)/' + dest_dir + '\n'
     retval += '$(objdir)/{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, source_dir)
     retval += '$(objdir)/{}/%.o: CPPFLAGS += -I$(objdir)/{}/\n'.format(dest_dir, dest_dir)
 
@@ -47,7 +47,8 @@ def get_makefile_string(build_id, module_info, **config_file):
         if k in config_file:
             retval += k + ' += ' + config_file[k] + '\n'
 
-    executable = config_file.get('executable_name', 'bin/champsim')
+    name = config_file.get('name')
+    executable = '$(bindir)/' + config_file.get('executable_name', 'champsim' + ('' if name is None else '_'+name))
 
     retval += 'executable_name += ' + executable + '\n'
     retval += executable + ': CPPFLAGS += -I$(objdir)/' + build_id + '\n'
