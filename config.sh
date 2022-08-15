@@ -166,24 +166,17 @@ def parse_config(*configs):
 
     module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
 
+    inst_file = instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem) # Instantiation file
+    core_mods = modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data)                      # Core modules file
+    cache_mods = modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data)                       # Cache modules file
+    const_file = constants_file.get_constants_file(config_file, pmem)                                          # Constants header
+
     # Get unique build number
     champsimhash = hashlib.shake_128()
-    champsimhash.update(json.dumps(cores).encode('utf-8'))
-    champsimhash.update(json.dumps(caches).encode('utf-8'))
-    champsimhash.update(json.dumps(ptws).encode('utf-8'))
-    champsimhash.update(json.dumps(pmem).encode('utf-8'))
-    champsimhash.update(json.dumps(vmem).encode('utf-8'))
-    champsimhash.update(json.dumps(config_file).encode('utf-8'))
+    champsimhash.update((inst_file + core_mods + cache_mods + const_file).encode('utf-8'))
     build_id = champsimhash.hexdigest(4)
 
-    return (
-            build_id,                                                                                       # Unique build ID
-            instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem), # Instantiation file
-            modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data),                      # Core modules file
-            modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data),                        # Cache modules file
-            constants_file.get_constants_file(config_file, pmem),                                           # Constants header
-            makefile.get_makefile_string(build_id, module_info, **config_file)                              # Makefile
-           )
+    return (build_id, inst_file, core_mods, cache_mods, const_file, makefile.get_makefile_string(build_id, module_info, **config_file))
 
 # Read the config file
 def parse_file(fname):
