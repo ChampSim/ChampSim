@@ -125,12 +125,10 @@ def parse_config(*configs):
             )
 
     # Remove caches that are inaccessible
-    accessible_names = tuple(map(lambda x: x['name'], itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D')))))
-    caches = dict(filter(lambda x: x[0] in accessible_names, caches.items()))
+    caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
 
     # Establish latencies in caches
-    for cache in caches.values():
-        cache['hit_latency'] = cache.get('hit_latency') or (cache['latency'] - cache['fill_latency'])
+    caches = util.combine_named(caches.values(), ({'name': c['name'], 'hit_latency': (c.get('latency',100) - c['fill_latency'])} for c in caches.values()))
 
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
