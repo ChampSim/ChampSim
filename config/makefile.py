@@ -43,14 +43,21 @@ def get_makefile_string(build_id, module_info, **config_file):
     retval += '# Build ID: ' + build_id + '\n'
     retval += '######\n\n'
 
-    for k in ('CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
-        if k in config_file:
-            retval += k + ' += ' + config_file[k] + '\n'
-
     name = config_file.get('name')
     executable = '$(bindir)/' + config_file.get('executable_name', 'champsim' + ('' if name is None else '_'+name))
 
     retval += 'executable_name += ' + executable + '\n'
+
+    # Override the compiler
+    for k in ('CC', 'CXX'):
+        if k in config_file:
+            retval += '{}: {} = {}\n'.format(executable, k, config_file[k])
+
+    # Add compiler flags
+    for k in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
+        if k in config_file:
+            retval += '{}: {} += {}\n'.format(executable, k, config_file[k])
+
     retval += executable + ': CPPFLAGS += -I$(objdir)/' + build_id + '\n'
     retval += 'required_dirs += ' + ' '.join(generate_dirs(os.path.split(executable)[0])) + '\n'
     retval += '\n'
