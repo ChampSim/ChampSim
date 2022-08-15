@@ -190,13 +190,13 @@ def write_files(iterable, bindir_name, objdir_name):
     makefile_parts += '\n'
 
     for build_id, inst, core_modules, cache_modules, const, mkpart in iterable:
-        os.makedirs(os.path.join(objdir_name, build_id), exist_ok=True)
+        os.makedirs(os.path.join(objdir_name, build_id, 'inc'), exist_ok=True)
         makefile_parts += mkpart + '\n#####\n\n'
 
-        write_if_different(os.path.join(objdir_name, build_id, instantiation_file_name), cxx_generated_warning + inst)
-        write_if_different(os.path.join(objdir_name, build_id, core_modules_file_name), cxx_generated_warning + core_modules)
-        write_if_different(os.path.join(objdir_name, build_id, cache_modules_file_name), cxx_generated_warning + cache_modules)
-        write_if_different(os.path.join(objdir_name, build_id, constants_file_name), cxx_generated_warning + const)
+        write_if_different(os.path.join(objdir_name, build_id, 'inc', instantiation_file_name), cxx_generated_warning + inst)
+        write_if_different(os.path.join(objdir_name, build_id, 'inc', core_modules_file_name), cxx_generated_warning + core_modules)
+        write_if_different(os.path.join(objdir_name, build_id, 'inc', cache_modules_file_name), cxx_generated_warning + cache_modules)
+        write_if_different(os.path.join(objdir_name, build_id, 'inc', constants_file_name), cxx_generated_warning + const)
 
     write_if_different('_configuration.mk', makefile_parts)
 

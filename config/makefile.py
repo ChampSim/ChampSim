@@ -26,7 +26,6 @@ def module_opts(source_dir, build_id, name, opts, exe):
 
     retval += '$(' + varname + '): | $(objdir)/' + dest_dir + '\n'
     retval += '$(objdir)/{}/%.o: CPPFLAGS += -I{}\n'.format(dest_dir, source_dir)
-    retval += '$(objdir)/{}/%.o: CPPFLAGS += -I$(objdir)/{}/\n'.format(dest_dir, dest_dir)
 
     for opt in opts:
         retval += '$(objdir)/{}/%.o: CXXFLAGS += {}\n'.format(dest_dir, opt)
@@ -58,7 +57,7 @@ def get_makefile_string(build_id, module_info, **config_file):
         if k in config_file:
             retval += '{}: {} += {}\n'.format(executable, k, config_file[k])
 
-    retval += executable + ': CPPFLAGS += -I$(objdir)/' + build_id + '\n'
+    retval += executable + ': CPPFLAGS += -I$(objdir)/' + build_id + '/inc\n'
     retval += 'required_dirs += ' + ' '.join(generate_dirs(os.path.split(executable)[0])) + '\n'
     retval += '\n'
 
