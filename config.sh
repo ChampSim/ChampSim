@@ -207,16 +207,19 @@ def write_files(iterable):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configure ChampSim')
 
-    parser.add_argument('--prefix', default='.')
-    parser.add_argument('--bindir')
-    parser.add_argument('files', nargs='*')
+    parser.add_argument('--prefix', default='.',
+            help='The prefix for the ChampSim sources')
+    parser.add_argument('--bindir',
+            help='The directory to store the resulting executables')
+    parser.add_argument('files', nargs='*',
+            help='A sequence of JSON files describing the configuration. The last file specified has the highest priority.')
 
     args = parser.parse_args()
 
     bindir_name = args.bindir or os.path.join(args.prefix, 'bin')
     objdir_name = os.path.join(args.prefix, '.csconfig')
 
-    if len(args.files) == 0:
+    if not args.files:
         print("No configuration specified. Building default ChampSim with no prefetching.")
     config_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), (default_root,))
 
