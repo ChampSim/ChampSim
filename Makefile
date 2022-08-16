@@ -27,15 +27,18 @@ $(sort $(required_dirs)): | $(dir $@)
 
 $(cppsrc:.cc=.o): CPPFLAGS += -MMD -MP
 
+$(module_objs):
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
 $(executable_name): $(cppsrc:.cc=.o) | $(bindir)
 	$(LINK.cc) $(OUTPUT_OPTION) $^
 
-exec_obj = $(patsubst %.cc,%.o,$(cppsrc))
+test/000-test-main: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
+test/000-test-main: $(filter-out src/main.o, $(cppsrc:.cc=.o)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
+	$(LINK.cc) $(OUTPUT_OPTION) $^
 
-test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
-test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
-test: $(test_obj)
-	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
+test: test/000-test-main
+	test/000-test-main
 
 -include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
 
