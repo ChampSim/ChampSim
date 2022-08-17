@@ -3,6 +3,8 @@ CXXFLAGS += --std=c++17 -Wall -O3
 
 .phony: all all_execs clean configclean test makedirs
 
+test_main_name=test/bin/000-test-main
+
 all: all_execs
 
 cppsrc = $(wildcard src/*.cc)
@@ -18,12 +20,12 @@ testsrc = $(wildcard test/*.cc)
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
 
-all_execs: $(filter-out test/000-test-main, $(executable_name))
+all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
 	@-find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
-	@-$(RM) test/000-test-main
+	@-$(RM) $(test_main_name)
 
 # Remove all configuration files
 configclean: clean
@@ -39,19 +41,19 @@ $(build_objs) $(module_objs):
 	$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
 # Add address sanitizers for tests
-#test/000-test-main: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
+#$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 
 # Link test executable
-test/bin/000-test-main: $(testsrc:.cc=.o)
+$(test_main_name): $(testsrc:.cc=.o)
 	$(LINK.cc) $(OUTPUT_OPTION) $(filter-out %/main.o, $^)
 
 # Link main executables
-$(filter-out test/bin/000-test-main, $(executable_name)):
+$(filter-out $(test_main_name), $(executable_name)):
 	$(LINK.cc) $(OUTPUT_OPTION) $^
 
 # Tests: build and run
-test: test/bin/000-test-main
-	test/bin/000-test-main
+test: $(test_main_name)
+	$(test_main_name)
 
 -include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
 
