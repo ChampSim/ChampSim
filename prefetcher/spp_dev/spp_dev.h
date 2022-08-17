@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <iostream>
 
-namespace {
+namespace
+{
 // SPP functional knobs
 constexpr bool LOOKAHEAD_ON = true;
 constexpr bool FILTER_ON = true;
@@ -137,6 +138,6 @@ public:
   void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
   uint32_t check_entry(uint32_t page_offset);
 };
-}
+} // namespace
 
 #endif

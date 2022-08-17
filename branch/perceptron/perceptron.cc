@@ -44,7 +44,8 @@
 
 #include "ooo_cpu.h"
 
-namespace {
+namespace
+{
 template <typename T, std::size_t HISTLEN, std::size_t BITS>
 class perceptron
 {
@@ -119,7 +120,7 @@ std::map<O3_CPU*, std::deque<perceptron_state>> perceptron_state_buf;   // state
 std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> spec_global_history; // speculative global history - updated by predictor
 std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real global history - updated when the predictor is
                                                                         // updated
-}
+} // namespace
 
 void O3_CPU::initialize_branch_predictor() {}
 

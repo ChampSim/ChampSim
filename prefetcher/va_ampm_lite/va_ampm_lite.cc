@@ -1,6 +1,7 @@
 #include "cache.h"
 
-namespace {
+namespace
+{
 constexpr std::size_t REGION_COUNT = 128;
 constexpr std::size_t MAX_DISTANCE = 256;
 constexpr int PREFETCH_DEGREE = 2;
@@ -194,7 +195,7 @@ void reset_cl_prefetch(uint64_t v_addr)
   reset_prefetch(region_index, page_offset);
 }
 */
-} //anonymous namespace
+} // anonymous namespace
 
 void CACHE::prefetcher_initialize()
 {

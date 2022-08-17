@@ -4,7 +4,8 @@
 
 #include "cache.h"
 
-namespace {
+namespace
+{
 constexpr unsigned maxRRPV = 3;
 constexpr std::size_t NUM_POLICY = 2;
 constexpr std::size_t SDM_SIZE = 32;
@@ -18,7 +19,7 @@ std::map<CACHE*, unsigned> bip_counter;
 std::map<CACHE*, std::vector<std::size_t>> rand_sets;
 std::map<std::pair<CACHE*, std::size_t>, unsigned> PSEL;
 std::map<CACHE*, std::vector<unsigned>> rrpv;
-}
+} // namespace
 
 void CACHE::initialize_replacement()
 {
@@ -61,7 +62,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) {                                 // follower sets
+  if (leader == end) {                                     // follower sets
     if (::PSEL[std::make_pair(this, cpu)] > ::PSEL_THRS) { // follow BIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 

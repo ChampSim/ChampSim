@@ -4,7 +4,8 @@
 
 #include "cache.h"
 
-namespace {
+namespace
+{
 constexpr int PREFETCH_DEGREE = 3;
 
 struct tracker_entry {
@@ -24,7 +25,7 @@ constexpr std::size_t TRACKER_SETS = 256;
 constexpr std::size_t TRACKER_WAYS = 4;
 std::map<CACHE*, lookahead_entry> lookahead;
 std::map<CACHE*, std::array<tracker_entry, TRACKER_SETS * TRACKER_WAYS>> trackers;
-}
+} // namespace
 
 void CACHE::prefetcher_initialize() { std::cout << NAME << " IP-based stride prefetcher" << std::endl; }
 

@@ -2,13 +2,14 @@
 
 #include "ooo_cpu.h"
 
-namespace {
+namespace
+{
 constexpr std::size_t BIMODAL_TABLE_SIZE = 16384;
 constexpr std::size_t BIMODAL_PRIME = 16381;
 constexpr std::size_t COUNTER_BITS = 2;
 
 std::map<O3_CPU*, std::array<int, BIMODAL_TABLE_SIZE>> bimodal_table;
-}
+} // namespace
 
 void O3_CPU::initialize_branch_predictor()
 {

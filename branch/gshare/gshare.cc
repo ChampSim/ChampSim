@@ -5,7 +5,8 @@
 
 #include "ooo_cpu.h"
 
-namespace {
+namespace
+{
 constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
 constexpr std::size_t COUNTER_BITS = 2;
 constexpr std::size_t GS_HISTORY_TABLE_SIZE = 16384;
@@ -26,7 +27,7 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
 
   return hash % std::size(gs_history_table);
 }
-}
+} // namespace
 
 void O3_CPU::initialize_branch_predictor()
 {

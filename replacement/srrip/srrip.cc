@@ -1,10 +1,11 @@
 #include "cache.h"
 #include <unordered_map>
 
-namespace {
+namespace
+{
 constexpr int maxRRPV = 3;
 std::unordered_map<CACHE*, std::vector<int>> rrpv_values;
-}
+} // namespace
 
 // initialize replacement state
 void CACHE::initialize_replacement() { ::rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV); }

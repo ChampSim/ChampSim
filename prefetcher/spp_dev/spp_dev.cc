@@ -2,12 +2,13 @@
 
 #include "cache.h"
 
-namespace {
+namespace
+{
 SIGNATURE_TABLE ST;
 PATTERN_TABLE PT;
 PREFETCH_FILTER FILTER;
 GLOBAL_REGISTER GHR;
-}
+} // namespace
 
 void CACHE::prefetcher_initialize()
 {
@@ -120,7 +121,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
       // int sig_delta = (PT.delta[set][lookahead_way] < 0) ? ((((-1) *
       // PT.delta[set][lookahead_way]) & 0x3F) + 0x40) :
       // PT.delta[set][lookahead_way];
-      int sig_delta = (::PT.delta[set][lookahead_way] < 0) ? (((-1) * ::PT.delta[set][lookahead_way]) + (1 << (::SIG_DELTA_BIT - 1))) : ::PT.delta[set][lookahead_way];
+      int sig_delta =
+          (::PT.delta[set][lookahead_way] < 0) ? (((-1) * ::PT.delta[set][lookahead_way]) + (1 << (::SIG_DELTA_BIT - 1))) : ::PT.delta[set][lookahead_way];
       curr_sig = ((curr_sig << ::SIG_SHIFT) ^ sig_delta) & ::SIG_MASK;
     }
 
@@ -147,7 +149,8 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t matc
 
 void CACHE::prefetcher_final_stats() {}
 
-namespace {
+namespace
+{
 // TODO: Find a good 64-bit hash function
 uint64_t get_hash(uint64_t key)
 {
@@ -166,7 +169,7 @@ uint64_t get_hash(uint64_t key)
 
   return key;
 }
-}
+} // namespace
 
 void ::SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
 {
@@ -347,7 +350,7 @@ void ::PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
 }
 
 void ::PATTERN_TABLE::read_pattern(uint32_t curr_sig, int* delta_q, uint32_t* confidence_q, uint32_t& lookahead_way, uint32_t& lookahead_conf,
-                                 uint32_t& pf_q_tail, uint32_t& depth)
+                                   uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
   uint32_t set = get_hash(curr_sig) % ::PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;
@@ -406,7 +409,7 @@ bool ::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request
   }
 
   switch (filter_request) {
-    case ::SPP_L2C_PREFETCH:
+  case ::SPP_L2C_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (::SPP_DEBUG_PRINT) {
         std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << std::hex << check_addr << " cache_line: " << cache_line
@@ -428,7 +431,7 @@ bool ::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request
     }
     break;
 
-    case ::SPP_LLC_PREFETCH:
+  case ::SPP_LLC_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (::SPP_DEBUG_PRINT) {
         std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << std::hex << check_addr << " cache_line: " << cache_line

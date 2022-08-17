@@ -6,7 +6,8 @@
 
 #include "cache.h"
 
-namespace {
+namespace
+{
 constexpr int maxRRPV = 3;
 constexpr std::size_t SHCT_SIZE = 16384;
 constexpr unsigned SHCT_PRIME = 16381;
@@ -30,7 +31,7 @@ std::map<CACHE*, std::vector<int>> rrpv_values;
 
 // prediction table structure
 std::map<std::pair<CACHE*, std::size_t>, std::array<unsigned, SHCT_SIZE>> SHCT;
-}
+} // namespace
 
 // initialize replacement state
 void CACHE::initialize_replacement()

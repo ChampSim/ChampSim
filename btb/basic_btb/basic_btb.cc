@@ -14,7 +14,8 @@
 #include "ooo_cpu.h"
 #include "util.h"
 
-namespace {
+namespace
+{
 constexpr std::size_t BTB_SET = 1024;
 constexpr std::size_t BTB_WAY = 8;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
@@ -37,12 +38,12 @@ std::map<O3_CPU*, std::deque<uint64_t>> RAS;
  * find the target for a call's return, since calls may have different sizes.
  */
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
-}
+} // namespace
 
 void O3_CPU::initialize_btb()
 {
-  std::cout << "Basic BTB sets: " << ::BTB_SET << " ways: " << ::BTB_WAY << " indirect buffer size: " << std::size(::INDIRECT_BTB[this]) << " RAS size: " << ::RAS_SIZE
-            << std::endl;
+  std::cout << "Basic BTB sets: " << ::BTB_SET << " ways: " << ::BTB_WAY << " indirect buffer size: " << std::size(::INDIRECT_BTB[this])
+            << " RAS size: " << ::RAS_SIZE << std::endl;
 
   std::fill(std::begin(::BTB[this]), std::end(::BTB[this]), btb_entry_t{});
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);

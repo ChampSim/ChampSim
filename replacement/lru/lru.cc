@@ -4,7 +4,8 @@
 
 #include "cache.h"
 
-namespace {
+namespace
+{
 std::map<CACHE*, std::vector<uint64_t>> last_used_cycles;
 }
 
