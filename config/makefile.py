@@ -9,14 +9,32 @@ def generate_dirs(path):
         yield from generate_dirs(head)
     yield os.path.join(head, tail)
 
-def executable_opts(obj_dir, build_id, executable, config_file):
-    dest_dir = os.path.join(obj_dir, build_id)
+def walk_to(source_dir, dest_dir, extensions=('.cc',)):
+    obj_dirnames = [dest_dir]
+    obj_filenames = []
+    for base,dirs,files in os.walk(source_dir):
+        obj_dirnames.extend(os.path.join(base, d) for d in dirs)
+        obj_filenames.extend(os.path.normpath(os.path.join(dest_dir, os.path.relpath(base, source_dir), f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions)
+
+    return obj_dirnames, obj_filenames
+
+def executable_opts(obj_root, build_id, executable, config_file):
+    dest_dir = os.path.normpath(os.path.join(obj_root, build_id))
+    obj_dir = os.path.join(dest_dir, 'obj')
+    dir_varname = build_id + '_dirs'
+    obj_varname = build_id + '_objs'
 
     retval = '######\n'
     retval += '# Build ID: ' + build_id + '\n'
     retval += '######\n\n'
 
     retval += 'executable_name += ' + executable + '\n'
+
+    obj_dirnames, obj_filenames = walk_to('src', obj_dir)
+
+    retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
+    for f in obj_filenames:
+        retval += '{} += {}\n'.format(obj_varname, f)
 
     # Override the compiler
     for k in ('CC', 'CXX'):
@@ -29,12 +47,17 @@ def executable_opts(obj_dir, build_id, executable, config_file):
             retval += '{}: {} += {}\n'.format(executable, k, config_file[k])
 
     retval += executable + ': CPPFLAGS += -I' + os.path.join(dest_dir, 'inc') + '\n'
-    retval += executable + ': | ' + ' '.join(generate_dirs(os.path.split(executable)[0])) + '\n'
-    retval += 'build_dirs += ' + ' '.join(generate_dirs(os.path.split(executable)[0])) + '\n'
+
+    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, obj_dir, 'src', dir_varname)
+    retval += '{}: | {}\n'.format(executable, os.path.split(executable)[0])
+    retval += '{}: $({}) | $({})\n'.format(executable, obj_varname, dir_varname)
+
+    retval += 'build_objs += $(' + obj_varname + ')\n'
+    retval += 'build_dirs += $(' + dir_varname + ') ' + os.path.split(executable)[0] + '\n'
     return retval
 
 def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
-    dest_dir = os.path.join(obj_dir, build_id, name)
+    dest_dir = os.path.normpath(os.path.join(obj_dir, build_id, name))
     obj_varname = build_id + '_' + name + '_objs'
     dir_varname = build_id + '_' + name + '_dirs'
 
@@ -45,23 +68,17 @@ def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
     retval += '# Destination: ' + dest_dir + '\n'
     retval += '###\n\n'
 
-    obj_dirnames = [dest_dir]
-    obj_filenames = []
-    for base,dirs,files in os.walk(source_dir):
-        obj_dirnames.extend(os.path.join(base, d) for d in dirs)
-        obj_filenames.extend(os.path.join(dest_dir, os.path.relpath(base, source_dir), f)+'.o' for f,ext in map(os.path.splitext, files) if ext in ('.cc',))
+    obj_dirnames, obj_filenames = walk_to(source_dir, dest_dir)
 
     retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
     for f in obj_filenames:
         retval += '{} += {}\n'.format(obj_varname, f)
 
-    retval += '$({}): | $({})\n'.format(obj_varname, dir_varname)
     retval += '$({}): CPPFLAGS += -I{}\n'.format(obj_varname, source_dir)
-
     for opt in opts:
         retval += '$({}): CXXFLAGS += {}\n'.format(obj_varname, opt)
 
-    retval += '$({}): {}/%.o: {}/%.cc\n'.format(obj_varname, dest_dir, source_dir)
+    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, dest_dir, source_dir, dir_varname)
 
     retval += exe + ': $(' + obj_varname + ')\n'
     retval += 'module_objs += $(' + obj_varname + ')\n'

@@ -8,7 +8,7 @@ all: all_execs
 cppsrc = $(wildcard src/*.cc)
 testsrc = $(wildcard test/*.cc)
 
-$(cppsrc:.cc=.o) $(testsrc:.cc=.o): CPPFLAGS += -MMD -MP
+#$(cppsrc:.cc=.o) $(testsrc:.cc=.o): CPPFLAGS += -MMD -MP
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
@@ -34,26 +34,24 @@ configclean: clean
 $(filter-out test, $(sort $(build_dirs) $(module_dirs))): | $(dir $@)
 	-mkdir $@
 
-# All module .o files should be made like .cc files
-$(module_objs):
+# All .o files should be made like .cc files
+$(build_objs) $(module_objs):
 	$(COMPILE.cc) $(OUTPUT_OPTION) $<
-
-# Add main as a dependency for the primary executables
-$(filter-out test/000-test-main, $(executable_name)): src/main.o
 
 # Add address sanitizers for tests
 #test/000-test-main: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 
-# Test depends on the sources in test/
-test/000-test-main: $(testsrc:.cc=.o)
+# Link test executable
+test/bin/000-test-main: $(testsrc:.cc=.o)
+	$(LINK.cc) $(OUTPUT_OPTION) $(filter-out %/main.o, $^)
+
+# Link main executables
+$(filter-out test/bin/000-test-main, $(executable_name)):
+	$(LINK.cc) $(OUTPUT_OPTION) $^
 
 # Tests: build and run
-test: test/000-test-main
-	test/000-test-main
-
-# Both main and test executables depend on the sources in src/ (except for main)
-$(executable_name): $(filter-out src/main.o, $(cppsrc:.cc=.o))
-	$(LINK.cc) $(OUTPUT_OPTION) $^
+test: test/bin/000-test-main
+	test/bin/000-test-main
 
 -include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
 
