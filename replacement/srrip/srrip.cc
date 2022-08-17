@@ -1,24 +1,26 @@
 #include "cache.h"
 #include <unordered_map>
 
+namespace {
 constexpr int maxRRPV = 3;
-std::unordered_map<CACHE*, std::vector<int>> srrip_rrpv_values;
+std::unordered_map<CACHE*, std::vector<int>> rrpv_values;
+}
 
 // initialize replacement state
-void CACHE::initialize_replacement() { srrip_rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, maxRRPV); }
+void CACHE::initialize_replacement() { ::rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV); }
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
-  auto begin = std::next(std::begin(srrip_rrpv_values[this]), set * NUM_WAY);
+  auto begin = std::next(std::begin(::rrpv_values[this]), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find(begin, end, maxRRPV); // hijack the lru field
+  auto victim = std::find(begin, end, ::maxRRPV); // hijack the lru field
   while (victim == end) {
     for (auto it = begin; it != end; ++it)
       ++(*it);
 
-    victim = std::find(begin, end, maxRRPV);
+    victim = std::find(begin, end, ::maxRRPV);
   }
 
   return std::distance(begin, victim);
@@ -29,9 +31,9 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
                                      uint8_t hit)
 {
   if (hit)
-    srrip_rrpv_values[this][set * NUM_WAY + way] = 0;
+    ::rrpv_values[this][set * NUM_WAY + way] = 0;
   else
-    srrip_rrpv_values[this][set * NUM_WAY + way] = maxRRPV - 1;
+    ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
 }
 
 // use this function to print out your own stats at the end of simulation

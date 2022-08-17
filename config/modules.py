@@ -24,8 +24,8 @@ def default_dir(dirname, f):
     if not os.path.exists(fname):
         fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
     if not os.path.exists(fname):
-        print('Path "' + fname + '" does not exist. Exiting...')
-        sys.exit(1)
+        print('[WARNING]', 'Path "' + fname + '" does not exist.')
+        return None
     return fname
 
 def get_module_data(names_key, paths_key, values, directory, get_func):
