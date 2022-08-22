@@ -44,6 +44,8 @@
 
 #include "ooo_cpu.h"
 
+namespace
+{
 template <typename T, std::size_t HISTLEN, std::size_t BITS>
 class perceptron
 {
@@ -118,51 +120,52 @@ std::map<O3_CPU*, std::deque<perceptron_state>> perceptron_state_buf;   // state
 std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> spec_global_history; // speculative global history - updated by predictor
 std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real global history - updated when the predictor is
                                                                         // updated
+} // namespace
 
 void O3_CPU::initialize_branch_predictor() {}
 
 uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
   // hash the address to get an index into the table of perceptrons
-  auto index = ip % NUM_PERCEPTRONS;
-  auto output = perceptrons[this][index].predict(spec_global_history[this]);
+  auto index = ip % ::NUM_PERCEPTRONS;
+  auto output = ::perceptrons[this][index].predict(::spec_global_history[this]);
 
   bool prediction = (output >= 0);
 
   // record the various values needed to update the predictor
-  perceptron_state_buf[this].push_back({ip, prediction, output, spec_global_history[this]});
-  if (std::size(perceptron_state_buf[this]) > NUM_UPDATE_ENTRIES)
-    perceptron_state_buf[this].pop_front();
+  ::perceptron_state_buf[this].push_back({ip, prediction, output, ::spec_global_history[this]});
+  if (std::size(::perceptron_state_buf[this]) > ::NUM_UPDATE_ENTRIES)
+    ::perceptron_state_buf[this].pop_front();
 
   // update the speculative global history register
-  spec_global_history[this] <<= 1;
-  spec_global_history[this].set(0, prediction);
+  ::spec_global_history[this] <<= 1;
+  ::spec_global_history[this].set(0, prediction);
   return prediction;
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  auto state = std::find_if(std::begin(perceptron_state_buf[this]), std::end(perceptron_state_buf[this]), [ip](auto x) { return x.ip == ip; });
-  if (state == std::end(perceptron_state_buf[this]))
+  auto state = std::find_if(std::begin(::perceptron_state_buf[this]), std::end(::perceptron_state_buf[this]), [ip](auto x) { return x.ip == ip; });
+  if (state == std::end(::perceptron_state_buf[this]))
     return; // Skip update because state was lost
 
   auto [_ip, prediction, output, history] = *state;
-  perceptron_state_buf[this].erase(state);
+  ::perceptron_state_buf[this].erase(state);
 
-  auto index = ip % NUM_PERCEPTRONS;
+  auto index = ip % ::NUM_PERCEPTRONS;
 
   // update the real global history shift register
-  global_history[this] <<= 1;
-  global_history[this].set(0, taken);
+  ::global_history[this] <<= 1;
+  ::global_history[this].set(0, taken);
 
   // if this branch was mispredicted, restore the speculative history to the
   // last known real history
   if (prediction != taken)
-    spec_global_history[this] = global_history[this];
+    ::spec_global_history[this] = ::global_history[this];
 
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  if ((output <= THETA && output >= -THETA) || (prediction != taken))
-    perceptrons[this][index].update(taken, history);
+  if ((output <= ::THETA && output >= -::THETA) || (prediction != taken))
+    ::perceptrons[this][index].update(taken, history);
 }
