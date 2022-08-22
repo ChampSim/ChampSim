@@ -444,7 +444,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<decltype(LQ)::value_type>{});
     assert(q_entry != std::end(LQ));
     q_entry->emplace(LSQ_ENTRY{
-        instr.instr_id, smem, instr.ip, std::numeric_limits<uint64_t>::max(), std::ref(instr), {instr.asid[0], instr.asid[1]}}); // add it to the load queue
+        instr.instr_id, smem, instr.ip, std::numeric_limits<uint64_t>::max(), std::ref(instr), {instr.asid[0], instr.asid[1]}, false, std::numeric_limits<uint64_t>::max(), {}}); // add it to the load queue
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -471,7 +471,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   // store
   for (auto& dmem : instr.destination_memory)
     SQ.push_back(
-        {instr.instr_id, dmem, instr.ip, std::numeric_limits<uint64_t>::max(), std::ref(instr), {instr.asid[0], instr.asid[1]}}); // add it to the store queue
+        {instr.instr_id, dmem, instr.ip, std::numeric_limits<uint64_t>::max(), std::ref(instr), {instr.asid[0], instr.asid[1]}, false, std::numeric_limits<uint64_t>::max(), {}}); // add it to the store queue
 
   if constexpr (champsim::debug_print) {
     std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " loads: " << std::size(instr.source_memory)

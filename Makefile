@@ -1,6 +1,6 @@
 CPPFLAGS += -Iinc
-CFLAGS += --std=c++17 -Wall -O3
-CXXFLAGS += --std=c++17 -Wall -O3
+CFLAGS += --std=c++17 -Wall -Wextra -Wno-unused-parameter -O3
+CXXFLAGS += --std=c++17 -Wall -Wextra -Wno-unused-parameter -O3
 CPPFLAGS += -MMD -MP
 
 .phony: all clean configclean test
