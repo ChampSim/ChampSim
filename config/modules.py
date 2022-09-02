@@ -171,16 +171,16 @@ def get_pref_string(pref_data):
     retval += '\n'.join('constexpr static unsigned long long p{1:{prec}} = 1ull << {0};'.format(*x, prec=max(len(k) for k in pref_data)) for x in enumerate(pref_data))
     retval += '\n\n'
 
-    retval += get_module_variant('prefetcher_initialize', *variant_args['prefetcher_initialize'], 'pref_type', 'p', pref_data)
-    retval += get_module_variant('prefetcher_cache_operate', *variant_args['prefetcher_cache_operate'], 'pref_type', 'p', pref_data)
-    retval += get_module_variant('prefetcher_cache_fill', *variant_args['prefetcher_cache_fill'], 'pref_type', 'p', pref_data)
-    retval += get_module_variant('prefetcher_cycle_operate', *variant_args['prefetcher_cycle_operate'], 'pref_type', 'p', pref_data)
-    retval += get_module_variant('prefetcher_final_stats', *variant_args['prefetcher_final_stats'], 'pref_type', 'p', pref_data)
+    retval += get_module_variant('prefetcher_initialize', *pref_variant_args['prefetcher_initialize'], 'pref_type', 'p', pref_data)
+    retval += get_module_variant('prefetcher_cache_operate', *pref_variant_args['prefetcher_cache_operate'], 'pref_type', 'p', pref_data)
+    retval += get_module_variant('prefetcher_cache_fill', *pref_variant_args['prefetcher_cache_fill'], 'pref_type', 'p', pref_data)
+    retval += get_module_variant('prefetcher_cycle_operate', *pref_variant_args['prefetcher_cycle_operate'], 'pref_type', 'p', pref_data)
+    retval += get_module_variant('prefetcher_final_stats', *pref_variant_args['prefetcher_final_stats'], 'pref_type', 'p', pref_data)
 
     retval += '// Assert data prefetchers do not operate on branches\n'
     retval += '\n'.join('void {prefetcher_branch_operate}(uint64_t, uint8_t, uint64_t) {{ assert(false); }}'.format(**p) for p in pref_data.values() if not p.get('_is_instruction_prefetcher'))
     retval += '\n'
-    retval += get_module_variant('prefetcher_branch_operate', *variant_args['prefetcher_branch_operate'], 'pref_type', 'p', {k:v for k,v in pref_data.items() if v.get('_is_instruction_prefetcher')})
+    retval += get_module_variant('prefetcher_branch_operate', *pref_variant_args['prefetcher_branch_operate'], 'pref_type', 'p', {k:v for k,v in pref_data.items() if v.get('_is_instruction_prefetcher')})
 
     return retval;
 
