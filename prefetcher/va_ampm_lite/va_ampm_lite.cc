@@ -24,7 +24,7 @@ int l2c_prefetch(CACHE* cache, uint64_t ip, uint64_t base_addr, uint64_t pf_addr
   }
 
   // prefetching to different pages, so use virtual address prefetching
-  if (cache->prefetch_line(ip, base_addr, pf_addr, pf_fill_level, pf_metadata)) {
+  if (cache->prefetch_line(pf_addr, pf_fill_level, pf_metadata)) {
     return 1;
   } else {
     return 0;
