@@ -233,8 +233,9 @@ void O3_CPU::check_dib()
 {
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded
   // instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
-  for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
+  auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x){ return !x.dib_checked; });
+  auto end = std::min(IFETCH_BUFFER.end(), std::next(begin, FETCH_WIDTH));
+  for (auto it = begin; it != end; ++it)
     do_check_dib(*it);
 }
 
@@ -251,13 +252,15 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     // It can be acted on immediately
     instr.event_cycle = current_cycle;
   }
+
+  instr.dib_checked = COMPLETED;
 }
 
 void O3_CPU::fetch_instruction()
 {
   // Fetch a single cache line
   std::size_t to_read = L1I_BANDWIDTH;
-  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
+  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
     auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
@@ -274,7 +277,7 @@ void O3_CPU::fetch_instruction()
     }
 
     --to_read;
-    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
+    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
   }
 }
 
