@@ -2,45 +2,6 @@
 #include "mocks.hpp"
 #include "ooo_cpu.h"
 
-/*
- * A MemoryRequestConsumer that releases blocks when instructed to
- */
-class release_MRC : public MemoryRequestConsumer, public champsim::operable
-{
-  std::deque<PACKET> packets;
-  unsigned mpacket_count = 0;
-
-  void add(PACKET pkt) {
-      packets.push_back(pkt);
-      ++mpacket_count;
-  }
-
-  public:
-    release_MRC() : MemoryRequestConsumer(), champsim::operable(1) {}
-
-    void operate() override {}
-
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
-    uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
-
-    unsigned packet_count() const { return mpacket_count; }
-
-    void release(uint64_t addr)
-    {
-        auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
-        if (pkt_it != std::end(packets)) {
-            for (auto ret : pkt_it->to_return) {
-                ret->return_data(*pkt_it);
-            }
-        }
-        packets.erase(pkt_it);
-    }
-};
-
 ooo_model_instr inst(uint64_t addr)
 {
     input_instr i;
