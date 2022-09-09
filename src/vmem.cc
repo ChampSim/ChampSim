@@ -4,65 +4,58 @@
 #include <cassert>
 #include <iostream>
 #include <numeric>
-#include <random>
 
-#include "champsim.h"
+#include "champsim_constants.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(uint64_t capacity, uint64_t pg_size, uint32_t page_table_levels, uint64_t random_seed, uint64_t minor_fault_penalty)
-    : minor_fault_penalty(minor_fault_penalty), pt_levels(page_table_levels), page_size(pg_size), ppage_free_list((capacity-VMEM_RESERVE_CAPACITY)/PAGE_SIZE, PAGE_SIZE)
+VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_fault_penalty,
+                             MEMORY_CONTROLLER& dram)
+    : ppage_free_list(((1ull << (paddr_bits - LOG2_PAGE_SIZE)) - (VMEM_RESERVE_CAPACITY / PAGE_SIZE)), PAGE_SIZE), minor_fault_penalty(minor_fault_penalty),
+      pt_levels(page_table_levels), page_size(page_table_page_size)
 {
-    assert(capacity % PAGE_SIZE == 0);
-    assert(pg_size == (1ul << lg2(pg_size)) && pg_size > 1024);
+  assert(page_table_page_size == (1ul << lg2(page_table_page_size)) && page_table_page_size > 1024);
 
-    // populate the free list
-    ppage_free_list.front() = VMEM_RESERVE_CAPACITY;
-    std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
+  if (paddr_bits > lg2(dram.size()))
+    std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
 
-    // then shuffle it
-    std::shuffle(std::begin(ppage_free_list), std::end(ppage_free_list), std::mt19937_64{random_seed});
+  // populate the free list
+  ppage_free_list.front() = VMEM_RESERVE_CAPACITY;
+  std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
+}
 
+uint64_t VirtualMemory::shamt(uint32_t level) const { return LOG2_PAGE_SIZE + lg2(page_size / PTE_BYTES) * (level); }
+
+uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const { return (vaddr >> shamt(level)) & bitmask(lg2(page_size / PTE_BYTES)); }
+
+std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint16_t asid, uint64_t vaddr)
+{
+  auto [ppage, fault] = vpage_to_ppage_map.insert({{asid, vaddr >> LOG2_PAGE_SIZE}, ppage_free_list.front()});
+
+  // this vpage doesn't yet have a ppage mapping
+  if (fault)
+    ppage_free_list.pop_front();
+
+  return {splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
+}
+
+std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint16_t asid, uint64_t vaddr, uint32_t level)
+{
+  if (next_pte_page == 0) {
     next_pte_page = ppage_free_list.front();
     ppage_free_list.pop_front();
-}
+  }
 
-uint64_t VirtualMemory::shamt(uint32_t level) const
-{
-    return LOG2_PAGE_SIZE + lg2(page_size/PTE_BYTES)*(level);
-}
+  std::tuple key{asid, vaddr >> shamt(level+1), level};
+  auto [ppage, fault] = page_table.insert({key, next_pte_page});
 
-uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
-{
-    return (vaddr >> shamt(level)) & bitmask(lg2(page_size/PTE_BYTES));
-}
-
-std::pair<uint64_t, bool> VirtualMemory::va_to_pa(uint16_t asid, uint64_t vaddr)
-{
-    auto [ppage, fault] = vpage_to_ppage_map.insert({{asid, vaddr >> LOG2_PAGE_SIZE}, ppage_free_list.front()});
-
-    // this vpage doesn't yet have a ppage mapping
-    if (fault)
-        ppage_free_list.pop_front();
-
-    return {splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault};
-}
-
-std::pair<uint64_t, bool> VirtualMemory::get_pte_pa(uint16_t asid, uint64_t vaddr, uint32_t level)
-{
-    std::tuple key{asid, vaddr >> shamt(level+1), level};
-    auto [ppage, fault] = page_table.insert({key, next_pte_page});
-
-    // this PTE doesn't yet have a mapping
-    if (fault)
-    {
-        next_pte_page += page_size;
-        if (next_pte_page % PAGE_SIZE)
-        {
-            next_pte_page = ppage_free_list.front();
-            ppage_free_list.pop_front();
-        }
+  // this PTE doesn't yet have a mapping
+  if (fault) {
+    next_pte_page += page_size;
+    if (next_pte_page % PAGE_SIZE) {
+      next_pte_page = ppage_free_list.front();
+      ppage_free_list.pop_front();
     }
+  }
 
-    return {splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size)), fault};
+  return {splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, lg2(page_size)), fault ? minor_fault_penalty : 0};
 }
-

@@ -4,11 +4,11 @@
  * Daniel A. Jimenez
  * Calvin Lin
  *
- * Permission is hereby granted, free of charge, to any person 
+ * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software (the "Software"), to deal in
- * the Software without restriction, including without limitation 
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the 
+ * the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be
@@ -34,280 +34,138 @@
  * a hardware budget of (24+1)*8*163 = 32600 bits, or about 4K bytes,
  * which is comparable to the hardware budget of the Alpha 21264 hybrid
  * branch predictor.
- *
- * There are three important functions defined in this file:
- * 
- * 1. void initialize_perceptron_predictor (void);
- * Initialize the perceptron predictor
- *
- * 2. perceptron_state *perceptron_dir_lookup (unsigned int);
- * Get a branch prediction, given a branch address.  This function returns a
- * pointer to a 'perceptron_state' struct, which contains the prediction, the
- * perceptron output, and other information necessary for using and updating
- * the predictor.  The first member of a 'perceptron_state' struct is a char
- * that is assigned 3 if the branch is predicted taken, 0 otherwise; this way,
- * a pointer to 'perceptron_state' can be cast to (char *) and passed around
- * SimpleScalar as though it were a pointer to a pattern history table entry.
- *
- * 3. void perceptron_update (perceptron_state *, int);
- * Update the branch predictor using the 'perceptron_state' pointer 
- * returned by perceptron_dir_lookup() and an int that is 1 if the branch
- * was taken, 0 otherwise.
  */
+
+#include <algorithm>
+#include <array>
+#include <bitset>
+#include <deque>
+#include <map>
 
 #include "ooo_cpu.h"
 
-/* history length for the global history shift register */
+namespace
+{
+template <typename T, std::size_t HISTLEN, std::size_t BITS>
+class perceptron
+{
+  T bias = 0;
+  std::array<T, HISTLEN> weights = {};
 
-#define PERCEPTRON_HISTORY	24
+public:
+  // maximum and minimum weight values
+  constexpr static T max_weight = (1 << (BITS - 1)) - 1;
+  constexpr static T min_weight = -(max_weight + 1);
 
-/* number of perceptrons */
+  T predict(std::bitset<HISTLEN> history)
+  {
+    auto output = bias;
 
-#define NUM_PERCEPTRONS		163
+    // find the (rest of the) dot product of the history register and the
+    // perceptron weights.
+    for (std::size_t i = 0; i < std::size(history); i++) {
+      if (history[i])
+        output += weights[i];
+      else
+        output -= weights[i];
+    }
 
-/* number of bits per weight */
+    return output;
+  }
 
-#define PERCEPTRON_BITS		8
+  void update(bool result, std::bitset<HISTLEN> history)
+  {
+    // if the branch was taken, increment the bias weight, else decrement it,
+    // with saturating arithmetic
+    if (result)
+      bias = std::min(bias + 1, max_weight);
+    else
+      bias = std::max(bias - 1, min_weight);
 
-/* maximum and minimum weight values */
+    // for each weight and corresponding bit in the history register...
+    auto upd_mask = result ? history : ~history; // if the i'th bit in the history positively
+                                                 // correlates with this branch outcome,
+    for (std::size_t i = 0; i < std::size(upd_mask); i++) {
+      // increment the corresponding weight, else decrement it, with saturating
+      // arithmetic
+      if (upd_mask[i])
+        weights[i] = std::min(weights[i] + 1, max_weight);
+      else
+        weights[i] = std::max(weights[i] - 1, min_weight);
+    }
+  }
+};
 
-#define MAX_WEIGHT		((1<<(PERCEPTRON_BITS-1))-1)
-#define MIN_WEIGHT		(-(MAX_WEIGHT+1))
+constexpr std::size_t PERCEPTRON_HISTORY = 24; // history length for the global history shift register
+constexpr std::size_t PERCEPTRON_BITS = 8;     // number of bits per weight
+constexpr std::size_t NUM_PERCEPTRONS = 163;
 
-/* threshold for training */
+constexpr int THETA = 1.93 * PERCEPTRON_HISTORY + 14; // threshold for training
 
-#define THETA			((int) (1.93 * PERCEPTRON_HISTORY + 14))
-
-/* size of buffer for keeping 'perceptron_state' for update */
-
-#define NUM_UPDATE_ENTRIES	100
-
-/* perceptron data structure */
-
-typedef struct {
-	int	
-		/* just a vector of integers */
-
-		weights[PERCEPTRON_HISTORY+1];
-} perceptron;
+constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'perceptron_state' for update
 
 /* 'perceptron_state' - stores the branch prediction and keeps information
  * such as output and history needed for updating the perceptron predictor
  */
-typedef struct {
-	char	
-		/* this char emulates a pattern history	table entry
-		 * with a value of 0 for "predict not taken" or 3 for 
-		 * "predict taken," so a perceptron_state pointer can 
-		 * be passed around SimpleScalar's branch prediction 
-		 * infrastructure without changing too much stuff.
-		 */
-		dummy_counter;
+struct perceptron_state {
+  uint64_t ip = 0;
+  bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
+  int output = 0;                              // perceptron output
+  std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
+};
 
-	int
-		/* prediction: 1 for taken, 0 for not taken */
+std::map<O3_CPU*, std::array<perceptron<int, PERCEPTRON_HISTORY, PERCEPTRON_BITS>,
+                             NUM_PERCEPTRONS>> perceptrons;             // table of perceptrons
+std::map<O3_CPU*, std::deque<perceptron_state>> perceptron_state_buf;   // state for updating perceptron predictor
+std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> spec_global_history; // speculative global history - updated by predictor
+std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real global history - updated when the predictor is
+                                                                        // updated
+} // namespace
 
-		prediction,
-
-		/* perceptron output */
-
-		output;
-
-	unsigned long long int 
-		/* value of the history register yielding this prediction */
-
-		history;
-
-	perceptron
-		/* pointer to the perceptron yielding this prediction */
-
-		*perc;
-} perceptron_state;
-
-perceptron 
-	/* table of perceptrons */
-
-	perceptrons[NUM_CPUS][NUM_PERCEPTRONS];
-
-perceptron_state 
-	/* state for updating perceptron predictor */
-
-	perceptron_state_buf[NUM_CPUS][NUM_UPDATE_ENTRIES];
-
-int 
-	/* index of the next "free" perceptron_state */
-
-	perceptron_state_buf_ctr[NUM_CPUS];
-
-unsigned long long int
-
-	/* speculative global history - updated by predictor */
-
-	spec_global_history[NUM_CPUS],
-
-	/* real global history - updated when the predictor is updated */
-
-	global_history[NUM_CPUS];
-
-perceptron_state *u[NUM_CPUS];
-
-/* initialize a single perceptron */
-void initialize_perceptron (perceptron *p) {
-    int	i;
-
-    for (i=0; i<=PERCEPTRON_HISTORY; i++) p->weights[i] = 0;
-}
-
-void O3_CPU::initialize_branch_predictor()
-{
-    spec_global_history[cpu] = 0;
-    global_history[cpu] = 0;
-    perceptron_state_buf_ctr[cpu] = 0;
-    for (int i=0; i<NUM_PERCEPTRONS; i++)
-        initialize_perceptron (&perceptrons[cpu][i]);
-}
+void O3_CPU::initialize_branch_predictor() {}
 
 uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
-    uint64_t address = ip;
+  // hash the address to get an index into the table of perceptrons
+  auto index = ip % ::NUM_PERCEPTRONS;
+  auto output = ::perceptrons[this][index].predict(::spec_global_history[this]);
 
-    int	
-        index,
-        i,
-        output,
-        *w;
-    unsigned long long int 
-        mask;
-    perceptron 
-        *p;
+  bool prediction = (output >= 0);
 
-    /* get a pointer to the next "free" perceptron_state,
-     * bumping up the pointer (and possibly letting it wrap around) 
-     */
+  // record the various values needed to update the predictor
+  ::perceptron_state_buf[this].push_back({ip, prediction, output, ::spec_global_history[this]});
+  if (std::size(::perceptron_state_buf[this]) > ::NUM_UPDATE_ENTRIES)
+    ::perceptron_state_buf[this].pop_front();
 
-    u[cpu] = &perceptron_state_buf[cpu][perceptron_state_buf_ctr[cpu]++];
-    if (perceptron_state_buf_ctr[cpu] >= NUM_UPDATE_ENTRIES)
-        perceptron_state_buf_ctr[cpu] = 0;
-
-    /* hash the address to get an index into the table of perceptrons */
-
-    index = address % NUM_PERCEPTRONS;
-
-    /* get pointers to that perceptron and its weights */
-
-    p = &perceptrons[cpu][index];
-    w = &p->weights[0];
-
-    /* initialize the output to the bias weight, and bump the pointer
-     * to the weights
-     */
-
-    output = *w++;
-
-    /* find the (rest of the) dot product of the history register
-     * and the perceptron weights.  note that, instead of actually
-     * doing the expensive multiplies, we simply add a weight when the
-     * corresponding branch in the history register is taken, or
-     * subtract a weight when the branch is not taken.  this also lets
-     * us use binary instead of bipolar logic to represent the history
-     * register
-     */
-    for (mask=1,i=0; i<PERCEPTRON_HISTORY; i++,mask<<=1,w++) {
-        if (spec_global_history[cpu] & mask)
-            output += *w;
-        else
-            output += -*w;
-    }
-
-    /* record the various values needed to update the predictor */
-
-    u[cpu]->output = output;
-    u[cpu]->perc = p;
-    u[cpu]->history = spec_global_history[cpu];
-    u[cpu]->prediction = output >= 0;
-    u[cpu]->dummy_counter = u[cpu]->prediction ? 3 : 0;
-
-    /* update the speculative global history register */
-
-    spec_global_history[cpu] <<= 1;
-    spec_global_history[cpu] |= u[cpu]->prediction;
-    return u[cpu]->prediction;
+  // update the speculative global history register
+  ::spec_global_history[this] <<= 1;
+  ::spec_global_history[this].set(0, prediction);
+  return prediction;
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-    int	
-        i,
-        y, 
-        *w;
+  auto state = std::find_if(std::begin(::perceptron_state_buf[this]), std::end(::perceptron_state_buf[this]), [ip](auto x) { return x.ip == ip; });
+  if (state == std::end(::perceptron_state_buf[this]))
+    return; // Skip update because state was lost
 
-    unsigned long long int
-        mask, 
-        history;
+  auto [_ip, prediction, output, history] = *state;
+  ::perceptron_state_buf[this].erase(state);
 
-    /* update the real global history shift register */
+  auto index = ip % ::NUM_PERCEPTRONS;
 
-    global_history[cpu] <<= 1;
-    global_history[cpu] |= taken;
+  // update the real global history shift register
+  ::global_history[this] <<= 1;
+  ::global_history[this].set(0, taken);
 
-    /* if this branch was mispredicted, restore the speculative
-     * history to the last known real history
-     */
+  // if this branch was mispredicted, restore the speculative history to the
+  // last known real history
+  if (prediction != taken)
+    ::spec_global_history[this] = ::global_history[this];
 
-    if (u[cpu]->prediction != taken) spec_global_history[cpu] = global_history[cpu];
-
-    /* if the output of the perceptron predictor is outside of
-     * the range [-THETA,THETA] *and* the prediction was correct,
-     * then we don't need to adjust the weights
-     */
-
-    if (u[cpu]->output > THETA)
-        y = 1;
-    else if (u[cpu]->output < -THETA)
-        y = 0;
-    else
-        y = 2;
-    if (y == 1 && taken) return;
-    if (y == 0 && !taken) return;
-
-    /* w is a pointer to the first weight (the bias weight) */
-
-    w = &u[cpu]->perc->weights[0];
-
-    /* if the branch was taken, increment the bias weight,
-     * else decrement it, with saturating arithmetic
-     */
-
-    if (taken)
-        (*w)++;
-    else
-        (*w)--;
-    if (*w > MAX_WEIGHT) *w = MAX_WEIGHT;
-    if (*w < MIN_WEIGHT) *w = MIN_WEIGHT;
-
-    /* now w points to the next weight */
-
-    w++;
-
-    /* get the history that led to this prediction */
-
-    history = u[cpu]->history;
-
-    /* for each weight and corresponding bit in the history register... */
-
-    for (mask=1,i=0; i<PERCEPTRON_HISTORY; i++,mask<<=1,w++) {
-
-        /* if the i'th bit in the history positively correlates
-         * with this branch outcome, increment the corresponding 
-         * weight, else decrement it, with saturating arithmetic
-         */
-
-        if (!!(history & mask) == taken) { // a common trick to conver to boolean => !!x is 1 iff x is not zero, in this case history is positively correlated with branch outcome
-            (*w)++;
-            if (*w > MAX_WEIGHT) *w = MAX_WEIGHT;
-        } else {
-            (*w)--;
-            if (*w < MIN_WEIGHT) *w = MIN_WEIGHT;
-        }
-    }
+  // if the output of the perceptron predictor is outside of the range
+  // [-THETA,THETA] *and* the prediction was correct, then we don't need to
+  // adjust the weights
+  if ((output <= ::THETA && output >= -::THETA) || (prediction != taken))
+    ::perceptrons[this][index].update(taken, history);
 }

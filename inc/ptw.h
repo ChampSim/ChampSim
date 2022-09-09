@@ -1,74 +1,55 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <list>
+#include <cassert>
+#include <deque>
 #include <map>
 #include <optional>
+#include <string>
 
 #include "memory_class.h"
-
-class PagingStructureCache
-{
-    struct block_t
-    {
-        bool valid = false;
-        uint64_t address;
-        uint64_t data;
-        uint16_t asid;
-        uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
-    };
-
-    friend class eq_addr<block_t>;
-
-    const string NAME;
-    const uint32_t NUM_SET, NUM_WAY;
-    std::vector<block_t> block{NUM_SET*NUM_WAY};
-
-    public:
-        const std::size_t level;
-        PagingStructureCache(string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
-
-        std::optional<uint64_t> check_hit(uint16_t asid, uint64_t address);
-        void fill_cache(uint16_t asid, uint64_t next_level_paddr, uint64_t vaddr);
-};
+#include "operable.h"
+#include "vmem.h"
 
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
-    public:
-        const string NAME;
-        const uint32_t cpu;
-        const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
+public:
+  const std::string NAME;
+  const uint32_t RQ_SIZE, MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint64_t HIT_LATENCY;
 
-        champsim::delay_queue<PACKET> RQ;
+  std::deque<PACKET> RQ;
+  std::deque<PACKET> MSHR;
 
-        std::list<PACKET> MSHR;
+  uint64_t total_miss_latency = 0;
 
-        uint64_t total_miss_latency = 0;
+  std::vector<champsim::simple_lru_table<uint64_t>> pscl;
+  VirtualMemory& vmem;
 
-        PagingStructureCache PSCL5, PSCL4, PSCL3, PSCL2;
+  const uint64_t CR3_addr;
+  std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-        const uint64_t CR3_addr;
-        std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
+  PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
+                  uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
-        PageTableWalker(string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
+  // functions
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override { assert(0); }
+  bool add_pq(const PACKET& packet) override { assert(0); }
 
-        // functions
-        int add_rq(PACKET *packet);
-        int add_wq(PACKET *packet) { assert(0); }
-        int add_pq(PACKET *packet) { assert(0); }
+  void return_data(const PACKET& packet) override;
+  void operate() override;
 
-        void return_data(PACKET *packet),
-             operate();
+  bool handle_read(const PACKET& pkt);
+  bool handle_fill(const PACKET& pkt);
+  bool step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source);
 
-        void handle_read(), handle_fill();
-        void increment_WQ_FULL(uint64_t address) {}
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-        uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
-                 get_size(uint8_t queue_type, uint64_t address);
+  uint64_t get_shamt(uint8_t pt_level);
 
-        uint64_t get_shamt(uint8_t pt_level);
-
-        void print_deadlock() override;
+  void print_deadlock() override;
 };
 
 #endif

@@ -10,69 +10,75 @@
 #include "operable.h"
 #include "util.h"
 
-// these values control when to send out a burst of writes
-#define DRAM_WRITE_HIGH_WM    ((DRAM_WQ_SIZE*7)>>3) // 7/8th
-#define DRAM_WRITE_LOW_WM     ((DRAM_WQ_SIZE*3)>>2) // 6/8th
-#define MIN_DRAM_WRITES_PER_SWITCH (DRAM_WQ_SIZE*1/4)
+struct dram_stats {
+  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
 
-struct BANK_REQUEST {
-    bool valid = false,
-         row_buffer_hit = false;
+  unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
+};
+
+struct DRAM_CHANNEL {
+  using queue_type = std::vector<PACKET>;
+  queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
+
+  struct BANK_REQUEST {
+    bool valid = false, row_buffer_hit = false;
 
     std::size_t open_row = std::numeric_limits<uint32_t>::max();
 
     uint64_t event_cycle = 0;
 
-    std::vector<PACKET>::iterator pkt;
+    queue_type::iterator pkt;
+  };
+
+  using request_array_type = std::array<BANK_REQUEST, DRAM_RANKS * DRAM_BANKS>;
+  request_array_type bank_request = {};
+  request_array_type::iterator active_request = std::end(bank_request);
+
+  bool write_mode = false;
+  uint64_t dbus_cycle_available = 0;
+
+  using stats_type = dram_stats;
+  std::vector<stats_type> roi_stats, sim_stats;
+
+  void check_collision();
 };
 
-struct DRAM_CHANNEL
+class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
 {
-    std::vector<PACKET> WQ{DRAM_WQ_SIZE};
-    std::vector<PACKET> RQ{DRAM_RQ_SIZE};
+  // Latencies
+  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME = std::ceil(1.0 * BLOCK_SIZE / DRAM_CHANNEL_WIDTH);
 
-    std::array<BANK_REQUEST, DRAM_RANKS*DRAM_BANKS> bank_request = {};
-    std::array<BANK_REQUEST, DRAM_RANKS*DRAM_BANKS>::iterator active_request = std::end(bank_request);
+  // these values control when to send out a burst of writes
+  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
+  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
+  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
-    uint64_t dbus_cycle_available = 0,
-             dbus_cycle_congested = 0,
-             dbus_count_congested = 0;
+public:
+  std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-    bool write_mode = false;
+  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround);
 
-    unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
-};
+  void initialize() override;
+  void operate() override;
+  void begin_phase() override;
+  void end_phase(unsigned cpu) override;
+  void print_roi_stats() override;
+  void print_phase_stats() override;
 
-class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer {
-  public:
-    // DRAM_IO_FREQ defined in champsim_constants.h
-    const static uint64_t tRP                        = std::ceil(1.0 * tRP_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tRCD                       = std::ceil(1.0 * tRCD_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t tCAS                       = std::ceil(1.0 * tCAS_DRAM_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_TURN_AROUND_TIME = std::ceil(1.0 * DBUS_TURN_AROUND_NANOSECONDS * DRAM_IO_FREQ / 1000);
-    const static uint64_t DRAM_DBUS_RETURN_TIME      = std::ceil(1.0 * BLOCK_SIZE / DRAM_CHANNEL_WIDTH);
+  bool add_rq(const PACKET& packet) override;
+  bool add_wq(const PACKET& packet) override;
+  bool add_pq(const PACKET& packet) override;
 
-    std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
-    MEMORY_CONTROLLER(double freq_scale) : champsim::operable(freq_scale), MemoryRequestConsumer(std::numeric_limits<unsigned>::max()) {}
+  std::size_t size() const;
 
-    int  add_rq(PACKET *packet),
-         add_wq(PACKET *packet),
-         add_pq(PACKET *packet);
-
-    void operate();
-
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
-             get_size(uint8_t queue_type, uint64_t address);
-
-    void schedule(std::vector<PACKET>::iterator q_it);
-
-    uint32_t dram_get_channel(uint64_t address),
-             dram_get_rank   (uint64_t address),
-             dram_get_bank   (uint64_t address),
-             dram_get_row    (uint64_t address),
-             dram_get_column (uint64_t address);
+  uint32_t dram_get_channel(uint64_t address);
+  uint32_t dram_get_rank(uint64_t address);
+  uint32_t dram_get_bank(uint64_t address);
+  uint32_t dram_get_row(uint64_t address);
+  uint32_t dram_get_column(uint64_t address);
 };
 
 #endif
-
