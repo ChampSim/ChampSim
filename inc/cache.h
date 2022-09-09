@@ -135,6 +135,7 @@ public:
   };
 
   uint32_t cpu = 0;
+  uint16_t asid = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   const uint32_t FILL_LATENCY, OFFSET_BITS;

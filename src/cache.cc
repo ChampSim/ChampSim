@@ -14,6 +14,7 @@
 bool CACHE::handle_fill(PACKET& fill_mshr)
 {
   cpu = fill_mshr.cpu;
+  asid = fill_mshr.asid;
 
   // find victim
   uint32_t set = get_set(fill_mshr.address);
@@ -40,6 +41,7 @@ bool CACHE::handle_fill(PACKET& fill_mshr)
 bool CACHE::handle_writeback(PACKET& handle_pkt)
 {
   cpu = handle_pkt.cpu;
+  asid = handle_pkt.asid;
 
   // access cache
   uint32_t set = get_set(handle_pkt.address);
@@ -77,6 +79,7 @@ bool CACHE::handle_writeback(PACKET& handle_pkt)
 bool CACHE::handle_read(PACKET& handle_pkt)
 {
   cpu = handle_pkt.cpu;
+  asid = handle_pkt.asid;
 
   // A (hopefully temporary) hack to know whether to send the evicted paddr or  vaddr to the prefetcher
   ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
@@ -95,6 +98,7 @@ bool CACHE::handle_read(PACKET& handle_pkt)
 bool CACHE::handle_prefetch(PACKET& handle_pkt)
 {
   cpu = handle_pkt.cpu;
+  asid = handle_pkt.asid;
 
   uint32_t set = get_set(handle_pkt.address);
   uint32_t way = get_way(handle_pkt.asid, handle_pkt.address, set);
@@ -378,6 +382,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
+  pf_packet.asid = asid;
 
   auto success = queues.add_pq(pf_packet);
   if (success)

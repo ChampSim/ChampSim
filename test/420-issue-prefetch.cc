@@ -26,6 +26,7 @@ SCENARIO("A prefetch can be issued") {
 
     // Request a prefetch
     constexpr uint64_t seed_addr = 0xdeadbeef;
+    uut.asid = 10; // fix the address space
     auto seed_result = uut.prefetch_line(seed_addr, true, 0);
     REQUIRE(seed_result);
 
@@ -38,6 +39,7 @@ SCENARIO("A prefetch can be issued") {
       // Create a test packet
       PACKET test;
       test.address = 0xdeadbeef;
+      test.asid = 10;
       test.cpu = 0;
 
       auto test_result = mock_ul.issue(test);
