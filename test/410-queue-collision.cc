@@ -34,13 +34,13 @@ void issue_pq(Q &uut, PACKET pkt)
 }
 
 template <typename Q, typename F>
-void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
+void issue(Q &uut, uint64_t seed_addr, uint16_t asid, MemoryRequestProducer *ret, F func)
 {
   // Create a test packet
   PACKET seed;
   seed.address = seed_addr;
   seed.v_address = 0;
-  seed.asid = 10;
+  seed.asid = asid;
   seed.cpu = 0;
   seed.to_return = {ret};
 
@@ -48,13 +48,13 @@ void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
 }
 
 template <typename Q, typename F>
-void issue(Q &uut, uint64_t seed_addr, F func)
+void issue(Q &uut, uint64_t seed_addr, uint16_t asid, F func)
 {
   // Create a test packet
   PACKET seed;
   seed.address = seed_addr;
   seed.v_address = 0;
-  seed.asid = 10;
+  seed.asid = asid;
   seed.cpu = 0;
 
   std::invoke(func, uut, seed);
@@ -65,19 +65,28 @@ void wq_to_wq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
+    constexpr uint16_t asid = 10;
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    issue(uut, address, asid, issue_wq<decltype(uut)>);
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, issue_wq<decltype(uut)>);
+    WHEN("A packet with the same address and asid is sent") {
+      issue(uut, address, asid, issue_wq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
+      }
+    }
+
+    WHEN("A packet with the same address but a different asid is sent") {
+      issue(uut, address, asid+1, issue_wq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.WQ) == 2);
       }
     }
   }
@@ -88,6 +97,7 @@ void rq_to_rq()
 {
   GIVEN("A read queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
+    constexpr uint16_t asid = 10;
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
@@ -97,16 +107,27 @@ void rq_to_rq()
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_rq<decltype(uut)>);
+    issue(uut, address, asid, &ul0, issue_rq<decltype(uut)>);
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, &ul1, issue_rq<decltype(uut)>);
+    WHEN("A packet with the same address and asid is sent") {
+      issue(uut, address, asid, &ul1, issue_rq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.RQ) == 1);
         REQUIRE(std::size(uut.RQ.front().to_return) == 2);
         REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
         REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
+      }
+    }
+
+    WHEN("A packet with the same address but different asid is sent") {
+      issue(uut, address, asid+1, &ul1, issue_rq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.RQ) == 2);
+        REQUIRE(std::size(uut.RQ.front().to_return) == 1);
+        REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
+        REQUIRE(std::count(std::begin(uut.RQ.back().to_return), std::end(uut.RQ.back().to_return), &ul1) == 1);
       }
     }
   }
@@ -117,22 +138,34 @@ void wq_to_rq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
+    constexpr uint16_t asid = 10;
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    issue(uut, address, asid, issue_wq<decltype(uut)>);
 
-    WHEN("A packet with the same address is sent to the read queue") {
+    WHEN("A packet with the same address and asid is sent to the read queue") {
       counting_MRP counter;
-      issue(uut, address, &counter, issue_rq<decltype(uut)>);
+      issue(uut, address, asid, &counter, issue_rq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
         REQUIRE(std::size(uut.RQ) == 0);
         REQUIRE(counter.count == 1);
+      }
+    }
+
+    WHEN("A packet with the same address but different asid is sent to the read queue") {
+      counting_MRP counter;
+      issue(uut, address, asid+1, &counter, issue_rq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.WQ) == 1);
+        REQUIRE(std::size(uut.RQ) == 1);
+        REQUIRE(counter.count == 0);
       }
     }
   }
@@ -143,6 +176,7 @@ void pq_to_pq()
 {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
+    constexpr uint16_t asid = 10;
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
@@ -152,16 +186,27 @@ void pq_to_pq()
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_pq<decltype(uut)>);
+    issue(uut, address, asid, &ul0, issue_pq<decltype(uut)>);
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, &ul1, issue_pq<decltype(uut)>);
+    WHEN("A packet with the same address and asid is sent") {
+      issue(uut, address, asid, &ul1, issue_pq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.PQ) == 1);
         REQUIRE(std::size(uut.PQ.front().to_return) == 2);
         REQUIRE(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0) == 1);
         REQUIRE(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1) == 1);
+      }
+    }
+
+    WHEN("A packet with the same address but different asid is sent") {
+      issue(uut, address, asid+1, &ul1, issue_pq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.PQ) == 2);
+        REQUIRE(std::size(uut.PQ.front().to_return) == 1);
+        REQUIRE(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0) == 1);
+        REQUIRE(std::count(std::begin(uut.PQ.back().to_return), std::end(uut.PQ.back().to_return), &ul1) == 1);
       }
     }
   }
@@ -172,22 +217,34 @@ void wq_to_pq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
+    constexpr uint16_t asid = 10;
     Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    issue(uut, address, asid, issue_wq<decltype(uut)>);
 
-    WHEN("A packet with the same address is sent to the prefetch queue") {
+    WHEN("A packet with the same address and asid is sent to the prefetch queue") {
       counting_MRP counter;
-      issue(uut, address, &counter, issue_pq<decltype(uut)>);
+      issue(uut, address, asid, &counter, issue_pq<decltype(uut)>);
 
       THEN("The two packets are merged") {
         REQUIRE(std::size(uut.WQ) == 1);
         REQUIRE(std::size(uut.PQ) == 0);
         REQUIRE(counter.count == 1);
+      }
+    }
+
+    WHEN("A packet with the same address but different asid is sent to the prefetch queue") {
+      counting_MRP counter;
+      issue(uut, address, asid+1, &counter, issue_pq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.WQ) == 1);
+        REQUIRE(std::size(uut.PQ) == 1);
+        REQUIRE(counter.count == 0);
       }
     }
   }
