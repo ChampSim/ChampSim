@@ -73,6 +73,7 @@ struct ooo_model_instr {
   uint8_t branch_type = NOT_BRANCH;
   uint64_t branch_target = 0;
 
+  uint8_t dib_checked = 0;
   uint8_t fetched = 0;
   uint8_t decoded = 0;
   uint8_t scheduled = 0;
