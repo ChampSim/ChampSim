@@ -18,7 +18,9 @@ $ make
 
 # Download DPC-3 trace
 
-Professor Daniel Jimenez at Texas A&M University kindly provided traces for the 3rd Data Prefetching Championship (DPC-3). They can be found here (http://hpca23.cse.tamu.edu/champsim-traces/speccpu). A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj)
+Traces used for the 3rd Data Prefetching Championship (DPC-3) can be found here. (https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/) A set of traces used for the 2nd Cache Replacement Championship (CRC-2) can be found from this link. (http://bit.ly/2t2nkUj)
+
+Storage for these traces is kindly provided by Daniel Jimenez (Texas A&M University) and Mike Ferdman (Stony Brook University). If you find yourself frequently using ChampSim, it is highly encouraged that you maintain your own repository of traces, in case the links ever break.
 
 # Run simulation
 
