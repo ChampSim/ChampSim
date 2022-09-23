@@ -9,6 +9,7 @@
 #include <limits>
 #include <vector>
 
+#include "trace_instruction.h"
 // special registers that help us identify branches
 #define REG_STACK_POINTER 6
 #define REG_FLAGS 25
@@ -24,38 +25,6 @@ enum branch_type {
   BRANCH_INDIRECT_CALL = 5,
   BRANCH_RETURN = 6,
   BRANCH_OTHER = 7
-};
-
-struct input_instr {
-  // instruction pointer or PC (Program Counter)
-  uint64_t ip = 0;
-
-  // branch info
-  uint8_t is_branch = 0;
-  uint8_t branch_taken = 0;
-
-  uint8_t destination_registers[2] = {}; // output registers
-  uint8_t source_registers[4] = {};      // input registers
-
-  uint64_t destination_memory[2] = {}; // output memory
-  uint64_t source_memory[4] = {};      // input memory
-};
-
-struct cloudsuite_instr {
-  // instruction pointer or PC (Program Counter)
-  uint64_t ip = 0;
-
-  // branch info
-  uint8_t is_branch = 0;
-  uint8_t branch_taken = 0;
-
-  uint8_t destination_registers[4] = {}; // output registers
-  uint8_t source_registers[4] = {};      // input registers
-
-  uint64_t destination_memory[4] = {}; // output memory
-  uint64_t source_memory[4] = {};      // input memory
-
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 };
 
 struct ooo_model_instr {
