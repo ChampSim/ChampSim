@@ -6,7 +6,7 @@ ooo_model_instr inst(uint64_t addr)
 {
     input_instr i;
     i.ip = addr;
-    return ooo_model_instr{0, i};
+    return ooo_model_instr{i};
 }
 
 SCENARIO("A late-added instruction does not miss the IFB") {

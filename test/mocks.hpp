@@ -42,8 +42,8 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
-    uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
+    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
     unsigned packet_count() const { return std::size(addresses); }
 };
@@ -85,8 +85,8 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
-    uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
+    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
     unsigned packet_count() const { return mpacket_count; }
 };
@@ -113,8 +113,8 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override { return std::size(packets); }
-    uint32_t get_size(uint8_t queue_type, uint64_t address) override { return std::numeric_limits<uint32_t>::max(); }
+    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
     unsigned packet_count() const { return mpacket_count; }
 
@@ -140,7 +140,7 @@ class counting_MRP : public MemoryRequestProducer
 
   counting_MRP() : MemoryRequestProducer(nullptr) {}
 
-  void return_data(const PACKET &pkt) override {
+  void return_data(const PACKET &) override {
     count++;
   }
 };
