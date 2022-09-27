@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -111,73 +112,130 @@ struct ord_event_cycle {
 
 namespace champsim
 {
-
-template <typename T>
-class simple_lru_table
-{
-  struct block_t {
-    uint64_t address;
-    uint64_t last_used = 0;
-    T data;
-  };
-
-  const std::size_t NUM_SET, NUM_WAY, shamt;
-  uint64_t access_count = 0;
-  std::vector<block_t> block{NUM_SET * NUM_WAY};
-
-  auto get_set_span(uint64_t index)
+  namespace detail
   {
-    auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
-    auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-    return std::pair{set_begin, std::next(set_begin, NUM_WAY)};
-  }
+    template <typename T> struct hash;
 
-  auto match_func(uint64_t index)
-  {
-    return [index, shamt = this->shamt](auto x) {
-      return x.last_used > 0 && (x.address >> shamt) == (index >> shamt);
+    template <typename T1, typename T2>
+    struct hash<std::pair<T1, T2>>
+    {
+      std::size_t operator()(std::pair<T1, T2> val)
+      {
+        return std::hash<T1>{}(val.first) ^ std::hash<T2>{}(val.second);
+      }
     };
   }
 
-public:
-  simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
-
-  std::optional<T> check_hit(uint64_t index)
+  template <typename T, typename Proj, typename Hash=std::hash<std::invoke_result_t<Proj, const T&>>>
+  class lru_table
   {
-    auto [set_begin, set_end] = get_set_span(index);
-    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
+    struct block_t {
+      uint64_t last_used = 0;
+      T data;
+    };
 
-    if (hit_block == set_end)
-      return std::nullopt;
+    const std::size_t NUM_SET, NUM_WAY, shamt;
+    uint64_t access_count = 0;
+    std::vector<block_t> block{NUM_SET * NUM_WAY};
+    using iter_type = typename std::vector<block_t>::iterator;
 
-    hit_block->last_used = ++access_count;
-    return hit_block->data;
-  }
+    Proj projection;
+    using index_type = std::invoke_result_t<Proj, const T&>;
 
-  void fill_cache(uint64_t index, T data)
+    static Hash hash;
+
+    auto get_set_span(index_type index)
+    {
+      auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
+      auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+      auto set_end = std::next(set_begin, NUM_WAY);
+
+      return std::pair{set_begin, set_end};
+    }
+
+    auto match_func(index_type index)
+    {
+      return [index, shamt = this->shamt, proj = this->projection](const block_t &x) {
+        return x.last_used > 0 && (hash(proj(x.data)) >> shamt) == (index >> shamt);
+      };
+    }
+
+    protected:
+    std::optional<T> check_hit(const T &elem)
+    {
+      auto index = hash(projection(elem));
+      auto [set_begin, set_end] = get_set_span(index);
+      auto hit = std::find_if(set_begin, set_end, match_func(index));
+
+      if (hit == set_end)
+        return std::nullopt;
+
+      hit->last_used = ++access_count;
+      return hit->data;
+    }
+
+    void fill(const T &elem)
+    {
+      auto index = hash(projection(elem));
+      auto [set_begin, set_end] = get_set_span(index);
+      auto hit = std::find_if(set_begin, set_end, match_func(index));
+
+      if (hit == set_end)
+        hit = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
+
+      *hit = {++access_count, elem};
+    }
+
+    std::optional<T> invalidate(const T &elem)
+    {
+      auto index = hash(projection(elem));
+      auto [set_begin, set_end] = get_set_span(index);
+      auto hit = std::find_if(set_begin, set_end, match_func(index));
+
+      if (hit == set_end)
+        return std::nullopt;
+
+      auto oldval = std::exchange(*hit, {});
+      return oldval.data;
+    }
+
+    public:
+    using value_type = T;
+    lru_table(std::size_t sets, std::size_t ways, std::size_t shamt, Proj &&proj) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt), projection(proj) {}
+    lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
+  };
+
+  template <typename T, typename I=T>
+  class simple_lru_table : lru_table<std::pair<I,T>, std::function<I(const std::pair<I,T>&)>>
   {
-    auto [set_begin, set_end] = get_set_span(index);
-    auto fill_block = std::find_if(set_begin, set_end, match_func(index));
+    using super_type = lru_table<std::pair<I,T>, std::function<I(const std::pair<I,T>&)>>;
 
-    if (fill_block == set_end)
-      fill_block = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
+    public:
+    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : super_type(sets, ways, shamt, [](auto x){ return x.first; }) {}
 
-    *fill_block = {index, ++access_count, data};
-  }
+    std::optional<T> check_hit(I index)
+    {
+      auto hit = super_type::check_hit({index, 0});
+      if (!hit.has_value())
+        return std::nullopt;
 
-  std::optional<T> invalidate(uint64_t index)
-  {
-    auto [set_begin, set_end] = get_set_span(index);
-    auto hit_block = std::find_if(set_begin, set_end, match_func(index));
+      return hit->second;
+    }
 
-    if (hit_block == set_end)
-      return std::nullopt;
+    void fill_cache(I index, T data)
+    {
+      super_type::fill({index, data});
+    }
 
-    auto oldval = std::exchange(*hit_block, {0, 0, {}});
-    return oldval.data;
-  }
-};
+    std::optional<T> invalidate(I index)
+    {
+      auto inv = super_type::invalidate({index, 0});
+      if (!inv.has_value())
+        return std::nullopt;
 
+      return inv->second;
+    }
+  };
 } // namespace champsim
 
 #endif

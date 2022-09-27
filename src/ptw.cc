@@ -6,7 +6,7 @@
 #include "util.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t, uint64_t>>&& _pscl, uint32_t v10,
                                  uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
     : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
       HIT_LATENCY(latency), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
@@ -147,9 +147,9 @@ void PageTableWalker::return_data(const PACKET& packet)
     if (eq_addr{packet, LOG2_BLOCK_SIZE}(mshr_entry)) {
       uint64_t penalty;
       if (mshr_entry.translation_level == 0)
-        std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+        std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.asid, mshr_entry.v_address);
       else
-        std::tie(mshr_entry.data, penalty) = vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+        std::tie(mshr_entry.data, penalty) = vmem.get_pte_pa(mshr_entry.asid, mshr_entry.v_address, mshr_entry.translation_level);
       mshr_entry.event_cycle = current_cycle + (warmup ? 0 : penalty);
 
       if constexpr (champsim::debug_print) {
