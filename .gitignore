@@ -8,8 +8,7 @@ bin/
 **/*.o
 **/*.d
 
-config/__pycache__
-
 test/000-test-main
 
+tracer/pin/obj-intel64/
 

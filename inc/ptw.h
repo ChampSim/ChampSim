@@ -34,8 +34,8 @@ public:
 
   // functions
   bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET& packet) override { assert(0); }
-  bool add_pq(const PACKET& packet) override { assert(0); }
+  bool add_wq(const PACKET&) override { assert(0); }
+  bool add_pq(const PACKET&) override { assert(0); }
 
   void return_data(const PACKET& packet) override;
   void operate() override;

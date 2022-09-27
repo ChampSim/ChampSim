@@ -1,5 +1,5 @@
 CPPFLAGS += -Iinc
-CXXFLAGS += --std=c++17 -Wall -Wextra -Wno-unused-parameter -O3
+CXXFLAGS += --std=c++17 -Wall -Wextra -O3
 
 .phony: all all_execs clean configclean test makedirs
 

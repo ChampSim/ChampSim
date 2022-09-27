@@ -71,6 +71,7 @@ def get_branch_data(module_name):
     retval['bpred_predict'] = 'bpred_' + module_name + '_predict'
 
     retval['opts'] = (
+    '-Wno-unused-parameter',
     '-Dinitialize_branch_predictor=' + retval['bpred_initialize'],
     '-Dlast_branch_result=' + retval['bpred_last_result'],
     '-Dpredict_branch=' + retval['bpred_predict']
@@ -106,6 +107,7 @@ def get_btb_data(module_name):
     retval['btb_predict'] = 'btb_' + module_name + '_predict'
 
     retval['opts'] = (
+    '-Wno-unused-parameter',
     '-Dinitialize_btb=' + retval['btb_initialize'],
     '-Dupdate_btb=' + retval['btb_update'],
     '-Dbtb_prediction=' + retval['btb_predict']
@@ -145,6 +147,7 @@ def get_pref_data(module_name, is_instruction_cache=False):
     retval['prefetcher_final_stats'] = prefix + module_name + '_final_stats'
 
     retval['opts'] = (
+    '-Wno-unused-parameter',
     '-Dprefetcher_initialize=' + retval['prefetcher_initialize'],
     '-Dprefetcher_cache_operate=' + retval['prefetcher_cache_operate'],
     '-Dprefetcher_branch_operate=' + retval['prefetcher_branch_operate'],
@@ -194,6 +197,7 @@ def get_repl_data(module_name):
     retval['final_func_name'] = 'repl_' + module_name + '_final_stats'
 
     retval['opts'] = (
+    '-Wno-unused-parameter',
     '-Dinitialize_replacement=' + retval['init_func_name'],
     '-Dfind_victim=' + retval['find_victim_func_name'],
     '-Dupdate_replacement_state=' + retval['update_func_name'],
