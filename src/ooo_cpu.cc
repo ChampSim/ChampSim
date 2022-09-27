@@ -233,8 +233,9 @@ void O3_CPU::check_dib()
 {
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded
   // instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
-  for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
+  auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
+  auto end = std::min(IFETCH_BUFFER.end(), std::next(begin, FETCH_WIDTH));
+  for (auto it = begin; it != end; ++it)
     do_check_dib(*it);
 }
 
@@ -251,13 +252,16 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     // It can be acted on immediately
     instr.event_cycle = current_cycle;
   }
+
+  instr.dib_checked = COMPLETED;
 }
 
 void O3_CPU::fetch_instruction()
 {
   // Fetch a single cache line
-  std::size_t to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ;
-  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
+  std::size_t to_read = L1I_BANDWIDTH;
+  auto l1i_req_begin =
+      std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
     auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
@@ -274,7 +278,7 @@ void O3_CPU::fetch_instruction()
     }
 
     --to_read;
-    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetched; });
+    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
   }
 }
 
@@ -624,8 +628,7 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  for (int l1i_bw = FETCH_WIDTH, to_read = static_cast<CACHE*>(L1I_bus.lower_level)->MAX_READ; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty();
-       --to_read) {
+  for (int l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
@@ -648,7 +651,7 @@ void O3_CPU::handle_memory_return()
   }
 
   auto l1d_it = std::begin(L1D_bus.PROCESSED);
-  for (auto l1d_bw = static_cast<CACHE*>(L1D_bus.lower_level)->MAX_READ; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
+  for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
         lq_entry->rob_entry.num_mem_ops--;

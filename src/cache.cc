@@ -390,19 +390,8 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   return success;
 }
 
-int CACHE::prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-  static bool deprecate_printed = false;
-  if (!deprecate_printed) {
-    std::cout << "WARNING: The extended signature CACHE::prefetch_line(ip, "
-                 "base_addr, pf_addr, fill_this_level, prefetch_metadata) is "
-                 "deprecated."
-              << std::endl;
-    std::cout << "WARNING: Use CACHE::prefetch_line(pf_addr, fill_this_level, "
-                 "prefetch_metadata) instead."
-              << std::endl;
-    deprecate_printed = true;
-  }
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
 
@@ -449,7 +438,7 @@ void CACHE::return_data(const PACKET& packet)
   std::iter_swap(mshr_entry, first_unreturned);
 }
 
-uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
+uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
@@ -463,7 +452,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-uint32_t CACHE::get_size(uint8_t queue_type, uint64_t address)
+uint32_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;

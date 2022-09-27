@@ -153,7 +153,7 @@ void MEMORY_CONTROLLER::begin_phase()
     chan.sim_stats.emplace_back();
 }
 
-void MEMORY_CONTROLLER::end_phase(unsigned cpu)
+void MEMORY_CONTROLLER::end_phase(unsigned)
 {
   for (auto& chan : channels)
     chan.roi_stats.push_back(chan.sim_stats.back());
