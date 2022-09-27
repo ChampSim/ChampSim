@@ -4,12 +4,20 @@ import sys,os
 import itertools
 import functools
 import operator
-import copy
 import difflib
-from collections import ChainMap
+import math
 
+import config.defaults as defaults
+import config.instantiation_file as instantiation_file
+import config.constants_file as constants_file
 import config.modules as modules
 import config.makefile as makefile
+import config.util as util
+
+# Read the config file
+def parse_file(fname):
+    with open(fname) as rfp:
+        return json.load(rfp)
 
 constants_header_name = 'inc/champsim_constants.h'
 instantiation_file_name = 'src/core_inst.cc'
@@ -31,295 +39,149 @@ def write_if_different(fname, new_file_string):
             wfp.write(new_file_string)
 
 ###
-# Begin format strings
-###
-
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {{{{{pscl5_set}, {pscl5_way}, vmem.shamt(4)}}, {{{pscl4_set}, {pscl4_way}, vmem.shamt(3)}}, {{{pscl3_set}, {pscl3_way}, vmem.shamt(2)}}, {{{pscl2_set}, {pscl2_way}, vmem.shamt(1)}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem);\n'
-
-cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {DIB[window_size]}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, &{L1D}, {branch_enum_string}, {btb_enum_string}}}'
-
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});\n'
-vmem_fmtstr = 'VirtualMemory vmem(lg2({attrs[size]}), 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n'
-
-###
 # Begin default core model definition
 ###
 
-default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1 }
 
 # Read the config file
-if len(sys.argv) >= 2:
-    with open(sys.argv[1]) as rfp:
-        config_file = ChainMap(json.load(rfp), default_root)
-else:
+if len(sys.argv) == 1:
     print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_file = ChainMap(default_root)
+config_file = util.chain(*map(parse_file, reversed(sys.argv[1:])), default_root)
 
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
-default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no_instr', 'replacement': 'lru'}
-default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_llc  = { 'sets': 2048*config_file['num_cores'], 'ways': 16, 'rq_size': 32*config_file['num_cores'], 'wq_size': 32*config_file['num_cores'], 'pq_size': 32*config_file['num_cores'], 'mshr_size': 64*config_file['num_cores'], 'latency': 20, 'fill_latency': 1, 'max_read': config_file['num_cores'], 'max_write': config_file['num_cores'], 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru', 'name': 'LLC', 'lower_level': 'DRAM' }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
-default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
 
 ###
 # Establish default optional values
 ###
 
-config_file['physical_memory'] = ChainMap(config_file['physical_memory'], default_pmem.copy())
-config_file['virtual_memory'] = ChainMap(config_file['virtual_memory'], default_vmem.copy())
+pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
+vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
 
 cores = config_file.get('ooo_cpu', [{}])
 
-# Index the cache array by names
-caches = {c['name']: c for c in config_file.get('cache',[])}
-
-# Default branch predictor and BTB
-for i in range(len(cores)):
-    cores[i] = ChainMap(cores[i], {'name': 'cpu'+str(i), 'index': i}, copy.deepcopy(dict((k,v) for k,v in config_file.items() if k not in ('ooo_cpu', 'cache'))), default_core.copy())
-    cores[i]['DIB'] = ChainMap(cores[i]['DIB'], config_file['DIB'].copy(), default_dib.copy())
-
 # Copy or trim cores as necessary to fill out the specified number of cores
-original_size = len(cores)
-if original_size <= config_file['num_cores']:
-    for i in range(original_size, config_file['num_cores']):
-        cores.append(copy.deepcopy(cores[(i-1) % original_size]))
-else:
-    cores = cores[:(config_file['num_cores'] - original_size)]
+cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
+cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
 
-# Append LLC to cache array
-# LLC operates at maximum freqency of cores, if not already specified
-caches['LLC'] = ChainMap(caches.get('LLC',{}), config_file['LLC'].copy(), {'frequency': max(cpu['frequency'] for cpu in cores)}, default_llc.copy())
-
-# If specified in the core, move definition to cache array
-for cpu in cores:
-    # Assign defaults that are unique per core
-    for cache_name in ('L1I', 'L1D', 'L2C', 'ITLB', 'DTLB', 'STLB'):
-        if isinstance(cpu[cache_name], dict):
-            cpu[cache_name] = ChainMap(cpu[cache_name], {'name': cpu['name'] + '_' + cache_name}, config_file[cache_name].copy())
-            caches[cpu[cache_name]['name']] = cpu[cache_name]
-            cpu[cache_name] = cpu[cache_name]['name']
+# Default core elements
+cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
 
 # Assign defaults that are unique per core
-for cpu in cores:
-    cpu['PTW'] = ChainMap(cpu.get('PTW',{}), config_file.get('PTW', {}), {'name': cpu['name'] + '_PTW', 'cpu': cpu['index'], 'frequency': cpu['frequency'], 'lower_level': cpu['L1D']}, default_ptw.copy())
-    caches[cpu['L1I']] = ChainMap(caches[cpu['L1I']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['ITLB'], '_needs_translate': True, '_is_instruction_cache': True}, default_l1i.copy())
-    caches[cpu['L1D']] = ChainMap(caches[cpu['L1D']], {'frequency': cpu['frequency'], 'lower_level': cpu['L2C'], 'lower_translate': cpu['DTLB'], '_needs_translate': True}, default_l1d.copy())
-    caches[cpu['ITLB']] = ChainMap(caches[cpu['ITLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_itlb.copy())
-    caches[cpu['DTLB']] = ChainMap(caches[cpu['DTLB']], {'frequency': cpu['frequency'], 'lower_level': cpu['STLB']}, default_dtlb.copy())
+def upper_levels_for(system, names):
+    upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
+    upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
+    yield from ((k,v) for k,v in upper_levels if k in names)
 
-    # L2C
-    cache_name = caches[cpu['L1D']]['lower_level']
-    if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': 'LLC', 'lower_translate': caches[cpu['DTLB']]['lower_level']}, default_l2c.copy())
+# Establish defaults for first-level caches
+caches = util.combine_named(
+        config_file.get('cache', []),
+        # Copy values from the core specification and config root, if these are dicts
+        ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(config_file.get(cn[1]), dict)),
+        # Apply defaults named after the cores
+        map(defaults.named_l1i_defaults, cores),
+        map(defaults.named_l1d_defaults, cores),
+        map(defaults.named_itlb_defaults, cores),
+        map(defaults.named_dtlb_defaults, cores)
+        )
 
-    # STLB
-    cache_name = caches[cpu['DTLB']]['lower_level']
-    if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], {'frequency': cpu['frequency'], 'lower_level': cpu['PTW']['name']}, default_stlb.copy())
+cores = [util.chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
 
-    # LLC
-    cache_name = caches[caches[cpu['L1D']]['lower_level']]['lower_level']
-    if cache_name != 'DRAM':
-        caches[cache_name] = ChainMap(caches[cache_name], default_llc.copy())
+# Establish defaults for second-level caches
+caches = util.combine_named(
+        caches.values(),
+        # Copy values from the core specification and config root, if these are dicts
+        ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
+        ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(config_file.get(cn[1]), dict)),
+        # Apply defaults named after the second-level caches
+        (defaults.sequence_l2c_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['L1D']]['lower_level'] for c in cores])),
+        (defaults.sequence_stlb_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['DTLB']]['lower_level'] for c in cores])),
+        # Apply defaults named after the cores
+        map(defaults.named_l2c_defaults, cores),
+        map(defaults.named_stlb_defaults, cores),
+        )
+
+# Establish defaults for third-level caches
+ptws = util.combine_named(
+                 config_file.get('ptws',[]),
+                 ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+                 ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
+                 map(defaults.named_ptw_defaults, cores),
+                )
+
+caches = util.combine_named(
+        caches.values(),
+        ({'name': 'LLC', **config_file.get('LLC', {})},),
+        (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
+        )
 
 # Remove caches that are inaccessible
-accessible = [False]*len(caches)
-for i,ll in enumerate(caches.values()):
-    accessible[i] |= any(ul['lower_level'] == ll['name'] for ul in caches.values()) # The cache is accessible from another cache
-    accessible[i] |= any(ll['name'] in [cpu['L1I'], cpu['L1D'], cpu['ITLB'], cpu['DTLB']] for cpu in cores) # The cache is accessible from a core
-caches = dict(itertools.compress(caches.items(), accessible))
+accessible_names = tuple(map(lambda x: x['name'], itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D')))))
+caches = dict(filter(lambda x: x[0] in accessible_names, caches.items()))
 
 # Establish latencies in caches
 for cache in caches.values():
     cache['hit_latency'] = cache.get('hit_latency') or (cache['latency'] - cache['fill_latency'])
 
-# Create prefetch activation masks
-type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
-for cache in caches.values():
-    cache['prefetch_activate_mask'] = functools.reduce(operator.or_, (1 << i for i,t in enumerate(type_list) if t in cache['prefetch_activate'].split(',')))
-
 # Scale frequencies
-config_file['physical_memory']['io_freq'] = config_file['physical_memory']['frequency'] # Save value
-freqs = list(itertools.chain(
-    [cpu['frequency'] for cpu in cores],
-    [cache['frequency'] for cache in caches.values()],
-    (config_file['physical_memory']['frequency'],)
-))
-freqs = [max(freqs)/x for x in freqs]
-for freq,src in zip(freqs, itertools.chain(cores, caches.values(), (config_file['physical_memory'],))):
-    src['frequency'] = freq
+def scale_frequencies(it):
+    it_a, it_b = itertools.tee(it, 2)
+    max_freq = max(x['frequency'] for x in it_a)
+    for x in it_b:
+        x['frequency'] = max_freq / x['frequency']
 
-class IterLowerLevels:
-    def __init__(self, system, name):
-        self.system = system
-        self.name = name
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.name not in self.system:
-            raise StopIteration
-        old_name = self.name
-        self.name = self.system[self.name].get('lower_level')
-        return self.system[old_name]
+pmem['io_freq'] = pmem['frequency'] # Save value
+scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
 # TLBs use page offsets, Caches use block offsets
-for tlb in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB'))):
-    tlb['offset_bits'] = 'lg2(' + str(config_file['page_size']) + ')'
-    tlb['_needs_translate'] = False
+tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
+l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
+caches = util.combine_named(
+        ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
+        ({'name': c['name'], '_offset_bits': 'lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_needs_translate', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
+        caches.values()
+        )
 
-for cache in itertools.chain.from_iterable(IterLowerLevels(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D'))):
-    cache['offset_bits'] = 'lg2(' + str(config_file['block_size']) + ')'
-    cache['_needs_translate'] = cache.get('_needs_translate', False) or cache.get('virtual_prefetch', False)
-
-# Try the local module directories, then try to interpret as a path
-def default_dir(dirname, f):
-    fname = os.path.join(dirname, f)
-    if not os.path.exists(fname):
-        fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
-    if not os.path.exists(fname):
-        print('Path "' + fname + '" does not exist. Exiting...')
-        sys.exit(1)
-    return fname
+###
+# Check to make sure modules exist and they correspond to any already-built modules.
+###
 
 def wrap_list(attr):
     if not isinstance(attr, list):
         attr = [attr]
     return attr
 
-for cache in caches.values():
-    cache['replacement'] = [default_dir('replacement', f) for f in wrap_list(cache.get('replacement', []))]
-    cache['prefetcher']  = [default_dir('prefetcher', f) for f in wrap_list(cache.get('prefetcher', []))]
+caches = util.combine_named(caches.values(), ({
+        'name': c['name'],
+        '_replacement_modpaths': [modules.default_dir('replacement', f) for f in wrap_list(c.get('replacement', []))],
+        '_prefetcher_modpaths':  [modules.default_dir('prefetcher', f) for f in wrap_list(c.get('prefetcher', []))],
+        '_replacement_modnames': [modules.get_module_name(modules.default_dir('replacement', f)) for f in wrap_list(c.get('replacement', []))],
+        '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir('prefetcher', f)) for f in wrap_list(c.get('prefetcher', []))]
+        } for c in caches.values()))
 
-for cpu in cores:
-    cpu['branch_predictor'] = [default_dir('branch', f) for f in wrap_list(cpu.get('branch_predictor', []))]
-    cpu['btb']              = [default_dir('btb', f) for f in wrap_list(cpu.get('btb', []))]
+cores = list(util.combine_named(cores, ({
+        'name': c['name'],
+        '_branch_predictor_modpaths': [modules.default_dir('branch', f) for f in wrap_list(c.get('branch_predictor', []))],
+        '_btb_modpaths':  [modules.default_dir('btb', f) for f in wrap_list(c.get('btb', []))],
+        '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir('branch', f)) for f in wrap_list(c.get('branch_predictor', []))],
+        '_btb_modnames':  [modules.get_module_name(modules.default_dir('btb', f)) for f in wrap_list(c.get('btb', []))]
+        } for c in cores)).values())
 
-###
-# Check to make sure modules exist and they correspond to any already-built modules.
-###
-
-def default_modules(dirname):
-    return tuple(os.path.join(dirname, d) for d in os.listdir(dirname) if os.path.isdir(os.path.join(dirname, d)))
-
-repl_module_names = itertools.chain(default_modules('replacement'), *(c['replacement'] for c in caches.values()))
-pref_module_names = list(itertools.chain(((m,m.endswith('_instr')) for m in default_modules('prefetcher')), *(zip(c['prefetcher'], itertools.repeat(c.get('_is_instruction_cache',False))) for c in caches.values())))
-branch_module_names = itertools.chain(default_modules('branch'), *(c['branch_predictor'] for c in cores))
-btb_module_names = itertools.chain(default_modules('btb'), *(c['btb'] for c in cores))
-
-repl_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_repl_data(modules.get_module_name(fname))} for fname in repl_module_names}
-pref_data   = {modules.get_module_name(fname): {'fname':fname, **modules.get_pref_data(modules.get_module_name(fname),is_instr)} for fname,is_instr in pref_module_names}
-branch_data = {modules.get_module_name(fname): {'fname':fname, **modules.get_branch_data(modules.get_module_name(fname))} for fname in branch_module_names}
-btb_data    = {modules.get_module_name(fname): {'fname':fname, **modules.get_btb_data(modules.get_module_name(fname))} for fname in btb_module_names}
-
-for cpu in cores:
-    cpu['branch_predictor'] = [module_name for module_name,data in branch_data.items() if data['fname'] in cpu['branch_predictor']]
-    cpu['btb']              = [module_name for module_name,data in btb_data.items() if data['fname'] in cpu['btb']]
-
-for cache in caches.values():
-    cache['replacement'] = [module_name for module_name,data in repl_data.items() if data['fname'] in cache['replacement']]
-    cache['prefetcher']  = [module_name for module_name,data in pref_data.items() if data['fname'] in cache['prefetcher']]
-
-###
-# Perform final preparations for file writing
-###
-
-# Add PTW to memory system
-ptws = {}
-for i in range(len(cores)):
-    ptws[cores[i]['PTW']['name']] = cores[i]['PTW']
-    cores[i]['PTW'] = cores[i]['PTW']['name']
-
-memory_system = dict(**caches, **ptws)
-
-# Give each element a fill level
-for fill_level, elem in itertools.chain.from_iterable(enumerate(IterLowerLevels(memory_system, cpu[name])) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))):
-    elem['_fill_level'] = max(elem.get('_fill_level',0), fill_level)
-
-# Remove name index
-memory_system = list(memory_system.values())
-
-memory_system.sort(key=operator.itemgetter('_fill_level'), reverse=True)
+repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), 'replacement', modules.get_repl_data);
+pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), 'prefetcher', modules.get_pref_data);
+branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, 'branch', modules.get_branch_data);
+btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, 'btb', modules.get_btb_data);
 
 ###
 # Begin file writing
 ###
 
 # Instantiation file
-cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};\n'
-queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {hit_latency}, {offset_bits}, {wq_check_full_addr:b}}};\n'
-instantiation_file = generated_warning + '''
-#include "cache.h"
-#include "champsim.h"
-#include "dram_controller.h"
-#include "ooo_cpu.h"
-#include "ptw.h"
-#include "vmem.h"
-#include "operable.h"
-#include "util.h"
-#include <array>
-#include <functional>
-#include <vector>
-'''
-
-instantiation_file += vmem_fmtstr.format(attrs=config_file['virtual_memory'])
-instantiation_file += '\n'
-instantiation_file += pmem_fmtstr.format(**config_file['physical_memory'])
-for elem in memory_system:
-    if 'pscl5_set' in elem:
-        instantiation_file += ptw_fmtstr.format(**elem)
-    else:
-        instantiation_file += queue_fmtstr.format(
-            _type = 'TranslatingQueues' if elem.get('_needs_translate') else 'NonTranslatingQueues',
-            **elem)
-        instantiation_file += cache_fmtstr.format(\
-            repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['replacement']),\
-            pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['prefetcher']),\
-            **elem)
-
-instantiation_file += ',\n'.join(
-        'O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
-            branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['branch_predictor']),
-            btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['btb']),
-            **cpu) + ';\n' for cpu in cores)
-
-instantiation_file += 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{\n'
-instantiation_file += ', '.join('{name}'.format(**elem) for elem in cores)
-instantiation_file += '\n}};\n'
-
-instantiation_file += 'std::vector<std::reference_wrapper<CACHE>> caches {{\n'
-instantiation_file += ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem)
-instantiation_file += '\n}};\n'
-
-instantiation_file += 'std::vector<std::reference_wrapper<PageTableWalker>> ptws {{\n'
-instantiation_file += ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' in elem)
-instantiation_file += '\n}};\n'
-
-instantiation_file += 'std::vector<std::reference_wrapper<champsim::operable>> operables {{\n'
-instantiation_file += ', '.join('{name}'.format(**elem) for elem in cores)
-instantiation_file += ',\n'
-instantiation_file += ', '.join('{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem)
-instantiation_file += ',\n'
-instantiation_file += ', '.join('{name}, {name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem)
-instantiation_file += ',\n'
-instantiation_file += '{name}'.format(**config_file['physical_memory'])
-instantiation_file += '\n}};\n'
-
-instantiation_file += '\nvoid init_structures() {\n'
-for elem in memory_system:
-    if elem.get('_needs_translate'):
-        instantiation_file += '  {name}_queues.lower_level = &{lower_translate};\n'.format(**elem)
-instantiation_file += '}\n'
-
-write_if_different(instantiation_file_name, instantiation_file)
+write_if_different(instantiation_file_name, generated_warning + instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem))
 
 # Core modules file
 write_if_different(core_modules_file_name, generated_warning + modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data))
@@ -328,34 +190,7 @@ write_if_different(core_modules_file_name, generated_warning + modules.get_branc
 write_if_different(cache_modules_file_name, generated_warning + modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data))
 
 # Constants header
-constants_file = generated_warning
-constants_file += '#ifndef CHAMPSIM_CONSTANTS_H\n'
-constants_file += '#define CHAMPSIM_CONSTANTS_H\n'
-constants_file += '#include <cstdlib>\n'
-constants_file += '#include "util.h"\n'
-constants_file += 'constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**config_file)
-constants_file += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**config_file)
-constants_file += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**config_file)
-constants_file += 'constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**config_file)
-constants_file += 'constexpr std::size_t NUM_CACHES = ' + str(len(caches)) + ';\n'
-constants_file += 'constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n'
-constants_file += 'constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n'
-constants_file += f'constexpr static std::size_t NUM_BRANCH_MODULES = {len(branch_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_BTB_MODULES = {len(btb_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_REPLACEMENT_MODULES = {len(repl_data)};\n'
-constants_file += f'constexpr static std::size_t NUM_PREFETCH_MODULES = {len(pref_data)};\n'
-
-constants_file += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_RANKS = {ranks};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_BANKS = {banks};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_ROWS = {rows};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_COLUMNS = {columns};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_CHANNEL_WIDTH = {channel_width};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_WQ_SIZE = {wq_size};\n'.format(**config_file['physical_memory'])
-constants_file += 'constexpr std::size_t DRAM_RQ_SIZE = {rq_size};\n'.format(**config_file['physical_memory'])
-constants_file += '#endif\n'
-write_if_different(constants_header_name, constants_file)
+write_if_different(constants_header_name, generated_warning + constants_file.get_constants_file(config_file, pmem))
 
 # Makefile
 module_info = tuple(itertools.chain(repl_data.values(), pref_data.values(), branch_data.values(), btb_data.values()))

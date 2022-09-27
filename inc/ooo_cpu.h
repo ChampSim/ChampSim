@@ -104,6 +104,7 @@ public:
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
+  const unsigned L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
   uint8_t fetch_stall = 0;
@@ -164,13 +165,14 @@ public:
          std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width,
          unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
          unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
-         MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
+         MemoryRequestConsumer* l1i, unsigned l1i_bw, MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred_type,
+         std::bitset<NUM_BTB_MODULES> btb_type)
       : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d),
-        bpred_type(bpred_type), btb_type(btb_type)
+        DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_BANDWIDTH(l1i_bw), L1D_BANDWIDTH(l1d_bw),
+        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };

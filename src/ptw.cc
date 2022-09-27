@@ -6,10 +6,10 @@
 #include "util.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
-                                 uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(1), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency), pscl{_pscl},
-      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
+                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
+    : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
+      HIT_LATENCY(latency), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
 {
 }
 
@@ -167,7 +167,7 @@ void PageTableWalker::return_data(const PACKET& packet)
   std::sort(std::begin(MSHR), std::end(MSHR), ord_event_cycle<PACKET>{});
 }
 
-uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
+uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
@@ -176,7 +176,7 @@ uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
+uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;

@@ -1,6 +1,6 @@
 CPPFLAGS += -Iinc
-CFLAGS += --std=c++17 -Wall -O3
-CXXFLAGS += --std=c++17 -Wall -O3
+CFLAGS += --std=c++17 -Wall -Wextra -O3
+CXXFLAGS += --std=c++17 -Wall -Wextra -O3
 CPPFLAGS += -MMD -MP
 
 .phony: all clean configclean test
@@ -33,7 +33,8 @@ $(executable_name): $(exec_obj)
 	mkdir -p $(dir $@)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-test_obj = $(filter-out src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
+test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
+test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 test: $(test_obj)
 	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
 
