@@ -107,7 +107,7 @@ public:
     asid[1] = cpu;
   }
 
-  ooo_model_instr(uint8_t cpu, cloudsuite_instr instr) : ooo_model_instr(instr)
+  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(instr)
   {
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }

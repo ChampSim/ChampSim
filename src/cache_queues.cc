@@ -272,7 +272,7 @@ void CACHE::NonTranslatingQueues::begin_phase()
   sim_stats.emplace_back();
 }
 
-void CACHE::NonTranslatingQueues::end_phase(unsigned cpu)
+void CACHE::NonTranslatingQueues::end_phase(unsigned)
 {
   roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
   roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
