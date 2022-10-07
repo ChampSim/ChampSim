@@ -14,7 +14,7 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{20, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
-    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1,0}, {1,1,0}, {1,1,0}, {1,1,0}}, 2, 2, 1, 1, 1, &mock_ll, vmem};
+    PageTableWalker uut{"601-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 2, 2, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};

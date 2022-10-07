@@ -13,7 +13,7 @@ SCENARIO("A page table walker produces two full walks for different ASIDs") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{20, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
-    PageTableWalker uut{"602-uut-0", 0, 1, {{1,1,0}, {1,1,0}, {1,1,0}, {1,1,0}}, 2, 2, 1, 1, 1, &mock_ll, vmem};
+    PageTableWalker uut{"602-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 2, 2, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
@@ -34,8 +34,9 @@ SCENARIO("A page table walker produces two full walks for different ASIDs") {
       auto test_a_result = mock_ul.issue(test_a);
       REQUIRE(test_a_result);
 
-      for (auto elem : elements)
-        elem->_operate();
+      for (auto i = 0; i < 10000; ++i)
+        for (auto elem : elements)
+          elem->_operate();
 
       auto test_b_result = mock_ul.issue(test_b);
       REQUIRE(test_b_result);

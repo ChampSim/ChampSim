@@ -2,8 +2,10 @@
 #define UTIL_H
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -112,60 +114,45 @@ struct ord_event_cycle {
 
 namespace champsim
 {
-  namespace detail
-  {
-    template <typename T> struct hash;
-
-    template <typename T1, typename T2>
-    struct hash<std::pair<T1, T2>>
-    {
-      std::size_t operator()(std::pair<T1, T2> val)
-      {
-        return std::hash<T1>{}(val.first) ^ std::hash<T2>{}(val.second);
-      }
-    };
-  }
-
-  template <typename T, typename Proj, typename Hash=std::hash<std::invoke_result_t<Proj, const T&>>>
+  template <typename T, typename SetProj, typename TagProj>
   class lru_table
   {
+    public:
+    using value_type = T;
+
+    private:
     struct block_t {
       uint64_t last_used = 0;
-      T data;
+      value_type data;
     };
 
-    const std::size_t NUM_SET, NUM_WAY, shamt;
+    SetProj set_projection;
+    TagProj tag_projection;
+
+    const std::size_t NUM_SET, NUM_WAY;
     uint64_t access_count = 0;
-    std::vector<block_t> block{NUM_SET * NUM_WAY};
-    using iter_type = typename std::vector<block_t>::iterator;
+    std::vector<block_t> block{NUM_SET*NUM_WAY};
 
-    Proj projection;
-    using index_type = std::invoke_result_t<Proj, const T&>;
-
-    static Hash hash;
-
-    auto get_set_span(index_type index)
+    auto get_set_span(const value_type &elem)
     {
-      auto set_idx = (index >> shamt) & bitmask(lg2(NUM_SET));
-      auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
+      auto set_idx = set_projection(elem) & bitmask(lg2(NUM_SET));
+      auto set_begin = std::next(std::begin(block), set_idx*NUM_WAY);
       auto set_end = std::next(set_begin, NUM_WAY);
-
       return std::pair{set_begin, set_end};
     }
 
-    auto match_func(index_type index)
+    auto match_func(const value_type &elem)
     {
-      return [index, shamt = this->shamt, proj = this->projection](const block_t &x) {
-        return x.last_used > 0 && (hash(proj(x.data)) >> shamt) == (index >> shamt);
+      return [tag = tag_projection(elem), proj = this->tag_projection](const block_t &x) {
+        return x.last_used > 0 && proj(x.data) == tag;
       };
     }
 
-    protected:
-    std::optional<T> check_hit(const T &elem)
+    public:
+    std::optional<value_type> check_hit(const value_type &elem)
     {
-      auto index = hash(projection(elem));
-      auto [set_begin, set_end] = get_set_span(index);
-      auto hit = std::find_if(set_begin, set_end, match_func(index));
+      auto [set_begin, set_end] = get_set_span(elem);
+      auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
       if (hit == set_end)
         return std::nullopt;
@@ -174,11 +161,10 @@ namespace champsim
       return hit->data;
     }
 
-    void fill(const T &elem)
+    void fill(const value_type &elem)
     {
-      auto index = hash(projection(elem));
-      auto [set_begin, set_end] = get_set_span(index);
-      auto hit = std::find_if(set_begin, set_end, match_func(index));
+      auto [set_begin, set_end] = get_set_span(elem);
+      auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
       if (hit == set_end)
         hit = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
@@ -186,11 +172,10 @@ namespace champsim
       *hit = {++access_count, elem};
     }
 
-    std::optional<T> invalidate(const T &elem)
+    std::optional<value_type> invalidate(const value_type &elem)
     {
-      auto index = hash(projection(elem));
-      auto [set_begin, set_end] = get_set_span(index);
-      auto hit = std::find_if(set_begin, set_end, match_func(index));
+      auto [set_begin, set_end] = get_set_span(elem);
+      auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
       if (hit == set_end)
         return std::nullopt;
@@ -199,19 +184,35 @@ namespace champsim
       return oldval.data;
     }
 
-    public:
-    using value_type = T;
-    lru_table(std::size_t sets, std::size_t ways, std::size_t shamt, Proj &&proj) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt), projection(proj) {}
-    lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : NUM_SET(sets), NUM_WAY(ways), shamt(shamt) {}
+    lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj) : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
+    {
+      assert(sets == (1ull << lg2(sets)));
+    }
+
+    lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}
+    lru_table(std::size_t sets, std::size_t ways) : lru_table(sets, ways, {}, {}) {}
   };
 
-  template <typename T, typename I=T>
-  class simple_lru_table : lru_table<std::pair<I,T>, std::function<I(const std::pair<I,T>&)>>
+  namespace detail
   {
-    using super_type = lru_table<std::pair<I,T>, std::function<I(const std::pair<I,T>&)>>;
+    template <typename T, std::size_t Idx>
+    struct get_shift
+    {
+      std::size_t shamt = 0;
+      auto operator()(const T& x) const
+      {
+        return std::get<Idx>(x) >> shamt;
+      }
+    };
+  }
+
+  template <typename I, typename T>
+  class simple_lru_table : lru_table<std::pair<I,T>, detail::get_shift<std::pair<I,T>, 0>, detail::get_shift<std::pair<I,T>, 0>>
+  {
+    using super_type = lru_table<std::pair<I,T>, detail::get_shift<std::pair<I,T>, 0>, detail::get_shift<std::pair<I,T>, 0>>;
 
     public:
-    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : super_type(sets, ways, shamt, [](auto x){ return x.first; }) {}
+    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : super_type(sets, ways, {shamt}, {shamt}) {}
 
     std::optional<T> check_hit(I index)
     {

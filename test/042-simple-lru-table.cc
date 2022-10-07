@@ -3,7 +3,7 @@
 
 SCENARIO("An empty simple_lru_table misses") {
   GIVEN("An empty simple_lru_table") {
-    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, 0};
 
     WHEN("We check for a hit") {
       auto result = uut.check_hit(0xdeadbeef);
@@ -19,15 +19,14 @@ SCENARIO("A simple_lru_table can hit") {
   GIVEN("A simple_lru_table with one element") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, 0};
     uut.fill_cache(index, data);
 
     WHEN("We check for a hit") {
       auto result = uut.check_hit(index);
 
       THEN("The result matches the filled value") {
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data);
+        REQUIRE(result.value_or(0x12345678) == data);
       }
     }
   }
@@ -37,7 +36,7 @@ SCENARIO("A simple_lru_table can miss") {
   GIVEN("A simple_lru_table with one element") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    champsim::simple_lru_table<uint64_t> uut{1, 1, 0};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, 0};
     uut.fill_cache(index, data);
 
     WHEN("We check for a hit") {
@@ -55,7 +54,7 @@ SCENARIO("A simple_lru_table can hit with respect to the shamt") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
     constexpr std::size_t shamt = 8;
-    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, shamt};
     uut.fill_cache(index, data);
 
     WHEN("We check for a hit inside the shamt") {
@@ -63,8 +62,7 @@ SCENARIO("A simple_lru_table can hit with respect to the shamt") {
       auto result = uut.check_hit(new_index);
 
       THEN("The result matches the filled value") {
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data);
+        REQUIRE(result.value_or(0x12345678) == data);
       }
     }
 
@@ -83,7 +81,7 @@ SCENARIO("A simple_lru_table replaces LRU") {
   GIVEN("A simple_lru_table with two elements") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    champsim::simple_lru_table<uint64_t> uut{1, 2, 0};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 2, 0};
     uut.fill_cache(index, data);
     uut.fill_cache(index+1, data+1);
 
@@ -99,15 +97,13 @@ SCENARIO("A simple_lru_table replaces LRU") {
       AND_THEN("A check to the second-added element hits") {
         auto result = uut.check_hit(index+1);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data+1);
+        REQUIRE(result.value_or(0x12345678) == data+1);
       }
 
       AND_THEN("A check to the new element hits") {
         auto result = uut.check_hit(index+2);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data+2);
+        REQUIRE(result.value_or(0x12345678) == data+2);
       }
     }
   }
@@ -117,7 +113,7 @@ SCENARIO("A simple_lru_table exhibits set-associative behavior") {
   GIVEN("A simple_lru_table with two elements") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
-    champsim::simple_lru_table<uint64_t> uut{2, 1, 0};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{2, 1, 0};
     uut.fill_cache(index, data);
     uut.fill_cache(index+1, data+1);
 
@@ -133,15 +129,13 @@ SCENARIO("A simple_lru_table exhibits set-associative behavior") {
       AND_THEN("A check to the second-added element misses") {
         auto result = uut.check_hit(index+1);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data+1);
+        REQUIRE(result.value_or(0x12345678) == data+1);
       }
 
       AND_THEN("A check to the new element hits") {
         auto result = uut.check_hit(index+2);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data+2);
+        REQUIRE(result.value_or(0x12345678) == data+2);
       }
     }
 
@@ -151,8 +145,7 @@ SCENARIO("A simple_lru_table exhibits set-associative behavior") {
       THEN("A check to the first-added element hits") {
         auto result = uut.check_hit(index);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data);
+        REQUIRE(result.value_or(0x12345678) == data);
       }
 
       AND_THEN("A check to the second-added element misses") {
@@ -164,8 +157,7 @@ SCENARIO("A simple_lru_table exhibits set-associative behavior") {
       AND_THEN("A check to the new element hits") {
         auto result = uut.check_hit(index+3);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data+3);
+        REQUIRE(result.value_or(0x12345678) == data+3);
       }
     }
   }
@@ -176,7 +168,7 @@ SCENARIO("A simple_lru_table misses after invalidation") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
     constexpr std::size_t shamt = 8;
-    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, shamt};
     uut.fill_cache(index, data);
 
     WHEN("We invalidate the block") {
@@ -195,15 +187,14 @@ SCENARIO("A simple_lru_table returns the evicted block on invalidation") {
     constexpr uint64_t index = 0xdeadbeef;
     constexpr uint64_t data  = 0xcafebabe;
     constexpr std::size_t shamt = 8;
-    champsim::simple_lru_table<uint64_t> uut{1, 1, shamt};
+    champsim::simple_lru_table<uint64_t, uint64_t> uut{1, 1, shamt};
     uut.fill_cache(index, data);
 
     WHEN("We invalidate the block") {
       auto result = uut.invalidate(index);
 
       THEN("The returned value is the original block") {
-        REQUIRE(result.has_value());
-        REQUIRE(result.value() == data);
+        REQUIRE(result.value_or(0x12345678) == data);
       }
     }
   }

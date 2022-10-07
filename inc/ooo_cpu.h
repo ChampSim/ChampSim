@@ -81,7 +81,7 @@ public:
   std::vector<stats_type> roi_stats, sim_stats;
 
   // instruction buffer
-  champsim::simple_lru_table<bool, uint64_t> DIB; //<bool> used here as placeholder. Data is not actually used.
+  champsim::simple_lru_table<uint64_t, bool> DIB; //<bool> used here as placeholder. Data is not actually used.
 
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
@@ -157,7 +157,7 @@ public:
   const std::bitset<NUM_BRANCH_MODULES> bpred_type;
   const std::bitset<NUM_BTB_MODULES> btb_type;
 
-  O3_CPU(uint32_t cpu, double freq_scale, champsim::simple_lru_table<bool, uint64_t>&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size,
+  O3_CPU(uint32_t cpu, double freq_scale, champsim::simple_lru_table<uint64_t, bool>&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size,
          std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width,
          unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
          unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
