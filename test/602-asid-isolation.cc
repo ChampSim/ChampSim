@@ -7,9 +7,9 @@
 
 #include <array>
 
-SCENARIO("A page table walker produces two full walks for different ASIDs") {
-  GIVEN("A 5-level virtual memory") {
-    constexpr std::size_t levels = 5;
+namespace {
+  struct testbench {
+    constexpr static std::size_t levels = 5;
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory vmem{20, 1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
@@ -18,10 +18,14 @@ SCENARIO("A page table walker produces two full walks for different ASIDs") {
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
-    uut.warmup = false;
-    uut.begin_phase();
+    testbench()
+    {
+      uut.warmup = false;
+      uut.begin_phase();
+    }
 
-    WHEN("The PTW receives two requests in different address spaces") {
+    void test(uint64_t cycles_between_walks)
+    {
       PACKET test_a;
       test_a.address = 0xdeadbeefdeadbeef;
       test_a.v_address = test_a.address;
@@ -34,7 +38,7 @@ SCENARIO("A page table walker produces two full walks for different ASIDs") {
       auto test_a_result = mock_ul.issue(test_a);
       REQUIRE(test_a_result);
 
-      for (auto i = 0; i < 10000; ++i)
+      for (auto i = 0; i < cycles_between_walks; ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -44,10 +48,35 @@ SCENARIO("A page table walker produces two full walks for different ASIDs") {
       for (auto i = 0; i < 10000; ++i)
         for (auto elem : elements)
           elem->_operate();
+    }
+  };
+}
+
+SCENARIO("A page table walker produces two full walks for different ASIDs") {
+  GIVEN("A 5-level virtual memory") {
+    ::testbench tb;
+
+    WHEN("The PTW receives two requests in different address spaces") {
+      tb.test(10000);
 
       THEN("10 requests are issued") {
-        REQUIRE(mock_ll.packet_count() == 2*levels);
-        REQUIRE(mock_ul.packets.back().return_time > 0);
+        REQUIRE(tb.mock_ll.packet_count() == 2*tb.levels);
+        REQUIRE(tb.mock_ul.packets.back().return_time > 0);
+      }
+    }
+  }
+}
+
+SCENARIO("A page table walker produces two full simultaneous walks for different ASIDs") {
+  GIVEN("A 5-level virtual memory") {
+    ::testbench tb;
+
+    WHEN("The PTW receives two simultaneous requests in different address spaces") {
+      tb.test(0);
+
+      THEN("10 requests are issued") {
+        REQUIRE(tb.mock_ll.packet_count() == 2*tb.levels);
+        REQUIRE(tb.mock_ul.packets.back().return_time > 0);
       }
     }
   }

@@ -82,8 +82,8 @@ bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, cons
   fwd_pkt.to_return = {this};
   fwd_pkt.translation_level = transl_level;
 
-  auto matches_and_inflight = [addr](const auto& x) {
-    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
+  auto matches_and_inflight = [addr, asid=source.asid](const auto& x) {
+    return x.asid == asid && (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
   };
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);
 
