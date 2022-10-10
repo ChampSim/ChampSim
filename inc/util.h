@@ -193,30 +193,27 @@ namespace champsim
     lru_table(std::size_t sets, std::size_t ways) : lru_table(sets, ways, {}, {}) {}
   };
 
-  namespace detail
+  template <typename I, typename T>
+  class simple_lru_table
   {
-    template <typename T, std::size_t Idx>
+    using table_value_type = std::pair<I,T>;
     struct get_shift
     {
       std::size_t shamt = 0;
-      auto operator()(const T& x) const
+      auto operator()(const table_value_type& x) const
       {
-        return std::get<Idx>(x) >> shamt;
+        return std::get<0>(x) >> shamt;
       }
     };
-  }
 
-  template <typename I, typename T>
-  class simple_lru_table : lru_table<std::pair<I,T>, detail::get_shift<std::pair<I,T>, 0>, detail::get_shift<std::pair<I,T>, 0>>
-  {
-    using super_type = lru_table<std::pair<I,T>, detail::get_shift<std::pair<I,T>, 0>, detail::get_shift<std::pair<I,T>, 0>>;
+    lru_table<table_value_type, get_shift, get_shift> table;
 
     public:
-    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : super_type(sets, ways, {shamt}, {shamt}) {}
+    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : table(sets, ways, {shamt}, {shamt}) {}
 
     std::optional<T> check_hit(I index)
     {
-      auto hit = super_type::check_hit({index, 0});
+      auto hit = table.check_hit({index, 0});
       if (!hit.has_value())
         return std::nullopt;
 
@@ -225,12 +222,12 @@ namespace champsim
 
     void fill_cache(I index, T data)
     {
-      super_type::fill({index, data});
+      table.fill({index, data});
     }
 
     std::optional<T> invalidate(I index)
     {
-      auto inv = super_type::invalidate({index, 0});
+      auto inv = table.invalidate({index, 0});
       if (!inv.has_value())
         return std::nullopt;
 
