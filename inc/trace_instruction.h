@@ -3,6 +3,14 @@
 
 #include <limits>
 
+// special registers that help us identify branches
+namespace champsim
+{
+  constexpr char REG_STACK_POINTER = 6;
+  constexpr char REG_FLAGS = 25;
+  constexpr char REG_INSTRUCTION_POINTER = 26;
+}
+
 // instruction format
 constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
 constexpr std::size_t NUM_INSTR_DESTINATIONS = 2;

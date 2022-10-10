@@ -1,9 +1,12 @@
+#include <algorithm>
 #include <assert.h>
 #include <cstdint>
 #include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../../inc/trace_instruction.h"
 
 // defines for the paths for the various decompression programs and Apple/Linux differences
 
@@ -19,26 +22,10 @@
 #define UINT64 unsigned long long int
 #endif
 
-using namespace std;
-
 bool verbose = false;
 
-// ChampSim trace format
-#define NUM_INSTR_DESTINATIONS 2
-#define NUM_INSTR_SOURCES 4
-
-struct trace_instr_format {
-  UINT64 ip; // instruction pointer (program counter) value
-
-  unsigned char is_branch;    // is this branch
-  unsigned char branch_taken; // if so, is this taken
-
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
-  unsigned char source_registers[NUM_INSTR_SOURCES];           // input registers
-
-  UINT64 destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
-  UINT64 source_memory[NUM_INSTR_SOURCES];           // input memory
-};
+// use non-cloudsuite ChampSim trace format
+using trace_instr_format = input_instr;
 
 // orginal instruction types from CVP-1 traces
 
@@ -206,98 +193,81 @@ struct trace {
 
 bool is_branch(InstClass t) { return (t == uncondIndirectBranchInstClass || t == uncondDirectBranchInstClass || t == condBranchInstClass); }
 
-map<UINT64, bool> code_pages, data_pages;
-map<UINT64, UINT64> remapped_pages;
+std::map<UINT64, bool> code_pages, data_pages;
+std::map<UINT64, UINT64> remapped_pages;
 UINT64 bump_page = 0x1000;
 
 // this string will contain the trace file name, or "-" if we want to read from standard input
 
 char tracefilename[1000];
 
-#define REG_SP 6
-#define REG_IP 26
-#define REG_FLAGS 25
-#define REG_AX 56
+namespace {
+  constexpr char REG_AX = 56;
+}
 
-FILE* open_trace_file(void)
+auto open_trace_file(void)
 {
-  FILE* f = NULL;
-
   // read from standard input?
-
   if (!strcmp(tracefilename, "-")) {
     fprintf(stderr, "reading from standard input\n");
     fflush(stderr);
-    f = stdin;
-  } else {
-
-    // see what kind of file this is by reading the magic number
-
-    f = fopen(tracefilename, "r");
-    if (!f) {
-      perror(tracefilename);
-      exit(1);
-    }
-
-    // read six bytes from the beginning of the file
-
-    unsigned char s[6];
-    int n = fread(s, 1, 6, f);
-    fclose(f);
-    assert(n == 6);
-
-    // is this the magic number for XZ compression?
-
-    if (s[0] == 0xfd && s[1] == '7' && s[2] == 'z' && s[3] == 'X' && s[4] == 'Z' && s[5] == 0) {
-
-      // it is an XZ file or doing a good impression of one
-
-      char cmd[1000];
-      fprintf(stderr, "opening xz file \"%s\"\n", tracefilename);
-      fflush(stderr);
-
-      // start up an xz decompression and open a pipe to our standard input
-
-      sprintf(cmd, "%s -dc %s", XZ_PATH, tracefilename);
-      f = popen(cmd, "r");
-      if (!f) {
-        perror(cmd);
-        return NULL;
-      }
-    }
-    // check for the magic number for GZIP compression
-
-    else if (s[0] == 0x1f && s[1] == 0x8b) {
-      // it is a GZ file
-      char cmd[1000];
-      fprintf(stderr, "opening gz file \"%s\"\n", tracefilename);
-      fflush(stderr);
-
-      // open a pipe to a gzip decompression process
-
-      sprintf(cmd, "%s -dc %s", GZIP_PATH, tracefilename);
-      f = popen(cmd, "r");
-      if (!f) {
-        perror(cmd);
-        return NULL;
-      }
-    } else {
-      // no magic number? maybe it's uncompressed?
-      char cmd[1000];
-      fprintf(stderr, "opening file \"%s\"\n", tracefilename);
-      fflush(stderr);
-
-      // use Unix cat to open and read this file. we could just fopen the file
-      // but then we're pclosing it later so that could get weird
-
-      sprintf(cmd, "%s %s", CAT_PATH, tracefilename);
-      f = popen(cmd, "r");
-      if (!f) {
-        perror(cmd);
-        return NULL;
-      }
-    }
+    return stdin;
   }
+
+  // see what kind of file this is by reading the magic number
+  auto magic_tester = fopen(tracefilename, "r");
+  if (!magic_tester) {
+    perror(tracefilename);
+    exit(1);
+  }
+
+  // read six bytes from the beginning of the file
+  unsigned char s[6];
+  int n = fread(s, 1, 6, magic_tester);
+  fclose(magic_tester);
+  assert(n == 6);
+
+  constexpr auto cmd_size = 5 + std::max({sizeof(XZ_PATH), sizeof(GZIP_PATH), sizeof(CAT_PATH)}) + sizeof(tracefilename);
+  char cmd[cmd_size];
+
+  // is this the magic number for XZ compression?
+  if (s[0] == 0xfd && s[1] == '7' && s[2] == 'z' && s[3] == 'X' && s[4] == 'Z' && s[5] == 0) {
+
+    // it is an XZ file or doing a good impression of one
+
+    fprintf(stderr, "opening xz file \"%s\"\n", tracefilename);
+    fflush(stderr);
+
+    // start up an xz decompression and open a pipe to our standard input
+
+    sprintf(cmd, "%s -dc %s", XZ_PATH, tracefilename);
+  }
+
+  // check for the magic number for GZIP compression
+  else if (s[0] == 0x1f && s[1] == 0x8b) {
+    // it is a GZ file
+    fprintf(stderr, "opening gz file \"%s\"\n", tracefilename);
+    fflush(stderr);
+
+    // open a pipe to a gzip decompression process
+
+    sprintf(cmd, "%s -dc %s", GZIP_PATH, tracefilename);
+  } else {
+    // no magic number? maybe it's uncompressed?
+    fprintf(stderr, "opening file \"%s\"\n", tracefilename);
+    fflush(stderr);
+
+    // use Unix cat to open and read this file. we could just fopen the file
+    // but then we're pclosing it later so that could get weird
+
+    sprintf(cmd, "%s %s", CAT_PATH, tracefilename);
+  }
+
+  auto f = popen(cmd, "r");
+  if (f)
+    return f;
+
+  perror(cmd);
   return f;
 }
 
@@ -487,46 +457,46 @@ int main(int argc, char** argv)
       switch (c) {
       case OPTYPE_JMP_DIRECT_UNCOND:
         // writes IP only
-        ct.destination_registers[0] = REG_IP;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
         ct.branch_taken = t.taken;
         break;
       case OPTYPE_JMP_DIRECT_COND:
         ct.branch_taken = t.taken;
         // reads FLAGS, writes IP
-        ct.destination_registers[0] = REG_IP;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
         // turns out pin records conditional direct branches as also reading IP. whatever.
-        ct.source_registers[0] = REG_IP;
-        ct.source_registers[1] = REG_FLAGS;
+        ct.source_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.source_registers[1] = champsim::REG_FLAGS;
         break;
       case OPTYPE_CALL_INDIRECT_UNCOND:
         ct.branch_taken = true;
         // reads something else, reads IP, reads SP, writes SP, writes IP
-        ct.destination_registers[0] = REG_IP;
-        ct.destination_registers[1] = REG_SP;
-        ct.source_registers[0] = REG_IP;
-        ct.source_registers[1] = REG_SP;
-        ct.source_registers[2] = REG_AX;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.destination_registers[1] = champsim::REG_STACK_POINTER;
+        ct.source_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.source_registers[1] = champsim::REG_STACK_POINTER;
+        ct.source_registers[2] = ::REG_AX;
         break;
       case OPTYPE_CALL_DIRECT_UNCOND:
         ct.branch_taken = true;
         // reads IP, reads SP, writes SP, writes IP
-        ct.destination_registers[0] = REG_IP;
-        ct.destination_registers[1] = REG_SP;
-        ct.source_registers[0] = REG_IP;
-        ct.source_registers[1] = REG_SP;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.destination_registers[1] = champsim::REG_STACK_POINTER;
+        ct.source_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.source_registers[1] = champsim::REG_STACK_POINTER;
         break;
       case OPTYPE_JMP_INDIRECT_UNCOND:
         ct.branch_taken = true;
         // reads something else, writes IP
-        ct.destination_registers[0] = REG_IP;
-        ct.source_registers[0] = REG_AX;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.source_registers[0] = ::REG_AX;
         break;
       case OPTYPE_RET_UNCOND:
         ct.branch_taken = true;
         // reads SP, writes SP, writes IP
-        ct.source_registers[0] = REG_SP;
-        ct.destination_registers[0] = REG_IP;
-        ct.destination_registers[1] = REG_SP;
+        ct.source_registers[0] = champsim::REG_STACK_POINTER;
+        ct.destination_registers[0] = champsim::REG_INSTRUCTION_POINTER;
+        ct.destination_registers[1] = champsim::REG_STACK_POINTER;
         break;
       default:
         assert(0);
@@ -547,22 +517,22 @@ int main(int argc, char** argv)
       // for (int a=0; a<t.num_output_regs; a++) {
       for (int a = 0; a < 1; a++) {
         int x = t.output_reg_names[a];
-        if (x == REG_IP)
+        if (x == champsim::REG_INSTRUCTION_POINTER)
           x = 64;
-        if (x == REG_SP)
+        if (x == champsim::REG_STACK_POINTER)
           x = 65;
-        if (x == REG_FLAGS)
+        if (x == champsim::REG_FLAGS)
           x = 66;
         if (x == 0)
           x = 67;
         ct.destination_registers[a] = x;
         for (int i = 0; i < t.num_input_regs; i++) {
           int x = t.input_reg_names[i];
-          if (x == REG_IP)
+          if (x == champsim::REG_INSTRUCTION_POINTER)
             x = 64;
-          if (x == REG_SP)
+          if (x == champsim::REG_STACK_POINTER)
             x = 65;
-          if (x == REG_FLAGS)
+          if (x == champsim::REG_FLAGS)
             x = 66;
           if (x == 0)
             x = 67;
