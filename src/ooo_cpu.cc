@@ -352,7 +352,7 @@ void O3_CPU::decode_instruction()
     throw champsim::deadlock{cpu};
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill_cache(instr.ip, true); }
+void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
 
 void O3_CPU::dispatch_instruction()
 {

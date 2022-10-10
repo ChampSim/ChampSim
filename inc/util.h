@@ -192,48 +192,6 @@ namespace champsim
     lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}
     lru_table(std::size_t sets, std::size_t ways) : lru_table(sets, ways, {}, {}) {}
   };
-
-  template <typename I, typename T>
-  class simple_lru_table
-  {
-    using table_value_type = std::pair<I,T>;
-    struct get_shift
-    {
-      std::size_t shamt = 0;
-      auto operator()(const table_value_type& x) const
-      {
-        return std::get<0>(x) >> shamt;
-      }
-    };
-
-    lru_table<table_value_type, get_shift, get_shift> table;
-
-    public:
-    simple_lru_table(std::size_t sets, std::size_t ways, std::size_t shamt) : table(sets, ways, {shamt}, {shamt}) {}
-
-    std::optional<T> check_hit(I index)
-    {
-      auto hit = table.check_hit({index, 0});
-      if (!hit.has_value())
-        return std::nullopt;
-
-      return hit->second;
-    }
-
-    void fill_cache(I index, T data)
-    {
-      table.fill({index, data});
-    }
-
-    std::optional<T> invalidate(I index)
-    {
-      auto inv = table.invalidate({index, 0});
-      if (!inv.has_value())
-        return std::nullopt;
-
-      return inv->second;
-    }
-  };
 } // namespace champsim
 
 #endif
