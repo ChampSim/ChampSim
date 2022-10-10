@@ -201,8 +201,9 @@ UINT64 bump_page = 0x1000;
 
 char tracefilename[1000];
 
-namespace {
-  constexpr char REG_AX = 56;
+namespace
+{
+constexpr char REG_AX = 56;
 }
 
 auto open_trace_file(void)

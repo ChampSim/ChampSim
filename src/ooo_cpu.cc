@@ -98,8 +98,9 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   bool reads_sp = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_STACK_POINTER);
   bool reads_flags = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_FLAGS);
   bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_INSTRUCTION_POINTER);
-  bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers),
-                                   [](uint8_t r) { return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER; });
+  bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
+    return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
+  });
 
   arch_instr.num_mem_ops = std::size(arch_instr.destination_memory) + std::size(arch_instr.source_memory);
 
