@@ -18,7 +18,7 @@ def walk_to(source_dir, dest_dir, extensions=('.cc',)):
 
     return obj_dirnames, obj_filenames
 
-def executable_opts(obj_root, build_id, executable, config_file):
+def executable_opts(obj_root, build_id, executable, source_dirs, config_file):
     dest_dir = os.path.normpath(os.path.join(obj_root, build_id))
     obj_dir = os.path.join(dest_dir, 'obj')
     dir_varname = build_id + '_dirs'
@@ -29,12 +29,6 @@ def executable_opts(obj_root, build_id, executable, config_file):
     retval += '######\n\n'
 
     retval += 'executable_name += ' + executable + '\n'
-
-    obj_dirnames, obj_filenames = walk_to('src', obj_dir)
-
-    retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
-    for f in obj_filenames:
-        retval += '{} += {}\n'.format(obj_varname, f)
 
     # Override the compiler
     for k in ('CC', 'CXX'):
@@ -48,12 +42,24 @@ def executable_opts(obj_root, build_id, executable, config_file):
 
     retval += executable + ': CPPFLAGS += -I' + os.path.join(dest_dir, 'inc') + '\n'
 
-    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, obj_dir, 'src', dir_varname)
-    retval += '{}: | {}\n'.format(executable, os.path.split(executable)[0])
-    retval += '{}: $({}) | $({})\n'.format(executable, obj_varname, dir_varname)
+    for i, src_info in enumerate((*walk_to(src, obj_dir), src) for src in source_dirs):
+        obj_dirnames, obj_filenames, src_dir = src_info
 
-    retval += 'build_objs += $(' + obj_varname + ')\n'
-    retval += 'build_dirs += $(' + dir_varname + ') ' + os.path.split(executable)[0] + '\n'
+        local_dir_varname = dir_varname + '_' + str(i)
+        local_obj_varname = obj_varname + '_' + str(i)
+
+        retval += '{} = {}\n'.format(local_dir_varname, ' '.join(obj_dirnames))
+        for f in obj_filenames:
+            retval += '{} += {}\n'.format(local_obj_varname, f)
+
+        retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(local_obj_varname, obj_dir, src_dir, local_dir_varname)
+        retval += '{}: $({}) | $({})\n'.format(executable, local_obj_varname, local_dir_varname)
+
+        retval += 'build_objs += $({})\n'.format(local_obj_varname)
+        retval += 'build_dirs += $({})\n'.format(local_dir_varname)
+
+    retval += 'build_dirs += {}\n'.format(os.path.split(executable)[0])
+    retval += '{}: | {}\n'.format(executable, os.path.split(executable)[0])
     return retval
 
 def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
@@ -86,8 +92,8 @@ def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
 
     return retval
 
-def get_makefile_string(objdir, build_id, executable, module_info, config_file):
-    retval = executable_opts(objdir, build_id, executable, config_file)
+def get_makefile_string(objdir, build_id, executable, source_dirs, module_info, config_file):
+    retval = executable_opts(objdir, build_id, executable, source_dirs, config_file)
     retval += '\n'
     retval += '\n'.join(module_opts(v['fname'], objdir, build_id, k, v['opts'], executable) for k,v in module_info.items())
 

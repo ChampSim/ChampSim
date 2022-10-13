@@ -191,7 +191,7 @@ def write_files(iterable):
     ids = {hashlib.shake_128(json.dumps(x[:-2]).encode('utf-8')).hexdigest(4): x for x in iterable}
 
     for build_id, build in ids.items():
-        executable, inst, core_modules, cache_modules, const, module_info, env, bindir_name, objdir_name = build
+        executable, inst, core_modules, cache_modules, const, module_info, env, bindir_name, srcdir_names, objdir_name = build
 
         inc_dir = os.path.normpath(os.path.join(objdir_name, build_id, 'inc'))
         os.makedirs(inc_dir, exist_ok=True)
@@ -200,7 +200,7 @@ def write_files(iterable):
         write_if_different(os.path.join(inc_dir, core_modules_file_name), cxx_generated_warning + core_modules)
         write_if_different(os.path.join(inc_dir, cache_modules_file_name), cxx_generated_warning + cache_modules)
         write_if_different(os.path.join(inc_dir, constants_file_name), cxx_generated_warning + const)
-        makefile_parts.append(makefile.get_makefile_string(objdir_name, build_id, os.path.normpath(os.path.join(bindir_name, executable)), module_info, env))
+        makefile_parts.append(makefile.get_makefile_string(objdir_name, build_id, os.path.normpath(os.path.join(bindir_name, executable)), srcdir_names, module_info, env))
 
     write_if_different(makefile_file_name, make_generated_warning + '\n#####\n\n'.join(makefile_parts))
 
@@ -223,8 +223,8 @@ if __name__ == '__main__':
         print("No configuration specified. Building default ChampSim with no prefetching.")
     config_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), (default_root,))
 
-    parsed_test = (*parse_config({'executable_name': '000-test-main'}, default_root), 'test/bin', 'test')
-    parsed_configs = ((*parse_config(*c), bindir_name, objdir_name) for c in config_files)
+    parsed_test = (*parse_config({'executable_name': '000-test-main'}, default_root), 'test/bin', ('src','test'), '.csconfig/test')
+    parsed_configs = ((*parse_config(*c), bindir_name, ('src',), objdir_name) for c in config_files)
 
     write_files(itertools.chain(parsed_configs, (parsed_test,)))
 
