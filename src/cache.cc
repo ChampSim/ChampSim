@@ -488,7 +488,7 @@ void CACHE::end_phase(unsigned cpu)
 void print_cache_stats(std::string name, uint32_t cpu, CACHE::stats_type stats)
 {
   uint64_t TOTAL_HIT = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull),
-           TOTAL_MISS = std::accumulate(std::begin(stats.hits.at(cpu)), std::end(stats.hits[cpu]), 0ull);
+           TOTAL_MISS = std::accumulate(std::begin(stats.misses.at(cpu)), std::end(stats.misses[cpu]), 0ull);
 
   std::cout << name << " TOTAL       ";
   std::cout << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
