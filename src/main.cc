@@ -13,8 +13,8 @@
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "ptw.h"
-#include "vmem.h"
 #include "util.h"
+#include "vmem.h"
 
 void init_structures();
 
