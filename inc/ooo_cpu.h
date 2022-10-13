@@ -28,7 +28,7 @@ public:
   CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet);
+  void return_data(const PACKET& packet) override final;
 };
 
 struct branch_stats {
@@ -109,12 +109,12 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
 
-  void initialize() override;
-  void operate() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
+  void initialize() override final;
+  void operate() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
+  void print_roi_stats() override final;
+  void print_phase_stats() override final;
 
   void initialize_instruction();
   void check_dib();
@@ -150,7 +150,7 @@ public:
   uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
   uint64_t sim_cycle() const { return current_cycle - begin_phase_cycle; }
 
-  void print_deadlock() override;
+  void print_deadlock() override final;
 
 #include "ooo_cpu_modules.inc"
 
