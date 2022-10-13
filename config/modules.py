@@ -226,4 +226,3 @@ def get_repl_string(repl_data):
     retval += get_module_variant('final_func_name', *repl_variant_data['final_func_name'], 'repl_type', 'r', repl_data)
 
     return retval
-

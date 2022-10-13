@@ -48,7 +48,7 @@ bool CACHE::handle_writeback(PACKET& handle_pkt)
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
   if (way < NUM_WAY) { // HIT
-    impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+    impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, true);
 
     // COLLECT STATS
     sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
@@ -129,7 +129,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
   }
 
   // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
+  impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, true);
 
   // COLLECT STATS
   sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
@@ -277,12 +277,11 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
     fill_block.instr_id = handle_pkt.instr_id;
 
     fill_block.pf_metadata = impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
+    impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, evicting_address, handle_pkt.type, false);
   } else {
     impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, 0, handle_pkt.pf_metadata); // FIXME ignored result
+    impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, false);
   }
-
-  // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
 
   // COLLECT STATS
   sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;

@@ -10,10 +10,6 @@
 #include <vector>
 
 #include "trace_instruction.h"
-// special registers that help us identify branches
-#define REG_STACK_POINTER 6
-#define REG_FLAGS 25
-#define REG_INSTRUCTION_POINTER 26
 
 // branch types
 enum branch_type {
