@@ -14,20 +14,6 @@ vmem_fmtstr = 'VirtualMemory vmem(lg2({size}), 1 << 12, {num_levels}, {minor_fau
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_read}, {max_write}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};\n'
 queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};\n'
 
-file_header = '''
-    #include "cache.h"
-    #include "champsim.h"
-    #include "dram_controller.h"
-    #include "ooo_cpu.h"
-    #include "ptw.h"
-    #include "vmem.h"
-    #include "operable.h"
-    #include "util.h"
-    #include <array>
-    #include <functional>
-    #include <vector>
-    '''
-
 def get_instantiation_string(cores, caches, ptws, pmem, vmem):
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
 
@@ -40,7 +26,7 @@ def get_instantiation_string(cores, caches, ptws, pmem, vmem):
     # Remove name index
     memory_system = sorted(memory_system.values(), key=operator.itemgetter('_fill_level'), reverse=True)
 
-    instantiation_file = file_header
+    instantiation_file = ''
     instantiation_file += pmem_fmtstr.format(**pmem)
     instantiation_file += '\n'
     instantiation_file += vmem_fmtstr.format(dram_name=pmem['name'], **vmem)

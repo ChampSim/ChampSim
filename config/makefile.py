@@ -1,34 +1,95 @@
 import itertools, operator
 import os
 
-def module_make(directory, opts):
-    retval = '{0}/%.o: CPPFLAGS += -I{0}\n'.format(directory)
+from . import util
 
+def generate_dirs(path):
+    head, tail = os.path.split(path)
+    if head != '':
+        yield from generate_dirs(head)
+    yield os.path.join(head, tail)
+
+def walk_to(source_dir, dest_dir, extensions=('.cc',)):
+    obj_dirnames = [dest_dir]
+    obj_filenames = []
+    for base,dirs,files in os.walk(source_dir):
+        obj_dirnames.extend(os.path.join(base, d) for d in dirs)
+        obj_filenames.extend(os.path.normpath(os.path.join(dest_dir, os.path.relpath(base, source_dir), f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions)
+
+    return obj_dirnames, obj_filenames
+
+def executable_opts(obj_root, build_id, executable, config_file):
+    dest_dir = os.path.normpath(os.path.join(obj_root, build_id))
+    obj_dir = os.path.join(dest_dir, 'obj')
+    dir_varname = build_id + '_dirs'
+    obj_varname = build_id + '_objs'
+
+    retval = '######\n'
+    retval += '# Build ID: ' + build_id + '\n'
+    retval += '######\n\n'
+
+    retval += 'executable_name += ' + executable + '\n'
+
+    obj_dirnames, obj_filenames = walk_to('src', obj_dir)
+
+    retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
+    for f in obj_filenames:
+        retval += '{} += {}\n'.format(obj_varname, f)
+
+    # Override the compiler
+    for k in ('CC', 'CXX'):
+        if k in config_file:
+            retval += '{}: {} = {}\n'.format(executable, k, config_file[k])
+
+    # Add compiler flags
+    for k in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
+        if k in config_file:
+            retval += '{}: {} += {}\n'.format(executable, k, config_file[k])
+
+    retval += executable + ': CPPFLAGS += -I' + os.path.join(dest_dir, 'inc') + '\n'
+
+    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, obj_dir, 'src', dir_varname)
+    retval += '{}: | {}\n'.format(executable, os.path.split(executable)[0])
+    retval += '{}: $({}) | $({})\n'.format(executable, obj_varname, dir_varname)
+
+    retval += 'build_objs += $(' + obj_varname + ')\n'
+    retval += 'build_dirs += $(' + dir_varname + ') ' + os.path.split(executable)[0] + '\n'
+    return retval
+
+def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
+    dest_dir = os.path.normpath(os.path.join(obj_dir, build_id, name))
+    obj_varname = build_id + '_' + name + '_objs'
+    dir_varname = build_id + '_' + name + '_dirs'
+
+    retval = '###\n'
+    retval += '# Build ID: ' + build_id + '\n'
+    retval += '# Module: ' + name + '\n'
+    retval += '# Source: ' + source_dir + '\n'
+    retval += '# Destination: ' + dest_dir + '\n'
+    retval += '###\n\n'
+
+    obj_dirnames, obj_filenames = walk_to(source_dir, dest_dir)
+
+    retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
+    for f in obj_filenames:
+        retval += '{} += {}\n'.format(obj_varname, f)
+
+    retval += '$({}): CPPFLAGS += -I{}\n'.format(obj_varname, source_dir)
     for opt in opts:
-        retval += '{0}/%.o: CXXFLAGS += {1}\n'.format(directory, opt)
+        retval += '$({}): CXXFLAGS += {}\n'.format(obj_varname, opt)
 
-    for base,dirs,files in os.walk(directory):
-        for f in files:
-            if os.path.splitext(f)[1] in ('.c',):
-                retval += 'csrc += ' + os.path.join(base,f) + '\n'
-            if os.path.splitext(f)[1] in ('.cc',):
-                retval += 'cppsrc += ' + os.path.join(base,f) + '\n'
+    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, dest_dir, source_dir, dir_varname)
+
+    retval += exe + ': $(' + obj_varname + ')\n'
+    retval += 'module_objs += $(' + obj_varname + ')\n'
+    retval += 'module_dirs += $(' + dir_varname + ')\n'
 
     return retval
 
-def get_makefile_string(module_info, **config_file):
-    retval = ''
-
-    for k in ('CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
-        if k in config_file:
-            retval += k + ' += ' + config_file[k] + '\n'
-
-    if 'executable_name' in config_file:
-        retval += 'executable_name ?= ' + config_file['executable_name'] + '\n\n'
-
-    retval += 'module_dirs = ' + ' '.join(map(operator.itemgetter('fname'), module_info)) + '\n\n'
-    retval += '\n'.join(module_make(v['fname'], v['opts']) for v in module_info)
+def get_makefile_string(objdir, build_id, executable, module_info, config_file):
+    retval = executable_opts(objdir, build_id, executable, config_file)
     retval += '\n'
+    retval += '\n'.join(module_opts(v['fname'], objdir, build_id, k, v['opts'], executable) for k,v in module_info.items())
 
     return retval
 
