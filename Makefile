@@ -50,5 +50,5 @@ $(filter-out $(test_main_name), $(executable_name)):
 test: $(test_main_name)
 	$(test_main_name)
 
--include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
+-include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 
