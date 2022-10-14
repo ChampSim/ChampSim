@@ -452,7 +452,6 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
                                smem,
                                instr.ip,
                                std::numeric_limits<uint64_t>::max(),
-                               std::ref(instr),
                                {instr.asid[0], instr.asid[1]},
                                false,
                                std::numeric_limits<uint64_t>::max(),
@@ -486,7 +485,6 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
                   dmem,
                   instr.ip,
                   std::numeric_limits<uint64_t>::max(),
-                  std::ref(instr),
                   {instr.asid[0], instr.asid[1]},
                   false,
                   std::numeric_limits<uint64_t>::max(),
@@ -536,26 +534,14 @@ void O3_CPU::operate_lsq()
 
 void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
 {
-  sq_entry.rob_entry.num_mem_ops--;
-  sq_entry.rob_entry.event_cycle = current_cycle;
-  assert(sq_entry.rob_entry.num_mem_ops >= 0);
-
-  if constexpr (champsim::debug_print) {
-    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
-    std::cout << " full_address: " << sq_entry.virtual_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.num_mem_ops;
-    std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl;
-  }
+  sq_entry.finish(std::begin(ROB), std::end(ROB));
 
   // Release dependent loads
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
     assert(dependent.has_value()); // LQ entry is still allocated
-
-    dependent->rob_entry.num_mem_ops--;
-    dependent->rob_entry.event_cycle = current_cycle;
-
     assert(dependent->producer_id == sq_entry.instr_id);
-    assert(dependent->rob_entry.num_mem_ops >= 0);
 
+    dependent->finish(std::begin(ROB), std::end(ROB));
     dependent.reset();
   }
 }
@@ -652,15 +638,8 @@ void O3_CPU::handle_memory_return()
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
-        lq_entry->rob_entry.num_mem_ops--;
-        lq_entry->rob_entry.event_cycle = current_cycle;
+        lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
-
-        if constexpr (champsim::debug_print) {
-          std::cout << "[L1D_LQ] " << __func__ << " instr_id: " << lq_entry->instr_id << std::hex;
-          std::cout << " full_address: " << lq_entry->virtual_address << std::dec << " remain_mem_ops: " << lq_entry->rob_entry.num_mem_ops;
-          std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl;
-        }
       }
     }
   }
@@ -787,6 +766,22 @@ void O3_CPU::print_deadlock()
     for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
       std::cout << lq_entry->instr_id << " ";
     std::cout << std::endl;
+  }
+}
+
+void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
+{
+  auto rob_entry = std::partition_point(begin, end, [id=this->instr_id](auto x){ return x.instr_id < id; });
+  assert(rob_entry != end);
+  assert(rob_entry->instr_id == this->instr_id);
+
+  rob_entry->num_mem_ops--;
+  assert(rob_entry->num_mem_ops >= 0);
+
+  if constexpr (champsim::debug_print) {
+    std::cout << "[LSQ] " << __func__ << " instr_id: " << instr_id << std::hex;
+    std::cout << " full_address: " << virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops;
+    std::cout << " event_cycle: " << event_cycle << std::endl;
   }
 }
 
