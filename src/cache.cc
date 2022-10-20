@@ -40,6 +40,7 @@ void CACHE::handle_fill()
     if (way != NUM_WAY) {
       // update processed packets
       fill_mshr->data = block[set * NUM_WAY + way].data;
+      fill_mshr->pf_metadata = block[set * NUM_WAY + way].pf_metadata;
 
       for (auto ret : fill_mshr->to_return)
         ret->return_data(&(*fill_mshr));
@@ -175,13 +176,11 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
-  handle_pkt.data = hit_block.data;
-
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
     cpu = handle_pkt.cpu;
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+    hit_block.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
   // update replacement policy
@@ -191,6 +190,8 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   sim_hit[handle_pkt.cpu][handle_pkt.type]++;
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
+  handle_pkt.data = hit_block.data;
+  handle_pkt.pf_metadata = hit_block.pf_metadata;
   for (auto ret : handle_pkt.to_return)
     ret->return_data(&handle_pkt);
 
@@ -211,6 +212,8 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
+
+  cpu = handle_pkt.cpu;
 
   // check mshr
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
@@ -237,10 +240,19 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
     }
+
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
+    }
   } else {
     if (mshr_full)  // not enough MSHR resource
-      return false; // TODO should we allow prefetches anyway if they will not
-                    // be filled to this level?
+      return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
+
+    if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
+    }
 
     bool is_read = prefetch_as_load || (handle_pkt.type != PREFETCH);
 
@@ -267,13 +279,6 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
       lower_level->add_rq(&handle_pkt);
   }
 
-  // update prefetcher on load instructions and prefetches from upper levels
-  if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
-    cpu = handle_pkt.cpu;
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
-  }
-
   return true;
 }
 
@@ -287,6 +292,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
+
+  cpu = handle_pkt.cpu;
 
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
@@ -335,16 +342,18 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
+
+    // update prefetcher
+    auto pf_fill_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    fill_block.pf_metadata = impl_prefetcher_cache_fill(pf_fill_addr, set, way, handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
+  } else {
+    // update prefetcher
+    auto pf_fill_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    impl_prefetcher_cache_fill(pf_fill_addr, set, way, handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata); //FIXME ignored result
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
     total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
-
-  // update prefetcher
-  cpu = handle_pkt.cpu;
-  handle_pkt.pf_metadata =
-      impl_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
-                                 handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
 
   // update replacement policy
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
@@ -426,6 +435,7 @@ int CACHE::add_rq(PACKET* packet)
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
 
     packet->data = found_wq->data;
+    packet->pf_metadata = found_wq->pf_metadata;
     for (auto ret : packet->to_return)
       ret->return_data(packet);
 
@@ -596,6 +606,7 @@ int CACHE::add_pq(PACKET* packet)
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
 
     packet->data = found_wq->data;
+    packet->pf_metadata = found_wq->pf_metadata;
     for (auto ret : packet->to_return)
       ret->return_data(packet);
 
