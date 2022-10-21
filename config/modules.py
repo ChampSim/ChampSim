@@ -70,12 +70,13 @@ def get_branch_data(module_name):
     retval['bpred_last_result'] = 'bpred_' + module_name + '_last_result'
     retval['bpred_predict'] = 'bpred_' + module_name + '_predict'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_branch_predictor=' + retval['bpred_initialize'],
-    '-Dlast_branch_result=' + retval['bpred_last_result'],
-    '-Dpredict_branch=' + retval['bpred_predict']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_branch_predictor': retval['bpred_initialize'],
+        'last_branch_result': retval['bpred_last_result'],
+        'predict_branch': retval['bpred_predict']
+    }
 
     return retval
 
@@ -106,12 +107,13 @@ def get_btb_data(module_name):
     retval['btb_update'] = 'btb_' + module_name + '_update'
     retval['btb_predict'] = 'btb_' + module_name + '_predict'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_btb=' + retval['btb_initialize'],
-    '-Dupdate_btb=' + retval['btb_update'],
-    '-Dbtb_prediction=' + retval['btb_predict']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_btb': retval['btb_initialize'],
+        'update_btb': retval['btb_update'],
+        'btb_prediction': retval['btb_predict']
+    }
 
     return retval
 
@@ -146,15 +148,16 @@ def get_pref_data(module_name, is_instruction_cache=False):
     retval['prefetcher_cycle_operate'] = prefix + module_name + '_cycle_operate'
     retval['prefetcher_final_stats'] = prefix + module_name + '_final_stats'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dprefetcher_initialize=' + retval['prefetcher_initialize'],
-    '-Dprefetcher_cache_operate=' + retval['prefetcher_cache_operate'],
-    '-Dprefetcher_branch_operate=' + retval['prefetcher_branch_operate'],
-    '-Dprefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
-    '-Dprefetcher_cycle_operate=' + retval['prefetcher_cycle_operate'],
-    '-Dprefetcher_final_stats=' + retval['prefetcher_final_stats'],
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'prefetcher_initialize': retval['prefetcher_initialize'],
+        'prefetcher_cache_operate': retval['prefetcher_cache_operate'],
+        'prefetcher_branch_operate': retval['prefetcher_branch_operate'],
+        'prefetcher_cache_fill': retval['prefetcher_cache_fill'],
+        'prefetcher_cycle_operate': retval['prefetcher_cycle_operate'],
+        'prefetcher_final_stats': retval['prefetcher_final_stats'],
+    }
 
     return retval
 
@@ -196,13 +199,14 @@ def get_repl_data(module_name):
     retval['update_func_name'] = 'repl_' + module_name + '_update'
     retval['final_func_name'] = 'repl_' + module_name + '_final_stats'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_replacement=' + retval['init_func_name'],
-    '-Dfind_victim=' + retval['find_victim_func_name'],
-    '-Dupdate_replacement_state=' + retval['update_func_name'],
-    '-Dreplacement_final_stats=' + retval['final_func_name']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_replacement': retval['init_func_name'],
+        'find_victim': retval['find_victim_func_name'],
+        'update_replacement_state': retval['update_func_name'],
+        'replacement_final_stats': retval['final_func_name']
+    }
 
     return retval
 

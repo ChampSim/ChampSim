@@ -10,6 +10,7 @@ all: all_execs
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - $(build_dirs), the list of all directories that hold executables
+#  - $(build_objs), the list of all object files corresponding to core sources
 #  - $(module_dirs), the list of all directories that hold module object files
 #  - $(module_objs), the list of all object files corresponding to modules
 #  - All dependencies and flags assigned according to the modules

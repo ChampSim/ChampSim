@@ -185,6 +185,9 @@ def parse_file(fname):
     with open(fname) as rfp:
         return json.load(rfp)
 
+def get_map_string(fname_map):
+    return '\n'.join('#define {} {}'.format(*x) for x in fname_map.items()) + '\n'
+
 def write_files(iterable):
     makefile_parts = []
 
@@ -195,6 +198,9 @@ def write_files(iterable):
 
         inc_dir = os.path.normpath(os.path.join(objdir_name, build_id, 'inc'))
         os.makedirs(inc_dir, exist_ok=True)
+
+        for module in module_info.values():
+            write_if_different(os.path.join(inc_dir, module['name'] + '.inc'), cxx_generated_warning + get_map_string(module['func_map']))
 
         write_if_different(os.path.join(inc_dir, instantiation_file_name), cxx_generated_warning + inst)
         write_if_different(os.path.join(inc_dir, core_modules_file_name), cxx_generated_warning + core_modules)

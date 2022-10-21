@@ -1,101 +1,99 @@
 import itertools, operator
 import os
 
-from . import util
-
-def generate_dirs(path):
-    head, tail = os.path.split(path)
-    if head != '':
-        yield from generate_dirs(head)
-    yield os.path.join(head, tail)
-
 def walk_to(source_dir, dest_dir, extensions=('.cc',)):
     obj_dirnames = [dest_dir]
     obj_filenames = []
     for base,dirs,files in os.walk(source_dir):
-        obj_dirnames.extend(os.path.join(base, d) for d in dirs)
-        obj_filenames.extend(os.path.normpath(os.path.join(dest_dir, os.path.relpath(base, source_dir), f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions)
+        reldir = os.path.join(dest_dir, os.path.relpath(base, source_dir))
+        obj_dirnames.extend(os.path.join(reldir, d) for d in dirs)
+        obj_filenames.extend(os.path.normpath(os.path.join(reldir, f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions)
 
     return obj_dirnames, obj_filenames
 
-def executable_opts(obj_root, build_id, executable, source_dirs, config_file):
+def extend_each(x,y):
+    merges = {k: (*x[k],*y[k]) for k in x if k in y}
+    return {**x, **y, **merges}
+
+def linejoin(elems):
+    return '\\\n  '.join(elems)
+
+def per_source(src_dirs, dest_dir, build_id):
+    for i, src_dir in enumerate(src_dirs):
+        local_dir_varname = '{}_dirs_{}'.format(build_id, i)
+        local_obj_varname = '{}_objs_{}'.format(build_id, i)
+
+        obj_dirnames, obj_filenames = walk_to(src_dir, dest_dir)
+
+        dirs = linejoin(obj_dirnames)
+        objs = linejoin(obj_filenames)
+
+        yield local_dir_varname, local_obj_varname, f'{local_dir_varname} = {dirs}\n{local_obj_varname} = {objs}\n$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})\n'
+
+def make_part(source_dirs, obj_dir, build_id, executable, part_opts, part_overrides, global_dirs, global_objs):
+    dir_varnames, obj_varnames, fileparts = zip(*per_source(source_dirs, obj_dir, build_id))
+
+    dir_varnames = ' '.join('$({})'.format(v) for v in dir_varnames)
+    obj_varnames = ' '.join('$({})'.format(v) for v in obj_varnames)
+
+    retval = '\n'.join(fileparts)
+
+    # Set flags
+    for k,v in part_overrides.items():
+        if v:
+            retval += '{}: {} = {}\n'.format(obj_varnames, k, v)
+    for k,v in part_opts.items():
+        for x in v:
+            retval += '{}: {} += {}\n'.format(obj_varnames, k, x)
+
+    # Assign objects as dependencies
+    retval += '{}: {}\n'.format(executable, obj_varnames)
+    retval += '{} += {}\n'.format(global_dirs, dir_varnames)
+    retval += '{} += {}\n'.format(global_objs, obj_varnames)
+
+    return retval
+
+def executable_opts(obj_root, build_id, executable, source_dirs, opts, overrides):
     dest_dir = os.path.normpath(os.path.join(obj_root, build_id))
-    obj_dir = os.path.join(dest_dir, 'obj')
-    dir_varname = build_id + '_dirs'
-    obj_varname = build_id + '_objs'
+
+    # Add compiler flags
+    local_opts = extend_each(opts, {'CPPFLAGS': ('-I'+os.path.join(dest_dir, 'inc'),)})
 
     retval = '######\n'
     retval += '# Build ID: ' + build_id + '\n'
     retval += '######\n\n'
 
-    retval += 'executable_name += ' + executable + '\n'
-
-    # Override the compiler
-    for k in ('CC', 'CXX'):
-        if k in config_file:
-            retval += '{}: {} = {}\n'.format(executable, k, config_file[k])
-
-    # Add compiler flags
-    for k in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LDLIBS'):
-        if k in config_file:
-            retval += '{}: {} += {}\n'.format(executable, k, config_file[k])
-
-    retval += executable + ': CPPFLAGS += -I' + os.path.join(dest_dir, 'inc') + '\n'
-
-    for i, src_info in enumerate((*walk_to(src, obj_dir), src) for src in source_dirs):
-        obj_dirnames, obj_filenames, src_dir = src_info
-
-        local_dir_varname = dir_varname + '_' + str(i)
-        local_obj_varname = obj_varname + '_' + str(i)
-
-        retval += '{} = {}\n'.format(local_dir_varname, ' '.join(obj_dirnames))
-        for f in obj_filenames:
-            retval += '{} += {}\n'.format(local_obj_varname, f)
-
-        retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(local_obj_varname, obj_dir, src_dir, local_dir_varname)
-        retval += '{}: $({}) | $({})\n'.format(executable, local_obj_varname, local_dir_varname)
-
-        retval += 'build_objs += $({})\n'.format(local_obj_varname)
-        retval += 'build_dirs += $({})\n'.format(local_dir_varname)
-
-    retval += 'build_dirs += {}\n'.format(os.path.split(executable)[0])
+    retval += make_part(source_dirs, os.path.join(dest_dir, 'obj'), build_id, executable, local_opts, overrides, 'build_dirs', 'build_objs')
+    retval += '\n'
     retval += '{}: | {}\n'.format(executable, os.path.split(executable)[0])
+    retval += 'build_dirs += {}\n'.format(os.path.split(executable)[0])
+    retval += 'executable_name += {}\n'.format(executable)
     return retval
 
-def module_opts(source_dir, obj_dir, build_id, name, opts, exe):
-    dest_dir = os.path.normpath(os.path.join(obj_dir, build_id, name))
-    obj_varname = build_id + '_' + name + '_objs'
-    dir_varname = build_id + '_' + name + '_dirs'
+def module_opts(source_dirs, obj_dir, build_id, name, opts, exe):
+    build_dir = os.path.normpath(os.path.join(obj_dir, build_id))
+    dest_dir = os.path.normpath(os.path.join(build_dir, name))
+
+    local_opts = extend_each(opts, {'CPPFLAGS': (*('-I'+s for s in source_dirs), '-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(name))})
 
     retval = '###\n'
     retval += '# Build ID: ' + build_id + '\n'
     retval += '# Module: ' + name + '\n'
-    retval += '# Source: ' + source_dir + '\n'
+    retval += '# Source: ' + source_dirs[0] + '\n'
     retval += '# Destination: ' + dest_dir + '\n'
     retval += '###\n\n'
 
-    obj_dirnames, obj_filenames = walk_to(source_dir, dest_dir)
-
-    retval += '{} = {}\n'.format(dir_varname, ' '.join(obj_dirnames))
-    for f in obj_filenames:
-        retval += '{} += {}\n'.format(obj_varname, f)
-
-    retval += '$({}): CPPFLAGS += -I{}\n'.format(obj_varname, source_dir)
-    for opt in opts:
-        retval += '$({}): CXXFLAGS += {}\n'.format(obj_varname, opt)
-
-    retval += '$({}): {}/%.o: {}/%.cc | $({})\n'.format(obj_varname, dest_dir, source_dir, dir_varname)
-
-    retval += exe + ': $(' + obj_varname + ')\n'
-    retval += 'module_objs += $(' + obj_varname + ')\n'
-    retval += 'module_dirs += $(' + dir_varname + ')\n'
+    retval += make_part(source_dirs, dest_dir, build_id+'_'+name, exe, local_opts, {}, 'module_dirs', 'module_objs')
 
     return retval
 
 def get_makefile_string(objdir, build_id, executable, source_dirs, module_info, config_file):
-    retval = executable_opts(objdir, build_id, executable, source_dirs, config_file)
+    global_opts = {k:config_file.get(k,[]) for k in ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')}
+    global_overrides = {k:config_file.get(k,'') for k in ('CXX',)}
+
+    retval = executable_opts(objdir, build_id, executable, source_dirs, global_opts, global_overrides)
     retval += '\n'
-    retval += '\n'.join(module_opts(v['fname'], objdir, build_id, k, v['opts'], executable) for k,v in module_info.items())
+    retval += '\n'.join(module_opts((v['fname'],), objdir, build_id, k, extend_each(global_opts, v['opts']), executable) for k,v in module_info.items())
 
     return retval
 
