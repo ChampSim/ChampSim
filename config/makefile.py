@@ -2,14 +2,9 @@ import itertools, operator
 import os
 
 def walk_to(source_dir, dest_dir, extensions=('.cc',)):
-    obj_dirnames = [dest_dir]
-    obj_filenames = []
     for base,dirs,files in os.walk(source_dir):
         reldir = os.path.join(dest_dir, os.path.relpath(base, source_dir))
-        obj_dirnames.extend(os.path.join(reldir, d) for d in dirs)
-        obj_filenames.extend(os.path.normpath(os.path.join(reldir, f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions)
-
-    return obj_dirnames, obj_filenames
+        yield reldir, [os.path.normpath(os.path.join(reldir, f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions]
 
 def extend_each(x,y):
     merges = {k: (*x[k],*y[k]) for k in x if k in y}
@@ -23,9 +18,9 @@ def per_source(src_dirs, dest_dir, build_id):
         local_dir_varname = '{}_dirs_{}'.format(build_id, i)
         local_obj_varname = '{}_objs_{}'.format(build_id, i)
 
-        obj_dirnames, obj_filenames = walk_to(src_dir, dest_dir)
+        obj_dirnames, obj_filenames = next(walk_to(src_dir, dest_dir))
 
-        dirs = linejoin(obj_dirnames)
+        dirs = os.path.normpath(obj_dirnames)
         objs = linejoin(obj_filenames)
 
         yield local_dir_varname, local_obj_varname, f'{local_dir_varname} = {dirs}\n{local_obj_varname} = {objs}\n$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})\n'
