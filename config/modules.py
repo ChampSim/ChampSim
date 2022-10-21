@@ -7,6 +7,9 @@ def get_module_name(path):
     fname_translation_table = str.maketrans('./-','_DH')
     return path.translate(fname_translation_table)
 
+def norm_dirname(f):
+    return os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
+
 # Get the paths to built-in modules
 def default_modules(dirname):
     files = (os.path.join(dirname, d) for d in os.listdir(dirname))
@@ -14,19 +17,16 @@ def default_modules(dirname):
     yield from ({'name': get_module_name(f), 'fname': f, '_is_instruction_prefetcher': f.endswith('_instr')} for f in files)
 
 # Try the built-in module directories, then try to interpret as a path
-def default_dir(dirname, f):
-    fname = os.path.join(dirname, f)
-    if not os.path.exists(fname):
-        fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
-    if not os.path.exists(fname):
-        print('[WARNING]', 'Path "' + fname + '" does not exist.')
-        return None
-    return fname
+def default_dir(dirnames, f):
+    return next(filter(os.path.exists, map(norm_dirname, itertools.chain(
+        (os.path.join(dirname, f) for dirname in dirnames), # Prepend search paths
+        (f,) # Interpret as file path
+    ))))
 
-def get_module_data(names_key, paths_key, values, directory, get_func):
+def get_module_data(names_key, paths_key, values, directories, get_func):
     namekey_pairs = itertools.chain(*(zip(c[names_key], c[paths_key], itertools.repeat(c.get('_is_instruction_prefetcher', False))) for c in values))
     data = util.combine_named(
-        default_modules(directory),
+        itertools.chain(*(default_modules(directory) for directory in directories if os.path.exists(directory))),
         ({'name': name, 'fname': path, '_is_instruction_prefetcher': is_instr} for name,path,is_instr in namekey_pairs)
         )
     return {k: util.chain((get_func(k,v['_is_instruction_prefetcher']) if v['_is_instruction_prefetcher'] else get_func(k)), v) for k,v in data.items()}
