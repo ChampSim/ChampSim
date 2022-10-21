@@ -771,7 +771,7 @@ void O3_CPU::print_deadlock()
 
 void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
-  auto rob_entry = std::partition_point(begin, end, [id=this->instr_id](auto x){ return x.instr_id < id; });
+  auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
   assert(rob_entry != end);
   assert(rob_entry->instr_id == this->instr_id);
 
