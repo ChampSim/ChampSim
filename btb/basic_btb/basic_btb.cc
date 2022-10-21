@@ -128,7 +128,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   auto btb_entry = std::find_if(set_begin, set_end, [ip](auto x) { return x.ip_tag == ip; });
 
   // no prediction for this entry so far, so allocate one
-  if (btb_entry == set_end && (branch_target != 0) && taken)
+  if (btb_entry == set_end)
     btb_entry = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_cycle_used < y.last_cycle_used; });
 
   // update btb entry
@@ -137,7 +137,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::INDIRECT;
   else if (branch_type == BRANCH_RETURN)
     type = ::branch_info::RETURN;
-  else if (!taken)
+  else if ((branch_target == 0) || !taken)
     type = ::branch_info::CONDITIONAL;
 
   *btb_entry = {ip, branch_target, type, current_cycle};
