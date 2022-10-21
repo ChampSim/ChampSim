@@ -1,7 +1,4 @@
-inc/champsim_constants.h
-inc/cache_modules.inc
-inc/ooo_cpu_modules.inc
-src/core_inst.cc
+.csconfig/
 _configuration.mk
 
 **/__pycache__/
@@ -11,8 +8,7 @@ bin/
 **/*.o
 **/*.d
 
-config/__pycache__
-
 test/000-test-main
 
+tracer/pin/obj-intel64/
 

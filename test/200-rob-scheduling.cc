@@ -7,8 +7,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 128;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, (1 << O3_CPU::bbranchDbimodal), (1 << O3_CPU::tbtbDbasic_btb));
+    do_nothing_MRC mock_L1I, mock_L1D;
+    O3_CPU uut{0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
     for (auto &instr : uut.ROB)
@@ -18,7 +18,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     WHEN("The instruction is not scheduled") {
       uut.ROB.front().scheduled = 0;
-      for (auto op : std::array<champsim::operable*,5>{&uut, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D})
+      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
       THEN("The instruction has no register dependencies") {
@@ -33,8 +33,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 128;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, (1 << O3_CPU::bbranchDbimodal), (1 << O3_CPU::tbtbDbasic_btb));
+    do_nothing_MRC mock_L1I, mock_L1D;
+    O3_CPU uut{0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     input_instr dependent_instr;
     dependent_instr.source_registers[0] = 42;
@@ -51,7 +51,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
       for (auto &instr : uut.ROB)
         instr.scheduled = 0;
 
-      for (auto op : std::array<champsim::operable*,5>{&uut, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D})
+      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
       THEN("The second instruction is dependent on the first") {
@@ -69,8 +69,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 4;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_ITLB, mock_DTLB, mock_L1I, mock_L1D;
-    O3_CPU uut(0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D, (1 << O3_CPU::bbranchDbimodal), (1 << O3_CPU::tbtbDbasic_btb));
+    do_nothing_MRC mock_L1I, mock_L1D;
+    O3_CPU uut{0, 1.0, {32, 8, 2}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     input_instr dependent_instr;
     dependent_instr.source_registers[0] = 42;
@@ -92,7 +92,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
         instr.executed = 0;
       }
 
-      for (auto op : std::array<champsim::operable*,5>{&uut, &mock_ITLB, &mock_DTLB, &mock_L1I, &mock_L1D})
+      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
       THEN("The second instruction is dependent on the first") {

@@ -1,3 +1,5 @@
+#include <array>
+#include <functional>
 #include <getopt.h>
 #include <iostream>
 #include <signal.h>
@@ -11,16 +13,12 @@
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "ptw.h"
+#include "util.h"
 #include "vmem.h"
 
-// For backwards compatibility with older module source.
-champsim::deprecated_clock_cycle current_core_cycle;
+void init_structures();
 
-extern MEMORY_CONTROLLER DRAM;
-extern VirtualMemory vmem;
-extern std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu;
-extern std::vector<std::reference_wrapper<CACHE>> caches;
-extern std::vector<std::reference_wrapper<PageTableWalker>> ptws;
+#include "core_inst.inc"
 
 struct phase_info {
   std::string name;
@@ -29,7 +27,7 @@ struct phase_info {
 };
 
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names);
+                  std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -47,7 +45,6 @@ int main(int argc, char** argv)
   sigaction(SIGINT, &sigIntHandler, NULL);
 
   // initialize knobs
-  uint8_t show_heartbeat = 1;
   uint8_t knob_cloudsuite = 0;
   uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
@@ -70,7 +67,8 @@ int main(int argc, char** argv)
       simulation_instructions = atol(optarg);
       break;
     case 'h':
-      show_heartbeat = 0;
+      for (O3_CPU& cpu : ooo_cpu)
+        cpu.show_heartbeat = false;
       break;
     case 'c':
       knob_cloudsuite = 1;
@@ -86,24 +84,13 @@ int main(int argc, char** argv)
 
   std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
 
-  std::cout << std::endl << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl << std::endl;
-
+  std::cout << std::endl;
+  std::cout << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl;
+  std::cout << std::endl;
   std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
   std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
   std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
-
-  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
-  std::cout << "Off-chip DRAM Size: ";
-  if (dram_size > 1024)
-    std::cout << dram_size / 1024 << " GiB";
-  else
-    std::cout << dram_size << " MiB";
-  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
-
-  std::cout << std::endl;
-  std::cout << "VirtualMemory physical capacity: " << vmem.available_ppages() * vmem.page_size;
-  std::cout << " num_ppages: " << vmem.available_ppages() << std::endl;
-  std::cout << "VirtualMemory page size: " << PAGE_SIZE << " log2_page_size: " << LOG2_PAGE_SIZE << std::endl;
+  std::cout << "Page size: " << PAGE_SIZE << std::endl;
 
   std::cout << std::endl;
   int i = 0;
@@ -111,26 +98,16 @@ int main(int argc, char** argv)
     std::cout << "CPU " << i++ << " runs " << name << std::endl;
 
   if (std::size(trace_names) != std::size(ooo_cpu)) {
-    printf("\n*** Number of traces does not match the number of cores ***\n\n");
+    std::cerr << std::endl;
+    std::cerr << "*** Number of traces does not match the number of cores ***";
+    std::cerr << std::endl;
+    std::cerr << std::endl;
     return 1;
   }
 
-  for (O3_CPU& cpu : ooo_cpu) {
-    cpu.initialize_core();
-  }
+  init_structures();
 
-  for (CACHE& cache : caches) {
-    cache.impl_prefetcher_initialize();
-    cache.impl_replacement_initialize();
-  }
-
-  std::vector<std::reference_wrapper<champsim::operable>> operables;
-  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
-  std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(operables), [](auto& x) { return std::ref<champsim::operable>(x); });
-  operables.push_back(std::ref<champsim::operable>(DRAM));
-
-  champsim_main(ooo_cpu, operables, phases, show_heartbeat, knob_cloudsuite, trace_names);
+  champsim_main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
 
   std::cout << "ChampSim completed all CPUs" << std::endl;
 

@@ -16,8 +16,6 @@
 #include "operable.h"
 #include "tracereader.h"
 
-extern bool show_heartbeat;
-
 auto start_time = std::chrono::steady_clock::now();
 
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
@@ -36,9 +34,11 @@ struct phase_info {
 };
 
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<phase_info>& phases, bool show_heartbeat_, bool knob_cloudsuite, std::vector<std::string> trace_names)
+                  std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
-  show_heartbeat = show_heartbeat_;
+  for (champsim::operable& op : operables)
+    op.initialize();
+
   std::vector<std::unique_ptr<tracereader>> traces;
   for (auto name : trace_names)
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));

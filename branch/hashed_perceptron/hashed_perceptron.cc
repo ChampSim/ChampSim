@@ -116,7 +116,7 @@ void O3_CPU::initialize_branch_predictor()
 
   // make a reasonable theta
 
-  for (int i = 0; i < NUM_CPUS; i++)
+  for (unsigned i = 0; i < NUM_CPUS; i++)
     theta[i] = 10;
 }
 

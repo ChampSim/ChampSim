@@ -8,6 +8,12 @@
 #include "instruction.h"
 #include "util.h"
 
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
+    : champsim::operable(freq_scale), tRP(std::ceil(t_rp * io_freq / 1000)), tRCD(std::ceil(t_rcd * io_freq / 1000)), tCAS(std::ceil(t_cas * io_freq / 1000)),
+      DRAM_DBUS_TURN_AROUND_TIME(std::ceil(turnaround * io_freq / 1000))
+{
+}
+
 struct is_unscheduled {
   bool operator()(const PACKET& lhs) { return !lhs.scheduled; }
 };
@@ -77,7 +83,7 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Look for requests to put on the bus
-    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request), min_event_cycle<BANK_REQUEST>());
+    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request), min_event_cycle<DRAM_CHANNEL::BANK_REQUEST>());
     if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
       if (channel.active_request == std::end(channel.bank_request) && channel.dbus_cycle_available <= current_cycle) {
         // Bus is available
@@ -130,13 +136,24 @@ void MEMORY_CONTROLLER::operate()
   }
 }
 
+void MEMORY_CONTROLLER::initialize()
+{
+  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  std::cout << "Off-chip DRAM Size: ";
+  if (dram_size > 1024)
+    std::cout << dram_size / 1024 << " GiB";
+  else
+    std::cout << dram_size << " MiB";
+  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
+}
+
 void MEMORY_CONTROLLER::begin_phase()
 {
   for (auto& chan : channels)
     chan.sim_stats.emplace_back();
 }
 
-void MEMORY_CONTROLLER::end_phase(unsigned cpu)
+void MEMORY_CONTROLLER::end_phase(unsigned)
 {
   for (auto& chan : channels)
     chan.roi_stats.push_back(chan.sim_stats.back());
@@ -325,3 +342,5 @@ uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
 
   return 0;
 }
+
+std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
