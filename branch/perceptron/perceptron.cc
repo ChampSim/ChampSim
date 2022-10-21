@@ -124,7 +124,7 @@ std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real 
 
 void O3_CPU::initialize_branch_predictor() {}
 
-uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
   // hash the address to get an index into the table of perceptrons
   auto index = ip % ::NUM_PERCEPTRONS;

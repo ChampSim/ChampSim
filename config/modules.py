@@ -83,7 +83,7 @@ def get_branch_data(module_name):
 branch_variant_data = {
         'bpred_initialize': ('impl_branch_predictor_initialize', 'void', '', tuple()),
         'bpred_last_result': ('impl_last_branch_result', 'void', '', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type'))),
-        'bpred_predict': ('impl_predict_branch', 'uint8_t', '|=', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','always_taken'), ('uint8_t','branch_type')))
+        'bpred_predict': ('impl_predict_branch', 'uint8_t', '|=', (('uint64_t','ip'),))
         }
 
 def get_branch_string(branch_data):
@@ -120,7 +120,7 @@ def get_btb_data(module_name):
 btb_variant_data = {
         'btb_initialize': ('impl_btb_initialize', 'void', '', tuple()),
         'btb_update': ('impl_update_btb', 'void', '', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type'))),
-        'btb_predict': ('impl_btb_prediction', 'std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'), ('uint8_t','branch_type')))
+        'btb_predict': ('impl_btb_prediction', 'std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'),))
         }
 
 def get_btb_string(btb_data):
