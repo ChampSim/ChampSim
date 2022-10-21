@@ -58,19 +58,19 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround);
 
-  void initialize() override;
-  void operate() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
+  void initialize() override final;
+  void operate() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
+  void print_roi_stats() override final;
+  void print_phase_stats() override final;
 
-  bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET& packet) override;
-  bool add_pq(const PACKET& packet) override;
+  bool add_rq(const PACKET& packet) override final;
+  bool add_wq(const PACKET& packet) override final;
+  bool add_pq(const PACKET& packet) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   std::size_t size() const;
 

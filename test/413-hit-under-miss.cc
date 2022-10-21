@@ -36,8 +36,6 @@ struct miss_testbed
     for (uint64_t i = 0; i < (hit_latency+1); ++i) {
       operate();
     }
-
-    REQUIRE_FALSE(uut.wq_has_ready());
   }
 
   void operate()
@@ -82,6 +80,8 @@ SCENARIO("Translation misses in the WQ do not inhibit other translations from be
     miss_wq_testbed testbed;
     testbed.setup();
 
+    REQUIRE_FALSE(testbed.uut.wq_has_ready());
+
     WHEN("A packet is sent") {
       PACKET test;
       test.address = testbed.address_that_will_hit;
@@ -110,6 +110,8 @@ SCENARIO("Translation misses in the WQ do not inhibit packets that do not need t
   GIVEN("A write queue with one item that has missed") {
     miss_wq_testbed testbed;
     testbed.setup();
+
+    REQUIRE_FALSE(testbed.uut.wq_has_ready());
 
     WHEN("A translated packet is sent") {
       PACKET test;
@@ -141,6 +143,8 @@ SCENARIO("Translation misses in the RQ do not inhibit other translations from be
     miss_rq_testbed testbed;
     testbed.setup();
 
+    REQUIRE_FALSE(testbed.uut.rq_has_ready());
+
     WHEN("A packet is sent") {
       PACKET test;
       test.address = testbed.address_that_will_hit;
@@ -169,6 +173,8 @@ SCENARIO("Translation misses in the RQ do not inhibit packets that do not need t
   GIVEN("A read queue with one item that has missed") {
     miss_rq_testbed testbed;
     testbed.setup();
+
+    REQUIRE_FALSE(testbed.uut.rq_has_ready());
 
     WHEN("A translated packet is sent") {
       PACKET test;
@@ -199,6 +205,8 @@ SCENARIO("Translation misses in the PQ do not inhibit other translations from be
     miss_pq_testbed testbed;
     testbed.setup();
 
+    REQUIRE_FALSE(testbed.uut.pq_has_ready());
+
     WHEN("A packet is sent") {
       PACKET test;
       test.address = testbed.address_that_will_hit;
@@ -227,6 +235,8 @@ SCENARIO("Translation misses in the PQ do not inhibit packets that do not need t
   GIVEN("A prefetch queue with one item that has missed") {
     miss_pq_testbed testbed;
     testbed.setup();
+
+    REQUIRE_FALSE(testbed.uut.pq_has_ready());
 
     WHEN("A translated packet is sent") {
       PACKET test;

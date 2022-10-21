@@ -38,7 +38,7 @@ jobs:
       
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 -- https://hpca23.cse.tamu.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz > single_core_result.txt
+      run: ./bin/champsim -w50000000 -i50000000 -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz > single_core_result.txt
 
     # We upload the generated files under github actions assets
     - name: Upload Results
@@ -61,7 +61,7 @@ jobs:
       
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 -- https://hpca23.cse.tamu.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://hpca23.cse.tamu.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz > multi_core_result.txt
+      run: ./bin/champsim -w50000000 -i50000000 -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz > multi_core_result.txt
 
     # We upload the generated files under github actions assets
     - name: Upload Results

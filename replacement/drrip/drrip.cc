@@ -4,6 +4,8 @@
 
 #include "cache.h"
 
+namespace
+{
 constexpr unsigned maxRRPV = 3;
 constexpr std::size_t NUM_POLICY = 2;
 constexpr std::size_t SDM_SIZE = 32;
@@ -17,25 +19,26 @@ std::map<CACHE*, unsigned> bip_counter;
 std::map<CACHE*, std::vector<std::size_t>> rand_sets;
 std::map<std::pair<CACHE*, std::size_t>, unsigned> PSEL;
 std::map<CACHE*, std::vector<unsigned>> rrpv;
+} // namespace
 
 void CACHE::initialize_replacement()
 {
   // randomly selected sampler sets
   std::size_t rand_seed = 1103515245 + 12345;
-  for (std::size_t i = 0; i < TOTAL_SDM_SETS; i++) {
+  for (std::size_t i = 0; i < ::TOTAL_SDM_SETS; i++) {
     std::size_t val = (rand_seed / 65536) % NUM_SET;
-    auto loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
+    auto loc = std::lower_bound(std::begin(::rand_sets[this]), std::end(::rand_sets[this]), val);
 
-    while (loc != std::end(rand_sets[this]) && *loc == val) {
+    while (loc != std::end(::rand_sets[this]) && *loc == val) {
       rand_seed = rand_seed * 1103515245 + 12345;
       val = (rand_seed / 65536) % NUM_SET;
-      loc = std::lower_bound(std::begin(rand_sets[this]), std::end(rand_sets[this]), val);
+      loc = std::lower_bound(std::begin(::rand_sets[this]), std::end(::rand_sets[this]), val);
     }
 
-    rand_sets[this].insert(loc, val);
+    ::rand_sets[this].insert(loc, val);
   }
 
-  rrpv.insert({this, std::vector<unsigned>(NUM_SET * NUM_WAY)});
+  ::rrpv.insert({this, std::vector<unsigned>(NUM_SET * NUM_WAY)});
 }
 
 // called on every cache hit and cache fill
@@ -44,47 +47,47 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
 {
   // do not update replacement state for writebacks
   if (type == WRITE) {
-    rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
+    ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     return;
   }
 
   // cache hit
   if (hit) {
-    rrpv[this][set * NUM_WAY + way] = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
+    ::rrpv[this][set * NUM_WAY + way] = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
     return;
   }
 
   // cache miss
-  auto begin = std::next(std::begin(rand_sets[this]), cpu * NUM_POLICY * SDM_SIZE);
-  auto end = std::next(begin, NUM_POLICY * SDM_SIZE);
+  auto begin = std::next(std::begin(::rand_sets[this]), cpu * ::NUM_POLICY * ::SDM_SIZE);
+  auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) {                                 // follower sets
-    if (PSEL[std::make_pair(this, cpu)] > PSEL_THRS) { // follow BIP
-      rrpv[this][set * NUM_WAY + way] = maxRRPV;
+  if (leader == end) {                                     // follower sets
+    if (::PSEL[std::make_pair(this, cpu)] > ::PSEL_THRS) { // follow BIP
+      ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
-      bip_counter[this]++;
-      if (bip_counter[this] == BIP_MAX)
-        bip_counter[this] = 0;
-      if (bip_counter[this] == 0)
-        rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
+      ::bip_counter[this]++;
+      if (::bip_counter[this] == ::BIP_MAX)
+        ::bip_counter[this] = 0;
+      if (::bip_counter[this] == 0)
+        ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     } else { // follow SRRIP
-      rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
+      ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     }
   } else if (leader == begin) { // leader 0: BIP
-    if (PSEL[std::make_pair(this, cpu)] > 0)
-      PSEL[std::make_pair(this, cpu)]--;
-    rrpv[this][set * NUM_WAY + way] = maxRRPV;
+    if (::PSEL[std::make_pair(this, cpu)] > 0)
+      ::PSEL[std::make_pair(this, cpu)]--;
+    ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
-    bip_counter[this]++;
-    if (bip_counter[this] == BIP_MAX)
-      bip_counter[this] = 0;
-    if (bip_counter[this] == 0)
-      rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
+    ::bip_counter[this]++;
+    if (::bip_counter[this] == ::BIP_MAX)
+      ::bip_counter[this] = 0;
+    if (::bip_counter[this] == 0)
+      ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
   } else if (leader == std::next(begin)) { // leader 1: SRRIP
-    if (PSEL[std::make_pair(this, cpu)] < PSEL_MAX)
-      PSEL[std::make_pair(this, cpu)]++;
-    rrpv[this][set * NUM_WAY + way] = maxRRPV - 1;
+    if (::PSEL[std::make_pair(this, cpu)] < ::PSEL_MAX)
+      ::PSEL[std::make_pair(this, cpu)]++;
+    ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
   }
 }
 
@@ -92,12 +95,12 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
-  auto begin = std::next(std::begin(rrpv[this]), set * NUM_WAY);
+  auto begin = std::next(std::begin(::rrpv[this]), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
 
   auto victim = std::max_element(begin, end);
   for (auto it = begin; it != end; ++it)
-    *it += maxRRPV - *victim;
+    *it += ::maxRRPV - *victim;
 
   return std::distance(begin, victim);
 }
