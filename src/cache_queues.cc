@@ -158,7 +158,6 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size,
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
-  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
   queue.insert(ins_loc, fwd_pkt);
 

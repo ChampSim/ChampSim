@@ -156,6 +156,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
+    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this << std::noboolalpha;
     std::cout << " cycle: " << current_cycle << std::endl;
   }
 
@@ -200,6 +201,8 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
       fwd_pkt.to_return = {this};
     else
       fwd_pkt.to_return.clear();
+
+    fwd_pkt.prefetch_from_this = false;
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -436,7 +439,9 @@ void CACHE::end_phase(unsigned cpu)
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return (1 << static_cast<int>(pkt.type)) & pref_activate_mask; }
+bool CACHE::should_activate_prefetcher(const PACKET& pkt) const {
+  return ((1 << static_cast<int>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this;
+}
 
 void CACHE::print_deadlock()
 {
