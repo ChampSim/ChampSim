@@ -12,6 +12,7 @@
 #include <string.h>
 #include <vector>
 
+#include "phase_info.h"
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "tracereader.h"
@@ -34,7 +35,7 @@ struct phase_info {
 };
 
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
+                  std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   for (champsim::operable& op : operables)
     op.initialize();
@@ -44,7 +45,7 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
   // simulation entry point
-  for (auto [phase_name, is_warmup, length] : phases) {
+  for (auto [phase_name, is_warmup, length, ignored] : phases) {
     // Initialize phase
     for (champsim::operable& op : operables) {
       op.warmup = is_warmup;
