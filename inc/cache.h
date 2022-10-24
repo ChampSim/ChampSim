@@ -110,7 +110,7 @@ public:
   };
 
   struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
-    void operate() override;
+    void operate() override final;
 
     void issue_translation();
     void detect_misses();
@@ -121,11 +121,11 @@ public:
     template <typename R>
     void do_detect_misses(R& queue);
 
-    bool rq_has_ready() const override;
-    bool wq_has_ready() const override;
-    bool pq_has_ready() const override;
+    bool rq_has_ready() const override final;
+    bool wq_has_ready() const override final;
+    bool pq_has_ready() const override final;
 
-    void return_data(const PACKET& packet) override;
+    void return_data(const PACKET& packet) override final;
 
     using NonTranslatingQueues::NonTranslatingQueues;
   };
@@ -150,19 +150,19 @@ public:
   std::list<PACKET> MSHR;
 
   // functions
-  bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET& packet) override;
-  bool add_pq(const PACKET& packet) override;
+  bool add_rq(const PACKET& packet) override final;
+  bool add_wq(const PACKET& packet) override final;
+  bool add_pq(const PACKET& packet) override final;
 
-  void return_data(const PACKET& packet) override;
-  void operate() override;
+  void return_data(const PACKET& packet) override final;
+  void operate() override final;
 
-  void initialize() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
+  void initialize() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   uint32_t get_set(uint64_t address);
   uint32_t get_way(uint64_t address, uint32_t set);

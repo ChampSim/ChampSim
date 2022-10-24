@@ -1,4 +1,4 @@
-CPPFLAGS += -Iinc
+CPPFLAGS += -Iinc -MMD
 CXXFLAGS += --std=c++17 -Wall -Wextra -O3
 
 .phony: all all_execs clean configclean test makedirs
@@ -7,14 +7,10 @@ test_main_name=test/bin/000-test-main
 
 all: all_execs
 
-cppsrc = $(wildcard src/*.cc)
-testsrc = $(wildcard test/*.cc)
-
-#$(cppsrc:.cc=.o) $(testsrc:.cc=.o): CPPFLAGS += -MMD -MP
-
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - $(build_dirs), the list of all directories that hold executables
+#  - $(build_objs), the list of all object files corresponding to core sources
 #  - $(module_dirs), the list of all directories that hold module object files
 #  - $(module_objs), the list of all object files corresponding to modules
 #  - All dependencies and flags assigned according to the modules
@@ -24,7 +20,7 @@ all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
-	@-find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) $(test_main_name)
 
 # Remove all configuration files
@@ -44,7 +40,7 @@ $(build_objs) $(module_objs):
 #$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 
 # Link test executable
-$(test_main_name): $(testsrc:.cc=.o)
+$(test_main_name):
 	$(LINK.cc) $(OUTPUT_OPTION) $(filter-out %/main.o, $^)
 
 # Link main executables
@@ -55,5 +51,5 @@ $(filter-out $(test_main_name), $(executable_name)):
 test: $(test_main_name)
 	$(test_main_name)
 
--include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(wildcard .csconfig/*/),$(wildcard $(dir)/*.d))
+-include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 

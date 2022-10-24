@@ -28,7 +28,7 @@ public:
   CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet);
+  void return_data(const PACKET& packet) override final;
 };
 
 struct cpu_stats {
@@ -50,13 +50,13 @@ struct LSQ_ENTRY {
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
 
-  ooo_model_instr& rob_entry;
-
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
 
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me;
+
+  void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
 };
 
 // cpu
@@ -115,10 +115,10 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
 
-  void initialize() override;
-  void operate() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
+  void initialize() override final;
+  void operate() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
 
   void initialize_instruction();
   void check_dib();
@@ -154,7 +154,7 @@ public:
   uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
   uint64_t sim_cycle() const { return current_cycle - sim_stats.back().begin_cycles; }
 
-  void print_deadlock() override;
+  void print_deadlock() override final;
 
 #include "ooo_cpu_modules.inc"
 
