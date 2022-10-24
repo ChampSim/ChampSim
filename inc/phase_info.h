@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
 
-namespace champsim {
+#include <string_view>
+
+namespace champsim
+{
 
 struct phase_info {
   std::string name;
@@ -16,7 +18,6 @@ struct phase_info {
   std::vector<std::string> trace_names;
 };
 
-}
+} // namespace champsim
 
 #endif
-

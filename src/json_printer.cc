@@ -1,5 +1,5 @@
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <numeric>
 #include <utility>
 
@@ -7,14 +7,10 @@
 
 void champsim::json_printer::print(O3_CPU::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 6> types{{
-    std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP},
-    std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT},
-    std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
-    std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL},
-    std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
-    std::pair{"BRANCH_RETURN", BRANCH_RETURN}
-  }};
+  constexpr std::array<std::pair<std::string_view, std::size_t>, 6> types{
+      {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
+       std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
+       std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
   uint64_t total_branch = 0, total_mispredictions = 0;
   for (auto type : types) {
@@ -26,7 +22,8 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
   ++indent_level;
   stream << indent() << "\"instructions\": " << stats.instrs() << "," << std::endl;
   stream << indent() << "\"cycles\": " << stats.cycles() << "," << std::endl;
-  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << ", " << std::endl;
+  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << ", "
+         << std::endl;
 
   stream << indent() << "\"mispredict\": {" << std::endl;
   ++indent_level;
@@ -44,13 +41,8 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
 
 void champsim::json_printer::print(CACHE::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{{
-      std::pair{"LOAD", LOAD},
-      std::pair{"RFO", RFO},
-      std::pair{"PREFETCH", PREFETCH},
-      std::pair{"WRITE", WRITE},
-      std::pair{"TRANSLATION", TRANSLATION}
-  }};
+  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{
+      {std::pair{"LOAD", LOAD}, std::pair{"RFO", RFO}, std::pair{"PREFETCH", PREFETCH}, std::pair{"WRITE", WRITE}, std::pair{"TRANSLATION", TRANSLATION}}};
 
   stream << indent() << "\"" << stats.name << "\": {" << std::endl;
   ++indent_level;
@@ -89,7 +81,7 @@ void champsim::json_printer::print(CACHE::stats_type stats)
   if (TOTAL_MISS > 0)
     stream << indent() << "\"miss latency\": " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << std::endl;
   else
-    stream << indent() << "\"miss latency\": null"  << std::endl;
+    stream << indent() << "\"miss latency\": null" << std::endl;
   --indent_level;
   stream << indent() << "}";
 }
@@ -117,7 +109,7 @@ void champsim::json_printer::print(std::vector<O3_CPU::stats_type> stats_list)
   ++indent_level;
 
   bool first = true;
-  for (const auto &stats : stats_list) {
+  for (const auto& stats : stats_list) {
     if (!first)
       stream << "," << std::endl;
     print(stats);
@@ -132,7 +124,7 @@ void champsim::json_printer::print(std::vector<O3_CPU::stats_type> stats_list)
 void champsim::json_printer::print(std::vector<CACHE::stats_type> stats_list)
 {
   bool first = true;
-  for (const auto &stats : stats_list) {
+  for (const auto& stats : stats_list) {
     if (!first)
       stream << "," << std::endl;
     print(stats);
@@ -146,7 +138,7 @@ void champsim::json_printer::print(std::vector<DRAM_CHANNEL::stats_type> stats_l
   ++indent_level;
 
   bool first = true;
-  for (const auto &stats : stats_list) {
+  for (const auto& stats : stats_list) {
     if (!first)
       stream << "," << std::endl;
     print(stats);
@@ -222,4 +214,3 @@ void champsim::json_printer::print(std::vector<phase_stats>& stats)
   stream << "]" << std::endl;
   --indent_level;
 }
-

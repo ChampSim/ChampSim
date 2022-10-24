@@ -1,5 +1,5 @@
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -8,14 +8,10 @@
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 6> types{{
-    std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP},
-    std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT},
-    std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
-    std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL},
-    std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
-    std::pair{"BRANCH_RETURN", BRANCH_RETURN}
-  }};
+  constexpr std::array<std::pair<std::string_view, std::size_t>, 6> types{
+      {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
+       std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
+       std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
   uint64_t total_branch = 0, total_mispredictions = 0;
   for (auto type : types) {
@@ -24,12 +20,15 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
 
   stream << std::endl;
-  stream << stats.name << " cumulative IPC: " << 1.0 * stats.instrs() / stats.cycles() << " instructions: " << stats.instrs() << " cycles: " << stats.cycles() << std::endl;
-  stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch << "% MPKI: " << (1000.0 * total_mispredictions) / stats.instrs();
+  stream << stats.name << " cumulative IPC: " << 1.0 * stats.instrs() / stats.cycles() << " instructions: " << stats.instrs() << " cycles: " << stats.cycles()
+         << std::endl;
+  stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch
+         << "% MPKI: " << (1000.0 * total_mispredictions) / stats.instrs();
   stream << " Average ROB Occupancy at Mispredict: " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
 
   std::vector<double> mpkis;
-  std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis), [instrs=stats.instrs()](auto x) { return 1000.0 * x / instrs; });
+  std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
+                 [instrs = stats.instrs()](auto x) { return 1000.0 * x / instrs; });
 
   stream << "Branch type MPKI" << std::endl;
   for (auto [str, idx] : types)
@@ -39,7 +38,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
 void champsim::plain_printer::print(CACHE::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{{std::pair{"LOAD", LOAD}, std::pair{"RFO", RFO}, std::pair{"PREFETCH", PREFETCH}, std::pair{"WRITE", WRITE}, std::pair{"TRANSLATION", TRANSLATION}}};
+  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{
+      {std::pair{"LOAD", LOAD}, std::pair{"RFO", RFO}, std::pair{"PREFETCH", PREFETCH}, std::pair{"WRITE", WRITE}, std::pair{"TRANSLATION", TRANSLATION}}};
 
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
     uint64_t TOTAL_HIT = 0, TOTAL_MISS = 0;
@@ -54,7 +54,7 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     stream << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
 
     for (const auto& type : types) {
-      stream << stats.name << " " << type.first << std::setw(12-std::size(type.first)) << " ";
+      stream << stats.name << " " << type.first << std::setw(12 - std::size(type.first)) << " ";
       stream << "ACCESS: " << std::setw(10) << stats.hits[type.second][cpu] + stats.misses[type.second][cpu] << "  ";
       stream << "HIT: " << std::setw(10) << stats.hits[type.second][cpu] << "  ";
       stream << "MISS: " << std::setw(10) << stats.misses[type.second][cpu] << std::endl;
@@ -127,4 +127,3 @@ void champsim::plain_printer::print(std::vector<phase_stats>& stats)
   for (auto p : stats)
     print(p);
 }
-

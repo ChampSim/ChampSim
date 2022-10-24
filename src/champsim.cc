@@ -12,9 +12,9 @@
 #include <string.h>
 #include <vector>
 
-#include "phase_info.h"
 #include "ooo_cpu.h"
 #include "operable.h"
+#include "phase_info.h"
 #include "tracereader.h"
 
 auto start_time = std::chrono::steady_clock::now();
