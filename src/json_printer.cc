@@ -162,6 +162,22 @@ void champsim::json_printer::print(champsim::phase_stats& stats)
 {
   stream << indent() << "{" << std::endl;
   ++indent_level;
+
+  stream << indent() << "\"name\": \"" << stats.name << "\"," << std::endl;
+  stream << indent() << "\"traces\": [" << std::endl;
+  ++indent_level;
+
+  bool first = true;
+  for (auto t : stats.trace_names) {
+    if (!first)
+      stream << "," << std::endl;
+    stream << indent() << "\"" << t << "\"";
+    first = false;
+  }
+
+  --indent_level;
+  stream << std::endl << indent() << "]," << std::endl;
+
   stream << indent() << "\"roi\": {" << std::endl;
   ++indent_level;
 
@@ -193,5 +209,17 @@ void champsim::json_printer::print(champsim::phase_stats& stats)
   stream << indent() << "}" << std::endl;
   --indent_level;
   stream << indent() << "}" << std::endl;
+}
+
+void champsim::json_printer::print(std::vector<phase_stats>& stats)
+{
+  stream << "[" << std::endl;
+  ++indent_level;
+
+  for (auto p : stats)
+    print(p);
+
+  stream << "]" << std::endl;
+  --indent_level;
 }
 

@@ -90,6 +90,12 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 
 void champsim::plain_printer::print(champsim::phase_stats& stats)
 {
+  stream << "=== " << stats.name << " ===" << std::endl;
+
+  int i = 0;
+  for (auto tn : stats.trace_names)
+    stream << "CPU " << i++ << " runs " << tn << std::endl;
+
   if (NUM_CPUS > 1) {
     stream << std::endl;
     stream << "Total Simulation Statistics (not including warmup)" << std::endl;
@@ -115,3 +121,10 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
   for (const auto& stat : stats.roi_dram_stats)
     print(stat);
 }
+
+void champsim::plain_printer::print(std::vector<phase_stats>& stats)
+{
+  for (auto p : stats)
+    print(p);
+}
+

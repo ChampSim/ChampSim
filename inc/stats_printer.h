@@ -8,6 +8,8 @@
 namespace champsim {
   struct phase_stats
   {
+    std::string name;
+    std::vector<std::string> trace_names;
     std::vector<O3_CPU::stats_type> roi_cpu_stats, sim_cpu_stats;
     std::vector<CACHE::stats_type> roi_cache_stats, sim_cache_stats;
     std::vector<DRAM_CHANNEL::stats_type> roi_dram_stats, sim_dram_stats;
@@ -31,6 +33,7 @@ class plain_printer
   public:
   plain_printer(std::ostream& str) : stream(str) {}
   void print(phase_stats& stats);
+  void print(std::vector<phase_stats>& stats);
 };
 
 class json_printer
@@ -54,6 +57,8 @@ class json_printer
   public:
   json_printer(std::ostream& str) : stream(str) {}
   void print(phase_stats& stats);
+  void print(std::vector<phase_stats>& stats);
 };
 }
+
 

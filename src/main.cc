@@ -13,6 +13,7 @@
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
+#include "phase_info.h"
 #include "ptw.h"
 #include "stats_printer.h"
 #include "util.h"
@@ -22,14 +23,8 @@ void init_structures();
 
 #include "core_inst.inc"
 
-struct phase_info {
-  std::string name;
-  bool is_warmup;
-  uint64_t length;
-};
-
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
+                  std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
 
 void signal_handler(int signal)
 {
@@ -37,19 +32,30 @@ void signal_handler(int signal)
   abort();
 }
 
-template <typename P>
-void print_stats(P&& printer)
+template <typename CPU, typename C, typename D>
+std::vector<champsim::phase_stats> zip_phase_stats(const std::vector<champsim::phase_info>& phases, const std::vector<CPU>& ooo_cpu, const std::vector<C>& caches, const D& dram)
 {
-  champsim::phase_stats stats;
+  std::vector<champsim::phase_stats> retval;
 
-  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.sim_cpu_stats), [](O3_CPU &cpu){ return cpu.sim_stats.back(); });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats), [](CACHE &cache){ return cache.sim_stats.back(); });
-  std::transform(std::begin(DRAM.channels), std::end(DRAM.channels), std::back_inserter(stats.sim_dram_stats), [](DRAM_CHANNEL &chan){ return chan.sim_stats.back(); });
-  std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.roi_cpu_stats), [](O3_CPU &cpu){ return cpu.roi_stats.back(); });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats), [](CACHE &cache){ return cache.roi_stats.back(); });
-  std::transform(std::begin(DRAM.channels), std::end(DRAM.channels), std::back_inserter(stats.roi_dram_stats), [](DRAM_CHANNEL &chan){ return chan.roi_stats.back(); });
+  for (std::size_t i=0; i < std::size(phases); ++i) {
+    if (!phases.at(i).is_warmup) {
+      champsim::phase_stats stats;
 
-  printer.print(stats);
+      stats.name = phases.at(i).name;
+      stats.trace_names = phases.at(i).trace_names;
+
+      std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.sim_cpu_stats), [i](const O3_CPU &cpu){ return cpu.sim_stats.at(i); });
+      std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats), [i](const CACHE &cache){ return cache.sim_stats.at(i); });
+      std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats), [i](const DRAM_CHANNEL &chan){ return chan.sim_stats.at(i); });
+      std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.roi_cpu_stats), [i](const O3_CPU &cpu){ return cpu.roi_stats.at(i); });
+      std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats), [i](const CACHE &cache){ return cache.roi_stats.at(i); });
+      std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats), [i](const DRAM_CHANNEL &chan){ return chan.roi_stats.at(i); });
+
+      retval.push_back(stats);
+    }
+  }
+
+  return retval;
 }
 
 int main(int argc, char** argv)
@@ -106,7 +112,7 @@ int main(int argc, char** argv)
 
   std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
 
-  std::vector<phase_info> phases{{phase_info{"Warmup", true, warmup_instructions}, phase_info{"Simulation", false, simulation_instructions}}};
+  std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, trace_names}, champsim::phase_info{"Simulation", false, simulation_instructions, trace_names}}};
 
   std::cout << std::endl;
   std::cout << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl;
@@ -115,27 +121,20 @@ int main(int argc, char** argv)
   std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
   std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
   std::cout << "Page size: " << PAGE_SIZE << std::endl;
-
   std::cout << std::endl;
-  int i = 0;
-  for (auto name : trace_names)
-    std::cout << "CPU " << i++ << " runs " << name << std::endl;
-
-  if (std::size(trace_names) != std::size(ooo_cpu)) {
-    std::cerr << std::endl;
-    std::cerr << "*** Number of traces does not match the number of cores ***";
-    std::cerr << std::endl;
-    std::cerr << std::endl;
-    return 1;
-  }
 
   init_structures();
 
   champsim_main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
 
+  std::cout << std::endl;
   std::cout << "ChampSim completed all CPUs" << std::endl;
+  std::cout << std::endl;
 
-  print_stats(champsim::plain_printer{std::cout});
+  auto phase_stats = zip_phase_stats(phases, ooo_cpu, caches, DRAM);
+
+  champsim::plain_printer default_print{std::cout};
+  default_print.print(phase_stats);
 
   for (CACHE& cache : caches)
     cache.impl_prefetcher_final_stats();
@@ -144,10 +143,13 @@ int main(int argc, char** argv)
     cache.impl_replacement_final_stats();
 
   if (knob_json_out) {
-    if (json_file.is_open())
-      print_stats(champsim::json_printer{json_file});
-    else
-      print_stats(champsim::json_printer{std::cout});
+    if (json_file.is_open()) {
+      champsim::json_printer printer{json_file};
+      printer.print(phase_stats);
+    } else {
+      champsim::json_printer printer{std::cout};
+      printer.print(phase_stats);
+    }
   }
 
   return 0;
