@@ -92,7 +92,7 @@ class bulk_tracereader : public tracereader
 {
 public:
   using tracereader::tracereader;
-  ooo_model_instr operator()() { return impl_get<T>(); }
+  ooo_model_instr operator()() override final { return impl_get<T>(); }
 };
 
 std::unique_ptr<tracereader> get_tracereader(std::string fname, uint16_t asid, bool is_cloudsuite)

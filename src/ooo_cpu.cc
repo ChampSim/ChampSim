@@ -66,11 +66,20 @@ void O3_CPU::begin_phase()
   begin_phase_instr = num_retired;
   begin_phase_cycle = current_cycle;
 
-  sim_stats.emplace_back();
+  // Record where the next phase begins
+  stats_type stats;
+  stats.name = "CPU " + std::to_string(cpu);
+  stats.begin_instrs = num_retired;
+  stats.begin_cycles = current_cycle;
+  sim_stats.push_back(stats);
 }
 
 void O3_CPU::end_phase(unsigned cpu)
 {
+  // Record where the phase ended (overwrite if this is later)
+  sim_stats.back().end_instrs = num_retired;
+  sim_stats.back().end_cycles = current_cycle;
+
   if (cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
@@ -171,24 +180,18 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
     }
   }
 
-  // add this instruction to the IFETCH_BUFFER
+  // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
+  sim_stats.back().total_branch_types[arch_instr.branch_type]++;
+  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip);
+  if (!arch_instr.branch_prediction && !always_taken) {
+    predicted_branch_target = 0;
+  }
 
-  // handle branch prediction
   if (arch_instr.is_branch) {
-
     if constexpr (champsim::debug_print) {
       std::cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << std::hex << arch_instr.ip << std::dec << " taken: " << +arch_instr.branch_taken
                 << std::endl;
-    }
-
-    sim_stats.back().total_branch_types[arch_instr.branch_type]++;
-
-    std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
-    uint64_t predicted_branch_target = btb_result.first;
-    uint8_t always_taken = btb_result.second;
-    arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((arch_instr.branch_prediction == 0) && (always_taken == 0)) {
-      predicted_branch_target = 0;
     }
 
     // call code prefetcher every time the branch predictor is used
@@ -453,7 +456,6 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
                                smem,
                                instr.ip,
                                std::numeric_limits<uint64_t>::max(),
-                               std::ref(instr),
                                instr.asid,
                                false,
                                std::numeric_limits<uint64_t>::max(),
@@ -487,7 +489,6 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
                   dmem,
                   instr.ip,
                   std::numeric_limits<uint64_t>::max(),
-                  std::ref(instr),
                   instr.asid,
                   false,
                   std::numeric_limits<uint64_t>::max(),
@@ -537,26 +538,14 @@ void O3_CPU::operate_lsq()
 
 void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
 {
-  sq_entry.rob_entry.num_mem_ops--;
-  sq_entry.rob_entry.event_cycle = current_cycle;
-  assert(sq_entry.rob_entry.num_mem_ops >= 0);
-
-  if constexpr (champsim::debug_print) {
-    std::cout << "[SQ] " << __func__ << " instr_id: " << sq_entry.instr_id << std::hex;
-    std::cout << " full_address: " << sq_entry.virtual_address << std::dec << " remain_mem_ops: " << sq_entry.rob_entry.num_mem_ops;
-    std::cout << " event_cycle: " << sq_entry.event_cycle << std::endl;
-  }
+  sq_entry.finish(std::begin(ROB), std::end(ROB));
 
   // Release dependent loads
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
     assert(dependent.has_value()); // LQ entry is still allocated
-
-    dependent->rob_entry.num_mem_ops--;
-    dependent->rob_entry.event_cycle = current_cycle;
-
     assert(dependent->producer_id == sq_entry.instr_id);
-    assert(dependent->rob_entry.num_mem_ops >= 0);
 
+    dependent->finish(std::begin(ROB), std::end(ROB));
     dependent.reset();
   }
 }
@@ -655,15 +644,8 @@ void O3_CPU::handle_memory_return()
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
-        lq_entry->rob_entry.num_mem_ops--;
-        lq_entry->rob_entry.event_cycle = current_cycle;
+        lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
-
-        if constexpr (champsim::debug_print) {
-          std::cout << "[L1D_LQ] " << __func__ << " instr_id: " << lq_entry->instr_id << std::hex;
-          std::cout << " full_address: " << lq_entry->virtual_address << std::dec << " remain_mem_ops: " << lq_entry->rob_entry.num_mem_ops;
-          std::cout << " event_cycle: " << lq_entry->event_cycle << std::endl;
-        }
       }
     }
   }
@@ -687,51 +669,6 @@ void O3_CPU::retire_rob()
   // Check for deadlock
   if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
-}
-
-void O3_CPU::print_roi_stats()
-{
-  std::cout << "CPU " << cpu << " cumulative IPC: " << 1.0 * roi_instr() / roi_cycle() << " instructions: " << roi_instr() << " cycles: " << roi_cycle()
-            << std::endl;
-}
-
-void O3_CPU::print_phase_stats()
-{
-  auto total_branch = std::accumulate(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), 0ull);
-  auto total_mispredictions = std::accumulate(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), 0ull);
-
-  std::cout << std::endl;
-  std::cout << "CPU " << cpu;
-  std::cout << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch << "%";
-  std::cout << " MPKI: " << (1000.0 * total_mispredictions) / sim_instr();
-  std::cout << " Average ROB Occupancy at Mispredict: " << (1.0 * sim_stats.back().total_rob_occupancy_at_branch_mispredict) / total_mispredictions
-            << std::endl;
-
-  /*
-  std::vector<double> pcts;
-  std::transform(std::begin(sim_stats.back().total_branch_types), std::end(sim_stats.back().total_branch_types), std::back_inserter(pcts),
-  [instr=sim_instr()](auto x){ return 100.0*x/instr; }); std::cout << "Branch types" << std::endl; std::cout << "NOT_BRANCH: "           <<
-  total_branch_types[NOT_BRANCH]           << " " << pcts[NOT_BRANCH]           << "%" << std::endl; std::cout << "BRANCH_DIRECT_JUMP: "   <<
-  total_branch_types[BRANCH_DIRECT_JUMP]   << " " << pcts[BRANCH_DIRECT_JUMP]   << "%" << std::endl; std::cout << "BRANCH_INDIRECT: "      <<
-  total_branch_types[BRANCH_INDIRECT]      << " " << pcts[BRANCH_INDIRECT]      << "%" << std::endl; std::cout << "BRANCH_CONDITIONAL: "   <<
-  total_branch_types[BRANCH_CONDITIONAL]   << " " << pcts[BRANCH_CONDITIONAL]   << "%" << std::endl; std::cout << "BRANCH_DIRECT_CALL: "   <<
-  total_branch_types[BRANCH_DIRECT_CALL]   << " " << pcts[BRANCH_DIRECT_CALL]   << "%" << std::endl; std::cout << "BRANCH_INDIRECT_CALL: " <<
-  total_branch_types[BRANCH_INDIRECT_CALL] << " " << pcts[BRANCH_INDIRECT_CALL] << "%" << std::endl; std::cout << "BRANCH_RETURN: "        <<
-  total_branch_types[BRANCH_RETURN]        << " " << pcts[BRANCH_RETURN]        << "%" << std::endl; std::cout << "BRANCH_OTHER: "         <<
-  total_branch_types[BRANCH_OTHER]         << " " << pcts[BRANCH_OTHER]         << "%" << std::endl; std::cout << std::endl;
-  */
-
-  std::vector<double> mpkis;
-  std::transform(std::begin(sim_stats.back().branch_type_misses), std::end(sim_stats.back().branch_type_misses), std::back_inserter(mpkis),
-                 [instr = sim_instr()](auto x) { return 1000.0 * x / instr; });
-  std::cout << "Branch type MPKI" << std::endl;
-  std::cout << "BRANCH_DIRECT_JUMP: " << mpkis[BRANCH_DIRECT_JUMP] << std::endl;
-  std::cout << "BRANCH_INDIRECT: " << mpkis[BRANCH_INDIRECT] << std::endl;
-  std::cout << "BRANCH_CONDITIONAL: " << mpkis[BRANCH_CONDITIONAL] << std::endl;
-  std::cout << "BRANCH_DIRECT_CALL: " << mpkis[BRANCH_DIRECT_CALL] << std::endl;
-  std::cout << "BRANCH_INDIRECT_CALL: " << mpkis[BRANCH_INDIRECT_CALL] << std::endl;
-  std::cout << "BRANCH_RETURN: " << mpkis[BRANCH_RETURN] << std::endl;
-  std::cout << std::endl;
 }
 
 void CacheBus::return_data(const PACKET& packet) { PROCESSED.push_back(packet); }
@@ -790,6 +727,22 @@ void O3_CPU::print_deadlock()
     for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
       std::cout << lq_entry->instr_id << " ";
     std::cout << std::endl;
+  }
+}
+
+void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
+{
+  auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
+  assert(rob_entry != end);
+  assert(rob_entry->instr_id == this->instr_id);
+
+  rob_entry->num_mem_ops--;
+  assert(rob_entry->num_mem_ops >= 0);
+
+  if constexpr (champsim::debug_print) {
+    std::cout << "[LSQ] " << __func__ << " instr_id: " << instr_id << std::hex;
+    std::cout << " full_address: " << virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops;
+    std::cout << " event_cycle: " << event_cycle << std::endl;
   }
 }
 

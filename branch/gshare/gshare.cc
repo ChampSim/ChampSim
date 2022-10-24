@@ -36,7 +36,7 @@ void O3_CPU::initialize_branch_predictor()
   std::fill(std::begin(::gs_history_table[this]), std::end(::gs_history_table[this]), ::COUNTER_THRESH); // weakly taken
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
   auto gs_hash = ::gs_table_hash(ip, ::branch_history_vector[this]);
   return ::gs_history_table[this][gs_hash] >= ::COUNTER_THRESH;

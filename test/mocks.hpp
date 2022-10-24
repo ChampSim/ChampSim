@@ -140,7 +140,7 @@ class counting_MRP : public MemoryRequestProducer
 
   counting_MRP() : MemoryRequestProducer(nullptr) {}
 
-  void return_data(const PACKET &) override {
+  void return_data(const PACKET&) override {
     count++;
   }
 };

@@ -7,6 +7,9 @@ def get_module_name(path):
     fname_translation_table = str.maketrans('./-','_DH')
     return path.translate(fname_translation_table)
 
+def norm_dirname(f):
+    return os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
+
 # Get the paths to built-in modules
 def default_modules(dirname):
     files = (os.path.join(dirname, d) for d in os.listdir(dirname))
@@ -14,19 +17,16 @@ def default_modules(dirname):
     yield from ({'name': get_module_name(f), 'fname': f, '_is_instruction_prefetcher': f.endswith('_instr')} for f in files)
 
 # Try the built-in module directories, then try to interpret as a path
-def default_dir(dirname, f):
-    fname = os.path.join(dirname, f)
-    if not os.path.exists(fname):
-        fname = os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
-    if not os.path.exists(fname):
-        print('[WARNING]', 'Path "' + fname + '" does not exist.')
-        return None
-    return fname
+def default_dir(dirnames, f):
+    return next(filter(os.path.exists, map(norm_dirname, itertools.chain(
+        (os.path.join(dirname, f) for dirname in dirnames), # Prepend search paths
+        (f,) # Interpret as file path
+    ))))
 
-def get_module_data(names_key, paths_key, values, directory, get_func):
+def get_module_data(names_key, paths_key, values, directories, get_func):
     namekey_pairs = itertools.chain(*(zip(c[names_key], c[paths_key], itertools.repeat(c.get('_is_instruction_prefetcher', False))) for c in values))
     data = util.combine_named(
-        default_modules(directory),
+        itertools.chain(*(default_modules(directory) for directory in directories if os.path.exists(directory))),
         ({'name': name, 'fname': path, '_is_instruction_prefetcher': is_instr} for name,path,is_instr in namekey_pairs)
         )
     return {k: util.chain((get_func(k,v['_is_instruction_prefetcher']) if v['_is_instruction_prefetcher'] else get_func(k)), v) for k,v in data.items()}
@@ -70,19 +70,20 @@ def get_branch_data(module_name):
     retval['bpred_last_result'] = 'bpred_' + module_name + '_last_result'
     retval['bpred_predict'] = 'bpred_' + module_name + '_predict'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_branch_predictor=' + retval['bpred_initialize'],
-    '-Dlast_branch_result=' + retval['bpred_last_result'],
-    '-Dpredict_branch=' + retval['bpred_predict']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_branch_predictor': retval['bpred_initialize'],
+        'last_branch_result': retval['bpred_last_result'],
+        'predict_branch': retval['bpred_predict']
+    }
 
     return retval
 
 branch_variant_data = {
         'bpred_initialize': ('impl_branch_predictor_initialize', 'void', '', tuple()),
         'bpred_last_result': ('impl_last_branch_result', 'void', '', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type'))),
-        'bpred_predict': ('impl_predict_branch', 'uint8_t', '|=', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','always_taken'), ('uint8_t','branch_type')))
+        'bpred_predict': ('impl_predict_branch', 'uint8_t', '|=', (('uint64_t','ip'),))
         }
 
 def get_branch_string(branch_data):
@@ -106,19 +107,20 @@ def get_btb_data(module_name):
     retval['btb_update'] = 'btb_' + module_name + '_update'
     retval['btb_predict'] = 'btb_' + module_name + '_predict'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_btb=' + retval['btb_initialize'],
-    '-Dupdate_btb=' + retval['btb_update'],
-    '-Dbtb_prediction=' + retval['btb_predict']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_btb': retval['btb_initialize'],
+        'update_btb': retval['btb_update'],
+        'btb_prediction': retval['btb_predict']
+    }
 
     return retval
 
 btb_variant_data = {
         'btb_initialize': ('impl_btb_initialize', 'void', '', tuple()),
         'btb_update': ('impl_update_btb', 'void', '', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type'))),
-        'btb_predict': ('impl_btb_prediction', 'std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'), ('uint8_t','branch_type')))
+        'btb_predict': ('impl_btb_prediction', 'std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'),))
         }
 
 def get_btb_string(btb_data):
@@ -146,15 +148,16 @@ def get_pref_data(module_name, is_instruction_cache=False):
     retval['prefetcher_cycle_operate'] = prefix + module_name + '_cycle_operate'
     retval['prefetcher_final_stats'] = prefix + module_name + '_final_stats'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dprefetcher_initialize=' + retval['prefetcher_initialize'],
-    '-Dprefetcher_cache_operate=' + retval['prefetcher_cache_operate'],
-    '-Dprefetcher_branch_operate=' + retval['prefetcher_branch_operate'],
-    '-Dprefetcher_cache_fill=' + retval['prefetcher_cache_fill'],
-    '-Dprefetcher_cycle_operate=' + retval['prefetcher_cycle_operate'],
-    '-Dprefetcher_final_stats=' + retval['prefetcher_final_stats'],
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'prefetcher_initialize': retval['prefetcher_initialize'],
+        'prefetcher_cache_operate': retval['prefetcher_cache_operate'],
+        'prefetcher_branch_operate': retval['prefetcher_branch_operate'],
+        'prefetcher_cache_fill': retval['prefetcher_cache_fill'],
+        'prefetcher_cycle_operate': retval['prefetcher_cycle_operate'],
+        'prefetcher_final_stats': retval['prefetcher_final_stats'],
+    }
 
     return retval
 
@@ -196,13 +199,14 @@ def get_repl_data(module_name):
     retval['update_func_name'] = 'repl_' + module_name + '_update'
     retval['final_func_name'] = 'repl_' + module_name + '_final_stats'
 
-    retval['opts'] = (
-    '-Wno-unused-parameter',
-    '-Dinitialize_replacement=' + retval['init_func_name'],
-    '-Dfind_victim=' + retval['find_victim_func_name'],
-    '-Dupdate_replacement_state=' + retval['update_func_name'],
-    '-Dreplacement_final_stats=' + retval['final_func_name']
-    )
+    retval['opts'] = { 'CXXFLAGS': ('-Wno-unused-parameter',) }
+
+    retval['func_map'] = {
+        'initialize_replacement': retval['init_func_name'],
+        'find_victim': retval['find_victim_func_name'],
+        'update_replacement_state': retval['update_func_name'],
+        'replacement_final_stats': retval['final_func_name']
+    }
 
     return retval
 

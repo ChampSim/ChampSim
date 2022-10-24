@@ -58,23 +58,23 @@ public:
                   uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
-  bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET&) override { assert(0); }
-  bool add_pq(const PACKET&) override { assert(0); }
+  bool add_rq(const PACKET& packet) override final;
+  bool add_wq(const PACKET&) override final { assert(0); }
+  bool add_pq(const PACKET&) override final { assert(0); }
 
-  void return_data(const PACKET& packet) override;
-  void operate() override;
+  void return_data(const PACKET& packet) override final;
+  void operate() override final;
 
   bool handle_read(const PACKET& pkt);
   bool handle_fill(const PACKET& pkt);
   bool step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source);
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   uint64_t get_shamt(uint8_t pt_level);
 
-  void print_deadlock() override;
+  void print_deadlock() override final;
 };
 
 #endif
