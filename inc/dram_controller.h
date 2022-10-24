@@ -11,6 +11,7 @@
 #include "util.h"
 
 struct dram_stats {
+  std::string name;
   uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
@@ -62,8 +63,6 @@ public:
   void operate() override final;
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
-  void print_roi_stats() override final;
-  void print_phase_stats() override final;
 
   bool add_rq(const PACKET& packet) override final;
   bool add_wq(const PACKET& packet) override final;

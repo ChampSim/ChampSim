@@ -15,6 +15,7 @@
 #include "operable.h"
 
 struct cache_stats {
+  std::string name;
   // prefetch stats
   uint64_t pf_requested = 0;
   uint64_t pf_issued = 0;
@@ -22,8 +23,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {};
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> misses = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
   uint64_t total_miss_latency = 0;
 };
@@ -159,8 +160,6 @@ public:
   void initialize() override final;
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
-  void print_roi_stats() override final;
-  void print_phase_stats() override final;
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
