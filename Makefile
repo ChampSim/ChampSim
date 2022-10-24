@@ -1,42 +1,55 @@
-CPPFLAGS += -Iinc
-CFLAGS += --std=c++17 -Wall -O3
-CXXFLAGS += --std=c++17 -Wall -O3
-CPPFLAGS += -MMD -MP
+CPPFLAGS += -Iinc -MMD
+CXXFLAGS += --std=c++17 -Wall -Wextra -O3
 
-.phony: all clean configclean test
+.phony: all all_execs clean configclean test makedirs
 
-cppsrc = $(wildcard src/*.cc)
-csrc = $(wildcard src/*.c)
+test_main_name=test/bin/000-test-main
+
+all: all_execs
 
 # Generated configuration makefile contains:
-#  - $(module_dirs)
-#  - Each module's compilation flags
-#  - Each module's source files, appended to $(cppsrc) and $(csrc)
-#  - $(executable_name), if specified
-#  - $(generated_files)
+#  - $(executable_name), the list of all executables in the configuration
+#  - $(build_dirs), the list of all directories that hold executables
+#  - $(build_objs), the list of all object files corresponding to core sources
+#  - $(module_dirs), the list of all directories that hold module object files
+#  - $(module_objs), the list of all object files corresponding to modules
+#  - All dependencies and flags assigned according to the modules
 include _configuration.mk
 
-executable_name ?= bin/champsim
+all_execs: $(filter-out $(test_main_name), $(executable_name))
 
-all: $(executable_name)
-
+# Remove all intermediate files
 clean:
-	find src test $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete
-	$(RM) test/000-test-main
+	@-find src test .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-$(RM) $(test_main_name)
 
+# Remove all configuration files
 configclean: clean
-	$(RM) $(generated_files) _configuration.mk
+	@-$(RM) -r $(module_dirs) _configuration.mk
 
-exec_obj = $(patsubst %.cc,%.o,$(cppsrc)) $(patsubst %.c,%.o,$(csrc))
+# Make directories that don't exist
+# exclude "test" to not conflict with the phony target
+$(filter-out test, $(sort $(build_dirs) $(module_dirs))): | $(dir $@)
+	-mkdir $@
 
-$(executable_name): $(exec_obj)
-	mkdir -p $(dir $@)
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+# All .o files should be made like .cc files
+$(build_objs) $(module_objs):
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
-test_obj = $(filter-out src/core_inst.o src/main.o, $(exec_obj)) $(patsubst %.cc,%.o,$(wildcard test/*.cc))
-test: CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
-test: $(test_obj)
-	$(CXX) $(CXXFLAGS) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o test/000-test-main $^ $(LDLIBS) && test/000-test-main
+# Add address sanitizers for tests
+#$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 
--include $(wildcard src/*.d) $(wildcard test/*.d) $(foreach dir,$(module_dirs),$(wildcard $(dir)/*.d))
+# Link test executable
+$(test_main_name):
+	$(LINK.cc) $(OUTPUT_OPTION) $(filter-out %/main.o, $^)
+
+# Link main executables
+$(filter-out $(test_main_name), $(executable_name)):
+	$(LINK.cc) $(OUTPUT_OPTION) $^
+
+# Tests: build and run
+test: $(test_main_name)
+	$(test_main_name)
+
+-include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 

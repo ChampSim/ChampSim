@@ -28,14 +28,20 @@ public:
   CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet);
+  void return_data(const PACKET& packet) override final;
 };
 
-struct branch_stats {
+struct cpu_stats {
+  std::string name;
+  uint64_t begin_instrs = 0, begin_cycles = 0;
+  uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
   std::array<uint64_t, 8> total_branch_types = {};
   std::array<uint64_t, 8> branch_type_misses = {};
+
+  uint64_t instrs() const { return end_instrs - begin_instrs; }
+  uint64_t cycles() const { return end_cycles - begin_cycles; }
 };
 
 struct LSQ_ENTRY {
@@ -44,13 +50,13 @@ struct LSQ_ENTRY {
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
 
-  ooo_model_instr& rob_entry;
-
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
 
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me;
+
+  void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
 };
 
 // cpu
@@ -76,7 +82,7 @@ public:
 
   bool show_heartbeat = true;
 
-  using stats_type = branch_stats;
+  using stats_type = cpu_stats;
 
   std::vector<stats_type> roi_stats, sim_stats;
 
@@ -98,6 +104,7 @@ public:
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
   const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
+  const unsigned L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
   uint8_t fetch_stall = 0;
@@ -108,12 +115,10 @@ public:
 
   CacheBus L1I_bus, L1D_bus;
 
-  void initialize() override;
-  void operate() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
+  void initialize() override final;
+  void operate() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
 
   void initialize_instruction();
   void check_dib();
@@ -144,12 +149,12 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  uint64_t roi_instr() const { return finish_phase_instr - begin_phase_instr; }
-  uint64_t roi_cycle() const { return finish_phase_cycle - begin_phase_cycle; }
+  uint64_t roi_instr() const { return roi_stats.back().instrs(); }
+  uint64_t roi_cycle() const { return roi_stats.back().cycles(); }
   uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
-  uint64_t sim_cycle() const { return current_cycle - begin_phase_cycle; }
+  uint64_t sim_cycle() const { return current_cycle - sim_stats.back().begin_cycles; }
 
-  void print_deadlock() override;
+  void print_deadlock() override final;
 
 #include "ooo_cpu_modules.inc"
 
@@ -160,13 +165,14 @@ public:
          std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width,
          unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
          unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
-         MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
+         MemoryRequestConsumer* l1i, unsigned l1i_bw, MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred_type,
+         std::bitset<NUM_BTB_MODULES> btb_type)
       : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
-        DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_bus(cpu, l1i), L1D_bus(cpu, l1d),
-        bpred_type(bpred_type), btb_type(btb_type)
+        DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_BANDWIDTH(l1i_bw), L1D_BANDWIDTH(l1d_bw),
+        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
   {
   }
 };

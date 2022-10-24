@@ -149,51 +149,17 @@ void MEMORY_CONTROLLER::initialize()
 
 void MEMORY_CONTROLLER::begin_phase()
 {
-  for (auto& chan : channels)
+  std::size_t chan_idx = 0;
+  for (auto& chan : channels) {
     chan.sim_stats.emplace_back();
+    chan.sim_stats.back().name = "Channel " + std::to_string(chan_idx++);
+  }
 }
 
-void MEMORY_CONTROLLER::end_phase(unsigned cpu)
+void MEMORY_CONTROLLER::end_phase(unsigned)
 {
   for (auto& chan : channels)
     chan.roi_stats.push_back(chan.sim_stats.back());
-}
-
-void MEMORY_CONTROLLER::print_roi_stats() {}
-
-void MEMORY_CONTROLLER::print_phase_stats()
-{
-  std::cout << std::endl;
-  std::cout << "DRAM Statistics" << std::endl;
-  auto i = 0;
-  for (auto chan : channels) {
-    std::cout << " CHANNEL " << i++ << std::endl;
-    std::cout << " RQ ROW_BUFFER_HIT: " << std::setw(10) << chan.sim_stats.back().RQ_ROW_BUFFER_HIT << std::endl;
-    std::cout << "  ROW_BUFFER_MISS: " << std::setw(10) << chan.sim_stats.back().RQ_ROW_BUFFER_MISS << std::endl;
-    std::cout << " AVG DBUS CONGESTED CYCLE: ";
-    if (chan.sim_stats.back().dbus_count_congested > 0)
-      std::cout << std::setw(10) << (1.0 * chan.sim_stats.back().dbus_cycle_congested) / chan.sim_stats.back().dbus_count_congested;
-    else
-      std::cout << "-";
-    std::cout << std::endl;
-    std::cout << " WQ ROW_BUFFER_HIT: " << std::setw(10) << chan.sim_stats.back().WQ_ROW_BUFFER_HIT << std::endl;
-    std::cout << "  ROW_BUFFER_MISS: " << std::setw(10) << chan.sim_stats.back().WQ_ROW_BUFFER_MISS;
-    std::cout << "  FULL: " << std::setw(10) << chan.sim_stats.back().WQ_FULL << std::endl;
-    std::cout << std::endl;
-  }
-
-  uint64_t total_congested_cycle = 0;
-  for (auto chan : channels)
-    total_congested_cycle += chan.sim_stats.back().dbus_cycle_congested;
-
-  uint64_t total_congested_count = 0;
-  for (auto chan : channels)
-    total_congested_count += chan.sim_stats.back().dbus_count_congested;
-
-  if (total_congested_count)
-    std::cout << " AVG_CONGESTED_CYCLE: " << ((double)total_congested_cycle / total_congested_count) << std::endl;
-  else
-    std::cout << " AVG_CONGESTED_CYCLE: -" << std::endl;
 }
 
 void DRAM_CHANNEL::check_collision()

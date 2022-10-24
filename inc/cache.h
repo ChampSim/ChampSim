@@ -15,6 +15,7 @@
 #include "operable.h"
 
 struct cache_stats {
+  std::string name;
   // prefetch stats
   uint64_t pf_requested = 0;
   uint64_t pf_issued = 0;
@@ -22,8 +23,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> hits = {};
-  std::array<std::array<uint64_t, NUM_TYPES>, NUM_CPUS> misses = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
   uint64_t total_miss_latency = 0;
 };
@@ -109,7 +110,7 @@ public:
   };
 
   struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
-    void operate() override;
+    void operate() override final;
 
     void issue_translation();
     void detect_misses();
@@ -120,11 +121,11 @@ public:
     template <typename R>
     void do_detect_misses(R& queue);
 
-    bool rq_has_ready() const override;
-    bool wq_has_ready() const override;
-    bool pq_has_ready() const override;
+    bool rq_has_ready() const override final;
+    bool wq_has_ready() const override final;
+    bool pq_has_ready() const override final;
 
-    void return_data(const PACKET& packet) override;
+    void return_data(const PACKET& packet) override final;
 
     using NonTranslatingQueues::NonTranslatingQueues;
   };
@@ -149,28 +150,28 @@ public:
   std::list<PACKET> MSHR;
 
   // functions
-  bool add_rq(const PACKET& packet) override;
-  bool add_wq(const PACKET& packet) override;
-  bool add_pq(const PACKET& packet) override;
+  bool add_rq(const PACKET& packet) override final;
+  bool add_wq(const PACKET& packet) override final;
+  bool add_pq(const PACKET& packet) override final;
 
-  void return_data(const PACKET& packet) override;
-  void operate() override;
+  void return_data(const PACKET& packet) override final;
+  void operate() override final;
 
-  void initialize() override;
-  void begin_phase() override;
-  void end_phase(unsigned cpu) override;
-  void print_roi_stats() override;
-  void print_phase_stats() override;
+  void initialize() override final;
+  void begin_phase() override final;
+  void end_phase(unsigned cpu) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
+  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   uint32_t get_set(uint64_t address);
   uint32_t get_way(uint64_t address, uint32_t set);
 
   int invalidate_entry(uint64_t inval_addr);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
-  int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
+
+  [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
+  prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   void readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_pkt);
   bool readlike_miss(const PACKET& handle_pkt);

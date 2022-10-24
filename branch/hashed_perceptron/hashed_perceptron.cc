@@ -116,11 +116,11 @@ void O3_CPU::initialize_branch_predictor()
 
   // make a reasonable theta
 
-  for (int i = 0; i < NUM_CPUS; i++)
+  for (unsigned i = 0; i < NUM_CPUS; i++)
     theta[i] = 10;
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t pc, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+uint8_t O3_CPU::predict_branch(uint64_t pc)
 {
 
   // initialize perceptron sum
