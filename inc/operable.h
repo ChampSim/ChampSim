@@ -13,6 +13,7 @@ public:
 
   double leap_operation = 0;
   uint64_t current_cycle = 0;
+  bool warmup = true;
 
   explicit operable(double scale) : CLOCK_SCALE(scale - 1) {}
 
@@ -30,14 +31,19 @@ public:
     ++current_cycle;
   }
 
+  virtual void initialize(){};
   virtual void operate() = 0;
+  virtual void begin_phase(){};
+  virtual void end_phase(unsigned){};
+  virtual void print_roi_stats(){};
+  virtual void print_phase_stats(){};
   virtual void print_deadlock() {}
 };
 
 class by_next_operate
 {
 public:
-  bool operator()(operable* lhs, operable* rhs) const { return lhs->leap_operation < rhs->leap_operation; }
+  bool operator()(const operable& lhs, const operable& rhs) const { return lhs.leap_operation < rhs.leap_operation; }
 };
 
 } // namespace champsim

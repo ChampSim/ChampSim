@@ -14,12 +14,12 @@ jobs:
       - uses: actions/checkout@v2
       - uses: DoozyX/clang-format-lint-action@v0.13
         with:
-          source: 'src inc prefetcher branch replacement btb'
+          source: 'src inc prefetcher branch replacement btb tracer'
           style: file
           clangFormatVersion: 13.0.0
           inplace: True
-      - uses: EndBug/add-and-commit@v4
+      - uses: EndBug/add-and-commit@v9
         with:
           message: 'Formatted with clang-format'
           default_author: github_actions
-          add: 'src inc prefetcher branch replacement btb'
+          add: 'src inc prefetcher branch replacement btb tracer'
