@@ -140,5 +140,5 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_target == 0) || !taken)
     type = ::branch_info::CONDITIONAL;
 
-  *btb_entry = {ip, branch_target, type, current_cycle};
+  *btb_entry = {ip, (branch_target != 0) ? branch_target : btb_entry->target, type, current_cycle};
 }
