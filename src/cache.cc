@@ -156,6 +156,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
+    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this << std::noboolalpha;
     std::cout << " cycle: " << current_cycle << std::endl;
   }
 
@@ -207,9 +208,11 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     else
       fwd_pkt.to_return.clear();
 
-    if (should_activate_prefetcher(fwd_pkt)) {
+    fwd_pkt.prefetch_from_this = false;
+
+    if (should_activate_prefetcher(handle_pkt)) {
       uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-      fwd_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, fwd_pkt.pf_metadata);
+      fwd_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
     bool success;
@@ -555,7 +558,9 @@ void CACHE::print_phase_stats()
     print_cache_stats(NAME, i, sim_stats.back());
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return (1 << static_cast<int>(pkt.type)) & pref_activate_mask; }
+bool CACHE::should_activate_prefetcher(const PACKET& pkt) const {
+  return ((1 << static_cast<int>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this;
+}
 
 void CACHE::print_deadlock()
 {
