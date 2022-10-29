@@ -38,7 +38,7 @@ namespace {
       auto test_a_result = mock_ul.issue(test_a);
       REQUIRE(test_a_result);
 
-      for (auto i = 0; i < cycles_between_walks; ++i)
+      for (std::size_t i = 0; i < cycles_between_walks; ++i)
         for (auto elem : elements)
           elem->_operate();
 
