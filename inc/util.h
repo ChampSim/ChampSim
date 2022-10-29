@@ -148,6 +148,19 @@ namespace champsim
       };
     }
 
+    template <typename U>
+    auto match_and_check(U tag)
+    {
+      return [tag, proj = this->tag_projection](const auto& x, const auto& y) {
+        auto x_valid = x.last_used > 0;
+        auto y_valid = y.last_used > 0;
+        auto x_match = proj(x.data) == tag;
+        auto y_match = proj(y.data) == tag;
+        auto cmp_lru = x.last_used < y.last_used;
+        return !x_valid || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_lru)));
+      };
+    }
+
     public:
     std::optional<value_type> check_hit(const value_type &elem)
     {
@@ -163,13 +176,14 @@ namespace champsim
 
     void fill(const value_type &elem)
     {
+      auto tag = tag_projection(elem);
       auto [set_begin, set_end] = get_set_span(elem);
-      auto hit = std::find_if(set_begin, set_end, match_func(elem));
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-      if (hit == set_end)
-        hit = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
-
-      *hit = {++access_count, elem};
+      if (tag_projection(hit->data) == tag)
+        *hit = {++access_count, elem};
+      else
+        *miss = {++access_count, elem};
     }
 
     std::optional<value_type> invalidate(const value_type &elem)
@@ -180,12 +194,13 @@ namespace champsim
       if (hit == set_end)
         return std::nullopt;
 
-      auto oldval = std::exchange(*hit, {});
-      return oldval.data;
+      return std::exchange(*hit, {}).data;
     }
 
     lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj) : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
     {
+      assert(sets > 0);
+      assert(ways > 0);
       assert(sets == (1ull << lg2(sets)));
     }
 
