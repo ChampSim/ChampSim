@@ -2,14 +2,146 @@ import math
 
 from . import util
 
-default_l1i  = { 'sets': 64, 'ways': 8, 'rq_size': 64, 'wq_size': 64, 'pq_size': 32, 'mshr_size': 8, 'latency': 4, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no_instr', 'replacement': 'lru'}
-default_l1d  = { 'sets': 64, 'ways': 12, 'rq_size': 64, 'wq_size': 64, 'pq_size': 8, 'mshr_size': 16, 'latency': 5, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_l2c  = { 'sets': 1024, 'ways': 8, 'rq_size': 32, 'wq_size': 32, 'pq_size': 16, 'mshr_size': 32, 'latency': 10, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_itlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': True, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_dtlb = { 'sets': 16, 'ways': 4, 'rq_size': 16, 'wq_size': 16, 'pq_size': 0, 'mshr_size': 8, 'latency': 1, 'fill_latency': 1, 'max_read': 2, 'max_write': 2, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': True, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_stlb = { 'sets': 128, 'ways': 12, 'rq_size': 32, 'wq_size': 32, 'pq_size': 0, 'mshr_size': 16, 'latency': 8, 'fill_latency': 1, 'max_read': 1, 'max_write': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-default_llc  = { 'latency': 20, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru', 'lower_level': 'DRAM' }
-default_ptw = { 'pscl5_set' : 1, 'pscl5_way' : 2, 'pscl4_set' : 1, 'pscl4_way': 4, 'pscl3_set' : 2, 'pscl3_way' : 4, 'pscl2_set' : 4, 'pscl2_way': 8, 'ptw_rq_size': 16, 'ptw_mshr_size': 5, 'ptw_max_read': 2, 'ptw_max_write': 2}
+default_l1i  = {
+        'sets': 64,
+        'ways': 8,
+        'rq_size': 64,
+        'wq_size': 64,
+        'pq_size': 32,
+        'mshr_size': 8,
+        'latency': 4,
+        'fill_latency': 1,
+        'max_read': 2,
+        'max_write': 2,
+        'prefetch_as_load': False,
+        'virtual_prefetch': True,
+        'wq_check_full_addr': True,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no_instr',
+        'replacement': 'lru'
+        }
+
+default_l1d  = {
+        'sets': 64,
+        'ways': 12,
+        'rq_size': 64,
+        'wq_size': 64,
+        'pq_size': 8,
+        'mshr_size': 16,
+        'latency': 5,
+        'fill_latency': 1,
+        'max_read': 2,
+        'max_write': 2,
+        'prefetch_as_load': False,
+        'virtual_prefetch': False,
+        'wq_check_full_addr': True,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru'
+        }
+
+default_l2c  = {
+        'sets': 1024,
+        'ways': 8,
+        'rq_size': 32,
+        'wq_size': 32,
+        'pq_size': 16,
+        'mshr_size': 32,
+        'latency': 10,
+        'fill_latency': 1,
+        'max_read': 1,
+        'max_write': 1,
+        'prefetch_as_load': False,
+        'virtual_prefetch': False,
+        'wq_check_full_addr': False,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru'
+        }
+
+default_itlb = {
+        'sets': 16,
+        'ways': 4,
+        'rq_size': 16,
+        'wq_size': 16,
+        'pq_size': 0,
+        'mshr_size': 8,
+        'latency': 1,
+        'fill_latency': 1,
+        'max_read': 2,
+        'max_write': 2,
+        'prefetch_as_load': False,
+        'virtual_prefetch': True,
+        'wq_check_full_addr': True,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru'
+        }
+
+default_dtlb = {
+        'sets': 16,
+        'ways': 4,
+        'rq_size': 16,
+        'wq_size': 16,
+        'pq_size': 0,
+        'mshr_size': 8,
+        'latency': 1,
+        'fill_latency': 1,
+        'max_read': 2,
+        'max_write': 2,
+        'prefetch_as_load': False,
+        'virtual_prefetch': False,
+        'wq_check_full_addr': True,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru'
+        }
+
+default_stlb = {
+        'sets': 128,
+        'ways': 12,
+        'rq_size': 32,
+        'wq_size': 32,
+        'pq_size': 0,
+        'mshr_size': 16,
+        'latency': 8,
+        'fill_latency': 1,
+        'max_read': 1,
+        'max_write': 1,
+        'prefetch_as_load': False,
+        'virtual_prefetch': False,
+        'wq_check_full_addr': False,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru'
+        }
+
+default_llc  = {
+        'latency': 20,
+        'fill_latency': 1,
+        'prefetch_as_load': False,
+        'virtual_prefetch': False,
+        'wq_check_full_addr': False,
+        'prefetch_activate': 'LOAD,PREFETCH',
+        'prefetcher': 'no',
+        'replacement': 'lru',
+        'lower_level': 'DRAM'
+        }
+
+default_ptw = {
+        'pscl5_set' : 1,
+        'pscl5_way' : 2,
+        'pscl4_set' : 1,
+        'pscl4_way': 4,
+        'pscl3_set' : 2,
+        'pscl3_way' : 4,
+        'pscl2_set' : 4,
+        'pscl2_way': 8,
+        'ptw_rq_size': 16,
+        'ptw_mshr_size': 5,
+        'ptw_max_read': 2,
+        'ptw_max_write': 2
+        }
 
 # Defaults for first-level caches
 def named_l1i_defaults(cpu):
