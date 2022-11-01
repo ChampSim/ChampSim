@@ -146,7 +146,8 @@ public:
   std::vector<stats_type> sim_stats, roi_stats;
 
   NonTranslatingQueues& queues;
-  std::list<PACKET> MSHR;
+  std::deque<PACKET> MSHR;
+  std::deque<PACKET> inflight_writes;
 
   // functions
   bool add_rq(const PACKET& packet) override final;

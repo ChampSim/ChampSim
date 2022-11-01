@@ -232,18 +232,19 @@ void CACHE::operate()
   auto tag_bw = MAX_TAG;
   auto fill_bw = MAX_FILL;
 
-  auto do_fill = [&fill_bw, this](const PACKET& x){
-    return (fill_bw-- > 0) && this->handle_fill(x);
+  auto do_fill = [&fill_bw, cycle=current_cycle, this](const PACKET& x){
+    return x.event_cycle <= cycle && (fill_bw-- > 0) && this->handle_fill(x);
   };
 
   auto operate_readlike = [&,this](const PACKET& pkt) {
     return queues.is_ready(pkt) && (tag_bw-- > 0) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
-  auto mshr_end = std::find_if_not(std::cbegin(MSHR), std::cend(MSHR), [cycle=current_cycle, &do_fill](const PACKET& pkt) {
-    return pkt.event_cycle <= cycle && do_fill(pkt);
-  });
+  auto mshr_end = std::find_if_not(std::cbegin(MSHR), std::cend(MSHR), do_fill);
   MSHR.erase(std::cbegin(MSHR), mshr_end);
+
+  auto write_end = std::find_if_not(std::cbegin(inflight_writes), std::cend(inflight_writes), do_fill);
+  inflight_writes.erase(std::cbegin(inflight_writes), write_end);
 
   if (match_offset_bits) {
     // Treat writes (that is, stores) like reads
@@ -251,10 +252,10 @@ void CACHE::operate()
     queues.WQ.erase(std::begin(queues.WQ), wq_end);
   } else {
     // Treat writes (that is, writebacks) like fills
-    auto wq_end = std::find_if_not(std::cbegin(queues.WQ), std::cend(queues.WQ), [&](const PACKET& pkt) {
-      return queues.is_ready(pkt) && (tag_bw-- > 0) && (this->try_hit(pkt) || do_fill(pkt));
-    });
-    queues.WQ.erase(std::cbegin(queues.WQ), wq_end);
+    auto wq_end = std::find_if_not(std::begin(queues.WQ), std::end(queues.WQ), [&](const PACKET& pkt) { return queues.is_ready(pkt) && (tag_bw-- > 0); });
+    std::for_each(std::begin(queues.WQ), wq_end, [cycle=current_cycle+FILL_LATENCY](PACKET& pkt){ pkt.event_cycle = cycle; }); // apply fill latency
+    std::remove_copy_if(std::begin(queues.WQ), wq_end, std::back_inserter(inflight_writes), [this](const PACKET& pkt){ return this->try_hit(pkt); }); // mark as inflight
+    queues.WQ.erase(std::begin(queues.WQ), wq_end);
   }
 
   auto rq_end = std::find_if_not(std::cbegin(queues.RQ), std::cend(queues.RQ), operate_readlike);
