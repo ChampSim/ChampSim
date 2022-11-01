@@ -11,8 +11,8 @@ default_l1i  = {
         'mshr_size': 8,
         'latency': 4,
         'fill_latency': 1,
-        'max_read': 2,
-        'max_write': 2,
+        'max_tag_check': 2,
+        'max_fill': 2,
         'prefetch_as_load': False,
         'virtual_prefetch': True,
         'wq_check_full_addr': True,
@@ -30,8 +30,8 @@ default_l1d  = {
         'mshr_size': 16,
         'latency': 5,
         'fill_latency': 1,
-        'max_read': 2,
-        'max_write': 2,
+        'max_tag_check': 2,
+        'max_fill': 2,
         'prefetch_as_load': False,
         'virtual_prefetch': False,
         'wq_check_full_addr': True,
@@ -49,8 +49,8 @@ default_l2c  = {
         'mshr_size': 32,
         'latency': 10,
         'fill_latency': 1,
-        'max_read': 1,
-        'max_write': 1,
+        'max_tag_check': 1,
+        'max_fill': 1,
         'prefetch_as_load': False,
         'virtual_prefetch': False,
         'wq_check_full_addr': False,
@@ -68,8 +68,8 @@ default_itlb = {
         'mshr_size': 8,
         'latency': 1,
         'fill_latency': 1,
-        'max_read': 2,
-        'max_write': 2,
+        'max_tag_check': 2,
+        'max_fill': 2,
         'prefetch_as_load': False,
         'virtual_prefetch': True,
         'wq_check_full_addr': True,
@@ -87,8 +87,8 @@ default_dtlb = {
         'mshr_size': 8,
         'latency': 1,
         'fill_latency': 1,
-        'max_read': 2,
-        'max_write': 2,
+        'max_tag_check': 2,
+        'max_fill': 2,
         'prefetch_as_load': False,
         'virtual_prefetch': False,
         'wq_check_full_addr': True,
@@ -106,8 +106,8 @@ default_stlb = {
         'mshr_size': 16,
         'latency': 8,
         'fill_latency': 1,
-        'max_read': 1,
-        'max_write': 1,
+        'max_tag_check': 1,
+        'max_fill': 1,
         'prefetch_as_load': False,
         'virtual_prefetch': False,
         'wq_check_full_addr': False,
@@ -163,7 +163,7 @@ def named_l2c_defaults(cpu):
 def sequence_l2c_defaults(name, uls):
     uls = list(uls)
     intern_default_l2c  = { 'latency': 10, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 512*len(uls), 'ways': 8, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 32*len(uls), 'max_read': math.ceil(0.5*len(uls)), 'max_write': math.ceil(0.5*len(uls)), **intern_default_l2c}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 512*len(uls), 'ways': 8, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 32*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), **intern_default_l2c}
 
 def named_stlb_defaults(cpu):
     return {'name': util.read_element_name(cpu, 'STLB'), 'frequency': cpu['frequency'], 'lower_level': util.read_element_name(cpu, 'PTW'), **default_stlb}
@@ -171,7 +171,7 @@ def named_stlb_defaults(cpu):
 def sequence_stlb_defaults(name, uls):
     uls = list(uls)
     intern_default_stlb  = { 'latency': 8, 'fill_latency': 1, 'prefetch_as_load': False, 'virtual_prefetch': False, 'wq_check_full_addr': False, 'prefetch_activate': 'LOAD,PREFETCH', 'prefetcher': 'no', 'replacement': 'lru'}
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 64*len(uls), 'ways': 12, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 8*len(uls), 'max_read': math.ceil(0.5*len(uls)), 'max_write': math.ceil(0.5*len(uls)), **intern_default_stlb}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 64*len(uls), 'ways': 12, 'rq_size': 16*len(uls), 'wq_size': 16*len(uls), 'pq_size': 16*len(uls), 'mshr_size': 8*len(uls), 'max_tag_check': math.ceil(0.5*len(uls)), 'max_fill': math.ceil(0.5*len(uls)), **intern_default_stlb}
 
 # Defaults for third-level caches
 def named_ptw_defaults(cpu):
@@ -179,6 +179,6 @@ def named_ptw_defaults(cpu):
 
 def named_llc_defaults(name, uls):
     uls = list(uls)
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'mshr_size': 64*len(uls), 'max_read': len(uls), 'max_write': len(uls), **default_llc}
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'mshr_size': 64*len(uls), 'max_tag_check': len(uls), 'max_fill': len(uls), **default_llc}
 
 
