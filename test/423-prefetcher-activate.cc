@@ -35,7 +35,10 @@ SCENARIO("A prefetch does not trigger itself") {
       // Request a prefetch
       constexpr uint64_t seed_addr = 0xdeadbeef;
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
-      CHECK(seed_result);
+
+      THEN("The prefetch is issued") {
+        REQUIRE(seed_result);
+      }
 
       // Run the uut for a bunch of cycles to clear it out of the PQ and fill the cache
       for (auto i = 0; i < 100; ++i)
@@ -80,15 +83,21 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
-      CHECK(test_result);
+
+      THEN("The issue is received") {
+        REQUIRE(test_result);
+      }
 
       // Run the uut for a bunch of cycles to fill the cache
       for (auto i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The prefetcher is called") {
+      THEN("The prefetcher is called exactly once") {
         REQUIRE(std::size(test::address_operate_collector[&uut]) == 1);
+      }
+
+      THEN("The prefetcher is called with the issued address") {
         REQUIRE(test::address_operate_collector[&uut].front() == test.address);
       }
     }
@@ -127,7 +136,10 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
-      CHECK(test_result);
+
+      THEN("The issue is received") {
+        REQUIRE(test_result);
+      }
 
       // Run the uut for a bunch of cycles to fill the cache
       for (auto i = 0; i < 100; ++i)
