@@ -4,7 +4,7 @@
 #include "champsim_constants.h"
 
 SCENARIO("A prefetch can be issued") {
-  GIVEN("One issued prefetch") {
+  GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
@@ -24,31 +24,52 @@ SCENARIO("A prefetch can be issued") {
     uut.begin_phase();
     uut_queues.begin_phase();
 
-    // Request a prefetch
-    constexpr uint64_t seed_addr = 0xdeadbeef;
-    auto seed_result = uut.prefetch_line(seed_addr, true, 0);
-    REQUIRE(seed_result);
+    THEN("The number of prefetches is zero") {
+      REQUIRE(uut.sim_stats.back().pf_issued == 0);
+      REQUIRE(uut.sim_stats.back().pf_useful == 0);
+      REQUIRE(uut.sim_stats.back().pf_fill == 0);
+    }
 
-    // Run the uut for a bunch of cycles to clear it out of the PQ and fill the cache
-    for (auto i = 0; i < 100; ++i)
-      for (auto elem : elements)
-        elem->_operate();
+    WHEN("A prefetch is issued") {
+      constexpr uint64_t seed_addr = 0xdeadbeef;
+      auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
-    WHEN("A packet with the same address is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = 0xdeadbeef;
-      test.cpu = 0;
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
+      }
 
-      auto test_result = mock_ul.issue(test);
-      REQUIRE(test_result);
-
-      for (uint64_t i = 0; i < 2*hit_latency; ++i)
+      // Run the uut for a bunch of cycles to clear it out of the PQ and fill the cache
+      for (auto i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The packet hits the cache") {
-        REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+      THEN("The number of prefetch fills is incremented") {
+        REQUIRE(uut.sim_stats.back().pf_fill == 1);
+      }
+
+      AND_WHEN("A packet with the same address is sent") {
+        // Create a test packet
+        PACKET test;
+        test.address = 0xdeadbeef;
+        test.cpu = 0;
+
+        auto test_result = mock_ul.issue(test);
+        THEN("The issue is accepted") {
+          REQUIRE(test_result);
+        }
+
+        for (uint64_t i = 0; i < 2*hit_latency; ++i)
+          for (auto elem : elements)
+            elem->_operate();
+
+        THEN("The packet hits the cache") {
+          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+        }
+
+        THEN("The number of useful prefetches is incremented") {
+          REQUIRE(uut.sim_stats.back().pf_issued == 1);
+          REQUIRE(uut.sim_stats.back().pf_useful == 1);
+        }
       }
     }
   }
