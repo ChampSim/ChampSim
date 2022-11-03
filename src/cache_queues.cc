@@ -32,7 +32,7 @@ bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt
     auto ret_copy = std::move(destination.to_return);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-                   std::back_inserter(destination.instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+                   std::back_inserter(destination.instr_depend_on_me), ooo_model_instr::program_order);
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(source.to_return), std::end(source.to_return),
                    std::back_inserter(destination.to_return));
   });
