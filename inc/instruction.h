@@ -78,10 +78,7 @@ public:
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }
 
-  static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs)
-  {
-    return lhs.instr_id < rhs.instr_id;
-  }
+  static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
 };
 
 #endif
