@@ -86,7 +86,6 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
   if (success) {
     // COLLECT STATS
-    sim_stats.back().misses[fill_mshr.type][fill_mshr.cpu]++;
     sim_stats.back().total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
 
     for (auto ret : fill_mshr.to_return)
@@ -103,6 +102,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
   // access cache
   uint32_t set = get_set(handle_pkt.address);
   uint32_t way = get_way(handle_pkt.address, set);
+  const auto hit = (way < NUM_WAY);
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -115,37 +115,39 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   }
 
-  if (way >= NUM_WAY)
-    return false;
-
-  BLOCK& hit_block = block[set * NUM_WAY + way];
-
-  // update prefetcher on load instruction
+  // update prefetcher on load instructions and prefetches from upper levels
+  auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    hit_block.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit, handle_pkt.type, metadata_thru);
   }
 
-  // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, true);
+  if (hit) {
+    sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
 
-  // COLLECT STATS
-  sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
+    BLOCK& hit_block = block[set * NUM_WAY + way];
 
-  auto copy{handle_pkt};
-  copy.data = hit_block.data;
-  for (auto ret : copy.to_return)
-    ret->return_data(copy);
+    // update replacement policy
+    impl_replacement_update_state(handle_pkt.cpu, set, way, hit_block.address, handle_pkt.ip, 0, handle_pkt.type, true);
 
-  hit_block.dirty = (handle_pkt.type == WRITE);
+    auto copy{handle_pkt};
+    copy.data = hit_block.data;
+    copy.pf_metadata = metadata_thru;
+    for (auto ret : copy.to_return)
+      ret->return_data(copy);
 
-  // update prefetch stats and reset prefetch bit
-  if (hit_block.prefetch) {
-    sim_stats.back().pf_useful++;
-    hit_block.prefetch = 0;
+    hit_block.dirty = (handle_pkt.type == WRITE);
+
+    // update prefetch stats and reset prefetch bit
+    if (hit_block.prefetch) {
+      sim_stats.back().pf_useful++;
+      hit_block.prefetch = 0;
+    }
+  } else {
+    sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;
   }
 
-  return true;
+  return hit;
 }
 
 bool CACHE::handle_miss(const PACKET& handle_pkt)
@@ -219,12 +221,6 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
       mshr_entry->cycle_enqueued = current_cycle;
       mshr_entry->event_cycle = std::numeric_limits<uint64_t>::max();
     }
-  }
-
-  // update prefetcher on load instructions and prefetches from upper levels
-  if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
   return true;
