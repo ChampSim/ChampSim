@@ -47,7 +47,9 @@ struct cache_queue_stats {
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
-  enum FILL_LEVEL { FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16 };
+  enum [[deprecated(
+      "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL{
+      FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16};
 
   bool try_hit(const PACKET& handle_pkt);
   bool handle_fill(const PACKET& fill_mshr);
