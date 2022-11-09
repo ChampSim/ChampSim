@@ -6,11 +6,16 @@
 #include "util.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10,
+PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
                                  uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
     : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
-      HIT_LATENCY(latency), pscl{_pscl}, vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl) + 1).first)
+      HIT_LATENCY(latency), vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
 {
+  auto level = std::size(pscl_dims);
+  for (auto x : pscl_dims) {
+    auto shamt = _vmem.shamt(level--);
+    pscl.emplace_back(x.first, x.second, pscl_idx{shamt}, pscl_idx{shamt});
+  }
 }
 
 bool PageTableWalker::handle_read(const PACKET& handle_pkt)
@@ -18,8 +23,8 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   auto walk_base = CR3_addr;
   auto walk_init_level = std::size(pscl);
   for (auto cache = std::begin(pscl); cache != std::end(pscl); ++cache) {
-    if (auto check_addr = cache->check_hit(handle_pkt.address); check_addr.has_value()) {
-      walk_base = check_addr.value();
+    if (auto check_addr = cache->check_hit({handle_pkt.v_address, 0}); check_addr.has_value()) {
+      walk_base = check_addr.value().ptw_addr;
       walk_init_level = std::distance(cache, std::end(pscl)) - 1;
     }
   }
@@ -64,7 +69,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     return true;
   } else {
     const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
-    pscl.at(pscl_idx).fill_cache(fill_mshr.v_address, fill_mshr.data);
+    pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data});
 
     return step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
   }
