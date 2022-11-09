@@ -52,7 +52,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
   int64_t stride = 0;
 
   // get boundaries of tracking set
-  auto set_begin = std::next(std::begin(trackers[this]), ip % TRACKER_SETS);
+  auto set_begin = std::next(std::begin(trackers[this]), (ip % TRACKER_SETS) * TRACKER_WAYS);
   auto set_end = std::next(set_begin, TRACKER_WAYS);
 
   // find the current ip within the set
