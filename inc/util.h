@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "msl/bits.h"
+#include "msl/lru_table.h"
 
 template <typename T>
 struct is_valid {
@@ -86,6 +87,7 @@ namespace champsim
   using msl::lg2;
   using msl::bitmask;
   using msl::splice_bits;
+  using msl::lru_table;
 
 template <typename T>
 class simple_lru_table
