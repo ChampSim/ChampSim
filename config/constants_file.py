@@ -9,8 +9,8 @@ def get_constants_file(env, pmem):
     retval += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**env)
     retval += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**env)
     retval += 'constexpr std::size_t NUM_CPUS = {num_cores};\n'.format(**env)
-    retval += 'constexpr auto LOG2_BLOCK_SIZE = lg2(BLOCK_SIZE);\n'
-    retval += 'constexpr auto LOG2_PAGE_SIZE = lg2(PAGE_SIZE);\n'
+    retval += 'constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);\n'
+    retval += 'constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);\n'
 
     retval += 'constexpr uint64_t DRAM_IO_FREQ = {io_freq};\n'.format(**pmem)
     retval += 'constexpr std::size_t DRAM_CHANNELS = {channels};\n'.format(**pmem)

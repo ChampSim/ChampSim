@@ -38,7 +38,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   packet.init_translation_level = walk_init_level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
+  return step_translation(champsim::splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
@@ -48,7 +48,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     std::cout << " address: " << std::hex << fill_mshr.address;
     std::cout << " v_address: " << fill_mshr.v_address;
     std::cout << " data: " << fill_mshr.data << std::dec;
-    std::cout << " pt_page offset: " << ((fill_mshr.data & bitmask(LOG2_PAGE_SIZE)) >> lg2(PTE_BYTES));
+    std::cout << " pt_page offset: " << ((fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES));
     std::cout << " translation_level: " << +fill_mshr.translation_level;
     std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
   }
