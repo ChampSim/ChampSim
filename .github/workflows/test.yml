@@ -1,0 +1,56 @@
+name: Run Tests
+
+on:
+  push:
+    branches: 
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/test.yml'
+
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/test.yml'
+
+jobs:
+  internal:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2.3.4
+
+    - name: Configure
+      run: ./config.sh
+
+    - name: Run tests
+      run: make test
+
+  output:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2.3.4
+
+    - name: Configure
+      run: ./config.sh
+
+    - name: Make
+      run: make
+
+    - name: Produce JSON
+      run: ./bin/champsim -w5000 -i5000 --json=test.json -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz
+
+    - name: Validate JSON
+      run: python3 -m json.tool test.json
+
