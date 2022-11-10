@@ -1,16 +1,23 @@
 #include "dram_controller.h"
 
 #include <algorithm>
-#include <iomanip>
-#include <numeric>
+#include <cfenv>
+#include <cmath>
 
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util.h"
 
+uint64_t cycles(double time, int io_freq)
+{
+  std::fesetround(FE_UPWARD);
+  auto result = std::lrint(time * io_freq / 1000);
+  return result < 0 ? 0 : result;
+}
+
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
-    : champsim::operable(freq_scale), tRP(std::ceil(t_rp * io_freq / 1000)), tRCD(std::ceil(t_rcd * io_freq / 1000)), tCAS(std::ceil(t_cas * io_freq / 1000)),
-      DRAM_DBUS_TURN_AROUND_TIME(std::ceil(turnaround * io_freq / 1000))
+    : champsim::operable(freq_scale), tRP(cycles(t_rp, io_freq)), tRCD(cycles(t_rcd, io_freq)), tCAS(cycles(t_cas, io_freq)),
+    DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround, io_freq))
 {
 }
 
