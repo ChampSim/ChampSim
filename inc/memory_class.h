@@ -30,6 +30,7 @@ public:
   bool translate_issued = false;
   bool prefetch_from_this = false;
   bool fill_this_level = false;
+  bool is_translated = true;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
 
@@ -55,6 +56,7 @@ public:
   virtual bool add_rq(const PACKET& packet) = 0;
   virtual bool add_wq(const PACKET& packet) = 0;
   virtual bool add_pq(const PACKET& packet) = 0;
+  virtual bool add_ptwq(const PACKET& packet) = 0;
   virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
   virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
 

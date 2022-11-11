@@ -51,7 +51,7 @@ std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64
   // this PTE doesn't yet have a mapping
   if (fault) {
     next_pte_page += page_size;
-    if (next_pte_page % PAGE_SIZE) {
+    if (!(next_pte_page % PAGE_SIZE)) {
       next_pte_page = ppage_free_list.front();
       ppage_free_list.pop_front();
     }

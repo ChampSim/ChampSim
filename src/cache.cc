@@ -306,6 +306,12 @@ void CACHE::operate()
       queues.WQ.pop_front();
   }
 
+  for (bool success = true; success && read_bw > 0 && !std::empty(queues.PTWQ) && queues.ptwq_has_ready(); --read_bw) {
+    success = handle_read(queues.PTWQ.front());
+    if (success)
+      queues.PTWQ.pop_front();
+  }
+
   for (bool success = true; success && read_bw > 0 && !std::empty(queues.RQ) && queues.rq_has_ready(); --read_bw) {
     success = handle_read(queues.RQ.front());
     if (success)
@@ -363,6 +369,17 @@ bool CACHE::add_wq(const PACKET& packet)
   return queues.add_wq(packet);
 }
 
+bool CACHE::add_ptwq(const PACKET& packet)
+{
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "_PTWQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
+              << " occupancy: " << std::size(queues.PTWQ) << " current_cycle: " << current_cycle;
+  }
+
+  return queues.add_ptwq(packet);
+}
+
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   sim_stats.back().pf_requested++;
@@ -376,7 +393,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
-  auto success = queues.add_pq(pf_packet);
+  auto success = this->add_pq(pf_packet);
   if (success)
     ++sim_stats.back().pf_issued;
   return success;
@@ -390,7 +407,7 @@ int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_le
 bool CACHE::add_pq(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << "[" << NAME << "_PQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
               << " occupancy: " << std::size(queues.PQ) << " current_cycle: " << current_cycle;
   }
