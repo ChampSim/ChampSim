@@ -69,6 +69,30 @@ TEMPLATE_TEST_CASE("A fixed-width counter can subtract in place", "", champsim::
   REQUIRE(lhs.value() == 0);
 }
 
+TEMPLATE_TEST_CASE("A fixed-width counter can multiply", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>) {
+  TestType lhs{2};
+  auto result = lhs * 2;
+  REQUIRE(result.value() == 4);
+}
+
+TEMPLATE_TEST_CASE("A fixed-width counter can multiply in place", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>) {
+  TestType lhs{2};
+  lhs *= 2;
+  REQUIRE(lhs.value() == 4);
+}
+
+TEMPLATE_TEST_CASE("A fixed-width counter can divide", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>) {
+  TestType lhs{4};
+  auto result = lhs / 2;
+  REQUIRE(result.value() == 2);
+}
+
+TEMPLATE_TEST_CASE("A fixed-width counter can divide in place", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>) {
+  TestType lhs{4};
+  lhs /= 2;
+  REQUIRE(lhs.value() == 2);
+}
+
 TEMPLATE_TEST_CASE("A fixed-width counter can add a negative number", "", champsim::msl::fwcounter<8>, champsim::msl::sfwcounter<8>) {
   TestType lhs{1};
   auto result = lhs + -1;
@@ -103,6 +127,12 @@ TEMPLATE_TEST_CASE("A fixed-width counter saturates with subtraction", "", champ
   TestType lhs{1};
   lhs -= 3*lhs.maximum;
   REQUIRE(lhs.value() == lhs.minimum);
+}
+
+TEMPLATE_TEST_CASE("A fixed-width counter saturates with multiplication", "", champsim::msl::fwcounter<2>, champsim::msl::sfwcounter<2>) {
+  TestType lhs{2};
+  lhs *= lhs.maximum;
+  REQUIRE(lhs.value() == lhs.maximum);
 }
 
 TEMPLATE_PRODUCT_TEST_CASE("A fixed-width counter is constructible by certian means", "",

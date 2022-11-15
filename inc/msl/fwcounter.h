@@ -34,12 +34,20 @@ class base_fwcounter
 
         base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
         base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
+        base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
+        base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
 
         template <typename Numeric>
         base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=  (Numeric);
 
         template <typename Numeric>
         base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=  (Numeric);
+
+        template <typename Numeric>
+        base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=  (Numeric);
+
+        template <typename Numeric>
+        base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=  (Numeric);
 
         bool is_max() const { return _value == maximum; }
         bool is_min() const { return _value == minimum; }
@@ -84,6 +92,22 @@ template <typename Numeric>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator-=(Numeric rhs)
 {
     _value = clamp(_value - rhs);
+    return *this;
+}
+
+template <typename val_type, val_type MAXVAL, val_type MINVAL>
+template <typename Numeric>
+base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator*=(Numeric rhs)
+{
+    _value = clamp(_value * rhs);
+    return *this;
+}
+
+template <typename val_type, val_type MAXVAL, val_type MINVAL>
+template <typename Numeric>
+base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator/=(Numeric rhs)
+{
+    _value = clamp(_value / rhs);
     return *this;
 }
 
@@ -136,6 +160,20 @@ template <typename vt, vt mxvl, vt mnvl, typename Numeric>
 base_fwcounter<vt, mxvl, mnvl> operator- (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
 {
     lhs -= rhs;
+    return lhs;
+}
+
+template <typename vt, vt mxvl, vt mnvl, typename Numeric>
+base_fwcounter<vt, mxvl, mnvl> operator* (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+{
+    lhs *= rhs;
+    return lhs;
+}
+
+template <typename vt, vt mxvl, vt mnvl, typename Numeric>
+base_fwcounter<vt, mxvl, mnvl> operator/ (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+{
+    lhs /= rhs;
     return lhs;
 }
 
