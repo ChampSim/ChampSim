@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "cache.h"
+#include "msl/bits.h"
 
 namespace
 {
@@ -93,7 +94,9 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match = std::find_if(s_set_begin, s_set_end, eq_addr<::SAMPLER_class>(full_addr, 8 + lg2(NUM_WAY)));
+    auto match = std::find_if(s_set_begin, s_set_end, [addr=full_addr, shamt=8+champsim::lg2(NUM_WAY)](auto x){
+        return x.valid && (x.address >> shamt) == (addr >> shamt);
+      });
     if (match != s_set_end) {
       uint32_t SHCT_idx = match->ip % ::SHCT_PRIME;
       if (::SHCT[std::make_pair(this, cpu)][SHCT_idx] > 0)

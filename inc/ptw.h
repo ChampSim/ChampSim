@@ -3,16 +3,32 @@
 
 #include <cassert>
 #include <deque>
-#include <map>
-#include <optional>
 #include <string>
 
 #include "memory_class.h"
 #include "operable.h"
+#include "util.h"
 #include "vmem.h"
 
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+  struct pscl_entry
+  {
+    uint64_t vaddr;
+    uint64_t ptw_addr;
+  };
+
+  struct pscl_idx
+  {
+    std::size_t shamt;
+    auto operator()(const pscl_entry &entry) const
+    {
+      return entry.vaddr >> shamt;
+    }
+  };
+
+  using pscl_type = champsim::lru_table<pscl_entry, pscl_idx, pscl_idx>;
+
 public:
   const std::string NAME;
   const uint32_t RQ_SIZE, MSHR_SIZE, MAX_READ, MAX_FILL;
@@ -23,13 +39,12 @@ public:
 
   uint64_t total_miss_latency = 0;
 
-  std::vector<champsim::simple_lru_table<uint64_t>> pscl;
+  std::vector<pscl_type> pscl;
   VirtualMemory& vmem;
 
   const uint64_t CR3_addr;
-  std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<champsim::simple_lru_table<uint64_t>>&& _pscl, uint32_t v10, uint32_t v11,
+  PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10, uint32_t v11,
                   uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
 
   // functions
