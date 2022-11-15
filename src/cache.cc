@@ -472,6 +472,9 @@ uint32_t CACHE::get_size(uint8_t queue_type, uint64_t)
     return queues.WQ_SIZE;
   else if (queue_type == 3)
     return queues.PQ_SIZE;
+  else if (queue_type == 4)
+    return queues.PTWQ_SIZE;
+
 
   return 0;
 }
