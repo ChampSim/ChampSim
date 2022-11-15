@@ -17,7 +17,7 @@ uint64_t cycles(double time, int io_freq)
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
     : champsim::operable(freq_scale), tRP(cycles(t_rp, io_freq)), tRCD(cycles(t_rcd, io_freq)), tCAS(cycles(t_cas, io_freq)),
-    DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround, io_freq))
+      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround, io_freq))
 {
 }
 
