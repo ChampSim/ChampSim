@@ -87,7 +87,12 @@ public:
   std::vector<stats_type> roi_stats, sim_stats;
 
   // instruction buffer
-  champsim::simple_lru_table<bool> DIB; //<bool> used here as placeholder. Data is not actually used.
+  struct dib_shift {
+    std::size_t shamt;
+    auto operator()(uint64_t val) const { return val >> shamt; }
+  };
+  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift>;
+  dib_type DIB;
 
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
@@ -161,12 +166,11 @@ public:
   const std::bitset<NUM_BRANCH_MODULES> bpred_type;
   const std::bitset<NUM_BTB_MODULES> btb_type;
 
-  O3_CPU(uint32_t cpu, double freq_scale, champsim::simple_lru_table<bool>&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size,
-         std::size_t dispatch_buffer_size, std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width,
-         unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width,
-         unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency,
-         MemoryRequestConsumer* l1i, unsigned l1i_bw, MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred_type,
-         std::bitset<NUM_BTB_MODULES> btb_type)
+  O3_CPU(uint32_t cpu, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
+         std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width, unsigned dispatch_width,
+         unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width, unsigned mispredict_penalty,
+         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, MemoryRequestConsumer* l1i, unsigned l1i_bw,
+         MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
       : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
