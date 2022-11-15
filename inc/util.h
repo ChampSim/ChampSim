@@ -84,10 +84,10 @@ struct ord_event_cycle {
 
 namespace champsim
 {
-  using msl::lg2;
-  using msl::bitmask;
-  using msl::splice_bits;
-  using msl::lru_table;
-}
+using msl::bitmask;
+using msl::lg2;
+using msl::lru_table;
+using msl::splice_bits;
+} // namespace champsim
 
 #endif

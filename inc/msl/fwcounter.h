@@ -9,64 +9,61 @@ namespace champsim::msl
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 class base_fwcounter
 {
-    protected:
-        val_type _value{};
+protected:
+  val_type _value{};
 
-        static val_type clamp(val_type val)
-        {
-            return std::clamp(val, MINVAL, MAXVAL);
-        }
+  static val_type clamp(val_type val) { return std::clamp(val, MINVAL, MAXVAL); }
 
-    public:
-        constexpr static val_type minimum = MINVAL;
-        constexpr static val_type maximum = MAXVAL;
+public:
+  constexpr static val_type minimum = MINVAL;
+  constexpr static val_type maximum = MAXVAL;
 
-        base_fwcounter() {}
-        explicit base_fwcounter(val_type value) : _value(std::move(value)) {}
+  base_fwcounter() {}
+  explicit base_fwcounter(val_type value) : _value(std::move(value)) {}
 
-        template <typename Numeric>
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator=(Numeric);
+  template <typename Numeric>
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator=(Numeric);
 
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator++();
-        base_fwcounter<val_type, MAXVAL, MINVAL>  operator++(int);
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator--();
-        base_fwcounter<val_type, MAXVAL, MINVAL>  operator--(int);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator++();
+  base_fwcounter<val_type, MAXVAL, MINVAL> operator++(int);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator--();
+  base_fwcounter<val_type, MAXVAL, MINVAL> operator--(int);
 
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=  (base_fwcounter<val_type, MAXVAL, MINVAL>);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=(base_fwcounter<val_type, MAXVAL, MINVAL>);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=(base_fwcounter<val_type, MAXVAL, MINVAL>);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=(base_fwcounter<val_type, MAXVAL, MINVAL>);
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=(base_fwcounter<val_type, MAXVAL, MINVAL>);
 
-        template <typename Numeric>
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=  (Numeric);
+  template <typename Numeric>
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator+=(Numeric);
 
-        template <typename Numeric>
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=  (Numeric);
+  template <typename Numeric>
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator-=(Numeric);
 
-        template <typename Numeric>
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=  (Numeric);
+  template <typename Numeric>
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator*=(Numeric);
 
-        template <typename Numeric>
-        base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=  (Numeric);
+  template <typename Numeric>
+  base_fwcounter<val_type, MAXVAL, MINVAL>& operator/=(Numeric);
 
-        bool is_max() const { return _value == maximum; }
-        bool is_min() const { return _value == minimum; }
+  bool is_max() const { return _value == maximum; }
+  bool is_min() const { return _value == minimum; }
 
-        //operator val_type const ();
-        val_type value() const { return _value; }
+  // operator val_type const ();
+  val_type value() const { return _value; }
 };
 
 /*
  * Unsigned template specialization
  */
 template <std::size_t WIDTH>
-using fwcounter = base_fwcounter<signed long long int, (1<<WIDTH)-1, 0>;
+using fwcounter = base_fwcounter<signed long long int, (1 << WIDTH) - 1, 0>;
 
 /*
  * Signed template specialization
  */
 template <std::size_t WIDTH>
-using sfwcounter = base_fwcounter<signed long long int, (1<<(WIDTH-1))-1, -(1<<(WIDTH-1))>;
+using sfwcounter = base_fwcounter<signed long long int, (1 << (WIDTH - 1)) - 1, -(1 << (WIDTH - 1))>;
 
 /*
  * Fundamental operations
@@ -83,32 +80,32 @@ template <typename val_type, val_type MAXVAL, val_type MINVAL>
 template <typename Numeric>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator+=(Numeric rhs)
 {
-    _value = clamp(_value + rhs);
-    return *this;
+  _value = clamp(_value + rhs);
+  return *this;
 }
 
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 template <typename Numeric>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator-=(Numeric rhs)
 {
-    _value = clamp(_value - rhs);
-    return *this;
+  _value = clamp(_value - rhs);
+  return *this;
 }
 
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 template <typename Numeric>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator*=(Numeric rhs)
 {
-    _value = clamp(_value * rhs);
-    return *this;
+  _value = clamp(_value * rhs);
+  return *this;
 }
 
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 template <typename Numeric>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator/=(Numeric rhs)
 {
-    _value = clamp(_value / rhs);
-    return *this;
+  _value = clamp(_value / rhs);
+  return *this;
 }
 
 /*
@@ -118,13 +115,13 @@ base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVA
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator++()
 {
-    return (*this += 1);
+  return (*this += 1);
 }
 
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVAL>::operator--()
 {
-    return (*this += 1);
+  return (*this += 1);
 }
 
 /*
@@ -134,89 +131,89 @@ template <typename val_type, val_type MAXVAL, val_type MINVAL>
 base_fwcounter<val_type, MAXVAL, MINVAL> base_fwcounter<val_type, MAXVAL, MINVAL>::operator++(int)
 {
   base_fwcounter<val_type, MAXVAL, MINVAL> result(*this);
-    operator++();
-    return result;
+  operator++();
+  return result;
 }
 
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 base_fwcounter<val_type, MAXVAL, MINVAL> base_fwcounter<val_type, MAXVAL, MINVAL>::operator--(int)
 {
   base_fwcounter<val_type, MAXVAL, MINVAL> result(*this);
-    operator--();
-    return result;
+  operator--();
+  return result;
 }
 
 /*
  * Binary arithmetic operators forward to the assignment operators of the same type
  */
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-base_fwcounter<vt, mxvl, mnvl> operator+ (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+base_fwcounter<vt, mxvl, mnvl> operator+(base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
 {
-    lhs += rhs;
-    return lhs;
+  lhs += rhs;
+  return lhs;
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-base_fwcounter<vt, mxvl, mnvl> operator- (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+base_fwcounter<vt, mxvl, mnvl> operator-(base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
 {
-    lhs -= rhs;
-    return lhs;
+  lhs -= rhs;
+  return lhs;
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-base_fwcounter<vt, mxvl, mnvl> operator* (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+base_fwcounter<vt, mxvl, mnvl> operator*(base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
 {
-    lhs *= rhs;
-    return lhs;
+  lhs *= rhs;
+  return lhs;
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-base_fwcounter<vt, mxvl, mnvl> operator/ (base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
+base_fwcounter<vt, mxvl, mnvl> operator/(base_fwcounter<vt, mxvl, mnvl> lhs, Numeric rhs)
 {
-    lhs /= rhs;
-    return lhs;
+  lhs /= rhs;
+  return lhs;
 }
 
 /*
  * Base comparators
  */
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-bool operator< (const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
+bool operator<(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return lhs.value() < rhs;
+  return lhs.value() < rhs;
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
 bool operator==(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return lhs.value() == rhs;
+  return lhs.value() == rhs;
 }
 
 /*
  * Other comparators forward to the bases
  */
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
-bool operator> (const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
+bool operator>(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return !(lhs == rhs || lhs < rhs);
+  return !(lhs == rhs || lhs < rhs);
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
 bool operator>=(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return !(lhs < rhs);
+  return !(lhs < rhs);
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
 bool operator<=(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return !(lhs > rhs);
+  return !(lhs > rhs);
 }
 
 template <typename vt, vt mxvl, vt mnvl, typename Numeric>
 bool operator!=(const base_fwcounter<vt, mxvl, mnvl>& lhs, Numeric rhs)
 {
-    return !(lhs == rhs);
+  return !(lhs == rhs);
 }
 
 /*
@@ -236,13 +233,13 @@ base_fwcounter<val_type, MAXVAL, MINVAL>& base_fwcounter<val_type, MAXVAL, MINVA
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-base_fwcounter<vt, mxvl, mnvl> operator+ (base_fwcounter<vt, mxvl, mnvl> lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+base_fwcounter<vt, mxvl, mnvl> operator+(base_fwcounter<vt, mxvl, mnvl> lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs + rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-base_fwcounter<vt, mxvl, mnvl> operator- (base_fwcounter<vt, mxvl, mnvl> lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+base_fwcounter<vt, mxvl, mnvl> operator-(base_fwcounter<vt, mxvl, mnvl> lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs - rhs.value();
 }
@@ -251,40 +248,40 @@ base_fwcounter<vt, mxvl, mnvl> operator- (base_fwcounter<vt, mxvl, mnvl> lhs, co
  * Comparison operators for two fwcounters forward to the value comparators
  */
 template <typename vt, vt mxvl, vt mnvl>
-bool operator< (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator<(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs < rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-bool operator> (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator>(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs > rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-bool operator<= (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator<=(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs <= rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-bool operator>= (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator>=(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs >= rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-bool operator== (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator==(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs == rhs.value();
 }
 
 template <typename vt, vt mxvl, vt mnvl>
-bool operator!= (const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
+bool operator!=(const base_fwcounter<vt, mxvl, mnvl>& lhs, const base_fwcounter<vt, mxvl, mnvl>& rhs)
 {
   return lhs != rhs.value();
 }
-}
+} // namespace champsim::msl
 
 #endif

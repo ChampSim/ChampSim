@@ -25,7 +25,10 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
 
 uint64_t VirtualMemory::shamt(uint32_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(page_size / PTE_BYTES) * (level); }
 
-uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const { return (vaddr >> shamt(level)) & champsim::bitmask(champsim::lg2(page_size / PTE_BYTES)); }
+uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
+{
+  return (vaddr >> shamt(level)) & champsim::bitmask(champsim::lg2(page_size / PTE_BYTES));
+}
 
 std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
