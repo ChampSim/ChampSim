@@ -7,7 +7,7 @@ SCENARIO("Cache queues issue translations in WQ") {
   GIVEN("A write queue with one item") {
     constexpr uint64_t hit_latency = 1;
     do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
@@ -51,7 +51,7 @@ SCENARIO("Cache queues issue translations in RQ") {
   GIVEN("A read queue with one item") {
     constexpr uint64_t hit_latency = 1;
     do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
@@ -95,7 +95,7 @@ SCENARIO("Cache queues issue translations in PQ") {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t hit_latency = 1;
     do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup

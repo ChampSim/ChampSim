@@ -63,7 +63,7 @@ void wq_to_wq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
@@ -86,7 +86,7 @@ void rq_to_rq()
 {
   GIVEN("A read queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
@@ -115,7 +115,7 @@ void wq_to_rq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
@@ -141,7 +141,7 @@ void pq_to_pq()
 {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP ul0{nullptr}, ul1{nullptr};
@@ -170,7 +170,7 @@ void wq_to_pq()
 {
   GIVEN("A write queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
