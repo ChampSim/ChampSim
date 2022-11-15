@@ -9,7 +9,28 @@
 
 namespace champsim::msl
 {
-  template <typename T, typename SetProj, typename TagProj>
+  namespace detail
+  {
+    template <typename T>
+    struct table_indexer
+    {
+      auto operator() (const T& t) const
+      {
+        return t.index();
+      }
+    };
+
+    template <typename T>
+    struct table_tagger
+    {
+      auto operator() (const T& t) const
+      {
+        return t.tag();
+      }
+    };
+  }
+
+  template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>>
   class lru_table
   {
     public:
