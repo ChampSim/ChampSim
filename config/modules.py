@@ -50,7 +50,7 @@ def get_module_variant(fname_key, impl_fname, rtype, join_op, args, varname, key
         retval += '  ' + rtype + ' result{};\n'
 
     # Discriminate between the module variants
-    retval += '\n'.join(('  if ({}[lg2({}{})]) {}{'+fname_key+'}({});').format(varname, keyprefix, k, joiner, ', '.join(a[1] for a in args), **p) for k,p in pref_data.items())
+    retval += '\n'.join(('  if ({}[champsim::lg2({}{})]) {}{'+fname_key+'}({});').format(varname, keyprefix, k, joiner, ', '.join(a[1] for a in args), **p) for k,p in pref_data.items())
     retval += '\n'
 
     # Return result
