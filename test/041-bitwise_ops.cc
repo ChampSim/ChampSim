@@ -4,13 +4,13 @@
 
 TEST_CASE("lg2 correctly identifies powers of 2") {
   auto i = GENERATE(range(0u,64u));
-  REQUIRE(lg2((1ull << i)) == i);
+  REQUIRE(champsim::lg2((1ull << i)) == i);
 }
 
 TEST_CASE("bitmask correctly produces lower-order bits") {
   auto i = GENERATE(range(0u, 64u));
-  REQUIRE(bitmask(i) < (1ull << i));
-  REQUIRE(std::bitset<64>{bitmask(i)}.count() == i);
+  REQUIRE(champsim::bitmask(i) < (1ull << i));
+  REQUIRE(std::bitset<64>{champsim::bitmask(i)}.count() == i);
 }
 
 class TriangularGenerator : public Catch::Generators::IGenerator<std::pair<unsigned, unsigned>> {
@@ -42,42 +42,42 @@ TEST_CASE("bitmask correctly produces slice masks") {
   auto i = GENERATE(Catch::Generators::GeneratorWrapper<std::pair<unsigned, unsigned>>(
         std::make_unique<TriangularGenerator>(64)
     ));
-  REQUIRE(bitmask(std::get<0>(i), std::get<1>(i)) < (1ull << std::get<0>(i)));
-  REQUIRE(std::bitset<64>{bitmask(std::get<0>(i), std::get<1>(i))}.count() == (std::get<0>(i) - std::get<1>(i)));
+  REQUIRE(champsim::bitmask(std::get<0>(i), std::get<1>(i)) < (1ull << std::get<0>(i)));
+  REQUIRE(std::bitset<64>{champsim::bitmask(std::get<0>(i), std::get<1>(i))}.count() == (std::get<0>(i) - std::get<1>(i)));
 }
 
 TEST_CASE("splice_bits performs correctly at the limits") {
   constexpr unsigned long long a{0xaaaaaaaaaaaaaaaa};
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
 
-  REQUIRE(splice_bits(a,b,64) == b);
-  REQUIRE(splice_bits(a,b,0) == a);
+  REQUIRE(champsim::splice_bits(a,b,64) == b);
+  REQUIRE(champsim::splice_bits(a,b,0) == a);
 }
 
 TEST_CASE("splice_bits performs correctly in the middle") {
   constexpr unsigned long long a{0xaaaaaaaaaaaaaaaa};
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
 
-  REQUIRE(splice_bits(a,b,8) == 0xaaaaaaaaaaaaaabb);
-  REQUIRE(splice_bits(a,b,16) == 0xaaaaaaaaaaaabbbb);
-  REQUIRE(splice_bits(a,b,32) == 0xaaaaaaaabbbbbbbb);
-  REQUIRE(splice_bits(a,0,8) == 0xaaaaaaaaaaaaaa00);
-  REQUIRE(splice_bits(a,0,16) == 0xaaaaaaaaaaaa0000);
-  REQUIRE(splice_bits(a,0,32) == 0xaaaaaaaa00000000);
-  REQUIRE(splice_bits(b,0,8) == 0xbbbbbbbbbbbbbb00);
-  REQUIRE(splice_bits(b,0,16) == 0xbbbbbbbbbbbb0000);
-  REQUIRE(splice_bits(b,0,32) == 0xbbbbbbbb00000000);
-  REQUIRE(splice_bits(0,b,8) == 0xbb);
-  REQUIRE(splice_bits(0,b,16) == 0xbbbb);
-  REQUIRE(splice_bits(0,b,32) == 0xbbbbbbbb);
+  REQUIRE(champsim::splice_bits(a,b,8) == 0xaaaaaaaaaaaaaabb);
+  REQUIRE(champsim::splice_bits(a,b,16) == 0xaaaaaaaaaaaabbbb);
+  REQUIRE(champsim::splice_bits(a,b,32) == 0xaaaaaaaabbbbbbbb);
+  REQUIRE(champsim::splice_bits(a,0,8) == 0xaaaaaaaaaaaaaa00);
+  REQUIRE(champsim::splice_bits(a,0,16) == 0xaaaaaaaaaaaa0000);
+  REQUIRE(champsim::splice_bits(a,0,32) == 0xaaaaaaaa00000000);
+  REQUIRE(champsim::splice_bits(b,0,8) == 0xbbbbbbbbbbbbbb00);
+  REQUIRE(champsim::splice_bits(b,0,16) == 0xbbbbbbbbbbbb0000);
+  REQUIRE(champsim::splice_bits(b,0,32) == 0xbbbbbbbb00000000);
+  REQUIRE(champsim::splice_bits(0,b,8) == 0xbb);
+  REQUIRE(champsim::splice_bits(0,b,16) == 0xbbbb);
+  REQUIRE(champsim::splice_bits(0,b,32) == 0xbbbbbbbb);
 }
 
 TEST_CASE("lg2 correctly identifies powers of 2 in a constexpr") {
-  STATIC_REQUIRE(lg2((1ull << 8)) == 8); // Sufficient to only test one, since the runtime check tests all
+  STATIC_REQUIRE(champsim::lg2((1ull << 8)) == 8); // Sufficient to only test one, since the runtime check tests all
 }
 
 TEST_CASE("bitmask correctly produces lower-bit masks in a constexpr") {
-  constexpr std::bitset<64> test_val{bitmask(8)};
+  constexpr std::bitset<64> test_val{champsim::bitmask(8)};
   STATIC_REQUIRE(test_val[0]);
   STATIC_REQUIRE(test_val[1]);
   STATIC_REQUIRE(test_val[2]);
@@ -89,7 +89,7 @@ TEST_CASE("bitmask correctly produces lower-bit masks in a constexpr") {
 }
 
 TEST_CASE("bitmask correctly produces slice masks in a constexpr") {
-  constexpr std::bitset<64> test_val{bitmask(8,2)};
+  constexpr std::bitset<64> test_val{champsim::bitmask(8,2)};
   STATIC_REQUIRE_FALSE(test_val[0]);
   STATIC_REQUIRE_FALSE(test_val[1]);
   STATIC_REQUIRE(test_val[2]);

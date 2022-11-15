@@ -124,7 +124,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     hit_block.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
@@ -218,7 +218,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
 
   // update prefetcher on load instructions and prefetches from upper levels
   if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
@@ -239,7 +239,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   bool bypass = (way == NUM_WAY);
   assert(handle_pkt.type != WRITE || !bypass);
 
-  auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   if (!bypass) {
     BLOCK& fill_block = block[set * NUM_WAY + way];
     if (fill_block.dirty) {
@@ -258,7 +258,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
         return false;
     }
 
-    auto evicting_address = (ever_seen_data ? fill_block.address : fill_block.v_address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    auto evicting_address = (ever_seen_data ? fill_block.address : fill_block.v_address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
     if (fill_block.prefetch)
       sim_stats.back().pf_useless++;
@@ -321,7 +321,7 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
+uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET))); }
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
 {
