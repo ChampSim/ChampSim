@@ -33,6 +33,17 @@ void issue_pq(Q &uut, PACKET pkt)
   uut._operate();
 }
 
+template <typename Q>
+void issue_pq_fill_this_level(Q &uut, PACKET pkt)
+{
+  // Issue it to the uut
+  pkt.fill_this_level = true;
+  auto result = uut.add_pq(pkt);
+  REQUIRE(result);
+
+  uut._operate();
+}
+
 template <typename Q, typename F>
 void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
 {
@@ -207,6 +218,33 @@ void pq_to_pq()
 }
 
 template <typename Q>
+void pq_to_pq_different_fill_levels()
+{
+  GIVEN("A prefetch queue with one item") {
+    constexpr uint64_t address = 0xdeadbeef;
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
+
+    // These are just here to give us pointers to MemoryRequestProducers
+    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+
+    // Turn off warmup
+    uut.warmup = false;
+    uut.begin_phase();
+
+    issue(uut, address, &ul0, issue_pq<decltype(uut)>);
+
+    WHEN("A packet with the same address but different fill level is sent") {
+      issue(uut, address, &ul1, issue_pq_fill_this_level<decltype(uut)>);
+
+      THEN("The two packets are merged and fill this level") {
+        REQUIRE(std::size(uut.PQ) == 1);
+        REQUIRE(uut.PQ.front().fill_this_level == true);
+      }
+    }
+  }
+}
+
+template <typename Q>
 void wq_to_pq()
 {
   GIVEN("A write queue with one item") {
@@ -262,6 +300,10 @@ SCENARIO("Translating cache queues forward WQ to RQ") {
 
 SCENARIO("Non-translating cache queues forward PQ to PQ") {
   pq_to_pq<CACHE::NonTranslatingQueues>();
+}
+
+SCENARIO("Non-translating cache queues forward PQ to PQ with different fill levels") {
+  pq_to_pq_different_fill_levels<CACHE::NonTranslatingQueues>();
 }
 
 SCENARIO("Translating cache queues forward PQ to PQ") {
