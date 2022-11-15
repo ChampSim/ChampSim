@@ -58,6 +58,19 @@ void issue(Q &uut, uint64_t seed_addr, F func)
   std::invoke(func, uut, seed);
 }
 
+template <typename Q, typename F>
+void issue_non_translated(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
+{
+  // Create a test packet
+  PACKET seed;
+  seed.address = seed_addr;
+  seed.v_address = seed_addr;
+  seed.cpu = 0;
+  seed.to_return = {ret};
+
+  std::invoke(func, uut, seed);
+}
+
 template <typename Q>
 void wq_to_wq()
 {
@@ -105,6 +118,34 @@ void rq_to_rq()
         REQUIRE(std::size(uut.RQ.front().to_return) == 2);
         REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
         REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
+      }
+    }
+  }
+}
+
+template <typename Q>
+void rq_phy_to_rq_virt()
+{
+  GIVEN("A read queue with one item") {
+    constexpr uint64_t address = 0xdeadbeef;
+    do_nothing_MRC mock_ll{2};
+    Q uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
+    uut.lower_level = &mock_ll;
+
+    // These are just here to give us pointers to MemoryRequestProducers
+    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+
+    // Turn off warmup
+    uut.warmup = false;
+    uut.begin_phase();
+
+    issue(uut, address, &ul0, issue_rq<decltype(uut)>);
+
+    WHEN("A packet with the same physical address but non translated is sent") {
+      issue_non_translated(uut, address, &ul1, issue_rq<decltype(uut)>);
+
+      THEN("The two packets are not merged") {
+        REQUIRE(std::size(uut.RQ) == 2);
       }
     }
   }
@@ -205,6 +246,10 @@ SCENARIO("Non-translating cache queues forward RQ to RQ") {
 
 SCENARIO("Translating cache queues forward RQ to RQ") {
   rq_to_rq<CACHE::TranslatingQueues>();
+}
+
+SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
+  rq_phy_to_rq_virt<CACHE::TranslatingQueues>();
 }
 
 SCENARIO("Non-translating cache queues forward WQ to RQ") {
