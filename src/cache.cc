@@ -125,7 +125,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     hit_block.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
@@ -172,7 +172,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     auto ret_copy = std::move(mshr_entry->to_return);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
-                   std::back_inserter(mshr_entry->instr_depend_on_me), [](ooo_model_instr& x, ooo_model_instr& y) { return x.instr_id < y.instr_id; });
+                   std::back_inserter(mshr_entry->instr_depend_on_me), ooo_model_instr::program_order);
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
                    std::back_inserter(mshr_entry->to_return));
 
@@ -191,7 +191,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     }
 
     if (should_activate_prefetcher(handle_pkt)) {
-      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
       mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
     }
   } else {
@@ -211,7 +211,7 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     fwd_pkt.prefetch_from_this = false;
 
     if (should_activate_prefetcher(handle_pkt)) {
-      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
       fwd_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
     }
 
@@ -252,7 +252,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
   bool bypass = (way == NUM_WAY);
   assert(handle_pkt.type != WRITE || !bypass);
 
-  auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  auto pkt_address = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   if (!bypass) {
     BLOCK& fill_block = block[set * NUM_WAY + way];
     if (fill_block.dirty) {
@@ -271,7 +271,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
         return false;
     }
 
-    auto evicting_address = (ever_seen_data ? fill_block.address : fill_block.v_address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    auto evicting_address = (ever_seen_data ? fill_block.address : fill_block.v_address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
     if (fill_block.prefetch)
       sim_stats.back().pf_useless++;
@@ -337,7 +337,7 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
+uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET))); }
 
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
 {
@@ -490,11 +490,11 @@ void CACHE::begin_phase()
   sim_stats.back().name = NAME;
 }
 
-void CACHE::end_phase(unsigned cpu)
+void CACHE::end_phase(unsigned finished_cpu)
 {
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    roi_stats.back().hits.at(type).at(cpu) = sim_stats.back().hits.at(type).at(cpu);
-    roi_stats.back().misses.at(type).at(cpu) = sim_stats.back().misses.at(type).at(cpu);
+    roi_stats.back().hits.at(type).at(finished_cpu) = sim_stats.back().hits.at(type).at(finished_cpu);
+    roi_stats.back().misses.at(type).at(finished_cpu) = sim_stats.back().misses.at(type).at(finished_cpu);
   }
 
   roi_stats.back().pf_requested = sim_stats.back().pf_requested;

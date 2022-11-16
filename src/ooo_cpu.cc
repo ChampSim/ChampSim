@@ -74,13 +74,13 @@ void O3_CPU::begin_phase()
   sim_stats.push_back(stats);
 }
 
-void O3_CPU::end_phase(unsigned cpu)
+void O3_CPU::end_phase(unsigned finished_cpu)
 {
   // Record where the phase ended (overwrite if this is later)
   sim_stats.back().end_instrs = num_retired;
   sim_stats.back().end_cycles = current_cycle;
 
-  if (cpu == this->cpu) {
+  if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
 
@@ -355,7 +355,7 @@ void O3_CPU::decode_instruction()
     throw champsim::deadlock{cpu};
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill_cache(instr.ip, true); }
+void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
 
 void O3_CPU::dispatch_instruction()
 {
