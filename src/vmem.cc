@@ -8,8 +8,7 @@
 #include "champsim_constants.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_penalty,
-                             MEMORY_CONTROLLER& dram)
+VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : ppage_free_list(((1ull << (paddr_bits - LOG2_PAGE_SIZE)) - (VMEM_RESERVE_CAPACITY / PAGE_SIZE)), PAGE_SIZE), minor_fault_penalty(minor_penalty),
       pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {

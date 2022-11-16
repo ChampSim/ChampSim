@@ -86,8 +86,8 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, std::vector<int>& prefetch_delta, std::vector<uint32_t>& confidence_q, uint32_t&lookahead_way,
-                                                                       uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
+  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, std::vector<int>&prefetch_delta, std::vector<uint32_t>&confidence_q,
+                                                                       uint32_t&lookahead_way, uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
 };
 
 class PREFETCH_FILTER
@@ -139,6 +139,6 @@ public:
   void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
   uint32_t check_entry(uint32_t page_offset);
 };
-} // namespace
+} // namespace spp
 
 #endif

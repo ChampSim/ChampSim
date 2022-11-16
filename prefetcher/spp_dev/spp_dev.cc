@@ -4,10 +4,10 @@
 
 namespace
 {
-  spp::SIGNATURE_TABLE ST;
-  spp::PATTERN_TABLE PT;
-  spp::PREFETCH_FILTER FILTER;
-  spp::GLOBAL_REGISTER GHR;
+spp::SIGNATURE_TABLE ST;
+spp::PATTERN_TABLE PT;
+spp::PREFETCH_FILTER FILTER;
+spp::GLOBAL_REGISTER GHR;
 } // namespace
 
 void CACHE::prefetcher_initialize()
@@ -171,7 +171,7 @@ uint64_t get_hash(uint64_t key)
 
   return key;
 }
-} // namespace
+} // namespace spp
 
 void spp::SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
 {
@@ -351,8 +351,8 @@ void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
   }
 }
 
-void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<int>& delta_q, std::vector<uint32_t>& confidence_q, uint32_t& lookahead_way, uint32_t& lookahead_conf,
-                                   uint32_t& pf_q_tail, uint32_t& depth)
+void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<int>& delta_q, std::vector<uint32_t>& confidence_q, uint32_t& lookahead_way,
+                                      uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
   uint32_t set = get_hash(curr_sig) % spp::PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;

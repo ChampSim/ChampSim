@@ -54,7 +54,7 @@ void tracereader::refresh_buffer()
   // Inflate trace format into core model instructions
   auto begin = std::begin(trace_read_buf);
   auto end = std::next(begin, bytes_read / sizeof(T));
-  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu=this->cpu](T t) { return ooo_model_instr{cpu, t}; });
+  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
 
   // Set branch targets
   for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
