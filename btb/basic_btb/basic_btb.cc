@@ -38,7 +38,7 @@ struct btb_entry_t {
 
 std::map<O3_CPU*, std::array<btb_entry_t, BTB_SET * BTB_WAY>> BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
-std::map<O3_CPU*, std::bitset<lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
+std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 /*
  * The following structure identifies the size of call instructions so we can

@@ -50,7 +50,7 @@ def get_module_variant(fname_key, impl_fname, rtype, join_op, args, varname, key
         retval += '  ' + rtype + ' result{};\n'
 
     # Discriminate between the module variants
-    retval += '\n'.join(('  if ({}[lg2({}{})]) {}{'+fname_key+'}({});').format(varname, keyprefix, k, joiner, ', '.join(a[1] for a in args), **p) for k,p in pref_data.items())
+    retval += '\n'.join(('  if ({}[champsim::lg2({}{})]) {}{'+fname_key+'}({});').format(varname, keyprefix, k, joiner, ', '.join(a[1] for a in args), **p) for k,p in pref_data.items())
     retval += '\n'
 
     # Return result
@@ -212,8 +212,8 @@ def get_repl_data(module_name):
 
 repl_variant_data = {
         'init_func_name': ('impl_replacement_initialize', 'void', '', tuple()),
-        'find_victim_func_name': ('impl_replacement_find_victim', 'uint32_t', '=', (('uint32_t','cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type'))),
-        'update_func_name': ('impl_replacement_update_state', 'void', '', (('uint32_t','cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit'))),
+        'find_victim_func_name': ('impl_replacement_find_victim', 'uint32_t', '=', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type'))),
+        'update_func_name': ('impl_replacement_update_state', 'void', '', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit'))),
         'final_func_name': ('impl_replacement_final_stats', 'void', '', tuple())
         }
 

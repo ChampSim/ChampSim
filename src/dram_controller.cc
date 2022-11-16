@@ -1,16 +1,23 @@
 #include "dram_controller.h"
 
 #include <algorithm>
-#include <iomanip>
-#include <numeric>
+#include <cfenv>
+#include <cmath>
 
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util.h"
 
+uint64_t cycles(double time, int io_freq)
+{
+  std::fesetround(FE_UPWARD);
+  auto result = std::lrint(time * io_freq / 1000);
+  return result < 0 ? 0 : result;
+}
+
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
-    : champsim::operable(freq_scale), tRP(std::ceil(t_rp * io_freq / 1000)), tRCD(std::ceil(t_rcd * io_freq / 1000)), tCAS(std::ceil(t_cas * io_freq / 1000)),
-      DRAM_DBUS_TURN_AROUND_TIME(std::ceil(turnaround * io_freq / 1000))
+    : champsim::operable(freq_scale), tRP(cycles(t_rp, io_freq)), tRCD(cycles(t_rcd, io_freq)), tCAS(cycles(t_cas, io_freq)),
+      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround, io_freq))
 {
 }
 
@@ -169,7 +176,7 @@ void DRAM_CHANNEL::check_collision()
       eq_addr<PACKET> checker{wq_it->address, LOG2_BLOCK_SIZE};
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         *wq_it = {};
-      } else if (auto found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
+      } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
         *wq_it = {};
       } else {
         wq_it->forward_checked = true;
@@ -196,7 +203,7 @@ void DRAM_CHANNEL::check_collision()
                        std::back_inserter(found->to_return));
 
         *rq_it = {};
-      } else if (auto found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
+      } else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
         auto instr_copy = std::move(found->instr_depend_on_me);
         auto ret_copy = std::move(found->to_return);
 
@@ -256,31 +263,31 @@ bool MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address)
 {
   int shift = LOG2_BLOCK_SIZE;
-  return (address >> shift) & bitmask(lg2(DRAM_CHANNELS));
+  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address)
 {
-  int shift = lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & bitmask(lg2(DRAM_BANKS));
+  int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_BANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address)
 {
-  int shift = lg2(DRAM_BANKS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & bitmask(lg2(DRAM_COLUMNS));
+  int shift = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_COLUMNS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address)
 {
-  int shift = lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & bitmask(lg2(DRAM_RANKS));
+  int shift = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_RANKS));
 }
 
 uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 {
-  int shift = lg2(DRAM_RANKS) + lg2(DRAM_BANKS) + lg2(DRAM_COLUMNS) + lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & bitmask(lg2(DRAM_ROWS));
+  int shift = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_ROWS));
 }
 
 uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
