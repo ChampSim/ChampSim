@@ -172,7 +172,7 @@ void PageTableWalker::return_data(const PACKET& packet)
   std::sort(std::begin(MSHR), std::end(MSHR), ord_event_cycle<PACKET>{});
 }
 
-uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
@@ -181,7 +181,7 @@ uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;

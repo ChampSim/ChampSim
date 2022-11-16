@@ -290,7 +290,7 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_ROWS));
 }
 
-uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
+std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
 {
   uint32_t channel = dram_get_channel(address);
   if (queue_type == 1)
@@ -303,7 +303,7 @@ uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
   return 0;
 }
 
-uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
+std::size_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
 {
   uint32_t channel = dram_get_channel(address);
   if (queue_type == 1)

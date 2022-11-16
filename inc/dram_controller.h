@@ -68,8 +68,8 @@ public:
   bool add_wq(const PACKET& packet) override final;
   bool add_pq(const PACKET& packet) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   std::size_t size() const;
 

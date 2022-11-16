@@ -163,8 +163,8 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   uint32_t get_set(uint64_t address);
   uint32_t get_way(uint64_t address, uint32_t set);

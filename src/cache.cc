@@ -431,10 +431,10 @@ void CACHE::return_data(const PACKET& packet)
   std::iter_swap(mshr_entry, first_unreturned);
 }
 
-uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
+std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+    return std::size(MSHR);
   else if (queue_type == 1)
     return std::size(queues.RQ);
   else if (queue_type == 2)
@@ -445,7 +445,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-uint32_t CACHE::get_size(uint8_t queue_type, uint64_t)
+std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;
