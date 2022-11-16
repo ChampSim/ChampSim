@@ -17,12 +17,12 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
     uint64_t ptw_addr;
   };
 
-  struct pscl_idx {
+  struct pscl_indexer {
     std::size_t shamt;
     auto operator()(const pscl_entry& entry) const { return entry.vaddr >> shamt; }
   };
 
-  using pscl_type = champsim::lru_table<pscl_entry, pscl_idx, pscl_idx>;
+  using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
 
 public:
   const std::string NAME;

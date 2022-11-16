@@ -12,11 +12,8 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
-  uint64_t total_branch = 0, total_mispredictions = 0;
-  for (auto type : types) {
-    total_branch += stats.total_branch_types[type.second];
-    total_mispredictions += stats.branch_type_misses[type.second];
-  }
+  auto total_mispredictions =
+      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; });
 
   stream << indent() << "{" << std::endl;
   ++indent_level;
