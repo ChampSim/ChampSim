@@ -419,11 +419,11 @@ void CACHE::begin_phase()
   sim_stats.back().name = NAME;
 }
 
-void CACHE::end_phase(unsigned cpu)
+void CACHE::end_phase(unsigned finished_cpu)
 {
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    roi_stats.back().hits.at(type).at(cpu) = sim_stats.back().hits.at(type).at(cpu);
-    roi_stats.back().misses.at(type).at(cpu) = sim_stats.back().misses.at(type).at(cpu);
+    roi_stats.back().hits.at(type).at(finished_cpu) = sim_stats.back().hits.at(type).at(finished_cpu);
+    roi_stats.back().misses.at(type).at(finished_cpu) = sim_stats.back().misses.at(type).at(finished_cpu);
   }
 
   roi_stats.back().pf_requested = sim_stats.back().pf_requested;

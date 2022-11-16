@@ -176,7 +176,7 @@ void DRAM_CHANNEL::check_collision()
       eq_addr<PACKET> checker{wq_it->address, LOG2_BLOCK_SIZE};
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         *wq_it = {};
-      } else if (auto found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
+      } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
         *wq_it = {};
       } else {
         wq_it->forward_checked = true;
@@ -203,7 +203,7 @@ void DRAM_CHANNEL::check_collision()
                        std::back_inserter(found->to_return));
 
         *rq_it = {};
-      } else if (auto found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
+      } else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
         auto instr_copy = std::move(found->instr_depend_on_me);
         auto ret_copy = std::move(found->to_return);
 

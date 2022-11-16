@@ -132,7 +132,7 @@ TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
         REQUIRE_FALSE(result.has_value());
       }
 
-      THEN("A check to the second-added element misses") {
+      THEN("A check to the second-added element hits") {
         auto result = uut.check_hit({data+1});
 
         REQUIRE(result.has_value());
