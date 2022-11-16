@@ -42,7 +42,7 @@ void CACHE::initialize_replacement()
 }
 
 // called on every cache hit and cache fill
-void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   // do not update replacement state for writebacks
@@ -58,12 +58,12 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   }
 
   // cache miss
-  auto begin = std::next(std::begin(::rand_sets[this]), cpu * ::NUM_POLICY * ::SDM_SIZE);
+  auto begin = std::next(std::begin(::rand_sets[this]), triggering_cpu * ::NUM_POLICY * ::SDM_SIZE);
   auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
   if (leader == end) {                                     // follower sets
-    if (::PSEL[std::make_pair(this, cpu)] > ::PSEL_THRS) { // follow BIP
+    if (::PSEL[std::make_pair(this, triggering_cpu)] > ::PSEL_THRS) { // follow BIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
       ::bip_counter[this]++;
@@ -75,8 +75,8 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     }
   } else if (leader == begin) { // leader 0: BIP
-    if (::PSEL[std::make_pair(this, cpu)] > 0)
-      ::PSEL[std::make_pair(this, cpu)]--;
+    if (::PSEL[std::make_pair(this, triggering_cpu)] > 0)
+      ::PSEL[std::make_pair(this, triggering_cpu)]--;
     ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
     ::bip_counter[this]++;
@@ -85,14 +85,14 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     if (::bip_counter[this] == 0)
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
   } else if (leader == std::next(begin)) { // leader 1: SRRIP
-    if (::PSEL[std::make_pair(this, cpu)] < ::PSEL_MAX)
-      ::PSEL[std::make_pair(this, cpu)]++;
+    if (::PSEL[std::make_pair(this, triggering_cpu)] < ::PSEL_MAX)
+      ::PSEL[std::make_pair(this, triggering_cpu)]++;
     ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
   }
 }
 
 // find replacement victim
-uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(::rrpv[this]), set * NUM_WAY);

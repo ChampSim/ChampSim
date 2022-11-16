@@ -3,8 +3,9 @@
 
 #include <cstdint>
 #include <iostream>
+#include <vector>
 
-namespace
+namespace spp
 {
 // SPP functional knobs
 constexpr bool LOOKAHEAD_ON = true;
@@ -85,7 +86,7 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, int*prefetch_delta, uint32_t*confidence_q, uint32_t&lookahead_way,
+  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, std::vector<int>& prefetch_delta, std::vector<uint32_t>& confidence_q, uint32_t&lookahead_way,
                                                                        uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
 };
 

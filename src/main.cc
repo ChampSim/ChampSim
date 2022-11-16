@@ -33,8 +33,8 @@ void signal_handler(int signal)
 }
 
 template <typename CPU, typename C, typename D>
-std::vector<champsim::phase_stats> zip_phase_stats(const std::vector<champsim::phase_info>& phases, const std::vector<CPU>& ooo_cpu,
-                                                   const std::vector<C>& caches, const D& dram)
+std::vector<champsim::phase_stats> zip_phase_stats(const std::vector<champsim::phase_info>& phases, const std::vector<CPU>& cpus,
+                                                   const std::vector<C>& cache_list, const D& dram)
 {
   std::vector<champsim::phase_stats> retval;
 
@@ -45,13 +45,13 @@ std::vector<champsim::phase_stats> zip_phase_stats(const std::vector<champsim::p
       stats.name = phases.at(i).name;
       stats.trace_names = phases.at(i).trace_names;
 
-      std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.sim_cpu_stats), [i](const O3_CPU& cpu) { return cpu.sim_stats.at(i); });
-      std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats),
+      std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [i](const O3_CPU& cpu) { return cpu.sim_stats.at(i); });
+      std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.sim_cache_stats),
                      [i](const CACHE& cache) { return cache.sim_stats.at(i); });
       std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
                      [i](const DRAM_CHANNEL& chan) { return chan.sim_stats.at(i); });
-      std::transform(std::begin(ooo_cpu), std::end(ooo_cpu), std::back_inserter(stats.roi_cpu_stats), [i](const O3_CPU& cpu) { return cpu.roi_stats.at(i); });
-      std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats),
+      std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [i](const O3_CPU& cpu) { return cpu.roi_stats.at(i); });
+      std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.roi_cache_stats),
                      [i](const CACHE& cache) { return cache.roi_stats.at(i); });
       std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
                      [i](const DRAM_CHANNEL& chan) { return chan.roi_stats.at(i); });
