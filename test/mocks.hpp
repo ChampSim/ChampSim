@@ -23,7 +23,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 
   public:
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), latency(latency) {}
+    do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
@@ -67,7 +67,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
   }
 
   public:
-    filter_MRC(uint64_t ret_addr_, uint64_t latency) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(latency) {}
+    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {

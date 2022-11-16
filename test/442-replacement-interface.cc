@@ -122,10 +122,10 @@ SCENARIO("The replacement policy is triggered on a hit") {
 
     WHEN("A packet with the same address is issued") {
       test::replacement_update_state_collector[&uut].clear();
-      auto test_result = mock_ul.issue(test);
+      auto repeat_test_result = mock_ul.issue(test);
 
       THEN("The issue is received") {
-        REQUIRE(test_result);
+        REQUIRE(repeat_test_result);
       }
 
       // Run the uut for a bunch of cycles to fill the cache
