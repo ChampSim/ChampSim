@@ -8,7 +8,7 @@
 #include <array>
 
 SCENARIO("The page table steps have correct offsets") {
-  auto level = GENERATE(1,2,3,4);
+  auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
