@@ -37,8 +37,8 @@ struct cpu_stats {
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
-  std::array<uint64_t, 8> total_branch_types = {};
-  std::array<uint64_t, 8> branch_type_misses = {};
+  std::array<long long, 8> total_branch_types = {};
+  std::array<long long, 8> branch_type_misses = {};
 
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }

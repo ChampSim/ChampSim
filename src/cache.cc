@@ -321,19 +321,19 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET))); }
+uint64_t CACHE::get_set(uint64_t address) { return (address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET)); }
 
-uint32_t CACHE::get_way(uint64_t address, uint32_t set)
+uint64_t CACHE::get_way(uint64_t address, uint64_t set)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
   return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
 }
 
-int CACHE::invalidate_entry(uint64_t inval_addr)
+uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
-  uint32_t set = get_set(inval_addr);
-  uint32_t way = get_way(inval_addr, set);
+  auto set = get_set(inval_addr);
+  auto way = get_way(inval_addr, set);
 
   if (way < NUM_WAY)
     block[set * NUM_WAY + way].valid = 0;

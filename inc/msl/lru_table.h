@@ -33,19 +33,21 @@ private:
     uint64_t last_used = 0;
     value_type data;
   };
+  using block_vec_type = std::vector<block_t>;
 
   SetProj set_projection;
   TagProj tag_projection;
 
   const std::size_t NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
-  std::vector<block_t> block{NUM_SET * NUM_WAY};
+  block_vec_type block{NUM_SET * NUM_WAY};
 
   auto get_set_span(const value_type& elem)
   {
-    auto set_idx = set_projection(elem) & bitmask(lg2(NUM_SET));
-    auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-    auto set_end = std::next(set_begin, NUM_WAY);
+    using diff_type = typename block_vec_type::difference_type;
+    auto set_idx = static_cast<diff_type>(set_projection(elem) & bitmask(lg2(NUM_SET)));
+    auto set_begin = std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY));
+    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
     return std::pair{set_begin, set_end};
   }
 

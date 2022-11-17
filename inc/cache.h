@@ -167,10 +167,10 @@ public:
   std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
-  uint32_t get_set(uint64_t address);
-  uint32_t get_way(uint64_t address, uint32_t set);
+  uint64_t get_set(uint64_t address);
+  uint64_t get_way(uint64_t address, uint64_t set);
 
-  int invalidate_entry(uint64_t inval_addr);
+  uint64_t invalidate_entry(uint64_t inval_addr);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
@@ -190,7 +190,7 @@ public:
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, unsigned offset_bits,
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, unsigned offset_bits,
         bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, NonTranslatingQueues& queue_set, MemoryRequestConsumer* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), FILL_LATENCY(fill_lat),

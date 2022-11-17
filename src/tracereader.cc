@@ -41,11 +41,11 @@ void tracereader::refresh_buffer()
 #ifdef __GNUG__
   std::istream trace_file{&filebuf};
   trace_file.read(std::data(raw_buf), std::size(raw_buf));
-  bytes_read = trace_file.gcount();
+  bytes_read = static_cast<std::size_t>(trace_file.gcount());
   eof_ = trace_file.eof();
 #else
   bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-  eof_ = (bytes_left > 0);
+  eof_ = (bytes_read > 0);
 #endif
 
   // Transform bytes into trace format instructions

@@ -1,5 +1,7 @@
 #include "ptw.h"
 
+#include <numeric>
+
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
@@ -20,30 +22,27 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
 
 bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 {
-  auto walk_base = CR3_addr;
-  auto walk_init_level = std::size(pscl);
-  for (auto cache = std::begin(pscl); cache != std::end(pscl); ++cache) {
-    if (auto check_addr = cache->check_hit({handle_pkt.v_address, 0}); check_addr.has_value()) {
-      walk_base = check_addr.value().ptw_addr;
-      walk_init_level = std::distance(cache, std::end(pscl)) - 1;
-    }
-  }
-  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init_level + 1) * PTE_BYTES;
+  pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
+  std::vector<std::optional<pscl_entry>> pscl_hits;
+  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x){ return x.check_hit(walk_init); });
+  walk_init = std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
+
+  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level + 1) * PTE_BYTES;
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-    std::cout << " address: " << std::hex << walk_base;
+    std::cout << " address: " << std::hex << walk_init.vaddr;
     std::cout << " v_address: " << handle_pkt.v_address << std::dec;
     std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
-    std::cout << " translation_level: " << +walk_init_level << std::endl;
+    std::cout << " translation_level: " << +walk_init.level << std::endl;
   }
 
   PACKET packet = handle_pkt;
   packet.v_address = handle_pkt.address;
-  packet.init_translation_level = walk_init_level;
+  packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(champsim::splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
+  return step_translation(champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
@@ -69,7 +68,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     return true;
   } else {
     const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
-    pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data});
+    pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
 
     return step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
   }

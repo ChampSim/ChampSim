@@ -172,7 +172,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     }
 
     WHEN("A packet is issued") {
-      auto id = 0;
+      uint64_t id = 0;
       PACKET seed;
       seed.address = 0xdeadbeef;
       seed.v_address = 0xdeadbeef;

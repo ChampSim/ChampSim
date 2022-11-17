@@ -26,7 +26,7 @@ SCENARIO("The read queue respects the read bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    static auto id = 1;
+    static uint64_t id = 1;
     uint64_t seed_addr = 0xdeadbeef;
     std::array<PACKET, 2*read_bandwidth> seeds;
     for (auto &pkt : seeds) {
@@ -96,7 +96,7 @@ SCENARIO("The prefetch queue respects the read bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    static auto id = 1;
+    static uint64_t id = 1;
     uint64_t seed_addr = 0xdeadbeef;
     std::array<PACKET, 2*read_bandwidth> seeds;
     for (auto &pkt : seeds) {

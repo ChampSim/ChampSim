@@ -620,7 +620,7 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  for (int l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
+  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {

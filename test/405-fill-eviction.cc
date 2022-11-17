@@ -31,7 +31,7 @@ SCENARIO("A cache evicts a block when required") {
         elem->_operate();
 
     WHEN("A packet is sent") {
-      auto id = 1;
+      uint64_t id = 1;
       PACKET test_a;
       test_a.address = 0xdeadbeef;
       test_a.cpu = 0;
