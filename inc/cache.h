@@ -77,14 +77,14 @@ public:
     std::deque<PACKET> RQ, PQ, WQ;
     const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE;
     const uint64_t HIT_LATENCY;
-    const std::size_t OFFSET_BITS;
+    const unsigned OFFSET_BITS;
     const bool match_offset_bits;
 
     using stats_type = cache_queue_stats;
 
     std::vector<stats_type> sim_stats, roi_stats;
 
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, std::size_t offset_bits,
+    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, unsigned offset_bits,
                          bool match_offset)
         : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits),
           match_offset_bits(match_offset)
@@ -134,7 +134,8 @@ public:
   uint32_t cpu = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
-  const uint32_t FILL_LATENCY, OFFSET_BITS;
+  const uint32_t FILL_LATENCY;
+  const unsigned OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   const uint32_t MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
@@ -163,13 +164,13 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
-  uint32_t get_set(uint64_t address) const;
-  uint32_t get_way(uint64_t address, uint32_t set) const;
+  uint64_t get_set(uint64_t address) const;
+  uint64_t get_way(uint64_t address, uint64_t set) const;
 
-  int invalidate_entry(uint64_t inval_addr);
+  uint64_t invalidate_entry(uint64_t inval_addr);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
@@ -185,7 +186,7 @@ public:
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, uint32_t v2, int v3, uint32_t v8, uint32_t fill_lat, uint32_t max_tag, uint32_t max_fill, std::size_t offset_bits,
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint32_t fill_lat, uint32_t max_tag, uint32_t max_fill, unsigned offset_bits,
         bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, NonTranslatingQueues& queues, MemoryRequestConsumer* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), FILL_LATENCY(fill_lat),

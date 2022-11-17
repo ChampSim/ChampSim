@@ -72,10 +72,10 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
           elem->_operate();
 
       THEN("The PSCLs contain the request's address") {
-        CHECK(uut.pscl.at(0).check_hit({test.address, 0}).has_value());
-        CHECK(uut.pscl.at(1).check_hit({test.address, 0}).has_value());
-        CHECK(uut.pscl.at(2).check_hit({test.address, 0}).has_value());
-        CHECK(uut.pscl.at(3).check_hit({test.address, 0}).has_value());
+        CHECK(uut.pscl.at(0).check_hit({test.address, 0, 4}).has_value());
+        CHECK(uut.pscl.at(1).check_hit({test.address, 0, 3}).has_value());
+        CHECK(uut.pscl.at(2).check_hit({test.address, 0, 2}).has_value());
+        CHECK(uut.pscl.at(3).check_hit({test.address, 0, 1}).has_value());
       }
     }
   }

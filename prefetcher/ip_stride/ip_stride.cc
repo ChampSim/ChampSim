@@ -33,7 +33,8 @@ void CACHE::prefetcher_cycle_operate()
 {
   // If a lookahead is active
   if (auto [old_pf_address, stride, degree] = ::lookahead[this]; degree > 0) {
-    auto pf_address = old_pf_address + (stride << LOG2_BLOCK_SIZE);
+    auto addr_delta = stride * BLOCK_SIZE;
+    auto pf_address = static_cast<uint64_t>(static_cast<int64_t>(old_pf_address) + addr_delta); // cast to signed to allow negative strides
 
     // If the next step would exceed the degree or run off the page, stop
     if (virtual_prefetch || (pf_address >> LOG2_PAGE_SIZE) == (old_pf_address >> LOG2_PAGE_SIZE)) {

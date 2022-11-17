@@ -5,10 +5,11 @@
 #include <iostream>
 #include <numeric>
 
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, uint32_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
+VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : ppage_free_list(((1ull << (paddr_bits - LOG2_PAGE_SIZE)) - (VMEM_RESERVE_CAPACITY / PAGE_SIZE)), PAGE_SIZE), minor_fault_penalty(minor_penalty),
       pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
@@ -22,9 +23,9 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
   std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
 }
 
-uint64_t VirtualMemory::shamt(uint32_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level); }
+uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
 
-uint64_t VirtualMemory::get_offset(uint64_t vaddr, uint32_t level) const
+uint64_t VirtualMemory::get_offset(uint64_t vaddr, std::size_t level) const
 {
   return (vaddr >> shamt(level)) & champsim::bitmask(champsim::lg2(pte_page_size / PTE_BYTES));
 }
@@ -40,14 +41,14 @@ std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t
   return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
 }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, uint32_t level)
+std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
 {
   if (next_pte_page == 0) {
     next_pte_page = ppage_free_list.front();
     ppage_free_list.pop_front();
   }
 
-  std::tuple key{cpu_num, vaddr >> shamt(level + 1), level};
+  std::tuple key{cpu_num, vaddr >> shamt(level), level};
   auto [ppage, fault] = page_table.insert({key, next_pte_page});
 
   // this PTE doesn't yet have a mapping
@@ -59,5 +60,15 @@ std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64
     }
   }
 
-  return {champsim::splice_bits(ppage->second, get_offset(vaddr, level) * PTE_BYTES, champsim::lg2(pte_page_size)), fault ? minor_fault_penalty : 0};
+  auto offset = get_offset(vaddr, level);
+  auto paddr = champsim::splice_bits(ppage->second, offset * PTE_BYTES, champsim::lg2(pte_page_size));
+  if constexpr (champsim::debug_print) {
+    std::cout << "[VMEM] " << __func__;
+    std::cout << " paddr: " << std::hex << paddr;
+    std::cout << " vaddr: " << vaddr << std::dec;
+    std::cout << " pt_page offset: " << offset;
+    std::cout << " translation_level: " << level << std::endl;
+  }
+
+  return {paddr, fault ? minor_fault_penalty : 0};
 }

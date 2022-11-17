@@ -40,7 +40,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
 
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
-      static auto id = 1;
+      static uint64_t id = 1;
       PACKET test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
