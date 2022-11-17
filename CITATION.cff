@@ -1,0 +1,34 @@
+authors:
+  - family-names: Gober
+    given-names: Nathan
+  - family-names: Chacon
+    given-names: Gino
+  - family-names: Pugsley
+    given-names: Seth
+  - family-names: Kim
+    given-names: Jinchun
+cff-version: 1.2.0
+title: "ChampSim"
+message: "If you use this software, please cite this article to support its continued development."
+preferred-citation:
+  authors:
+    - family-names: Gober
+      given-names: Nathan
+    - family-names: Chacon
+      given-names: Gino
+    - family-names: Wang
+      given-names: Lei
+    - family-names: Gratz
+      given-names: Paul V.
+    - family-names: Jimenez
+      given-names: Daniel A.
+    - family-names: Teran
+      given-names: Elvira
+    - family-names: Pugsley
+      given-names: Seth
+    - family-names: Kim
+      given-names: Jinchun
+  title: "The Championship Simulator: Architectural Simulation for Education and Competition"
+  type: article
+  doi: 10.48550/arXiv.2210.14324
+  year: 2022

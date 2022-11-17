@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "cache.h"
+#include "msl/bits.h"
 
 namespace
 {
@@ -58,7 +59,7 @@ void CACHE::initialize_replacement()
 }
 
 // find replacement victim
-uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(::rrpv_values[this]), set * NUM_WAY);
@@ -75,7 +76,7 @@ uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const
 }
 
 // called on every cache hit and cache fill
-void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   // handle writeback access
@@ -93,11 +94,12 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match = std::find_if(s_set_begin, s_set_end, eq_addr<::SAMPLER_class>(full_addr, 8 + lg2(NUM_WAY)));
+    auto match = std::find_if(s_set_begin, s_set_end,
+                              [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && (x.address >> shamt) == (addr >> shamt); });
     if (match != s_set_end) {
       uint32_t SHCT_idx = match->ip % ::SHCT_PRIME;
-      if (::SHCT[std::make_pair(this, cpu)][SHCT_idx] > 0)
-        ::SHCT[std::make_pair(this, cpu)][SHCT_idx]--;
+      if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] > 0)
+        ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]--;
 
       match->type = type;
       match->used = 1;
@@ -106,8 +108,8 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
 
       if (match->used) {
         uint32_t SHCT_idx = match->ip % ::SHCT_PRIME;
-        if (::SHCT[std::make_pair(this, cpu)][SHCT_idx] < ::SHCT_MAX)
-          ::SHCT[std::make_pair(this, cpu)][SHCT_idx]++;
+        if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] < ::SHCT_MAX)
+          ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]++;
       }
 
       match->valid = 1;
@@ -128,7 +130,7 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     uint32_t SHCT_idx = ip % ::SHCT_PRIME;
 
     ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
-    if (::SHCT[std::make_pair(this, cpu)][SHCT_idx] == ::SHCT_MAX)
+    if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] == ::SHCT_MAX)
       ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV;
   }
 }

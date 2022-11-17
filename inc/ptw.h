@@ -17,6 +17,7 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
     uint16_t asid;
     uint64_t vaddr;
     uint64_t ptw_addr;
+    std::size_t level;
   };
 
   struct pscl_set
@@ -67,10 +68,10 @@ public:
 
   bool handle_read(const PACKET& pkt);
   bool handle_fill(const PACKET& pkt);
-  bool step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source);
+  bool step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source);
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   uint64_t get_shamt(uint8_t pt_level);
 

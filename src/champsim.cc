@@ -4,6 +4,7 @@
 #include <array>
 #include <bitset>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <getopt.h>
@@ -97,7 +98,8 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
             op.end_phase(cpu.cpu);
 
           std::cout << phase_name << " finished CPU " << cpu.cpu;
-          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle() << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
+          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
+                    << " cumulative IPC: " << std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle());
           std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         }
       }

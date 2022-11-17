@@ -78,7 +78,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     std::vector test_instructions( schedule_width + 1, ooo_model_instr{dependent_instr} );
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
-    int id = 0;
+    uint64_t id = 0;
     for (auto &instr : uut.ROB) {
       instr.instr_id = id++;
       instr.event_cycle = uut.current_cycle;

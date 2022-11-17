@@ -19,7 +19,8 @@ class tracereader
 {
 public:
   const std::string trace_string;
-  tracereader(uint16_t asid, std::string _ts) : trace_string(_ts), asid(asid) {}
+  tracereader(uint16_t _asid, std::string _ts) : trace_string(_ts), asid(_asid) {}
+
   virtual ~tracereader() = default;
 
   virtual ooo_model_instr operator()() = 0;

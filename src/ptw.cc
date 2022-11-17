@@ -1,5 +1,7 @@
 #include "ptw.h"
 
+#include <numeric>
+
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "util.h"
@@ -7,42 +9,40 @@
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
                                  uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
-      HIT_LATENCY(latency), vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
+    : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
+      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
 {
-  auto level = std::size(pscl_dims);
+  auto level = std::size(pscl_dims) + 1;
   for (auto x : pscl_dims) {
     auto shamt = _vmem.shamt(level--);
-    pscl.emplace_back(x.first, x.second, pscl_set{shamt}, pscl_tag{shamt});
+    pscl.emplace_back(x.first, x.second, pscl_indexer{shamt}, pscl_indexer{shamt});
   }
 }
 
 bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 {
-  auto walk_base = CR3_addr;
-  auto walk_init_level = std::size(pscl);
-  for (auto cache = std::begin(pscl); cache != std::end(pscl); ++cache) {
-    if (auto check_addr = cache->check_hit({handle_pkt.asid, handle_pkt.v_address, 0}); check_addr.has_value()) {
-      walk_base = check_addr.value().ptw_addr;
-      walk_init_level = std::distance(cache, std::end(pscl)) - 1;
-    }
-  }
-  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init_level + 1) * PTE_BYTES;
+  pscl_entry walk_init = {handle_pkt.asid, handle_pkt.v_address, CR3_addr, std::size(pscl)};
+  std::vector<std::optional<pscl_entry>> pscl_hits;
+  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x) { return x.check_hit(walk_init); });
+  walk_init =
+      std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
+
+  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-    std::cout << " address: " << std::hex << walk_base;
+    std::cout << " address: " << std::hex << walk_init.vaddr;
     std::cout << " v_address: " << handle_pkt.v_address << std::dec;
     std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
-    std::cout << " translation_level: " << +walk_init_level << std::endl;
+    std::cout << " translation_level: " << walk_init.level << std::endl;
   }
 
   PACKET packet = handle_pkt;
   packet.v_address = handle_pkt.address;
-  packet.init_translation_level = walk_init_level;
+  packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(splice_bits(walk_base, walk_offset, LOG2_PAGE_SIZE), walk_init_level, packet);
+  return step_translation(champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
@@ -52,7 +52,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     std::cout << " address: " << std::hex << fill_mshr.address;
     std::cout << " v_address: " << fill_mshr.v_address;
     std::cout << " data: " << fill_mshr.data << std::dec;
-    std::cout << " pt_page offset: " << ((fill_mshr.data & bitmask(LOG2_PAGE_SIZE)) >> lg2(PTE_BYTES));
+    std::cout << " pt_page offset: " << ((fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES));
     std::cout << " translation_level: " << +fill_mshr.translation_level;
     std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
   }
@@ -68,13 +68,13 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     return true;
   } else {
     const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
-    pscl.at(pscl_idx).fill({fill_mshr.asid, fill_mshr.v_address, fill_mshr.data});
+    pscl.at(pscl_idx).fill({fill_mshr.asid, fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
 
     return step_translation(fill_mshr.data, fill_mshr.translation_level - 1, fill_mshr);
   }
 }
 
-bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source)
+bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
@@ -105,7 +105,7 @@ bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, cons
 
 void PageTableWalker::operate()
 {
-  int fill_this_cycle = MAX_FILL;
+  auto fill_this_cycle = MAX_FILL;
   while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
     auto success = handle_fill(MSHR.front());
     if (!success)
@@ -115,7 +115,7 @@ void PageTableWalker::operate()
     fill_this_cycle--;
   }
 
-  int reads_this_cycle = MAX_READ;
+  auto reads_this_cycle = MAX_READ;
   while (reads_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle && std::size(MSHR) != MSHR_SIZE) {
     auto success = handle_read(RQ.front());
     if (!success)
@@ -171,7 +171,7 @@ void PageTableWalker::return_data(const PACKET& packet)
   std::sort(std::begin(MSHR), std::end(MSHR), ord_event_cycle<PACKET>{});
 }
 
-uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
@@ -180,7 +180,7 @@ uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;

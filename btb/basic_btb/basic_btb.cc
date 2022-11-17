@@ -38,7 +38,7 @@ struct btb_entry_t {
 
 std::map<O3_CPU*, std::array<btb_entry_t, BTB_SET * BTB_WAY>> BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
-std::map<O3_CPU*, std::bitset<lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
+std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 /*
  * The following structure identifies the size of call instructions so we can
@@ -140,5 +140,5 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_target == 0) || !taken)
     type = ::branch_info::CONDITIONAL;
 
-  *btb_entry = {ip, branch_target, type, current_cycle};
+  *btb_entry = {ip, (branch_target != 0) ? branch_target : btb_entry->target, type, current_cycle};
 }
