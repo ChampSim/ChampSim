@@ -13,14 +13,14 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
-  auto total_branch =
-      std::ceil(std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
-  auto total_mispredictions =
-      std::ceil(std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
+  auto total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
   stream << std::endl;
-  stream << stats.name << " cumulative IPC: " << std::ceil(stats.instrs()) / std::ceil(stats.cycles()) << " instructions: " << stats.instrs() << " cycles: " << stats.cycles()
-         << std::endl;
+  stream << stats.name << " cumulative IPC: " << std::ceil(stats.instrs()) / std::ceil(stats.cycles()) << " instructions: " << stats.instrs()
+         << " cycles: " << stats.cycles() << std::endl;
   stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch
          << "% MPKI: " << (1000.0 * total_mispredictions) / std::ceil(stats.instrs());
   stream << " Average ROB Occupancy at Mispredict: " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;

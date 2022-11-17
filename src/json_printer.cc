@@ -12,15 +12,15 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
-  auto total_mispredictions =
-      std::ceil(std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
   stream << indent() << "{" << std::endl;
   ++indent_level;
   stream << indent() << "\"instructions\": " << stats.instrs() << "," << std::endl;
   stream << indent() << "\"cycles\": " << stats.cycles() << "," << std::endl;
-  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions) << ", "
-         << std::endl;
+  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)
+         << ", " << std::endl;
 
   stream << indent() << "\"mispredict\": {" << std::endl;
   ++indent_level;

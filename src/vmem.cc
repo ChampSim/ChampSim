@@ -23,7 +23,7 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
   std::partial_sum(std::cbegin(ppage_free_list), std::cend(ppage_free_list), std::begin(ppage_free_list));
 }
 
-uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level-1); }
+uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
 
 uint64_t VirtualMemory::get_offset(uint64_t vaddr, std::size_t level) const
 {
