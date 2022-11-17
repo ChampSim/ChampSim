@@ -19,7 +19,7 @@ class TriangularGenerator : public Catch::Generators::IGenerator<std::pair<unsig
   unsigned limit;
 public:
 
-    TriangularGenerator(unsigned limit): limit(limit) {}
+    TriangularGenerator(unsigned max): limit(max) {}
 
     std::pair<unsigned, unsigned> const& get() const override;
     bool next() override {

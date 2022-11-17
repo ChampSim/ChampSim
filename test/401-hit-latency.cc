@@ -26,7 +26,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     uut_queues.begin_phase();
 
     // Create a test packet
-    static auto id = 1;
+    static uint64_t id = 1;
     PACKET seed;
     seed.address = 0xdeadbeef;
     seed.instr_id = id++;

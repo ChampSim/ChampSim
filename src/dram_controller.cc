@@ -11,13 +11,13 @@
 uint64_t cycles(double time, int io_freq)
 {
   std::fesetround(FE_UPWARD);
-  auto result = std::lrint(time * io_freq / 1000);
-  return result < 0 ? 0 : result;
+  auto result = std::lrint(time * io_freq);
+  return result < 0 ? 0 : static_cast<uint64_t>(result);
 }
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
-    : champsim::operable(freq_scale), tRP(cycles(t_rp, io_freq)), tRCD(cycles(t_rcd, io_freq)), tCAS(cycles(t_cas, io_freq)),
-      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround, io_freq))
+    : champsim::operable(freq_scale), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
+      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
 {
 }
 
@@ -58,8 +58,8 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Check queue occupancy
-    std::size_t wq_occu = std::count_if(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>());
-    std::size_t rq_occu = std::count_if(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>());
+    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()));
+    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()));
 
     // Change modes if the queues are unbalanced
     if ((!channel.write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
@@ -290,20 +290,20 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_ROWS));
 }
 
-uint32_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
+std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
 {
   uint32_t channel = dram_get_channel(address);
   if (queue_type == 1)
-    return std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), is_valid<PACKET>());
+    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), is_valid<PACKET>()));
   else if (queue_type == 2)
-    return std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), is_valid<PACKET>());
+    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), is_valid<PACKET>()));
   else if (queue_type == 3)
     return get_occupancy(1, address);
 
   return 0;
 }
 
-uint32_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
+std::size_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
 {
   uint32_t channel = dram_get_channel(address);
   if (queue_type == 1)

@@ -48,7 +48,7 @@ struct DRAM_CHANNEL {
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
 {
   // Latencies
-  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME = std::ceil(1.0 * BLOCK_SIZE / DRAM_CHANNEL_WIDTH);
+  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
   // these values control when to send out a burst of writes
   constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
@@ -70,8 +70,8 @@ public:
   bool add_pq(const PACKET& packet) override final;
   bool add_ptwq(const PACKET&) override final { assert(0); }
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   std::size_t size() const;
 

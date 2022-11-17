@@ -63,8 +63,8 @@ bool do_collision_for_return(Iter begin, Iter end, PACKET& packet, unsigned sham
 
 void CACHE::NonTranslatingQueues::check_collision()
 {
-  std::size_t write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
-  std::size_t read_shamt = OFFSET_BITS;
+  auto write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
+  auto read_shamt = OFFSET_BITS;
 
   // Check WQ for duplicates, merging if they are found
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
