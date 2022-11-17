@@ -13,7 +13,7 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
     : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
       vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
 {
-  auto level = std::size(pscl_dims)+1;
+  auto level = std::size(pscl_dims) + 1;
   for (auto x : pscl_dims) {
     auto shamt = _vmem.shamt(level--);
     pscl.emplace_back(x.first, x.second, pscl_indexer{shamt}, pscl_indexer{shamt});
@@ -24,8 +24,9 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 {
   pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
   std::vector<std::optional<pscl_entry>> pscl_hits;
-  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x){ return x.check_hit(walk_init); });
-  walk_init = std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
+  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x) { return x.check_hit(walk_init); });
+  walk_init =
+      std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
   auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
 
