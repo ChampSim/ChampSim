@@ -42,10 +42,10 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
-    unsigned packet_count() const { return std::size(addresses); }
+    std::size_t packet_count() const { return std::size(addresses); }
 };
 
 /*
@@ -56,7 +56,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
   std::deque<PACKET> packets, ready_packets;
   const uint64_t ret_addr;
   const uint64_t latency = 0;
-  unsigned mpacket_count = 0;
+  std::size_t mpacket_count = 0;
 
   void add(PACKET pkt) {
     if (pkt.address == ret_addr) {
@@ -85,10 +85,10 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
-    unsigned packet_count() const { return mpacket_count; }
+    std::size_t packet_count() const { return mpacket_count; }
 };
 
 /*
@@ -97,7 +97,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
 class release_MRC : public MemoryRequestConsumer, public champsim::operable
 {
   std::deque<PACKET> packets;
-  unsigned mpacket_count = 0;
+  std::size_t mpacket_count = 0;
 
   void add(PACKET pkt) {
       packets.push_back(pkt);
@@ -113,10 +113,10 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
 
-    uint32_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    uint32_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
+    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
-    unsigned packet_count() const { return mpacket_count; }
+    std::size_t packet_count() const { return mpacket_count; }
 
     void release(uint64_t addr)
     {

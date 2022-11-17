@@ -75,7 +75,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
   }
 }
 
-bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, const PACKET& source)
+bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
@@ -106,7 +106,7 @@ bool PageTableWalker::step_translation(uint64_t addr, uint8_t transl_level, cons
 
 void PageTableWalker::operate()
 {
-  int fill_this_cycle = MAX_FILL;
+  auto fill_this_cycle = MAX_FILL;
   while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
     auto success = handle_fill(MSHR.front());
     if (!success)
@@ -116,7 +116,7 @@ void PageTableWalker::operate()
     fill_this_cycle--;
   }
 
-  int reads_this_cycle = MAX_READ;
+  auto reads_this_cycle = MAX_READ;
   while (reads_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle && std::size(MSHR) != MSHR_SIZE) {
     auto success = handle_read(RQ.front());
     if (!success)

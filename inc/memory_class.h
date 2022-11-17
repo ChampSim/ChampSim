@@ -41,7 +41,8 @@ public:
   std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
   std::vector<MemoryRequestProducer*> to_return;
 
-  uint8_t translation_level = 0, init_translation_level = 0;
+  std::size_t translation_level = 0;
+  std::size_t init_translation_level = 0;
 };
 
 template <>

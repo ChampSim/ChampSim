@@ -13,13 +13,13 @@ void champsim::json_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
   auto total_mispredictions =
-      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; });
+      std::ceil(std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
   stream << indent() << "{" << std::endl;
   ++indent_level;
   stream << indent() << "\"instructions\": " << stats.instrs() << "," << std::endl;
   stream << indent() << "\"cycles\": " << stats.cycles() << "," << std::endl;
-  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << ", "
+  stream << indent() << "\"Avg ROB occupancy at mispredict\": " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions) << ", "
          << std::endl;
 
   stream << indent() << "\"mispredict\": {" << std::endl;
@@ -72,11 +72,11 @@ void champsim::json_printer::print(CACHE::stats_type stats)
   stream << indent() << "\"useful prefetch\": " << stats.pf_useful << "," << std::endl;
   stream << indent() << "\"useless prefetch\": " << stats.pf_useless << "," << std::endl;
 
-  uint64_t TOTAL_MISS = 0;
+  double TOTAL_MISS = 0;
   for (const auto& type : types)
     TOTAL_MISS += std::accumulate(std::begin(stats.misses.at(type.second)), std::end(stats.misses.at(type.second)), TOTAL_MISS);
   if (TOTAL_MISS > 0)
-    stream << indent() << "\"miss latency\": " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << std::endl;
+    stream << indent() << "\"miss latency\": " << (std::ceil(stats.total_miss_latency)) / TOTAL_MISS << std::endl;
   else
     stream << indent() << "\"miss latency\": null" << std::endl;
   --indent_level;
@@ -93,7 +93,7 @@ void champsim::json_printer::print(DRAM_CHANNEL::stats_type stats)
   stream << indent() << "\"WQ ROW_BUFFER_MISS\": " << stats.WQ_ROW_BUFFER_MISS << "," << std::endl;
   stream << indent() << "\"WQ FULL\": " << stats.WQ_FULL << "," << std::endl;
   if (stats.dbus_count_congested > 0)
-    stream << indent() << "\"AVG DBUS CONGESTED CYCLE\": " << (1.0 * stats.dbus_cycle_congested) / stats.dbus_count_congested << std::endl;
+    stream << indent() << "\"AVG DBUS CONGESTED CYCLE\": " << std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested) << std::endl;
   else
     stream << indent() << "\"AVG DBUS CONGESTED CYCLE\": null" << std::endl;
   --indent_level;
