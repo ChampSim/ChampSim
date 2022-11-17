@@ -44,7 +44,7 @@ struct ooo_model_instr {
   uint8_t scheduled = 0;
   uint8_t executed = 0;
 
-  int num_mem_ops = 0;
+  unsigned completed_mem_ops = 0;
   int num_reg_dependent = 0;
 
   std::vector<uint8_t> destination_registers = {}; // output registers
@@ -77,6 +77,8 @@ public:
   {
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }
+
+  std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 
   static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
 };

@@ -25,7 +25,7 @@ class CacheBus : public MemoryRequestProducer
 
 public:
   std::deque<PACKET> PROCESSED;
-  CacheBus(uint32_t cpu, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu) {}
+  CacheBus(uint32_t cpu_idx, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu_idx) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
   void return_data(const PACKET& packet) override final;
@@ -37,8 +37,8 @@ struct cpu_stats {
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
-  std::array<uint64_t, 8> total_branch_types = {};
-  std::array<uint64_t, 8> branch_type_misses = {};
+  std::array<long long, 8> total_branch_types = {};
+  std::array<long long, 8> branch_type_misses = {};
 
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
@@ -166,17 +166,17 @@ public:
   const std::bitset<NUM_BRANCH_MODULES> bpred_type;
   const std::bitset<NUM_BTB_MODULES> btb_type;
 
-  O3_CPU(uint32_t cpu, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
+  O3_CPU(uint32_t index, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
          std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width, unsigned dispatch_width,
          unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width, unsigned mispredict_penalty,
          unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, MemoryRequestConsumer* l1i, unsigned l1i_bw,
-         MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred_type, std::bitset<NUM_BTB_MODULES> btb_type)
-      : champsim::operable(freq_scale), cpu(cpu), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
+         MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
+      : champsim::operable(freq_scale), cpu(index), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
         DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_BANDWIDTH(l1i_bw), L1D_BANDWIDTH(l1d_bw),
-        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred_type), btb_type(btb_type)
+        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred), btb_type(btb)
   {
   }
 };

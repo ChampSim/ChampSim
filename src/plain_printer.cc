@@ -13,22 +13,21 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
-  uint64_t total_branch = 0, total_mispredictions = 0;
-  for (auto type : types) {
-    total_branch += stats.total_branch_types[type.second];
-    total_mispredictions += stats.branch_type_misses[type.second];
-  }
+  auto total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
   stream << std::endl;
-  stream << stats.name << " cumulative IPC: " << 1.0 * stats.instrs() / stats.cycles() << " instructions: " << stats.instrs() << " cycles: " << stats.cycles()
-         << std::endl;
-  stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * (total_branch - total_mispredictions)) / total_branch
-         << "% MPKI: " << (1000.0 * total_mispredictions) / stats.instrs();
-  stream << " Average ROB Occupancy at Mispredict: " << (1.0 * stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
+  stream << stats.name << " cumulative IPC: " << std::ceil(stats.instrs()) / std::ceil(stats.cycles()) << " instructions: " << stats.instrs()
+         << " cycles: " << stats.cycles() << std::endl;
+  stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch
+         << "% MPKI: " << (1000.0 * total_mispredictions) / std::ceil(stats.instrs());
+  stream << " Average ROB Occupancy at Mispredict: " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
-                 [instrs = stats.instrs()](auto x) { return 1000.0 * x / instrs; });
+                 [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
 
   stream << "Branch type MPKI" << std::endl;
   for (auto [str, idx] : types)
@@ -54,7 +53,9 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     stream << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
 
     for (const auto& type : types) {
-      stream << stats.name << " " << type.first << std::setw(12 - std::size(type.first)) << " ";
+      std::ostringstream name;
+      name << std::left << std::setw(12) << type.first;
+      stream << stats.name << " " << name.str() << " ";
       stream << "ACCESS: " << std::setw(10) << stats.hits[type.second][cpu] + stats.misses[type.second][cpu] << "  ";
       stream << "HIT: " << std::setw(10) << stats.hits[type.second][cpu] << "  ";
       stream << "MISS: " << std::setw(10) << stats.misses[type.second][cpu] << std::endl;
@@ -66,7 +67,7 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     stream << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
     stream << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
 
-    stream << stats.name << " AVERAGE MISS LATENCY: " << (1.0 * (stats.total_miss_latency)) / TOTAL_MISS << " cycles" << std::endl;
+    stream << stats.name << " AVERAGE MISS LATENCY: " << std::ceil(stats.total_miss_latency) / std::ceil(TOTAL_MISS) << " cycles" << std::endl;
     // stream << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
   }
 }
@@ -78,7 +79,7 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
   stream << "  ROW_BUFFER_MISS: " << std::setw(10) << stats.RQ_ROW_BUFFER_MISS << std::endl;
   stream << " AVG DBUS CONGESTED CYCLE: ";
   if (stats.dbus_count_congested > 0)
-    stream << std::setw(10) << (1.0 * stats.dbus_cycle_congested) / stats.dbus_count_congested;
+    stream << std::setw(10) << std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested);
   else
     stream << "-";
   stream << std::endl;

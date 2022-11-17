@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -43,9 +44,15 @@ void O3_CPU::operate()
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
     auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
 
+    auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
+    auto heartbeat_cycle{std::ceil(current_cycle - last_heartbeat_cycle)};
+
+    auto phase_instr{std::ceil(num_retired - begin_phase_instr)};
+    auto phase_cycle{std::ceil(current_cycle - begin_phase_cycle)};
+
     std::cout << "Heartbeat CPU " << cpu << " instructions: " << num_retired << " cycles: " << current_cycle;
-    std::cout << " heartbeat IPC: " << (1.0 * num_retired - last_heartbeat_instr) / (current_cycle - last_heartbeat_cycle);
-    std::cout << " cumulative IPC: " << (1.0 * (num_retired - begin_phase_instr)) / (current_cycle - begin_phase_cycle);
+    std::cout << " heartbeat IPC: " << heartbeat_instr / heartbeat_cycle;
+    std::cout << " cumulative IPC: " << phase_instr / phase_cycle;
     std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
     next_print_instruction += STAT_PRINTING_PERIOD;
 
@@ -74,13 +81,13 @@ void O3_CPU::begin_phase()
   sim_stats.push_back(stats);
 }
 
-void O3_CPU::end_phase(unsigned cpu)
+void O3_CPU::end_phase(unsigned finished_cpu)
 {
   // Record where the phase ended (overwrite if this is later)
   sim_stats.back().end_instrs = num_retired;
   sim_stats.back().end_cycles = current_cycle;
 
-  if (cpu == this->cpu) {
+  if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
 
@@ -110,8 +117,6 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
     return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
   });
-
-  arch_instr.num_mem_ops = std::size(arch_instr.destination_memory) + std::size(arch_instr.source_memory);
 
   // determine what kind of branch this is, if any
   if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
@@ -467,7 +472,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
       if (sq_it->fetch_issued) { // Store already executed
         q_entry->reset();
-        instr.num_mem_ops--;
+        ++instr.completed_mem_ops;
 
         if constexpr (champsim::debug_print)
           std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl;
@@ -606,7 +611,7 @@ void O3_CPU::complete_inflight_instruction()
   // update ROB entries with completed executions
   std::size_t complete_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw > 0; ++rob_it) {
-    if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->num_mem_ops == 0) {
+    if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
       do_complete_execution(*rob_it);
       --complete_bw;
     }
@@ -615,7 +620,7 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  for (int l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
+  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
@@ -681,7 +686,7 @@ void O3_CPU::print_deadlock()
     std::cout << " scheduled: " << +IFETCH_BUFFER.front().scheduled;
     std::cout << " executed: " << +IFETCH_BUFFER.front().executed;
     std::cout << " num_reg_dependent: " << +IFETCH_BUFFER.front().num_reg_dependent;
-    std::cout << " num_mem_ops: " << +IFETCH_BUFFER.front().num_mem_ops;
+    std::cout << " num_mem_ops: " << IFETCH_BUFFER.front().num_mem_ops() - IFETCH_BUFFER.front().completed_mem_ops;
     std::cout << " event: " << IFETCH_BUFFER.front().event_cycle;
     std::cout << std::endl;
   } else {
@@ -695,7 +700,7 @@ void O3_CPU::print_deadlock()
     std::cout << " scheduled: " << +ROB.front().scheduled;
     std::cout << " executed: " << +ROB.front().executed;
     std::cout << " num_reg_dependent: " << +ROB.front().num_reg_dependent;
-    std::cout << " num_mem_ops: " << +ROB.front().num_mem_ops;
+    std::cout << " num_mem_ops: " << ROB.front().num_mem_ops() - ROB.front().completed_mem_ops;
     std::cout << " event: " << ROB.front().event_cycle;
     std::cout << std::endl;
   } else {
@@ -733,12 +738,12 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
   assert(rob_entry != end);
   assert(rob_entry->instr_id == this->instr_id);
 
-  rob_entry->num_mem_ops--;
-  assert(rob_entry->num_mem_ops >= 0);
+  ++rob_entry->completed_mem_ops;
+  assert(rob_entry->completed_mem_ops <= rob_entry->num_mem_ops());
 
   if constexpr (champsim::debug_print) {
     std::cout << "[LSQ] " << __func__ << " instr_id: " << instr_id << std::hex;
-    std::cout << " full_address: " << virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops;
+    std::cout << " full_address: " << virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops() - rob_entry->completed_mem_ops;
     std::cout << " event_cycle: " << event_cycle << std::endl;
   }
 }

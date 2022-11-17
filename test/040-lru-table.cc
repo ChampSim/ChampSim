@@ -4,7 +4,7 @@
 namespace {
   struct strong_type
   {
-    int value;
+    unsigned int value;
   };
 
   struct strong_type_getter
@@ -17,7 +17,7 @@ namespace {
 
   struct type_with_getters
   {
-    int value;
+    unsigned int value;
 
     auto index() const
     {
@@ -37,7 +37,7 @@ TEMPLATE_TEST_CASE("An empty lru_table misses", "",
     TestType uut{1, 1};
 
     WHEN("We check for a hit") {
-      auto result = uut.check_hit({-2016});
+      auto result = uut.check_hit({2016});
 
       THEN("The result is a miss") {
         REQUIRE_FALSE(result.has_value());
@@ -49,7 +49,7 @@ TEMPLATE_TEST_CASE("An empty lru_table misses", "",
 TEMPLATE_TEST_CASE("A lru_table can hit", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
     uut.fill({data});
 
@@ -67,7 +67,7 @@ TEMPLATE_TEST_CASE("A lru_table can hit", "",
 TEMPLATE_TEST_CASE("A lru_table can miss", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
     uut.fill({data});
 
@@ -84,7 +84,7 @@ TEMPLATE_TEST_CASE("A lru_table can miss", "",
 TEMPLATE_TEST_CASE("A lru_table replaces LRU", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with two elements") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 2};
     uut.fill({data});
     uut.fill({data+1});
@@ -118,7 +118,7 @@ TEMPLATE_TEST_CASE("A lru_table replaces LRU", "",
 TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with two elements") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{2, 1};
     uut.fill({data});
     uut.fill({data+1});
@@ -132,7 +132,7 @@ TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
         REQUIRE_FALSE(result.has_value());
       }
 
-      THEN("A check to the second-added element misses") {
+      THEN("A check to the second-added element hits") {
         auto result = uut.check_hit({data+1});
 
         REQUIRE(result.has_value());
@@ -182,7 +182,7 @@ TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
 TEMPLATE_TEST_CASE("A lru_table misses after invalidation", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
     uut.fill({data});
 
@@ -200,7 +200,7 @@ TEMPLATE_TEST_CASE("A lru_table misses after invalidation", "",
 TEMPLATE_TEST_CASE("A lru_table returns the evicted block on invalidation", "",
     (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
-    constexpr int data  = 0xcafebabe;
+    constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
     uut.fill({data});
 

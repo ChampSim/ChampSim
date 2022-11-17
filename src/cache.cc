@@ -16,12 +16,12 @@ bool CACHE::handle_fill(PACKET& fill_mshr)
   cpu = fill_mshr.cpu;
 
   // find victim
-  uint32_t set = get_set(fill_mshr.address);
+  auto set = get_set(fill_mshr.address);
 
   auto set_begin = std::next(std::begin(block), set * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
   auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
-  uint32_t way = std::distance(set_begin, first_inv);
+  auto way = std::distance(set_begin, first_inv);
   if (way == NUM_WAY)
     way = impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, set, &block.data()[set * NUM_WAY], fill_mshr.ip, fill_mshr.address, fill_mshr.type);
 
@@ -42,8 +42,8 @@ bool CACHE::handle_writeback(PACKET& handle_pkt)
   cpu = handle_pkt.cpu;
 
   // access cache
-  uint32_t set = get_set(handle_pkt.address);
-  uint32_t way = get_way(handle_pkt.address, set);
+  auto set = get_set(handle_pkt.address);
+  auto way = get_way(handle_pkt.address, set);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
@@ -83,8 +83,8 @@ bool CACHE::handle_read(PACKET& handle_pkt)
   // vaddr to the prefetcher
   ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
-  uint32_t set = get_set(handle_pkt.address);
-  uint32_t way = get_way(handle_pkt.address, set);
+  auto set = get_set(handle_pkt.address);
+  auto way = get_way(handle_pkt.address, set);
 
   if (way < NUM_WAY) { // HIT
     readlike_hit(set, way, handle_pkt);
@@ -98,8 +98,8 @@ bool CACHE::handle_prefetch(PACKET& handle_pkt)
 {
   cpu = handle_pkt.cpu;
 
-  uint32_t set = get_set(handle_pkt.address);
-  uint32_t way = get_way(handle_pkt.address, set);
+  auto set = get_set(handle_pkt.address);
+  auto way = get_way(handle_pkt.address, set);
 
   if (way < NUM_WAY) { // HIT
     readlike_hit(set, way, handle_pkt);
@@ -321,19 +321,19 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 }
 
-uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET))); }
+uint64_t CACHE::get_set(uint64_t address) { return (address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET)); }
 
-uint32_t CACHE::get_way(uint64_t address, uint32_t set)
+uint64_t CACHE::get_way(uint64_t address, uint64_t set)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
   return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
 }
 
-int CACHE::invalidate_entry(uint64_t inval_addr)
+uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
-  uint32_t set = get_set(inval_addr);
-  uint32_t way = get_way(inval_addr, set);
+  auto set = get_set(inval_addr);
+  auto way = get_way(inval_addr, set);
 
   if (way < NUM_WAY)
     block[set * NUM_WAY + way].valid = 0;
@@ -431,10 +431,10 @@ void CACHE::return_data(const PACKET& packet)
   std::iter_swap(mshr_entry, first_unreturned);
 }
 
-uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
+std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
+    return std::size(MSHR);
   else if (queue_type == 1)
     return std::size(queues.RQ);
   else if (queue_type == 2)
@@ -445,7 +445,7 @@ uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-uint32_t CACHE::get_size(uint8_t queue_type, uint64_t)
+std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;
@@ -474,11 +474,11 @@ void CACHE::begin_phase()
   sim_stats.back().name = NAME;
 }
 
-void CACHE::end_phase(unsigned cpu)
+void CACHE::end_phase(unsigned finished_cpu)
 {
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    roi_stats.back().hits.at(type).at(cpu) = sim_stats.back().hits.at(type).at(cpu);
-    roi_stats.back().misses.at(type).at(cpu) = sim_stats.back().misses.at(type).at(cpu);
+    roi_stats.back().hits.at(type).at(finished_cpu) = sim_stats.back().hits.at(type).at(finished_cpu);
+    roi_stats.back().misses.at(type).at(finished_cpu) = sim_stats.back().misses.at(type).at(finished_cpu);
   }
 
   roi_stats.back().pf_requested = sim_stats.back().pf_requested;
