@@ -294,7 +294,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
     impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, evicting_address, handle_pkt.type, false);
   } else {
     // update prefetcher
-    impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, 0, handle_pkt.pf_metadata); //FIXME ignored result
+    impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, 0, handle_pkt.pf_metadata); // FIXME ignored result
     impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, false);
   }
 
@@ -506,9 +506,7 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET& pkt) const {
-  return ((1 << static_cast<int>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this;
-}
+bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << static_cast<int>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this; }
 
 void CACHE::print_deadlock()
 {
