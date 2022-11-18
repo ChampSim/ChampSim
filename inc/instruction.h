@@ -58,7 +58,7 @@ struct ooo_model_instr {
 
 private:
   template <typename T>
-  ooo_model_instr(T instr, uint16_t asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(asid)
+  ooo_model_instr(T instr, uint16_t address_space) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(address_space)
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);

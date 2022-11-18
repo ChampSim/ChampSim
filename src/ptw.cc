@@ -15,7 +15,7 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
   auto level = std::size(pscl_dims) + 1;
   for (auto x : pscl_dims) {
     auto shamt = _vmem.shamt(level--);
-    pscl.emplace_back(x.first, x.second, pscl_indexer{shamt}, pscl_indexer{shamt});
+    pscl.emplace_back(x.first, x.second, pscl_set{shamt}, pscl_tag{shamt});
   }
 }
 

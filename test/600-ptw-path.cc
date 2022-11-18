@@ -99,14 +99,14 @@ struct pscl_testbench
   uint16_t asid;
   uint64_t id = 0;
 
-  pscl_testbench(uint16_t asid) : asid(asid) {
+  pscl_testbench(uint16_t address_space) : asid(address_space) {
     uut.warmup = false;
     uut.begin_phase();
 
     seed.instr_id = id++;
     seed.address = seed_addr;
     seed.v_address = seed.address;
-    seed.asid = asid;
+    seed.asid = address_space;
     seed.to_return = {&mock_ul};
 
     auto seed_result = mock_ul.issue(seed);

@@ -329,17 +329,17 @@ void CACHE::operate()
 
 uint64_t CACHE::get_set(uint64_t address) const { return (address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET)); }
 
-uint64_t CACHE::get_way(uint16_t asid, uint64_t address, uint64_t set) const
+uint64_t CACHE::get_way(uint16_t address_space, uint64_t address, uint64_t set) const
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(asid, address, OFFSET_BITS)));
+  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address_space, address, OFFSET_BITS)));
 }
 
-uint64_t CACHE::invalidate_entry(uint16_t asid, uint64_t inval_addr)
+uint64_t CACHE::invalidate_entry(uint16_t address_space, uint64_t inval_addr)
 {
   auto set = get_set(inval_addr);
-  auto way = get_way(asid, inval_addr, set);
+  auto way = get_way(address_space, inval_addr, set);
 
   if (way < NUM_WAY)
     block[set * NUM_WAY + way].valid = 0;
