@@ -43,6 +43,7 @@ bool do_collision_for_return(Iter begin, Iter end, PACKET& packet, unsigned sham
 {
   return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
     source.data = destination.data;
+    source.pf_metadata = destination.pf_metadata;
     for (auto ret : source.to_return)
       ret->return_data(source);
   });
@@ -158,7 +159,6 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size,
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
   fwd_pkt.translate_issued = false;
-  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
   queue.insert(ins_loc, fwd_pkt);
 
