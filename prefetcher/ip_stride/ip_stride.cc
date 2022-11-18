@@ -3,17 +3,15 @@
 #include <map>
 
 #include "cache.h"
-
 #include "msl/lru_table.h"
 
 namespace
 {
-struct tracker
-{
+struct tracker {
   struct tracker_entry {
-    uint64_t ip = 0;              // the IP we're tracking
-    uint64_t last_cl_addr = 0;    // the last address accessed by this IP
-    int64_t last_stride = 0;      // the stride between the last two addresses accessed by this IP
+    uint64_t ip = 0;           // the IP we're tracking
+    uint64_t last_cl_addr = 0; // the last address accessed by this IP
+    int64_t last_stride = 0;   // the stride between the last two addresses accessed by this IP
 
     auto index() const { return ip; }
     auto tag() const { return ip; }
