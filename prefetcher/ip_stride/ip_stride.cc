@@ -33,7 +33,7 @@ struct tracker {
 
   champsim::msl::lru_table<tracker_entry> table{TRACKER_SETS, TRACKER_WAYS};
 
-  public:
+public:
   void initiate_lookahead(uint64_t ip, uint64_t cl_addr)
   {
     int64_t stride = 0;
@@ -89,10 +89,7 @@ std::map<CACHE*, tracker> trackers;
 
 void CACHE::prefetcher_initialize() { std::cout << NAME << " IP-based stride prefetcher" << std::endl; }
 
-void CACHE::prefetcher_cycle_operate()
-{
-  ::trackers[this].advance_lookahead(this);
-}
+void CACHE::prefetcher_cycle_operate() { ::trackers[this].advance_lookahead(this); }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
