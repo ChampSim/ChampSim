@@ -28,9 +28,10 @@ bool CACHE::handle_fill(PACKET& fill_mshr)
 
   bool success = filllike_miss(set, way, fill_mshr);
 
-  sim_stats.back().total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
-
   if (success) {
+    // update processed packets
+    fill_mshr.data = block[set * NUM_WAY + way].data;
+    fill_mshr.pf_metadata = block[set * NUM_WAY + way].pf_metadata;
     for (auto ret : fill_mshr.to_return)
       ret->return_data(fill_mshr);
   }
@@ -138,6 +139,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, const PACKET& handle_
 
   auto copy{handle_pkt};
   copy.data = hit_block.data;
+  copy.pf_metadata = hit_block.pf_metadata;
   for (auto ret : copy.to_return)
     ret->return_data(copy);
 
@@ -156,8 +158,11 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     std::cout << " full_addr: " << handle_pkt.address;
     std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
     std::cout << " type: " << +handle_pkt.type;
+    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this << std::noboolalpha;
     std::cout << " cycle: " << current_cycle << std::endl;
   }
+
+  cpu = handle_pkt.cpu;
 
   // check mshr
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr(handle_pkt, OFFSET_BITS));
@@ -186,10 +191,14 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
       mshr_entry->event_cycle = prior_event_cycle;
       mshr_entry->to_return = std::move(to_return);
     }
+
+    if (should_activate_prefetcher(handle_pkt)) {
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
+    }
   } else {
     if (mshr_full)  // not enough MSHR resource
-      return false; // TODO should we allow prefetches anyway if they will not
-                    // be filled to this level?
+      return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
 
     auto fwd_pkt = handle_pkt;
 
@@ -200,6 +209,13 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
       fwd_pkt.to_return = {this};
     else
       fwd_pkt.to_return.clear();
+
+    fwd_pkt.prefetch_from_this = false;
+
+    if (should_activate_prefetcher(handle_pkt)) {
+      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+      fwd_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
+    }
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -213,15 +229,10 @@ bool CACHE::readlike_miss(const PACKET& handle_pkt)
     // Allocate an MSHR
     if (!std::empty(fwd_pkt.to_return)) {
       mshr_entry = MSHR.insert(std::end(MSHR), handle_pkt);
+      mshr_entry->pf_metadata = fwd_pkt.pf_metadata;
       mshr_entry->cycle_enqueued = current_cycle;
       mshr_entry->event_cycle = std::numeric_limits<uint64_t>::max();
     }
-  }
-
-  // update prefetcher on load instructions and prefetches from upper levels
-  if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
   }
 
   return true;
@@ -237,6 +248,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   }
+
+  cpu = handle_pkt.cpu;
 
   bool bypass = (way == NUM_WAY);
   assert(handle_pkt.type != WRITE || !bypass);
@@ -282,14 +295,17 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, const PACKET& handle
       handle_pkt.pf_metadata // pf_metadata
     };
 
+    // update prefetcher
     fill_block.pf_metadata = impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
     impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, evicting_address, handle_pkt.type, false);
   } else {
+    // update prefetcher
     impl_prefetcher_cache_fill(pkt_address, set, way, handle_pkt.type == PREFETCH, 0, handle_pkt.pf_metadata); // FIXME ignored result
     impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, false);
   }
 
   // COLLECT STATS
+  sim_stats.back().total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
   sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;
 
   return true;
@@ -496,7 +512,7 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return (1 << static_cast<int>(pkt.type)) & pref_activate_mask; }
+bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << static_cast<int>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this; }
 
 void CACHE::print_deadlock()
 {
