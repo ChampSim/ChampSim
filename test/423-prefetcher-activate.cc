@@ -136,10 +136,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
-
-      THEN("The issue is received") {
-        REQUIRE(test_result);
-      }
+      CHECK(test_result);
 
       // Run the uut for a bunch of cycles to fill the cache
       for (auto i = 0; i < 100; ++i)
