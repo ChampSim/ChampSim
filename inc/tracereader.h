@@ -19,7 +19,7 @@ class tracereader
 {
 public:
   const std::string trace_string;
-  tracereader(uint8_t cpu, std::string _ts) : trace_string(_ts), cpu(cpu) {}
+  tracereader(uint8_t cpu_idx, std::string _ts) : trace_string(_ts), cpu(cpu_idx) {}
   virtual ~tracereader() = default;
 
   virtual ooo_model_instr operator()() = 0;

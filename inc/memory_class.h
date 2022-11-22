@@ -41,7 +41,8 @@ public:
   std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
   std::vector<MemoryRequestProducer*> to_return;
 
-  uint8_t translation_level = 0, init_translation_level = 0;
+  std::size_t translation_level = 0;
+  std::size_t init_translation_level = 0;
 };
 
 template <>
@@ -55,8 +56,8 @@ public:
   virtual bool add_rq(const PACKET& packet) = 0;
   virtual bool add_wq(const PACKET& packet) = 0;
   virtual bool add_pq(const PACKET& packet) = 0;
-  virtual uint32_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-  virtual uint32_t get_size(uint8_t queue_type, uint64_t address) = 0;
+  virtual std::size_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
+  virtual std::size_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
   explicit MemoryRequestConsumer() {}
 };

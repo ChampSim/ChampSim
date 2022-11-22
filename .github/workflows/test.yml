@@ -24,15 +24,42 @@ on:
       - '!.github/workflows/test.yml'
 
 jobs:
-  build:
+  internal:
+    strategy:
+      matrix:
+        cxx: [g++, clang++]
+
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2.3.4
+    - uses: actions/checkout@v3
 
     - name: Configure
       run: ./config.sh
 
-    - name: Run tests
-      run: make test
+    - name: Make
+      run: make test/bin/000-test-main
+      env:
+        CXX: ${{ matrix.cxx }}
+
+    - name: Run
+      run: test/bin/000-test-main
+
+  output:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure
+      run: ./config.sh
+
+    - name: Make
+      run: make
+
+    - name: Produce JSON
+      run: ./bin/champsim -w5000 -i5000 --json=test.json -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz
+
+    - name: Validate JSON
+      run: python3 -m json.tool test.json
 

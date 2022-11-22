@@ -35,8 +35,6 @@ public:
   virtual void operate() = 0;
   virtual void begin_phase(){};
   virtual void end_phase(unsigned){};
-  virtual void print_roi_stats(){};
-  virtual void print_phase_stats(){};
   virtual void print_deadlock() {}
 };
 

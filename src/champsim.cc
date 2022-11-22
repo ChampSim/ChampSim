@@ -4,6 +4,7 @@
 #include <array>
 #include <bitset>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <getopt.h>
@@ -14,6 +15,7 @@
 
 #include "ooo_cpu.h"
 #include "operable.h"
+#include "phase_info.h"
 #include "tracereader.h"
 
 auto start_time = std::chrono::steady_clock::now();
@@ -34,7 +36,7 @@ struct phase_info {
 };
 
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
+                  std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   for (champsim::operable& op : operables)
     op.initialize();
@@ -44,7 +46,7 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
   // simulation entry point
-  for (auto [phase_name, is_warmup, length] : phases) {
+  for (auto [phase_name, is_warmup, length, ignored] : phases) {
     // Initialize phase
     for (champsim::operable& op : operables) {
       op.warmup = is_warmup;
@@ -96,7 +98,8 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
             op.end_phase(cpu.cpu);
 
           std::cout << phase_name << " finished CPU " << cpu.cpu;
-          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle() << " cumulative IPC: " << 1.0 * cpu.sim_instr() / cpu.sim_cycle();
+          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
+                    << " cumulative IPC: " << std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle());
           std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
         }
       }

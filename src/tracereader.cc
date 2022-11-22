@@ -41,21 +41,20 @@ void tracereader::refresh_buffer()
 #ifdef __GNUG__
   std::istream trace_file{&filebuf};
   trace_file.read(std::data(raw_buf), std::size(raw_buf));
-  bytes_read = trace_file.gcount();
+  bytes_read = static_cast<std::size_t>(trace_file.gcount());
   eof_ = trace_file.eof();
 #else
   bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-  eof_ = (bytes_left > 0);
+  eof_ = (bytes_read > 0);
 #endif
 
   // Transform bytes into trace format instructions
   std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
 
   // Inflate trace format into core model instructions
-  auto cpu = this->cpu;
   auto begin = std::begin(trace_read_buf);
   auto end = std::next(begin, bytes_read / sizeof(T));
-  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu](T t) { return ooo_model_instr{cpu, t}; });
+  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
 
   // Set branch targets
   for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
