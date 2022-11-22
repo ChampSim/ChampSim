@@ -38,14 +38,14 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | tee single_core_result.txt
+      run: ./bin/champsim -w50000000 -i50000000 --json=single_core_result.json -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
       uses: actions/upload-artifact@v2
       with:
         name: champsim-singlecore-results
-        path: single_core_result.txt
+        path: single_core_result.json
 
   multi_core:
     runs-on: ubuntu-latest
@@ -61,11 +61,11 @@ jobs:
 
     # TODO run an actual set of checks
     - name: Run tests
-      run: ./bin/champsim -w50000000 -i50000000 -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz | tee multi_core_result.txt
+      run: ./bin/champsim -w50000000 -i50000000 --json=multi_core_result.json -- https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/401.bzip2-226B.champsimtrace.xz
 
     # We upload the generated files under github actions assets
     - name: Upload Results
       uses: actions/upload-artifact@v2
       with:
         name: champsim-multicore-results
-        path: multi_core_result.txt
+        path: multi_core_result.json

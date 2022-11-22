@@ -3,6 +3,7 @@
 #include <bitset>
 #include <map>
 
+#include "msl/fwcounter.h"
 #include "ooo_cpu.h"
 
 namespace
@@ -12,11 +13,7 @@ constexpr std::size_t COUNTER_BITS = 2;
 constexpr std::size_t GS_HISTORY_TABLE_SIZE = 16384;
 
 std::map<O3_CPU*, std::bitset<GLOBAL_HISTORY_LENGTH>> branch_history_vector;
-std::map<O3_CPU*, std::array<int, GS_HISTORY_TABLE_SIZE>> gs_history_table;
-
-constexpr int COUNTER_MAX = (1 << COUNTER_BITS) - 1;
-constexpr int COUNTER_MIN = 0;
-constexpr int COUNTER_THRESH = (COUNTER_MAX + COUNTER_MIN + 1) / 2;
+std::map<O3_CPU*, std::array<champsim::msl::fwcounter<COUNTER_BITS>, GS_HISTORY_TABLE_SIZE>> gs_history_table;
 
 std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
 {
@@ -25,31 +22,23 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
   hash ^= ip >> GLOBAL_HISTORY_LENGTH;
   hash ^= ip >> (GLOBAL_HISTORY_LENGTH * 2);
 
-  return hash % std::size(gs_history_table);
+  return hash % GS_HISTORY_TABLE_SIZE;
 }
 } // namespace
 
-void O3_CPU::initialize_branch_predictor()
-{
-  std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl;
-
-  std::fill(std::begin(::gs_history_table[this]), std::end(::gs_history_table[this]), ::COUNTER_THRESH); // weakly taken
-}
+void O3_CPU::initialize_branch_predictor() { std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl; }
 
 uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
   auto gs_hash = ::gs_table_hash(ip, ::branch_history_vector[this]);
-  return ::gs_history_table[this][gs_hash] >= ::COUNTER_THRESH;
+  auto value = ::gs_history_table[this][gs_hash];
+  return value.value() >= (value.maximum / 2);
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   auto gs_hash = gs_table_hash(ip, ::branch_history_vector[this]);
-
-  if (taken)
-    ::gs_history_table[this][gs_hash] = std::min(::gs_history_table[this][gs_hash] + 1, ::COUNTER_MAX);
-  else
-    ::gs_history_table[this][gs_hash] = std::max(::gs_history_table[this][gs_hash] - 1, ::COUNTER_MIN);
+  ::gs_history_table[this][gs_hash] += taken ? 1 : -1;
 
   // update branch history vector
   ::branch_history_vector[this] <<= 1;
