@@ -15,7 +15,8 @@
 #include "ooo_cpu.h"
 #include "util.h"
 
-namespace {
+namespace
+{
 enum class branch_info {
   INDIRECT,
   RETURN,

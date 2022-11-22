@@ -3,8 +3,8 @@
 #include <bitset>
 #include <map>
 
-#include "ooo_cpu.h"
 #include "msl/fwcounter.h"
+#include "ooo_cpu.h"
 
 namespace
 {
@@ -26,10 +26,7 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
 }
 } // namespace
 
-void O3_CPU::initialize_branch_predictor()
-{
-  std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl;
-}
+void O3_CPU::initialize_branch_predictor() { std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl; }
 
 uint8_t O3_CPU::predict_branch(uint64_t ip)
 {

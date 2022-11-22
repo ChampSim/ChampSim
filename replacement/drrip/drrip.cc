@@ -61,9 +61,9 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) {                                                // follower sets
+  if (leader == end) { // follower sets
     auto selector = ::PSEL[std::make_pair(this, triggering_cpu)];
-    if (selector.value() > (selector.maximum/2)) { // follow BIP
+    if (selector.value() > (selector.maximum / 2)) { // follow BIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
       ::bip_counter[this]++;

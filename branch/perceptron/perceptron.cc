@@ -42,8 +42,8 @@
 #include <deque>
 #include <map>
 
-#include "ooo_cpu.h"
 #include "msl/fwcounter.h"
+#include "ooo_cpu.h"
 
 namespace
 {
