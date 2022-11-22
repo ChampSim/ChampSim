@@ -189,7 +189,10 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip);
-  if (!arch_instr.branch_prediction && !always_taken) {
+  if (always_taken) {
+    arch_instr.branch_prediction = true;
+  }
+  if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
   }
 
