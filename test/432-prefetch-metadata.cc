@@ -82,7 +82,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       elem->begin_phase();
     }
 
-    WHEN("The lower level fills a miss with prefetch metadata") {
+    WHEN("The upper level experiences a miss and the lower level emits metadata on the fill") {
       constexpr uint64_t seed_addr = 0xdeadbeef;
       constexpr uint32_t seed_metadata = 0xcafebabe;
 
