@@ -11,6 +11,7 @@
 #include <deque>
 #include <map>
 
+#include "msl/lru_table.h"
 #include "ooo_cpu.h"
 #include "util.h"
 
@@ -33,10 +34,12 @@ struct btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
-  uint64_t last_cycle_used = 0;
+
+  auto index() const { return ip_tag >> 2; }
+  auto tag() const { return ip_tag >> 2; }
 };
 
-std::map<O3_CPU*, std::array<btb_entry_t, BTB_SET * BTB_WAY>> BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<btb_entry_t>> BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
@@ -52,7 +55,7 @@ void O3_CPU::initialize_btb()
   std::cout << "Basic BTB sets: " << ::BTB_SET << " ways: " << ::BTB_WAY << " indirect buffer size: " << std::size(::INDIRECT_BTB[this])
             << " RAS size: " << ::RAS_SIZE << std::endl;
 
-  std::fill(std::begin(::BTB[this]), std::end(::BTB[this]), btb_entry_t{});
+  ::BTB.insert({this, champsim::msl::lru_table<btb_entry_t>{BTB_SET, BTB_WAY}});
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
@@ -61,13 +64,10 @@ void O3_CPU::initialize_btb()
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // use BTB for all other branches + direct calls
-  auto set_idx = (ip >> 2) % ::BTB_SET;
-  auto set_begin = std::next(std::begin(::BTB[this]), set_idx * ::BTB_WAY);
-  auto set_end = std::next(set_begin, ::BTB_WAY);
-  auto btb_entry = std::find_if(set_begin, set_end, [ip](auto x) { return x.ip_tag == ip; });
+  auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN});
 
   // no prediction for this IP
-  if (btb_entry == set_end)
+  if (!btb_entry.has_value())
     return {0, true};
 
   if (btb_entry->type == ::branch_info::RETURN) {
@@ -85,8 +85,6 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
     return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], true};
   }
-
-  btb_entry->last_cycle_used = current_cycle;
 
   return {btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL};
 }
@@ -122,15 +120,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
-  auto set_idx = (ip >> 2) % ::BTB_SET;
-  auto set_begin = std::next(std::begin(::BTB[this]), set_idx * BTB_WAY);
-  auto set_end = std::next(set_begin, ::BTB_WAY);
-  auto btb_entry = std::find_if(set_begin, set_end, [ip](auto x) { return x.ip_tag == ip; });
-
-  // no prediction for this entry so far, so allocate one
-  if (btb_entry == set_end)
-    btb_entry = std::min_element(set_begin, set_end, [](auto x, auto y) { return x.last_cycle_used < y.last_cycle_used; });
-
   // update btb entry
   auto type = ::branch_info::ALWAYS_TAKEN;
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL))
@@ -140,5 +129,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_target == 0) || !taken)
     type = ::branch_info::CONDITIONAL;
 
-  *btb_entry = {ip, (branch_target != 0) ? branch_target : btb_entry->target, type, current_cycle};
+  auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
+  if (opt_entry.has_value()) {
+    opt_entry->type = type;
+    if (branch_target != 0)
+      opt_entry->target = branch_target;
+  }
+
+  ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type}));
 }
