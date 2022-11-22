@@ -16,11 +16,11 @@ template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
   auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
-  if (found != end) { 
+  if (found != end) {
     if (!packet.is_translated || !(*found).is_translated) {
       // We make sure that both merge packet address have been translated. If
-      // not this can happen: package with address virtual and physical X 
-      // (not translated) is inserted, package with physical address 
+      // not this can happen: package with address virtual and physical X
+      // (not translated) is inserted, package with physical address
       // (already translated) X.
       return false;
     }
@@ -35,9 +35,8 @@ template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [shamt](PACKET& source, PACKET& destination) {
-    if (source.fill_this_level || destination.fill_this_level)
-    {
-      // If one of the package will fill this level the resulted package should 
+    if (source.fill_this_level || destination.fill_this_level) {
+      // If one of the package will fill this level the resulted package should
       // also fill this level
       destination.fill_this_level = true;
     }

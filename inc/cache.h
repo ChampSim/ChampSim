@@ -88,10 +88,10 @@ public:
 
     std::vector<stats_type> sim_stats, roi_stats;
 
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency, unsigned offset_bits,
-                         bool match_offset)
-        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits),
-          match_offset_bits(match_offset)
+    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency,
+                         unsigned offset_bits, bool match_offset)
+        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), HIT_LATENCY(hit_latency),
+          OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
     {
     }
     void operate() override;

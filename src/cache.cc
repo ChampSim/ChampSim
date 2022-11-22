@@ -272,7 +272,7 @@ void CACHE::operate()
 
   auto ptwq_end = std::find_if_not(std::cbegin(queues.PTWQ), std::cend(queues.PTWQ), operate_readlike);
   queues.PTWQ.erase(std::cbegin(queues.PTWQ), rq_end);
-  
+
   auto rq_end = std::find_if_not(std::cbegin(queues.RQ), std::cend(queues.RQ), operate_readlike);
   queues.RQ.erase(std::cbegin(queues.RQ), rq_end);
 
@@ -429,7 +429,6 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
     return queues.PQ_SIZE;
   else if (queue_type == 4)
     return queues.PTWQ_SIZE;
-
 
   return 0;
 }

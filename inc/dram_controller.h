@@ -2,9 +2,9 @@
 #define DRAM_H
 
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <limits>
-#include <cassert>
 
 #include "champsim_constants.h"
 #include "memory_class.h"
