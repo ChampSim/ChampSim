@@ -243,11 +243,11 @@ void CACHE::operate()
   auto tag_bw = MAX_TAG;
   auto fill_bw = MAX_FILL;
 
-  auto do_fill = [&fill_bw, cycle=current_cycle, this](const PACKET& x){
+  auto do_fill = [&fill_bw, cycle = current_cycle, this](const PACKET& x) {
     return x.event_cycle <= cycle && (fill_bw-- > 0) && this->handle_fill(x);
   };
 
-  auto operate_readlike = [&,this](const PACKET& pkt) {
+  auto operate_readlike = [&, this](const PACKET& pkt) {
     return queues.is_ready(pkt) && (tag_bw-- > 0) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
@@ -264,8 +264,9 @@ void CACHE::operate()
   } else {
     // Treat writes (that is, writebacks) like fills
     auto wq_end = std::find_if_not(std::begin(queues.WQ), std::end(queues.WQ), [&](const PACKET& pkt) { return queues.is_ready(pkt) && (tag_bw-- > 0); });
-    std::for_each(std::begin(queues.WQ), wq_end, [cycle=current_cycle+FILL_LATENCY](PACKET& pkt){ pkt.event_cycle = cycle; }); // apply fill latency
-    std::remove_copy_if(std::begin(queues.WQ), wq_end, std::back_inserter(inflight_writes), [this](const PACKET& pkt){ return this->try_hit(pkt); }); // mark as inflight
+    std::for_each(std::begin(queues.WQ), wq_end, [cycle = current_cycle + FILL_LATENCY](PACKET& pkt) { pkt.event_cycle = cycle; }); // apply fill latency
+    std::remove_copy_if(std::begin(queues.WQ), wq_end, std::back_inserter(inflight_writes),
+                        [this](const PACKET& pkt) { return this->try_hit(pkt); }); // mark as inflight
     queues.WQ.erase(std::begin(queues.WQ), wq_end);
   }
 

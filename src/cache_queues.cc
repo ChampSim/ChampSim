@@ -215,7 +215,10 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
 
 bool CACHE::NonTranslatingQueues::is_ready(const PACKET& pkt) const { return pkt.event_cycle <= current_cycle; }
 
-bool CACHE::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.address != 0 && pkt.address != pkt.v_address; }
+bool CACHE::TranslatingQueues::is_ready(const PACKET& pkt) const
+{
+  return NonTranslatingQueues::is_ready(pkt) && pkt.address != 0 && pkt.address != pkt.v_address;
+}
 
 bool CACHE::NonTranslatingQueues::wq_has_ready() const { return is_ready(WQ.front()); }
 
