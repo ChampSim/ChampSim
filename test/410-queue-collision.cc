@@ -4,37 +4,34 @@
 #include "champsim_constants.h"
 
 template <typename Q>
-void issue_wq(Q &uut, PACKET pkt)
+bool issue_wq (Q& uut, PACKET pkt)
 {
   // Issue it to the uut
   auto result = uut.add_wq(pkt);
-  REQUIRE(result);
-
   uut._operate();
+  return result;
 }
 
 template <typename Q>
-void issue_rq(Q &uut, PACKET pkt)
+bool issue_rq (Q& uut, PACKET pkt)
 {
   // Issue it to the uut
   auto result = uut.add_rq(pkt);
-  REQUIRE(result);
-
   uut._operate();
+  return result;
 }
 
 template <typename Q>
-void issue_pq(Q &uut, PACKET pkt)
+bool issue_pq (Q& uut, PACKET pkt)
 {
   // Issue it to the uut
   auto result = uut.add_pq(pkt);
-  REQUIRE(result);
-
   uut._operate();
+  return result;
 }
 
 template <typename Q, typename F>
-void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
+bool issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F&& func)
 {
   // Create a test packet
   PACKET seed;
@@ -43,11 +40,11 @@ void issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F func)
   seed.cpu = 0;
   seed.to_return = {ret};
 
-  std::invoke(func, uut, seed);
+  return std::invoke(std::forward<F>(func), uut, seed);
 }
 
 template <typename Q, typename F>
-void issue(Q &uut, uint64_t seed_addr, F func)
+bool issue(Q &uut, uint64_t seed_addr, F&& func)
 {
   // Create a test packet
   PACKET seed;
@@ -55,178 +52,240 @@ void issue(Q &uut, uint64_t seed_addr, F func)
   seed.v_address = 0;
   seed.cpu = 0;
 
-  std::invoke(func, uut, seed);
+  return std::invoke(std::forward<F>(func), uut, seed);
 }
 
-template <typename Q>
-void wq_to_wq()
-{
-  GIVEN("A write queue with one item") {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+  GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    TestType uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    THEN("The statistics are zero") {
+      CHECK(uut.sim_stats.back().WQ_ACCESS == 0);
+      CHECK(uut.sim_stats.back().WQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.back().WQ_MERGED == 0);
+    }
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, issue_wq<decltype(uut)>);
+    WHEN("A packet is sent to the write queue") {
+      auto seed_result = issue(uut, address, issue_wq<TestType>);
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
 
-      THEN("The two packets are merged") {
-        REQUIRE(std::size(uut.WQ) == 1);
+        AND_THEN("The statistics reflect the issue") {
+          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+        }
+      }
+
+      AND_WHEN("A packet with the same address is sent to the write queue") {
+        auto test_result = issue(uut, address, issue_wq<TestType>);
+        THEN("The issue is accepted") {
+          REQUIRE(test_result);
+
+          AND_THEN("The statistics reflect the issue") {
+            CHECK(uut.sim_stats.back().WQ_ACCESS == 2);
+            CHECK(uut.sim_stats.back().WQ_TO_CACHE == 2);
+          }
+        }
+
+        THEN("The two packets are merged") {
+          REQUIRE(std::size(uut.WQ) == 1);
+
+          AND_THEN("The statistics reflect the merge") {
+            REQUIRE(uut.sim_stats.back().WQ_MERGED == 1);
+          }
+        }
       }
     }
   }
 }
 
-template <typename Q>
-void rq_to_rq()
-{
-  GIVEN("A read queue with one item") {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+  GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    TestType uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
-    // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+    // These are here to give us pointers to MRPs
+    to_rq_MRP ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_rq<decltype(uut)>);
+    THEN("The statistics are zero") {
+      CHECK(uut.sim_stats.back().RQ_ACCESS == 0);
+      CHECK(uut.sim_stats.back().RQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.back().RQ_MERGED == 0);
+    }
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, &ul1, issue_rq<decltype(uut)>);
+    WHEN("A packet is sent to the read queue") {
+      auto seed_result = issue(uut, address, &ul0, issue_rq<TestType>);
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
 
-      THEN("The two packets are merged") {
-        REQUIRE(std::size(uut.RQ) == 1);
-        REQUIRE(std::size(uut.RQ.front().to_return) == 2);
-        REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
-        REQUIRE(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
+        AND_THEN("The statistics reflect the issue") {
+          CHECK(uut.sim_stats.back().RQ_ACCESS == 1);
+          CHECK(uut.sim_stats.back().RQ_TO_CACHE == 1);
+        }
+      }
+
+      AND_WHEN("A packet with the same address is sent to the read queue") {
+        auto test_result = issue(uut, address, &ul1, issue_rq<TestType>);
+        THEN("The issue is accepted") {
+          REQUIRE(test_result);
+
+          AND_THEN("The statistics reflect the issue") {
+            CHECK(uut.sim_stats.back().RQ_ACCESS == 2);
+            CHECK(uut.sim_stats.back().RQ_TO_CACHE == 2);
+          }
+        }
+
+        THEN("The two packets are merged") {
+          CHECK(std::size(uut.RQ) == 1);
+          CHECK(std::size(uut.RQ.front().to_return) == 2);
+          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
+          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
+
+          AND_THEN("The statistics reflect the merge") {
+            REQUIRE(uut.sim_stats.back().RQ_MERGED == 1);
+          }
+        }
       }
     }
   }
 }
 
-template <typename Q>
-void wq_to_rq()
-{
-  GIVEN("A write queue with one item") {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+  GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    TestType uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+
+    // These are here to give us pointers to MRPs
+    to_rq_MRP ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    THEN("The statistics are zero") {
+      CHECK(uut.sim_stats.back().PQ_ACCESS == 0);
+      CHECK(uut.sim_stats.back().PQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.back().PQ_MERGED == 0);
+    }
 
-    WHEN("A packet with the same address is sent to the read queue") {
-      counting_MRP counter;
-      issue(uut, address, &counter, issue_rq<decltype(uut)>);
+    WHEN("A packet is sent to the prefetch queue") {
+      auto seed_result = issue(uut, address, &ul0, issue_pq<TestType>);
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
 
-      THEN("The two packets are merged") {
-        REQUIRE(std::size(uut.WQ) == 1);
-        REQUIRE(std::size(uut.RQ) == 0);
-        REQUIRE(counter.count == 1);
+        AND_THEN("The statistics reflect the issue") {
+          CHECK(uut.sim_stats.back().PQ_ACCESS == 1);
+          CHECK(uut.sim_stats.back().PQ_TO_CACHE == 1);
+        }
+      }
+
+      AND_WHEN("A packet with the same address is sent to the prefetch queue") {
+        auto test_result = issue(uut, address, &ul1, issue_pq<TestType>);
+        THEN("The issue is accepted") {
+          REQUIRE(test_result);
+
+          AND_THEN("The statistics reflect the issue") {
+            CHECK(uut.sim_stats.back().PQ_ACCESS == 2);
+            CHECK(uut.sim_stats.back().PQ_TO_CACHE == 2);
+          }
+        }
+
+        THEN("The two packets are merged") {
+          CHECK(std::size(uut.PQ) == 1);
+          CHECK(std::size(uut.PQ.front().to_return) == 2);
+          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0) == 1);
+          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1) == 1);
+
+          AND_THEN("The statistics reflect the merge") {
+            REQUIRE(uut.sim_stats.back().PQ_MERGED == 1);
+          }
+        }
       }
     }
   }
 }
 
-template <typename Q>
-void pq_to_pq()
-{
-  GIVEN("A prefetch queue with one item") {
+TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+  GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
-
-    // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+    TestType uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_pq<decltype(uut)>);
+    WHEN("A packet is sent to the write queue") {
+      auto seed_result = issue(uut, address, issue_wq<TestType>);
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
 
-    WHEN("A packet with the same address is sent") {
-      issue(uut, address, &ul1, issue_pq<decltype(uut)>);
+        AND_THEN("The statistics reflect the issue") {
+          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+        }
+      }
 
-      THEN("The two packets are merged") {
-        REQUIRE(std::size(uut.PQ) == 1);
-        REQUIRE(std::size(uut.PQ.front().to_return) == 2);
-        REQUIRE(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0) == 1);
-        REQUIRE(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1) == 1);
+      AND_WHEN("A packet with the same address is sent to the read queue") {
+        counting_MRP counter;
+        issue(uut, address, &counter, issue_rq<TestType>);
+
+        THEN("The two packets are merged") {
+          CHECK(std::size(uut.WQ) == 1);
+          CHECK(std::size(uut.RQ) == 0);
+          CHECK(counter.count == 1);
+
+          AND_THEN("The statistics reflect the merge") {
+            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+          }
+        }
       }
     }
   }
 }
 
-template <typename Q>
-void wq_to_pq()
-{
-  GIVEN("A write queue with one item") {
+TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+  GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    Q uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    TestType uut{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, issue_wq<decltype(uut)>);
+    WHEN("A packet is sent to the write queue") {
+      auto seed_result = issue(uut, address, issue_wq<TestType>);
+      THEN("The issue is accepted") {
+        REQUIRE(seed_result);
 
-    WHEN("A packet with the same address is sent to the prefetch queue") {
-      counting_MRP counter;
-      issue(uut, address, &counter, issue_pq<decltype(uut)>);
+        AND_THEN("The statistics reflect the issue") {
+          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+        }
+      }
 
-      THEN("The two packets are merged") {
-        REQUIRE(std::size(uut.WQ) == 1);
-        REQUIRE(std::size(uut.PQ) == 0);
-        REQUIRE(counter.count == 1);
+      WHEN("A packet with the same address is sent to the prefetch queue") {
+        counting_MRP counter;
+        issue(uut, address, &counter, issue_pq<TestType>);
+
+        THEN("The two packets are merged") {
+          CHECK(std::size(uut.WQ) == 1);
+          CHECK(std::size(uut.PQ) == 0);
+          CHECK(counter.count == 1);
+
+          AND_THEN("The statistics reflect the merge") {
+            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+          }
+        }
       }
     }
   }
-}
-
-SCENARIO("Non-translating cache queues forward WQ to WQ") {
-  wq_to_wq<CACHE::NonTranslatingQueues>();
-}
-
-SCENARIO("Translating cache queues forward WQ to WQ") {
-  wq_to_wq<CACHE::TranslatingQueues>();
-}
-
-SCENARIO("Non-translating cache queues forward RQ to RQ") {
-  rq_to_rq<CACHE::NonTranslatingQueues>();
-}
-
-SCENARIO("Translating cache queues forward RQ to RQ") {
-  rq_to_rq<CACHE::TranslatingQueues>();
-}
-
-SCENARIO("Non-translating cache queues forward WQ to RQ") {
-  wq_to_rq<CACHE::NonTranslatingQueues>();
-}
-
-SCENARIO("Translating cache queues forward WQ to RQ") {
-  wq_to_rq<CACHE::TranslatingQueues>();
-}
-
-SCENARIO("Non-translating cache queues forward PQ to PQ") {
-  pq_to_pq<CACHE::NonTranslatingQueues>();
-}
-
-SCENARIO("Translating cache queues forward PQ to PQ") {
-  pq_to_pq<CACHE::TranslatingQueues>();
-}
-
-SCENARIO("Non-translating cache queues forward WQ to PQ") {
-  wq_to_pq<CACHE::NonTranslatingQueues>();
-}
-
-SCENARIO("Translating cache queues forward WQ to PQ") {
-  wq_to_pq<CACHE::TranslatingQueues>();
 }

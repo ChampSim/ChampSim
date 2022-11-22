@@ -213,26 +213,15 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
   return result;
 }
 
-bool CACHE::NonTranslatingQueues::wq_has_ready() const { return WQ.front().event_cycle <= current_cycle; }
+bool CACHE::NonTranslatingQueues::is_ready(const PACKET& pkt) const { return pkt.event_cycle <= current_cycle; }
 
-bool CACHE::NonTranslatingQueues::rq_has_ready() const { return RQ.front().event_cycle <= current_cycle; }
+bool CACHE::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.address != 0 && pkt.address != pkt.v_address; }
 
-bool CACHE::NonTranslatingQueues::pq_has_ready() const { return PQ.front().event_cycle <= current_cycle; }
+bool CACHE::NonTranslatingQueues::wq_has_ready() const { return is_ready(WQ.front()); }
 
-bool CACHE::TranslatingQueues::wq_has_ready() const
-{
-  return NonTranslatingQueues::wq_has_ready() && WQ.front().address != 0 && WQ.front().address != WQ.front().v_address;
-}
+bool CACHE::NonTranslatingQueues::rq_has_ready() const { return is_ready(RQ.front()); }
 
-bool CACHE::TranslatingQueues::rq_has_ready() const
-{
-  return NonTranslatingQueues::rq_has_ready() && RQ.front().address != 0 && RQ.front().address != RQ.front().v_address;
-}
-
-bool CACHE::TranslatingQueues::pq_has_ready() const
-{
-  return NonTranslatingQueues::pq_has_ready() && PQ.front().address != 0 && PQ.front().address != PQ.front().v_address;
-}
+bool CACHE::NonTranslatingQueues::pq_has_ready() const { return is_ready(PQ.front()); }
 
 void CACHE::TranslatingQueues::return_data(const PACKET& packet)
 {
