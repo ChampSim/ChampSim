@@ -43,31 +43,27 @@
 #include <map>
 
 #include "ooo_cpu.h"
+#include "msl/fwcounter.h"
 
 namespace
 {
-template <typename T, std::size_t HISTLEN, std::size_t BITS>
+template <std::size_t HISTLEN, std::size_t BITS>
 class perceptron
 {
-  T bias = 0;
-  std::array<T, HISTLEN> weights = {};
+  champsim::msl::sfwcounter<BITS> bias{0};
+  std::array<champsim::msl::sfwcounter<BITS>, HISTLEN> weights = {};
 
 public:
-  // maximum and minimum weight values
-  constexpr static T max_weight = (1 << (BITS - 1)) - 1;
-  constexpr static T min_weight = -(max_weight + 1);
-
-  T predict(std::bitset<HISTLEN> history)
+  auto predict(std::bitset<HISTLEN> history)
   {
-    auto output = bias;
+    auto output = bias.value();
 
-    // find the (rest of the) dot product of the history register and the
-    // perceptron weights.
+    // find the (rest of the) dot product of the history register and the perceptron weights.
     for (std::size_t i = 0; i < std::size(history); i++) {
       if (history[i])
-        output += weights[i];
+        output += weights[i].value();
       else
-        output -= weights[i];
+        output -= weights[i].value();
     }
 
     return output;
@@ -75,23 +71,15 @@ public:
 
   void update(bool result, std::bitset<HISTLEN> history)
   {
-    // if the branch was taken, increment the bias weight, else decrement it,
-    // with saturating arithmetic
-    if (result)
-      bias = std::min(bias + 1, max_weight);
-    else
-      bias = std::max(bias - 1, min_weight);
+    // if the branch was taken, increment the bias weight, else decrement it, with saturating arithmetic
+    bias += result ? 1 : -1;
 
     // for each weight and corresponding bit in the history register...
     auto upd_mask = result ? history : ~history; // if the i'th bit in the history positively
                                                  // correlates with this branch outcome,
     for (std::size_t i = 0; i < std::size(upd_mask); i++) {
-      // increment the corresponding weight, else decrement it, with saturating
-      // arithmetic
-      if (upd_mask[i])
-        weights[i] = std::min(weights[i] + 1, max_weight);
-      else
-        weights[i] = std::max(weights[i] - 1, min_weight);
+      // increment the corresponding weight, else decrement it, with saturating arithmetic
+      weights[i] += upd_mask[i] ? 1 : -1;
     }
   }
 };
@@ -110,11 +98,11 @@ constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'p
 struct perceptron_state {
   uint64_t ip = 0;
   bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
-  int output = 0;                              // perceptron output
+  long long int output = 0;                    // perceptron output
   std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
 };
 
-std::map<O3_CPU*, std::array<perceptron<int, PERCEPTRON_HISTORY, PERCEPTRON_BITS>,
+std::map<O3_CPU*, std::array<perceptron<PERCEPTRON_HISTORY, PERCEPTRON_BITS>,
                              NUM_PERCEPTRONS>> perceptrons;             // table of perceptrons
 std::map<O3_CPU*, std::deque<perceptron_state>> perceptron_state_buf;   // state for updating perceptron predictor
 std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> spec_global_history; // speculative global history - updated by predictor

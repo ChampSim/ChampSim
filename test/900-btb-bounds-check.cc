@@ -20,6 +20,7 @@ TEST_CASE("The basic_btb module does not overflow its bounds.") {
     other_cpu.impl_update_btb(0xffffffff, 0, true, BRANCH_DIRECT_CALL);
 
     // Access the table from the uut
+    uut.initialize();
     uut.impl_btb_prediction(0xdeadbeef);
 }
 
