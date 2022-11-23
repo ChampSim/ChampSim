@@ -90,7 +90,7 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
 
   bool success = true;
   if (mshr_entry == std::end(MSHR))
-    success = lower_level->add_rq(fwd_pkt);
+    success = lower_level->add_ptwq(fwd_pkt);
 
   if (success) {
     fwd_pkt.to_return = source.to_return; // Set the return for MSHR packet same as read packet.

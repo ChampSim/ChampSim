@@ -270,6 +270,9 @@ void CACHE::operate()
     queues.WQ.erase(std::begin(queues.WQ), wq_end);
   }
 
+  auto ptwq_end = std::find_if_not(std::cbegin(queues.PTWQ), std::cend(queues.PTWQ), operate_readlike);
+  queues.PTWQ.erase(std::cbegin(queues.PTWQ), ptwq_end);
+
   auto rq_end = std::find_if_not(std::cbegin(queues.RQ), std::cend(queues.RQ), operate_readlike);
   queues.RQ.erase(std::cbegin(queues.RQ), rq_end);
 
@@ -321,15 +324,15 @@ bool CACHE::add_wq(const PACKET& packet)
   return queues.add_wq(packet);
 }
 
-bool CACHE::add_pq(const PACKET& packet)
+bool CACHE::add_ptwq(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_PQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << "[" << NAME << "_PTWQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << std::size(queues.PQ) << " current_cycle: " << current_cycle << std::endl;
+              << " occupancy: " << std::size(queues.PTWQ) << " current_cycle: " << current_cycle;
   }
 
-  return queues.add_pq(packet);
+  return queues.add_ptwq(packet);
 }
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
@@ -345,7 +348,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
 
-  auto success = queues.add_pq(pf_packet);
+  auto success = this->add_pq(pf_packet);
   if (success)
     ++sim_stats.back().pf_issued;
   return success;
@@ -354,6 +357,17 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
 int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
+}
+
+bool CACHE::add_pq(const PACKET& packet)
+{
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "_PQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
+              << " occupancy: " << std::size(queues.PQ) << " current_cycle: " << current_cycle;
+  }
+
+  return queues.add_pq(packet);
 }
 
 void CACHE::return_data(const PACKET& packet)
@@ -413,6 +427,8 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
     return queues.WQ_SIZE;
   else if (queue_type == 3)
     return queues.PQ_SIZE;
+  else if (queue_type == 4)
+    return queues.PTWQ_SIZE;
 
   return 0;
 }

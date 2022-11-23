@@ -43,6 +43,10 @@ struct cache_queue_stats {
   uint64_t WQ_FULL = 0;
   uint64_t WQ_TO_CACHE = 0;
   uint64_t WQ_FORWARD = 0;
+  uint64_t PTWQ_ACCESS = 0;
+  uint64_t PTWQ_MERGED = 0;
+  uint64_t PTWQ_FULL = 0;
+  uint64_t PTWQ_TO_CACHE = 0;
 };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -74,8 +78,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
 public:
   struct NonTranslatingQueues : public champsim::operable {
-    std::deque<PACKET> RQ, PQ, WQ;
-    const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE;
+    std::deque<PACKET> RQ, PQ, WQ, PTWQ;
+    const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE, PTWQ_SIZE;
     const uint64_t HIT_LATENCY;
     const unsigned OFFSET_BITS;
     const bool match_offset_bits;
@@ -84,10 +88,10 @@ public:
 
     std::vector<stats_type> sim_stats, roi_stats;
 
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, uint64_t hit_latency, unsigned offset_bits,
-                         bool match_offset)
-        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), HIT_LATENCY(hit_latency), OFFSET_BITS(offset_bits),
-          match_offset_bits(match_offset)
+    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency,
+                         unsigned offset_bits, bool match_offset)
+        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), HIT_LATENCY(hit_latency),
+          OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
     {
     }
     void operate() override;
@@ -98,12 +102,14 @@ public:
     bool add_rq(const PACKET& packet);
     bool add_wq(const PACKET& packet);
     bool add_pq(const PACKET& packet);
+    bool add_ptwq(const PACKET& packet);
 
     virtual bool is_ready(const PACKET& pkt) const;
 
     bool rq_has_ready() const;
     bool wq_has_ready() const;
     bool pq_has_ready() const;
+    bool ptwq_has_ready() const;
 
     void begin_phase() override;
     void end_phase(unsigned cpu) override;
@@ -156,6 +162,7 @@ public:
   bool add_rq(const PACKET& packet) override final;
   bool add_wq(const PACKET& packet) override final;
   bool add_pq(const PACKET& packet) override final;
+  bool add_ptwq(const PACKET& packet) override final;
 
   void return_data(const PACKET& packet) override final;
   void operate() override final;

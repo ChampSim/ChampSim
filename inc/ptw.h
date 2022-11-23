@@ -47,6 +47,7 @@ public:
   bool add_rq(const PACKET& packet) override final;
   bool add_wq(const PACKET&) override final { assert(0); }
   bool add_pq(const PACKET&) override final { assert(0); }
+  bool add_ptwq(const PACKET&) override final { assert(0); }
 
   void return_data(const PACKET& packet) override final;
   void operate() override final;

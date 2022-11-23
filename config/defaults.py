@@ -8,6 +8,7 @@ default_l1i  = {
         'rq_size': 64,
         'wq_size': 64,
         'pq_size': 32,
+        'ptwq_size': 0,
         'mshr_size': 8,
         'latency': 4,
         'fill_latency': 1,
@@ -27,6 +28,7 @@ default_l1d  = {
         'rq_size': 64,
         'wq_size': 64,
         'pq_size': 8,
+        'ptwq_size': 5,
         'mshr_size': 16,
         'latency': 5,
         'fill_latency': 1,
@@ -46,6 +48,7 @@ default_l2c  = {
         'rq_size': 32,
         'wq_size': 32,
         'pq_size': 16,
+        'ptwq_size': 5,
         'mshr_size': 32,
         'latency': 10,
         'fill_latency': 1,
@@ -65,6 +68,7 @@ default_itlb = {
         'rq_size': 16,
         'wq_size': 16,
         'pq_size': 0,
+        'ptwq_size': 0,
         'mshr_size': 8,
         'latency': 1,
         'fill_latency': 1,
@@ -84,6 +88,7 @@ default_dtlb = {
         'rq_size': 16,
         'wq_size': 16,
         'pq_size': 0,
+        'ptwq_size': 0,
         'mshr_size': 8,
         'latency': 1,
         'fill_latency': 1,
@@ -103,6 +108,7 @@ default_stlb = {
         'rq_size': 32,
         'wq_size': 32,
         'pq_size': 0,
+        'ptwq_size': 0,
         'mshr_size': 16,
         'latency': 8,
         'fill_latency': 1,
@@ -179,6 +185,5 @@ def named_ptw_defaults(cpu):
 
 def named_llc_defaults(name, uls):
     uls = list(uls)
-    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'mshr_size': 64*len(uls), 'max_tag_check': len(uls), 'max_fill': len(uls), **default_llc}
-
+    return {'name': name, 'frequency': max(x['frequency'] for x in uls), 'sets': 2048*len(uls), 'ways': 16, 'rq_size': 32*len(uls), 'wq_size': 32*len(uls), 'pq_size': 32*len(uls), 'ptwq_size': 5*len(uls), 'mshr_size': 64*len(uls), 'max_tag_check': len(uls), 'max_fill': len(uls), **default_llc}
 

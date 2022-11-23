@@ -17,6 +17,13 @@ bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& 
 {
   auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
   if (found != end) {
+    if (!packet.is_translated || !(*found).is_translated) {
+      // We make sure that both merge packet address have been translated. If
+      // not this can happen: package with address virtual and physical X
+      // (not translated) is inserted, package with physical address
+      // (already translated) X.
+      return false;
+    }
     func(packet, *found);
     return true;
   }
@@ -27,7 +34,12 @@ bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& 
 template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
-  return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
+  return do_collision_for(begin, end, packet, shamt, [shamt](PACKET& source, PACKET& destination) {
+    if (source.fill_this_level || destination.fill_this_level) {
+      // If one of the package will fill this level the resulted package should
+      // also fill this level
+      destination.fill_this_level = true;
+    }
     auto instr_copy = std::move(destination.instr_depend_on_me);
     auto ret_copy = std::move(destination.to_return);
 
@@ -175,6 +187,7 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET& packet)
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
+  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(RQ, RQ_SIZE, fwd_pkt);
 
   if (result)
@@ -191,6 +204,7 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
+  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(WQ, WQ_SIZE, fwd_pkt);
 
   if (result)
@@ -203,12 +217,31 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
 
 bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
 {
+  auto fwd_pkt = packet;
   sim_stats.back().PQ_ACCESS++;
-  auto result = do_add_queue(PQ, PQ_SIZE, packet);
+  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
+  auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
     sim_stats.back().PQ_TO_CACHE++;
   else
     sim_stats.back().PQ_FULL++;
+
+  return result;
+}
+
+bool CACHE::NonTranslatingQueues::add_ptwq(const PACKET& packet)
+{
+  sim_stats.back().PTWQ_ACCESS++;
+
+  auto fwd_pkt = packet;
+  fwd_pkt.fill_this_level = true;
+  fwd_pkt.is_translated = true;
+  auto result = do_add_queue(PTWQ, PTWQ_SIZE, fwd_pkt);
+
+  if (result)
+    sim_stats.back().PTWQ_TO_CACHE++;
+  else
+    sim_stats.back().PTWQ_FULL++;
 
   return result;
 }
@@ -226,6 +259,8 @@ bool CACHE::NonTranslatingQueues::rq_has_ready() const { return is_ready(RQ.fron
 
 bool CACHE::NonTranslatingQueues::pq_has_ready() const { return is_ready(PQ.front()); }
 
+bool CACHE::NonTranslatingQueues::ptwq_has_ready() const { return is_ready(PTWQ.front()); }
+
 void CACHE::TranslatingQueues::return_data(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
@@ -240,6 +275,7 @@ void CACHE::TranslatingQueues::return_data(const PACKET& packet)
     if ((wq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       wq_entry.address = champsim::splice_bits(packet.data, wq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       wq_entry.event_cycle = std::min(wq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
+      wq_entry.is_translated = true; // This entry is now translated
     }
   }
 
@@ -247,6 +283,7 @@ void CACHE::TranslatingQueues::return_data(const PACKET& packet)
     if ((rq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       rq_entry.address = champsim::splice_bits(packet.data, rq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       rq_entry.event_cycle = std::min(rq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
+      rq_entry.is_translated = true; // This entry is now translated
     }
   }
 
@@ -254,6 +291,7 @@ void CACHE::TranslatingQueues::return_data(const PACKET& packet)
     if ((pq_entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       pq_entry.address = champsim::splice_bits(packet.data, pq_entry.v_address, LOG2_PAGE_SIZE); // translated address
       pq_entry.event_cycle = std::min(pq_entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
+      pq_entry.is_translated = true; // This entry is now translated
     }
   }
 }

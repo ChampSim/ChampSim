@@ -2,6 +2,7 @@
 #define DRAM_H
 
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <limits>
 
@@ -67,6 +68,7 @@ public:
   bool add_rq(const PACKET& packet) override final;
   bool add_wq(const PACKET& packet) override final;
   bool add_pq(const PACKET& packet) override final;
+  bool add_ptwq(const PACKET&) override final { assert(0); }
 
   std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
