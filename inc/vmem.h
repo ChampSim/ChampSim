@@ -20,19 +20,22 @@ private:
 
   uint64_t next_pte_page = 0;
 
-  std::deque<uint64_t> ppage_free_list;
+  uint64_t next_ppage;
+  uint64_t last_ppage;
+
+  uint64_t ppage_front() const;
+  void ppage_pop();
 
 public:
   const uint64_t minor_fault_penalty;
   const std::size_t pt_levels;
   const uint64_t pte_page_size; // Size of a PTE page
 
-  // capacity and pg_size are measured in bytes, and capacity must be a multiple
-  // of pg_size
+  // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
   VirtualMemory(unsigned paddr_bits, uint64_t pg_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
   uint64_t shamt(std::size_t level) const;
   uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
-  std::size_t available_ppages() const { return std::size(ppage_free_list); }
+  std::size_t available_ppages() const;
   std::pair<uint64_t, uint64_t> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
   std::pair<uint64_t, uint64_t> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level);
 };
