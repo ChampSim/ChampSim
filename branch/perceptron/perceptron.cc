@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <array>
 #include <bitset>
+#include <cmath>
 #include <deque>
 #include <map>
 
@@ -87,8 +88,6 @@ public:
 constexpr std::size_t PERCEPTRON_HISTORY = 24; // history length for the global history shift register
 constexpr std::size_t PERCEPTRON_BITS = 8;     // number of bits per weight
 constexpr std::size_t NUM_PERCEPTRONS = 163;
-
-constexpr int THETA = 1.93 * PERCEPTRON_HISTORY + 14; // threshold for training
 
 constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'perceptron_state' for update
 
@@ -154,6 +153,7 @@ void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t tak
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  if ((output <= ::THETA && output >= -::THETA) || (prediction != taken))
+  const int THETA = std::floor(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
+  if ((output <= THETA && output >= -THETA) || (prediction != taken))
     ::perceptrons[this][index].update(taken, history);
 }

@@ -24,7 +24,9 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
     victim = std::find(begin, end, ::maxRRPV);
   }
 
-  return std::distance(begin, victim);
+  assert(begin <= victim);
+  assert(victim < end);
+  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
 }
 
 // called on every cache hit and cache fill

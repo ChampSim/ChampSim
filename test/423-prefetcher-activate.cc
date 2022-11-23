@@ -8,7 +8,7 @@
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<uint32_t>> address_operate_collector;
+  extern std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
 }
 
 SCENARIO("A prefetch does not trigger itself") {
