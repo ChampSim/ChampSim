@@ -10,7 +10,8 @@
 #include "util.h"
 
 VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
-    : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ull << paddr_bits), minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
+    : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ull << paddr_bits), minor_fault_penalty(minor_penalty), pt_levels(page_table_levels),
+      pte_page_size(page_table_page_size)
 {
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ull << champsim::lg2(page_table_page_size)));
@@ -34,10 +35,7 @@ uint64_t VirtualMemory::ppage_front() const
   return next_ppage;
 }
 
-void VirtualMemory::ppage_pop()
-{
-  next_ppage += PAGE_SIZE;
-}
+void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
 std::size_t VirtualMemory::available_ppages() const { return (last_ppage - next_ppage) / PAGE_SIZE; }
 
