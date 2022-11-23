@@ -31,14 +31,13 @@ bool issue_pq (Q& uut, PACKET pkt)
 }
 
 template <typename Q>
-void issue_pq_fill_this_level(Q &uut, PACKET pkt)
+bool issue_pq_fill_this_level(Q &uut, PACKET pkt)
 {
   // Issue it to the uut
   pkt.fill_this_level = true;
   auto result = uut.add_pq(pkt);
-  REQUIRE(result);
-
   uut._operate();
+  return result;
 }
 
 template <typename Q, typename F>
