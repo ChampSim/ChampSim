@@ -16,9 +16,10 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
   // find victim
   auto [set_begin, set_end] = get_set_span(fill_mshr.address);
-  auto way = std::find_if_not(set_begin, set_end, [](auto x){ return x.valid; });
+  auto way = std::find_if_not(set_begin, set_end, [](auto x) { return x.valid; });
   if (way == set_end)
-    way = std::next(set_begin, impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip, fill_mshr.address, fill_mshr.type));
+    way = std::next(set_begin, impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
+                                                            fill_mshr.address, fill_mshr.type));
   assert(set_begin <= way);
   assert(way <= set_end);
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
@@ -71,8 +72,10 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
       way->cpu = fill_mshr.cpu;
       way->instr_id = fill_mshr.instr_id;
 
-      metadata_thru = impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
-      impl_replacement_update_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type, false);
+      metadata_thru =
+          impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
+      impl_replacement_update_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type,
+                                    false);
 
       way->pf_metadata = metadata_thru;
     }
@@ -285,7 +288,7 @@ std::size_t CACHE::get_set_index(uint64_t address) const { return (address >> OF
 template <typename It>
 std::pair<It, It> get_span(It anchor, typename std::iterator_traits<It>::difference_type set_idx, typename std::iterator_traits<It>::difference_type num_way)
 {
-  auto begin = std::next(anchor, set_idx*num_way);
+  auto begin = std::next(anchor, set_idx * num_way);
   return {std::move(begin), std::next(begin, num_way)};
 }
 

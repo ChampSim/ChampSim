@@ -178,10 +178,8 @@ public:
   std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
-  [[deprecated("Use get_set_index() instead.")]]
-    uint64_t get_set(uint64_t address) const;
-  [[deprecated("This function should not be used to access the blocks directly.")]]
-    uint64_t get_way(uint64_t address, uint64_t set) const;
+  [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
+  [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   uint64_t invalidate_entry(uint64_t inval_addr);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
