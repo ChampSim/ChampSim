@@ -13,14 +13,28 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
       std::size_t original_size = uut.available_ppages();
       int pa_used = 0;
 
-      WHEN("PTE ask for two pages") {
-        if (uut.get_pte_pa(0, 0, 1).second != 0) pa_used++;
-        if (uut.get_pte_pa(0, 0, 2).second != 0) pa_used++;
+      AND_WHEN("PTE ask for a page") {
+        auto [paddr_a, delay_a] = uut.get_pte_pa(0, 0, 1);
 
-        THEN("The pages are remove from the available pages") {
-          REQUIRE(pa_used > 0);
-          // Minus one because it should remove one extra page
-          REQUIRE(original_size - pa_used - 1 == uut.available_ppages());
+        THEN("The page table missed") {
+          REQUIRE(delay_a > 0);
+        }
+
+        AND_WHEN("PTE asks for another page") {
+          auto [paddr_b, delay_b] = uut.get_pte_pa(0, 0, 2);
+
+          THEN("The page table missed") {
+            REQUIRE(delay_b > 0);
+          }
+
+          THEN("The pages are different") {
+            REQUIRE(paddr_a != paddr_b);
+          }
+
+          THEN("The pages are remove from the available pages") {
+            // an additional one because it should remove one extra page
+            REQUIRE(original_size - 3 == uut.available_ppages());
+          }
         }
       }
     }
