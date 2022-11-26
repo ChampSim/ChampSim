@@ -13,8 +13,7 @@ namespace test
 SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
-    do_nothing_MRC mock_ll{miss_latency};
+    release_MRC mock_ll;
     CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"406-uut", 1, 8, 8, 32, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul_seed{&uut};
@@ -70,7 +69,13 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < 2*miss_latency+1; ++i)
+        for (uint64_t i = 0; i < 10; ++i)
+          for (auto elem : elements)
+            elem->_operate();
+
+        mock_ll.release(test_a.address);
+
+        for (uint64_t i = 0; i < 10; ++i)
           for (auto elem : elements)
             elem->_operate();
 
@@ -84,7 +89,6 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
         THEN("The test packet was not forwarded to the lower level") {
           REQUIRE(mock_ll.packet_count() == 1);
-          REQUIRE(mock_ll.addresses.back() == test_a.address);
         }
 
         THEN("The upper level for the test packet received its return") {
