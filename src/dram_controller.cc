@@ -21,13 +21,6 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 {
 }
 
-struct is_unscheduled {
-  bool operator()(const PACKET& lhs) { return !lhs.scheduled; }
-};
-
-struct next_schedule : public invalid_is_maximal<PACKET, min_event_cycle<PACKET>, PACKET, is_unscheduled, is_unscheduled> {
-};
-
 void MEMORY_CONTROLLER::operate()
 {
   for (auto& channel : channels) {
@@ -58,8 +51,8 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Check queue occupancy
-    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()));
-    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()));
+    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x){ return x.address != 0; }));
+    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x){ return x.address != 0; }));
 
     // Change modes if the queues are unbalanced
     if ((!channel.write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
@@ -90,7 +83,7 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Look for requests to put on the bus
-    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request), min_event_cycle<DRAM_CHANNEL::BANK_REQUEST>());
+    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request), [](const auto& lhs, const auto& rhs){ return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
     if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
       if (channel.active_request == std::end(channel.bank_request) && channel.dbus_cycle_available <= current_cycle) {
         // Bus is available
@@ -118,11 +111,14 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Look for queued packets that have not been scheduled
+    auto next_schedule = [](const auto& lhs, const auto& rhs) {
+      return !(rhs.address != 0 && !rhs.scheduled) || ((lhs.address != 0 && !lhs.scheduled) && lhs.event_cycle < rhs.event_cycle);
+    };
     std::vector<PACKET>::iterator iter_next_schedule;
     if (channel.write_mode)
-      iter_next_schedule = std::min_element(std::begin(channel.WQ), std::end(channel.WQ), next_schedule());
+      iter_next_schedule = std::min_element(std::begin(channel.WQ), std::end(channel.WQ), next_schedule);
     else
-      iter_next_schedule = std::min_element(std::begin(channel.RQ), std::end(channel.RQ), next_schedule());
+      iter_next_schedule = std::min_element(std::begin(channel.RQ), std::end(channel.RQ), next_schedule);
 
     if (is_valid<PACKET>()(*iter_next_schedule) && iter_next_schedule->event_cycle <= current_cycle) {
       uint32_t op_rank = dram_get_rank(iter_next_schedule->address), op_bank = dram_get_bank(iter_next_schedule->address),

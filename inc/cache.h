@@ -147,7 +147,7 @@ public:
   const uint32_t FILL_LATENCY;
   const unsigned OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
-  const uint32_t MAX_TAG, MAX_FILL;
+  const long int MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
@@ -197,7 +197,7 @@ public:
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // constructor
-  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint32_t fill_lat, uint32_t max_tag, uint32_t max_fill, unsigned offset_bits,
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint32_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
         bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, NonTranslatingQueues& queue_set, MemoryRequestConsumer* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), FILL_LATENCY(fill_lat),
