@@ -254,23 +254,23 @@ void CACHE::operate()
     return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
-  fill_bw -= operate_queue(MSHR, fill_bw, do_fill);
-  fill_bw -= operate_queue(inflight_writes, fill_bw, do_fill);
+  for (auto q : {std::ref(MSHR), std::ref(inflight_writes)})
+    fill_bw -= operate_queue(q.get(), fill_bw, do_fill);
 
   if (match_offset_bits) {
     // Treat writes (that is, stores) like reads
-    tag_bw -= operate_queue(queues.WQ, tag_bw, operate_readlike);
+    for (auto q : {std::ref(queues.WQ), std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
+      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
   } else {
     // Treat writes (that is, writebacks) like fills
     auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&](const auto& pkt) { return queues.is_ready(pkt); });
     std::for_each(wq_begin, wq_end, [cycle = current_cycle + FILL_LATENCY](auto& pkt) { pkt.event_cycle = cycle; });                    // apply fill latency
     std::remove_copy_if(wq_begin, wq_end, std::back_inserter(inflight_writes), [this](const auto& pkt) { return this->try_hit(pkt); }); // mark as inflight
     queues.WQ.erase(wq_begin, wq_end);
-  }
 
-  tag_bw -= operate_queue(queues.PTWQ, tag_bw, operate_readlike);
-  tag_bw -= operate_queue(queues.RQ, tag_bw, operate_readlike);
-  tag_bw -= operate_queue(queues.PQ, tag_bw, operate_readlike);
+    for (auto q : {std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
+      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
+  }
 
   impl_prefetcher_cycle_operate();
 }
