@@ -195,11 +195,6 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
       mshr_entry->event_cycle = prior_event_cycle;
       mshr_entry->to_return = std::move(to_return);
     }
-
-    if (should_activate_prefetcher(handle_pkt)) {
-      uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-      mshr_entry->pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 0, handle_pkt.type, handle_pkt.pf_metadata);
-    }
   } else {
     if (mshr_full)  // not enough MSHR resource
       return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
