@@ -51,8 +51,8 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Check queue occupancy
-    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x){ return x.address != 0; }));
-    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x){ return x.address != 0; }));
+    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x) { return x.address != 0; }));
+    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x) { return x.address != 0; }));
 
     // Change modes if the queues are unbalanced
     if ((!channel.write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
@@ -83,7 +83,8 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Look for requests to put on the bus
-    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request), [](const auto& lhs, const auto& rhs){ return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
+    auto iter_next_process = std::min_element(std::begin(channel.bank_request), std::end(channel.bank_request),
+                                              [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
     if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
       if (channel.active_request == std::end(channel.bank_request) && channel.dbus_cycle_available <= current_cycle) {
         // Bus is available

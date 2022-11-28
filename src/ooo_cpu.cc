@@ -271,7 +271,9 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
 void O3_CPU::fetch_instruction()
 {
   // Fetch a single cache line
-  auto fetch_ready = [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; };
+  auto fetch_ready = [](const ooo_model_instr& x) {
+    return x.dib_checked == COMPLETED && !x.fetched;
+  };
   std::size_t to_read = L1I_BANDWIDTH;
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
@@ -314,8 +316,10 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 void O3_CPU::promote_to_decode()
 {
   auto available_fetch_bandwidth = std::min<std::size_t>(FETCH_WIDTH, DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER));
-  auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), available_fetch_bandwidth, [cycle=current_cycle](const auto& x){ return x.fetched == COMPLETED && x.event_cycle <= cycle; });
-  std::for_each(window_begin, window_end, [cycle=current_cycle, lat=DECODE_LATENCY, warmup=warmup](auto& x){ return x.event_cycle = cycle + ((warmup || x.decoded) ? 0 : lat); });
+  auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), available_fetch_bandwidth,
+                                                         [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
+  std::for_each(window_begin, window_end,
+                [cycle = current_cycle, lat = DECODE_LATENCY, warmup = warmup](auto& x) { return x.event_cycle = cycle + ((warmup || x.decoded) ? 0 : lat); });
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
 
@@ -327,27 +331,28 @@ void O3_CPU::promote_to_decode()
 void O3_CPU::decode_instruction()
 {
   auto available_decode_bandwidth = std::min<std::size_t>(DECODE_WIDTH, DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER));
-  auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth, [cycle=current_cycle](const auto& x){ return x.event_cycle <= cycle; });
+  auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth,
+                                                         [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
 
   // Send decoded instructions to dispatch
-  std::for_each(window_begin, window_end, [&,this](auto& db_entry) {
-      this->do_dib_update(db_entry);
+  std::for_each(window_begin, window_end, [&, this](auto& db_entry) {
+    this->do_dib_update(db_entry);
 
-      // Resume fetch
-      if (db_entry.branch_mispredicted) {
-        // These branches detect the misprediction at decode
-        if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
-            || (db_entry.branch_type == BRANCH_CONDITIONAL && db_entry.branch_taken == db_entry.branch_prediction)) {
-          // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
-          db_entry.branch_mispredicted = 0;
-          // pay misprediction penalty
-          this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
-        }
+    // Resume fetch
+    if (db_entry.branch_mispredicted) {
+      // These branches detect the misprediction at decode
+      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
+          || (db_entry.branch_type == BRANCH_CONDITIONAL && db_entry.branch_taken == db_entry.branch_prediction)) {
+        // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
+        db_entry.branch_mispredicted = 0;
+        // pay misprediction penalty
+        this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
       }
+    }
 
-      // Add to dispatch
-      db_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : this->DISPATCH_LATENCY);
-      });
+    // Add to dispatch
+    db_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : this->DISPATCH_LATENCY);
+  });
 
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
@@ -510,13 +515,14 @@ void O3_CPU::operate_lsq()
     return x.instr_id < complete_id && x.event_cycle <= cycle && this->do_complete_store(x);
   };
 
-  auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x){ return x.fetch_issued; });
-  auto [fetch_begin, fetch_end] = champsim::get_span_p(unfetched_begin, std::end(SQ), store_bw, [cycle=current_cycle](const auto& x){ return !x.fetch_issued && x.event_cycle <= cycle; });
+  auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x) { return x.fetch_issued; });
+  auto [fetch_begin, fetch_end] = champsim::get_span_p(unfetched_begin, std::end(SQ), store_bw,
+                                                       [cycle = current_cycle](const auto& x) { return !x.fetch_issued && x.event_cycle <= cycle; });
   store_bw -= std::distance(fetch_begin, fetch_end);
-  std::for_each(fetch_begin, fetch_end, [cycle=current_cycle, this](auto& sq_entry){
-      this->do_finish_store(sq_entry);
-      sq_entry.fetch_issued = true;
-      sq_entry.event_cycle = cycle;
+  std::for_each(fetch_begin, fetch_end, [cycle = current_cycle, this](auto& sq_entry) {
+    this->do_finish_store(sq_entry);
+    sq_entry.fetch_issued = true;
+    sq_entry.event_cycle = cycle;
   });
 
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
@@ -653,9 +659,9 @@ void O3_CPU::handle_memory_return()
 
 void O3_CPU::retire_rob()
 {
-  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x){ return x.executed == COMPLETED; });
-  if constexpr(champsim::debug_print) {
-    std::for_each(retire_begin, retire_end, [](const auto& x){ std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
+  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.executed == COMPLETED; });
+  if constexpr (champsim::debug_print) {
+    std::for_each(retire_begin, retire_end, [](const auto& x) { std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
   }
   num_retired += std::distance(retire_begin, retire_end);
   ROB.erase(retire_begin, retire_end);

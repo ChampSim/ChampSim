@@ -111,9 +111,8 @@ void PageTableWalker::operate()
   });
   MSHR.erase(mshr_begin, mshr_end);
 
-  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ, [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && this->handle_read(pkt);
-  });
+  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ,
+                                                 [cycle = current_cycle, this](const auto& pkt) { return pkt.event_cycle <= cycle && this->handle_read(pkt); });
   RQ.erase(rq_begin, rq_end);
 }
 
@@ -159,7 +158,7 @@ void PageTableWalker::return_data(const PACKET& packet)
     }
   }
 
-  std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y){ return x.event_cycle < y.event_cycle; });
+  std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
 }
 
 std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
