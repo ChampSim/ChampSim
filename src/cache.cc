@@ -241,7 +241,7 @@ void CACHE::operate()
     return x.event_cycle <= cycle && this->handle_fill(x);
   };
 
-  auto operate_readlike = [&queues, this](const auto& pkt) {
+  auto operate_readlike = [&, this](const auto& pkt) {
     return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
@@ -260,7 +260,7 @@ void CACHE::operate()
     queues.WQ.erase(wq_begin, wq_end);
   } else {
     // Treat writes (that is, writebacks) like fills
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&queues](const auto& pkt) { return queues.is_ready(pkt); });
+    auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&](const auto& pkt) { return queues.is_ready(pkt); });
     std::for_each(wq_begin, wq_end, [cycle = current_cycle + FILL_LATENCY](auto& pkt) { pkt.event_cycle = cycle; }); // apply fill latency
     std::remove_copy_if(wq_begin, wq_end, std::back_inserter(inflight_writes), [this](const auto& pkt) { return this->try_hit(pkt); }); // mark as inflight
     queues.WQ.erase(wq_begin, wq_end);
