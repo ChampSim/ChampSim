@@ -28,6 +28,7 @@ jobs:
     strategy:
       matrix:
         cxx: [g++, clang++]
+      fail-fast: false
 
     runs-on: ubuntu-latest
 
