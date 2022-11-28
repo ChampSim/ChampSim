@@ -92,6 +92,16 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
             (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
             )
 
+    ## DEPRECATION
+    # The keys "max_read" and "max_write" are deprecated. For now, permit them but print a warning
+    for cache in caches.values():
+        if "max_read" in cache:
+            print('WARNING: key "max_read" in cache ', cache['name'], ' is deprecated. Use "max_tag_check" instead.')
+            cache['max_tag_check'] = cache['max_read']
+        if "max_write" in cache:
+            print('WARNING: key "max_write" in cache ', cache['name'], ' is deprecated. Use "max_fill" instead.')
+            cache['max_fill'] = cache['max_write']
+
     # Remove caches that are inaccessible
     caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
 

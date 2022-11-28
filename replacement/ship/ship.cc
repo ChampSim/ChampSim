@@ -20,7 +20,7 @@ class SAMPLER_class
 {
 public:
   bool valid = false;
-  uint8_t type = 0, used = 0;
+  uint8_t used = 0;
   uint64_t address = 0, cl_addr = 0, ip = 0;
   uint64_t last_used = 0;
 };
@@ -72,7 +72,8 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
     victim = std::find(begin, end, ::maxRRPV);
   }
 
-  return std::distance(begin, victim);
+  assert(begin <= victim);
+  return static_cast<uint32_t>(std::distance(begin, victim)); // cast pretected by prior assert
 }
 
 // called on every cache hit and cache fill
@@ -97,17 +98,16 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     auto match = std::find_if(s_set_begin, s_set_end,
                               [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && (x.address >> shamt) == (addr >> shamt); });
     if (match != s_set_end) {
-      uint32_t SHCT_idx = match->ip % ::SHCT_PRIME;
+      auto SHCT_idx = match->ip % ::SHCT_PRIME;
       if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] > 0)
         ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]--;
 
-      match->type = type;
       match->used = 1;
     } else {
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
-        uint32_t SHCT_idx = match->ip % ::SHCT_PRIME;
+        auto SHCT_idx = match->ip % ::SHCT_PRIME;
         if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] < ::SHCT_MAX)
           ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]++;
       }
@@ -115,7 +115,6 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
       match->valid = 1;
       match->address = full_addr;
       match->ip = ip;
-      match->type = type;
       match->used = 0;
     }
 
@@ -127,7 +126,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     ::rrpv_values[this][set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
-    uint32_t SHCT_idx = ip % ::SHCT_PRIME;
+    auto SHCT_idx = ip % ::SHCT_PRIME;
 
     ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] == ::SHCT_MAX)

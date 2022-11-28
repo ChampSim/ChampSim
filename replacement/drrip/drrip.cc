@@ -61,9 +61,9 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) {                                                // follower sets
+  if (leader == end) { // follower sets
     auto selector = ::PSEL[std::make_pair(this, triggering_cpu)];
-    if (selector.value() > (selector.maximum/2)) { // follow BIP
+    if (selector.value() > (selector.maximum / 2)) { // follow BIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
       ::bip_counter[this]++;
@@ -100,7 +100,9 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
   for (auto it = begin; it != end; ++it)
     *it += ::maxRRPV - *victim;
 
-  return std::distance(begin, victim);
+  assert(begin <= victim);
+  assert(victim < end);
+  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
 }
 
 // use this function to print out your own stats at the end of simulation

@@ -91,7 +91,7 @@ unsigned int ghist_words[NUM_CPUS][NGHIST_WORDS];
 
 // remember the indices into the tables from prediction to update
 
-unsigned int indices[NUM_CPUS][NTABLES];
+uint64_t indices[NUM_CPUS][NTABLES];
 
 // initialize theta to something reasonable,
 int theta[NUM_CPUS],
@@ -136,7 +136,7 @@ uint8_t O3_CPU::predict_branch(uint64_t pc)
     // hash global history bits 0..n-1 into x by XORing the words from the
     // ghist_words array
 
-    unsigned int x = 0;
+    uint64_t x = 0;
 
     // most of the words are 12 bits long
 

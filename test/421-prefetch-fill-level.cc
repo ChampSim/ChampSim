@@ -8,7 +8,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"421-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     // Initialize the prefetching and replacement
@@ -43,7 +43,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"421-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     // Initialize the prefetching and replacement

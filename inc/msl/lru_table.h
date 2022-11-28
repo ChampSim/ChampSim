@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "msl/bits.h"

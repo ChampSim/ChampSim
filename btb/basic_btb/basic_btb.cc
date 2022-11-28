@@ -15,7 +15,8 @@
 #include "ooo_cpu.h"
 #include "util.h"
 
-namespace {
+namespace
+{
 enum class branch_info {
   INDIRECT,
   RETURN,
@@ -67,7 +68,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 
   // no prediction for this IP
   if (!btb_entry.has_value())
-    return {0, true};
+    return {0, false};
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
