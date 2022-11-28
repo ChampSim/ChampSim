@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "msl/bits.h"

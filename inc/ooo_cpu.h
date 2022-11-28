@@ -84,7 +84,7 @@ public:
 
   using stats_type = cpu_stats;
 
-  std::vector<stats_type> roi_stats, sim_stats;
+  std::vector<stats_type> roi_stats{}, sim_stats{};
 
   // instruction buffer
   struct dib_shift {

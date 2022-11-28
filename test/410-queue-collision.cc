@@ -133,7 +133,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are here to give us pointers to MRPs
-    to_rq_MRP ul0{nullptr}, ul1{nullptr};
+    to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;
@@ -188,7 +188,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are here to give us pointers to MRPs
-    to_rq_MRP ul0{nullptr}, ul1{nullptr};
+    to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;
@@ -321,7 +321,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     uut.lower_level = &mock_ll;
 
     // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+    to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;
@@ -345,7 +345,7 @@ SCENARIO("Non-translating cache queues forward PQ to PQ with different fill leve
     CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0{nullptr}, ul1{nullptr};
+    to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
 
     // Turn off warmup
     uut.warmup = false;

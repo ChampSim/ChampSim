@@ -243,10 +243,9 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
 void O3_CPU::check_dib()
 {
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded
-  // instruction buffer
+  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(begin, FETCH_WIDTH));
+  auto end = std::next(begin, std::min<std::size_t>(std::distance(begin, std::end(IFETCH_BUFFER)), FETCH_WIDTH));
   for (auto it = begin; it != end; ++it)
     do_check_dib(*it);
 }

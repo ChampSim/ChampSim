@@ -156,7 +156,7 @@ public:
 
   using stats_type = cache_stats;
 
-  std::vector<stats_type> sim_stats, roi_stats;
+  std::vector<stats_type> sim_stats{}, roi_stats{};
 
   NonTranslatingQueues& queues;
   std::deque<PACKET> MSHR;
