@@ -11,7 +11,6 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
 
     WHEN("PTE requires memory") {
       std::size_t original_size = uut.available_ppages();
-      int pa_used = 0;
 
       AND_WHEN("PTE ask for a page") {
         auto [paddr_a, delay_a] = uut.get_pte_pa(0, 0, 1);

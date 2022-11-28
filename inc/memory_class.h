@@ -39,8 +39,8 @@ public:
 
   uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
 
-  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me;
-  std::vector<MemoryRequestProducer*> to_return;
+  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+  std::vector<MemoryRequestProducer*> to_return{};
 
   std::size_t translation_level = 0;
   std::size_t init_translation_level = 0;
