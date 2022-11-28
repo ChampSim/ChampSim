@@ -106,23 +106,14 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
 
 void PageTableWalker::operate()
 {
-  auto fill_bw = MAX_FILL;
-  auto read_bw = MAX_READ;
-
-  auto do_fill = [cycle = current_cycle, this](const PACKET& x) {
-    return x.event_cycle <= cycle && this->handle_fill(x);
-  };
-
-  auto operate_readlike = [cycle = current_cycle, this](const PACKET& pkt) {
-    return pkt.event_cycle <= cycle && this->handle_read(pkt);
-  };
-
-  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(MSHR), std::cend(MSHR), fill_bw, do_fill);
-  fill_bw -= std::distance(mshr_begin, mshr_end);
+  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(MSHR), std::cend(MSHR), MAX_FILL, [cycle = current_cycle, this](const auto& pkt) {
+    return pkt.event_cycle <= cycle && this->handle_fill(pkt);
+  });
   MSHR.erase(mshr_begin, mshr_end);
 
-  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), read_bw, operate_readlike);
-  read_bw -= std::distance(rq_begin, rq_end);
+  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ, [cycle = current_cycle, this](const auto& pkt) {
+    return pkt.event_cycle <= cycle && this->handle_read(pkt);
+  });
   RQ.erase(rq_begin, rq_end);
 }
 
