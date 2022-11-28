@@ -232,6 +232,15 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   return true;
 }
 
+template <typename R, typename F>
+long int operate_queue(R& queue, long int sz, F&& func)
+{
+  auto [begin, end] = champsim::get_span_p(std::cbegin(queue), std::cend(queue), sz, std::forward<F>(func));
+  auto retval = std::distance(begin, end);
+  queue.erase(begin, end);
+  return retval;
+}
+
 void CACHE::operate()
 {
   auto tag_bw = MAX_TAG;
@@ -245,19 +254,12 @@ void CACHE::operate()
     return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
-  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(MSHR), std::cend(MSHR), fill_bw, do_fill);
-  fill_bw -= std::distance(mshr_begin, mshr_end);
-  MSHR.erase(mshr_begin, mshr_end);
-
-  auto [write_begin, write_end] = champsim::get_span_p(std::cbegin(inflight_writes), std::cend(inflight_writes), fill_bw, do_fill);
-  fill_bw -= std::distance(write_begin, write_end);
-  inflight_writes.erase(write_begin, write_end);
+  fill_bw -= operate_queue(MSHR, fill_bw, do_fill);
+  fill_bw -= operate_queue(inflight_writes, fill_bw, do_fill);
 
   if (match_offset_bits) {
     // Treat writes (that is, stores) like reads
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(queues.WQ), std::cend(queues.WQ), tag_bw, operate_readlike);
-    tag_bw -= std::distance(wq_begin, wq_end);
-    queues.WQ.erase(wq_begin, wq_end);
+    tag_bw -= operate_queue(queues.WQ, tag_bw, operate_readlike);
   } else {
     // Treat writes (that is, writebacks) like fills
     auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&](const auto& pkt) { return queues.is_ready(pkt); });
@@ -266,17 +268,9 @@ void CACHE::operate()
     queues.WQ.erase(wq_begin, wq_end);
   }
 
-  auto [ptwq_begin, ptwq_end] = champsim::get_span_p(std::cbegin(queues.PTWQ), std::cend(queues.PTWQ), tag_bw, operate_readlike);
-  tag_bw -= std::distance(ptwq_begin, ptwq_end);
-  queues.PTWQ.erase(ptwq_begin, ptwq_end);
-
-  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(queues.RQ), std::cend(queues.RQ), tag_bw, operate_readlike);
-  tag_bw -= std::distance(rq_begin, rq_end);
-  queues.RQ.erase(rq_begin, rq_end);
-
-  auto [pq_begin, pq_end] = champsim::get_span_p(std::cbegin(queues.PQ), std::cend(queues.PQ), tag_bw, operate_readlike);
-  tag_bw -= std::distance(pq_begin, pq_end);
-  queues.PQ.erase(pq_begin, pq_end);
+  tag_bw -= operate_queue(queues.PTWQ, tag_bw, operate_readlike);
+  tag_bw -= operate_queue(queues.RQ, tag_bw, operate_readlike);
+  tag_bw -= operate_queue(queues.PQ, tag_bw, operate_readlike);
 
   impl_prefetcher_cycle_operate();
 }

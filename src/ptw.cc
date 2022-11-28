@@ -97,19 +97,22 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
     fwd_pkt.type = source.type;
     fwd_pkt.event_cycle = std::numeric_limits<uint64_t>::max();
     MSHR.push_back(fwd_pkt);
-
-    return true;
   }
 
-  return false;
+  return success;
 }
 
 void PageTableWalker::operate()
 {
-  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(MSHR), std::cend(MSHR), MAX_FILL, [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && this->handle_fill(pkt);
-  });
-  MSHR.erase(mshr_begin, mshr_end);
+  auto fill_this_cycle = MAX_FILL;
+  while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
+    auto success = handle_fill(MSHR.front());
+    if (!success)
+      break;
+
+    MSHR.pop_front();
+    fill_this_cycle--;
+  }
 
   auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ,
                                                  [cycle = current_cycle, this](const auto& pkt) { return pkt.event_cycle <= cycle && this->handle_read(pkt); });
