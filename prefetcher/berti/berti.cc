@@ -806,9 +806,10 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
     uint64_t p_addr = (line_addr + deltas[i].delta) << LOG2_BLOCK_SIZE;
     uint64_t p_b_addr = (p_addr >> LOG2_BLOCK_SIZE);
 
-    if (latencyt->get(p_b_addr))
-      continue;
-
+    if (latencyt->get(p_b_addr))continue;
+    
+    if (deltas[i].rpl == BERTI_R) return metadata_in;
+    
     if ((p_addr >> LOG2_PAGE_SIZE) != (addr >> LOG2_PAGE_SIZE)) {
       cross_page++;
 #ifdef NO_CROSS_PAGE
@@ -821,8 +822,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
     int fill_level = true;
     float mshr_load = ((float)get_occupancy(0, 0) / (float)get_size(0, 0)) * 100;
 
-    if (deltas[i].rpl == BERTI_R)
-      return metadata_in;
     bool fill_this_level = (deltas[i].rpl == BERTI_L1) && (mshr_load < MSHR_LIMIT);
 
     if (deltas[i].rpl == BERTI_L1 && mshr_load >= MSHR_LIMIT)
