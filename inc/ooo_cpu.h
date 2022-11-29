@@ -56,7 +56,7 @@ struct LSQ_ENTRY {
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me;
 
-  void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
+  void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
 
 // cpu
@@ -84,7 +84,7 @@ public:
 
   using stats_type = cpu_stats;
 
-  std::vector<stats_type> roi_stats, sim_stats;
+  std::vector<stats_type> roi_stats{}, sim_stats{};
 
   // instruction buffer
   struct dib_shift {
@@ -107,9 +107,11 @@ public:
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
-  const unsigned FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH, LQ_WIDTH, SQ_WIDTH, RETIRE_WIDTH;
+  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
+  const long int LQ_WIDTH, SQ_WIDTH;
+  const long int RETIRE_WIDTH;
   const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
-  const unsigned L1I_BANDWIDTH, L1D_BANDWIDTH;
+  const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
   uint8_t fetch_stall = 0;
@@ -150,7 +152,7 @@ public:
   void do_complete_execution(ooo_model_instr& instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
-  void do_finish_store(LSQ_ENTRY& sq_entry);
+  void do_finish_store(const LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
@@ -168,9 +170,9 @@ public:
 
   O3_CPU(uint32_t index, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
          std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width, unsigned dispatch_width,
-         unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width, unsigned retire_width, unsigned mispredict_penalty,
-         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, MemoryRequestConsumer* l1i, unsigned l1i_bw,
-         MemoryRequestConsumer* l1d, unsigned l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
+         unsigned schedule_width, unsigned execute_width, long int lq_width, long int sq_width, unsigned retire_width, unsigned mispredict_penalty,
+         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, MemoryRequestConsumer* l1i, long int l1i_bw,
+         MemoryRequestConsumer* l1d, long int l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
       : champsim::operable(freq_scale), cpu(index), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),

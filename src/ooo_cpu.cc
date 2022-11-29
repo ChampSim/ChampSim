@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -243,11 +244,10 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
 void O3_CPU::check_dib()
 {
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded
-  // instruction buffer
+  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(begin, FETCH_WIDTH));
-  for (auto it = begin; it != end; ++it)
+  auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
+  for (auto it = window_begin; it != window_end; ++it)
     do_check_dib(*it);
 }
 
@@ -271,9 +271,11 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
 void O3_CPU::fetch_instruction()
 {
   // Fetch a single cache line
+  auto fetch_ready = [](const ooo_model_instr& x) {
+    return x.dib_checked == COMPLETED && !x.fetched;
+  };
   std::size_t to_read = L1I_BANDWIDTH;
-  auto l1i_req_begin =
-      std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
+  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
     auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
@@ -290,7 +292,7 @@ void O3_CPU::fetch_instruction()
     }
 
     --to_read;
-    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return x.dib_checked == COMPLETED && !x.fetched; });
+    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
   }
 }
 
@@ -313,15 +315,13 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 
 void O3_CPU::promote_to_decode()
 {
-  unsigned available_fetch_bandwidth = FETCH_WIDTH;
-  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && std::size(DECODE_BUFFER) < DECODE_BUFFER_SIZE
-         && IFETCH_BUFFER.front().fetched == COMPLETED) {
-    IFETCH_BUFFER.front().event_cycle = current_cycle + ((warmup || IFETCH_BUFFER.front().decoded) ? 0 : DECODE_LATENCY);
-    DECODE_BUFFER.push_back(std::move(IFETCH_BUFFER.front()));
-    IFETCH_BUFFER.pop_front();
-
-    available_fetch_bandwidth--;
-  }
+  auto available_fetch_bandwidth = std::min<std::size_t>(FETCH_WIDTH, DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER));
+  auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), available_fetch_bandwidth,
+                                                         [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
+  std::for_each(window_begin, window_end,
+                [cycle = current_cycle, lat = DECODE_LATENCY, warmup = warmup](auto& x) { return x.event_cycle = cycle + ((warmup || x.decoded) ? 0 : lat); });
+  std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
+  IFETCH_BUFFER.erase(window_begin, window_end);
 
   // check for deadlock
   if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
@@ -330,13 +330,13 @@ void O3_CPU::promote_to_decode()
 
 void O3_CPU::decode_instruction()
 {
-  std::size_t available_decode_bandwidth = DECODE_WIDTH;
+  auto available_decode_bandwidth = std::min<std::size_t>(DECODE_WIDTH, DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER));
+  auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth,
+                                                         [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
 
   // Send decoded instructions to dispatch
-  while (available_decode_bandwidth > 0 && !std::empty(DECODE_BUFFER) && DECODE_BUFFER.front().event_cycle <= current_cycle
-         && std::size(DISPATCH_BUFFER) < DISPATCH_BUFFER_SIZE) {
-    ooo_model_instr& db_entry = DECODE_BUFFER.front();
-    do_dib_update(db_entry);
+  std::for_each(window_begin, window_end, [&, this](auto& db_entry) {
+    this->do_dib_update(db_entry);
 
     // Resume fetch
     if (db_entry.branch_mispredicted) {
@@ -346,17 +346,16 @@ void O3_CPU::decode_instruction()
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
-        fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
+        this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
       }
     }
 
     // Add to dispatch
-    db_entry.event_cycle = current_cycle + (warmup ? 0 : DISPATCH_LATENCY);
-    DISPATCH_BUFFER.push_back(std::move(db_entry));
-    DECODE_BUFFER.pop_front();
+    db_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : this->DISPATCH_LATENCY);
+  });
 
-    available_decode_bandwidth--;
-  }
+  std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
+  DECODE_BUFFER.erase(window_begin, window_end);
 
   // check for deadlock
   if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
@@ -511,23 +510,24 @@ void O3_CPU::operate_lsq()
 {
   auto store_bw = SQ_WIDTH;
 
-  for (auto& sq_entry : SQ) {
-    if (store_bw > 0 && !sq_entry.fetch_issued && sq_entry.event_cycle < current_cycle) {
-      do_finish_store(sq_entry);
-      --store_bw;
-      sq_entry.fetch_issued = true;
-      sq_entry.event_cycle = current_cycle;
-    }
-  }
+  const auto complete_id = std::empty(ROB) ? std::numeric_limits<uint64_t>::max() : ROB.front().instr_id;
+  auto do_complete = [cycle = current_cycle, complete_id, this](const auto& x) {
+    return x.instr_id < complete_id && x.event_cycle <= cycle && this->do_complete_store(x);
+  };
 
-  for (; store_bw > 0 && !std::empty(SQ) && (std::empty(ROB) || SQ.front().instr_id < ROB.front().instr_id) && SQ.front().event_cycle < current_cycle;
-       --store_bw) {
-    auto success = do_complete_store(SQ.front());
-    if (success)
-      SQ.pop_front(); // std::deque::erase() requires MoveAssignable :(
-    else
-      break;
-  }
+  auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x) { return x.fetch_issued; });
+  auto [fetch_begin, fetch_end] = champsim::get_span_p(unfetched_begin, std::end(SQ), store_bw,
+                                                       [cycle = current_cycle](const auto& x) { return !x.fetch_issued && x.event_cycle <= cycle; });
+  store_bw -= std::distance(fetch_begin, fetch_end);
+  std::for_each(fetch_begin, fetch_end, [cycle = current_cycle, this](auto& sq_entry) {
+    this->do_finish_store(sq_entry);
+    sq_entry.fetch_issued = true;
+    sq_entry.event_cycle = cycle;
+  });
+
+  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
+  store_bw -= std::distance(complete_begin, complete_end);
+  SQ.erase(complete_begin, complete_end);
 
   auto load_bw = LQ_WIDTH;
 
@@ -543,7 +543,7 @@ void O3_CPU::operate_lsq()
   }
 }
 
-void O3_CPU::do_finish_store(LSQ_ENTRY& sq_entry)
+void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 {
   sq_entry.finish(std::begin(ROB), std::end(ROB));
 
@@ -659,17 +659,12 @@ void O3_CPU::handle_memory_return()
 
 void O3_CPU::retire_rob()
 {
-  unsigned retire_bandwidth = RETIRE_WIDTH;
-
-  while (retire_bandwidth > 0 && !ROB.empty() && (ROB.front().executed == COMPLETED)) {
-    if constexpr (champsim::debug_print) {
-      std::cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << std::endl;
-    }
-
-    ROB.pop_front();
-    num_retired++;
-    retire_bandwidth--;
+  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.executed == COMPLETED; });
+  if constexpr (champsim::debug_print) {
+    std::for_each(retire_begin, retire_end, [](const auto& x) { std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
   }
+  num_retired += std::distance(retire_begin, retire_end);
+  ROB.erase(retire_begin, retire_end);
 
   // Check for deadlock
   if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
@@ -735,7 +730,7 @@ void O3_CPU::print_deadlock()
   }
 }
 
-void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
+void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const
 {
   auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
   assert(rob_entry != end);

@@ -12,7 +12,7 @@
 #include "util.h"
 
 struct dram_stats {
-  std::string name;
+  std::string name{};
   uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
@@ -40,7 +40,7 @@ struct DRAM_CHANNEL {
   uint64_t dbus_cycle_available = 0;
 
   using stats_type = dram_stats;
-  std::vector<stats_type> roi_stats, sim_stats;
+  std::vector<stats_type> roi_stats{}, sim_stats{};
 
   void check_collision();
 };

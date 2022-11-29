@@ -232,46 +232,45 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   return true;
 }
 
+template <typename R, typename F>
+long int operate_queue(R& queue, long int sz, F&& func)
+{
+  auto [begin, end] = champsim::get_span_p(std::cbegin(queue), std::cend(queue), sz, std::forward<F>(func));
+  auto retval = std::distance(begin, end);
+  queue.erase(begin, end);
+  return retval;
+}
+
 void CACHE::operate()
 {
   auto tag_bw = MAX_TAG;
   auto fill_bw = MAX_FILL;
 
-  auto do_fill = [&fill_bw, cycle = current_cycle, this](const PACKET& x) {
-    return x.event_cycle <= cycle && (fill_bw-- > 0) && this->handle_fill(x);
+  auto do_fill = [cycle = current_cycle, this](const auto& x) {
+    return x.event_cycle <= cycle && this->handle_fill(x);
   };
 
-  auto operate_readlike = [&, this](const PACKET& pkt) {
-    return queues.is_ready(pkt) && (tag_bw-- > 0) && (this->try_hit(pkt) || this->handle_miss(pkt));
+  auto operate_readlike = [&, this](const auto& pkt) {
+    return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
-  auto mshr_end = std::find_if_not(std::cbegin(MSHR), std::cend(MSHR), do_fill);
-  MSHR.erase(std::cbegin(MSHR), mshr_end);
-
-  auto write_end = std::find_if_not(std::cbegin(inflight_writes), std::cend(inflight_writes), do_fill);
-  inflight_writes.erase(std::cbegin(inflight_writes), write_end);
+  for (auto q : {std::ref(MSHR), std::ref(inflight_writes)})
+    fill_bw -= operate_queue(q.get(), fill_bw, do_fill);
 
   if (match_offset_bits) {
     // Treat writes (that is, stores) like reads
-    auto wq_end = std::find_if_not(std::cbegin(queues.WQ), std::cend(queues.WQ), operate_readlike);
-    queues.WQ.erase(std::begin(queues.WQ), wq_end);
+    for (auto q : {std::ref(queues.WQ), std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
+      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
   } else {
     // Treat writes (that is, writebacks) like fills
-    auto wq_end = std::find_if_not(std::begin(queues.WQ), std::end(queues.WQ), [&](const PACKET& pkt) { return queues.is_ready(pkt) && (tag_bw-- > 0); });
-    std::for_each(std::begin(queues.WQ), wq_end, [cycle = current_cycle + FILL_LATENCY](PACKET& pkt) { pkt.event_cycle = cycle; }); // apply fill latency
-    std::remove_copy_if(std::begin(queues.WQ), wq_end, std::back_inserter(inflight_writes),
-                        [this](const PACKET& pkt) { return this->try_hit(pkt); }); // mark as inflight
-    queues.WQ.erase(std::begin(queues.WQ), wq_end);
+    auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&](const auto& pkt) { return queues.is_ready(pkt); });
+    std::for_each(wq_begin, wq_end, [cycle = current_cycle + FILL_LATENCY](auto& pkt) { pkt.event_cycle = cycle; });                    // apply fill latency
+    std::remove_copy_if(wq_begin, wq_end, std::back_inserter(inflight_writes), [this](const auto& pkt) { return this->try_hit(pkt); }); // mark as inflight
+    queues.WQ.erase(wq_begin, wq_end);
+
+    for (auto q : {std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
+      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
   }
-
-  auto ptwq_end = std::find_if_not(std::cbegin(queues.PTWQ), std::cend(queues.PTWQ), operate_readlike);
-  queues.PTWQ.erase(std::cbegin(queues.PTWQ), ptwq_end);
-
-  auto rq_end = std::find_if_not(std::cbegin(queues.RQ), std::cend(queues.RQ), operate_readlike);
-  queues.RQ.erase(std::cbegin(queues.RQ), rq_end);
-
-  auto pq_end = std::find_if_not(std::cbegin(queues.PQ), std::cend(queues.PQ), operate_readlike);
-  queues.PQ.erase(std::cbegin(queues.PQ), pq_end);
 
   impl_prefetcher_cycle_operate();
 }

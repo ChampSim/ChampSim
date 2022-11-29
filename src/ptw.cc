@@ -97,11 +97,9 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
     fwd_pkt.type = source.type;
     fwd_pkt.event_cycle = std::numeric_limits<uint64_t>::max();
     MSHR.push_back(fwd_pkt);
-
-    return true;
   }
 
-  return false;
+  return success;
 }
 
 void PageTableWalker::operate()
@@ -116,15 +114,9 @@ void PageTableWalker::operate()
     fill_this_cycle--;
   }
 
-  auto reads_this_cycle = MAX_READ;
-  while (reads_this_cycle > 0 && !std::empty(RQ) && RQ.front().event_cycle <= current_cycle && std::size(MSHR) != MSHR_SIZE) {
-    auto success = handle_read(RQ.front());
-    if (!success)
-      break;
-
-    RQ.pop_front();
-    reads_this_cycle--;
-  }
+  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ,
+                                                 [cycle = current_cycle, this](const auto& pkt) { return pkt.event_cycle <= cycle && this->handle_read(pkt); });
+  RQ.erase(rq_begin, rq_end);
 }
 
 bool PageTableWalker::add_rq(const PACKET& packet)
@@ -169,7 +161,7 @@ void PageTableWalker::return_data(const PACKET& packet)
     }
   }
 
-  std::sort(std::begin(MSHR), std::end(MSHR), ord_event_cycle<PACKET>{});
+  std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
 }
 
 std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)

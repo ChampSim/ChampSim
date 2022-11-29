@@ -13,6 +13,13 @@ def extend_each(x,y):
 def linejoin(elems):
     return '\\\n  '.join(elems)
 
+per_source_fmtstr = (
+'''{local_dir_varname} = {dirs}
+{local_obj_varname} = {objs}
+$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})
+-include $(wildcard {dest_dir}/*.d))
+'''
+)
 def per_source(src_dirs, dest_dir, build_id):
     for i, src_dir in enumerate(src_dirs):
         local_dir_varname = '{}_dirs_{}'.format(build_id, i)
@@ -23,7 +30,14 @@ def per_source(src_dirs, dest_dir, build_id):
         dirs = os.path.normpath(obj_dirnames)
         objs = linejoin(obj_filenames)
 
-        yield local_dir_varname, local_obj_varname, f'{local_dir_varname} = {dirs}\n{local_obj_varname} = {objs}\n$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})\n'
+        yield local_dir_varname, local_obj_varname, per_source_fmtstr.format(
+                local_dir_varname=local_dir_varname,
+                local_obj_varname=local_obj_varname,
+                dirs=dirs,
+                objs=objs,
+                dest_dir=dest_dir,
+                src_dir=src_dir
+                )
 
 def make_part(source_dirs, obj_dir, build_id, executable, part_opts, part_overrides, global_dirs, global_objs):
     dir_varnames, obj_varnames, fileparts = zip(*per_source(source_dirs, obj_dir, build_id))
