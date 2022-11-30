@@ -25,12 +25,98 @@ on:
 
 jobs:
   internal:
-    strategy:
-      matrix:
-        cxx: [g++, clang++]
-      fail-fast: false
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
 
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        # GCC-9
+        - {
+            name: "Ubuntu 20.04 GCC 9",
+            os: ubuntu-20.04,
+            cxx: "g++-9",
+          }
+        - {
+            name: "Ubuntu 22.04 GCC 9",
+            os: ubuntu-22.04,
+            cxx: "g++-9",
+          }
+
+        # GCC-10
+        - {
+            name: "Ubuntu 20.04 GCC 10",
+            os: ubuntu-20.04,
+            cxx: "g++-10",
+          }
+        - {
+            name: "Ubuntu 22.04 GCC 10",
+            os: ubuntu-22.04,
+            cxx: "g++-10",
+          }
+
+        # GCC-11
+        - {
+            name: "Ubuntu 22.04 GCC 11",
+            os: ubuntu-22.04,
+            cxx: "g++-11",
+          }
+
+        # Clang-10
+        - {
+            name: "Ubuntu 20.04 Clang 10",
+            os: ubuntu-20.04,
+            cxx: "clang++-10",
+          }
+
+        # Clang-11
+        - {
+            name: "Ubuntu 20.04 Clang 11",
+            os: ubuntu-20.04,
+            cxx: "clang++-11",
+          }
+
+        # Clang-12
+        - {
+            name: "Ubuntu 20.04 Clang 12",
+            os: ubuntu-20.04,
+            cxx: "clang++-12",
+          }
+        - {
+            name: "Ubuntu 22.04 Clang 12",
+            os: ubuntu-22.04,
+            cxx: "clang++-12",
+          }
+
+        # Clang-13
+        - {
+            name: "Ubuntu 22.04 Clang 13",
+            os: ubuntu-22.04,
+            cxx: "clang++-13",
+          }
+
+        # Clang-14
+        - {
+            name: "Ubuntu 22.04 Clang 14",
+            os: ubuntu-22.04,
+            cxx: "clang++-14",
+          }
+
+        # AppleClang
+        - {
+            name: "macOS Clang",
+            os: macos-latest,
+            cxx: "clang++",
+          }
+
+        # MSVC 2022
+        #- {
+        #name: "Windows MSVC 2022",
+        #os: windows-latest,
+        #cxx: "cl",
+        #environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
+        #}
 
     steps:
     - uses: actions/checkout@v3
