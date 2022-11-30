@@ -60,8 +60,6 @@ public:
   std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
-  uint64_t get_shamt(uint8_t pt_level);
-
   void print_deadlock() override final;
 };
 
