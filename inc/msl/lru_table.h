@@ -41,7 +41,7 @@ private:
   SetProj set_projection;
   TagProj tag_projection;
 
-  const std::size_t NUM_SET, NUM_WAY;
+  std::size_t NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
   block_vec_type block{NUM_SET * NUM_WAY};
 
