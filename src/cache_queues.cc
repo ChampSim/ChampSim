@@ -34,7 +34,7 @@ bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& 
 template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
-  return do_collision_for(begin, end, packet, shamt, [shamt](PACKET& source, PACKET& destination) {
+  return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
     if (source.fill_this_level || destination.fill_this_level) {
       // If one of the package will fill this level the resulted package should
       // also fill this level
@@ -217,8 +217,10 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
 
 bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
 {
-  auto fwd_pkt = packet;
   sim_stats.back().PQ_ACCESS++;
+
+  auto fwd_pkt = packet;
+  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
