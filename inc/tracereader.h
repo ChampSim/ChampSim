@@ -4,7 +4,7 @@
 #include <string>
 #include <variant>
 
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
 #include <ext/stdio_filebuf.h>
 #endif
 
@@ -29,7 +29,7 @@ protected:
   static FILE* get_fptr(std::string fname);
 
   std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
   __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
 #endif
 

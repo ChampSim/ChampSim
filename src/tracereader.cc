@@ -4,7 +4,7 @@
 #include <cstring>
 #include <string>
 
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
 #include <iostream>
 #endif
 
@@ -38,7 +38,7 @@ void tracereader::refresh_buffer()
   std::size_t bytes_read;
 
   // Read from trace file
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
   std::istream trace_file{&filebuf};
   trace_file.read(std::data(raw_buf), std::size(raw_buf));
   bytes_read = static_cast<std::size_t>(trace_file.gcount());
