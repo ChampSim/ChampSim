@@ -127,7 +127,7 @@ jobs:
     - name: Make
       run: make test/bin/000-test-main
       env:
-        CXX: ${{ matrix.cxx }}
+        CXX: ${{ matrix.config.cxx }}
 
     - name: Run
       run: test/bin/000-test-main
