@@ -104,11 +104,11 @@ jobs:
           }
 
         # AppleClang
-        - {
-            name: "macOS Clang",
-            os: macos-latest,
-            cxx: "clang++",
-          }
+        #- {
+        #    name: "macOS Clang",
+        #    os: macos-latest,
+        #    cxx: "clang++",
+        #  }
 
         # MSVC 2022
         #- {
