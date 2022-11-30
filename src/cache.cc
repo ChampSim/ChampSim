@@ -379,7 +379,8 @@ bool CACHE::add_pq(const PACKET& packet)
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_PQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
     std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << +packet.type
-              << " occupancy: " << std::size(queues.PQ) << " current_cycle: " << current_cycle;
+              << " from this: " << std::boolalpha << packet.prefetch_from_this << std::noboolalpha << " occupancy: " << std::size(queues.PQ)
+              << " current_cycle: " << current_cycle;
   }
 
   return queues.add_pq(packet);

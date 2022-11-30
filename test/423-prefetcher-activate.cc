@@ -32,6 +32,8 @@ SCENARIO("A prefetch does not trigger itself") {
     }
 
     WHEN("A prefetch is issued") {
+      test::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
+
       // Request a prefetch
       constexpr uint64_t seed_addr = 0xdeadbeef;
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
@@ -76,7 +78,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      test::address_operate_collector[&uut].clear();
+      test::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
 
       PACKET test;
       test.address = 0xdeadbeef;

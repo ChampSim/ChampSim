@@ -220,7 +220,6 @@ bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
   sim_stats.back().PQ_ACCESS++;
 
   auto fwd_pkt = packet;
-  fwd_pkt.prefetch_from_this = false;
   fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
