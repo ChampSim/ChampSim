@@ -8,7 +8,7 @@
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
   constexpr unsigned vmem_size_bits = 33;
 
-  auto pte_page_size = (1 << 11);
+  auto pte_page_size = (1ull << 11);
   auto level = GENERATE(2,3,4);
 
   GIVEN("A large virtual memory") {
