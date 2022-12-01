@@ -5,12 +5,12 @@
 #include <deque>
 #include <map>
 
-#include "dram_controller.h"
+class MEMORY_CONTROLLER;
 
 // reserve 1MB of space
-#define VMEM_RESERVE_CAPACITY 1048576
+inline constexpr uint64_t VMEM_RESERVE_CAPACITY = 1048576;
 
-#define PTE_BYTES 8
+inline constexpr std::size_t PTE_BYTES = 8;
 
 class VirtualMemory
 {

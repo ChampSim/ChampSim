@@ -7,6 +7,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "dram_controller.h"
 #include "util.h"
 
 VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)

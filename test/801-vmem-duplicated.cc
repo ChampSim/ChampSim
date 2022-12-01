@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include "dram_controller.h"
+
 SCENARIO("The virtual memory remove PA asked by PTE") {
   GIVEN("A large virtual memory") {
     constexpr unsigned vmem_size_bits = 33;
