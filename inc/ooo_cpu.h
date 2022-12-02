@@ -24,11 +24,9 @@ class CacheBus : public MemoryRequestProducer
   uint32_t cpu;
 
 public:
-  std::deque<PACKET> PROCESSED;
   CacheBus(uint32_t cpu_idx, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu_idx) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet) override final;
 };
 
 struct cpu_stats {

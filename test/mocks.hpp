@@ -143,8 +143,9 @@ class counting_MRP : public MemoryRequestProducer
 
   counting_MRP() : MemoryRequestProducer(nullptr) {}
 
-  void return_data(const PACKET&) override {
-    count++;
+  void operate() {
+    count += std::size(returned);
+    returned.clear();
   }
 };
 
@@ -163,20 +164,21 @@ class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 
     queue_issue_MRP(MRC* ll, Fun func) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func) {}
 
-    void operate() override {}
+    void operate() override {
+      for (auto pkt : returned) {
+        auto it = std::find_if(std::rbegin(packets), std::rend(packets), [addr=pkt.address](auto x) {
+            return x.pkt.address == addr;
+            });
+        it->return_time = current_cycle;
+      }
+      returned.clear();
+    }
 
     bool issue(const PACKET &pkt) {
       auto copy = pkt;
       copy.to_return = {this};
       packets.push_back({copy, current_cycle, 0});
       return issue_func(*static_cast<MRC*>(lower_level), copy);
-    }
-
-    void return_data(const PACKET &pkt) override {
-      auto it = std::find_if(std::rbegin(packets), std::rend(packets), [addr=pkt.address](auto x) {
-          return x.pkt.address == addr;
-          });
-      it->return_time = current_cycle;
     }
 };
 

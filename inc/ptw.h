@@ -50,7 +50,7 @@ public:
   bool add_pq(const PACKET&) override final { assert(0); }
   bool add_ptwq(const PACKET&) override final { assert(0); }
 
-  void return_data(const PACKET& packet) override final;
+  void finish_packet(const PACKET& packet);
   void operate() override final;
 
   bool handle_read(const PACKET& pkt);

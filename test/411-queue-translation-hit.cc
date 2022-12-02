@@ -36,6 +36,7 @@ SCENARIO("Cache queues issue translations in WQ") {
       }
 
       mock_ll._operate();
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.WQ.front().address == 0x11111eef);
@@ -80,6 +81,7 @@ SCENARIO("Cache queues issue translations in RQ") {
       }
 
       mock_ll._operate();
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.RQ.front().address == 0x11111eef);
@@ -124,6 +126,7 @@ SCENARIO("Cache queues issue translations in PQ") {
       }
 
       mock_ll._operate();
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.PQ.front().address == 0x11111eef);
@@ -168,6 +171,7 @@ SCENARIO("Translations in the WQ work even if the addresses happen to be the sam
       }
 
       mock_ll.release(test.address);
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.WQ.front().address == uut.WQ.front().v_address);
@@ -213,6 +217,7 @@ SCENARIO("Translations in the RQ work even if the addresses happen to be the sam
       }
 
       mock_ll.release(test.address);
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.RQ.front().address == uut.RQ.front().v_address);
@@ -258,6 +263,7 @@ SCENARIO("Translations in the PQ work even if the addresses happen to be the sam
       }
 
       mock_ll.release(test.address);
+      uut._operate();
 
       AND_THEN("The packet is translated") {
         REQUIRE(uut.PQ.front().address == uut.PQ.front().address);

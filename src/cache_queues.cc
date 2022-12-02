@@ -7,6 +7,10 @@ void CACHE::NonTranslatingQueues::operate() { check_collision(); }
 
 void CACHE::TranslatingQueues::operate()
 {
+  for (auto pkt : returned)
+    finish_translation(pkt);
+  returned.clear();
+
   NonTranslatingQueues::operate();
   issue_translation();
   detect_misses();
@@ -259,7 +263,7 @@ bool CACHE::NonTranslatingQueues::pq_has_ready() const { return is_ready(PQ.fron
 
 bool CACHE::NonTranslatingQueues::ptwq_has_ready() const { return is_ready(PTWQ.front()); }
 
-void CACHE::TranslatingQueues::return_data(const PACKET& packet)
+void CACHE::TranslatingQueues::finish_translation(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;

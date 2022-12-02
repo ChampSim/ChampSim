@@ -240,6 +240,9 @@ long int operate_queue(R& queue, long int sz, F&& func)
 
 void CACHE::operate()
 {
+  std::for_each(std::cbegin(returned), std::cend(returned) [this](const auto& pkt){ this->finish_packet(x); });
+  returned.clear();
+
   auto tag_bw = MAX_TAG;
   auto fill_bw = MAX_FILL;
 
@@ -383,7 +386,7 @@ bool CACHE::add_pq(const PACKET& packet)
   return queues.add_pq(packet);
 }
 
-void CACHE::return_data(const PACKET& packet)
+void CACHE::finish_packet(const PACKET& packet)
 {
   // check MSHR information
   auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));

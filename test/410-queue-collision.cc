@@ -260,6 +260,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQue
       AND_WHEN("A packet with the same address is sent to the read queue") {
         counting_MRP counter;
         issue(uut, address, &counter, issue_rq<TestType>);
+        counter.operate();
 
         THEN("The two packets are merged") {
           CHECK(std::size(uut.WQ) == 1);
@@ -298,6 +299,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", CACHE::NonTranslatingQue
       WHEN("A packet with the same address is sent to the prefetch queue") {
         counting_MRP counter;
         issue(uut, address, &counter, issue_pq<TestType>);
+        counter.operate();
 
         THEN("The two packets are merged") {
           CHECK(std::size(uut.WQ) == 1);

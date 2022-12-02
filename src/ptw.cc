@@ -104,6 +104,10 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
 
 void PageTableWalker::operate()
 {
+  for (const auto& x : returned)
+    finish_packet(x);
+  returned.clear();
+
   auto fill_this_cycle = MAX_FILL;
   while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
     auto success = handle_fill(MSHR.front());
@@ -138,7 +142,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
   return true;
 }
 
-void PageTableWalker::return_data(const PACKET& packet)
+void PageTableWalker::finish_packet(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
     if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {

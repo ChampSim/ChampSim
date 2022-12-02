@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <limits>
 #include <vector>
@@ -67,8 +68,9 @@ public:
 class MemoryRequestProducer
 {
 public:
+  std::deque<PACKET> returned{};
   MemoryRequestConsumer* lower_level;
-  virtual void return_data(const PACKET& packet) = 0;
+  void return_data(const PACKET& packet) { returned.push_back(packet); }
 
 protected:
   MemoryRequestProducer() {}

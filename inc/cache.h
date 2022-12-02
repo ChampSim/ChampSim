@@ -59,6 +59,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool try_hit(const PACKET& handle_pkt);
   bool handle_fill(const PACKET& fill_mshr);
   bool handle_miss(const PACKET& handle_pkt);
+  void finish_packet(const PACKET& packet);
 
   struct BLOCK {
     bool valid = false;
@@ -132,8 +133,7 @@ public:
     void do_detect_misses(R& queue);
 
     virtual bool is_ready(const PACKET& pkt) const override final;
-
-    void return_data(const PACKET& packet) override final;
+    void finish_translation(const PACKET& packet);
 
     using NonTranslatingQueues::NonTranslatingQueues;
   };
@@ -165,7 +165,6 @@ public:
   bool add_pq(const PACKET& packet) override final;
   bool add_ptwq(const PACKET& packet) override final;
 
-  void return_data(const PACKET& packet) override final;
   void operate() override final;
 
   void initialize() override final;
