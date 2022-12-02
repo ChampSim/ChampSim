@@ -240,7 +240,7 @@ long int operate_queue(R& queue, long int sz, F&& func)
 
 void CACHE::operate()
 {
-  std::for_each(std::cbegin(returned), std::cend(returned) [this](const auto& pkt){ this->finish_packet(x); });
+  std::for_each(std::cbegin(returned), std::cend(returned), [this](const auto& pkt){ this->finish_packet(pkt); });
   returned.clear();
 
   auto tag_bw = MAX_TAG;

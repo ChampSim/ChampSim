@@ -11,7 +11,7 @@ pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {
 vmem_fmtstr = 'VirtualMemory vmem(champsim::lg2({size}), 1 << 12, {num_levels}, {minor_fault_penalty}, {dram_name});\n'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};\n'
-queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};\n'
+queue_fmtstr = 'champsim::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};\n'
 
 def get_instantiation_string(cores, caches, ptws, pmem, vmem):
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}

@@ -1,13 +1,13 @@
 #include "catch.hpp"
 #include "mocks.hpp"
-#include "cache.h"
+#include "channel.h"
 #include "champsim_constants.h"
 
 SCENARIO("Cache queues detect translation misses in WQ") {
   GIVEN("A write queue with one item") {
     constexpr uint64_t hit_latency = 5;
     do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+    champsim::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
@@ -64,7 +64,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
   GIVEN("A read queue with one item") {
     constexpr uint64_t hit_latency = 5;
     do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+    champsim::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup
@@ -121,7 +121,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t hit_latency = 5;
     do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+    champsim::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // Turn off warmup

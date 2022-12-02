@@ -1,6 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
-#include "cache.h"
+#include "channel.h"
 #include "champsim_constants.h"
 
 template <typename Q>
@@ -78,7 +78,7 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret
   return std::invoke(std::forward<F>(func), uut, seed);
 }
 
-TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", champsim::NonTranslatingQueues, champsim::TranslatingQueues) {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
@@ -127,7 +127,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTra
   }
 }
 
-TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", champsim::NonTranslatingQueues, champsim::TranslatingQueues) {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
@@ -182,7 +182,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
   }
 }
 
-TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", champsim::NonTranslatingQueues, champsim::TranslatingQueues) {
   GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
@@ -237,7 +237,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
   }
 }
 
-TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", champsim::NonTranslatingQueues, champsim::TranslatingQueues) {
   GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
@@ -276,7 +276,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQue
   }
 }
 
-TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", CACHE::NonTranslatingQueues, CACHE::TranslatingQueues) {
+TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", champsim::NonTranslatingQueues, champsim::TranslatingQueues) {
   GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     TestType uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
@@ -319,7 +319,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
   GIVEN("A read queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
     do_nothing_MRC mock_ll{2};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
+    champsim::TranslatingQueues uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
     uut.lower_level = &mock_ll;
 
     // These are just here to give us pointers to MemoryRequestProducers
@@ -344,7 +344,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
 SCENARIO("Non-translating cache queues forward PQ to PQ with different fill levels") {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    CACHE::NonTranslatingQueues uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
+    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};

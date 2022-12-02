@@ -8,7 +8,7 @@ SCENARIO("A cache evicts a block when required") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"405-uut", 1, 1, 1, 32, miss_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_wq_MRP mock_ul_seed{&uut};
     to_rq_MRP mock_ul_test{&uut};

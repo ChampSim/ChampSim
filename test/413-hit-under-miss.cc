@@ -1,7 +1,7 @@
 #include "catch.hpp"
 #include "mocks.hpp"
 
-#include "cache.h"
+#include "channel.h"
 #include "champsim_constants.h"
 
 struct miss_testbed
@@ -9,7 +9,7 @@ struct miss_testbed
   constexpr static uint64_t hit_latency = 5;
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
-  CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+  champsim::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
 
   miss_testbed()
   {

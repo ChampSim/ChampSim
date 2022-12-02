@@ -12,6 +12,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "channel.h"
 #include "memory_class.h"
 #include "operable.h"
 
@@ -28,26 +29,6 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
   uint64_t total_miss_latency = 0;
-};
-
-struct cache_queue_stats {
-  uint64_t RQ_ACCESS = 0;
-  uint64_t RQ_MERGED = 0;
-  uint64_t RQ_FULL = 0;
-  uint64_t RQ_TO_CACHE = 0;
-  uint64_t PQ_ACCESS = 0;
-  uint64_t PQ_MERGED = 0;
-  uint64_t PQ_FULL = 0;
-  uint64_t PQ_TO_CACHE = 0;
-  uint64_t WQ_ACCESS = 0;
-  uint64_t WQ_MERGED = 0;
-  uint64_t WQ_FULL = 0;
-  uint64_t WQ_TO_CACHE = 0;
-  uint64_t WQ_FORWARD = 0;
-  uint64_t PTWQ_ACCESS = 0;
-  uint64_t PTWQ_MERGED = 0;
-  uint64_t PTWQ_FULL = 0;
-  uint64_t PTWQ_TO_CACHE = 0;
 };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -79,65 +60,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   std::size_t get_set_index(uint64_t address) const;
 
 public:
-  struct NonTranslatingQueues : public champsim::operable {
-    std::deque<PACKET> RQ, PQ, WQ, PTWQ;
-    const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE, PTWQ_SIZE;
-    const uint64_t HIT_LATENCY;
-    const unsigned OFFSET_BITS;
-    const bool match_offset_bits;
-
-    using stats_type = cache_queue_stats;
-
-    std::vector<stats_type> sim_stats, roi_stats;
-
-    NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency,
-                         unsigned offset_bits, bool match_offset)
-        : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), HIT_LATENCY(hit_latency),
-          OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
-    {
-    }
-    void operate() override;
-
-    template <typename R>
-    bool do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet);
-
-    bool add_rq(const PACKET& packet);
-    bool add_wq(const PACKET& packet);
-    bool add_pq(const PACKET& packet);
-    bool add_ptwq(const PACKET& packet);
-
-    virtual bool is_ready(const PACKET& pkt) const;
-
-    bool rq_has_ready() const;
-    bool wq_has_ready() const;
-    bool pq_has_ready() const;
-    bool ptwq_has_ready() const;
-
-    void begin_phase() override;
-    void end_phase(unsigned cpu) override;
-
-  private:
-    void check_collision();
-  };
-
-  struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
-    void operate() override final;
-
-    void issue_translation();
-    void detect_misses();
-
-    template <typename R>
-    void do_issue_translation(R& queue);
-
-    template <typename R>
-    void do_detect_misses(R& queue);
-
-    virtual bool is_ready(const PACKET& pkt) const override final;
-    void finish_translation(const PACKET& packet);
-
-    using NonTranslatingQueues::NonTranslatingQueues;
-  };
-
   uint32_t cpu = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
@@ -155,7 +77,7 @@ public:
 
   std::vector<stats_type> sim_stats{}, roi_stats{};
 
-  NonTranslatingQueues& queues;
+  champsim::NonTranslatingQueues& queues;
   std::deque<PACKET> MSHR;
   std::deque<PACKET> inflight_writes;
 
@@ -194,7 +116,7 @@ public:
 
   // constructor
   CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint32_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, NonTranslatingQueues& queue_set, MemoryRequestConsumer* ll,
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, champsim::NonTranslatingQueues& queue_set, MemoryRequestConsumer* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
       : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref),

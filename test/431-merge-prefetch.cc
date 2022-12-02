@@ -9,7 +9,7 @@ struct merge_testbed
   constexpr static uint64_t hit_latency = 5;
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
-  CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+  champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
   CACHE uut{"431-uut", 1, 1, 8, 32, 1, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
   to_rq_MRP<CACHE> seed_ul{&uut};
   to_rq_MRP<CACHE> test_ul{&uut};
