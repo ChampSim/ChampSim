@@ -60,9 +60,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool handle_fill(const PACKET& fill_mshr);
   bool handle_miss(const PACKET& handle_pkt);
 
-  class BLOCK
+  struct BLOCK
   {
-  public:
     bool valid = false;
     bool prefetch = false;
     bool dirty = false;
@@ -73,9 +72,10 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
     uint32_t pf_metadata = 0;
   };
+  using set_type = std::vector<BLOCK>;
 
-  std::pair<std::vector<BLOCK>::iterator, std::vector<BLOCK>::iterator> get_set_span(uint64_t address);
-  std::pair<std::vector<BLOCK>::const_iterator, std::vector<BLOCK>::const_iterator> get_set_span(uint64_t address) const;
+  std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
+  std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
   std::size_t get_set_index(uint64_t address) const;
 
 public:
@@ -144,7 +144,7 @@ public:
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   const uint32_t FILL_LATENCY;
   const unsigned OFFSET_BITS;
-  std::vector<BLOCK> block{NUM_SET * NUM_WAY};
+  set_type block{NUM_SET * NUM_WAY};
   const long int MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
