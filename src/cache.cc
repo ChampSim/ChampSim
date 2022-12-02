@@ -68,9 +68,6 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
       way->address = fill_mshr.address;
       way->v_address = fill_mshr.v_address;
       way->data = fill_mshr.data;
-      way->ip = fill_mshr.ip;
-      way->cpu = fill_mshr.cpu;
-      way->instr_id = fill_mshr.instr_id;
 
       metadata_thru =
           impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);

@@ -70,9 +70,6 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     uint64_t address = 0;
     uint64_t v_address = 0;
     uint64_t data = 0;
-    uint64_t ip = 0;
-    uint64_t cpu = 0;
-    uint64_t instr_id = 0;
 
     uint32_t pf_metadata = 0;
   };
