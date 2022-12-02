@@ -60,8 +60,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool handle_fill(const PACKET& fill_mshr);
   bool handle_miss(const PACKET& handle_pkt);
 
-  struct BLOCK
-  {
+  struct BLOCK {
     bool valid = false;
     bool prefetch = false;
     bool dirty = false;
