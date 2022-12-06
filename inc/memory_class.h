@@ -46,11 +46,6 @@ public:
   std::size_t init_translation_level = 0;
 };
 
-template <>
-struct is_valid<PACKET> {
-  bool operator()(const PACKET& test) { return test.address != 0; }
-};
-
 class MemoryRequestConsumer
 {
 public:

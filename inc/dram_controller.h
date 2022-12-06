@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 #include "champsim_constants.h"
 #include "memory_class.h"
@@ -19,7 +20,7 @@ struct dram_stats {
 };
 
 struct DRAM_CHANNEL {
-  using queue_type = std::vector<PACKET>;
+  using queue_type = std::vector<std::optional<PACKET>>;
   queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
 
   struct BANK_REQUEST {

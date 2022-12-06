@@ -15,7 +15,7 @@ void CACHE::TranslatingQueues::operate()
 template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
-  auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
+  auto found = std::find_if(begin, end, [addr=packet.address, shamt](const auto& x){ return (x.address >> shamt) == (addr >> shamt); });
   if (found != end) {
     if (!packet.is_translated || !(*found).is_translated) {
       // We make sure that both merge packet address have been translated. If

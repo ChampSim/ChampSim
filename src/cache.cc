@@ -166,7 +166,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   cpu = handle_pkt.cpu;
 
   // check mshr
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), [addr=handle_pkt.address, offset=OFFSET_BITS](const auto& mshr){ return (mshr.address >> offset) == (addr >> offset); });
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
   if (mshr_entry != MSHR.end()) // miss already inflight
@@ -386,7 +386,7 @@ bool CACHE::add_pq(const PACKET& packet)
 void CACHE::return_data(const PACKET& packet)
 {
   // check MSHR information
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), [addr=packet.address, offset=OFFSET_BITS](const auto& mshr){ return (mshr.address >> offset) == (addr >> offset); });
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
   // sanity check

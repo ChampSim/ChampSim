@@ -124,7 +124,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
   assert(packet.address != 0);
 
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet.address, LOG2_PAGE_SIZE));
+  auto found_rq = std::find_if(RQ.begin(), RQ.end(), [addr=packet.address, offset=LOG2_PAGE_SIZE](const auto &x){ return (x.address >> offset) == (addr >> offset); });
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
@@ -141,7 +141,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
 void PageTableWalker::return_data(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
-    if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {
+    if ((mshr_entry.address >> LOG2_BLOCK_SIZE) == (packet.address >> LOG2_BLOCK_SIZE)) {
       uint64_t penalty;
       if (mshr_entry.translation_level == 0)
         std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);

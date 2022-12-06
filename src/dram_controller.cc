@@ -26,14 +26,16 @@ void MEMORY_CONTROLLER::operate()
   for (auto& channel : channels) {
     if (warmup) {
       for (auto& entry : channel.RQ) {
-        for (auto ret : entry.to_return)
-          ret->return_data(entry);
+        if (entry.has_value()) {
+          for (auto ret : entry->to_return)
+            ret->return_data(*entry);
 
-        entry = {};
+          entry.reset();
+        }
       }
 
       for (auto& entry : channel.WQ)
-        entry = {};
+        entry.reset();
     }
 
     // Check for forwarding
@@ -41,18 +43,18 @@ void MEMORY_CONTROLLER::operate()
 
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
-      for (auto ret : channel.active_request->pkt->to_return)
-        ret->return_data(*channel.active_request->pkt);
+      for (auto ret : channel.active_request->pkt->value().to_return)
+        ret->return_data(channel.active_request->pkt->value());
 
       channel.active_request->valid = false;
 
-      *channel.active_request->pkt = {};
+      channel.active_request->pkt->reset();
       channel.active_request = std::end(channel.bank_request);
     }
 
     // Check queue occupancy
-    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x) { return x.address != 0; }));
-    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x) { return x.address != 0; }));
+    auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x) { return x.has_value(); }));
+    auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x) { return x.has_value(); }));
 
     // Change modes if the queues are unbalanced
     if ((!channel.write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
@@ -67,8 +69,8 @@ void MEMORY_CONTROLLER::operate()
 
           // This bank is ready for another DRAM request
           it->valid = false;
-          it->pkt->scheduled = false;
-          it->pkt->event_cycle = current_cycle;
+          it->pkt->value().scheduled = false;
+          it->pkt->value().event_cycle = current_cycle;
         }
       }
 
@@ -113,17 +115,18 @@ void MEMORY_CONTROLLER::operate()
 
     // Look for queued packets that have not been scheduled
     auto next_schedule = [](const auto& lhs, const auto& rhs) {
-      return !(rhs.address != 0 && !rhs.scheduled) || ((lhs.address != 0 && !lhs.scheduled) && lhs.event_cycle < rhs.event_cycle);
+      return !(rhs.has_value() && !rhs.value().scheduled) || ((lhs.has_value() && !lhs.value().scheduled) && lhs.value().event_cycle < rhs.value().event_cycle);
     };
-    std::vector<PACKET>::iterator iter_next_schedule;
+    std::vector<std::optional<PACKET>>::iterator iter_next_schedule;
     if (channel.write_mode)
       iter_next_schedule = std::min_element(std::begin(channel.WQ), std::end(channel.WQ), next_schedule);
     else
       iter_next_schedule = std::min_element(std::begin(channel.RQ), std::end(channel.RQ), next_schedule);
 
-    if (is_valid<PACKET>()(*iter_next_schedule) && iter_next_schedule->event_cycle <= current_cycle) {
-      uint32_t op_rank = dram_get_rank(iter_next_schedule->address), op_bank = dram_get_bank(iter_next_schedule->address),
-               op_row = dram_get_row(iter_next_schedule->address);
+    if (iter_next_schedule->has_value() && iter_next_schedule->value().event_cycle <= current_cycle) {
+      auto op_rank = dram_get_rank(iter_next_schedule->value().address);
+      auto op_bank = dram_get_bank(iter_next_schedule->value().address);
+      auto op_row = dram_get_row(iter_next_schedule->value().address);
 
       auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
@@ -133,8 +136,8 @@ void MEMORY_CONTROLLER::operate()
         // this bank is now busy
         channel.bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
 
-        iter_next_schedule->scheduled = true;
-        iter_next_schedule->event_cycle = std::numeric_limits<uint64_t>::max();
+        iter_next_schedule->value().scheduled = true;
+        iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
       }
     }
   }
@@ -169,49 +172,49 @@ void MEMORY_CONTROLLER::end_phase(unsigned)
 void DRAM_CHANNEL::check_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
-    if (is_valid<PACKET>{}(*wq_it) && !wq_it->forward_checked) {
-      eq_addr<PACKET> checker{wq_it->address, LOG2_BLOCK_SIZE};
+    if (wq_it->has_value() && !wq_it->value().forward_checked) {
+      auto checker = [addr = wq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
-        *wq_it = {};
+        wq_it->reset();
       } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
-        *wq_it = {};
+        wq_it->reset();
       } else {
-        wq_it->forward_checked = true;
+        wq_it->value().forward_checked = true;
       }
     }
   }
 
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
-    if (is_valid<PACKET>{}(*rq_it) && !rq_it->forward_checked) {
-      eq_addr<PACKET> checker{rq_it->address, LOG2_BLOCK_SIZE};
+    if (rq_it->has_value() && !rq_it->value().forward_checked) {
+      auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        rq_it->data = wq_it->data;
-        for (auto ret : rq_it->to_return)
-          ret->return_data(*rq_it);
+        rq_it->value().data = wq_it->value().data;
+        for (auto ret : rq_it->value().to_return)
+          ret->return_data(rq_it->value());
 
-        *rq_it = {};
+        rq_it->reset();
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
-        auto instr_copy = std::move(found->instr_depend_on_me);
-        auto ret_copy = std::move(found->to_return);
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
 
-        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
-                       std::back_inserter(found->instr_depend_on_me), ooo_model_instr::program_order);
-        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return),
-                       std::back_inserter(found->to_return));
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
 
-        *rq_it = {};
+        rq_it->reset();
       } else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
-        auto instr_copy = std::move(found->instr_depend_on_me);
-        auto ret_copy = std::move(found->to_return);
+        auto instr_copy = std::move(found->value().instr_depend_on_me);
+        auto ret_copy = std::move(found->value().to_return);
 
-        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->instr_depend_on_me), std::end(rq_it->instr_depend_on_me),
-                       std::back_inserter(found->instr_depend_on_me), ooo_model_instr::program_order);
-        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->to_return), std::end(rq_it->to_return),
-                       std::back_inserter(found->to_return));
+        std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
+                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+        std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
+                       std::back_inserter(found->value().to_return));
 
-        *rq_it = {};
+        rq_it->reset();
       } else {
-        rq_it->forward_checked = true;
+        rq_it->value().forward_checked = true;
       }
     }
   }
@@ -222,10 +225,10 @@ bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()); rq_it != std::end(channel.RQ)) {
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt){ return pkt.has_value(); }); rq_it != std::end(channel.RQ)) {
     *rq_it = packet;
-    rq_it->forward_checked = false;
-    rq_it->event_cycle = current_cycle;
+    rq_it->value().forward_checked = false;
+    rq_it->value().event_cycle = current_cycle;
 
     return true;
   }
@@ -238,10 +241,10 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()); wq_it != std::end(channel.WQ)) {
+  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt){ return pkt.has_value(); }); wq_it != std::end(channel.WQ)) {
     *wq_it = packet;
-    wq_it->forward_checked = false;
-    wq_it->event_cycle = current_cycle;
+    wq_it->value().forward_checked = false;
+    wq_it->value().event_cycle = current_cycle;
 
     return true;
   }
@@ -291,9 +294,9 @@ std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t addres
 {
   uint32_t channel = dram_get_channel(address);
   if (queue_type == 1)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), is_valid<PACKET>()));
+    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), [](const auto& pkt){ return pkt.has_value(); }));
   else if (queue_type == 2)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), is_valid<PACKET>()));
+    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), [](const auto& pkt){ return pkt.has_value(); }));
   else if (queue_type == 3)
     return get_occupancy(1, address);
 
