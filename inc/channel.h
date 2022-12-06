@@ -102,9 +102,4 @@ struct channel {
 };
 }
 
-template <>
-struct is_valid<champsim::channel::request_type> {
-  bool operator()(const champsim::channel::request_type& test) { return test.address != 0; }
-};
-
 #endif

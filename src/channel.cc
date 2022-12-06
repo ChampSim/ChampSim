@@ -16,7 +16,7 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
   // not this can happen: package with address virtual and physical X
   // (not translated) is inserted, package with physical address
   // (already translated) X.
-  if (auto found = std::find_if(begin, end, eq_addr<champsim::channel::request_type>(packet.address, shamt)); found != end && packet.is_translated == found->is_translated) {
+  if (auto found = std::find_if(begin, end, [addr=packet.address, shamt](const auto& x){ return (x.address >> shamt) == (addr >>shamt); }); found != end && packet.is_translated == found->is_translated) {
     func(packet, *found);
     return true;
   }

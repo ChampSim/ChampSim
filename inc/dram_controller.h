@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 #include "champsim_constants.h"
 #include "channel.h"
@@ -21,7 +22,7 @@ struct dram_stats {
 struct DRAM_CHANNEL {
   using value_type = typename champsim::channel::request_type;
   using response_type = typename champsim::channel::response_type;
-  using queue_type = std::vector<value_type>;
+  using queue_type = std::vector<std::optional<value_type>>;
   queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
 
   struct BANK_REQUEST {
