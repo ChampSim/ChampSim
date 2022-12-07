@@ -5,7 +5,6 @@
 
 #include "dram_controller.h"
 
-/*
 SCENARIO("The virtual memory generates a full period of page numbers") {
   GIVEN("A large virtual memory") {
     constexpr unsigned vmem_size_bits = 33;
@@ -36,4 +35,3 @@ SCENARIO("The virtual memory generates a full period of page numbers") {
     }
   }
 }
-*/
