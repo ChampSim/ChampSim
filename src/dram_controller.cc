@@ -115,7 +115,7 @@ void MEMORY_CONTROLLER::operate()
 
     // Look for queued packets that have not been scheduled
     auto next_schedule = [](const auto& lhs, const auto& rhs) {
-      return !(rhs.has_value() && !rhs.value().scheduled) || ((lhs.has_value() && !lhs.value().scheduled) && lhs.value().event_cycle < rhs.value().event_cycle);
+      return !(rhs.has_value() && !rhs->scheduled) || ((lhs.has_value() && !lhs->scheduled) && lhs->event_cycle < rhs->event_cycle);
     };
     std::vector<std::optional<PACKET>>::iterator iter_next_schedule;
     if (channel.write_mode)
@@ -130,11 +130,11 @@ void MEMORY_CONTROLLER::operate()
 
       auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
-      if (!channel.bank_request[op_idx].valid) {
-        bool row_buffer_hit = (channel.bank_request[op_idx].open_row == op_row);
+      if (!channel.bank_request.at(op_idx).valid) {
+        bool row_buffer_hit = (channel.bank_request.at(op_idx).open_row == op_row);
 
         // this bank is now busy
-        channel.bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+        channel.bank_request.at(op_idx) = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
@@ -173,7 +173,7 @@ void DRAM_CHANNEL::check_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [addr = wq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
+      auto checker = [check_val = wq_it->value().address.block_address()](const auto& x){ return x.has_value() && x->address.block_address() == check_val; };
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         wq_it->reset();
       } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
@@ -186,7 +186,7 @@ void DRAM_CHANNEL::check_collision()
 
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
+      auto checker = [check_val = rq_it->value().address.block_address()](const auto& x){ return x.has_value() && x->address.block_address() == check_val; };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         rq_it->value().data = wq_it->value().data;
         for (auto ret : rq_it->value().to_return)
@@ -260,56 +260,64 @@ bool MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
  * offset |
  */
 
-uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
+namespace {
+template <typename T>
+T get_dram_address_slice(champsim::address addr, std::size_t upper, std::size_t lower)
 {
-  int shift = LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
+  return addr.slice(upper, lower).to<T>();
+}
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const
+uint32_t MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
-  int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_BANKS));
+  const auto lower = LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_CHANNELS), lower);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address) const
+uint32_t MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const
 {
-  int shift = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_COLUMNS));
+  const auto lower = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_BANKS), lower);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const
+uint32_t MEMORY_CONTROLLER::dram_get_column(champsim::address address) const
 {
-  int shift = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_RANKS));
+  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_COLUMNS), lower);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address) const
+uint32_t MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const
 {
-  int shift = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_ROWS));
+  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_RANKS), lower);
 }
 
-std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
+uint32_t MEMORY_CONTROLLER::dram_get_row(champsim::address address) const
 {
-  uint32_t channel = dram_get_channel(address);
+  const auto lower = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_ROWS), lower);
+}
+
+std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, champsim::address address) const
+{
+  auto &channel = channels.at(dram_get_channel(address));
   if (queue_type == 1)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), [](const auto& pkt){ return pkt.has_value(); }));
+    return static_cast<std::size_t>(std::count_if(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& x) { return x.has_value(); }));
   else if (queue_type == 2)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), [](const auto& pkt){ return pkt.has_value(); }));
+    return static_cast<std::size_t>(std::count_if(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& x) { return x.has_value(); }));
   else if (queue_type == 3)
     return get_occupancy(1, address);
 
   return 0;
 }
 
-std::size_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
+std::size_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, champsim::address address) const
 {
-  uint32_t channel = dram_get_channel(address);
+  auto &channel = channels.at(dram_get_channel(address));
   if (queue_type == 1)
-    return channels[channel].RQ.size();
+    return channel.RQ.size();
   else if (queue_type == 2)
-    return channels[channel].WQ.size();
+    return channel.WQ.size();
   else if (queue_type == 3)
     return get_size(1, address);
 

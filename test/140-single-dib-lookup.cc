@@ -27,7 +27,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
     CHECK(mock_L1I.packet_count() == 1);
 
     WHEN("A new instruction is added, and the first request returns") {
-      mock_L1I.release(0xdeadbeef);
+      mock_L1I.release(champsim::address{0xdeadbeef});
 
       uut.IFETCH_BUFFER.push_back(inst(0xdeadbeee)); // same cache line as first instruction
 
@@ -38,7 +38,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
 
       THEN("The IFETCH_BUFFER still has one member") {
         REQUIRE(std::size(uut.IFETCH_BUFFER) == 1);
-        REQUIRE(uut.IFETCH_BUFFER.front().ip == 0xdeadbeee);
+        REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbeee});
       }
     }
   }

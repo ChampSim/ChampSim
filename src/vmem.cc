@@ -17,7 +17,7 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ull << champsim::lg2(page_table_page_size)));
   assert(VMEM_RESERVE_CAPACITY >= PAGE_SIZE);
-  assert(last_ppage > VMEM_RESERVE_CAPACITY);
+  assert((1ull << paddr_bits) > VMEM_RESERVE_CAPACITY);
 
   if (paddr_bits > champsim::lg2(dram.size()))
     std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
@@ -25,12 +25,13 @@ VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size,
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
 
-uint64_t VirtualMemory::get_offset(uint64_t vaddr, std::size_t level) const
+uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
 {
-  return (vaddr >> shamt(level)) & champsim::bitmask(champsim::lg2(pte_page_size / PTE_BYTES));
+  const auto lower = shamt(level);;
+  return vaddr.slice(lower+champsim::lg2(pte_page_size / PTE_BYTES), lower).to<uint64_t>();
 }
 
-uint64_t VirtualMemory::ppage_front() const
+champsim::address VirtualMemory::ppage_front() const
 {
   assert(available_ppages() > 0);
   return next_ppage;
@@ -38,46 +39,50 @@ uint64_t VirtualMemory::ppage_front() const
 
 void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
-std::size_t VirtualMemory::available_ppages() const { return (last_ppage - next_ppage) / PAGE_SIZE; }
+std::size_t VirtualMemory::available_ppages() const { return champsim::address::offset(next_ppage, last_ppage) / PAGE_SIZE; }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
+std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
 {
-  auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> LOG2_PAGE_SIZE}, ppage_front()});
+  std::pair key{cpu_num, vaddr.page_address().to_address()};
+  auto [ppage, fault] = vpage_to_ppage_map.insert(std::pair{key, ppage_front()});
 
   // this vpage doesn't yet have a ppage mapping
   if (fault)
     ppage_pop();
 
-  return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
+  return {champsim::address::splice(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
 }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
+std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)
 {
-  if (next_pte_page == 0) {
+  if (next_pte_page == champsim::address{}) {
     next_pte_page = ppage_front();
     ppage_pop();
   }
 
-  std::tuple key{cpu_num, vaddr >> shamt(level), level};
-  auto [ppage, fault] = page_table.insert({key, next_pte_page});
+  std::tuple key{cpu_num, vaddr.slice_upper(shamt(level)).to_address(), level};
+  auto [ppage, fault] = page_table.insert(std::pair{key, next_pte_page});
 
   // this PTE doesn't yet have a mapping
   if (fault) {
     next_pte_page += pte_page_size;
-    if (!(next_pte_page % PAGE_SIZE)) {
+    if (next_pte_page.is_page_address()) {
       next_pte_page = ppage_front();
       ppage_pop();
     }
   }
 
   auto offset = get_offset(vaddr, level);
-  auto paddr = champsim::splice_bits(ppage->second, offset * PTE_BYTES, champsim::lg2(pte_page_size));
+  auto paddr = ppage->second.slice_upper(champsim::lg2(pte_page_size)).to_address() + (offset * PTE_BYTES);
   if constexpr (champsim::debug_print) {
     std::cout << "[VMEM] " << __func__;
-    std::cout << " paddr: " << std::hex << paddr;
-    std::cout << " vaddr: " << vaddr << std::dec;
+    std::cout << " paddr: " << paddr;
+    std::cout << " vaddr: " << vaddr;
     std::cout << " pt_page offset: " << offset;
-    std::cout << " translation_level: " << level << std::endl;
+    std::cout << " translation_level: " << level;
+    if (fault)
+      std::cout << " PAGE FAULT ";
+    std::cout << std::endl;
   }
 
   return {paddr, fault ? minor_fault_penalty : 0};

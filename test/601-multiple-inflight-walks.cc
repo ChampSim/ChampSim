@@ -24,13 +24,13 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
 
     WHEN("The PTW receives two requests") {
       PACKET test_a;
-      test_a.address = 0xdeadbeefdeadbeef;
+      test_a.address = champsim::address{0xdeadbeefdeadbeef};
       test_a.v_address = test_a.address;
       test_a.cpu = 0;
       test_a.to_return = {&mock_ul};
 
       PACKET test_b;
-      test_b.address = 0xcafebabecafebabe;
+      test_b.address = champsim::address{0xcafebabecafebabe};
       test_b.v_address = test_b.address;
       test_b.cpu = 0;
       test_b.to_return = {&mock_ul};

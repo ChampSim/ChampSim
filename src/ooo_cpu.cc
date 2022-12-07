@@ -164,7 +164,7 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
   if (arch_instr.branch_taken != 1) {
     // clear the branch target for non-taken instructions
-    arch_instr.branch_target = 0;
+    arch_instr.branch_target = champsim::address{};
   }
 
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
@@ -195,7 +195,7 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
     arch_instr.branch_prediction = true;
   }
   if (arch_instr.branch_prediction == 0) {
-    predicted_branch_target = 0;
+    predicted_branch_target = champsim::address{};
   }
 
   if (arch_instr.is_branch) {
@@ -279,8 +279,8 @@ void O3_CPU::fetch_instruction()
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
-    auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
-      return (find_ip >> LOG2_BLOCK_SIZE) != (x.ip >> LOG2_BLOCK_SIZE);
+    auto no_match_ip = [find_ip = l1i_req_begin->ip.block_address()](const ooo_model_instr& x) {
+      return find_ip != x.ip.block_address();
     };
     auto l1i_req_end = std::find_if(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
 
@@ -629,7 +629,7 @@ void O3_CPU::handle_memory_return()
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
-      if ((fetched.ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0) {
+      if (fetched.ip.block_address() == l1i_entry.v_address.block_address() && fetched.fetched != 0) {
         fetched.fetched = COMPLETED;
         --l1i_bw;
 
@@ -649,7 +649,7 @@ void O3_CPU::handle_memory_return()
   auto l1d_it = std::begin(L1D_bus.PROCESSED);
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
-      if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
+      if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address.block_address() == l1d_it->v_address.block_address()) {
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
       }

@@ -29,7 +29,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::address seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
@@ -102,7 +102,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xcafebabe;
+    champsim::address seed_base_addr{0xcafebabe};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
@@ -176,7 +176,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::address seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {

@@ -21,7 +21,9 @@ class SAMPLER_class
 public:
   bool valid = false;
   uint8_t used = 0;
-  uint64_t address = 0, cl_addr = 0, ip = 0;
+  champsim::address address{};
+  uint64_t cl_addr = 0;
+  champsim::address ip{};
   uint64_t last_used = 0;
 };
 
@@ -59,7 +61,7 @@ void CACHE::initialize_replacement()
 }
 
 // find replacement victim
-uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(::rrpv_values[this]), set * NUM_WAY);
@@ -77,7 +79,7 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
 }
 
 // called on every cache hit and cache fill
-void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   // handle writeback access
@@ -96,9 +98,9 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
 
     // check hit
     auto match = std::find_if(s_set_begin, s_set_end,
-                              [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && (x.address >> shamt) == (addr >> shamt); });
+                              [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt); });
     if (match != s_set_end) {
-      auto SHCT_idx = match->ip % ::SHCT_PRIME;
+      auto SHCT_idx = match->ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
       if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] > 0)
         ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]--;
 
@@ -107,7 +109,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
-        auto SHCT_idx = match->ip % ::SHCT_PRIME;
+        auto SHCT_idx = match->ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
         if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] < ::SHCT_MAX)
           ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]++;
       }
@@ -126,7 +128,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     ::rrpv_values[this][set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
-    auto SHCT_idx = ip % ::SHCT_PRIME;
+    auto SHCT_idx = ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
 
     ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] == ::SHCT_MAX)

@@ -31,7 +31,7 @@ SCENARIO("A prefetch can be issued") {
     }
 
     WHEN("A prefetch is issued") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      constexpr champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
@@ -50,7 +50,7 @@ SCENARIO("A prefetch can be issued") {
       AND_WHEN("A packet with the same address is sent") {
         // Create a test packet
         PACKET test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
         test.cpu = 0;
 
         auto test_result = mock_ul.issue(test);

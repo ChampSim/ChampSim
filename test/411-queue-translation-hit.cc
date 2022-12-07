@@ -17,8 +17,8 @@ SCENARIO("Cache queues issue translations in WQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_wq(test);
@@ -31,14 +31,14 @@ SCENARIO("Cache queues issue translations in WQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.WQ.front().address == 0);
+        REQUIRE(uut.WQ.front().address == champsim::address{});
         REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 
       mock_ll._operate();
 
       AND_THEN("The packet is translated") {
-        REQUIRE(uut.WQ.front().address == 0x11111eef);
+        REQUIRE(uut.WQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.WQ.front().v_address == test.v_address);
         REQUIRE(uut.wq_has_ready());
       }
@@ -61,8 +61,8 @@ SCENARIO("Cache queues issue translations in RQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_rq(test);
@@ -75,14 +75,14 @@ SCENARIO("Cache queues issue translations in RQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.RQ.front().address == 0);
+        REQUIRE(uut.RQ.front().address == champsim::address{});
         REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 
       mock_ll._operate();
 
       AND_THEN("The packet is translated") {
-        REQUIRE(uut.RQ.front().address == 0x11111eef);
+        REQUIRE(uut.RQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.RQ.front().v_address == test.v_address);
         REQUIRE(uut.rq_has_ready());
       }
@@ -105,8 +105,8 @@ SCENARIO("Cache queues issue translations in PQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_pq(test);
@@ -119,14 +119,14 @@ SCENARIO("Cache queues issue translations in PQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.PQ.front().address == 0);
+        REQUIRE(uut.PQ.front().address == champsim::address{});
         REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 
       mock_ll._operate();
 
       AND_THEN("The packet is translated") {
-        REQUIRE(uut.PQ.front().address == 0x11111eef);
+        REQUIRE(uut.PQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.PQ.front().v_address == test.v_address);
         REQUIRE(uut.pq_has_ready());
       }
@@ -148,7 +148,7 @@ SCENARIO("Translations in the WQ work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
       test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
@@ -163,7 +163,7 @@ SCENARIO("Translations in the WQ work even if the addresses happen to be the sam
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.WQ.front().address == 0);
+        REQUIRE(uut.WQ.front().address == champsim::address{});
         REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 
@@ -193,7 +193,7 @@ SCENARIO("Translations in the RQ work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
       test.data = test.address;
       test.cpu = 0;
@@ -208,7 +208,7 @@ SCENARIO("Translations in the RQ work even if the addresses happen to be the sam
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.RQ.front().address == 0);
+        REQUIRE(uut.RQ.front().address == champsim::address{});
         REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 
@@ -238,7 +238,7 @@ SCENARIO("Translations in the PQ work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
       test.data = test.address;
       test.cpu = 0;
@@ -253,7 +253,7 @@ SCENARIO("Translations in the PQ work even if the addresses happen to be the sam
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.PQ.front().address == 0);
+        REQUIRE(uut.PQ.front().address == champsim::address{});
         REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + hit_latency);
       }
 

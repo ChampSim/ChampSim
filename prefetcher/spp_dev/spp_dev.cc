@@ -31,10 +31,11 @@ void CACHE::prefetcher_initialize()
 
 void CACHE::prefetcher_cycle_operate() {}
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  uint64_t page = addr >> LOG2_PAGE_SIZE;
-  uint32_t page_offset = (addr >> LOG2_BLOCK_SIZE) & (PAGE_SIZE / BLOCK_SIZE - 1), last_sig = 0, curr_sig = 0, depth = 0;
+  auto page = addr.page_address();
+  auto page_offset = addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE);
+  uint32_t last_sig = 0, curr_sig = 0, depth = 0;
   std::vector<uint32_t> confidence_q(MSHR_SIZE);
 
   int32_t delta = 0;
@@ -48,14 +49,14 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
   ::GHR.global_accuracy = ::GHR.pf_issued ? ((100 * ::GHR.pf_useful) / ::GHR.pf_issued) : 0;
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
-    std::cout << std::endl << "[ChampSim] " << __func__ << " addr: " << std::hex << addr << " cache_line: " << (addr >> LOG2_BLOCK_SIZE);
-    std::cout << " page: " << page << " page_offset: " << std::dec << page_offset << std::endl;
+    std::cout << std::endl << "[ChampSim] " << __func__ << " addr: " << addr;
+    std::cout << " page: " << page << " page_offset: " << page_offset << std::endl;
   }
 
   // Stage 1: Read and update a sig stored in ST
   // last_sig and delta are used to update (sig, delta) correlation in PT
   // curr_sig is used to read prefetch candidates in PT
-  ::ST.read_and_update_sig(page, page_offset, last_sig, curr_sig, delta);
+  ::ST.read_and_update_sig(addr, last_sig, curr_sig, delta);
 
   // Also check the prefetch filter in parallel to update global accuracy counters
   ::FILTER.check(addr, spp::L2C_DEMAND);
@@ -65,7 +66,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
     ::PT.update_pattern(last_sig, delta);
 
   // Stage 3: Start prefetching
-  uint64_t base_addr = addr;
+  auto base_addr = addr;
   uint32_t lookahead_conf = 100, pf_q_head = 0, pf_q_tail = 0;
   uint8_t do_lookahead = 0;
 
@@ -76,9 +77,9 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
     do_lookahead = 0;
     for (uint32_t i = pf_q_head; i < pf_q_tail; i++) {
       if (confidence_q[i] >= spp::PF_THRESHOLD) {
-        uint64_t pf_addr = (base_addr & ~(BLOCK_SIZE - 1)) + (delta_q[i] << LOG2_BLOCK_SIZE);
+        auto pf_addr = base_addr.block_address().to_address() + (delta_q[i] << LOG2_BLOCK_SIZE);
 
-        if ((addr & ~(PAGE_SIZE - 1)) == (pf_addr & ~(PAGE_SIZE - 1))) { // Prefetch request is in the same physical page
+        if (addr.page_address() == pf_addr.page_address()) { // Prefetch request is in the same physical page
           if (::FILTER.check(pf_addr, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp::SPP_L2C_PREFETCH : spp::SPP_LLC_PREFETCH))) {
             prefetch_line(pf_addr, (confidence_q[i] >= spp::FILL_THRESHOLD), 0); // Use addr (not base_addr) to obey the same physical page boundary
 
@@ -94,9 +95,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
             }
 
             if constexpr (spp::SPP_DEBUG_PRINT) {
-              std::cout << "[ChampSim] " << __func__ << " base_addr: " << std::hex << base_addr << " pf_addr: " << pf_addr;
-              std::cout << " pf_cache_line: " << (pf_addr >> LOG2_BLOCK_SIZE);
-              std::cout << " prefetch_delta: " << std::dec << delta_q[i] << " confidence: " << confidence_q[i];
+              std::cout << "[ChampSim] " << __func__ << " base_addr: " << base_addr << " pf_addr: " << pf_addr;
+              std::cout << " prefetch_delta: " << delta_q[i] << " confidence: " << confidence_q[i];
               std::cout << " depth: " << i << std::endl;
             }
           }
@@ -104,7 +104,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i], (pf_addr >> LOG2_BLOCK_SIZE) & 0x3F, delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i], pf_addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE).to<uint32_t>(), delta_q[i]);
           }
         }
 
@@ -137,7 +137,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
   return metadata_in;
 }
 
-uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(champsim::address addr, uint32_t set, uint32_t match, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
 {
   if constexpr (spp::FILTER_ON) {
     if constexpr (spp::SPP_DEBUG_PRINT) {
@@ -173,14 +173,17 @@ uint64_t get_hash(uint64_t key)
 }
 } // namespace spp
 
-void spp::SIGNATURE_TABLE::read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
+void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
 {
-  uint32_t set = get_hash(page) % ST_SET, match = ST_WAY, partial_page = page & ST_TAG_MASK;
+  auto set = get_hash(addr.page_address().to<uint64_t>()) % ST_SET;
+  auto match = ST_WAY;
+  auto partial_page = addr.page_address().to<uint64_t>() & ST_TAG_MASK;
+  auto page_offset = addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE).to<uint32_t>();
   uint8_t ST_hit = 0;
   int sig_delta = 0;
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
-    std::cout << "[ST] " << __func__ << " page: " << std::hex << page << " partial_page: " << partial_page << std::dec << std::endl;
+    std::cout << "[ST] " << __func__ << " page: " << addr.page_address() << " partial_page: " << std::hex << partial_page << std::dec << std::endl;
   }
 
   // Case 2: Invalid
@@ -400,22 +403,22 @@ void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<int>& delta
   }
 }
 
-bool spp::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_request)
+bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST filter_request)
 {
-  uint64_t cache_line = check_addr >> LOG2_BLOCK_SIZE, hash = get_hash(cache_line), quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1),
-           remainder = hash % (1 << REMAINDER_BIT);
+  auto cache_line = check_addr.block_address();
+  auto hash = get_hash(cache_line.to<uint64_t>());
+  auto quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1);
+  auto remainder = hash % (1 << REMAINDER_BIT);
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
-    std::cout << "[FILTER] check_addr: " << std::hex << check_addr << " check_cache_line: " << (check_addr >> LOG2_BLOCK_SIZE);
-    std::cout << " hash: " << hash << std::dec << " quotient: " << quotient << " remainder: " << remainder << std::endl;
+    std::cout << "[FILTER] check_addr: " << check_addr << " hash: " << hash << " quotient: " << quotient << " remainder: " << remainder << std::endl;
   }
 
   switch (filter_request) {
   case spp::SPP_L2C_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (spp::SPP_DEBUG_PRINT) {
-        std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << std::hex << check_addr << " cache_line: " << cache_line
-                  << std::dec;
+        std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << check_addr << " cache_line: " << cache_line;
         std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << std::endl;
       }
 
@@ -426,7 +429,7 @@ bool spp::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_requ
       remainder_tag[quotient] = remainder;
 
       if constexpr (spp::SPP_DEBUG_PRINT) {
-        std::cout << "[FILTER] " << __func__ << " set valid for check_addr: " << std::hex << check_addr << " cache_line: " << cache_line << std::dec;
+        std::cout << "[FILTER] " << __func__ << " set valid for check_addr: " << check_addr << " cache_line: " << cache_line;
         std::cout << " quotient: " << quotient << " remainder_tag: " << remainder_tag[quotient] << " valid: " << valid[quotient]
                   << " useful: " << useful[quotient] << std::endl;
       }
@@ -436,8 +439,7 @@ bool spp::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_requ
   case spp::SPP_LLC_PREFETCH:
     if ((valid[quotient] || useful[quotient]) && remainder_tag[quotient] == remainder) {
       if constexpr (spp::SPP_DEBUG_PRINT) {
-        std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << std::hex << check_addr << " cache_line: " << cache_line
-                  << std::dec;
+        std::cout << "[FILTER] " << __func__ << " line is already in the filter check_addr: " << check_addr << " cache_line: " << cache_line;
         std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << std::endl;
       }
 
@@ -453,7 +455,7 @@ bool spp::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_requ
       // useful[quotient] = 0;
 
       if constexpr (spp::SPP_DEBUG_PRINT) {
-        std::cout << "[FILTER] " << __func__ << " don't set valid for check_addr: " << std::hex << check_addr << " cache_line: " << cache_line << std::dec;
+        std::cout << "[FILTER] " << __func__ << " don't set valid for check_addr: " << check_addr << " cache_line: " << cache_line;
         std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient] << std::endl;
       }
     }
@@ -466,7 +468,7 @@ bool spp::PREFETCH_FILTER::check(uint64_t check_addr, FILTER_REQUEST filter_requ
         ::GHR.pf_useful++; // This cache line was prefetched by SPP and actually used in the program
 
       if constexpr (spp::SPP_DEBUG_PRINT) {
-        std::cout << "[FILTER] " << __func__ << " set useful for check_addr: " << std::hex << check_addr << " cache_line: " << cache_line << std::dec;
+        std::cout << "[FILTER] " << __func__ << " set useful for check_addr: " << check_addr << " cache_line: " << cache_line;
         std::cout << " quotient: " << quotient << " valid: " << valid[quotient] << " useful: " << useful[quotient];
         std::cout << " GHR.pf_issued: " << ::GHR.pf_issued << " GHR.pf_useful: " << ::GHR.pf_useful << std::endl;
       }

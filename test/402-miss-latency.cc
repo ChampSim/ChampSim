@@ -42,7 +42,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;

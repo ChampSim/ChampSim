@@ -39,7 +39,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       test::replacement_update_state_collector[&uut].clear();
 
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
@@ -106,7 +106,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
     }
 
     PACKET test;
-    test.address = 0xdeadbeef;
+    test.address = champsim::address{0xdeadbeef};
     test.cpu = 0;
     test.type = type;
     auto test_result = mock_ul.issue(test);
@@ -174,8 +174,8 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     WHEN("A packet is issued") {
       uint64_t id = 0;
       PACKET seed;
-      seed.address = 0xdeadbeef;
-      seed.v_address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
+      seed.v_address = champsim::address{0xdeadbeef};
       seed.cpu = 0;
       seed.instr_id = id++;
       seed.type = WRITE;
@@ -193,7 +193,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       AND_WHEN("A packet with a different address is issued") {
 
         PACKET test = seed;
-        test.address = 0xcafebabe;
+        test.address = champsim::address{0xcafebabe};
         test.instr_id = id++;
         test.type = LOAD;
         auto test_result = mock_ul_test.issue(test);

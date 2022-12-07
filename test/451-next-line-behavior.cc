@@ -28,7 +28,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       // Create a test packet
       static uint64_t id = 1;
       PACKET seed;
-      seed.address = 0xffff'003f;
+      seed.address = champsim::address{0xffff'003f};
       seed.instr_id = id++;
       seed.cpu = 0;
       seed.to_return = {&mock_ul};
@@ -49,7 +49,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       }
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + 1 == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
+        REQUIRE(champsim::address::offset(mock_ll.addresses.at(0), mock_ll.addresses.at(1)) == BLOCK_SIZE);
       }
     }
   }

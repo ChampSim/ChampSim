@@ -30,23 +30,23 @@ constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 
 struct btb_entry_t {
-  uint64_t ip_tag = 0;
-  uint64_t target = 0;
+  champsim::address ip_tag{};
+  champsim::address target{};
   branch_info type = branch_info::ALWAYS_TAKEN;
 
-  auto index() const { return ip_tag >> 2; }
-  auto tag() const { return ip_tag >> 2; }
+  auto index() const { return ip_tag.slice_upper(2).to<std::size_t>(); }
+  auto tag() const { return ip_tag.slice_upper(2).to<std::size_t>(); }
 };
 
 std::map<O3_CPU*, champsim::msl::lru_table<btb_entry_t>> BTB;
-std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
+std::map<O3_CPU*, std::array<champsim::address, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
-std::map<O3_CPU*, std::deque<uint64_t>> RAS;
+std::map<O3_CPU*, std::deque<champsim::address>> RAS;
 /*
  * The following structure identifies the size of call instructions so we can
  * find the target for a call's return, since calls may have different sizes.
  */
-std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
+std::map<O3_CPU*, std::array<champsim::address::difference_type, CALL_SIZE_TRACKERS>> CALL_SIZE;
 } // namespace
 
 void O3_CPU::initialize_btb()
@@ -55,40 +55,39 @@ void O3_CPU::initialize_btb()
             << " RAS size: " << ::RAS_SIZE << std::endl;
 
   ::BTB.insert({this, champsim::msl::lru_table<btb_entry_t>{BTB_SET, BTB_WAY}});
-  std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
 }
 
-std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::pair<champsim::address, bool> O3_CPU::btb_prediction(champsim::address ip)
 {
   // use BTB for all other branches + direct calls
-  auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN});
+  auto btb_entry = ::BTB.at(this).check_hit({ip, champsim::address{}, ::branch_info::ALWAYS_TAKEN});
 
   // no prediction for this IP
   if (!btb_entry.has_value())
-    return {0, false};
+    return {champsim::address{}, false};
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, true};
+      return {champsim::address{}, true};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
-    auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
+    auto size = ::CALL_SIZE[this][target.slice_lower(champsim::lg2(std::size(::CALL_SIZE[this]))).to<std::size_t>()];
 
     return {target + size, true};
   }
 
   if (btb_entry->type == ::branch_info::INDIRECT) {
-    auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+    auto hash = ip.slice_upper(2).to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
     return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], true};
   }
 
   return {btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
@@ -99,7 +98,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+    auto hash = ip.slice_upper(2).to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
     ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
   }
 
@@ -113,9 +112,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     auto call_ip = ::RAS[this].back();
     ::RAS[this].pop_back();
 
-    auto estimated_call_instr_size = (call_ip > branch_target) ? call_ip - branch_target : branch_target - call_ip;
+    auto estimated_call_instr_size = std::abs(champsim::address::offset(call_ip, branch_target));
     if (estimated_call_instr_size <= 10) {
-      ::CALL_SIZE[this][call_ip % std::size(::CALL_SIZE[this])] = estimated_call_instr_size;
+      ::CALL_SIZE[this][call_ip.slice_lower(champsim::lg2(std::size(::CALL_SIZE[this]))).to<std::size_t>()] = estimated_call_instr_size;
     }
   }
 
@@ -125,13 +124,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::INDIRECT;
   else if (branch_type == BRANCH_RETURN)
     type = ::branch_info::RETURN;
-  else if ((branch_target == 0) || !taken)
+  else if ((branch_target == champsim::address{}) || !taken)
     type = ::branch_info::CONDITIONAL;
 
   auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
   if (opt_entry.has_value()) {
     opt_entry->type = type;
-    if (branch_target != 0)
+    if (branch_target != champsim::address{})
       opt_entry->target = branch_target;
   }
 

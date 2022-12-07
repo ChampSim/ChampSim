@@ -46,8 +46,8 @@ struct cpu_stats {
 
 struct LSQ_ENTRY {
   uint64_t instr_id = 0;
-  uint64_t virtual_address = 0;
-  uint64_t ip = 0;
+  champsim::address virtual_address{};
+  champsim::address ip{};
   uint64_t event_cycle = 0;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -89,9 +89,9 @@ public:
   // instruction buffer
   struct dib_shift {
     std::size_t shamt;
-    auto operator()(uint64_t val) const { return val >> shamt; }
+    auto operator()(champsim::address val) const { return val.slice_upper(shamt).to<std::size_t>(); }
   };
-  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift>;
+  using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
   dib_type DIB;
 
   // reorder buffer, load/store queue, register file

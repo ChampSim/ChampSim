@@ -33,7 +33,7 @@ SCENARIO("A cache evicts a block when required") {
     WHEN("A packet is sent") {
       uint64_t id = 1;
       PACKET test_a;
-      test_a.address = 0xdeadbeef;
+      test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = WRITE;
       test_a.instr_id = id++;
@@ -51,7 +51,7 @@ SCENARIO("A cache evicts a block when required") {
 
       AND_WHEN("A packet with a different address is sent") {
         PACKET test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = LOAD;
         test_b.instr_id = id++;

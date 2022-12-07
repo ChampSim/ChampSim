@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "msl/bits.h"
+#include "util/span.h"
 
 namespace champsim::msl
 {
@@ -48,10 +49,8 @@ private:
   auto get_set_span(const value_type& elem)
   {
     using diff_type = typename block_vec_type::difference_type;
-    auto set_idx = static_cast<diff_type>(set_projection(elem) & bitmask(lg2(NUM_SET)));
-    auto set_begin = std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY));
-    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
-    return std::pair{set_begin, set_end};
+    diff_type set_idx = static_cast<diff_type>(set_projection(elem) & champsim::msl::bitmask(lg2(NUM_SET)));
+    return champsim::get_span(std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY)), std::end(block), static_cast<diff_type>(NUM_WAY));
   }
 
   auto match_func(const value_type& elem)

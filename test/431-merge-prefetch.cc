@@ -7,7 +7,7 @@
 struct merge_testbed
 {
   constexpr static uint64_t hit_latency = 5;
-  constexpr static uint64_t address_that_will_hit = 0xcafebabe;
+  constexpr static champsim::address address_that_will_hit{0xcafebabe};
   filter_MRC mock_ll{address_that_will_hit};
   CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
   CACHE uut{"431-uut", 1, 1, 8, 32, 1, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
@@ -21,8 +21,8 @@ struct merge_testbed
   void issue_type(MRP& ul, uint8_t type, uint64_t delay = hit_latency+1)
   {
     PACKET pkt;
-    pkt.address = 0xdeadbeef;
-    pkt.v_address = 0xdeadbeef;
+    pkt.address = champsim::address{0xdeadbeef};
+    pkt.v_address = champsim::address{0xdeadbeef};
     pkt.type = type;
     pkt.instr_id = pkt_id++;
     pkt.cpu = 0;

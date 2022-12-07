@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "address.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "memory_class.h"
@@ -65,17 +66,17 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool prefetch = false;
     bool dirty = false;
 
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
 
     uint32_t pf_metadata = 0;
   };
   using set_type = std::vector<BLOCK>;
 
-  std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
-  std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
-  std::size_t get_set_index(uint64_t address) const;
+  std::pair<set_type::iterator, set_type::iterator> get_set_span(champsim::address address);
+  std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(champsim::address address) const;
+  std::size_t get_set_index(champsim::address address) const;
 
 public:
   struct NonTranslatingQueues : public champsim::operable {
@@ -172,14 +173,19 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
+  [[deprecated]] std::size_t get_occupancy(uint8_t queue_type, uint64_t address) const;
+  [[deprecated]] std::size_t get_size(uint8_t queue_type, uint64_t address) const;
+
+  std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const override final;
+  std::size_t get_size(uint8_t queue_type, champsim::address address) const override final;
 
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
-  uint64_t invalidate_entry(uint64_t inval_addr);
-  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  uint64_t invalidate_entry(champsim::address inval_addr);
+  int prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+
+  [[deprecated]] int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);

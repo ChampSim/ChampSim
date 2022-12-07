@@ -12,7 +12,7 @@
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
                                  uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
     : champsim::operable(freq_scale), MemoryRequestProducer(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
-      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
+      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, champsim::address{}, std::size(pscl_dims) + 1).first)
 {
   auto level = std::size(pscl_dims) + 1;
   for (auto x : pscl_dims) {
@@ -33,8 +33,8 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-    std::cout << " address: " << std::hex << walk_init.vaddr;
-    std::cout << " v_address: " << handle_pkt.v_address << std::dec;
+    std::cout << " address: " << walk_init.vaddr;
+    std::cout << " v_address: " << handle_pkt.v_address;
     std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
     std::cout << " translation_level: " << walk_init.level << std::endl;
   }
@@ -44,17 +44,17 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
+  return step_translation(champsim::address::splice(walk_init.ptw_addr, champsim::address{walk_offset}, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
-    std::cout << " address: " << std::hex << fill_mshr.address;
+    std::cout << " address: " << fill_mshr.address;
     std::cout << " v_address: " << fill_mshr.v_address;
-    std::cout << " data: " << fill_mshr.data << std::dec;
-    std::cout << " pt_page offset: " << ((fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES));
+    std::cout << " data: " << fill_mshr.data;
+    std::cout << " pt_page offset: " << fill_mshr.data.slice(LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE).to<int>();
     std::cout << " translation_level: " << +fill_mshr.translation_level;
     std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
   }
@@ -76,7 +76,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
   }
 }
 
-bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source)
+bool PageTableWalker::step_translation(champsim::address addr, std::size_t transl_level, const PACKET& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
@@ -85,7 +85,7 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
   fwd_pkt.translation_level = transl_level;
 
   auto matches_and_inflight = [addr](const auto& x) {
-    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
+    return x.address.block_address() == addr.block_address() && x.event_cycle == std::numeric_limits<uint64_t>::max();
   };
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);
 
@@ -122,10 +122,10 @@ void PageTableWalker::operate()
 
 bool PageTableWalker::add_rq(const PACKET& packet)
 {
-  assert(packet.address != 0);
+  assert(packet.address != champsim::address{});
 
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), [addr=packet.address, offset=LOG2_PAGE_SIZE](const auto &x){ return (x.address >> offset) == (addr >> offset); });
+  auto found_rq = std::find_if(std::begin(RQ), std::end(RQ), [match=packet.address.page_address()](const auto& pkt){ return pkt.address.page_address() == match; });
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
@@ -142,7 +142,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
 void PageTableWalker::return_data(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
-    if ((mshr_entry.address >> LOG2_BLOCK_SIZE) == (packet.address >> LOG2_BLOCK_SIZE)) {
+    if (mshr_entry.address.block_address() == packet.address.block_address()) {
       uint64_t penalty;
       if (mshr_entry.translation_level == 0)
         std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
@@ -152,9 +152,9 @@ void PageTableWalker::return_data(const PACKET& packet)
 
       if constexpr (champsim::debug_print) {
         std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
-        std::cout << " address: " << std::hex << mshr_entry.address;
+        std::cout << " address: " << mshr_entry.address;
         std::cout << " v_address: " << mshr_entry.v_address;
-        std::cout << " data: " << mshr_entry.data << std::dec;
+        std::cout << " data: " << mshr_entry.data;
         std::cout << " translation_level: " << +mshr_entry.translation_level;
         std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
         std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
@@ -165,7 +165,7 @@ void PageTableWalker::return_data(const PACKET& packet)
   std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
 }
 
-std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, champsim::address) const
 {
   if (queue_type == 0)
     return std::size(MSHR);
@@ -174,7 +174,7 @@ std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
+std::size_t PageTableWalker::get_size(uint8_t queue_type, champsim::address) const
 {
   if (queue_type == 0)
     return MSHR_SIZE;
@@ -190,7 +190,7 @@ void PageTableWalker::print_deadlock()
     std::size_t j = 0;
     for (PACKET entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cout << " address: " << entry.address << " v_address: " << entry.v_address << " type: " << +entry.type;
       std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {

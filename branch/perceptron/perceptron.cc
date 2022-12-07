@@ -95,7 +95,7 @@ constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'p
  * such as output and history needed for updating the perceptron predictor
  */
 struct perceptron_state {
-  uint64_t ip = 0;
+  champsim::address ip{};
   bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
   long long int output = 0;                    // perceptron output
   std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
@@ -111,10 +111,10 @@ std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real 
 
 void O3_CPU::initialize_branch_predictor() {}
 
-uint8_t O3_CPU::predict_branch(uint64_t ip)
+bool O3_CPU::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
-  auto index = ip % ::NUM_PERCEPTRONS;
+  auto index = ip.slice_lower(64).to<uint64_t>() % ::NUM_PERCEPTRONS;
   auto output = ::perceptrons[this][index].predict(::spec_global_history[this]);
 
   bool prediction = (output >= 0);
@@ -130,7 +130,7 @@ uint8_t O3_CPU::predict_branch(uint64_t ip)
   return prediction;
 }
 
-void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   auto state = std::find_if(std::begin(::perceptron_state_buf[this]), std::end(::perceptron_state_buf[this]), [ip](auto x) { return x.ip == ip; });
   if (state == std::end(::perceptron_state_buf[this]))
@@ -139,7 +139,7 @@ void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t tak
   auto [_ip, prediction, output, history] = *state;
   ::perceptron_state_buf[this].erase(state);
 
-  auto index = ip % ::NUM_PERCEPTRONS;
+  auto index = ip.slice_lower(64).to<uint64_t>() % ::NUM_PERCEPTRONS;
 
   // update the real global history shift register
   ::global_history[this] <<= 1;

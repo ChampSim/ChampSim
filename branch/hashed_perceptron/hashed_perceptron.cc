@@ -118,7 +118,7 @@ void O3_CPU::initialize_branch_predictor()
     theta[i] = 10;
 }
 
-uint8_t O3_CPU::predict_branch(uint64_t pc)
+bool O3_CPU::predict_branch(champsim::address pc)
 {
 
   // initialize perceptron sum
@@ -158,7 +158,7 @@ uint8_t O3_CPU::predict_branch(uint64_t pc)
 
     // XOR in the PC to spread accesses around (like gshare)
 
-    x ^= pc;
+    x ^= pc.slice_lower(LOG_TABLE_SIZE).to<decltype(x)>();
 
     // stay within the table size
 
@@ -175,7 +175,7 @@ uint8_t O3_CPU::predict_branch(uint64_t pc)
   return yout[cpu] >= 1;
 }
 
-void O3_CPU::last_branch_result(uint64_t pc, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
 
   // was this prediction correct?

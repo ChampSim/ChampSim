@@ -39,7 +39,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
 
     WHEN("The upper level issues a prefetch with metadata") {
       // Request a prefetch
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      constexpr champsim::address seed_addr{0xdeadbeef};
       constexpr uint32_t seed_metadata = 0xcafebabe;
       auto seed_result = upper.prefetch_line(seed_addr, true, seed_metadata);
       REQUIRE(seed_result);
@@ -83,7 +83,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     }
 
     WHEN("The upper level experiences a miss and the lower level emits metadata on the fill") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      constexpr champsim::address seed_addr{0xdeadbeef};
       constexpr uint32_t seed_metadata = 0xcafebabe;
 
       test::metadata_fill_emitter[&lower] = seed_metadata;

@@ -7,7 +7,7 @@
 struct miss_testbed
 {
   constexpr static uint64_t hit_latency = 5;
-  constexpr static uint64_t address_that_will_hit = 0xcafebabe;
+  constexpr static champsim::address address_that_will_hit{0xcafebabe};
   filter_MRC mock_ll{address_that_will_hit};
   CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
 
@@ -26,8 +26,8 @@ struct miss_testbed
 
     // Create a test packet
     PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.v_address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
+    seed.v_address = champsim::address{0xdeadbeef};
     seed.cpu = 0;
 
     issue(seed);
@@ -115,8 +115,8 @@ SCENARIO("Translation misses in the WQ do not inhibit packets that do not need t
 
     WHEN("A translated packet is sent") {
       PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xfeedcafe};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       testbed.issue(test);
@@ -178,8 +178,8 @@ SCENARIO("Translation misses in the RQ do not inhibit packets that do not need t
 
     WHEN("A translated packet is sent") {
       PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xfeedcafe};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       testbed.issue(test);
@@ -240,8 +240,8 @@ SCENARIO("Translation misses in the PQ do not inhibit packets that do not need t
 
     WHEN("A translated packet is sent") {
       PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xfeedcafe};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       testbed.issue(test);

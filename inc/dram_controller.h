@@ -7,6 +7,7 @@
 #include <limits>
 #include <optional>
 
+#include "address.h"
 #include "champsim_constants.h"
 #include "memory_class.h"
 #include "operable.h"
@@ -70,16 +71,16 @@ public:
   bool add_pq(const PACKET& packet) override final;
   bool add_ptwq(const PACKET&) override final { assert(0); }
 
-  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, champsim::address addr) const override final;
+  std::size_t get_size(uint8_t queue_type, champsim::address addr) const override final;
 
   std::size_t size() const;
 
-  uint32_t dram_get_channel(uint64_t address) const;
-  uint32_t dram_get_rank(uint64_t address) const;
-  uint32_t dram_get_bank(uint64_t address) const;
-  uint32_t dram_get_row(uint64_t address) const;
-  uint32_t dram_get_column(uint64_t address) const;
+  uint32_t dram_get_channel(champsim::address address) const;
+  uint32_t dram_get_rank(champsim::address address) const;
+  uint32_t dram_get_bank(champsim::address address) const;
+  uint32_t dram_get_row(champsim::address address) const;
+  uint32_t dram_get_column(champsim::address address) const;
 };
 
 #endif

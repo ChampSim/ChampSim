@@ -8,7 +8,7 @@
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
+  extern std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
 }
 
 SCENARIO("A prefetch does not trigger itself") {
@@ -32,10 +32,10 @@ SCENARIO("A prefetch does not trigger itself") {
     }
 
     WHEN("A prefetch is issued") {
-      test::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
+      test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       // Request a prefetch
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      constexpr champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The prefetch is issued") {
@@ -78,10 +78,10 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      test::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
+      test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
@@ -134,7 +134,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       test::address_operate_collector[&uut].clear();
 
       PACKET test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);

@@ -17,8 +17,8 @@ SCENARIO("Cache queues detect translation misses in WQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_wq(test);
@@ -53,7 +53,7 @@ SCENARIO("Cache queues detect translation misses in WQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.WQ.front().v_address == test.v_address);
         REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.WQ.front().address == 0x11111eef);
+        REQUIRE(uut.WQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.wq_has_ready());
       }
     }
@@ -74,8 +74,8 @@ SCENARIO("Cache queues detect translation misses in RQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_rq(test);
@@ -110,7 +110,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.RQ.front().v_address == test.v_address);
         REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.RQ.front().address == 0x11111eef);
+        REQUIRE(uut.RQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.rq_has_ready());
       }
     }
@@ -131,8 +131,8 @@ SCENARIO("Cache queues detect translation misses in PQ") {
     WHEN("A packet is sent") {
       // Create a test packet
       PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.cpu = 0;
 
       auto test_result = uut.add_pq(test);
@@ -167,7 +167,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.PQ.front().v_address == test.v_address);
         REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.PQ.front().address == 0x11111eef);
+        REQUIRE(uut.PQ.front().address == champsim::address{0x11111eef});
         REQUIRE(uut.pq_has_ready());
       }
     }

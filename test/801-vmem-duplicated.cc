@@ -15,14 +15,14 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
       std::size_t original_size = uut.available_ppages();
 
       AND_WHEN("PTE ask for a page") {
-        auto [paddr_a, delay_a] = uut.get_pte_pa(0, 0, 1);
+        auto [paddr_a, delay_a] = uut.get_pte_pa(0, champsim::address{0xdeadbeef}, 1);
 
         THEN("The page table missed") {
           REQUIRE(delay_a > 0);
         }
 
         AND_WHEN("PTE asks for another page") {
-          auto [paddr_b, delay_b] = uut.get_pte_pa(0, 0, 2);
+          auto [paddr_b, delay_b] = uut.get_pte_pa(0, champsim::address{0xdeadbeef}, 2);
 
           THEN("The page table missed") {
             REQUIRE(delay_b > 0);

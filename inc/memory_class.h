@@ -7,6 +7,8 @@
 #include <limits>
 #include <vector>
 
+#include "address.h"
+
 enum access_type {
   LOAD = 0,
   RFO,
@@ -35,7 +37,13 @@ public:
   uint32_t pf_metadata = 0;
   uint32_t cpu = std::numeric_limits<uint32_t>::max();
 
-  uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
+  champsim::address address{};
+  champsim::address v_address{};
+  champsim::address data{};
+  uint64_t instr_id = 0;
+  champsim::address ip{};
+  uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+  uint64_t cycle_enqueued = 0;
 
   std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
   std::vector<MemoryRequestProducer*> to_return{};
@@ -51,8 +59,8 @@ public:
   virtual bool add_wq(const PACKET& packet) = 0;
   virtual bool add_pq(const PACKET& packet) = 0;
   virtual bool add_ptwq(const PACKET& packet) = 0;
-  virtual std::size_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-  virtual std::size_t get_size(uint8_t queue_type, uint64_t address) = 0;
+  virtual std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const = 0;
+  virtual std::size_t get_size(uint8_t queue_type, champsim::address address) const = 0;
 
   explicit MemoryRequestConsumer() {}
 };

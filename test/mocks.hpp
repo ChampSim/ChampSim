@@ -11,18 +11,20 @@
 class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 {
   std::deque<PACKET> packets, ready_packets;
-  uint64_t ret_data = 0x11111111;
+  champsim::address ret_data_base{0x11111111};
+  int steps = 0;
   const uint64_t latency = 0;
 
   void add(PACKET pkt) {
     pkt.event_cycle = current_cycle + latency;
-    pkt.data = ++ret_data;
+    pkt.data = ret_data_base + steps;
+    ++steps;
     addresses.push_back(pkt.address);
     packets.push_back(pkt);
   }
 
   public:
-    std::deque<uint64_t> addresses{};
+    std::deque<champsim::address> addresses{};
     do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
@@ -43,8 +45,8 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, champsim::address) const override { return std::size(packets); }
+    std::size_t get_size(uint8_t, champsim::address) const override { return std::numeric_limits<uint32_t>::max(); }
 
     std::size_t packet_count() const { return std::size(addresses); }
 };
@@ -55,7 +57,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 class filter_MRC : public MemoryRequestConsumer, public champsim::operable
 {
   std::deque<PACKET> packets, ready_packets;
-  const uint64_t ret_addr;
+  const champsim::address ret_addr;
   const uint64_t latency = 0;
   std::size_t mpacket_count = 0;
 
@@ -68,8 +70,8 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
   }
 
   public:
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
-    filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
+    filter_MRC(champsim::address ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
+    filter_MRC(champsim::address ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
@@ -87,8 +89,8 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, champsim::address) const override { return std::size(packets); }
+    std::size_t get_size(uint8_t, champsim::address) const override { return std::numeric_limits<uint32_t>::max(); }
 
     std::size_t packet_count() const { return mpacket_count; }
 };
@@ -116,12 +118,12 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+    std::size_t get_occupancy(uint8_t, champsim::address) const override { return std::size(packets); }
+    std::size_t get_size(uint8_t, champsim::address) const override { return std::numeric_limits<uint32_t>::max(); }
 
     std::size_t packet_count() const { return mpacket_count; }
 
-    void release(uint64_t addr)
+    void release(champsim::address addr)
     {
         auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
         if (pkt_it != std::end(packets)) {

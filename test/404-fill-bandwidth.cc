@@ -28,7 +28,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::address seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
@@ -95,7 +95,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::address seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {

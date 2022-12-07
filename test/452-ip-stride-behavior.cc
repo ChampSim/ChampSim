@@ -28,8 +28,8 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
     // Create a test packet
     static uint64_t id = 1;
     PACKET seed;
-    seed.address = 0xffff'003f;
-    seed.ip = 0xcafecafe;
+    seed.address = champsim::address{0xffff'003f};
+    seed.ip = champsim::address{0xcafecafe};
     seed.instr_id = id++;
     seed.cpu = 0;
     seed.to_return = {&mock_ul};
@@ -47,7 +47,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
 
     WHEN("Two more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = seed.address + stride*BLOCK_SIZE;
       test_a.instr_id = id++;
 
       auto test_result_a = mock_ul.issue(test_a);
@@ -56,7 +56,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = test_a.address + stride*BLOCK_SIZE;
       test_b.instr_id = id++;
 
       auto test_result_b = mock_ul.issue(test_b);
@@ -73,11 +73,11 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       }
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(2) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(2) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(3) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(3) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(4) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(4) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(5) >> LOG2_BLOCK_SIZE));
+        REQUIRE((mock_ll.addresses.at(0).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(1).block_address().to<uint64_t>()));
+        REQUIRE((mock_ll.addresses.at(1).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(2).block_address().to<uint64_t>()));
+        REQUIRE((mock_ll.addresses.at(2).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(3).block_address().to<uint64_t>()));
+        REQUIRE((mock_ll.addresses.at(3).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(4).block_address().to<uint64_t>()));
+        REQUIRE((mock_ll.addresses.at(4).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(5).block_address().to<uint64_t>()));
       }
     }
   }

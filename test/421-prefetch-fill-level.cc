@@ -22,7 +22,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     uut_queues.begin_phase();
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, true, 0);
       REQUIRE(seed_result);
 
       uut_queues._operate();
@@ -57,7 +57,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     uut_queues.begin_phase();
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, false, 0);
       REQUIRE(seed_result);
 
       uut_queues._operate();

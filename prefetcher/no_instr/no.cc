@@ -2,9 +2,9 @@
 
 void CACHE::prefetcher_initialize() {}
 
-void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
+void CACHE::prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) {}
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
   assert(addr == ip); // Invariant for instruction prefetchers
   return metadata_in;
@@ -12,7 +12,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
 
 void CACHE::prefetcher_cycle_operate() {}
 
-uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(champsim::address addr, uint32_t set, uint32_t way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }

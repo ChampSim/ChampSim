@@ -43,7 +43,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       PACKET seed;
-      seed.address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
       seed.instr_id = id++;
       seed.cpu = 0;
       seed.type = type;

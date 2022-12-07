@@ -25,7 +25,7 @@ SCENARIO("A prefetch can hit the cache") {
     uut_queues.begin_phase();
 
     PACKET seed;
-    seed.address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
     seed.cpu = 0;
 
@@ -73,7 +73,7 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     uut_queues.begin_phase();
 
     PACKET seed;
-    seed.address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
     seed.instr_id = 1;
     seed.cpu = 0;
 
