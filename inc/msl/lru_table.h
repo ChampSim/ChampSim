@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdint>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -24,6 +25,13 @@ template <typename T>
 struct table_tagger {
   auto operator()(const T& t) const { return t.tag(); }
 };
+
+// primary template handles types that do not support slicing
+template< class, class = void >
+struct is_sliceable : std::false_type { };
+// specialization recognizes types that do support slicing
+template< class T >
+struct is_sliceable<T, std::void_t<decltype( std::declval<T&>().slice(0,0) )> > : std::true_type { };
 } // namespace detail
 
 template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>>
@@ -49,7 +57,12 @@ private:
   auto get_set_span(const value_type& elem)
   {
     using diff_type = typename block_vec_type::difference_type;
-    diff_type set_idx = static_cast<diff_type>(set_projection(elem) & champsim::msl::bitmask(lg2(NUM_SET)));
+    diff_type set_idx;
+    if constexpr (detail::is_sliceable<std::invoke_result_t<SetProj, decltype(elem)>>::value) {
+      set_idx = set_projection(elem).slice_lower(lg2(NUM_SET)).template to<decltype(set_idx)>();
+    } else {
+      set_idx = static_cast<diff_type>(set_projection(elem) & champsim::msl::bitmask(lg2(NUM_SET)));
+    }
     return champsim::get_span(std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY)), std::end(block), static_cast<diff_type>(NUM_WAY));
   }
 

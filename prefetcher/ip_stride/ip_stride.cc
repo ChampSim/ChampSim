@@ -15,8 +15,8 @@ struct tracker {
     champsim::address last_cl_addr{}; // the last address accessed by this IP
     champsim::address::difference_type last_stride{};   // the stride between the last two addresses accessed by this IP
 
-    auto index() const { return ip.slice_lower(2).to<std::size_t>(); }
-    auto tag() const { return ip.slice_lower(2).to<std::size_t>(); }
+    auto index() const { return ip.slice_upper(2); }
+    auto tag() const { return ip.slice_upper(2); }
   };
 
   struct lookahead_entry {

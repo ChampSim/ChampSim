@@ -89,7 +89,7 @@ public:
   // instruction buffer
   struct dib_shift {
     std::size_t shamt;
-    auto operator()(champsim::address val) const { return val.slice_upper(shamt).to<std::size_t>(); }
+    auto operator()(champsim::address val) const { return val.slice_upper(shamt); }
   };
   using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
   dib_type DIB;

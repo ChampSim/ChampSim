@@ -21,7 +21,7 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 
   struct pscl_indexer {
     std::size_t shamt;
-    auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt).to<std::size_t>(); }
+    auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 
   using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
