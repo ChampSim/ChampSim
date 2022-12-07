@@ -1,5 +1,5 @@
 #include "catch.hpp"
-#include "util.h"
+#include "util/bits.h"
 #include <bitset>
 
 TEST_CASE("lg2 correctly identifies powers of 2") {

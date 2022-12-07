@@ -5,7 +5,8 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/bits.h"
+#include "util/span.h"
 #include "vmem.h"
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,

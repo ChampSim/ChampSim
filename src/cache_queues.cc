@@ -1,7 +1,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/bits.h"
 
 void CACHE::NonTranslatingQueues::operate() { check_collision(); }
 

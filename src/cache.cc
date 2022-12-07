@@ -8,7 +8,9 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/bits.h"
+#include "util/eq_addr.h"
+#include "util/span.h"
 
 bool CACHE::handle_fill(const PACKET& fill_mshr)
 {

@@ -3,7 +3,7 @@
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
-#include "util.h"
+#include "util/bits.h"
 
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
   constexpr unsigned vmem_size_bits = 33;

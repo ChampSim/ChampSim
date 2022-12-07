@@ -7,7 +7,7 @@
 
 #include "memory_class.h"
 #include "operable.h"
-#include "util.h"
+#include "util/lru_table.h"
 #include "vmem.h"
 
 class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer

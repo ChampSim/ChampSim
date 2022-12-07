@@ -15,7 +15,7 @@
 #include "instruction.h"
 #include "memory_class.h"
 #include "operable.h"
-#include "util.h"
+#include "util/lru_table.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 

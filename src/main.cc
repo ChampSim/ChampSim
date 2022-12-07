@@ -16,7 +16,6 @@
 #include "phase_info.h"
 #include "ptw.h"
 #include "stats_printer.h"
-#include "util.h"
 #include "vmem.h"
 
 void init_structures();

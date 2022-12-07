@@ -10,7 +10,6 @@
 #include "champsim_constants.h"
 #include "memory_class.h"
 #include "operable.h"
-#include "util.h"
 
 struct dram_stats {
   std::string name{};

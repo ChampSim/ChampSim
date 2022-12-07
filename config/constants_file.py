@@ -4,7 +4,7 @@ def get_constants_file(env, pmem):
     retval += '#ifndef CHAMPSIM_CONSTANTS_H\n'
     retval += '#define CHAMPSIM_CONSTANTS_H\n'
     retval += '#include <cstdlib>\n'
-    retval += '#include "util.h"\n'
+    retval += '#include "util/bits.h"\n'
     retval += 'constexpr unsigned BLOCK_SIZE = {block_size};\n'.format(**env)
     retval += 'constexpr unsigned PAGE_SIZE = {page_size};\n'.format(**env)
     retval += 'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};\n'.format(**env)
