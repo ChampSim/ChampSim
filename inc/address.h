@@ -47,7 +47,10 @@ class address
     {
       //todo check preconditions
       static_assert(std::is_integral_v<T>);
-      return static_cast<T>((value >> lower) & champsim::bitmask(upper-lower));
+      underlying_type raw_val = (value >> lower) & champsim::bitmask(upper-lower);
+      assert(raw_val <= std::numeric_limits<T>::max());
+      assert(raw_val >= std::numeric_limits<T>::min());
+      return static_cast<T>(raw_val);
     }
 
     constexpr address to_address() const
