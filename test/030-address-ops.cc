@@ -1,6 +1,7 @@
 #include "catch.hpp"
 
 #include "address.h"
+#include "champsim_constants.h"
 
 TEST_CASE("An address is constructible by certian means") {
   STATIC_REQUIRE(std::is_constructible_v<champsim::address, uint64_t>);

@@ -31,7 +31,7 @@ SCENARIO("A prefetch can be issued") {
     }
 
     WHEN("A prefetch is issued") {
-      constexpr champsim::address seed_addr{0xdeadbeef};
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {

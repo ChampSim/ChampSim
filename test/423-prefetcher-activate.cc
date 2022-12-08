@@ -35,7 +35,7 @@ SCENARIO("A prefetch does not trigger itself") {
       test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       // Request a prefetch
-      constexpr champsim::address seed_addr{0xdeadbeef};
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The prefetch is issued") {

@@ -7,7 +7,7 @@
 struct miss_testbed
 {
   constexpr static uint64_t hit_latency = 5;
-  constexpr static champsim::address address_that_will_hit{0xcafebabe};
+  champsim::address address_that_will_hit{0xcafebabe};
   filter_MRC mock_ll{address_that_will_hit};
   CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
 
