@@ -14,18 +14,6 @@ TEST_CASE("A statically-sized address slice is constructible by certian means") 
   STATIC_REQUIRE(std::is_assignable_v<champsim::address_slice<20,16>, champsim::address_slice<20,16>>);
 }
 
-TEST_CASE("A dynamically-sized address slice is constructible by certian means") {
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, champsim::address>);
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, std::size_t, std::size_t, champsim::address>);
-  STATIC_REQUIRE(std::is_copy_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_move_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_copy_assignable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_move_assignable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_destructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_swappable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-  STATIC_REQUIRE(std::is_assignable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
-}
-
 namespace {
   template <typename SliceA, typename SliceB>
     using cmp_slice = decltype( std::declval<SliceA>() == std::declval<SliceB>() );

@@ -183,14 +183,16 @@ class address_slice<dynamic_extent, dynamic_extent>
   template <std::size_t other_up, std::size_t other_low>
   bool operator!=(address_slice<other_up, other_low> other) const { return !(*this == other); }
 
-  address_slice<dynamic_extent, dynamic_extent> slice(std::size_t new_upper, std::size_t new_lower) const {
-    assert(new_lower <= (upper - lower));
-    assert(new_upper <= (upper - lower));
-    return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to_address()};
+  address_slice<dynamic_extent, dynamic_extent> slice(std::size_t slice_upper, std::size_t slice_lower) const {
+    assert(slice_lower <= (upper - lower));
+    assert(slice_upper <= (upper - lower));
+    return address_slice<dynamic_extent, dynamic_extent>{slice_upper + lower, slice_lower + lower, to_address()};
   }
   address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const { return slice(upper-lower, new_lower); }
   address_slice<dynamic_extent, dynamic_extent> slice_lower(std::size_t new_upper) const { return slice(new_upper, 0); }
 };
+
+address_slice(std::size_t, std::size_t, champsim::address) -> address_slice<dynamic_extent, dynamic_extent>;
 
 template <std::size_t UP, std::size_t LOW>
 address_slice<UP, LOW> address::slice() const
