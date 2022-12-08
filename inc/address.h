@@ -55,6 +55,7 @@ class address
   private:
     underlying_type value{};
 
+    template <std::size_t, std::size_t> friend class address_slice;
     friend std::ostream& operator<<(std::ostream& stream, const champsim::address &addr)
     {
       stream << "0x" << std::hex << addr.value << std::dec;
@@ -80,8 +81,6 @@ class address_slice
   static_assert(UP <= bits);
   static_assert(LOW <= bits);
 
-  address_slice(underlying_type val) : value(val) {}
-
   friend std::ostream& operator<<(std::ostream& stream, const address_slice<UP, LOW> &addr)
   {
     stream << "0x" << std::hex << addr.to<underlying_type>() << std::dec;
@@ -89,6 +88,8 @@ class address_slice
   }
 
   public:
+  explicit address_slice(champsim::address val) : value(val.value) {}
+
   template <typename T>
   T to() const
   {
@@ -105,22 +106,19 @@ class address_slice
     return champsim::address{value & champsim::bitmask(upper, lower)};
   }
 
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator==(address_slice<other_up, other_low> other) const
+  bool operator==(address_slice<upper, lower> other) const
   {
-    assert(this->upper == other.upper);
-    assert(this->lower == other.lower);
     return (value & bitmask(upper, lower)) == (other.value & bitmask(upper, lower));
   }
 
   template <std::size_t other_up, std::size_t other_low>
   bool operator!=(address_slice<other_up, other_low> other) const { return !(*this == other); }
 
-  template <std::size_t new_upper, std::size_t new_lower>
-  address_slice<new_upper, new_lower> slice() const {
-    static_assert(new_lower <= (upper - lower));
-    static_assert(new_upper <= (upper - lower));
-    return address_slice<new_upper, new_lower>{to<underlying_type>()};
+  template <std::size_t slice_upper, std::size_t slice_lower>
+  address_slice<slice_upper + lower, slice_lower + lower> slice() const {
+    static_assert(slice_lower <= (upper - lower));
+    static_assert(slice_upper <= (upper - lower));
+    return address_slice<slice_upper + lower, slice_lower + lower>{to_address()};
   }
   template <std::size_t new_lower>
   address_slice<upper-lower, new_lower> slice_upper() const { return slice<upper-lower, new_lower>(); }
@@ -143,13 +141,6 @@ class address_slice<dynamic_extent, dynamic_extent>
   constexpr static int bits = std::numeric_limits<underlying_type>::digits;
   underlying_type value{};
 
-  address_slice(std::size_t up, std::size_t low, underlying_type val) : upper(up), lower(low), value(val)
-  {
-    assert(up >= low);
-    assert(up <= bits);
-    assert(low <= bits);
-  }
-
   friend std::ostream& operator<<(std::ostream& stream, const address_slice<dynamic_extent, dynamic_extent> &addr)
   {
     stream << "0x" << std::hex << addr.to<underlying_type>() << std::dec;
@@ -157,6 +148,14 @@ class address_slice<dynamic_extent, dynamic_extent>
   }
 
   public:
+  explicit address_slice(champsim::address val) : address_slice(champsim::address::bits, 0, val) {}
+  address_slice(std::size_t up, std::size_t low, champsim::address val) : upper(up), lower(low), value(val.value)
+  {
+    assert(up >= low);
+    assert(up <= bits);
+    assert(low <= bits);
+  }
+
   template <typename T>
   T to() const
   {
@@ -187,7 +186,7 @@ class address_slice<dynamic_extent, dynamic_extent>
   address_slice<dynamic_extent, dynamic_extent> slice(std::size_t new_upper, std::size_t new_lower) const {
     assert(new_lower <= (upper - lower));
     assert(new_upper <= (upper - lower));
-    return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to<underlying_type>()};
+    return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to_address()};
   }
   address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const { return slice(upper-lower, new_lower); }
   address_slice<dynamic_extent, dynamic_extent> slice_lower(std::size_t new_upper) const { return slice(new_upper, 0); }
@@ -198,7 +197,7 @@ address_slice<UP, LOW> address::slice() const
 {
   static_assert(LOW <= bits);
   static_assert(UP <= bits);
-  return address_slice<UP, LOW>{value};
+  return address_slice<UP, LOW>{*this};
 }
 
 template <std::size_t UP, std::size_t LOW>
@@ -206,7 +205,7 @@ auto address_slice<UP, LOW>::slice(std::size_t new_upper, std::size_t new_lower)
 {
   assert(new_lower <= (upper - lower));
   assert(new_upper <= (upper - lower));
-  return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to<underlying_type>()};
+  return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to_address()};
 }
 
 template <std::size_t UP, std::size_t LOW>

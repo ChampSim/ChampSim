@@ -4,7 +4,7 @@
 
 champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> champsim::address::slice(std::size_t upper, std::size_t lower) const
 {
-  return address_slice<dynamic_extent, dynamic_extent>{upper, lower, value};
+  return address_slice<dynamic_extent, dynamic_extent>{upper, lower, *this};
 }
 
 champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> champsim::address::slice_upper(std::size_t lower) const
