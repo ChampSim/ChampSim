@@ -173,7 +173,7 @@ void DRAM_CHANNEL::check_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [check_val = wq_it->value().address.block_address()](const auto& x){ return x.has_value() && x->address.block_address() == check_val; };
+      auto checker = [check_val = champsim::block_number{wq_it->value().address}](const auto& x){ return x.has_value() && champsim::block_number{x->address} == check_val; };
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         wq_it->reset();
       } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
@@ -186,7 +186,7 @@ void DRAM_CHANNEL::check_collision()
 
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [check_val = rq_it->value().address.block_address()](const auto& x){ return x.has_value() && x->address.block_address() == check_val; };
+      auto checker = [check_val = champsim::block_number{rq_it->value().address}](const auto& x){ return x.has_value() && champsim::block_number{x->address} == check_val; };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         rq_it->value().data = wq_it->value().data;
         for (auto ret : rq_it->value().to_return)

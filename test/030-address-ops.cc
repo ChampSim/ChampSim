@@ -1,6 +1,8 @@
 #include "catch.hpp"
 
 #include "address.h"
+
+#include "util/detect.h"
 #include "champsim_constants.h"
 
 TEST_CASE("An address is constructible by certian means") {
@@ -104,6 +106,7 @@ TEST_CASE("An address can subtract a negative number in place") {
   REQUIRE(lhs == champsim::address{2});
 }
 
+/*
 TEST_CASE("An address can be shown to be a block address") {
   CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE + 4)}.is_block_address());
   CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE + 2)}.is_block_address());
@@ -127,22 +130,29 @@ TEST_CASE("An address can be shown to be a page address") {
   CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE - 4)}.is_page_address());
   CHECK_FALSE(champsim::address{0xffff'ffff}.is_page_address());
 }
+*/
+
+namespace {
+  template <typename SliceA, typename SliceB>
+    using can_find_offset = decltype( champsim::offset(std::declval<SliceA>(), std::declval<SliceB>()) );
+}
 
 TEST_CASE("The offset between two addresses is signed") {
-  STATIC_REQUIRE(std::is_signed_v<std::invoke_result_t<decltype(&champsim::address::offset), champsim::address, champsim::address>>);
+  STATIC_REQUIRE(champsim::is_detected_v<::can_find_offset, champsim::address, champsim::address>);
+  STATIC_REQUIRE(std::is_signed_v<::can_find_offset<champsim::address, champsim::address>>);
 }
 
 TEST_CASE("The offset between two addresses is correct") {
   // Small differences
-  CHECK(champsim::address::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'ffff}) == 0);
-  CHECK(champsim::address::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'fffe}) == -1);
-  CHECK(champsim::address::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'fff0}) == -15);
-  CHECK(champsim::address::offset(champsim::address{0xffff'fffe}, champsim::address{0xffff'ffff}) == 1);
-  CHECK(champsim::address::offset(champsim::address{0xffff'fff0}, champsim::address{0xffff'ffff}) == 15);
+  CHECK(champsim::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'ffff}) == 0);
+  CHECK(champsim::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'fffe}) == -1);
+  CHECK(champsim::offset(champsim::address{0xffff'ffff}, champsim::address{0xffff'fff0}) == -15);
+  CHECK(champsim::offset(champsim::address{0xffff'fffe}, champsim::address{0xffff'ffff}) == 1);
+  CHECK(champsim::offset(champsim::address{0xffff'fff0}, champsim::address{0xffff'ffff}) == 15);
 
   // Large differences
-  CHECK(champsim::address::offset(champsim::address{0x8000'0000'0000'0000}, champsim::address{0xffff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
-  CHECK(champsim::address::offset(champsim::address{0xffff'ffff'ffff'ffff}, champsim::address{0x8000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
-  CHECK(champsim::address::offset(champsim::address{0x0000'0000'0000'0000}, champsim::address{0x7fff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
-  CHECK(champsim::address::offset(champsim::address{0x7fff'ffff'ffff'ffff}, champsim::address{0x0000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
+  CHECK(champsim::offset(champsim::address{0x8000'0000'0000'0000}, champsim::address{0xffff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
+  CHECK(champsim::offset(champsim::address{0xffff'ffff'ffff'ffff}, champsim::address{0x8000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
+  CHECK(champsim::offset(champsim::address{0x0000'0000'0000'0000}, champsim::address{0x7fff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
+  CHECK(champsim::offset(champsim::address{0x7fff'ffff'ffff'ffff}, champsim::address{0x0000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
 }

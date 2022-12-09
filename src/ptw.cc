@@ -44,7 +44,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(champsim::address::splice(walk_init.ptw_addr, champsim::address{walk_offset}, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
+  return step_translation(champsim::splice(walk_init.ptw_addr, champsim::address{walk_offset}, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
@@ -85,7 +85,7 @@ bool PageTableWalker::step_translation(champsim::address addr, std::size_t trans
   fwd_pkt.translation_level = transl_level;
 
   auto matches_and_inflight = [addr](const auto& x) {
-    return x.address.block_address() == addr.block_address() && x.event_cycle == std::numeric_limits<uint64_t>::max();
+    return champsim::block_number{x.address} == champsim::block_number{addr} && x.event_cycle == std::numeric_limits<uint64_t>::max();
   };
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);
 
@@ -125,7 +125,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
   assert(packet.address != champsim::address{});
 
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(std::begin(RQ), std::end(RQ), [match=packet.address.page_address()](const auto& pkt){ return pkt.address.page_address() == match; });
+  auto found_rq = std::find_if(std::begin(RQ), std::end(RQ), [match=champsim::page_number{packet.address}](const auto& pkt){ return champsim::page_number{pkt.address} == match; });
   assert(found_rq == RQ.end()); // Duplicate request should not be sent.
 
   // check occupancy
@@ -142,7 +142,7 @@ bool PageTableWalker::add_rq(const PACKET& packet)
 void PageTableWalker::return_data(const PACKET& packet)
 {
   for (auto& mshr_entry : MSHR) {
-    if (mshr_entry.address.block_address() == packet.address.block_address()) {
+    if (champsim::block_number{mshr_entry.address} == champsim::block_number{packet.address}) {
       uint64_t penalty;
       if (mshr_entry.translation_level == 0)
         std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);

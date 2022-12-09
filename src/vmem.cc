@@ -39,18 +39,18 @@ champsim::address VirtualMemory::ppage_front() const
 
 void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
-std::size_t VirtualMemory::available_ppages() const { return champsim::address::offset(next_ppage, last_ppage) / PAGE_SIZE; }
+std::size_t VirtualMemory::available_ppages() const { return champsim::offset(next_ppage, last_ppage) / PAGE_SIZE; }
 
 std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
 {
-  std::pair key{cpu_num, vaddr.page_address().to_address()};
+  std::pair key{cpu_num, champsim::page_number{vaddr}};
   auto [ppage, fault] = vpage_to_ppage_map.insert(std::pair{key, ppage_front()});
 
   // this vpage doesn't yet have a ppage mapping
   if (fault)
     ppage_pop();
 
-  return {champsim::address::splice(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
+  return {champsim::splice(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
 }
 
 std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)
@@ -60,20 +60,20 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
     ppage_pop();
   }
 
-  std::tuple key{cpu_num, vaddr.slice_upper(shamt(level)).to_address(), level};
+  std::tuple key{cpu_num, level, vaddr.slice_upper(shamt(level))};
   auto [ppage, fault] = page_table.insert(std::pair{key, next_pte_page});
 
   // this PTE doesn't yet have a mapping
   if (fault) {
     next_pte_page += pte_page_size;
-    if (next_pte_page.is_page_address()) {
+    if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
       next_pte_page = ppage_front();
       ppage_pop();
     }
   }
 
   auto offset = get_offset(vaddr, level);
-  auto paddr = ppage->second.slice_upper(champsim::lg2(pte_page_size)).to_address() + (offset * PTE_BYTES);
+  auto paddr = ppage->second + (offset * PTE_BYTES);
   if constexpr (champsim::debug_print) {
     std::cout << "[VMEM] " << __func__;
     std::cout << " paddr: " << paddr;

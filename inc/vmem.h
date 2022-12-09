@@ -17,8 +17,8 @@ inline constexpr std::size_t PTE_BYTES = 8;
 class VirtualMemory
 {
 private:
-  std::map<std::pair<uint32_t, champsim::address>, champsim::address> vpage_to_ppage_map;
-  std::map<std::tuple<uint32_t, champsim::address, uint32_t>, champsim::address> page_table;
+  std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
+  std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>, champsim::address> page_table;
 
   champsim::address next_pte_page{};
 

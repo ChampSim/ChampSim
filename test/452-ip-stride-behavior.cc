@@ -73,11 +73,11 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       }
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE((mock_ll.addresses.at(0).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(1).block_address().to<uint64_t>()));
-        REQUIRE((mock_ll.addresses.at(1).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(2).block_address().to<uint64_t>()));
-        REQUIRE((mock_ll.addresses.at(2).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(3).block_address().to<uint64_t>()));
-        REQUIRE((mock_ll.addresses.at(3).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(4).block_address().to<uint64_t>()));
-        REQUIRE((mock_ll.addresses.at(4).block_address().to<uint64_t>()) + stride == (mock_ll.addresses.at(5).block_address().to<uint64_t>()));
+        REQUIRE(champsim::block_number{mock_ll.addresses.at(0)} + stride == champsim::block_number{mock_ll.addresses.at(1)});
+        REQUIRE(champsim::block_number{mock_ll.addresses.at(1)} + stride == champsim::block_number{mock_ll.addresses.at(2)});
+        REQUIRE(champsim::block_number{mock_ll.addresses.at(2)} + stride == champsim::block_number{mock_ll.addresses.at(3)});
+        REQUIRE(champsim::block_number{mock_ll.addresses.at(3)} + stride == champsim::block_number{mock_ll.addresses.at(4)});
+        REQUIRE(champsim::block_number{mock_ll.addresses.at(4)} + stride == champsim::block_number{mock_ll.addresses.at(5)});
       }
     }
   }

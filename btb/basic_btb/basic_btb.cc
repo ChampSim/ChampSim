@@ -112,7 +112,7 @@ void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, b
     auto call_ip = ::RAS[this].back();
     ::RAS[this].pop_back();
 
-    auto estimated_call_instr_size = std::abs(champsim::address::offset(call_ip, branch_target));
+    auto estimated_call_instr_size = std::abs(champsim::offset(call_ip, branch_target));
     if (estimated_call_instr_size <= 10) {
       ::CALL_SIZE[this][call_ip.slice_lower(champsim::lg2(std::size(::CALL_SIZE[this]))).to<std::size_t>()] = estimated_call_instr_size;
     }

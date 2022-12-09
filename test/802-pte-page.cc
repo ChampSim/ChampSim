@@ -33,8 +33,8 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
       }
 
       THEN("The entries are spaced by PTE_BYTES") {
-        REQUIRE(champsim::address::offset(given_pages.at(0), given_pages.at(1)) == PTE_BYTES);
-        REQUIRE(champsim::address::offset(given_pages.front(), given_pages.back()) == PTE_BYTES*(size-1));
+        REQUIRE(champsim::offset(given_pages.at(0), given_pages.at(1)) == PTE_BYTES);
+        REQUIRE(champsim::offset(given_pages.front(), given_pages.back()) == PTE_BYTES*(size-1));
       }
 
       THEN("No pages are duplicated") {

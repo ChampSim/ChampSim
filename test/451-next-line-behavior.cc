@@ -49,7 +49,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       }
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE(champsim::address::offset(mock_ll.addresses.at(0), mock_ll.addresses.at(1)) == BLOCK_SIZE);
+        REQUIRE(champsim::offset(mock_ll.addresses.at(0), mock_ll.addresses.at(1)) == BLOCK_SIZE);
       }
     }
   }

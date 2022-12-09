@@ -33,8 +33,8 @@ void CACHE::prefetcher_cycle_operate() {}
 
 uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  auto page = addr.page_address();
-  auto page_offset = addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE);
+  champsim::page_number page{addr};
+  champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE> page_offset{addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
   std::vector<uint32_t> confidence_q(MSHR_SIZE);
 
@@ -77,10 +77,10 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
     do_lookahead = 0;
     for (uint32_t i = pf_q_head; i < pf_q_tail; i++) {
       if (confidence_q[i] >= spp::PF_THRESHOLD) {
-        auto pf_addr = base_addr.block_address().to_address() + (delta_q[i] << LOG2_BLOCK_SIZE);
+        auto pf_addr = (champsim::block_number{base_addr}.to<uint64_t>() << LOG2_BLOCK_SIZE) + (delta_q[i] << LOG2_BLOCK_SIZE);
 
-        if (addr.page_address() == pf_addr.page_address()) { // Prefetch request is in the same physical page
-          if (::FILTER.check(pf_addr, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp::SPP_L2C_PREFETCH : spp::SPP_LLC_PREFETCH))) {
+        if (champsim::page_number{pf_addr} == page) { // Prefetch request is in the same physical page
+          if (::FILTER.check(champsim::address{pf_addr}, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp::SPP_L2C_PREFETCH : spp::SPP_LLC_PREFETCH))) {
             prefetch_line(pf_addr, (confidence_q[i] >= spp::FILL_THRESHOLD), 0); // Use addr (not base_addr) to obey the same physical page boundary
 
             if (confidence_q[i] >= spp::FILL_THRESHOLD) {
@@ -104,7 +104,7 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i], pf_addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE).to<uint32_t>(), delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i], champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{pf_addr}.to<uint32_t>(), delta_q[i]);
           }
         }
 
@@ -175,15 +175,15 @@ uint64_t get_hash(uint64_t key)
 
 void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
 {
-  auto set = get_hash(addr.page_address().to<uint64_t>()) % ST_SET;
+  auto set = get_hash(champsim::page_number{addr}.to<uint64_t>()) % ST_SET;
   auto match = ST_WAY;
-  auto partial_page = addr.page_address().to<uint64_t>() & ST_TAG_MASK;
-  auto page_offset = addr.slice(LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE).to<uint32_t>();
+  auto partial_page = champsim::page_number{addr}.to<uint64_t>() & ST_TAG_MASK;
+  auto page_offset = champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{addr}.to<uint32_t>();
   uint8_t ST_hit = 0;
   int sig_delta = 0;
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
-    std::cout << "[ST] " << __func__ << " page: " << addr.page_address() << " partial_page: " << std::hex << partial_page << std::dec << std::endl;
+    std::cout << "[ST] " << __func__ << " page: " << champsim::page_number{addr} << " partial_page: " << std::hex << partial_page << std::dec << std::endl;
   }
 
   // Case 2: Invalid
@@ -405,7 +405,7 @@ void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<int>& delta
 
 bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST filter_request)
 {
-  auto cache_line = check_addr.block_address();
+  champsim::block_number cache_line{check_addr};
   auto hash = get_hash(cache_line.to<uint64_t>());
   auto quotient = (hash >> REMAINDER_BIT) & ((1 << QUOTIENT_BIT) - 1);
   auto remainder = hash % (1 << REMAINDER_BIT);

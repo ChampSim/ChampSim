@@ -12,8 +12,8 @@ namespace
 struct tracker {
   struct tracker_entry {
     champsim::address ip{};           // the IP we're tracking
-    champsim::address last_cl_addr{}; // the last address accessed by this IP
-    champsim::address::difference_type last_stride{};   // the stride between the last two addresses accessed by this IP
+    champsim::block_number last_cl_addr{}; // the last address accessed by this IP
+    champsim::block_number::difference_type last_stride{};   // the stride between the last two addresses accessed by this IP
 
     auto index() const { return ip.slice_upper(2); }
     auto tag() const { return ip.slice_upper(2); }
@@ -36,14 +36,13 @@ struct tracker {
 public:
   void initiate_lookahead(champsim::address ip, champsim::address cl_addr)
   {
-    assert(cl_addr.is_block_address());
-    champsim::address::difference_type stride = 0;
+    champsim::block_number::difference_type stride = 0;
 
-    auto found = table.check_hit({ip, cl_addr, stride});
+    auto found = table.check_hit({ip, champsim::block_number{cl_addr}, stride});
 
     // if we found a matching entry
     if (found.has_value()) {
-      stride = champsim::address::offset(found->last_cl_addr, cl_addr);
+      stride = champsim::offset(found->last_cl_addr, champsim::block_number{cl_addr});
 
       // Initialize prefetch state unless we somehow saw the same address twice in
       // a row or if this is the first time we've seen this stride
@@ -52,7 +51,7 @@ public:
     }
 
     // update tracking set
-    table.fill({ip, cl_addr, stride});
+    table.fill({ip, champsim::block_number{cl_addr}, stride});
   }
 
   void advance_lookahead(CACHE* cache)
@@ -62,10 +61,10 @@ public:
       auto [old_pf_address, stride, degree] = active_lookahead.value();
       assert(degree > 0);
 
-      auto pf_address = old_pf_address + stride;
+      auto pf_address = old_pf_address + stride*BLOCK_SIZE;
 
       // If the next step would exceed the degree or run off the page, stop
-      if (cache->virtual_prefetch || pf_address.page_address() == old_pf_address.page_address()) {
+      if (cache->virtual_prefetch || champsim::page_number{pf_address} == champsim::page_number{old_pf_address}) {
         // check the MSHR occupancy to decide if we're going to prefetch to this level or not
         const bool mshr_under_light_load = cache->get_occupancy(0, pf_address) < (cache->get_size(0, pf_address) / 2);
         const bool success = cache->prefetch_line(pf_address, mshr_under_light_load, 0);
@@ -91,7 +90,7 @@ void CACHE::prefetcher_cycle_operate() { ::trackers[this].advance_lookahead(this
 
 uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  ::trackers[this].initiate_lookahead(ip, addr.block_address().to_address());
+  ::trackers[this].initiate_lookahead(ip, addr);
   return metadata_in;
 }
 

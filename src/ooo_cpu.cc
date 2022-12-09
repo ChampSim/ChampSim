@@ -279,8 +279,8 @@ void O3_CPU::fetch_instruction()
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
-    auto no_match_ip = [find_ip = l1i_req_begin->ip.block_address()](const ooo_model_instr& x) {
-      return find_ip != x.ip.block_address();
+    auto no_match_ip = [find_ip = champsim::block_number{l1i_req_begin->ip}](const ooo_model_instr& x) {
+      return find_ip != champsim::block_number{x.ip};
     };
     auto l1i_req_end = std::find_if(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
 
@@ -629,7 +629,7 @@ void O3_CPU::handle_memory_return()
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
-      if (fetched.ip.block_address() == l1i_entry.v_address.block_address() && fetched.fetched != 0) {
+      if (champsim::block_number{fetched.ip} == champsim::block_number{l1i_entry.v_address} && fetched.fetched != 0) {
         fetched.fetched = COMPLETED;
         --l1i_bw;
 
@@ -649,7 +649,7 @@ void O3_CPU::handle_memory_return()
   auto l1d_it = std::begin(L1D_bus.PROCESSED);
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
-      if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address.block_address() == l1d_it->v_address.block_address()) {
+      if (lq_entry.has_value() && lq_entry->fetch_issued && champsim::block_number{lq_entry->virtual_address} == champsim::block_number{l1d_it->v_address}) {
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
       }
