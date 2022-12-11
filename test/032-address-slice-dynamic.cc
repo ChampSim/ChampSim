@@ -238,4 +238,17 @@ TEST_CASE("A dynamically-sized address slice can subtract a negative number in p
   REQUIRE(champsim::address{lhs} == champsim::address{0x20000});
 }
 
+TEST_CASE("A const dynamically-sized address slice can add") {
+  const champsim::address_slice lhs{20,16,1};
+  auto result = lhs + 1;
+  REQUIRE(result == champsim::address_slice{20,16,2});
+  REQUIRE(champsim::address{result} == champsim::address{0x20000});
+}
+
+TEST_CASE("A const dynamically-sized address slice can subtract") {
+  const champsim::address_slice lhs{20,16,3};
+  auto result = lhs - 1;
+  REQUIRE(result == champsim::address_slice{20,16,2});
+  REQUIRE(champsim::address{result} == champsim::address{0x20000});
+}
 

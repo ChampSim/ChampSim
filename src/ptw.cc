@@ -54,7 +54,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     std::cout << " address: " << fill_mshr.address;
     std::cout << " v_address: " << fill_mshr.v_address;
     std::cout << " data: " << fill_mshr.data;
-    std::cout << " pt_page offset: " << fill_mshr.data.slice(LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE).to<int>();
+    std::cout << " pt_page offset: " << fill_mshr.data.slice<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>();
     std::cout << " translation_level: " << +fill_mshr.translation_level;
     std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
   }

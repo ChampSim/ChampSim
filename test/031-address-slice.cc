@@ -271,3 +271,16 @@ TEST_CASE("An address slice can subtract a negative number in place") {
   REQUIRE(champsim::address{lhs} == champsim::address{0x20000});
 }
 
+TEST_CASE("A const address slice can add") {
+  const champsim::address_slice<20,16> lhs{1};
+  auto result = lhs + 1;
+  REQUIRE(result == champsim::address_slice<20,16>{2});
+  REQUIRE(champsim::address{result} == champsim::address{0x20000});
+}
+
+TEST_CASE("A const address slice can subtract") {
+  const champsim::address_slice<20,16> lhs{3};
+  auto result = lhs - 1;
+  REQUIRE(result == champsim::address_slice<20,16>{2});
+  REQUIRE(champsim::address{result} == champsim::address{0x20000});
+}

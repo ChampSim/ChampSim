@@ -98,16 +98,16 @@ class address_slice_impl
 
     self_type& operator-=(difference_type delta) { return *this += (-delta); }
 
-    self_type operator+(difference_type delta)
+    self_type operator+(difference_type delta) const
     {
-      self_type retval = static_cast<self_type&>(*this);
+      self_type retval = static_cast<const self_type&>(*this);
       retval += delta;
       return retval;
     }
 
-    self_type operator-(difference_type delta)
+    self_type operator-(difference_type delta) const
     {
-      self_type retval = static_cast<self_type&>(*this);
+      self_type retval = static_cast<const self_type&>(*this);
       retval -= delta;
       return retval;
     }

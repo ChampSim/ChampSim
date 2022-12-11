@@ -34,8 +34,8 @@ struct btb_entry_t {
   champsim::address target{};
   branch_info type = branch_info::ALWAYS_TAKEN;
 
-  auto index() const { return ip_tag.slice_upper<2>().to<std::size_t>(); }
-  auto tag() const { return ip_tag.slice_upper<2>().to<std::size_t>(); }
+  auto index() const { return ip_tag.slice_upper<2>(); }
+  auto tag() const { return ip_tag.slice_upper<2>(); }
 };
 
 std::map<O3_CPU*, champsim::msl::lru_table<btb_entry_t>> BTB;
@@ -74,7 +74,7 @@ std::pair<champsim::address, bool> O3_CPU::btb_prediction(champsim::address ip)
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
-    auto size = ::CALL_SIZE[this][target.slice_lower(champsim::lg2(std::size(::CALL_SIZE[this]))).to<std::size_t>()];
+    auto size = ::CALL_SIZE[this][target.slice_lower<champsim::lg2(CALL_SIZE_TRACKERS)>().to<std::size_t>()];
 
     return {target + size, true};
   }
@@ -114,7 +114,7 @@ void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, b
 
     auto estimated_call_instr_size = std::abs(champsim::offset(call_ip, branch_target));
     if (estimated_call_instr_size <= 10) {
-      ::CALL_SIZE[this][call_ip.slice_lower(champsim::lg2(std::size(::CALL_SIZE[this]))).to<std::size_t>()] = estimated_call_instr_size;
+      ::CALL_SIZE[this][call_ip.slice_lower<champsim::lg2(CALL_SIZE_TRACKERS)>().to<std::size_t>()] = estimated_call_instr_size;
     }
   }
 

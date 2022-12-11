@@ -34,24 +34,24 @@ struct tracker {
   champsim::msl::lru_table<tracker_entry> table{TRACKER_SETS, TRACKER_WAYS};
 
 public:
-  void initiate_lookahead(champsim::address ip, champsim::address cl_addr)
+  void initiate_lookahead(champsim::address ip, champsim::block_number cl_addr)
   {
     champsim::block_number::difference_type stride = 0;
 
-    auto found = table.check_hit({ip, champsim::block_number{cl_addr}, stride});
+    auto found = table.check_hit({ip, cl_addr, stride});
 
     // if we found a matching entry
     if (found.has_value()) {
-      stride = champsim::offset(found->last_cl_addr, champsim::block_number{cl_addr});
+      stride = champsim::offset(found->last_cl_addr, cl_addr);
 
       // Initialize prefetch state unless we somehow saw the same address twice in
       // a row or if this is the first time we've seen this stride
       if (stride != 0 && stride == found->last_stride)
-        active_lookahead = {cl_addr, stride, PREFETCH_DEGREE};
+        active_lookahead = {champsim::address{cl_addr}, stride, PREFETCH_DEGREE};
     }
 
     // update tracking set
-    table.fill({ip, champsim::block_number{cl_addr}, stride});
+    table.fill({ip, cl_addr, stride});
   }
 
   void advance_lookahead(CACHE* cache)
@@ -90,7 +90,7 @@ void CACHE::prefetcher_cycle_operate() { ::trackers[this].advance_lookahead(this
 
 uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  ::trackers[this].initiate_lookahead(ip, addr);
+  ::trackers[this].initiate_lookahead(ip, champsim::block_number{addr});
   return metadata_in;
 }
 

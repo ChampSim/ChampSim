@@ -158,7 +158,7 @@ bool O3_CPU::predict_branch(champsim::address pc)
 
     // XOR in the PC to spread accesses around (like gshare)
 
-    x ^= pc.slice_lower(LOG_TABLE_SIZE).to<decltype(x)>();
+    x ^= pc.slice_lower<LOG_TABLE_SIZE>().to<decltype(x)>();
 
     // stay within the table size
 
