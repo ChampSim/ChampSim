@@ -16,7 +16,7 @@ void O3_CPU::initialize_branch_predictor() { std::cout << "CPU " << cpu << " Bim
 
 bool O3_CPU::predict_branch(champsim::address ip)
 {
-  auto hash = ip.slice_lower(champsim::lg2(BIMODAL_TABLE_SIZE)).to<uint64_t>() % ::BIMODAL_PRIME;
+  auto hash = ip.slice_lower<champsim::lg2(BIMODAL_TABLE_SIZE)>().to<uint64_t>() % ::BIMODAL_PRIME;
   auto value = ::bimodal_table[this][hash];
 
   return value.value() >= (value.maximum / 2);
@@ -24,6 +24,6 @@ bool O3_CPU::predict_branch(champsim::address ip)
 
 void O3_CPU::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
-  auto hash = ip.slice_lower(champsim::lg2(BIMODAL_TABLE_SIZE)).to<uint64_t>() % ::BIMODAL_PRIME;
+  auto hash = ip.slice_lower<champsim::lg2(BIMODAL_TABLE_SIZE)>().to<uint64_t>() % ::BIMODAL_PRIME;
   ::bimodal_table[this][hash] += taken ? 1 : -1;
 }

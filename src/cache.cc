@@ -38,7 +38,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
   bool success = true;
   auto metadata_thru = fill_mshr.pf_metadata;
-  auto pkt_address = (virtual_prefetch ? fill_mshr.v_address : fill_mshr.address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS).to_address();
+  champsim::address pkt_address{(virtual_prefetch ? fill_mshr.v_address : fill_mshr.address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
   if (way != set_end) {
     if (way->valid && way->dirty) {
       PACKET writeback_packet;
@@ -55,7 +55,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
     }
 
     if (success) {
-      auto evicting_address = (ever_seen_data ? way->address : way->v_address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS).to_address();
+      champsim::address evicting_address{(ever_seen_data ? way->address : way->v_address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
 
       if (way->prefetch)
         sim_stats.back().pf_useless++;
@@ -121,7 +121,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
   // update prefetcher on load instructions and prefetches from upper levels
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
-    auto pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS).to_address();
+    champsim::address pf_base_addr{ (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
     metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit, handle_pkt.type, metadata_thru);
   }
 

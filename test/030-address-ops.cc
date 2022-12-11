@@ -5,15 +5,80 @@
 #include "util/detect.h"
 #include "champsim_constants.h"
 
-TEST_CASE("An address is constructible by certian means") {
+TEST_CASE("An address is constructible from a uint64_t") {
   STATIC_REQUIRE(std::is_constructible_v<champsim::address, uint64_t>);
+
+  auto address = GENERATE(as<uint64_t>{}, 0xffff'ffff'ffff'ffff, 0x8000'0000'0000'0000);
+
+  champsim::address test_a{address};
+  REQUIRE(test_a.to<uint64_t>() == address);
+}
+
+TEST_CASE("An address is copy constructible") {
   STATIC_REQUIRE(std::is_copy_constructible_v<champsim::address>);
+
+  champsim::address control{0xffff'ffff'ffff'ffff};
+  champsim::address test_a{0xffff'ffff'ffff'ffff};
+  REQUIRE(test_a == control);
+
+  champsim::address test_b{test_a};
+  REQUIRE(test_a == test_b);
+}
+
+TEST_CASE("An address is move constructible") {
   STATIC_REQUIRE(std::is_move_constructible_v<champsim::address>);
+
+  champsim::address control{0xffff'ffff'ffff'ffff};
+  champsim::address test_a{0xffff'ffff'ffff'ffff};
+  REQUIRE(test_a == control);
+
+  champsim::address test_b{std::move(test_a)};
+  REQUIRE(test_b == control);
+}
+
+TEST_CASE("An address is copy assignable") {
   STATIC_REQUIRE(std::is_copy_assignable_v<champsim::address>);
+
+  champsim::address test_a{};
+  champsim::address test_b{0xffff'ffff'ffff'ffff};
+  champsim::address control{0xffff'ffff'ffff'ffff};
+  REQUIRE(test_b == control);
+  REQUIRE(test_a != test_b);
+
+  test_a = test_b;
+  REQUIRE(test_a == test_b);
+  REQUIRE(test_a == control);
+  REQUIRE(test_b == control);
+}
+
+TEST_CASE("An address is move assignable") {
   STATIC_REQUIRE(std::is_move_assignable_v<champsim::address>);
-  STATIC_REQUIRE(std::is_destructible_v<champsim::address>);
+
+  champsim::address control{0xffff'ffff'ffff'ffff};
+  champsim::address test_a{0xffff'ffff'ffff'ffff};
+  champsim::address test_b{};
+  REQUIRE(test_a == control);
+  REQUIRE(test_b != control);
+
+  test_b = std::move(test_a);
+  REQUIRE(test_b == control);
+}
+
+TEST_CASE("An address is swappable") {
   STATIC_REQUIRE(std::is_swappable_v<champsim::address>);
-  STATIC_REQUIRE(std::is_assignable_v<champsim::address, champsim::address>);
+
+  champsim::address control_a{0xffff'ffff'ffff'ffff};
+  champsim::address test_a{0xffff'ffff'ffff'ffff};
+  champsim::address control_b{0xcafebabe};
+  champsim::address test_b{0xcafebabe};
+
+  REQUIRE(test_a == control_a);
+  REQUIRE(test_b == control_b);
+
+  std::swap(test_a, test_b);
+
+  REQUIRE(test_b == control_a);
+  REQUIRE(test_a == control_b);
 }
 
 TEST_CASE("An address compares for equality") {

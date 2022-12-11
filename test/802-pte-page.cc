@@ -33,13 +33,13 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
       }
 
       THEN("The entries are spaced by PTE_BYTES") {
-        REQUIRE(champsim::offset(given_pages.at(0), given_pages.at(1)) == PTE_BYTES);
-        REQUIRE(champsim::offset(given_pages.front(), given_pages.back()) == PTE_BYTES*(size-1));
+        REQUIRE(champsim::offset(given_pages.at(0), given_pages.at(1)) == static_cast<champsim::address::difference_type>(PTE_BYTES));
+        REQUIRE(champsim::offset(given_pages.front(), given_pages.back()) == static_cast<champsim::address::difference_type>(PTE_BYTES*(size-1)));
       }
 
       THEN("No pages are duplicated") {
         auto uniq_end = std::unique(std::begin(given_pages), std::end(given_pages));
-        REQUIRE(std::distance(std::begin(given_pages), uniq_end) == size);
+        REQUIRE(std::distance(std::begin(given_pages), uniq_end) == static_cast<std::ptrdiff_t>(size));
       }
     }
   }

@@ -7,7 +7,7 @@
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
+  extern std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
 }
 
 SCENARIO("A cache merges two requests in the MSHR") {
@@ -37,7 +37,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
         elem->_operate();
 
     WHEN("A packet is sent") {
-      test::address_operate_collector[&uut].clear();
+      test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       uint64_t id = 1;
       PACKET test_a;
@@ -62,7 +62,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       }
 
       AND_WHEN("A packet with the same address is sent before the fill has completed") {
-        test::address_operate_collector[&uut].clear();
+        test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
         PACKET test_b = test_a;
         test_b.instr_id = id++;

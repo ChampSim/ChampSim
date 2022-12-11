@@ -8,18 +8,15 @@
 
 #include "champsim_constants.h"
 #include "util/bits.h"
+#include "util/detect.h"
 
 namespace champsim {
 template <std::size_t, std::size_t>
 class address_slice;
 inline constexpr std::size_t dynamic_extent = std::numeric_limits<std::size_t>::max();
 
-// Convenience definitions
-using address = address_slice<std::numeric_limits<uint64_t>::digits-1, 0>;
-using block_number = address_slice<std::numeric_limits<uint64_t>::digits-1, LOG2_BLOCK_SIZE>;
-using block_offset = address_slice<LOG2_BLOCK_SIZE, 0>;
-using page_number = address_slice<std::numeric_limits<uint64_t>::digits-1, LOG2_PAGE_SIZE>;
-using page_offset = address_slice<LOG2_PAGE_SIZE, 0>;
+template <>
+class address_slice<dynamic_extent, dynamic_extent>;
 
 template <std::size_t UP, std::size_t LOW>
 auto offset(address_slice<UP, LOW> base, address_slice<UP, LOW> other) -> typename address_slice<UP, LOW>::difference_type;
@@ -27,189 +24,238 @@ auto offset(address_slice<UP, LOW> base, address_slice<UP, LOW> other) -> typena
 template <std::size_t UP, std::size_t LOW>
 auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits) -> address_slice<UP, LOW>;
 
-template <>
-class address_slice<dynamic_extent, dynamic_extent>;
+template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
+auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
 
-template <std::size_t UP, std::size_t LOW>
-class address_slice
+namespace detail {
+template <typename self_type>
+class address_slice_impl
 {
-  constexpr static std::size_t upper{UP};
-  constexpr static std::size_t lower{LOW};
-  using self_type = address_slice<upper, lower>;
+  public:
+    using underlying_type = uint64_t;
+    using difference_type = int64_t;
+
+  //private:
+    //friend self_type;
+    underlying_type value{};
+
+    address_slice_impl() = default; // TODO remove this
+    explicit address_slice_impl(underlying_type val) : value(val) {}
+
+  public:
+    constexpr static int bits = std::numeric_limits<underlying_type>::digits;
+
+    friend std::ostream& operator<<(std::ostream& stream, const self_type &addr)
+    {
+      stream << "0x" << std::hex << addr.template to<underlying_type>() << std::dec;
+      return stream;
+    }
+
+    template <typename T>
+    T to() const
+    {
+      static_assert(std::is_integral_v<T>);
+      //assert(value <= std::numeric_limits<T>::max());
+      if (value > std::numeric_limits<T>::max())
+        throw std::domain_error{"Contained value overflows the target type"};
+      //assert(static_cast<T>(value) >= std::numeric_limits<T>::min());
+      if (static_cast<T>(value) < std::numeric_limits<T>::min())
+        throw std::domain_error{"Contained value underflows the target type"};
+      return static_cast<T>(value);
+    }
+
+    bool operator==(self_type other) const
+    {
+      const self_type& derived = static_cast<const self_type&>(*this);
+      //assert(derived.upper == other.upper);
+      if (derived.upper != other.upper)
+        throw std::invalid_argument{"Upper bounds do not match"};
+      //assert(derived.lower == other.lower);
+      if (derived.lower != other.lower)
+        throw std::invalid_argument{"Lower bounds do not match"};
+      return value == other.value;
+    }
+
+    bool operator< (self_type other) const
+    {
+      const self_type& derived = static_cast<const self_type&>(*this);
+      //assert(derived.upper == other.upper);
+      if (derived.upper != other.upper)
+        throw std::invalid_argument{"Upper bounds do not match"};
+      //assert(derived.lower == other.lower);
+      if (derived.lower != other.lower)
+        throw std::invalid_argument{"Lower bounds do not match"};
+      return value < other.value;
+    }
+
+    bool operator!=(self_type other) const { return !(*this == other); }
+    bool operator<=(self_type other) const { return *this < other || *this == other; }
+    bool operator> (self_type other) const { return !(value <= other.value); }
+    bool operator>=(self_type other) const { return *this > other || *this == other; }
+
+    self_type& operator+=(difference_type delta)
+    {
+      self_type& derived = static_cast<self_type&>(*this);
+      value = (value + delta) & bitmask(derived.upper - derived.lower);
+      return derived;
+    }
+
+    self_type& operator-=(difference_type delta) { return *this += (-delta); }
+
+    self_type operator+(difference_type delta)
+    {
+      self_type retval = static_cast<self_type&>(*this);
+      retval += delta;
+      return retval;
+    }
+
+    self_type operator-(difference_type delta)
+    {
+      self_type retval = static_cast<self_type&>(*this);
+      retval -= delta;
+      return retval;
+    }
+
+    // recognizes types that support static slicing
+    template <typename T>
+    using static_upper = typename decltype( std::declval<T>().upper )::type;
+    template <typename T>
+    using static_lower = typename decltype( std::declval<T>().lower )::type;
+
+    template <std::size_t slice_upper, std::size_t slice_lower, typename D = self_type>
+    auto slice() const -> address_slice<static_lower<D>::value + slice_upper, static_lower<D>::value + slice_lower>
+    {
+      const self_type& derived = static_cast<const self_type&>(*this);
+      static_assert(slice_lower <= (static_upper<D>::value - static_lower<D>::value));
+      static_assert(slice_upper <= (static_upper<D>::value - static_lower<D>::value));
+      return address_slice<static_lower<D>::value + slice_upper, static_lower<D>::value + slice_lower>{derived};
+    }
+
+    template <std::size_t new_lower, typename D = self_type>
+    auto slice_upper() const -> address_slice<static_upper<D>::value - static_lower<D>::value, new_lower>
+    {
+      return slice<static_upper<D>::value - static_lower<D>::value, new_lower, D>();
+    }
+
+    template <std::size_t new_upper, typename D = self_type>
+    auto slice_lower() const -> address_slice<new_upper, 0>
+    {
+      return slice<new_upper, 0, D>();
+    }
+
+    //template <>
+    address_slice<dynamic_extent, dynamic_extent> slice(std::size_t slice_upper, std::size_t slice_lower) const;
+
+    //template <>
+    address_slice<dynamic_extent, dynamic_extent> slice_lower(std::size_t new_upper) const;
+
+    //template <>
+    address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const;
+};
+}
+
+// Convenience definitions
+using address = address_slice<std::numeric_limits<uint64_t>::digits, 0>;
+using block_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_BLOCK_SIZE>;
+using block_offset = address_slice<LOG2_BLOCK_SIZE, 0>;
+using page_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_PAGE_SIZE>;
+using page_offset = address_slice<LOG2_PAGE_SIZE, 0>;
+
+template <>
+class address_slice<dynamic_extent, dynamic_extent> : public detail::address_slice_impl<address_slice<dynamic_extent, dynamic_extent>>
+{
+  using self_type = address_slice<dynamic_extent, dynamic_extent>;
+  using impl_type = detail::address_slice_impl<self_type>;
+
+  std::size_t upper{impl_type::bits};
+  std::size_t lower{0};
 
   template <std::size_t U, std::size_t L> friend class address_slice;
-
-  using underlying_type = uint64_t;
-  underlying_type value{};
-
-  static_assert(LOW <= UP);
-  static_assert(UP < std::numeric_limits<underlying_type>::digits);
-  static_assert(LOW < std::numeric_limits<underlying_type>::digits);
-
-  friend std::ostream& operator<<(std::ostream& stream, const self_type &addr)
-  {
-    stream << "0x" << std::hex << addr.template to<underlying_type>() << std::dec;
-    return stream;
-  }
+  friend impl_type;
 
   public:
-  using difference_type = int64_t;
+  using typename impl_type::underlying_type;
+  using typename impl_type::difference_type;
 
-  address_slice() = default; // TODO remove this
-  explicit address_slice(underlying_type val) : value((val & bitmask(upper, lower)) >> lower) {}
+  address_slice() = default;
+
+  explicit address_slice(underlying_type val) : address_slice(impl_type::bits, 0, val) {}
+
+  template <std::size_t other_up, std::size_t other_low,
+           typename test_up = std::enable_if_t<other_up != dynamic_extent, void>,
+           typename test_low = std::enable_if_t<other_low != dynamic_extent, void>>
+  explicit address_slice(address_slice<other_up, other_low> val) : address_slice(other_up, other_low, val) {}
 
   template <std::size_t other_up, std::size_t other_low>
-  explicit address_slice(address_slice<other_up, other_low> val) : value((val.value & bitmask(upper, lower)) >> lower)
-  {
-    // For now, this slice is must be a contraction
-    static_assert(other_up >= upper);
-    static_assert(other_low <= lower);
-  }
-
-  template <typename T>
-  T to() const
-  {
-    //todo check preconditions
-    static_assert(std::is_integral_v<T>);
-    assert(value <= std::numeric_limits<T>::max());
-    assert(static_cast<T>(value) >= std::numeric_limits<T>::min());
-    return static_cast<T>(value);
-  }
-
-  address to_address() const
-  {
-    return champsim::address{value << lower};
-  }
-
-  friend auto offset<>(self_type base, self_type other) -> difference_type;
-  friend auto splice<>(self_type upper, self_type lower, std::size_t bits) -> self_type;
-
-  bool operator==(self_type other) const { return value == other.value; }
-  bool operator!=(self_type other) const { return !(*this == other); }
-  bool operator< (self_type other) const { return value < other.value; }
-  bool operator<=(self_type other) const { return *this < other || *this == other; }
-  bool operator> (self_type other) const { return !(value <= other.value); }
-  bool operator>=(self_type other) const { return *this > other || *this == other; }
-
-  self_type& operator+=(difference_type delta)
-  {
-    auto newval = value + delta;
-    //assert((newval & bitmask(upper, lower)) == newval); //FIXME
-    value = newval;
-    return *this;
-  }
-  self_type& operator-=(difference_type delta) { return *this += (-delta); }
-  self_type operator+(difference_type delta) { self_type retval{*this}; retval += delta; return retval; }
-  self_type operator-(difference_type delta) { self_type retval{*this}; retval -= delta; return retval; }
-
-  template <std::size_t slice_upper, std::size_t slice_lower>
-  address_slice<slice_upper + lower, slice_lower + lower> slice() const {
-    static_assert(slice_lower <= (upper - lower));
-    static_assert(slice_upper <= (upper - lower));
-    return address_slice<slice_upper + lower, slice_lower + lower>{to_address()};
-  }
-  template <std::size_t new_lower>
-  address_slice<upper-lower, new_lower> slice_upper() const { return slice<upper-lower, new_lower>(); }
-  template <std::size_t new_upper>
-  address_slice<new_upper, 0> slice_lower() const { return slice<new_upper, 0>(); }
-
-  address_slice<dynamic_extent, dynamic_extent> slice(std::size_t new_upper, std::size_t new_lower) const;
-  address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const;
-  address_slice<dynamic_extent, dynamic_extent> slice_lower(std::size_t new_upper) const;
-};
-
-template <>
-class address_slice<dynamic_extent, dynamic_extent>
-{
-  std::size_t upper{};
-  std::size_t lower{};
-
-  using underlying_type = uint64_t;
-  constexpr static int bits = std::numeric_limits<underlying_type>::digits;
-  underlying_type value{};
-
-  friend std::ostream& operator<<(std::ostream& stream, const address_slice<dynamic_extent, dynamic_extent> &addr)
-  {
-    stream << "0x" << std::hex << addr.to<underlying_type>() << std::dec;
-    return stream;
-  }
-
-  public:
-  explicit address_slice(champsim::address val) : address_slice(bits-1, 0, val) {}
-  address_slice(std::size_t up, std::size_t low, champsim::address val) : upper(up), lower(low), value((val.value & bitmask(up, low)) >> low)
+  address_slice(std::size_t up, std::size_t low, address_slice<other_up, other_low> val) : impl_type(((val.value << val.lower) & bitmask(up, low)) >> low), upper(up), lower(low)
   {
     assert(up >= low);
-    assert(up <= bits);
-    assert(low <= bits);
+    assert(up <= impl_type::bits);
+    assert(low <= impl_type::bits);
   }
 
-  template <typename T>
-  T to() const
+  address_slice(std::size_t up, std::size_t low, underlying_type val) : impl_type(val & bitmask(up-low)), upper(up), lower(low)
   {
-    static_assert(std::is_integral_v<T>);
-    assert(value <= std::numeric_limits<T>::max());
-    assert(static_cast<T>(value) >= std::numeric_limits<T>::min());
-    return static_cast<T>(value);
+    assert(up >= low);
+    assert(up <= impl_type::bits);
+    assert(low <= impl_type::bits);
   }
-
-  address to_address() const
-  {
-    return champsim::address{value << lower};
-  }
-
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator==(address_slice<other_up, other_low> other) const
-  {
-    assert(this->upper == other.upper);
-    assert(this->lower == other.lower);
-    return value == other.value;
-  }
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator< (address_slice<other_up, other_low> other) const
-  {
-    assert(this->upper == other.upper);
-    assert(this->lower == other.lower);
-    return value < other.value;
-  }
-
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator!=(address_slice<other_up, other_low> other) const { return !(*this == other); }
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator<=(address_slice<other_up, other_low> other) const { return *this < other || *this == other; }
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator> (address_slice<other_up, other_low> other) const { return !(value <= other.value); }
-  template <std::size_t other_up, std::size_t other_low>
-  bool operator>=(address_slice<other_up, other_low> other) const { return *this > other || *this == other; }
-
-  address_slice<dynamic_extent, dynamic_extent> slice(std::size_t slice_upper, std::size_t slice_lower) const {
-    assert(slice_lower <= (upper - lower));
-    assert(slice_upper <= (upper - lower));
-    return address_slice<dynamic_extent, dynamic_extent>{slice_upper + lower, slice_lower + lower, to_address()};
-  }
-  address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const { return slice(upper-lower, new_lower); }
-  address_slice<dynamic_extent, dynamic_extent> slice_lower(std::size_t new_upper) const { return slice(new_upper, 0); }
 };
 
-address_slice(std::size_t, std::size_t, champsim::address) -> address_slice<dynamic_extent, dynamic_extent>;
+template <std::size_t UP, std::size_t LOW>
+class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
+{
+  using self_type = address_slice<UP, LOW>;
+  using impl_type = detail::address_slice_impl<self_type>;
+
+  std::integral_constant<std::size_t, UP> upper{};
+  std::integral_constant<std::size_t, LOW> lower{};
+
+  template <std::size_t U, std::size_t L> friend class address_slice;
+  friend impl_type;
+
+  static_assert(LOW <= UP);
+  static_assert(UP <= impl_type::bits);
+  static_assert(LOW <= impl_type::bits);
+
+  public:
+  using typename impl_type::underlying_type;
+  using typename impl_type::difference_type;
+
+  address_slice() = default;
+
+  explicit address_slice(underlying_type val) : impl_type(val & bitmask(upper-lower)) {}
+
+  template <std::size_t other_up, std::size_t other_low>
+  explicit address_slice(address_slice<other_up, other_low> val) : address_slice(((val.value << val.lower) & bitmask(upper, lower)) >> lower) {}
+
+};
 
 template <std::size_t UP, std::size_t LOW>
-auto address_slice<UP, LOW>::slice(std::size_t new_upper, std::size_t new_lower) const -> address_slice<dynamic_extent, dynamic_extent>
+address_slice(std::size_t, std::size_t, address_slice<UP, LOW>) -> address_slice<dynamic_extent, dynamic_extent>;
+
+address_slice(std::size_t, std::size_t, detail::address_slice_impl<address_slice<dynamic_extent, dynamic_extent>>::underlying_type) -> address_slice<dynamic_extent, dynamic_extent>;
+
+template <typename self_type>
+auto detail::address_slice_impl<self_type>::slice(std::size_t slice_upper, std::size_t slice_lower) const -> address_slice<dynamic_extent, dynamic_extent>
 {
-  assert(new_lower <= (upper - lower));
-  assert(new_upper <= (upper - lower));
-  return address_slice<dynamic_extent, dynamic_extent>{new_upper, new_lower, to_address()};
+  const self_type& derived = static_cast<const self_type&>(*this);
+  assert(slice_lower <= (derived.upper - derived.lower));
+  assert(slice_upper <= (derived.upper - derived.lower));
+  return address_slice<dynamic_extent, dynamic_extent>{slice_upper + derived.lower, slice_lower + derived.lower, derived};
 }
 
-template <std::size_t UP, std::size_t LOW>
-auto address_slice<UP, LOW>::slice_upper(std::size_t new_lower) const -> address_slice<dynamic_extent, dynamic_extent>
-{
-  return slice(upper-lower, new_lower);
-}
-
-template <std::size_t UP, std::size_t LOW>
-auto address_slice<UP, LOW>::slice_lower(std::size_t new_upper) const -> address_slice<dynamic_extent, dynamic_extent>
+template <typename self_type>
+auto detail::address_slice_impl<self_type>::slice_lower(std::size_t new_upper) const -> address_slice<dynamic_extent, dynamic_extent>
 {
   return slice(new_upper, 0);
+}
+
+template <typename self_type>
+auto detail::address_slice_impl<self_type>::slice_upper(std::size_t new_lower) const -> address_slice<dynamic_extent, dynamic_extent>
+{
+  const self_type& derived = static_cast<const self_type&>(*this);
+  return slice(derived.upper-derived.lower, new_lower);
 }
 
 template <std::size_t UP, std::size_t LOW>
@@ -228,6 +274,22 @@ auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::siz
 {
   return address_slice<UP, LOW>{splice_bits(upper.value, lower.value, bits)};
 }
+
+/*
+template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
+auto splice(address_slice<UP_A, LOW_A> low_priority, address_slice<UP_B, LOW_B> high_priority) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>
+{
+  constexpr bool A_is_higher = (UP_A >= UP_B) && (UP_A <= LOW_B);
+  constexpr bool B_is_higher = (UP_B >= UP_A) && (LOW_B <= UP_A);
+  static_assert(((UP_A <= UP_B) && (LOW_A >= LOW_B)) || ((UP_A >= UP_B) && (LOW_A <= LOW_B))); // Boundaries may not be offset in the same direction
+
+  if constexpr ((UP_A <= UP_B) && (LOW_A >= LOW_B)) {
+  }
+
+  if constexpr ((UP_A >= UP_B) && (LOW_A <= LOW_B)) {
+  }
+}
+*/
 }
 
 #endif

@@ -29,18 +29,18 @@ SCENARIO("The read queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    champsim::address seed_base_addr{0xdeadbeef};
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
       PACKET seed;
-      seed.address = seed_base_addr + i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);
@@ -102,18 +102,18 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    champsim::address seed_base_addr{0xcafebabe};
+    champsim::block_number seed_base_addr{0xcafebabe};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
       PACKET seed;
-      seed.address = seed_base_addr + i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);
@@ -176,18 +176,18 @@ SCENARIO("The write queue respects the tag bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    champsim::address seed_base_addr{0xdeadbeef};
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
       PACKET seed;
-      seed.address = seed_base_addr + i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);

@@ -114,7 +114,7 @@ void O3_CPU::initialize_branch_predictor() {}
 bool O3_CPU::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
-  auto index = ip.slice_lower(64).to<uint64_t>() % ::NUM_PERCEPTRONS;
+  auto index = ip.to<uint64_t>() % ::NUM_PERCEPTRONS;
   auto output = ::perceptrons[this][index].predict(::spec_global_history[this]);
 
   bool prediction = (output >= 0);

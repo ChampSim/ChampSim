@@ -34,8 +34,8 @@ struct btb_entry_t {
   champsim::address target{};
   branch_info type = branch_info::ALWAYS_TAKEN;
 
-  auto index() const { return ip_tag.slice_upper(2).to<std::size_t>(); }
-  auto tag() const { return ip_tag.slice_upper(2).to<std::size_t>(); }
+  auto index() const { return ip_tag.slice_upper<2>().to<std::size_t>(); }
+  auto tag() const { return ip_tag.slice_upper<2>().to<std::size_t>(); }
 };
 
 std::map<O3_CPU*, champsim::msl::lru_table<btb_entry_t>> BTB;
@@ -80,7 +80,7 @@ std::pair<champsim::address, bool> O3_CPU::btb_prediction(champsim::address ip)
   }
 
   if (btb_entry->type == ::branch_info::INDIRECT) {
-    auto hash = ip.slice_upper(2).to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+    auto hash = ip.slice_upper<2>().to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
     return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], true};
   }
 
@@ -98,7 +98,7 @@ void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, b
 
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    auto hash = ip.slice_upper(2).to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+    auto hash = ip.slice_upper<2>().to<unsigned long long>() ^ ::CONDITIONAL_HISTORY[this].to_ullong();
     ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
   }
 

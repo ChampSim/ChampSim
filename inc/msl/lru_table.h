@@ -57,11 +57,12 @@ private:
     using diff_type = typename block_vec_type::difference_type;
     diff_type set_idx;
     if constexpr (champsim::is_detected_v<detail::dynamically_sliceable, std::invoke_result_t<SetProj, decltype(elem)>>) {
-      set_idx = set_projection(elem).slice_lower(lg2(NUM_SET)).template to<decltype(set_idx)>();
+      set_idx = set_projection(elem).template to<decltype(set_idx)>();
     } else {
-      set_idx = static_cast<diff_type>(set_projection(elem) & champsim::msl::bitmask(lg2(NUM_SET)));
+      set_idx = static_cast<diff_type>(set_projection(elem));
     }
-    return champsim::get_span(std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY)), std::end(block), static_cast<diff_type>(NUM_WAY));
+    diff_type raw_idx = (set_idx % NUM_SET) * static_cast<diff_type>(NUM_WAY);
+    return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), static_cast<diff_type>(NUM_WAY));
   }
 
   auto match_func(const value_type& elem)
