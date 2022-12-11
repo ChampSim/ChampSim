@@ -7,6 +7,7 @@
 #include <limits>
 #include <vector>
 
+#include "champsim.h"
 #include "address.h"
 
 enum access_type {

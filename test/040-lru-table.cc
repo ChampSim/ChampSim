@@ -1,6 +1,7 @@
 #include "catch.hpp"
 #include "util/lru_table.h"
 
+#include "champsim.h"
 #include "address.h"
 
 #include <type_traits>

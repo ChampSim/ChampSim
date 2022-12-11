@@ -6,7 +6,6 @@
 #include <ios>
 #include <iostream>
 
-#include "champsim_constants.h"
 #include "util/bits.h"
 #include "util/detect.h"
 
@@ -35,14 +34,11 @@ class address_slice_impl
     using underlying_type = uint64_t;
     using difference_type = int64_t;
 
-  //private:
-    //friend self_type;
     underlying_type value{};
 
     address_slice_impl() = default; // TODO remove this
     explicit address_slice_impl(underlying_type val) : value(val) {}
 
-  public:
     constexpr static int bits = std::numeric_limits<underlying_type>::digits;
 
     friend std::ostream& operator<<(std::ostream& stream, const self_type &addr)
@@ -153,13 +149,6 @@ class address_slice_impl
     address_slice<dynamic_extent, dynamic_extent> slice_upper(std::size_t new_lower) const;
 };
 }
-
-// Convenience definitions
-using address = address_slice<std::numeric_limits<uint64_t>::digits, 0>;
-using block_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_BLOCK_SIZE>;
-using block_offset = address_slice<LOG2_BLOCK_SIZE, 0>;
-using page_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_PAGE_SIZE>;
-using page_offset = address_slice<LOG2_PAGE_SIZE, 0>;
 
 template <>
 class address_slice<dynamic_extent, dynamic_extent> : public detail::address_slice_impl<address_slice<dynamic_extent, dynamic_extent>>

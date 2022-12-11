@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 
+#include "champsim.h"
 #include "address.h"
 
 namespace spp

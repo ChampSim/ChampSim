@@ -77,7 +77,7 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
     do_lookahead = 0;
     for (uint32_t i = pf_q_head; i < pf_q_tail; i++) {
       if (confidence_q[i] >= spp::PF_THRESHOLD) {
-        auto pf_addr = (champsim::block_number{base_addr}.to<uint64_t>() << LOG2_BLOCK_SIZE) + (delta_q[i] << LOG2_BLOCK_SIZE);
+        champsim::address pf_addr{champsim::block_number{base_addr} + delta_q[i]};
 
         if (champsim::page_number{pf_addr} == page) { // Prefetch request is in the same physical page
           if (::FILTER.check(champsim::address{pf_addr}, ((confidence_q[i] >= spp::FILL_THRESHOLD) ? spp::SPP_L2C_PREFETCH : spp::SPP_LLC_PREFETCH))) {

@@ -1,5 +1,6 @@
 #include "catch.hpp"
 
+#include "champsim.h"
 #include "address.h"
 
 #include <type_traits>

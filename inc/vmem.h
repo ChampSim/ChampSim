@@ -5,6 +5,7 @@
 #include <deque>
 #include <map>
 
+#include "champsim.h"
 #include "address.h"
 
 class MEMORY_CONTROLLER;

@@ -9,6 +9,7 @@
 #include <limits>
 #include <vector>
 
+#include "champsim.h"
 #include "address.h"
 #include "trace_instruction.h"
 
