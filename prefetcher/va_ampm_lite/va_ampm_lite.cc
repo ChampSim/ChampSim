@@ -36,7 +36,7 @@ std::map<CACHE*, std::array<region_type, REGION_COUNT>> regions;
 bool check_cl_access(CACHE* cache, champsim::block_number v_addr)
 {
   auto [vpn, page_offset] = page_and_block(v_addr);
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn](auto x) { return x.vpn == vpn; });
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn=vpn](auto x) { return x.vpn == vpn; });
 
   return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset.to<uint64_t>());
 }
@@ -44,7 +44,7 @@ bool check_cl_access(CACHE* cache, champsim::block_number v_addr)
 bool check_cl_prefetch(CACHE* cache, champsim::block_number v_addr)
 {
   auto [vpn, page_offset] = page_and_block(v_addr);
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn](auto x) { return x.vpn == vpn; });
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn=vpn](auto x) { return x.vpn == vpn; });
 
   return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset.to<uint64_t>());
 }
@@ -57,7 +57,7 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
 {
   const champsim::block_number block_addr{addr};
   auto [current_vpn, page_offset] = page_and_block(block_addr);
-  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [current_vpn](auto x) { return x.vpn == current_vpn; });
+  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [current_vpn=current_vpn](auto x) { return x.vpn == current_vpn; });
 
   if (demand_region == std::end(::regions.at(this))) {
     // not tracking this region yet, so replace the LRU region
@@ -83,7 +83,7 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
           bool prefetch_success = prefetch_line(pf_addr, get_occupancy(0, pf_addr) < get_size(0, pf_addr) / 2, metadata_in);
           if (prefetch_success) {
             auto [pf_vpn, pf_page_offset] = page_and_block(pf_addr);
-            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [pf_vpn](auto x) { return x.vpn == pf_vpn; });
+            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [pf_vpn=pf_vpn](auto x) { return x.vpn == pf_vpn; });
 
             if (pf_region == std::end(::regions.at(this))) {
               // we're not currently tracking this region, so allocate a new region so we can mark it
