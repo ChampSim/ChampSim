@@ -50,7 +50,7 @@ std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num,
   if (fault)
     ppage_pop();
 
-  return {champsim::splice(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
+  return {champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr}), fault ? minor_fault_penalty : 0};
 }
 
 std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)

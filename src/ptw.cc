@@ -44,7 +44,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
 
-  return step_translation(champsim::splice(walk_init.ptw_addr, champsim::address{walk_offset}, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
+  return step_translation(champsim::splice(champsim::page_number{walk_init.ptw_addr}, champsim::page_offset{walk_offset}), packet.init_translation_level, packet);
 }
 
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
