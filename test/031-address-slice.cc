@@ -306,6 +306,7 @@ TEST_CASE("Address slices with the same size can be spliced") {
 
   REQUIRE(champsim::splice(lhs, rhs, 4) == champsim::address_slice<20,12>{0xaab});
   REQUIRE(champsim::splice(lhs, rhs, 8) == champsim::address_slice<20,12>{0xabb});
+  REQUIRE(champsim::splice(lhs, rhs, 8, 4) == champsim::address_slice<20,12>{0xaba});
 }
 
 TEST_CASE("Address slices with adjacent indices can be spliced") {

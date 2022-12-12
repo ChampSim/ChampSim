@@ -20,6 +20,9 @@ template <std::size_t UP, std::size_t LOW>
 template <std::size_t UP, std::size_t LOW>
 [[nodiscard]] constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits) -> address_slice<UP, LOW>;
 
+template <std::size_t UP, std::size_t LOW>
+[[nodiscard]] constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits_up, std::size_t bits_low) -> address_slice<UP, LOW>;
+
 template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
 [[nodiscard]] constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
 
@@ -259,7 +262,13 @@ constexpr auto offset(address_slice<UP, LOW> base, address_slice<UP, LOW> other)
 template <std::size_t UP, std::size_t LOW>
 constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits) -> address_slice<UP, LOW>
 {
-  return address_slice<UP, LOW>{splice_bits(upper.value, lower.value, bits)};
+  return splice(upper, lower, bits, 0);
+}
+
+template <std::size_t UP, std::size_t LOW>
+constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits_up, std::size_t bits_low) -> address_slice<UP, LOW>
+{
+  return address_slice<UP, LOW>{splice_bits(upper.value, lower.value, bits_up, bits_low)};
 }
 
 template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
