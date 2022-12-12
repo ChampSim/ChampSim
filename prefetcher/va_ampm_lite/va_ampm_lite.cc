@@ -26,7 +26,7 @@ struct region_type {
 
   static uint64_t region_lru;
 
-  region_type() = default;
+  region_type() : region_type(champsim::page_number{}) {}
   explicit region_type(champsim::page_number allocate_vpn) : vpn(allocate_vpn), lru(region_lru++) {}
 };
 uint64_t region_type::region_lru = 0;

@@ -100,7 +100,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     auto match = std::find_if(s_set_begin, s_set_end,
                               [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt); });
     if (match != s_set_end) {
-      auto SHCT_idx = match->ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
+      auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % ::SHCT_PRIME;
       if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] > 0)
         ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]--;
 
@@ -109,7 +109,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
-        auto SHCT_idx = match->ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
+        auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % ::SHCT_PRIME;
         if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] < ::SHCT_MAX)
           ::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx]++;
       }
@@ -128,7 +128,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     ::rrpv_values[this][set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
-    auto SHCT_idx = ip.slice_lower(32).to<std::size_t>() % ::SHCT_PRIME;
+    auto SHCT_idx = ip.slice_lower<32>().to<std::size_t>() % ::SHCT_PRIME;
 
     ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     if (::SHCT[std::make_pair(this, triggering_cpu)][SHCT_idx] == ::SHCT_MAX)
