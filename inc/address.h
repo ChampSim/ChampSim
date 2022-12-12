@@ -162,6 +162,12 @@ class address_slice<dynamic_extent, dynamic_extent> : public detail::address_sli
   template <std::size_t U, std::size_t L> friend class address_slice;
   friend impl_type;
 
+  template <std::size_t U, std::size_t L>
+    friend auto splice(address_slice<U, L> upper, address_slice<U, L> lower, std::size_t bits) -> address_slice<U, L>;
+
+  template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
+    friend auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
+
   public:
   using typename impl_type::underlying_type;
   using typename impl_type::difference_type;
@@ -197,8 +203,8 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   using self_type = address_slice<UP, LOW>;
   using impl_type = detail::address_slice_impl<self_type>;
 
-  std::integral_constant<std::size_t, UP> upper{};
-  std::integral_constant<std::size_t, LOW> lower{};
+  constexpr static std::integral_constant<std::size_t, UP> upper{};
+  constexpr static std::integral_constant<std::size_t, LOW> lower{};
 
   template <std::size_t U, std::size_t L> friend class address_slice;
   friend impl_type;
@@ -206,6 +212,12 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   static_assert(LOW <= UP);
   static_assert(UP <= impl_type::bits);
   static_assert(LOW <= impl_type::bits);
+
+  template <std::size_t U, std::size_t L>
+    friend auto splice(address_slice<U, L> upper, address_slice<U, L> lower, std::size_t bits) -> address_slice<U, L>;
+
+  template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
+    friend auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
 
   public:
   using typename impl_type::underlying_type;
@@ -264,21 +276,12 @@ auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::siz
   return address_slice<UP, LOW>{splice_bits(upper.value, lower.value, bits)};
 }
 
-/*
 template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
-auto splice(address_slice<UP_A, LOW_A> low_priority, address_slice<UP_B, LOW_B> high_priority) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>
+auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>
 {
-  constexpr bool A_is_higher = (UP_A >= UP_B) && (UP_A <= LOW_B);
-  constexpr bool B_is_higher = (UP_B >= UP_A) && (LOW_B <= UP_A);
-  static_assert(((UP_A <= UP_B) && (LOW_A >= LOW_B)) || ((UP_A >= UP_B) && (LOW_A <= LOW_B))); // Boundaries may not be offset in the same direction
-
-  if constexpr ((UP_A <= UP_B) && (LOW_A >= LOW_B)) {
-  }
-
-  if constexpr ((UP_A >= UP_B) && (LOW_A <= LOW_B)) {
-  }
+  using rettype = address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
+  return rettype{splice_bits(rettype{upper}.value, rettype{lower}.value, lower.upper, lower.lower)};
 }
-*/
 }
 
 #endif

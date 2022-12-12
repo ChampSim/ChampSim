@@ -284,3 +284,25 @@ TEST_CASE("A const address slice can subtract") {
   REQUIRE(result == champsim::address_slice<20,16>{2});
   REQUIRE(champsim::address{result} == champsim::address{0x20000});
 }
+
+TEST_CASE("Address slices with the same size can be spliced") {
+  champsim::address_slice<20,12> lhs{0xaaa};
+  champsim::address_slice<20,12> rhs{0xbbb};
+
+  REQUIRE(champsim::splice(lhs, rhs, 4) == champsim::address_slice<20,12>{0xaab});
+  REQUIRE(champsim::splice(lhs, rhs, 8) == champsim::address_slice<20,12>{0xabb});
+}
+
+TEST_CASE("Address slices with adjacent indices can be spliced") {
+  champsim::address_slice<20,12> lhs{0xaaa};
+  champsim::address_slice<12,0> rhs{0xbbb};
+
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<20,0>{0xaaabbb});
+}
+
+TEST_CASE("Address slices that are subsets can be spliced") {
+  champsim::address_slice<20,0> lhs{0xaaaaaa};
+  champsim::address_slice<16,8> rhs{0xbb};
+
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<20,0>{0xaabbaa});
+}
