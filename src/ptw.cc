@@ -29,13 +29,13 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
+  champsim::address_slice<LOG2_PAGE_SIZE, champsim::lg2(PTE_BYTES)> walk_offset{vmem.get_offset(handle_pkt.address, walk_init.level)};
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
     std::cout << " address: " << walk_init.vaddr;
     std::cout << " v_address: " << handle_pkt.v_address;
-    std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
+    std::cout << " pt_page offset: " << walk_offset.to<int>();
     std::cout << " translation_level: " << walk_init.level << std::endl;
   }
 
