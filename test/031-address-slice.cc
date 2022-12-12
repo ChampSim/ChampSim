@@ -17,6 +17,14 @@ TEST_CASE("An address slice is constructible from a uint64_t") {
   REQUIRE(test_b.to<uint64_t>() == (address & champsim::bitmask(64-16)));
 }
 
+TEMPLATE_TEST_CASE_SIG("An address slice is constexpr constructible from a uint64_t", "", ((uint64_t ADDR), ADDR), 0xdeadbeef, 0xffff'ffff'ffff'ffff) {
+  constexpr champsim::address_slice<20,16> test_a{ADDR};
+  STATIC_REQUIRE(test_a.to<uint64_t>() == (ADDR & champsim::bitmask(20-16)));
+
+  constexpr champsim::address_slice<64,16> test_b{ADDR};
+  STATIC_REQUIRE(test_b.to<uint64_t>() == (ADDR & champsim::bitmask(64-16)));
+}
+
 TEST_CASE("An address slice is constructible from a wider address_slice") {
   STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<20,16>, champsim::address_slice<24,12>>);
 
@@ -25,6 +33,13 @@ TEST_CASE("An address slice is constructible from a wider address_slice") {
   champsim::address_slice<20,16> control{addr};
   champsim::address_slice<24,12> wide{addr};
   champsim::address_slice<20,16> narrow{wide};
+  REQUIRE(narrow == control);
+}
+
+TEMPLATE_TEST_CASE_SIG("An address slice is constexpr constructible from a wider address_slice", "", ((uint64_t ADDR), ADDR), 0x1234'5678'90ab'cdef, 0xabababab, 0xffff'ffff'ffff'ffff) {
+  constexpr champsim::address_slice<20,16> control{(ADDR & champsim::bitmask(20,16)) >> 16};
+  constexpr champsim::address_slice<24,12> wide{(ADDR & champsim::bitmask(24,12)) >> 12};
+  constexpr champsim::address_slice<20,16> narrow{wide};
   REQUIRE(narrow == control);
 }
 
