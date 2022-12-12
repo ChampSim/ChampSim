@@ -6,79 +6,79 @@
 #include <type_traits>
 
 TEST_CASE("A dynamic address slice is constructible from a uint64_t") {
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, uint64_t>);
+  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent>, uint64_t>);
 
   auto address = GENERATE(as<uint64_t>{}, 0xdeadbeef, 0xffff'ffff'ffff'ffff);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{address};
+  champsim::address_slice<champsim::dynamic_extent> test_a{address};
   REQUIRE(test_a.to<uint64_t>() == address);
 }
 
 TEST_CASE("A dynamic address slice is constructible from a static address slice") {
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, champsim::address_slice<20,12>>);
+  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent>, champsim::address_slice<20,12>>);
 
   champsim::address_slice<20,12> source{0xabc};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{source};
+  champsim::address_slice<champsim::dynamic_extent> test_a{source};
   REQUIRE(test_a.to<uint64_t>() == source.to<uint64_t>());
   REQUIRE(test_a.upper_extent() == source.upper_extent());
   REQUIRE(test_a.lower_extent() == source.lower_extent());
 }
 
 TEST_CASE("A dynamic address slice takes constructor arguments that affect slice positioning") {
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, std::size_t, std::size_t, uint64_t>);
+  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent>, std::size_t, std::size_t, uint64_t>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{4,0,0xf};
+  champsim::address_slice<champsim::dynamic_extent> test_a{4,0,0xf};
   REQUIRE(champsim::address{test_a} == champsim::address{0xf});
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{12,4,0xee};
+  champsim::address_slice<champsim::dynamic_extent> test_b{12,4,0xee};
   REQUIRE(champsim::address{test_b} == champsim::address{0xee0});
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_c{24,12,0xadb};
+  champsim::address_slice<champsim::dynamic_extent> test_c{24,12,0xadb};
   REQUIRE(champsim::address{test_c} == champsim::address{0xadb000});
 }
 
 TEST_CASE("A dynamic address slice takes constructor arguments that affect slicing") {
   champsim::address address{0xdeadbeef};
-  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, std::size_t, std::size_t, champsim::address>);
+  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent>, std::size_t, std::size_t, champsim::address>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{4,0,address};
+  champsim::address_slice<champsim::dynamic_extent> test_a{4,0,address};
   REQUIRE(test_a.to<uint64_t>() == 0xf);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{12,4,address};
+  champsim::address_slice<champsim::dynamic_extent> test_b{12,4,address};
   REQUIRE(test_b.to<uint64_t>() == 0xee);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_c{24,12,address};
+  champsim::address_slice<champsim::dynamic_extent> test_c{24,12,address};
   REQUIRE(test_c.to<uint64_t>() == 0xadb);
 }
 
 TEST_CASE("A dynamic address_slice is copy constructible") {
-  STATIC_REQUIRE(std::is_copy_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
+  STATIC_REQUIRE(std::is_copy_constructible_v<champsim::address_slice<champsim::dynamic_extent>>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> control{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_a{0xdeadbeef};
   REQUIRE(test_a == control);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{test_a};
+  champsim::address_slice<champsim::dynamic_extent> test_b{test_a};
   REQUIRE(test_a == test_b);
 }
 
 TEST_CASE("A dynamic address_slice is move constructible") {
-  STATIC_REQUIRE(std::is_move_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
+  STATIC_REQUIRE(std::is_move_constructible_v<champsim::address_slice<champsim::dynamic_extent>>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> control{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_a{0xdeadbeef};
   REQUIRE(test_a == control);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{std::move(test_a)};
+  champsim::address_slice<champsim::dynamic_extent> test_b{std::move(test_a)};
   REQUIRE(test_b == control);
 }
 
 TEST_CASE("A dynamic address_slice is copy assignable") {
-  STATIC_REQUIRE(std::is_copy_assignable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
+  STATIC_REQUIRE(std::is_copy_assignable_v<champsim::address_slice<champsim::dynamic_extent>>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_a{};
+  champsim::address_slice<champsim::dynamic_extent> test_b{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> control{0xdeadbeef};
   REQUIRE(test_b == control);
   REQUIRE(test_a != test_b);
 
@@ -89,11 +89,11 @@ TEST_CASE("A dynamic address_slice is copy assignable") {
 }
 
 TEST_CASE("A dynamic address_slice is move assignable") {
-  STATIC_REQUIRE(std::is_move_assignable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
+  STATIC_REQUIRE(std::is_move_assignable_v<champsim::address_slice<champsim::dynamic_extent>>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{};
+  champsim::address_slice<champsim::dynamic_extent> control{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_a{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_b{};
   REQUIRE(test_a == control);
   REQUIRE(test_b != control);
 
@@ -102,12 +102,12 @@ TEST_CASE("A dynamic address_slice is move assignable") {
 }
 
 TEST_CASE("A dynamic address_slice is swappable") {
-  STATIC_REQUIRE(std::is_swappable_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>>);
+  STATIC_REQUIRE(std::is_swappable_v<champsim::address_slice<champsim::dynamic_extent>>);
 
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control_a{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{0xdeadbeef};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> control_b{0xcafebabe};
-  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_b{0xcafebabe};
+  champsim::address_slice<champsim::dynamic_extent> control_a{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> test_a{0xdeadbeef};
+  champsim::address_slice<champsim::dynamic_extent> control_b{0xcafebabe};
+  champsim::address_slice<champsim::dynamic_extent> test_b{0xcafebabe};
 
   REQUIRE(test_a == control_a);
   REQUIRE(test_b == control_b);

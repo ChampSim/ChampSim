@@ -10,7 +10,7 @@
 #include "util/detect.h"
 
 namespace champsim {
-template <std::size_t, std::size_t>
+template <std::size_t UPPER, std::size_t LOWER=UPPER>
 class address_slice;
 inline constexpr std::size_t dynamic_extent = std::numeric_limits<std::size_t>::max();
 
@@ -201,6 +201,7 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   template <std::size_t U, std::size_t L> friend class address_slice;
   friend impl_type;
 
+  static_assert(UP != LOW, "An address slice of zero width is probably a bug");
   static_assert(LOW <= UP);
   static_assert(UP <= impl_type::bits);
   static_assert(LOW <= impl_type::bits);
