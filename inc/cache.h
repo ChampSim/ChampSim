@@ -71,6 +71,9 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     champsim::address data{};
 
     uint32_t pf_metadata = 0;
+
+    BLOCK() = default;
+    BLOCK(champsim::address addr, champsim::address v_addr, champsim::address dat, bool pref, bool dirt, uint32_t metadata) : valid(true), prefetch(pref), dirty(dirt), address(addr), v_address(v_addr), data(dat), pf_metadata(metadata) {}
   };
   using set_type = std::vector<BLOCK>;
 

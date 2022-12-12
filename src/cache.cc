@@ -63,19 +63,12 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
       if (fill_mshr.type == PREFETCH)
         sim_stats.back().pf_fill++;
 
-      way->valid = true;
-      way->prefetch = fill_mshr.prefetch_from_this;
-      way->dirty = (fill_mshr.type == WRITE);
-      way->address = fill_mshr.address;
-      way->v_address = fill_mshr.v_address;
-      way->data = fill_mshr.data;
-
       metadata_thru =
           impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
       impl_replacement_update_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type,
                                     false);
 
-      way->pf_metadata = metadata_thru;
+      *way = BLOCK(fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.prefetch_from_this, fill_mshr.type == WRITE, metadata_thru);
     }
   } else {
     // Bypass
@@ -284,18 +277,18 @@ std::pair<It, It> get_span(It anchor, typename std::iterator_traits<It>::differe
   return {std::move(begin), std::next(begin, num_way)};
 }
 
-auto CACHE::get_set_span(champsim::address address) -> std::pair<std::vector<BLOCK>::iterator, std::vector<BLOCK>::iterator>
+auto CACHE::get_set_span(champsim::address address) -> std::pair<set_type::iterator, set_type::iterator>
 {
   const auto set_idx = get_set_index(address);
   assert(set_idx < NUM_SET);
-  return get_span(std::begin(block), static_cast<std::vector<BLOCK>::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
+  return get_span(std::begin(block), static_cast<set_type::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
 }
 
-auto CACHE::get_set_span(champsim::address address) const -> std::pair<std::vector<BLOCK>::const_iterator, std::vector<BLOCK>::const_iterator>
+auto CACHE::get_set_span(champsim::address address) const -> std::pair<set_type::const_iterator, set_type::const_iterator>
 {
   const auto set_idx = get_set_index(address);
   assert(set_idx < NUM_SET);
-  return get_span(std::cbegin(block), static_cast<std::vector<BLOCK>::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
+  return get_span(std::cbegin(block), static_cast<set_type::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
 }
 
 uint64_t CACHE::get_way(uint64_t address, uint64_t) const
