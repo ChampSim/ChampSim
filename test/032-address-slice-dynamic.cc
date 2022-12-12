@@ -14,6 +14,16 @@ TEST_CASE("A dynamic address slice is constructible from a uint64_t") {
   REQUIRE(test_a.to<uint64_t>() == address);
 }
 
+TEST_CASE("A dynamic address slice is constructible from a static address slice") {
+  STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, champsim::address_slice<20,12>>);
+
+  champsim::address_slice<20,12> source{0xabc};
+  champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent> test_a{source};
+  REQUIRE(test_a.to<uint64_t>() == source.to<uint64_t>());
+  REQUIRE(test_a.upper_extent() == source.upper_extent());
+  REQUIRE(test_a.lower_extent() == source.lower_extent());
+}
+
 TEST_CASE("A dynamic address slice takes constructor arguments that affect slice positioning") {
   STATIC_REQUIRE(std::is_constructible_v<champsim::address_slice<champsim::dynamic_extent, champsim::dynamic_extent>, std::size_t, std::size_t, uint64_t>);
 

@@ -184,6 +184,9 @@ class address_slice<dynamic_extent, dynamic_extent> : public detail::address_sli
     assert(up <= impl_type::bits);
     assert(low <= impl_type::bits);
   }
+
+  [[nodiscard]] constexpr std::size_t upper_extent() const { return upper; }
+  [[nodiscard]] constexpr std::size_t lower_extent() const { return lower; }
 };
 
 template <std::size_t UP, std::size_t LOW>
@@ -219,6 +222,8 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   template <std::size_t other_up, std::size_t other_low>
   constexpr explicit address_slice(address_slice<other_up, other_low> val) : address_slice(((val.value << val.lower) & bitmask(upper, lower)) >> lower) {}
 
+  [[nodiscard]] constexpr static std::size_t upper_extent() { return upper; }
+  [[nodiscard]] constexpr static std::size_t lower_extent() { return lower; }
 };
 
 template <std::size_t UP, std::size_t LOW>
