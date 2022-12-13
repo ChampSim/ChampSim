@@ -16,10 +16,10 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
 {
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ull << champsim::lg2(page_table_page_size)));
-  assert(last_ppage > VMEM_RESERVE_CAPACITY);
+  assert(last_ppage > next_ppage);
 
-  auto required_bits = champsim::lg2(last_ppage);
-  if (required_bits > 64)
+  auto required_bits = champsim::lg2(last_ppage.to<uint64_t>());
+  if (required_bits > champsim::address::bits)
     std::cout << "WARNING: virtual memory configuration would require " << required_bits << " bits of addressing." << std::endl;
   if (required_bits > champsim::lg2(dram.size()))
     std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
