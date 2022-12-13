@@ -5,10 +5,12 @@
 #include <deque>
 #include <map>
 
+#include "champsim_constants.h"
+
 class MEMORY_CONTROLLER;
 
-// reserve 1MB of space
-inline constexpr uint64_t VMEM_RESERVE_CAPACITY = 1048576;
+// reserve 1MB or one page of space
+inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ull << 20);
 
 inline constexpr std::size_t PTE_BYTES = 8;
 
