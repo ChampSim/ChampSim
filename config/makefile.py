@@ -28,7 +28,7 @@ def per_source(src_dirs, dest_dir, build_id):
         obj_dirnames, obj_filenames = next(walk_to(src_dir, dest_dir))
 
         dirs = os.path.normpath(obj_dirnames)
-        objs = linejoin(obj_filenames)
+        objs = linejoin(sorted(obj_filenames))
 
         yield local_dir_varname, local_obj_varname, per_source_fmtstr.format(
                 local_dir_varname=local_dir_varname,
