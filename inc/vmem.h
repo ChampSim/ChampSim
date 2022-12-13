@@ -6,12 +6,13 @@
 #include <map>
 
 #include "champsim.h"
+#include "champsim_constants.h"
 #include "address.h"
 
 class MEMORY_CONTROLLER;
 
-// reserve 1MB of space
-inline constexpr uint64_t VMEM_RESERVE_CAPACITY = 1048576;
+// reserve 1MB or one page of space
+inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ull << 20);
 
 inline constexpr std::size_t PTE_BYTES = 8;
 
@@ -35,7 +36,7 @@ public:
   const uint64_t pte_page_size; // Size of a PTE page
 
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(unsigned paddr_bits, uint64_t pg_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
+  VirtualMemory(uint64_t pg_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
   uint64_t shamt(std::size_t level) const;
   uint64_t get_offset(champsim::address vaddr, std::size_t level) const;
   std::size_t available_ppages() const;

@@ -6,14 +6,12 @@
 #include "util/bits.h"
 
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
-  constexpr unsigned vmem_size_bits = 34;
-
   auto pte_page_size = (1ull << 11);
   auto level = GENERATE(2,3,4);
 
   GIVEN("A large virtual memory") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
-    VirtualMemory uut{vmem_size_bits, pte_page_size, 5, 200, dram};
+    VirtualMemory uut{pte_page_size, 5, 200, dram};
 
     auto size = PAGE_SIZE / pte_page_size;
     WHEN("A full set of requests for PTE entries at level " + std::to_string(level) + " are called for") {

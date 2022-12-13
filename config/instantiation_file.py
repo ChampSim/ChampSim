@@ -8,7 +8,7 @@ ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_se
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {{champsim::lg2({DIB[window_size]})}}, {{champsim::lg2({DIB[window_size]})}}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, {L1I}.MAX_TAG, &{L1D}, {L1D}.MAX_TAG, {branch_enum_string}, {btb_enum_string}}}'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});\n'
-vmem_fmtstr = 'VirtualMemory vmem(champsim::lg2({size}), 1 << 12, {num_levels}, {minor_fault_penalty}, {dram_name});\n'
+vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});\n'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};\n'
 queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};\n'
