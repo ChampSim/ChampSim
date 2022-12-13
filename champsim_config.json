@@ -175,7 +175,7 @@
     },
 
     "virtual_memory": {
-        "size": 8589934592,
+        "pte_page_size": 4096,
         "num_levels": 5,
         "minor_fault_penalty": 200
     }
