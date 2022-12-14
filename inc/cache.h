@@ -59,6 +59,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool try_hit(const PACKET& handle_pkt);
   bool handle_fill(const PACKET& fill_mshr);
   bool handle_miss(const PACKET& handle_pkt);
+  bool handle_write(const PACKET& handle_pkt);
 
   struct BLOCK {
     bool valid = false;

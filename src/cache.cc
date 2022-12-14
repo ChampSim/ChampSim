@@ -32,6 +32,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
     std::cout << " set: " << get_set_index(fill_mshr.address);
     std::cout << " way: " << way_idx;
     std::cout << " type: " << +fill_mshr.type;
+    std::cout << " cycle_enqueued: " << fill_mshr.cycle_enqueued;
     std::cout << " cycle: " << current_cycle << std::endl;
   }
 
@@ -86,7 +87,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
   if (success) {
     // COLLECT STATS
-    sim_stats.back().total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
+    sim_stats.back().total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
     auto copy{fill_mshr};
     copy.pf_metadata = metadata_thru;
@@ -190,6 +191,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
 
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
+      mshr_entry->cycle_enqueued = current_cycle;
       mshr_entry->to_return = std::move(to_return);
     }
   } else {
@@ -229,6 +231,25 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   return true;
 }
 
+bool CACHE::handle_write(const PACKET& handle_pkt)
+{
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "] " << __func__;
+    std::cout << " instr_id: " << handle_pkt.instr_id;
+    std::cout << " full_addr: " << std::hex << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this << std::noboolalpha;
+    std::cout << " cycle: " << current_cycle << std::endl;
+  }
+
+  inflight_writes.push_back(handle_pkt);
+  inflight_writes.back().event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
+  inflight_writes.back().cycle_enqueued = current_cycle;
+
+  return true;
+}
+
 template <typename R, typename F>
 long int operate_queue(R& queue, long int sz, F&& func)
 {
@@ -251,6 +272,10 @@ void CACHE::operate()
     return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_miss(pkt));
   };
 
+  auto operate_writelike = [&, this](const auto& pkt) {
+    return queues.is_ready(pkt) && (this->try_hit(pkt) || this->handle_write(pkt));
+  };
+
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)})
     fill_bw -= operate_queue(q.get(), fill_bw, do_fill);
 
@@ -260,10 +285,7 @@ void CACHE::operate()
       tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
   } else {
     // Treat writes (that is, writebacks) like fills
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::begin(queues.WQ), std::end(queues.WQ), tag_bw, [&](const auto& pkt) { return queues.is_ready(pkt); });
-    std::for_each(wq_begin, wq_end, [cycle = current_cycle + FILL_LATENCY](auto& pkt) { pkt.event_cycle = cycle; });                    // apply fill latency
-    std::remove_copy_if(wq_begin, wq_end, std::back_inserter(inflight_writes), [this](const auto& pkt) { return this->try_hit(pkt); }); // mark as inflight
-    queues.WQ.erase(wq_begin, wq_end);
+    tag_bw -= operate_queue(queues.WQ, tag_bw, operate_writelike);
 
     for (auto q : {std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
       tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
