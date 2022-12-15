@@ -274,7 +274,7 @@ void O3_CPU::fetch_instruction()
   auto fetch_ready = [](const ooo_model_instr& x) {
     return x.dib_checked == COMPLETED && !x.fetched;
   };
-  std::size_t to_read = L1I_BANDWIDTH;
+  auto to_read = L1I_BANDWIDTH;
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
@@ -315,7 +315,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 
 void O3_CPU::promote_to_decode()
 {
-  auto available_fetch_bandwidth = std::min<std::size_t>(FETCH_WIDTH, DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER));
+  auto available_fetch_bandwidth = std::min<long>(FETCH_WIDTH, DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER));
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), available_fetch_bandwidth,
                                                          [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
   std::for_each(window_begin, window_end,
@@ -330,7 +330,7 @@ void O3_CPU::promote_to_decode()
 
 void O3_CPU::decode_instruction()
 {
-  auto available_decode_bandwidth = std::min<std::size_t>(DECODE_WIDTH, DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER));
+  auto available_decode_bandwidth = std::min<long>(DECODE_WIDTH, DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER));
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth,
                                                          [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
 
@@ -387,7 +387,7 @@ void O3_CPU::dispatch_instruction()
 
 void O3_CPU::schedule_instruction()
 {
-  std::size_t search_bw = SCHEDULER_SIZE;
+  auto search_bw = SCHEDULER_SIZE;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0; ++rob_it) {
     if (rob_it->scheduled == 0)
       do_scheduling(*rob_it);
@@ -612,7 +612,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 void O3_CPU::complete_inflight_instruction()
 {
   // update ROB entries with completed executions
-  std::size_t complete_bw = EXEC_WIDTH;
+  auto complete_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw > 0; ++rob_it) {
     if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
       do_complete_execution(*rob_it);
