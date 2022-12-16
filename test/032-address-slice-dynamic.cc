@@ -262,3 +262,46 @@ TEST_CASE("A const dynamically-sized address slice can subtract") {
   REQUIRE(champsim::address{result} == champsim::address{0x20000});
 }
 
+TEST_CASE("Dynamic address slices with the same size can be spliced") {
+  champsim::address_slice a{64,0,0xaaaa'aaaa'aaaa'aaaa};
+  champsim::address_slice b{64,0,0xbbbb'bbbb'bbbb'bbbb};
+
+  REQUIRE(champsim::splice(a,b,8) == champsim::address_slice{64,0,0xaaaaaaaaaaaaaabb});
+  REQUIRE(champsim::splice(a,b,16) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbbb});
+  REQUIRE(champsim::splice(a,b,32) == champsim::address_slice{64,0,0xaaaaaaaabbbbbbbb});
+  REQUIRE(champsim::splice(a,b,48) == champsim::address_slice{64,0,0xaaaabbbbbbbbbbbb});
+}
+
+TEST_CASE("Dynamic address slices with the same size can be partially spliced") {
+  champsim::address_slice a{64,0,0xaaaaaaaaaaaaaaaa};
+  champsim::address_slice b{64,0,0xbbbbbbbbbbbbbbbb};
+
+  REQUIRE(champsim::splice(a,b,8,4) == champsim::address_slice{64,0,0xaaaaaaaaaaaaaaba});
+  REQUIRE(champsim::splice(a,b,16,4) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbba});
+  REQUIRE(champsim::splice(a,b,16,8) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbaa});
+  REQUIRE(champsim::splice(a,b,32,8) == champsim::address_slice{64,0,0xaaaaaaaabbbbbbaa});
+  REQUIRE(champsim::splice(a,b,32,16) == champsim::address_slice{64,0,0xaaaaaaaabbbbaaaa});
+}
+
+TEST_CASE("Dynamic address slices with adjacent indices can be spliced") {
+  auto low = GENERATE(as<std::size_t>{},4,8,12,16,20,28);
+  champsim::address_slice lhs{32,low,0xaaaa'aaaa};
+  champsim::address_slice rhs{low,0,0xbbbb'bbbb};
+
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice{32,0,champsim::splice_bits(0xaaaa'aaaa, 0xbbbb'bbbb, low)});
+}
+
+TEST_CASE("Dynamic address slices that are subsets can be spliced") {
+  auto [up,low] = GENERATE(as<std::pair<std::size_t, std::size_t>>{},
+      std::pair{8,4}, std::pair{12,4}, std::pair{16,4}, std::pair{20,4}, std::pair{24,4}, std::pair{28,4},
+      std::pair{12,8}, std::pair{16,8}, std::pair{20,8}, std::pair{24,8}, std::pair{28,8},
+      std::pair{16,12}, std::pair{20,12}, std::pair{24,12}, std::pair{28,12},
+      std::pair{20,16}, std::pair{24,16}, std::pair{28,16},
+      std::pair{24,20}, std::pair{28,20},
+      std::pair{28,24});
+  champsim::address_slice lhs{32,0,0xaaaa'aaaa};
+  champsim::address_slice rhs{up,low,0xbbbb'bbbb};
+
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice{32,0,champsim::splice_bits(0xaaaa'aaaa, 0xbbbb'bbbb, up, low)});
+}
+

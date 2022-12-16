@@ -23,9 +23,6 @@ template <std::size_t UP, std::size_t LOW>
 template <std::size_t UP, std::size_t LOW>
 [[nodiscard]] constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower, std::size_t bits_up, std::size_t bits_low) -> address_slice<UP, LOW>;
 
-template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
-[[nodiscard]] constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
-
 namespace detail {
 template <typename self_type>
 class address_slice_impl
@@ -149,25 +146,7 @@ struct splice_helper
   template <typename T>
     using static_lower = typename decltype( std::declval<T>().lower )::type;
 
-  constexpr static bool left_is_static = champsim::is_detected_v<static_upper, left_type>;
-  constexpr static bool right_is_static = champsim::is_detected_v<static_upper, right_type>;
-  using return_type = std::conditional<
-    !left_is_static || !right_is_static,
-    address_slice<dynamic_extent, dynamic_extent>,
-    address_slice<std::max(static_upper<left_type>::value, static_upper<right_type>::value), std::min(static_lower<left_type>::value, static_lower<right_type>::value)>
-  >;
-
-  [[nodiscard]] constexpr static auto splice(left_type lhs, right_type rhs) -> typename return_type::type
-  {
-    using rettype = typename return_type::type;
-    if constexpr (left_is_static && right_is_static) {
-      return rettype{splice_bits(rettype{lhs}.value, rettype{rhs}.value, rhs.upper - std::min<std::size_t>(lhs.lower, rhs.lower), rhs.lower - std::min<std::size_t>(lhs.lower, rhs.lower))};
-    } else {
-      const auto upper = std::max(lhs.upper, rhs.upper);
-      const auto lower = std::min(lhs.lower, rhs.lower);
-      return rettype{upper, lower, splice_bits(rettype{upper, lower, lhs}.value, rettype{upper, lower, rhs}.value, rhs.upper - lower, rhs.lower - lower)};
-    }
-  }
+  [[nodiscard]] constexpr static auto splice(left_type lhs, right_type rhs); //-> typename return_type::type
 };
 }
 
@@ -176,6 +155,8 @@ class address_slice<dynamic_extent, dynamic_extent> : public detail::address_sli
 {
   using self_type = address_slice<dynamic_extent, dynamic_extent>;
   using impl_type = detail::address_slice_impl<self_type>;
+
+  constexpr static bool is_static = false;
 
   std::size_t upper{impl_type::bits};
   std::size_t lower{0};
@@ -186,9 +167,6 @@ class address_slice<dynamic_extent, dynamic_extent> : public detail::address_sli
 
   template <std::size_t U, std::size_t L>
     friend constexpr auto splice(address_slice<U, L> upper, address_slice<U, L> lower, std::size_t bits) -> address_slice<U, L>;
-
-  template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
-    friend constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
 
   public:
   using typename impl_type::underlying_type;
@@ -228,6 +206,7 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   using self_type = address_slice<UP, LOW>;
   using impl_type = detail::address_slice_impl<self_type>;
 
+  constexpr static bool is_static = true;
   constexpr static std::integral_constant<std::size_t, UP> upper{};
   constexpr static std::integral_constant<std::size_t, LOW> lower{};
 
@@ -242,9 +221,6 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
 
   template <std::size_t U, std::size_t L>
     friend constexpr auto splice(address_slice<U, L> upper, address_slice<U, L> lower, std::size_t bits) -> address_slice<U, L>;
-
-  template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
-    friend constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>;
 
   public:
   using typename impl_type::underlying_type;
@@ -312,9 +288,23 @@ constexpr auto splice(address_slice<UP, LOW> upper, address_slice<UP, LOW> lower
 }
 
 template <std::size_t UP_A, std::size_t LOW_A, std::size_t UP_B, std::size_t LOW_B>
-constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower) -> address_slice<std::max(UP_A, UP_B), std::min(LOW_A, LOW_B)>
+constexpr auto splice(address_slice<UP_A, LOW_A> upper, address_slice<UP_B, LOW_B> lower)
 {
   return detail::splice_helper<decltype(upper), decltype(lower)>::splice(upper, lower);
+}
+
+template <typename L, typename R>
+constexpr auto detail::splice_helper<L,R>::splice(left_type lhs, right_type rhs)
+{
+  if constexpr (left_type::is_static && right_type::is_static) {
+    using rettype = address_slice<std::max(static_upper<left_type>::value, static_upper<right_type>::value), std::min(static_lower<left_type>::value, static_lower<right_type>::value)>;
+    return rettype{splice_bits(rettype{lhs}.value, rettype{rhs}.value, rhs.upper - std::min<std::size_t>(lhs.lower, rhs.lower), rhs.lower - std::min<std::size_t>(lhs.lower, rhs.lower))};
+  } else {
+    using rettype = address_slice<dynamic_extent, dynamic_extent>;
+    const auto upper = std::max<std::size_t>(lhs.upper, rhs.upper);
+    const auto lower = std::min<std::size_t>(lhs.lower, rhs.lower);
+    return rettype{upper, lower, splice_bits(rettype{upper, lower, lhs}.value, rettype{upper, lower, rhs}.value, rhs.upper - lower, rhs.lower - lower)};
+  }
 }
 }
 
