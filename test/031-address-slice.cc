@@ -311,24 +311,36 @@ TEST_CASE("A const address slice can subtract") {
 }
 
 TEST_CASE("Address slices with the same size can be spliced") {
-  champsim::address_slice<20,12> lhs{0xaaa};
-  champsim::address_slice<20,12> rhs{0xbbb};
+  champsim::address_slice<64,0> a{0xaaaa'aaaa'aaaa'aaaa};
+  champsim::address_slice<64,0> b{0xbbbb'bbbb'bbbb'bbbb};
 
-  REQUIRE(champsim::splice(lhs, rhs, 4) == champsim::address_slice<20,12>{0xaab});
-  REQUIRE(champsim::splice(lhs, rhs, 8) == champsim::address_slice<20,12>{0xabb});
-  REQUIRE(champsim::splice(lhs, rhs, 8, 4) == champsim::address_slice<20,12>{0xaba});
+  REQUIRE(champsim::splice(a,b,8) == champsim::address_slice<64,0>{0xaaaaaaaaaaaaaabb});
+  REQUIRE(champsim::splice(a,b,16) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbbb});
+  REQUIRE(champsim::splice(a,b,32) == champsim::address_slice<64,0>{0xaaaaaaaabbbbbbbb});
+  REQUIRE(champsim::splice(a,b,48) == champsim::address_slice<64,0>{0xaaaabbbbbbbbbbbb});
 }
 
-TEST_CASE("Address slices with adjacent indices can be spliced") {
-  champsim::address_slice<20,12> lhs{0xaaa};
-  champsim::address_slice<12,0> rhs{0xbbb};
+TEST_CASE("Address slices with the same size can be partially spliced") {
+  champsim::address_slice<64,0> a{0xaaaaaaaaaaaaaaaa};
+  champsim::address_slice<64,0> b{0xbbbbbbbbbbbbbbbb};
 
-  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<20,0>{0xaaabbb});
+  REQUIRE(champsim::splice(a,b,8,4) == champsim::address_slice<64,0>{0xaaaaaaaaaaaaaaba});
+  REQUIRE(champsim::splice(a,b,16,4) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbba});
+  REQUIRE(champsim::splice(a,b,16,8) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbaa});
+  REQUIRE(champsim::splice(a,b,32,8) == champsim::address_slice<64,0>{0xaaaaaaaabbbbbbaa});
+  REQUIRE(champsim::splice(a,b,32,16) == champsim::address_slice<64,0>{0xaaaaaaaabbbbaaaa});
 }
 
-TEST_CASE("Address slices that are subsets can be spliced") {
-  champsim::address_slice<20,0> lhs{0xaaaaaa};
-  champsim::address_slice<16,8> rhs{0xbb};
+TEMPLATE_TEST_CASE_SIG("Address slices with adjacent indices can be spliced", "", ((std::size_t V), V), 4, 8, 12, 16, 20, 24, 28) {
+  champsim::address_slice<32,V> lhs{0xaaaa'aaaa};
+  champsim::address_slice<V,0> rhs{0xbbbb'bbbb};
 
-  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<20,0>{0xaabbaa});
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<32,0>{champsim::splice_bits(0xaaaa'aaaa, 0xbbbb'bbbb, V)});
+}
+
+TEMPLATE_TEST_CASE_SIG("Address slices that are subsets can be spliced", "", ((std::size_t V, std::size_t W), V, W), (8,4), (12,4), (16,4), (20,4), (24,4), (28,4), (12,8), (16,8), (20,8), (24,8), (28,8), (16,12), (20,12), (24,12), (28,12), (20,16), (24,16), (28,16),  (24,20), (28,20), (28,24)) {
+  champsim::address_slice<32,0> lhs{0xaaaa'aaaa};
+  champsim::address_slice<V,W> rhs{0xbbbb'bbbb};
+
+  REQUIRE(champsim::splice(lhs, rhs) == champsim::address_slice<32,0>{champsim::splice_bits(0xaaaa'aaaa, 0xbbbb'bbbb, V, W)});
 }
