@@ -5,7 +5,6 @@
 
 #include "dram_controller.h"
 
-/*
 SCENARIO("The virtual memory generates a full period of page numbers") {
   GIVEN("A large virtual memory") {
     constexpr unsigned levels = 3;
@@ -38,4 +37,3 @@ SCENARIO("The virtual memory generates a full period of page numbers") {
     }
   }
 }
-*/
