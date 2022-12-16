@@ -7,7 +7,6 @@
 #include <iostream>
 
 #include "util/bits.h"
-#include "util/detect.h"
 
 namespace champsim {
 template <std::size_t UPPER, std::size_t LOWER=UPPER>
@@ -106,28 +105,22 @@ class address_slice_impl
       return retval;
     }
 
-    // recognizes types that support static slicing
-    template <typename T>
-    using static_upper = typename decltype( std::declval<T>().upper )::type;
-    template <typename T>
-    using static_lower = typename decltype( std::declval<T>().lower )::type;
-
-    template <std::size_t slice_upper, std::size_t slice_lower, typename D = self_type>
-    [[nodiscard]] constexpr auto slice() const -> address_slice<static_lower<D>::value + slice_upper, static_lower<D>::value + slice_lower>
+    template <std::size_t slice_upper, std::size_t slice_lower, typename D = self_type, std::enable_if_t<D::is_static, bool> = true>
+    [[nodiscard]] constexpr auto slice() const -> address_slice<D::lower + slice_upper, D::lower + slice_lower>
     {
       const self_type& derived = static_cast<const self_type&>(*this);
-      static_assert(slice_lower <= (static_upper<D>::value - static_lower<D>::value));
-      static_assert(slice_upper <= (static_upper<D>::value - static_lower<D>::value));
-      return address_slice<static_lower<D>::value + slice_upper, static_lower<D>::value + slice_lower>{derived};
+      static_assert(slice_lower <= (D::upper - D::lower));
+      static_assert(slice_upper <= (D::upper - D::lower));
+      return address_slice<D::lower + slice_upper, D::lower + slice_lower>{derived};
     }
 
-    template <std::size_t new_lower, typename D = self_type>
-    [[nodiscard]] constexpr auto slice_upper() const -> address_slice<static_upper<D>::value - static_lower<D>::value, new_lower>
+    template <std::size_t new_lower, typename D = self_type, std::enable_if_t<D::is_static, bool> = true>
+    [[nodiscard]] constexpr auto slice_upper() const -> address_slice<D::upper - D::lower, new_lower>
     {
-      return slice<static_upper<D>::value - static_lower<D>::value, new_lower, D>();
+      return slice<D::upper - D::lower, new_lower, D>();
     }
 
-    template <std::size_t new_upper, typename D = self_type>
+    template <std::size_t new_upper, typename D = self_type, std::enable_if_t<D::is_static, bool> = true>
     [[nodiscard]] constexpr auto slice_lower() const -> address_slice<new_upper, 0>
     {
       return slice<new_upper, 0, D>();
@@ -198,8 +191,8 @@ class address_slice : public detail::address_slice_impl<address_slice<UP, LOW>>
   using impl_type = detail::address_slice_impl<self_type>;
 
   constexpr static bool is_static = true;
-  constexpr static std::integral_constant<std::size_t, UP> upper{};
-  constexpr static std::integral_constant<std::size_t, LOW> lower{};
+  constexpr static std::size_t upper{UP};
+  constexpr static std::size_t lower{LOW};
 
   template <std::size_t U, std::size_t L> friend class address_slice;
   friend impl_type;
