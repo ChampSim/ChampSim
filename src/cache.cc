@@ -205,8 +205,10 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
 
     if (handle_pkt.fill_this_level)
       fwd_pkt.to_return = {this};
-    else
+    else {
+      fwd_pkt.fill_this_level = true; // We will fill the next level
       fwd_pkt.to_return.clear();
+    }
 
     fwd_pkt.prefetch_from_this = false;
 
