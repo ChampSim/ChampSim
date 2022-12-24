@@ -117,7 +117,7 @@ public:
   uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
 
-  const std::size_t IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
+  const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
 
   CacheBus L1I_bus, L1D_bus;
