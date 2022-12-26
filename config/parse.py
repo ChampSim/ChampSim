@@ -3,8 +3,6 @@ import operator
 import math
 
 from . import defaults
-from . import instantiation_file
-from . import constants_file
 from . import modules
 from . import util
 
@@ -142,12 +140,8 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, ['branch', *branch_dir], modules.get_branch_data);
     btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, ['btb', *btb_dir], modules.get_btb_data);
 
-    module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
-
-    inst_file = instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem) # Instantiation file
-    core_mods = modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data)                      # Core modules file
-    cache_mods = modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data)                       # Cache modules file
-    const_file = constants_file.get_constants_file(config_file, pmem)                                          # Constants header
+    elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
+    module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
 
     name = config_file.get('name')
     executable = config_file.get('executable_name', 'champsim' + ('' if name is None else '_'+name))
@@ -155,5 +149,7 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     env = dict(filter(lambda kv: kv[0] in env_vars, config_file.items()))
 
-    return executable, inst_file, core_mods, cache_mods, const_file, module_info, env
+    extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
+
+    return executable, elements, module_info, {k: config_file[k] for k in extern_config_file_keys}, env
 
