@@ -65,8 +65,8 @@ void O3_CPU::operate()
 void O3_CPU::initialize()
 {
   // BRANCH PREDICTOR & BTB
-  impl_branch_predictor_initialize();
-  impl_btb_initialize();
+  impl_initialize_branch_predictor();
+  impl_initialize_btb();
 }
 
 void O3_CPU::begin_phase()
