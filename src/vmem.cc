@@ -10,16 +10,18 @@
 #include "dram_controller.h"
 #include "util.h"
 
-VirtualMemory::VirtualMemory(unsigned paddr_bits, uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
-    : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ull << paddr_bits), minor_fault_penalty(minor_penalty), pt_levels(page_table_levels),
-      pte_page_size(page_table_page_size)
+VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
+    : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ull << (LOG2_PAGE_SIZE + champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
+      minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ull << champsim::lg2(page_table_page_size)));
-  assert(VMEM_RESERVE_CAPACITY >= PAGE_SIZE);
   assert(last_ppage > VMEM_RESERVE_CAPACITY);
 
-  if (paddr_bits > champsim::lg2(dram.size()))
+  auto required_bits = champsim::lg2(last_ppage);
+  if (required_bits > 64)
+    std::cout << "WARNING: virtual memory configuration would require " << required_bits << " bits of addressing." << std::endl;
+  if (required_bits > champsim::lg2(dram.size()))
     std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
 }
 

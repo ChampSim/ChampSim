@@ -1,5 +1,5 @@
-CPPFLAGS += -Iinc -MMD
-CXXFLAGS += --std=c++17 -Wall -Wextra -Wshadow -Wpedantic -O3
+CPPFLAGS += -MMD -Iinc
+CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 .phony: all all_execs clean configclean test makedirs
 
