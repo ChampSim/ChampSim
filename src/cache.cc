@@ -203,12 +203,12 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
     if (fwd_pkt.type == WRITE)
       fwd_pkt.type = RFO;
 
-    if (handle_pkt.fill_this_level)
+    if (!handle_pkt.skip_fill)
       fwd_pkt.to_return = {&returned_data};
     else
       fwd_pkt.to_return.clear();
 
-    fwd_pkt.fill_this_level = true; // We will always fill the lower level
+    fwd_pkt.skip_fill = false;
     fwd_pkt.prefetch_from_this = false;
 
     bool success;
@@ -383,7 +383,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
   pf_packet.prefetch_from_this = true;
-  pf_packet.fill_this_level = fill_this_level;
+  pf_packet.skip_fill = !fill_this_level;
   pf_packet.pf_metadata = prefetch_metadata;
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;

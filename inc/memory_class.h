@@ -29,7 +29,7 @@ public:
   bool forward_checked = false;
   bool translate_issued = false;
   bool prefetch_from_this = false;
-  bool fill_this_level = false;
+  bool skip_fill = false;
   bool is_translated = true;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;

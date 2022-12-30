@@ -40,11 +40,9 @@ template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
-    if (source.fill_this_level || destination.fill_this_level) {
       // If one of the package will fill this level the resulted package should
       // also fill this level
-      destination.fill_this_level = true;
-    }
+    destination.skip_fill &= source.skip_fill;
     auto instr_copy = std::move(destination.instr_depend_on_me);
     auto ret_copy = std::move(destination.to_return);
 
@@ -188,9 +186,7 @@ bool champsim::NonTranslatingQueues::add_rq(const PACKET& packet)
 {
   sim_stats.back().RQ_ACCESS++;
 
-  auto fwd_pkt = packet;
-  fwd_pkt.fill_this_level = true;
-  auto result = do_add_queue(RQ, RQ_SIZE, fwd_pkt);
+  auto result = do_add_queue(RQ, RQ_SIZE, packet);
 
   if (result)
     sim_stats.back().RQ_TO_CACHE++;
@@ -204,9 +200,7 @@ bool champsim::NonTranslatingQueues::add_wq(const PACKET& packet)
 {
   sim_stats.back().WQ_ACCESS++;
 
-  auto fwd_pkt = packet;
-  fwd_pkt.fill_this_level = true;
-  auto result = do_add_queue(WQ, WQ_SIZE, fwd_pkt);
+  auto result = do_add_queue(WQ, WQ_SIZE, packet);
 
   if (result)
     sim_stats.back().WQ_TO_CACHE++;
@@ -234,9 +228,7 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
 {
   sim_stats.back().PTWQ_ACCESS++;
 
-  auto fwd_pkt = packet;
-  fwd_pkt.fill_this_level = true;
-  auto result = do_add_queue(PTWQ, PTWQ_SIZE, fwd_pkt);
+  auto result = do_add_queue(PTWQ, PTWQ_SIZE, packet);
 
   if (result)
     sim_stats.back().PTWQ_TO_CACHE++;

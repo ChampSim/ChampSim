@@ -31,10 +31,10 @@ bool issue_pq (Q& uut, PACKET pkt)
 }
 
 template <typename Q>
-bool issue_pq_fill_this_level(Q &uut, PACKET pkt)
+bool issue_pq_skip(Q &uut, PACKET pkt)
 {
   // Issue it to the uut
-  pkt.fill_this_level = true;
+  pkt.skip_fill = true;
   auto result = uut.add_pq(pkt);
   uut._operate();
   return result;
@@ -356,14 +356,14 @@ SCENARIO("Non-translating cache queues forward PQ to PQ with different fill leve
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0.returned, issue_pq<decltype(uut)>);
+    issue(uut, address, &ul0.returned, issue_pq_skip<decltype(uut)>);
 
     WHEN("A packet with the same address but different fill level is sent") {
-      issue(uut, address, &ul1.returned, issue_pq_fill_this_level<decltype(uut)>);
+      issue(uut, address, &ul1.returned, issue_pq<decltype(uut)>);
 
       THEN("The two packets are merged and fill this level") {
         REQUIRE(std::size(uut.PQ) == 1);
-        REQUIRE(uut.PQ.front().fill_this_level == true);
+        REQUIRE(uut.PQ.front().skip_fill == false);
       }
     }
   }
