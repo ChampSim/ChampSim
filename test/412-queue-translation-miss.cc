@@ -19,6 +19,7 @@ SCENARIO("Cache queues detect translation misses in WQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_wq(test);
@@ -76,6 +77,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_rq(test);
@@ -133,6 +135,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_pq(test);

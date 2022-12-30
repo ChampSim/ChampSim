@@ -47,6 +47,7 @@ bool issue(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F&& func)
   PACKET seed;
   seed.address = seed_addr;
   seed.v_address = 0;
+  seed.is_translated = true;
   seed.cpu = 0;
   seed.to_return = {ret};
 
@@ -60,6 +61,7 @@ bool issue(Q &uut, uint64_t seed_addr, F&& func)
   PACKET seed;
   seed.address = seed_addr;
   seed.v_address = 0;
+  seed.is_translated = true;
   seed.cpu = 0;
 
   return std::invoke(std::forward<F>(func), uut, seed);
@@ -72,6 +74,7 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F
   PACKET seed;
   seed.address = seed_addr;
   seed.v_address = seed_addr;
+  seed.is_translated = false;
   seed.cpu = 0;
   seed.to_return = {ret};
 

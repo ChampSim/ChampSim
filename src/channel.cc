@@ -22,7 +22,7 @@ bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& 
 {
   auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
   if (found != end) {
-    if (!packet.is_translated || !(*found).is_translated) {
+    if (packet.is_translated != found->is_translated) {
       // We make sure that both merge packet address have been translated. If
       // not this can happen: package with address virtual and physical X
       // (not translated) is inserted, package with physical address
@@ -114,7 +114,7 @@ void champsim::NonTranslatingQueues::check_collision()
 void champsim::TranslatingQueues::issue_translation()
 {
   auto do_issue_translation = [this](auto& q_entry) {
-    if (!q_entry.translate_issued && q_entry.address == q_entry.v_address) {
+    if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
       auto fwd_pkt = q_entry;
       fwd_pkt.type = LOAD;
       fwd_pkt.to_return = {&returned};
@@ -135,6 +135,7 @@ void champsim::TranslatingQueues::issue_translation()
   std::for_each(std::begin(WQ), std::end(WQ), do_issue_translation);
   std::for_each(std::begin(RQ), std::end(RQ), do_issue_translation);
   std::for_each(std::begin(PQ), std::end(PQ), do_issue_translation);
+  std::for_each(std::begin(PTWQ), std::end(PTWQ), do_issue_translation);
 }
 
 void champsim::TranslatingQueues::detect_misses()
@@ -142,13 +143,14 @@ void champsim::TranslatingQueues::detect_misses()
   do_detect_misses(WQ);
   do_detect_misses(RQ);
   do_detect_misses(PQ);
+  do_detect_misses(PTWQ);
 }
 
 template <typename R>
 void champsim::TranslatingQueues::do_detect_misses(R& queue)
 {
   // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
-  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x) { return x.event_cycle < this->current_cycle && x.address == 0; });
+  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x) { return x.event_cycle < this->current_cycle && !x.is_translated && x.translate_issued; });
   std::for_each(std::begin(queue), q_it, [](auto& x) { x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(queue), q_it, std::end(queue));
 }
@@ -188,7 +190,6 @@ bool champsim::NonTranslatingQueues::add_rq(const PACKET& packet)
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
-  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(RQ, RQ_SIZE, fwd_pkt);
 
   if (result)
@@ -205,7 +206,6 @@ bool champsim::NonTranslatingQueues::add_wq(const PACKET& packet)
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
-  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(WQ, WQ_SIZE, fwd_pkt);
 
   if (result)
@@ -221,7 +221,6 @@ bool champsim::NonTranslatingQueues::add_pq(const PACKET& packet)
   sim_stats.back().PQ_ACCESS++;
 
   auto fwd_pkt = packet;
-  fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
     sim_stats.back().PQ_TO_CACHE++;
@@ -237,7 +236,6 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
-  fwd_pkt.is_translated = true;
   auto result = do_add_queue(PTWQ, PTWQ_SIZE, fwd_pkt);
 
   if (result)
@@ -250,7 +248,7 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
 
 bool champsim::NonTranslatingQueues::is_ready(const PACKET& pkt) const { return pkt.event_cycle <= current_cycle; }
 
-bool champsim::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.address != 0 && pkt.is_translated; }
+bool champsim::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.is_translated; }
 
 bool champsim::NonTranslatingQueues::wq_has_ready() const { return is_ready(WQ.front()); }
 

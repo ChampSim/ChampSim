@@ -79,6 +79,7 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
+  fwd_pkt.is_translated = true;
   fwd_pkt.type = TRANSLATION;
   fwd_pkt.to_return = {&returned};
   fwd_pkt.translation_level = transl_level;

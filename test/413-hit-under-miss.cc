@@ -28,6 +28,7 @@ struct miss_testbed
     PACKET seed;
     seed.address = 0xdeadbeef;
     seed.v_address = 0xdeadbeef;
+    seed.is_translated = false;
     seed.cpu = 0;
 
     issue(seed);

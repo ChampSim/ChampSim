@@ -747,6 +747,7 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
 bool CacheBus::issue_read(PACKET data_packet)
 {
   data_packet.address = data_packet.v_address;
+  data_packet.is_translated = false;
   data_packet.cpu = cpu;
   data_packet.type = LOAD;
   data_packet.to_return = {&returned};
@@ -757,6 +758,7 @@ bool CacheBus::issue_read(PACKET data_packet)
 bool CacheBus::issue_write(PACKET data_packet)
 {
   data_packet.address = data_packet.v_address;
+  data_packet.is_translated = false;
   data_packet.cpu = cpu;
   data_packet.type = WRITE;
 

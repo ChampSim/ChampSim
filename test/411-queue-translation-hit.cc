@@ -19,10 +19,13 @@ SCENARIO("Cache queues issue translations in WQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_wq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
@@ -64,10 +67,13 @@ SCENARIO("Cache queues issue translations in RQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
@@ -109,10 +115,13 @@ SCENARIO("Cache queues issue translations in PQ") {
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
       auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
@@ -153,11 +162,14 @@ SCENARIO("Translations in the WQ work even if the addresses happen to be the sam
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
+      test.is_translated = false;
       test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
 
       auto test_result = uut.add_wq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
@@ -199,11 +211,14 @@ SCENARIO("Translations in the RQ work even if the addresses happen to be the sam
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
+      test.is_translated = false;
       test.data = test.address;
       test.cpu = 0;
 
       auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
@@ -245,11 +260,14 @@ SCENARIO("Translations in the PQ work even if the addresses happen to be the sam
       PACKET test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
+      test.is_translated = false;
       test.data = test.address;
       test.cpu = 0;
 
       auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
       auto old_event_cycle = uut.current_cycle;
 
