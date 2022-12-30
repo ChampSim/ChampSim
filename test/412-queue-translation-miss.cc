@@ -32,7 +32,7 @@ SCENARIO("Cache queues detect translation misses in WQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.wq_has_ready());
+        REQUIRE_FALSE(uut.WQ.front().is_translated);
       }
 
       // Operate enough cycles to hit
@@ -42,7 +42,7 @@ SCENARIO("Cache queues detect translation misses in WQ") {
       }
 
       AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.wq_has_ready());
+        REQUIRE_FALSE(uut.WQ.front().is_translated);
       }
 
       // Operate long enough for the return to happen
@@ -55,7 +55,7 @@ SCENARIO("Cache queues detect translation misses in WQ") {
         REQUIRE(uut.WQ.front().v_address == test.v_address);
         REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + 3*hit_latency);
         REQUIRE(uut.WQ.front().address == 0x11111eef);
-        REQUIRE(uut.wq_has_ready());
+        REQUIRE(uut.WQ.front().is_translated);
       }
     }
   }
@@ -90,7 +90,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.rq_has_ready());
+        REQUIRE_FALSE(uut.RQ.front().is_translated);
       }
 
       // Operate enough cycles to hit
@@ -100,7 +100,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
       }
 
       AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.rq_has_ready());
+        REQUIRE_FALSE(uut.RQ.front().is_translated);
       }
 
       // Operate long enough for the return to happen
@@ -113,7 +113,7 @@ SCENARIO("Cache queues detect translation misses in RQ") {
         REQUIRE(uut.RQ.front().v_address == test.v_address);
         REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + 3*hit_latency);
         REQUIRE(uut.RQ.front().address == 0x11111eef);
-        REQUIRE(uut.rq_has_ready());
+        REQUIRE(uut.RQ.front().is_translated);
       }
     }
   }
@@ -148,7 +148,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
 
       THEN("The packet is issued for translation") {
         REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.pq_has_ready());
+        REQUIRE_FALSE(uut.PQ.front().is_translated);
       }
 
       // Operate enough cycles to hit
@@ -158,7 +158,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
       }
 
       AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.pq_has_ready());
+        REQUIRE_FALSE(uut.PQ.front().is_translated);
       }
 
       // Operate long enough for the return to happen
@@ -171,7 +171,7 @@ SCENARIO("Cache queues detect translation misses in PQ") {
         REQUIRE(uut.PQ.front().v_address == test.v_address);
         REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + 3*hit_latency);
         REQUIRE(uut.PQ.front().address == 0x11111eef);
-        REQUIRE(uut.pq_has_ready());
+        REQUIRE(uut.PQ.front().is_translated);
       }
     }
   }

@@ -47,7 +47,7 @@ struct NonTranslatingQueues : public operable {
         OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
   {
   }
-  void operate() override;
+  void operate() override {};
 
   template <typename R>
   bool do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet);
@@ -57,17 +57,9 @@ struct NonTranslatingQueues : public operable {
   bool add_pq(const PACKET& packet);
   bool add_ptwq(const PACKET& packet);
 
-  virtual bool is_ready(const PACKET& pkt) const;
-
-  bool rq_has_ready() const;
-  bool wq_has_ready() const;
-  bool pq_has_ready() const;
-  bool ptwq_has_ready() const;
-
   void begin_phase() override;
   void end_phase(unsigned cpu) override;
 
-private:
   void check_collision();
 };
 
@@ -83,7 +75,6 @@ class TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProdu
   template <typename R>
   void do_detect_misses(R& queue);
 
-  virtual bool is_ready(const PACKET& pkt) const override final;
   void finish_translation(const PACKET& packet);
 
   using NonTranslatingQueues::NonTranslatingQueues;

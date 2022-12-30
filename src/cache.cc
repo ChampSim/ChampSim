@@ -266,6 +266,8 @@ long int operate_queue(R& queue, long int sz, F&& func)
 
 void CACHE::operate()
 {
+  queues.check_collision();
+
   std::for_each(std::cbegin(returned_data), std::cend(returned_data), [this](const auto& pkt){ this->finish_packet(pkt); });
   returned_data.clear();
 

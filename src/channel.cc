@@ -4,8 +4,6 @@
 #include "instruction.h"
 #include "util.h"
 
-void champsim::NonTranslatingQueues::operate() { check_collision(); }
-
 template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
@@ -177,16 +175,6 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
   return result;
 }
 
-bool champsim::NonTranslatingQueues::is_ready(const PACKET& pkt) const { return pkt.event_cycle <= current_cycle; }
-
-bool champsim::NonTranslatingQueues::wq_has_ready() const { return is_ready(WQ.front()); }
-
-bool champsim::NonTranslatingQueues::rq_has_ready() const { return is_ready(RQ.front()); }
-
-bool champsim::NonTranslatingQueues::pq_has_ready() const { return is_ready(PQ.front()); }
-
-bool champsim::NonTranslatingQueues::ptwq_has_ready() const { return is_ready(PTWQ.front()); }
-
 void champsim::NonTranslatingQueues::begin_phase()
 {
   roi_stats.emplace_back();
@@ -218,7 +206,6 @@ void champsim::TranslatingQueues::operate()
     finish_translation(pkt);
   returned.clear();
 
-  NonTranslatingQueues::operate();
   issue_translation();
   detect_misses();
 }
@@ -266,8 +253,6 @@ void champsim::TranslatingQueues::do_detect_misses(R& queue)
   std::for_each(std::begin(queue), q_it, [](auto& x) { x.event_cycle = std::numeric_limits<uint64_t>::max(); });
   std::rotate(std::begin(queue), q_it, std::end(queue));
 }
-
-bool champsim::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.is_translated; }
 
 void champsim::TranslatingQueues::finish_translation(const PACKET& packet)
 {

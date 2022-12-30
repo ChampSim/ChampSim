@@ -81,7 +81,7 @@ SCENARIO("Translation misses in the WQ do not inhibit other translations from be
     miss_wq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.wq_has_ready());
+    REQUIRE_FALSE(testbed.uut.WQ.front().is_translated);
 
     WHEN("A packet is sent") {
       PACKET test;
@@ -101,7 +101,7 @@ SCENARIO("Translation misses in the WQ do not inhibit other translations from be
         REQUIRE(std::size(testbed.uut.WQ) == 2);
         REQUIRE(testbed.uut.WQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.WQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.wq_has_ready());
+        REQUIRE(testbed.uut.WQ.front().is_translated);
       }
     }
   }
@@ -112,7 +112,7 @@ SCENARIO("Translation misses in the WQ do not inhibit packets that do not need t
     miss_wq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.wq_has_ready());
+    REQUIRE_FALSE(testbed.uut.WQ.front().is_translated);
 
     WHEN("A translated packet is sent") {
       PACKET test;
@@ -132,7 +132,7 @@ SCENARIO("Translation misses in the WQ do not inhibit packets that do not need t
         REQUIRE(std::size(testbed.uut.WQ) == 2);
         REQUIRE(testbed.uut.WQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.WQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.wq_has_ready());
+        REQUIRE(testbed.uut.WQ.front().is_translated);
       }
     }
   }
@@ -144,7 +144,7 @@ SCENARIO("Translation misses in the RQ do not inhibit other translations from be
     miss_rq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.rq_has_ready());
+    REQUIRE_FALSE(testbed.uut.RQ.front().is_translated);
 
     WHEN("A packet is sent") {
       PACKET test;
@@ -164,7 +164,7 @@ SCENARIO("Translation misses in the RQ do not inhibit other translations from be
         REQUIRE(std::size(testbed.uut.RQ) == 2);
         REQUIRE(testbed.uut.RQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.RQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.rq_has_ready());
+        REQUIRE(testbed.uut.RQ.front().is_translated);
       }
     }
   }
@@ -175,7 +175,7 @@ SCENARIO("Translation misses in the RQ do not inhibit packets that do not need t
     miss_rq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.rq_has_ready());
+    REQUIRE_FALSE(testbed.uut.RQ.front().is_translated);
 
     WHEN("A translated packet is sent") {
       PACKET test;
@@ -195,7 +195,7 @@ SCENARIO("Translation misses in the RQ do not inhibit packets that do not need t
         REQUIRE(std::size(testbed.uut.RQ) == 2);
         REQUIRE(testbed.uut.RQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.RQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.rq_has_ready());
+        REQUIRE(testbed.uut.RQ.front().is_translated);
       }
     }
   }
@@ -206,7 +206,7 @@ SCENARIO("Translation misses in the PQ do not inhibit other translations from be
     miss_pq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.pq_has_ready());
+    REQUIRE_FALSE(testbed.uut.PQ.front().is_translated);
 
     WHEN("A packet is sent") {
       PACKET test;
@@ -226,7 +226,7 @@ SCENARIO("Translation misses in the PQ do not inhibit other translations from be
         REQUIRE(std::size(testbed.uut.PQ) == 2);
         REQUIRE(testbed.uut.PQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.PQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.pq_has_ready());
+        REQUIRE(testbed.uut.PQ.front().is_translated);
       }
     }
   }
@@ -237,7 +237,7 @@ SCENARIO("Translation misses in the PQ do not inhibit packets that do not need t
     miss_pq_testbed testbed;
     testbed.setup();
 
-    REQUIRE_FALSE(testbed.uut.pq_has_ready());
+    REQUIRE_FALSE(testbed.uut.PQ.front().is_translated);
 
     WHEN("A translated packet is sent") {
       PACKET test;
@@ -257,7 +257,7 @@ SCENARIO("Translation misses in the PQ do not inhibit packets that do not need t
         REQUIRE(std::size(testbed.uut.PQ) == 2);
         REQUIRE(testbed.uut.PQ.front().v_address == test.v_address);
         REQUIRE(testbed.uut.PQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.pq_has_ready());
+        REQUIRE(testbed.uut.PQ.front().is_translated);
       }
     }
   }

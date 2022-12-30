@@ -44,7 +44,7 @@ SCENARIO("Cache queues issue translations in WQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.WQ.front().address == 0x11111eef);
         REQUIRE(uut.WQ.front().v_address == test.v_address);
-        REQUIRE(uut.wq_has_ready());
+        REQUIRE(uut.WQ.front().is_translated);
       }
     }
   }
@@ -92,7 +92,7 @@ SCENARIO("Cache queues issue translations in RQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.RQ.front().address == 0x11111eef);
         REQUIRE(uut.RQ.front().v_address == test.v_address);
-        REQUIRE(uut.rq_has_ready());
+        REQUIRE(uut.RQ.front().is_translated);
       }
     }
   }
@@ -140,7 +140,7 @@ SCENARIO("Cache queues issue translations in PQ") {
       AND_THEN("The packet is translated") {
         REQUIRE(uut.PQ.front().address == 0x11111eef);
         REQUIRE(uut.PQ.front().v_address == test.v_address);
-        REQUIRE(uut.pq_has_ready());
+        REQUIRE(uut.PQ.front().is_translated);
       }
     }
   }
@@ -188,7 +188,7 @@ SCENARIO("Translations in the WQ work even if the addresses happen to be the sam
       AND_THEN("The packet is translated") {
         REQUIRE(uut.WQ.front().address == uut.WQ.front().v_address);
         REQUIRE(uut.WQ.front().v_address == test.v_address);
-        REQUIRE(uut.wq_has_ready());
+        REQUIRE(uut.WQ.front().is_translated);
       }
     }
   }
@@ -237,7 +237,7 @@ SCENARIO("Translations in the RQ work even if the addresses happen to be the sam
       AND_THEN("The packet is translated") {
         REQUIRE(uut.RQ.front().address == uut.RQ.front().v_address);
         REQUIRE(uut.RQ.front().v_address == test.v_address);
-        REQUIRE(uut.rq_has_ready());
+        REQUIRE(uut.RQ.front().is_translated);
       }
     }
   }
@@ -286,7 +286,7 @@ SCENARIO("Translations in the PQ work even if the addresses happen to be the sam
       AND_THEN("The packet is translated") {
         REQUIRE(uut.PQ.front().address == uut.PQ.front().address);
         REQUIRE(uut.PQ.front().v_address == test.v_address);
-        REQUIRE(uut.pq_has_ready());
+        REQUIRE(uut.PQ.front().is_translated);
       }
     }
   }
