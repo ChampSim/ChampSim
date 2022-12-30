@@ -42,6 +42,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   bool handle_miss(const PACKET& handle_pkt);
   bool handle_write(const PACKET& handle_pkt);
   void finish_packet(const PACKET& packet);
+  void finish_translation(const PACKET& packet);
 
   struct BLOCK {
     bool valid = false;
@@ -60,7 +61,9 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
   std::size_t get_set_index(uint64_t address) const;
 
-  std::deque<PACKET> returned{};
+  std::deque<PACKET> returned_data{};
+  std::deque<PACKET> inflight_translation{};
+  std::deque<PACKET> returned_translation{};
 
 public:
   uint32_t cpu = 0;

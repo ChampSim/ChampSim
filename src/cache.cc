@@ -204,7 +204,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
       fwd_pkt.type = RFO;
 
     if (handle_pkt.fill_this_level)
-      fwd_pkt.to_return = {&returned};
+      fwd_pkt.to_return = {&returned_data};
     else
       fwd_pkt.to_return.clear();
 
@@ -262,8 +262,11 @@ long int operate_queue(R& queue, long int sz, F&& func)
 
 void CACHE::operate()
 {
-  std::for_each(std::cbegin(returned), std::cend(returned), [this](const auto& pkt){ this->finish_packet(pkt); });
-  returned.clear();
+  std::for_each(std::cbegin(returned_data), std::cend(returned_data), [this](const auto& pkt){ this->finish_packet(pkt); });
+  returned_data.clear();
+
+  std::for_each(std::cbegin(returned_translation), std::cend(returned_translation), [this](const auto& pkt){ this->finish_translation(pkt); });
+  returned_translation.clear();
 
   auto tag_bw = MAX_TAG;
   auto fill_bw = MAX_FILL;
@@ -441,6 +444,26 @@ void CACHE::finish_packet(const PACKET& packet)
   // entries
   std::iter_swap(mshr_entry, first_unreturned);
 }
+
+void CACHE::finish_translation(const PACKET& packet)
+{
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "_TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
+    std::cout << " address: " << std::hex << packet.address;
+    std::cout << " data: " << packet.data << std::dec;
+    std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
+  }
+
+  // Find all packets that match the page of the returned packet
+  for (auto& entry : inflight_translation) {
+    if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
+      entry.address = champsim::splice_bits(packet.data, entry.v_address, LOG2_PAGE_SIZE); // translated address
+      //entry.event_cycle = std::min(entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
+      entry.is_translated = true; // This entry is now translated
+    }
+  }
+}
+
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
