@@ -33,7 +33,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 
       for (PACKET &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
+          ret->push_back(pkt);
       }
       ready_packets.clear();
     }
@@ -77,7 +77,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
 
       for (PACKET &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
+          ret->push_back(pkt);
       }
       ready_packets.clear();
     }
@@ -126,7 +126,7 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
         auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
         if (pkt_it != std::end(packets)) {
             for (auto ret : pkt_it->to_return) {
-                ret->return_data(*pkt_it);
+                ret->push_back(*pkt_it);
             }
         }
         packets.erase(pkt_it);
@@ -136,9 +136,10 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
 /*
  * A MemoryRequestProducer that counts how many returns it receives
  */
-class counting_MRP : public MemoryRequestProducer
+struct counting_MRP : public MemoryRequestProducer
 {
-  public:
+  std::deque<PACKET> returned{};
+
   unsigned count = 0;
 
   counting_MRP() : MemoryRequestProducer(nullptr) {}
@@ -150,9 +151,10 @@ class counting_MRP : public MemoryRequestProducer
 };
 
 template <typename MRC, typename Fun>
-class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
+struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 {
-  public:
+  std::deque<PACKET> returned{};
+
     struct result_data {
       PACKET pkt;
       uint64_t issue_time;
@@ -176,7 +178,7 @@ class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 
     bool issue(const PACKET &pkt) {
       auto copy = pkt;
-      copy.to_return = {this};
+      copy.to_return = {&returned};
       packets.push_back({copy, current_cycle, 0});
       return issue_func(*static_cast<MRC*>(lower_level), copy);
     }

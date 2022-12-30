@@ -27,13 +27,13 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
       test_a.address = 0xdeadbeefdeadbeef;
       test_a.v_address = test_a.address;
       test_a.cpu = 0;
-      test_a.to_return = {&mock_ul};
+      test_a.to_return = {&mock_ul.returned};
 
       PACKET test_b;
       test_b.address = 0xcafebabecafebabe;
       test_b.v_address = test_b.address;
       test_b.cpu = 0;
-      test_b.to_return = {&mock_ul};
+      test_b.to_return = {&mock_ul.returned};
 
       auto test_a_result = mock_ul.issue(test_a);
       REQUIRE(test_a_result);

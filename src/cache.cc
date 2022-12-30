@@ -92,7 +92,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
     auto copy{fill_mshr};
     copy.pf_metadata = metadata_thru;
     for (auto ret : copy.to_return)
-      ret->return_data(copy);
+      ret->push_back(copy);
   }
 
   return success;
@@ -136,7 +136,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
     copy.data = way->data;
     copy.pf_metadata = metadata_thru;
     for (auto ret : copy.to_return)
-      ret->return_data(copy);
+      ret->push_back(copy);
 
     way->dirty = (handle_pkt.type == WRITE);
 
@@ -204,7 +204,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
       fwd_pkt.type = RFO;
 
     if (handle_pkt.fill_this_level)
-      fwd_pkt.to_return = {this};
+      fwd_pkt.to_return = {&returned};
     else
       fwd_pkt.to_return.clear();
 

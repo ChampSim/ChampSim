@@ -63,7 +63,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
     ret_pkt.address = fill_mshr.v_address;
 
     for (auto ret : ret_pkt.to_return)
-      ret->return_data(ret_pkt);
+      ret->push_back(ret_pkt);
 
     total_miss_latency += current_cycle - ret_pkt.cycle_enqueued;
     return true;
@@ -80,7 +80,7 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
   fwd_pkt.type = TRANSLATION;
-  fwd_pkt.to_return = {this};
+  fwd_pkt.to_return = {&returned};
   fwd_pkt.translation_level = transl_level;
 
   auto matches_and_inflight = [addr](const auto& x) {

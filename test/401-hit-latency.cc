@@ -47,7 +47,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       seed.instr_id = id++;
       seed.cpu = 0;
       seed.type = type;
-      seed.to_return = {&mock_ul};
+      seed.to_return = {&mock_ul.returned};
 
       // Issue it to the uut
       auto seed_result = mock_ul.issue(seed);

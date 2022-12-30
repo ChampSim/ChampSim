@@ -60,6 +60,8 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
   std::size_t get_set_index(uint64_t address) const;
 
+  std::deque<PACKET> returned{};
+
 public:
   uint32_t cpu = 0;
   const std::string NAME;

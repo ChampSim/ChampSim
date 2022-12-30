@@ -41,7 +41,7 @@ bool issue_pq_fill_this_level(Q &uut, PACKET pkt)
 }
 
 template <typename Q, typename F>
-bool issue(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F&& func)
+bool issue(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F&& func)
 {
   // Create a test packet
   PACKET seed;
@@ -66,7 +66,7 @@ bool issue(Q &uut, uint64_t seed_addr, F&& func)
 }
 
 template <typename Q, typename F>
-bool issue_non_translated(Q &uut, uint64_t seed_addr, MemoryRequestProducer *ret, F&& func)
+bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F&& func)
 {
   // Create a test packet
   PACKET seed;
@@ -146,7 +146,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", champsim::Non
     }
 
     WHEN("A packet is sent to the read queue") {
-      auto seed_result = issue(uut, address, &ul0, issue_rq<TestType>);
+      auto seed_result = issue(uut, address, &ul0.returned, issue_rq<TestType>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -157,7 +157,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", champsim::Non
       }
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
-        auto test_result = issue(uut, address, &ul1, issue_rq<TestType>);
+        auto test_result = issue(uut, address, &ul1.returned, issue_rq<TestType>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -170,8 +170,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", champsim::Non
         THEN("The two packets are merged") {
           CHECK(std::size(uut.RQ) == 1);
           CHECK(std::size(uut.RQ.front().to_return) == 2);
-          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0) == 1);
-          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
+          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0.returned) == 1);
+          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().RQ_MERGED == 1);
@@ -201,7 +201,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", champsim::Non
     }
 
     WHEN("A packet is sent to the prefetch queue") {
-      auto seed_result = issue(uut, address, &ul0, issue_pq<TestType>);
+      auto seed_result = issue(uut, address, &ul0.returned, issue_pq<TestType>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -212,7 +212,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", champsim::Non
       }
 
       AND_WHEN("A packet with the same address is sent to the prefetch queue") {
-        auto test_result = issue(uut, address, &ul1, issue_pq<TestType>);
+        auto test_result = issue(uut, address, &ul1.returned, issue_pq<TestType>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -225,8 +225,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", champsim::Non
         THEN("The two packets are merged") {
           CHECK(std::size(uut.PQ) == 1);
           CHECK(std::size(uut.PQ.front().to_return) == 2);
-          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0) == 1);
-          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1) == 1);
+          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0.returned) == 1);
+          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().PQ_MERGED == 1);
@@ -259,7 +259,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", champsim::NonTranslating
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
         counting_MRP counter;
-        issue(uut, address, &counter, issue_rq<TestType>);
+        issue(uut, address, &counter.returned, issue_rq<TestType>);
         counter.operate();
 
         THEN("The two packets are merged") {
@@ -298,7 +298,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", champsim::NonTranslating
 
       WHEN("A packet with the same address is sent to the prefetch queue") {
         counting_MRP counter;
-        issue(uut, address, &counter, issue_pq<TestType>);
+        issue(uut, address, &counter.returned, issue_pq<TestType>);
         counter.operate();
 
         THEN("The two packets are merged") {
@@ -329,10 +329,10 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_rq<decltype(uut)>);
+    issue(uut, address, &ul0.returned, issue_rq<decltype(uut)>);
 
     WHEN("A packet with the same physical address but non translated is sent") {
-      issue_non_translated(uut, address, &ul1, issue_rq<decltype(uut)>);
+      issue_non_translated(uut, address, &ul1.returned, issue_rq<decltype(uut)>);
 
       THEN("The two packets are not merged") {
         REQUIRE(std::size(uut.RQ) == 2);
@@ -353,10 +353,10 @@ SCENARIO("Non-translating cache queues forward PQ to PQ with different fill leve
     uut.warmup = false;
     uut.begin_phase();
 
-    issue(uut, address, &ul0, issue_pq<decltype(uut)>);
+    issue(uut, address, &ul0.returned, issue_pq<decltype(uut)>);
 
     WHEN("A packet with the same address but different fill level is sent") {
-      issue(uut, address, &ul1, issue_pq_fill_this_level<decltype(uut)>);
+      issue(uut, address, &ul1.returned, issue_pq_fill_this_level<decltype(uut)>);
 
       THEN("The two packets are merged and fill this level") {
         REQUIRE(std::size(uut.PQ) == 1);

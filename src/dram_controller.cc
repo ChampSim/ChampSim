@@ -27,7 +27,7 @@ void MEMORY_CONTROLLER::operate()
     if (warmup) {
       for (auto& entry : channel.RQ) {
         for (auto ret : entry.to_return)
-          ret->return_data(entry);
+          ret->push_back(entry);
 
         entry = {};
       }
@@ -42,7 +42,7 @@ void MEMORY_CONTROLLER::operate()
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
       for (auto ret : channel.active_request->pkt->to_return)
-        ret->return_data(*channel.active_request->pkt);
+        ret->push_back(*channel.active_request->pkt);
 
       channel.active_request->valid = false;
 
@@ -187,7 +187,7 @@ void DRAM_CHANNEL::check_collision()
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         rq_it->data = wq_it->data;
         for (auto ret : rq_it->to_return)
-          ret->return_data(*rq_it);
+          ret->push_back(*rq_it);
 
         *rq_it = {};
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {

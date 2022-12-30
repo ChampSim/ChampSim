@@ -71,7 +71,10 @@ private:
   void check_collision();
 };
 
-struct TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
+class TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
+  std::deque<PACKET> returned{};
+
+  public:
   void operate() override final;
 
   void issue_translation();

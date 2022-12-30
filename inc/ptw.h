@@ -25,6 +25,8 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 
   using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
 
+  std::deque<PACKET> returned{};
+
 public:
   const std::string NAME;
   const uint32_t RQ_SIZE, MSHR_SIZE;

@@ -62,7 +62,7 @@ bool do_collision_for_return(Iter begin, Iter end, PACKET& packet, unsigned sham
     source.data = destination.data;
     source.pf_metadata = destination.pf_metadata;
     for (auto ret : source.to_return)
-      ret->return_data(source);
+      ret->push_back(source);
   });
 }
 
@@ -117,7 +117,7 @@ void champsim::TranslatingQueues::issue_translation()
     if (!q_entry.translate_issued && q_entry.address == q_entry.v_address) {
       auto fwd_pkt = q_entry;
       fwd_pkt.type = LOAD;
-      fwd_pkt.to_return = {this};
+      fwd_pkt.to_return = {&returned};
       auto success = this->lower_level->add_rq(fwd_pkt);
       if (success) {
         if constexpr (champsim::debug_print) {

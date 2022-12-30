@@ -749,7 +749,7 @@ bool CacheBus::issue_read(PACKET data_packet)
   data_packet.address = data_packet.v_address;
   data_packet.cpu = cpu;
   data_packet.type = LOAD;
-  data_packet.to_return = {this};
+  data_packet.to_return = {&returned};
 
   return lower_level->add_rq(data_packet);
 }
