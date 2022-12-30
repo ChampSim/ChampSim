@@ -13,7 +13,7 @@ SCENARIO("A cache evicts a block when required") {
     to_wq_MRP mock_ul_seed{&uut};
     to_rq_MRP mock_ul_test{&uut};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &uut_queues, &mock_ul_seed, &mock_ul_test}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
@@ -73,7 +73,7 @@ SCENARIO("A cache evicts a block when required") {
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_test.packets.front().issue_time + (miss_latency + hit_latency));
+          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_test.packets.front().issue_time + (miss_latency + hit_latency + 1));
         }
 
         THEN("The first block is evicted") {

@@ -21,7 +21,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     CACHE uut{"401-uut-"+std::string(str), 1, 1, 8, 32, 3, 1, 1, 0, false, false, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
@@ -44,6 +44,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       static uint64_t id = 1;
       PACKET seed;
       seed.address = 0xdeadbeef;
+      seed.is_translated = true;
       seed.instr_id = id++;
       seed.cpu = 0;
       seed.type = type;

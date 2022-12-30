@@ -6,29 +6,14 @@
 
 void champsim::NonTranslatingQueues::operate() { check_collision(); }
 
-void champsim::TranslatingQueues::operate()
-{
-  for (auto pkt : returned)
-    finish_translation(pkt);
-  returned.clear();
-
-  NonTranslatingQueues::operate();
-  issue_translation();
-  detect_misses();
-}
-
 template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
-  auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt));
-  if (found != end) {
-    if (packet.is_translated != found->is_translated) {
-      // We make sure that both merge packet address have been translated. If
-      // not this can happen: package with address virtual and physical X
-      // (not translated) is inserted, package with physical address
-      // (already translated) X.
-      return false;
-    }
+  // We make sure that both merge packet address have been translated. If
+  // not this can happen: package with address virtual and physical X
+  // (not translated) is inserted, package with physical address
+  // (already translated) X.
+  if (auto found = std::find_if(begin, end, eq_addr<PACKET>(packet.address, shamt)); found != end && packet.is_translated == found->is_translated) {
     func(packet, *found);
     return true;
   }
@@ -40,9 +25,7 @@ template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, PACKET& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](PACKET& source, PACKET& destination) {
-      // If one of the package will fill this level the resulted package should
-      // also fill this level
-    destination.skip_fill &= source.skip_fill;
+    destination.skip_fill &= source.skip_fill; // If one of the package will fill this level the resulted package should also fill this level
     auto instr_copy = std::move(destination.instr_depend_on_me);
     auto ret_copy = std::move(destination.to_return);
 
@@ -107,50 +90,6 @@ void champsim::NonTranslatingQueues::check_collision()
       ++pq_it;
     }
   }
-}
-
-void champsim::TranslatingQueues::issue_translation()
-{
-  auto do_issue_translation = [this](auto& q_entry) {
-    if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
-      auto fwd_pkt = q_entry;
-      fwd_pkt.type = LOAD;
-      fwd_pkt.to_return = {&returned};
-      auto success = this->lower_level->add_rq(fwd_pkt);
-      if (success) {
-        if constexpr (champsim::debug_print) {
-          std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
-          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
-          std::cout << " type: " << +q_entry.type << std::endl;
-        }
-
-        q_entry.translate_issued = true;
-        q_entry.address = 0;
-      }
-    }
-  };
-
-  std::for_each(std::begin(WQ), std::end(WQ), do_issue_translation);
-  std::for_each(std::begin(RQ), std::end(RQ), do_issue_translation);
-  std::for_each(std::begin(PQ), std::end(PQ), do_issue_translation);
-  std::for_each(std::begin(PTWQ), std::end(PTWQ), do_issue_translation);
-}
-
-void champsim::TranslatingQueues::detect_misses()
-{
-  do_detect_misses(WQ);
-  do_detect_misses(RQ);
-  do_detect_misses(PQ);
-  do_detect_misses(PTWQ);
-}
-
-template <typename R>
-void champsim::TranslatingQueues::do_detect_misses(R& queue)
-{
-  // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
-  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x) { return x.event_cycle < this->current_cycle && !x.is_translated && x.translate_issued; });
-  std::for_each(std::begin(queue), q_it, [](auto& x) { x.event_cycle = std::numeric_limits<uint64_t>::max(); });
-  std::rotate(std::begin(queue), q_it, std::end(queue));
 }
 
 template <typename R>
@@ -240,8 +179,6 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
 
 bool champsim::NonTranslatingQueues::is_ready(const PACKET& pkt) const { return pkt.event_cycle <= current_cycle; }
 
-bool champsim::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.is_translated; }
-
 bool champsim::NonTranslatingQueues::wq_has_ready() const { return is_ready(WQ.front()); }
 
 bool champsim::NonTranslatingQueues::rq_has_ready() const { return is_ready(RQ.front()); }
@@ -249,6 +186,88 @@ bool champsim::NonTranslatingQueues::rq_has_ready() const { return is_ready(RQ.f
 bool champsim::NonTranslatingQueues::pq_has_ready() const { return is_ready(PQ.front()); }
 
 bool champsim::NonTranslatingQueues::ptwq_has_ready() const { return is_ready(PTWQ.front()); }
+
+void champsim::NonTranslatingQueues::begin_phase()
+{
+  roi_stats.emplace_back();
+  sim_stats.emplace_back();
+}
+
+void champsim::NonTranslatingQueues::end_phase(unsigned)
+{
+  roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
+  roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
+  roi_stats.back().RQ_FULL = sim_stats.back().RQ_FULL;
+  roi_stats.back().RQ_TO_CACHE = sim_stats.back().RQ_TO_CACHE;
+
+  roi_stats.back().PQ_ACCESS = sim_stats.back().PQ_ACCESS;
+  roi_stats.back().PQ_MERGED = sim_stats.back().PQ_MERGED;
+  roi_stats.back().PQ_FULL = sim_stats.back().PQ_FULL;
+  roi_stats.back().PQ_TO_CACHE = sim_stats.back().PQ_TO_CACHE;
+
+  roi_stats.back().WQ_ACCESS = sim_stats.back().WQ_ACCESS;
+  roi_stats.back().WQ_MERGED = sim_stats.back().WQ_MERGED;
+  roi_stats.back().WQ_FULL = sim_stats.back().WQ_FULL;
+  roi_stats.back().WQ_TO_CACHE = sim_stats.back().WQ_TO_CACHE;
+  roi_stats.back().WQ_FORWARD = sim_stats.back().WQ_FORWARD;
+}
+
+void champsim::TranslatingQueues::operate()
+{
+  for (auto pkt : returned)
+    finish_translation(pkt);
+  returned.clear();
+
+  NonTranslatingQueues::operate();
+  issue_translation();
+  detect_misses();
+}
+
+void champsim::TranslatingQueues::issue_translation()
+{
+  auto do_issue_translation = [this](auto& q_entry) {
+    if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
+      auto fwd_pkt = q_entry;
+      fwd_pkt.type = LOAD;
+      fwd_pkt.to_return = {&returned};
+      auto success = this->lower_level->add_rq(fwd_pkt);
+      if (success) {
+        if constexpr (champsim::debug_print) {
+          std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
+          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
+          std::cout << " type: " << +q_entry.type << std::endl;
+        }
+
+        q_entry.translate_issued = true;
+        q_entry.address = 0;
+      }
+    }
+  };
+
+  std::for_each(std::begin(WQ), std::end(WQ), do_issue_translation);
+  std::for_each(std::begin(RQ), std::end(RQ), do_issue_translation);
+  std::for_each(std::begin(PQ), std::end(PQ), do_issue_translation);
+  std::for_each(std::begin(PTWQ), std::end(PTWQ), do_issue_translation);
+}
+
+void champsim::TranslatingQueues::detect_misses()
+{
+  do_detect_misses(WQ);
+  do_detect_misses(RQ);
+  do_detect_misses(PQ);
+  do_detect_misses(PTWQ);
+}
+
+template <typename R>
+void champsim::TranslatingQueues::do_detect_misses(R& queue)
+{
+  // Find entries that would be ready except that they have not finished translation, move them to the back of the queue
+  auto q_it = std::find_if_not(std::begin(queue), std::end(queue), [this](auto x) { return x.event_cycle < this->current_cycle && !x.is_translated && x.translate_issued; });
+  std::for_each(std::begin(queue), q_it, [](auto& x) { x.event_cycle = std::numeric_limits<uint64_t>::max(); });
+  std::rotate(std::begin(queue), q_it, std::end(queue));
+}
+
+bool champsim::TranslatingQueues::is_ready(const PACKET& pkt) const { return NonTranslatingQueues::is_ready(pkt) && pkt.is_translated; }
 
 void champsim::TranslatingQueues::finish_translation(const PACKET& packet)
 {
@@ -283,29 +302,4 @@ void champsim::TranslatingQueues::finish_translation(const PACKET& packet)
       pq_entry.is_translated = true; // This entry is now translated
     }
   }
-}
-
-void champsim::NonTranslatingQueues::begin_phase()
-{
-  roi_stats.emplace_back();
-  sim_stats.emplace_back();
-}
-
-void champsim::NonTranslatingQueues::end_phase(unsigned)
-{
-  roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
-  roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
-  roi_stats.back().RQ_FULL = sim_stats.back().RQ_FULL;
-  roi_stats.back().RQ_TO_CACHE = sim_stats.back().RQ_TO_CACHE;
-
-  roi_stats.back().PQ_ACCESS = sim_stats.back().PQ_ACCESS;
-  roi_stats.back().PQ_MERGED = sim_stats.back().PQ_MERGED;
-  roi_stats.back().PQ_FULL = sim_stats.back().PQ_FULL;
-  roi_stats.back().PQ_TO_CACHE = sim_stats.back().PQ_TO_CACHE;
-
-  roi_stats.back().WQ_ACCESS = sim_stats.back().WQ_ACCESS;
-  roi_stats.back().WQ_MERGED = sim_stats.back().WQ_MERGED;
-  roi_stats.back().WQ_FULL = sim_stats.back().WQ_FULL;
-  roi_stats.back().WQ_TO_CACHE = sim_stats.back().WQ_TO_CACHE;
-  roi_stats.back().WQ_FORWARD = sim_stats.back().WQ_FORWARD;
 }

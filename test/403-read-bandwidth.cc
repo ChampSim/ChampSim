@@ -16,7 +16,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
     CACHE uut{"403-uut-"+std::to_string(size)+"r", 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut}, mock_ul{&uut};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &warmup_ul, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
@@ -89,7 +89,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     to_rq_MRP warmup_ul{&uut};
     to_pq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &warmup_ul, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
@@ -163,7 +163,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
     to_rq_MRP warmup_ul{&uut};
     to_wq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &warmup_ul, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();

@@ -63,7 +63,7 @@ SCENARIO("A prefetch can be issued") {
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + 1);
         }
 
         THEN("The number of useful prefetches is incremented") {

@@ -15,7 +15,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
     CACHE uut{"404-uut-"+std::to_string(size)+"m", 1, 1, 8, 32, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
@@ -63,7 +63,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
       auto cycle = (size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        REQUIRE(mock_ul.packets.back().return_time == 101 + fill_latency + cycle);
+        REQUIRE(mock_ul.packets.back().return_time == 100 + fill_latency + cycle);
       }
     }
   }
@@ -82,7 +82,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
     CACHE uut{"404-uut-"+std::to_string(size)+"w", 1, 1, 8, 32, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_wq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
     uut.impl_prefetcher_initialize();
