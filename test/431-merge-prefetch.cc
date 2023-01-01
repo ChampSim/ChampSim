@@ -38,8 +38,7 @@ struct merge_testbed
   explicit merge_testbed(uint8_t type)
   {
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;

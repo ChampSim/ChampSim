@@ -26,10 +26,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     std::array<champsim::operable*, 5> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper}};
 
     // Initialize the prefetching and replacement
-    upper.impl_prefetcher_initialize();
-    lower.impl_prefetcher_initialize();
-    upper.impl_replacement_initialize();
-    lower.impl_replacement_initialize();
+    upper.initialize();
+    lower.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -71,10 +69,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     std::array<champsim::operable*, 6> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    upper.impl_prefetcher_initialize();
-    lower.impl_prefetcher_initialize();
-    upper.impl_replacement_initialize();
-    lower.impl_replacement_initialize();
+    upper.initialize();
+    lower.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {

@@ -14,8 +14,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     std::array<champsim::operable*, 3> elements{{&mock_ll, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -52,8 +51,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     std::array<champsim::operable*, 3> elements{{&mock_ll, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -90,8 +88,7 @@ SCENARIO("A prefetch fill the first level") {
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ut, &uut_queues}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -149,10 +146,8 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     std::array<champsim::operable*, 7> elements{{&uul, &uut, &mock_ll, &mock_ut, &mock_ul, &uut_queues, &uul_queues}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
-    uul.impl_prefetcher_initialize();
-    uul.impl_replacement_initialize();
+    uut.initialize();
+    uul.initialize();
 
     // Turn off warmup
     uut.warmup = false;

@@ -16,8 +16,7 @@ SCENARIO("A cache evicts a block when required") {
     std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &uut_queues, &mock_ul_seed, &mock_ul_test}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;

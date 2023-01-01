@@ -26,8 +26,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     std::array<champsim::operable*, 4> elements{{&uut, &uut_queues, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -92,8 +91,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     std::array<champsim::operable*, 4> elements{{&uut, &uut_queues, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
