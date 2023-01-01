@@ -37,7 +37,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
 
       THEN("No pages are duplicated") {
         auto uniq_end = std::unique(std::begin(given_pages), std::end(given_pages));
-        REQUIRE(std::distance(std::begin(given_pages), uniq_end) == size);
+        REQUIRE((std::size_t)std::distance(std::begin(given_pages), uniq_end) == size);
       }
     }
   }
