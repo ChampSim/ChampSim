@@ -26,8 +26,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -96,8 +95,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -162,8 +160,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {

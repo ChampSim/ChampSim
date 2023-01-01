@@ -22,8 +22,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;

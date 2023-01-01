@@ -14,8 +14,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;

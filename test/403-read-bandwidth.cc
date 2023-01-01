@@ -19,8 +19,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -92,8 +91,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
@@ -166,8 +164,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;
