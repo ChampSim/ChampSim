@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <ios>
+#include <iomanip>
 #include <iostream>
 
 #include "util/bits.h"
@@ -42,7 +43,17 @@ class address_slice_impl
 
     friend std::ostream& operator<<(std::ostream& stream, const self_type &addr)
     {
-      stream << "0x" << std::hex << addr.template to<underlying_type>() << std::dec;
+      auto addr_flags = std::ios_base::hex | std::ios_base::showbase | std::ios_base::internal;
+      auto addr_mask  = std::ios_base::basefield | std::ios_base::showbase | std::ios_base::adjustfield;
+
+      auto oldflags = stream.setf(addr_flags, addr_mask);
+      auto oldfill = stream.fill('0');
+
+      stream << addr.template to<underlying_type>();
+
+      stream.setf(oldflags, addr_mask);
+      stream.fill(oldfill);
+
       return stream;
     }
 

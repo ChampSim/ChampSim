@@ -3,6 +3,9 @@
 #include "champsim.h"
 #include "address.h"
 
+#include <iomanip>
+#include <sstream>
+
 #include "util/detect.h"
 #include "champsim_constants.h"
 
@@ -221,4 +224,19 @@ TEST_CASE("The offset between two addresses is correct") {
   CHECK(champsim::offset(champsim::address{0xffff'ffff'ffff'ffff}, champsim::address{0x8000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
   CHECK(champsim::offset(champsim::address{0x0000'0000'0000'0000}, champsim::address{0x7fff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
   CHECK(champsim::offset(champsim::address{0x7fff'ffff'ffff'ffff}, champsim::address{0x0000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
+}
+
+TEST_CASE("An address prints something at all") {
+  std::ostringstream strstr;
+  champsim::address addr{0xffff'ffff};
+  strstr << addr;
+  CHECK(strstr.str().size() > 0);
+  CHECK(strstr.str() == "0xffffffff");
+}
+
+TEST_CASE("std::setw affects the width of the printed address") {
+  std::ostringstream strstr;
+  champsim::address addr{0xffff'ffff};
+  strstr << std::setw(18) << addr;
+  REQUIRE(strstr.str() == "0x00000000ffffffff");
 }
