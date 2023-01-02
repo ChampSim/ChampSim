@@ -70,6 +70,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   std::deque<PACKET> returned_translation{};
 
 public:
+  MemoryRequestConsumer* lower_level;
   MemoryRequestConsumer* lower_translate;
 
   uint32_t cpu = 0;
@@ -130,7 +131,7 @@ public:
   CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
         bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, champsim::channel& queue_set, MemoryRequestConsumer* lt, MemoryRequestConsumer* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
-      : champsim::operable(freq_scale), MemoryRequestProducer(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
+      : champsim::operable(freq_scale), lower_level(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref),
         pref_activate_mask(pref_mask), queues(queue_set), repl_type(repl), pref_type(pref)
   {

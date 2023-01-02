@@ -21,12 +21,13 @@ enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CacheBus : public MemoryRequestProducer
 {
+  MemoryRequestConsumer* lower_level;
   std::deque<PACKET> returned{};
   uint32_t cpu;
 
   friend class O3_CPU;
 public:
-  CacheBus(uint32_t cpu_idx, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu_idx) {}
+  CacheBus(uint32_t cpu_idx, MemoryRequestConsumer* ll) : lower_level(ll), cpu(cpu_idx) {}
   bool issue_read(PACKET packet);
   bool issue_write(PACKET packet);
 };

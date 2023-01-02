@@ -144,8 +144,6 @@ struct counting_MRP : public MemoryRequestProducer
 
   unsigned count = 0;
 
-  counting_MRP() : MemoryRequestProducer(nullptr) {}
-
   void operate() {
     count += std::size(returned);
     returned.clear();
@@ -155,6 +153,7 @@ struct counting_MRP : public MemoryRequestProducer
 template <typename MRC, typename Fun>
 struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 {
+  MRC* lower_level;
   std::deque<PACKET> returned{};
 
     struct result_data {
@@ -168,7 +167,7 @@ struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
     std::function<bool(PACKET, PACKET)> top_finder;
 
     queue_issue_MRP(MRC* ll, Fun func) : queue_issue_MRP(ll, func, [](PACKET x, PACKET y){ return x.address == y.address; }) {}
-    queue_issue_MRP(MRC* ll, Fun func, std::function<bool(PACKET, PACKET)> finder) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func), top_finder(finder) {}
+    queue_issue_MRP(MRC* ll, Fun func, std::function<bool(PACKET, PACKET)> finder) : champsim::operable(1), lower_level(ll), issue_func(func), top_finder(finder) {}
 
     void operate() override {
       auto finder = [&](PACKET to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
@@ -186,7 +185,7 @@ struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
       auto copy = pkt;
       copy.to_return = {&returned};
       packets.push_back({copy, current_cycle, 0});
-      return issue_func(*static_cast<MRC*>(lower_level), copy);
+      return issue_func(*lower_level, copy);
     }
 };
 

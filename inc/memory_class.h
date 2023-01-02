@@ -66,12 +66,8 @@ public:
 
 class MemoryRequestProducer
 {
-public:
-  MemoryRequestConsumer* lower_level;
-
 protected:
   MemoryRequestProducer() {}
-  explicit MemoryRequestProducer(MemoryRequestConsumer* ll) : lower_level(ll) {}
 };
 
 #endif
