@@ -14,7 +14,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
     release_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul_seed{&uut};
     to_rq_MRP mock_ul_test{&uut};

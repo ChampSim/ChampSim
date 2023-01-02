@@ -8,7 +8,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP<CACHE>, to_rq_MRP<
     constexpr uint64_t hit_latency = 10;
     do_nothing_MRC mock_translator;
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_translator, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     TestType mock_ul{&uut, [](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
 
@@ -58,7 +58,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     constexpr uint64_t hit_latency = 10;
     release_MRC mock_translator; // release_MRC used because it does not manipulate the data field
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_translator, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     TestType mock_ul{&uut, [](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
 

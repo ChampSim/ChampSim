@@ -72,7 +72,7 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F
 SCENARIO("Cache queues perform forwarding WQ to WQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
@@ -85,7 +85,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
     }
 
     WHEN("A packet is sent to the write queue") {
-      auto seed_result = issue(uut, address, issue_wq<champsim::NonTranslatingQueues>);
+      auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -96,7 +96,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the write queue") {
-        auto test_result = issue(uut, address, issue_wq<champsim::NonTranslatingQueues>);
+        auto test_result = issue(uut, address, issue_wq<champsim::channel>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -122,7 +122,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
 SCENARIO("Cache queues perform forwarding RQ to RQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // These are here to give us pointers to MRPs
     to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
@@ -138,7 +138,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
     }
 
     WHEN("A packet is sent to the read queue") {
-      auto seed_result = issue(uut, address, &ul0.returned, issue_rq<champsim::NonTranslatingQueues>);
+      auto seed_result = issue(uut, address, &ul0.returned, issue_rq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -149,7 +149,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
-        auto test_result = issue(uut, address, &ul1.returned, issue_rq<champsim::NonTranslatingQueues>);
+        auto test_result = issue(uut, address, &ul1.returned, issue_rq<champsim::channel>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -178,7 +178,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
 SCENARIO("Cache queues perform forwarding PQ to PQ") {
   GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // These are here to give us pointers to MRPs
     to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
@@ -194,7 +194,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
     }
 
     WHEN("A packet is sent to the prefetch queue") {
-      auto seed_result = issue(uut, address, &ul0.returned, issue_pq<champsim::NonTranslatingQueues>);
+      auto seed_result = issue(uut, address, &ul0.returned, issue_pq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -205,7 +205,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the prefetch queue") {
-        auto test_result = issue(uut, address, &ul1.returned, issue_pq<champsim::NonTranslatingQueues>);
+        auto test_result = issue(uut, address, &ul1.returned, issue_pq<champsim::channel>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -234,14 +234,14 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
 SCENARIO("Cache queues forward WQ to RQ") {
   GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
     WHEN("A packet is sent to the write queue") {
-      auto seed_result = issue(uut, address, issue_wq<champsim::NonTranslatingQueues>);
+      auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -253,7 +253,7 @@ SCENARIO("Cache queues forward WQ to RQ") {
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
         counting_MRP counter;
-        issue(uut, address, &counter.returned, issue_rq<champsim::NonTranslatingQueues>);
+        issue(uut, address, &counter.returned, issue_rq<champsim::channel>);
         uut.check_collision();
         counter.operate();
 
@@ -274,14 +274,14 @@ SCENARIO("Cache queues forward WQ to RQ") {
 SCENARIO("Cache queues forward WQ to PQ") {
   GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // Turn off warmup
     uut.warmup = false;
     uut.begin_phase();
 
     WHEN("A packet is sent to the write queue") {
-      auto seed_result = issue(uut, address, issue_wq<champsim::NonTranslatingQueues>);
+      auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -293,7 +293,7 @@ SCENARIO("Cache queues forward WQ to PQ") {
 
       WHEN("A packet with the same address is sent to the prefetch queue") {
         counting_MRP counter;
-        issue(uut, address, &counter.returned, issue_pq<champsim::NonTranslatingQueues>);
+        issue(uut, address, &counter.returned, issue_pq<champsim::channel>);
         uut.check_collision();
         counter.operate();
 
@@ -315,7 +315,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
   GIVEN("A read queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
     do_nothing_MRC mock_ll{2};
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
@@ -340,7 +340,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
 SCENARIO("Non-translating cache queues forward PQ to PQ with different fill levels") {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::NonTranslatingQueues uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     // These are just here to give us pointers to MemoryRequestProducers
     to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};

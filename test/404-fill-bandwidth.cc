@@ -11,7 +11,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
   GIVEN("An empty cache") {
     release_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"404-uut-"+std::to_string(size)+"m", 1, 1, 8, 32, hit_latency, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
@@ -77,7 +77,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
 
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll{20};
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"404-uut-"+std::to_string(size)+"w", 1, 1, 8, 32, hit_latency, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_wq_MRP mock_ul{&uut};
 

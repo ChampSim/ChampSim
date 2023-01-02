@@ -45,7 +45,7 @@ bool do_collision_for_return(Iter begin, Iter end, PACKET& packet, unsigned sham
   });
 }
 
-void champsim::NonTranslatingQueues::check_collision()
+void champsim::channel::check_collision()
 {
   auto write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
   auto read_shamt = OFFSET_BITS;
@@ -91,7 +91,7 @@ void champsim::NonTranslatingQueues::check_collision()
 }
 
 template <typename R>
-bool champsim::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet)
+bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const PACKET& packet)
 {
   assert(packet.address != 0);
 
@@ -117,7 +117,7 @@ bool champsim::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_si
   return true;
 }
 
-bool champsim::NonTranslatingQueues::add_rq(const PACKET& packet)
+bool champsim::channel::add_rq(const PACKET& packet)
 {
   sim_stats.back().RQ_ACCESS++;
 
@@ -131,7 +131,7 @@ bool champsim::NonTranslatingQueues::add_rq(const PACKET& packet)
   return result;
 }
 
-bool champsim::NonTranslatingQueues::add_wq(const PACKET& packet)
+bool champsim::channel::add_wq(const PACKET& packet)
 {
   sim_stats.back().WQ_ACCESS++;
 
@@ -145,7 +145,7 @@ bool champsim::NonTranslatingQueues::add_wq(const PACKET& packet)
   return result;
 }
 
-bool champsim::NonTranslatingQueues::add_pq(const PACKET& packet)
+bool champsim::channel::add_pq(const PACKET& packet)
 {
   sim_stats.back().PQ_ACCESS++;
 
@@ -159,7 +159,7 @@ bool champsim::NonTranslatingQueues::add_pq(const PACKET& packet)
   return result;
 }
 
-bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
+bool champsim::channel::add_ptwq(const PACKET& packet)
 {
   sim_stats.back().PTWQ_ACCESS++;
 
@@ -173,13 +173,13 @@ bool champsim::NonTranslatingQueues::add_ptwq(const PACKET& packet)
   return result;
 }
 
-void champsim::NonTranslatingQueues::begin_phase()
+void champsim::channel::begin_phase()
 {
   roi_stats.emplace_back();
   sim_stats.emplace_back();
 }
 
-void champsim::NonTranslatingQueues::end_phase(unsigned)
+void champsim::channel::end_phase(unsigned)
 {
   roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
   roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;

@@ -30,7 +30,7 @@ struct cache_queue_stats {
   uint64_t PTWQ_TO_CACHE = 0;
 };
 
-struct NonTranslatingQueues : public operable {
+struct channel : public operable {
   std::deque<PACKET> RQ, PQ, WQ, PTWQ;
   const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE, PTWQ_SIZE;
   const unsigned OFFSET_BITS;
@@ -40,7 +40,7 @@ struct NonTranslatingQueues : public operable {
 
   std::vector<stats_type> sim_stats, roi_stats;
 
-  NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, unsigned offset_bits, bool match_offset)
+  channel(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, unsigned offset_bits, bool match_offset)
       : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
   {
   }

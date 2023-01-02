@@ -18,8 +18,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    champsim::NonTranslatingQueues upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, nullptr, &lower, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
@@ -60,8 +60,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    champsim::NonTranslatingQueues upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, nullptr, &lower, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&upper};
