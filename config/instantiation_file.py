@@ -11,7 +11,7 @@ pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {
 vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, nullptr, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};'
-queue_fmtstr = 'champsim::channel {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
+queue_fmtstr = 'champsim::channel {name}_queues{{{rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
@@ -50,18 +50,15 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '}};'
 
     yield 'std::vector<std::reference_wrapper<CACHE>> caches {{'
-    yield ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem)
+    yield ', '.join('{name}'.format(**elem) for elem in caches)
     yield '}};'
 
     yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptws {{'
-    yield ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' in elem)
+    yield ', '.join('{name}'.format(**elem) for elem in ptws)
     yield '}};'
 
     yield 'std::vector<std::reference_wrapper<champsim::operable>> operables {{'
-    yield ', '.join('{name}'.format(**elem) for elem in cores) + ','
-    yield ', '.join('{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem) + ','
-    yield ', '.join('{name}, {name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem) + ','
-    yield '{name}'.format(**pmem)
+    yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
     yield '}};'
     yield ''
 

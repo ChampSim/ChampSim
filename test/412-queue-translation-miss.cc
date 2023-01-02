@@ -9,11 +9,11 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP<CACHE>, to_
     constexpr uint64_t fill_latency = 3;
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"412a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_translator, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     TestType mock_ul{&uut, [](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
 
-    std::array<champsim::operable*, 5> elements{{&uut, &uut_queues, &mock_ll, &mock_ul, &mock_translator}};
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
     for (auto elem : elements) {
       elem->initialize();

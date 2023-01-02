@@ -4,6 +4,11 @@
 #include "instruction.h"
 #include "util.h"
 
+champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, unsigned offset_bits, bool match_offset)
+      : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
+  {
+  }
+
 template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, PACKET& packet, unsigned shamt, F&& func)
 {
@@ -171,29 +176,4 @@ bool champsim::channel::add_ptwq(const PACKET& packet)
     sim_stats.back().PTWQ_FULL++;
 
   return result;
-}
-
-void champsim::channel::begin_phase()
-{
-  roi_stats.emplace_back();
-  sim_stats.emplace_back();
-}
-
-void champsim::channel::end_phase(unsigned)
-{
-  roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
-  roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
-  roi_stats.back().RQ_FULL = sim_stats.back().RQ_FULL;
-  roi_stats.back().RQ_TO_CACHE = sim_stats.back().RQ_TO_CACHE;
-
-  roi_stats.back().PQ_ACCESS = sim_stats.back().PQ_ACCESS;
-  roi_stats.back().PQ_MERGED = sim_stats.back().PQ_MERGED;
-  roi_stats.back().PQ_FULL = sim_stats.back().PQ_FULL;
-  roi_stats.back().PQ_TO_CACHE = sim_stats.back().PQ_TO_CACHE;
-
-  roi_stats.back().WQ_ACCESS = sim_stats.back().WQ_ACCESS;
-  roi_stats.back().WQ_MERGED = sim_stats.back().WQ_MERGED;
-  roi_stats.back().WQ_FULL = sim_stats.back().WQ_FULL;
-  roi_stats.back().WQ_TO_CACHE = sim_stats.back().WQ_TO_CACHE;
-  roi_stats.back().WQ_FORWARD = sim_stats.back().WQ_FORWARD;
 }

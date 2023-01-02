@@ -9,13 +9,13 @@ struct merge_testbed
   constexpr static uint64_t hit_latency = 5;
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
-  champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+  champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
   CACHE uut{"431-uut", 1, 1, 8, 32, hit_latency, 1, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
   to_rq_MRP<CACHE> seed_ul{&uut};
   to_rq_MRP<CACHE> test_ul{&uut};
   uint32_t pkt_id = 0;
 
-  std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &seed_ul, &test_ul}};
+  std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &seed_ul, &test_ul}};
 
   template <typename MRP>
   void issue_type(MRP& ul, uint8_t type, uint64_t delay = hit_latency+1)
@@ -37,14 +37,11 @@ struct merge_testbed
 
   explicit merge_testbed(uint8_t type)
   {
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     issue_type(seed_ul, type);
   }

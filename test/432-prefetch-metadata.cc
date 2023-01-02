@@ -18,19 +18,15 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::channel lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    champsim::channel upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel lower_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel upper_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, nullptr, &lower, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &lower, &upper}};
 
-    // Initialize the prefetching and replacement
-    upper.initialize();
-    lower.initialize();
-
-    // Turn off warmup
     for (auto elem : elements) {
+      elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
     }
@@ -60,20 +56,16 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::channel lower_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    champsim::channel upper_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel lower_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel upper_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, nullptr, &lower, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&upper};
 
-    std::array<champsim::operable*, 6> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper, &mock_ul}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    upper.initialize();
-    lower.initialize();
-
-    // Turn off warmup
     for (auto elem : elements) {
+      elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
     }

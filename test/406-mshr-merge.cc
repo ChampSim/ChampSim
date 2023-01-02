@@ -14,21 +14,18 @@ SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
     release_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul_seed{&uut};
     to_rq_MRP mock_ul_test{&uut};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Run the uut for a few cycles
     for (auto i = 0; i < 10; ++i)

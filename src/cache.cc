@@ -564,6 +564,9 @@ void CACHE::begin_phase()
 
   roi_stats.back().name = NAME;
   sim_stats.back().name = NAME;
+
+  queues.roi_stats.emplace_back();
+  queues.sim_stats.emplace_back();
 }
 
 void CACHE::end_phase(unsigned finished_cpu)
@@ -580,6 +583,22 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.back().pf_fill = sim_stats.back().pf_fill;
 
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
+
+  queues.roi_stats.back().RQ_ACCESS = queues.sim_stats.back().RQ_ACCESS;
+  queues.roi_stats.back().RQ_MERGED = queues.sim_stats.back().RQ_MERGED;
+  queues.roi_stats.back().RQ_FULL = queues.sim_stats.back().RQ_FULL;
+  queues.roi_stats.back().RQ_TO_CACHE = queues.sim_stats.back().RQ_TO_CACHE;
+
+  queues.roi_stats.back().PQ_ACCESS = queues.sim_stats.back().PQ_ACCESS;
+  queues.roi_stats.back().PQ_MERGED = queues.sim_stats.back().PQ_MERGED;
+  queues.roi_stats.back().PQ_FULL = queues.sim_stats.back().PQ_FULL;
+  queues.roi_stats.back().PQ_TO_CACHE = queues.sim_stats.back().PQ_TO_CACHE;
+
+  queues.roi_stats.back().WQ_ACCESS = queues.sim_stats.back().WQ_ACCESS;
+  queues.roi_stats.back().WQ_MERGED = queues.sim_stats.back().WQ_MERGED;
+  queues.roi_stats.back().WQ_FULL = queues.sim_stats.back().WQ_FULL;
+  queues.roi_stats.back().WQ_TO_CACHE = queues.sim_stats.back().WQ_TO_CACHE;
+  queues.roi_stats.back().WQ_FORWARD = queues.sim_stats.back().WQ_FORWARD;
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }

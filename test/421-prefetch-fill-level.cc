@@ -8,19 +8,16 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"421a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 3> elements{{&mock_ll, &uut_queues, &uut}};
+    std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
@@ -45,19 +42,16 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"421b-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 3> elements{{&mock_ll, &uut_queues, &uut}};
+    std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);
@@ -81,20 +75,17 @@ SCENARIO("A prefetch fill the first level") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"421c-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ut{&uut};
 
-    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ut, &uut_queues}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
@@ -134,8 +125,8 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
 
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    champsim::channel uul_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uul_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
     CACHE uul{"421d-uul", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uul_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     CACHE uut{"421d-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &uul, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
@@ -143,22 +134,13 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     to_rq_MRP mock_ul{&uul};
     to_rq_MRP mock_ut{&uut};
 
-    std::array<champsim::operable*, 7> elements{{&uul, &uut, &mock_ll, &mock_ut, &mock_ul, &uut_queues, &uul_queues}};
+    std::array<champsim::operable*, 5> elements{{&uul, &uut, &mock_ll, &mock_ut, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-    uul.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
-
-    uul.warmup = false;
-    uul_queues.warmup = false;
-    uul.begin_phase();
-    uul_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);

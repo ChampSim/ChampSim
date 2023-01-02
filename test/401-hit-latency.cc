@@ -17,11 +17,11 @@ SCENARIO("A cache returns a hit after the specified latency") {
     constexpr uint64_t hit_latency = 7;
     constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     CACHE uut{"401-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, mask, uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
-    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &uut_queues}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
     for (auto elem : elements) {
