@@ -33,7 +33,6 @@ struct cache_queue_stats {
 struct NonTranslatingQueues : public operable {
   std::deque<PACKET> RQ, PQ, WQ, PTWQ;
   const std::size_t RQ_SIZE, PQ_SIZE, WQ_SIZE, PTWQ_SIZE;
-  const uint64_t HIT_LATENCY;
   const unsigned OFFSET_BITS;
   const bool match_offset_bits;
 
@@ -41,10 +40,8 @@ struct NonTranslatingQueues : public operable {
 
   std::vector<stats_type> sim_stats, roi_stats;
 
-  NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency,
-                       unsigned offset_bits, bool match_offset)
-      : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), HIT_LATENCY(hit_latency),
-        OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
+  NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, unsigned offset_bits, bool match_offset)
+      : champsim::operable(freq_scale), RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
   {
   }
   void operate() override {};
@@ -61,23 +58,6 @@ struct NonTranslatingQueues : public operable {
   void end_phase(unsigned cpu) override;
 
   void check_collision();
-};
-
-class TranslatingQueues : public NonTranslatingQueues, public MemoryRequestProducer {
-  std::deque<PACKET> returned{};
-
-  public:
-  void operate() override final;
-
-  void issue_translation();
-  void detect_misses();
-
-  template <typename R>
-  void do_detect_misses(R& queue);
-
-  void finish_translation(const PACKET& packet);
-
-  using NonTranslatingQueues::NonTranslatingQueues;
 };
 }
 

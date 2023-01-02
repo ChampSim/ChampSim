@@ -17,22 +17,18 @@ SCENARIO("A cache returns a hit after the specified latency") {
     constexpr uint64_t hit_latency = 7;
     constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"401-uut-"+std::string(str), 1, 1, 8, 32, 3, 1, 1, 0, false, false, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"401-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, mask, uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &uut_queues}};
 
     // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     THEN("The number of hits starts at zero") {
       REQUIRE(uut.sim_stats.back().hits.at(type).at(0) == 0);
@@ -47,7 +43,6 @@ SCENARIO("A cache returns a hit after the specified latency") {
       seed.instr_id = id++;
       seed.cpu = 0;
       seed.type = type;
-      seed.to_return = {&mock_ul.returned};
 
       // Issue it to the uut
       auto seed_result = mock_ul.issue(seed);
@@ -74,6 +69,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
+          REQUIRE(std::size(mock_ul.packets) == 2);
           REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
         }
 

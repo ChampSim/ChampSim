@@ -10,8 +10,8 @@ cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {{champsim::lg
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});'
 vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
 
-cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};'
-queue_fmtstr = 'champsim::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};'
+cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, nullptr, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};'
+queue_fmtstr = 'champsim::NonTranslatingQueues {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     memory_system = {c['name']:c for c in itertools.chain(caches, ptws)}
@@ -32,9 +32,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if 'pscl5_set' in elem:
             yield ptw_fmtstr.format(**elem)
         else:
-            yield queue_fmtstr.format(
-                _type = 'TranslatingQueues' if elem.get('_needs_translate') else 'NonTranslatingQueues',
-                **elem)
+            yield queue_fmtstr.format(**elem)
             yield cache_fmtstr.format(
                 prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
                 repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']),\
@@ -68,6 +66,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
 
     yield 'void init_structures() {'
-    yield from ('  {name}_queues.lower_level = &{lower_translate};'.format(**elem) for elem in memory_system if elem.get('_needs_translate'))
+    yield from ('  {}.lower_translate = {};'.format(elem['name'], ('&'+elem['lower_translate']) if 'lower_translate' in elem else 'nullptr') for elem in memory_system if elem.get('_needs_translate'))
     yield '}'
 

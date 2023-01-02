@@ -268,41 +268,46 @@ void CACHE::operate()
 {
   queues.check_collision();
 
+  // Finish returns
   std::for_each(std::cbegin(returned_data), std::cend(returned_data), [this](const auto& pkt){ this->finish_packet(pkt); });
   returned_data.clear();
 
+  // Finish translations
   std::for_each(std::cbegin(returned_translation), std::cend(returned_translation), [this](const auto& pkt){ this->finish_translation(pkt); });
   returned_translation.clear();
 
-  auto tag_bw = MAX_TAG;
+  // Perform fills
   auto fill_bw = MAX_FILL;
-
-  auto do_fill = [cycle = current_cycle, this](const auto& x) {
-    return x.event_cycle <= cycle && this->handle_fill(x);
-  };
-
-  auto operate_readlike = [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && pkt.is_translated && (this->try_hit(pkt) || this->handle_miss(pkt));
-  };
-
-  auto operate_writelike = [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && pkt.is_translated && (this->try_hit(pkt) || this->handle_write(pkt));
-  };
-
-  for (auto q : {std::ref(MSHR), std::ref(inflight_writes)})
-    fill_bw -= operate_queue(q.get(), fill_bw, do_fill);
-
-  if (match_offset_bits) {
-    // Treat writes (that is, stores) like reads
-    for (auto q : {std::ref(queues.WQ), std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
-      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
-  } else {
-    // Treat writes (that is, writebacks) like fills
-    tag_bw -= operate_queue(queues.WQ, tag_bw, operate_writelike);
-
-    for (auto q : {std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)})
-      tag_bw -= operate_queue(q.get(), tag_bw, operate_readlike);
+  for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
+    fill_bw -= operate_queue(q.get(), fill_bw, [cycle = current_cycle, this](const auto& x) {
+        return x.event_cycle <= cycle && this->handle_fill(x);
+    });
   }
+
+  // Initiate tag checks
+  auto tag_bw = MAX_TAG;
+  for (auto q : {std::ref(queues.WQ), std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)}) {
+    auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
+    tag_bw -= std::distance(begin, end);
+    auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
+    q.get().erase(begin, end);
+    std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){ entry.event_cycle = cycle; });
+  }
+
+  // Issue translations
+  issue_translation();
+
+  // Detect translations that have missed
+  detect_misses();
+
+  // Perform tag checks
+  operate_queue(inflight_tag_check, MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
+    return pkt.event_cycle <= cycle && pkt.is_translated && (this->try_hit(pkt) ||
+          ((pkt.type == WRITE && !this->match_offset_bits)
+           ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
+           : this->handle_miss(pkt) // Treat writes (that is, stores) like reads
+       ));
+  });
 
   impl_prefetcher_cycle_operate();
 }
@@ -466,15 +471,55 @@ void CACHE::finish_translation(const PACKET& packet)
   }
 
   // Find all packets that match the page of the returned packet
-  for (auto& entry : inflight_translation) {
+  for (auto& entry : inflight_tag_check) {
     if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       entry.address = champsim::splice_bits(packet.data, entry.v_address, LOG2_PAGE_SIZE); // translated address
-      //entry.event_cycle = std::min(entry.event_cycle, current_cycle + (warmup ? 0 : HIT_LATENCY));
       entry.is_translated = true; // This entry is now translated
     }
   }
+
+  auto stash_it = std::remove_if(std::begin(translation_stash), std::end(translation_stash), [cycle=current_cycle, page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) == page_num; });
+  auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
+  translation_stash.erase(stash_it, std::end(translation_stash));
+  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data](auto& entry) {
+      entry.address = champsim::splice_bits(addr, entry.v_address, LOG2_PAGE_SIZE); // translated address
+      entry.event_cycle = cycle;
+      entry.is_translated = true; // This entry is now translated
+    });
 }
 
+void CACHE::issue_translation()
+{
+  std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& q_entry) {
+    if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
+      auto fwd_pkt = q_entry;
+      fwd_pkt.type = LOAD;
+      fwd_pkt.is_translated = true;
+      fwd_pkt.to_return = {&this->returned_translation};
+      auto success = this->lower_translate->add_rq(fwd_pkt);
+      if (success) {
+        if constexpr (champsim::debug_print) {
+          std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
+          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
+          std::cout << " type: " << +q_entry.type << std::endl;
+        }
+
+        q_entry.translate_issued = true;
+        q_entry.address = 0;
+      }
+    }
+  });
+}
+
+void CACHE::detect_misses()
+{
+  // Find entries that would be ready except that they have not finished translation
+  auto q_it = std::remove_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), [cycle=current_cycle](auto x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+
+  // Move them to the stash
+  translation_stash.insert(std::cend(translation_stash), q_it, std::end(inflight_tag_check));
+  inflight_tag_check.erase(q_it, std::end(inflight_tag_check));
+}
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {

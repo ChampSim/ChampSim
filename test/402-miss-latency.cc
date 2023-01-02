@@ -9,7 +9,6 @@ SCENARIO("A cache returns a miss after the specified latency") {
         std::pair{LOAD, "load"sv},
         std::pair{RFO, "RFO"sv},
         std::pair{PREFETCH, "prefetch"sv},
-        std::pair{WRITE, "write"sv},
         std::pair{TRANSLATION, "translation"sv}
       }));
 
@@ -19,8 +18,8 @@ SCENARIO("A cache returns a miss after the specified latency") {
     constexpr uint64_t fill_latency = 2;
     constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, mask, uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&uut, &uut_queues, &mock_ll, &mock_ul}};
@@ -84,8 +83,8 @@ SCENARIO("A cache completes a fill after the specified latency") {
     constexpr uint64_t fill_latency = 2;
     constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, fill_latency, 1, 1, 0, false, match_offset, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, match_offset, false, mask, uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_wq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&uut, &uut_queues, &mock_ll, &mock_ul}};

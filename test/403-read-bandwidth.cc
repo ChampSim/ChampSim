@@ -12,8 +12,8 @@ SCENARIO("The read queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"r", 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"403-uut-"+std::to_string(size)+"r", 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut}, mock_ul{&uut};
 
     std::array<champsim::operable*, 5> elements{{&uut, &mock_ll, &warmup_ul, &mock_ul, &uut_queues}};
@@ -83,8 +83,8 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"p", 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"403-uut-"+std::to_string(size)+"p", 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut};
     to_pq_MRP mock_ul{&uut};
 
@@ -156,8 +156,8 @@ SCENARIO("The write queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements where the lowest level is " + std::to_string(lowest)) {
     do_nothing_MRC mock_ll;
-    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"w-"+std::to_string(lowest), 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, lowest, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    champsim::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    CACHE uut{"403-uut-"+std::to_string(size)+"w-"+std::to_string(lowest), 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, lowest, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP warmup_ul{&uut};
     to_wq_MRP mock_ul{&uut};
 

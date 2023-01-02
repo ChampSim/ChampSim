@@ -1,4 +1,6 @@
 #include <deque>
+#include <exception>
+#include <functional>
 #include <limits>
 
 #include "cache.h"
@@ -163,14 +165,18 @@ struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
     std::deque<result_data> packets;
 
     Fun issue_func;
+    std::function<bool(PACKET, PACKET)> top_finder;
 
-    queue_issue_MRP(MRC* ll, Fun func) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func) {}
+    queue_issue_MRP(MRC* ll, Fun func) : queue_issue_MRP(ll, func, [](PACKET x, PACKET y){ return x.address == y.address; }) {}
+    queue_issue_MRP(MRC* ll, Fun func, std::function<bool(PACKET, PACKET)> finder) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func), top_finder(finder) {}
 
     void operate() override {
+      auto finder = [&](PACKET to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
+
       for (auto pkt : returned) {
-        auto it = std::find_if(std::rbegin(packets), std::rend(packets), [addr=pkt.address](auto x) {
-            return x.pkt.address == addr;
-            });
+        auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
+        if (it == std::rend(packets))
+          throw std::invalid_argument{"Packet returned which was not sent"};
         it->return_time = current_cycle;
       }
       returned.clear();
@@ -193,6 +199,7 @@ class to_wq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq)
   using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>;
   public:
     explicit to_wq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_wq)) {}
+    explicit to_wq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_wq), finder) {}
 };
 
 /*
@@ -204,6 +211,7 @@ class to_rq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq)
   using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>;
   public:
     explicit to_rq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_rq)) {}
+    explicit to_rq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_rq), finder) {}
 };
 
 /*
@@ -215,5 +223,6 @@ class to_pq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq)
   using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>;
   public:
     explicit to_pq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_pq)) {}
+    explicit to_pq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_pq), finder) {}
 };
 
