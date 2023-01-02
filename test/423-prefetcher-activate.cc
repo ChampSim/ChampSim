@@ -22,8 +22,7 @@ SCENARIO("A prefetch does not trigger itself") {
     std::array<champsim::operable*, 3> elements{{&mock_ll, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -68,8 +67,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -121,8 +119,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {

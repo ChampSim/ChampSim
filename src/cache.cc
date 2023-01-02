@@ -19,8 +19,8 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
   auto [set_begin, set_end] = get_set_span(fill_mshr.address);
   auto way = std::find_if_not(set_begin, set_end, [](auto x) { return x.valid; });
   if (way == set_end)
-    way = std::next(set_begin, impl_replacement_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
-                                                            fill_mshr.address, fill_mshr.type));
+    way = std::next(set_begin, impl_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
+                                                fill_mshr.address, fill_mshr.type));
   assert(set_begin <= way);
   assert(way <= set_end);
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
@@ -66,7 +66,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
       metadata_thru =
           impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
-      impl_replacement_update_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type,
+      impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type,
                                     false);
 
       *way = BLOCK(fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.prefetch_from_this, fill_mshr.type == WRITE, metadata_thru);
@@ -76,7 +76,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
     assert(fill_mshr.type != WRITE);
 
     metadata_thru = impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, champsim::address{}, metadata_thru);
-    impl_replacement_update_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, champsim::address{}, fill_mshr.type, false);
+    impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, champsim::address{}, fill_mshr.type, false);
   }
 
   if (success) {
@@ -124,7 +124,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
 
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
-    impl_replacement_update_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, champsim::address{}, handle_pkt.type, true);
+    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, champsim::address{}, handle_pkt.type, true);
 
     auto copy{handle_pkt};
     copy.data = way->data;
@@ -471,7 +471,7 @@ std::size_t CACHE::get_size(uint8_t queue_type, champsim::address) const
 void CACHE::initialize()
 {
   impl_prefetcher_initialize();
-  impl_replacement_initialize();
+  impl_initialize_replacement();
 }
 
 void CACHE::begin_phase()
