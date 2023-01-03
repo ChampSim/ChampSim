@@ -15,14 +15,16 @@ uint64_t cycles(double time, int io_freq)
   return result < 0 ? 0 : static_cast<uint64_t>(result);
 }
 
-MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround)
-    : champsim::operable(freq_scale), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<champsim::channel*>&& ul)
+    : champsim::operable(freq_scale), queues(std::move(ul)), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
       DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
 {
 }
 
 void MEMORY_CONTROLLER::operate()
 {
+  initiate_requests();
+
   for (auto& channel : channels) {
     if (warmup) {
       for (auto& entry : channel.RQ) {
@@ -217,6 +219,25 @@ void DRAM_CHANNEL::check_collision()
   }
 }
 
+void MEMORY_CONTROLLER::initiate_requests()
+{
+  // Initiate read requests
+  for (auto ul : queues) {
+    for (auto q : {std::ref(ul->PTWQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
+      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
+          return pkt.event_cycle <= cycle && this->add_rq(pkt);
+          });
+      q.get().erase(begin, end);
+    }
+
+    // Initiate write requests
+    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
+        return pkt.event_cycle <= cycle && this->add_wq(pkt);
+        });
+    ul->WQ.erase(wq_begin, wq_end);
+  }
+}
+
 bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
@@ -249,8 +270,6 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
   channel.sim_stats.back().WQ_FULL++;
   return false;
 }
-
-bool MEMORY_CONTROLLER::add_pq(const PACKET& packet) { return add_rq(packet); }
 
 /*
  * | row address | rank index | column address | bank index | channel | block

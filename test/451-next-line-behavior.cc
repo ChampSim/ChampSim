@@ -6,9 +6,8 @@
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"451-uut", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDnext_line, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{"451-uut", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDnext_line, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 

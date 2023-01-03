@@ -5,6 +5,7 @@
 #include <deque>
 #include <string>
 
+#include "channel.h"
 #include "memory_class.h"
 #include "operable.h"
 #include "util.h"
@@ -27,7 +28,8 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 
   std::deque<PACKET> returned{};
 
-  MemoryRequestConsumer* lower_level;
+  std::vector<champsim::channel*> upper_levels;
+  champsim::channel* lower_level;
 
 public:
   const std::string NAME;
@@ -35,7 +37,6 @@ public:
   const long int MAX_READ, MAX_FILL;
   const uint64_t HIT_LATENCY;
 
-  std::deque<PACKET> RQ;
   std::deque<PACKET> MSHR;
 
   uint64_t total_miss_latency = 0;
@@ -46,13 +47,7 @@ public:
   const uint64_t CR3_addr;
 
   PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
-
-  // functions
-  bool add_rq(const PACKET& packet) override final;
-  bool add_wq(const PACKET&) override final { assert(0); }
-  bool add_pq(const PACKET&) override final { assert(0); }
-  bool add_ptwq(const PACKET&) override final { assert(0); }
+                  uint32_t v12, uint32_t v13, uint64_t latency, std::vector<champsim::channel*>&& ul, champsim::channel* ll, VirtualMemory& _vmem);
 
   void finish_packet(const PACKET& packet);
   void operate() override final;

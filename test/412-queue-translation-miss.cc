@@ -3,15 +3,14 @@
 #include "channel.h"
 #include "champsim_constants.h"
 
-TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP<CACHE>, to_rq_MRP<CACHE>, to_pq_MRP<CACHE>) {
+TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache with a translator") {
     constexpr uint64_t hit_latency = 10;
     constexpr uint64_t fill_latency = 3;
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"412a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_translator, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    TestType mock_ul{&uut, [](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    CACHE uut{"412a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 

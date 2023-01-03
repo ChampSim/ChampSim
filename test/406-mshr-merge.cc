@@ -14,10 +14,9 @@ SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
     release_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul_seed{&uut};
-    to_rq_MRP mock_ul_test{&uut};
+    to_rq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
@@ -44,7 +43,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
       auto test_a_result = mock_ul_seed.issue(test_a);
 
-      for (uint64_t i = 0; i < hit_latency+1; ++i)
+      for (uint64_t i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 

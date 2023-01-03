@@ -19,8 +19,6 @@
 #include "util.h"
 #include "vmem.h"
 
-void init_structures();
-
 #include "core_inst.inc"
 
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
@@ -128,8 +126,6 @@ int main(int argc, char** argv)
   std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
   std::cout << "Page size: " << PAGE_SIZE << std::endl;
   std::cout << std::endl;
-
-  init_structures();
 
   champsim_main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
 

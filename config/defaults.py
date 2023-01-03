@@ -143,10 +143,10 @@ default_ptw = {
         'pscl3_way' : 4,
         'pscl2_set' : 4,
         'pscl2_way': 8,
-        'ptw_rq_size': 16,
-        'ptw_mshr_size': 5,
-        'ptw_max_read': 2,
-        'ptw_max_write': 2
+        'rq_size': 16,
+        'mshr_size': 5,
+        'max_read': 2,
+        'max_write': 2
         }
 
 # Defaults for first-level caches

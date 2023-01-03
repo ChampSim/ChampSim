@@ -7,9 +7,8 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   auto stride = GENERATE(as<int64_t>{}, -4, -3, -2, -1, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"452-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDip_stride, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{"452-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDip_stride, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 

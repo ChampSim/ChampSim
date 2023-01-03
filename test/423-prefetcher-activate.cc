@@ -16,8 +16,7 @@ SCENARIO("A prefetch does not trigger itself") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"423-uut-0", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+    CACHE uut{"423-uut-0", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -57,9 +56,8 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"423-uut-1", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{"423-uut-1", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -106,9 +104,8 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
     constexpr uint64_t fill_latency = 2;
     auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)) & ~(1u<<type);
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"423-uut-2", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, mask, uut_queues, nullptr, &mock_ll, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{"423-uut-2", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, mask, {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 

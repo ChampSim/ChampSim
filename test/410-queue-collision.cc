@@ -123,7 +123,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
     uut.sim_stats.emplace_back();
 
     // These are here to give us pointers to MRPs
-    to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
+    to_rq_MRP ul0, ul1;
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.back().RQ_ACCESS == 0);
@@ -176,7 +176,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
     uut.sim_stats.emplace_back();
 
     // These are here to give us pointers to MRPs
-    to_rq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
+    to_rq_MRP ul0, ul1;
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.back().PQ_ACCESS == 0);
@@ -304,7 +304,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     uut.sim_stats.emplace_back();
 
     // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
+    to_wq_MRP ul0, ul1;
 
     issue(uut, address, &ul0.returned, issue_rq<decltype(uut)>);
 
@@ -326,7 +326,7 @@ SCENARIO("Non-translating cache queues forward PQ to PQ with different fill leve
     uut.sim_stats.emplace_back();
 
     // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP<CACHE> ul0{nullptr}, ul1{nullptr};
+    to_wq_MRP ul0, ul1;
 
     issue(uut, address, &ul0.returned, issue_pq_skip<decltype(uut)>);
 

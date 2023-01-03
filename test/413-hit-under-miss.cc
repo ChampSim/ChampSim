@@ -4,15 +4,14 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being issued", "", to_wq_MRP<CACHE>, to_rq_MRP<CACHE>, to_pq_MRP<CACHE>) {
+TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being issued", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache") {
     constexpr static uint64_t hit_latency = 5;
     constexpr static uint64_t address_that_will_hit = 0xcafebabe;
     filter_MRC mock_translator{address_that_will_hit};
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"413-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_translator, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    TestType mock_ul{&uut, [](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    CACHE uut{"413-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_translator, &mock_ul}};
 

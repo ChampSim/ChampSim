@@ -16,19 +16,32 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
 
-  void add(PACKET pkt) {
-    pkt.event_cycle = current_cycle + latency;
-    pkt.data = ++ret_data;
-    addresses.push_back(pkt.address);
-    packets.push_back(pkt);
-  }
-
   public:
+    champsim::channel queues{};
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {}
+    do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {
+      queues.sim_stats.emplace_back();
+    }
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
+      auto add_pkt = [&](PACKET pkt) {
+        pkt.event_cycle = current_cycle + latency;
+        pkt.data = ++ret_data;
+        addresses.push_back(pkt.address);
+        packets.push_back(pkt);
+      };
+
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
+
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+      queues.PTWQ.clear();
+
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
       packets.erase(std::begin(packets), end);
@@ -39,11 +52,6 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
       }
       ready_packets.clear();
     }
-
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -61,19 +69,32 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
   const uint64_t latency = 0;
   std::size_t mpacket_count = 0;
 
-  void add(PACKET pkt) {
-    if (pkt.address == ret_addr) {
-      pkt.event_cycle = current_cycle + latency;
-      packets.push_back(pkt);
-      ++mpacket_count;
-    }
-  }
-
   public:
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
+    champsim::channel queues{};
+    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {
+      queues.sim_stats.emplace_back();
+    }
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
+      auto add_pkt = [&](PACKET pkt) {
+        if (pkt.address == ret_addr) {
+          pkt.event_cycle = current_cycle + latency;
+          packets.push_back(pkt);
+          ++mpacket_count;
+        }
+      };
+
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
+
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+      queues.PTWQ.clear();
+
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 
@@ -83,11 +104,6 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
       }
       ready_packets.clear();
     }
-
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -103,20 +119,28 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
   std::deque<PACKET> packets;
   std::size_t mpacket_count = 0;
 
-  void add(PACKET pkt) {
-      packets.push_back(pkt);
-      ++mpacket_count;
-  }
-
   public:
-    release_MRC() : MemoryRequestConsumer(), champsim::operable(1) {}
+    champsim::channel queues{};
+    release_MRC() : MemoryRequestConsumer(), champsim::operable(1) {
+      queues.sim_stats.emplace_back();
+    }
 
-    void operate() override {}
+    void operate() override {
+      auto add_pkt = [&](PACKET pkt) {
+        packets.push_back(pkt);
+        ++mpacket_count;
+      };
 
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
+
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+      queues.PTWQ.clear();
+    }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -150,78 +174,70 @@ struct counting_MRP : public MemoryRequestProducer
   }
 };
 
-template <typename MRC, typename Fun>
 struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 {
-  MRC* lower_level;
+  champsim::channel queues{};
   std::deque<PACKET> returned{};
 
-    struct result_data {
-      PACKET pkt;
-      uint64_t issue_time;
-      uint64_t return_time;
-    };
-    std::deque<result_data> packets;
+  struct result_data {
+    PACKET pkt;
+    uint64_t issue_time;
+    uint64_t return_time;
+  };
+  std::deque<result_data> packets;
 
-    Fun issue_func;
-    std::function<bool(PACKET, PACKET)> top_finder;
+  std::function<bool(PACKET, PACKET)> top_finder;
 
-    queue_issue_MRP(MRC* ll, Fun func) : queue_issue_MRP(ll, func, [](PACKET x, PACKET y){ return x.address == y.address; }) {}
-    queue_issue_MRP(MRC* ll, Fun func, std::function<bool(PACKET, PACKET)> finder) : champsim::operable(1), lower_level(ll), issue_func(func), top_finder(finder) {}
+  queue_issue_MRP() : queue_issue_MRP([](PACKET x, PACKET y){ return x.address == y.address; }) {}
+  explicit queue_issue_MRP(std::function<bool(PACKET, PACKET)> finder) : champsim::operable(1), top_finder(finder) {
+    queues.sim_stats.emplace_back();
+  }
 
-    void operate() override {
-      auto finder = [&](PACKET to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
+  void operate() override {
+    auto finder = [&](PACKET to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
-      for (auto pkt : returned) {
-        auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
-        if (it == std::rend(packets))
-          throw std::invalid_argument{"Packet returned which was not sent"};
-        it->return_time = current_cycle;
-      }
-      returned.clear();
+    for (auto pkt : returned) {
+      auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
+      if (it == std::rend(packets))
+        throw std::invalid_argument{"Packet returned which was not sent"};
+      it->return_time = current_cycle;
     }
+    returned.clear();
+  }
 
-    bool issue(const PACKET &pkt) {
-      auto copy = pkt;
-      copy.to_return = {&returned};
-      packets.push_back({copy, current_cycle, 0});
-      return issue_func(*lower_level, copy);
-    }
+  protected:
+  PACKET mark_packet(PACKET pkt)
+  {
+    pkt.to_return = {&returned};
+    packets.push_back({pkt, current_cycle, 0});
+    return pkt;
+  }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the write queue and notes when packets are returned
  */
-template <typename MRC>
-class to_wq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>
+struct to_wq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>;
-  public:
-    explicit to_wq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_wq)) {}
-    explicit to_wq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_wq), finder) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  bool issue(const PACKET &pkt) { return queues.add_wq(mark_packet(pkt)); }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-template <typename MRC>
-class to_rq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>
+struct to_rq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>;
-  public:
-    explicit to_rq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_rq)) {}
-    explicit to_rq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_rq), finder) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  bool issue(const PACKET &pkt) { return queues.add_rq(mark_packet(pkt)); }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-template<typename MRC>
-class to_pq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>
+struct to_pq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>;
-  public:
-    explicit to_pq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_pq)) {}
-    explicit to_pq_MRP(MRC* ll, std::function<bool(PACKET, PACKET)> finder) : super_type(ll, std::mem_fn(&MRC::add_pq), finder) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  bool issue(const PACKET &pkt) { return queues.add_pq(mark_packet(pkt)); }
 };
 

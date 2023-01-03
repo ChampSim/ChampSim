@@ -9,8 +9,8 @@
 #include "vmem.h"
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
-                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem)
-    : champsim::operable(freq_scale), lower_level(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
+                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, std::vector<champsim::channel*>&& ul, champsim::channel* ll, VirtualMemory& _vmem)
+    : champsim::operable(freq_scale), upper_levels(std::move(ul)), lower_level(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
       vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
 {
   auto level = std::size(pscl_dims) + 1;
@@ -119,28 +119,12 @@ void PageTableWalker::operate()
     fill_this_cycle--;
   }
 
-  auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(RQ), std::cend(RQ), MAX_READ,
-                                                 [cycle = current_cycle, this](const auto& pkt) { return pkt.event_cycle <= cycle && this->handle_read(pkt); });
-  RQ.erase(rq_begin, rq_end);
-}
-
-bool PageTableWalker::add_rq(const PACKET& packet)
-{
-  assert(packet.address != 0);
-
-  // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet.address, LOG2_PAGE_SIZE));
-  assert(found_rq == RQ.end()); // Duplicate request should not be sent.
-
-  // check occupancy
-  if (std::size(RQ) >= RQ_SIZE)
-    return false; // cannot handle this request
-
-  // if there is no duplicate, add it to RQ
-  RQ.push_back(packet);
-  RQ.back().event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
-
-  return true;
+  auto tag_bw = MAX_READ;
+  for (auto ul : upper_levels) {
+    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [this](const auto& pkt) { return this->handle_read(pkt); });
+    tag_bw -= std::distance(rq_begin, rq_end);
+    ul->RQ.erase(rq_begin, rq_end);
+  }
 }
 
 void PageTableWalker::finish_packet(const PACKET& packet)
@@ -173,8 +157,8 @@ std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
-  else if (queue_type == 1)
-    return std::size(RQ);
+  //else if (queue_type == 1)
+    //return std::size(upper_level->RQ);
   return 0;
 }
 
@@ -182,8 +166,8 @@ std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;
-  else if (queue_type == 1)
-    return RQ_SIZE;
+  //else if (queue_type == 1)
+    //return upper_level->RQ_SIZE;
   return 0;
 }
 

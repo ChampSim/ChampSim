@@ -1,14 +1,12 @@
 import itertools, operator
 import os
 
+from .util import extend_each
+
 def walk_to(source_dir, dest_dir, extensions=('.cc',)):
     for base,dirs,files in os.walk(source_dir):
         reldir = os.path.join(dest_dir, os.path.relpath(base, source_dir))
         yield reldir, [os.path.normpath(os.path.join(reldir, f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions]
-
-def extend_each(x,y):
-    merges = {k: (*x[k],*y[k]) for k in x if k in y}
-    return {**x, **y, **merges}
 
 def linejoin(elems):
     return '\\\n  '.join(elems)

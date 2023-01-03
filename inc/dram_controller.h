@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "champsim_constants.h"
+#include "channel.h"
 #include "memory_class.h"
 #include "operable.h"
 #include "util.h"
@@ -47,6 +48,8 @@ struct DRAM_CHANNEL {
 
 class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
 {
+  std::vector<champsim::channel*> queues;
+
   // Latencies
   const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
@@ -55,20 +58,19 @@ class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsume
   constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
+  void initiate_requests();
+  bool add_rq(const PACKET& pkt);
+  bool add_wq(const PACKET& pkt);
+
 public:
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround);
+  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<champsim::channel*>&& ul);
 
   void initialize() override final;
   void operate() override final;
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
-
-  bool add_rq(const PACKET& packet) override final;
-  bool add_wq(const PACKET& packet) override final;
-  bool add_pq(const PACKET& packet) override final;
-  bool add_ptwq(const PACKET&) override final { assert(0); }
 
   std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;

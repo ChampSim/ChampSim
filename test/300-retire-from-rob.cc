@@ -6,7 +6,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
@@ -25,7 +25,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
 
@@ -58,7 +58,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 2;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     std::vector test_instructions( retire_bandwidth, ooo_model_instr{0,input_instr{}} );
 
@@ -97,7 +97,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with twice as many instructions as retire bandwidth") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, retire_bandwidth, 1, 1, 1, 0, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     std::vector test_instructions( 2*retire_bandwidth, ooo_model_instr{0,input_instr{}} );
 

@@ -8,8 +8,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"421a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{"421a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -23,7 +22,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
       REQUIRE(seed_result);
 
-      for (int i = 0; i < 2; ++i) {
+      for (int i = 0; i < 10; ++i) {
         for (auto elem : elements)
           elem->_operate();
       }
@@ -42,8 +41,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"421b-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{"421b-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -57,7 +55,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
       auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);
       REQUIRE(seed_result);
 
-      for (int i = 0; i < 2; ++i) {
+      for (int i = 0; i < 10; ++i) {
         for (auto elem : elements)
           elem->_operate();
       }
@@ -75,9 +73,8 @@ SCENARIO("A prefetch fill the first level") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"421c-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ut{&uut};
+    to_rq_MRP mock_ut;
+    CACHE uut{"421c-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ut.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ut}};
 
@@ -125,14 +122,13 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
 
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
     champsim::channel uul_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
 
-    CACHE uul{"421d-uul", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uul_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    CACHE uut{"421d-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &uul, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    to_rq_MRP mock_ul;
+    to_rq_MRP mock_ut;
 
-    to_rq_MRP mock_ul{&uul};
-    to_rq_MRP mock_ut{&uut};
+    CACHE uul{"421d-uul", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul.queues, &uul_queues}}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{"421d-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ut.queues}, nullptr, &uul_queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 5> elements{{&uul, &uut, &mock_ll, &mock_ut, &mock_ul}};
 

@@ -13,6 +13,22 @@
 using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{ "LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION" };
 
+CACHE::CACHE(std::string name, double freq_scale, uint32_t sets, uint32_t ways, uint32_t mshr_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
+    long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls,
+    champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
+  : CACHE(name, freq_scale, sets, ways, mshr_size, std::numeric_limits<std::size_t>::max(), hit_lat, fill_lat, max_tag, max_fill, offset_bits, pref_load, wq_full_addr, va_pref, pref_mask, std::move(uls), lt, ll, pref, repl)
+{
+}
+
+CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
+    long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls,
+    champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
+: champsim::operable(freq_scale), upper_levels(std::move(uls)), lower_level(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8),
+  PQ_SIZE(pq_size), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill), prefetch_as_load(pref_load),
+  match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_mask), repl_type(repl), pref_type(pref)
+{
+}
+
 bool CACHE::handle_fill(const PACKET& fill_mshr)
 {
   cpu = fill_mshr.cpu;
@@ -266,7 +282,8 @@ long int operate_queue(R& queue, long int sz, F&& func)
 
 void CACHE::operate()
 {
-  queues.check_collision();
+  for (auto ul : upper_levels)
+    ul->check_collision();
 
   // Finish returns
   std::for_each(std::cbegin(returned_data), std::cend(returned_data), [this](const auto& pkt){ this->finish_packet(pkt); });
@@ -285,8 +302,14 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
+  std::vector<std::reference_wrapper<std::deque<PACKET>>> queues;
+  for (auto ul : upper_levels) {
+    queues.insert(std::cend(queues), {std::ref(ul->WQ), std::ref(ul->PTWQ), std::ref(ul->RQ), std::ref(ul->PQ)});
+  }
+  queues.push_back(std::ref(internal_PQ));
+
   auto tag_bw = MAX_TAG;
-  for (auto q : {std::ref(queues.WQ), std::ref(queues.PTWQ), std::ref(queues.RQ), std::ref(queues.PQ)}) {
+  for (auto q : queues) {
     auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
     tag_bw -= std::distance(begin, end);
     auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
@@ -354,42 +377,12 @@ uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
   return std::distance(begin, inv_way);
 }
 
-bool CACHE::add_rq(const PACKET& packet)
-{
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << access_type_names.at(packet.type)
-              << " occupancy: " << std::size(queues.RQ) << " current_cycle: " << current_cycle << std::endl;
-  }
-
-  return queues.add_rq(packet);
-}
-
-bool CACHE::add_wq(const PACKET& packet)
-{
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << access_type_names.at(packet.type)
-              << " occupancy: " << std::size(queues.WQ) << " current_cycle: " << current_cycle << std::endl;
-  }
-
-  return queues.add_wq(packet);
-}
-
-bool CACHE::add_ptwq(const PACKET& packet)
-{
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_PTWQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << access_type_names.at(packet.type)
-              << " occupancy: " << std::size(queues.PTWQ) << " current_cycle: " << current_cycle << std::endl;
-  }
-
-  return queues.add_ptwq(packet);
-}
-
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   sim_stats.back().pf_requested++;
+
+  if (std::size(internal_PQ) >= PQ_SIZE)
+    return false;
 
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
@@ -401,27 +394,15 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.is_translated = !virtual_prefetch;
 
-  auto success = this->add_pq(pf_packet);
-  if (success)
-    ++sim_stats.back().pf_issued;
-  return success;
+  internal_PQ.push_back(pf_packet);
+  ++sim_stats.back().pf_issued;
+
+  return true;
 }
 
 int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
-}
-
-bool CACHE::add_pq(const PACKET& packet)
-{
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_PQ] " << __func__ << " instr_id: " << packet.instr_id << " address: " << std::hex << (packet.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << packet.address << " v_address: " << packet.v_address << std::dec << " type: " << access_type_names.at(packet.type)
-              << " from this: " << std::boolalpha << packet.prefetch_from_this << std::noboolalpha << " occupancy: " << std::size(queues.PQ)
-              << " current_cycle: " << current_cycle << std::endl;
-  }
-
-  return queues.add_pq(packet);
 }
 
 void CACHE::finish_packet(const PACKET& packet)
@@ -525,12 +506,12 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
-  else if (queue_type == 1)
-    return std::size(queues.RQ);
-  else if (queue_type == 2)
-    return std::size(queues.WQ);
-  else if (queue_type == 3)
-    return std::size(queues.PQ);
+  //else if (queue_type == 1)
+    //return std::size(upper_levels->RQ);
+  //else if (queue_type == 2)
+    //return std::size(upper_levels->WQ);
+  //else if (queue_type == 3)
+    //return std::size(upper_levels->PQ);
 
   return 0;
 }
@@ -539,14 +520,14 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;
-  else if (queue_type == 1)
-    return queues.RQ_SIZE;
-  else if (queue_type == 2)
-    return queues.WQ_SIZE;
-  else if (queue_type == 3)
-    return queues.PQ_SIZE;
-  else if (queue_type == 4)
-    return queues.PTWQ_SIZE;
+  //else if (queue_type == 1)
+    //return upper_levels->RQ_SIZE;
+  //else if (queue_type == 2)
+    //return upper_levels->WQ_SIZE;
+  //else if (queue_type == 3)
+    //return upper_levels->PQ_SIZE;
+  //else if (queue_type == 4)
+    //return upper_levels->PTWQ_SIZE;
 
   return 0;
 }
@@ -565,8 +546,10 @@ void CACHE::begin_phase()
   roi_stats.back().name = NAME;
   sim_stats.back().name = NAME;
 
-  queues.roi_stats.emplace_back();
-  queues.sim_stats.emplace_back();
+  for (auto ul : upper_levels) {
+    ul->roi_stats.emplace_back();
+    ul->sim_stats.emplace_back();
+  }
 }
 
 void CACHE::end_phase(unsigned finished_cpu)
@@ -584,21 +567,23 @@ void CACHE::end_phase(unsigned finished_cpu)
 
   roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
 
-  queues.roi_stats.back().RQ_ACCESS = queues.sim_stats.back().RQ_ACCESS;
-  queues.roi_stats.back().RQ_MERGED = queues.sim_stats.back().RQ_MERGED;
-  queues.roi_stats.back().RQ_FULL = queues.sim_stats.back().RQ_FULL;
-  queues.roi_stats.back().RQ_TO_CACHE = queues.sim_stats.back().RQ_TO_CACHE;
+  for (auto ul : upper_levels) {
+    ul->roi_stats.back().RQ_ACCESS = ul->sim_stats.back().RQ_ACCESS;
+    ul->roi_stats.back().RQ_MERGED = ul->sim_stats.back().RQ_MERGED;
+    ul->roi_stats.back().RQ_FULL = ul->sim_stats.back().RQ_FULL;
+    ul->roi_stats.back().RQ_TO_CACHE = ul->sim_stats.back().RQ_TO_CACHE;
 
-  queues.roi_stats.back().PQ_ACCESS = queues.sim_stats.back().PQ_ACCESS;
-  queues.roi_stats.back().PQ_MERGED = queues.sim_stats.back().PQ_MERGED;
-  queues.roi_stats.back().PQ_FULL = queues.sim_stats.back().PQ_FULL;
-  queues.roi_stats.back().PQ_TO_CACHE = queues.sim_stats.back().PQ_TO_CACHE;
+    ul->roi_stats.back().PQ_ACCESS = ul->sim_stats.back().PQ_ACCESS;
+    ul->roi_stats.back().PQ_MERGED = ul->sim_stats.back().PQ_MERGED;
+    ul->roi_stats.back().PQ_FULL = ul->sim_stats.back().PQ_FULL;
+    ul->roi_stats.back().PQ_TO_CACHE = ul->sim_stats.back().PQ_TO_CACHE;
 
-  queues.roi_stats.back().WQ_ACCESS = queues.sim_stats.back().WQ_ACCESS;
-  queues.roi_stats.back().WQ_MERGED = queues.sim_stats.back().WQ_MERGED;
-  queues.roi_stats.back().WQ_FULL = queues.sim_stats.back().WQ_FULL;
-  queues.roi_stats.back().WQ_TO_CACHE = queues.sim_stats.back().WQ_TO_CACHE;
-  queues.roi_stats.back().WQ_FORWARD = queues.sim_stats.back().WQ_FORWARD;
+    ul->roi_stats.back().WQ_ACCESS = ul->sim_stats.back().WQ_ACCESS;
+    ul->roi_stats.back().WQ_MERGED = ul->sim_stats.back().WQ_MERGED;
+    ul->roi_stats.back().WQ_FULL = ul->sim_stats.back().WQ_FULL;
+    ul->roi_stats.back().WQ_TO_CACHE = ul->sim_stats.back().WQ_TO_CACHE;
+    ul->roi_stats.back().WQ_FORWARD = ul->sim_stats.back().WQ_FORWARD;
+  }
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }
@@ -617,36 +602,38 @@ void CACHE::print_deadlock()
     std::cout << NAME << " MSHR empty" << std::endl;
   }
 
-  if (!std::empty(queues.RQ)) {
-    for (const auto& entry : queues.RQ) {
-      std::cout << "[" << NAME << " RQ] "
-                << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+  for (auto ul : upper_levels) {
+    if (!std::empty(ul->RQ)) {
+      for (const auto& entry : ul->RQ) {
+        std::cout << "[" << NAME << " RQ] "
+          << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
+        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+      }
+    } else {
+      std::cout << NAME << " RQ empty" << std::endl;
     }
-  } else {
-    std::cout << NAME << " RQ empty" << std::endl;
-  }
 
-  if (!std::empty(queues.WQ)) {
-    for (const auto& entry : queues.WQ) {
-      std::cout << "[" << NAME << " WQ] "
-                << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    if (!std::empty(ul->WQ)) {
+      for (const auto& entry : ul->WQ) {
+        std::cout << "[" << NAME << " WQ] "
+          << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
+        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+      }
+    } else {
+      std::cout << NAME << " WQ empty" << std::endl;
     }
-  } else {
-    std::cout << NAME << " WQ empty" << std::endl;
-  }
 
-  if (!std::empty(queues.PQ)) {
-    for (const auto& entry : queues.PQ) {
-      std::cout << "[" << NAME << " PQ] "
-                << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    if (!std::empty(ul->PQ)) {
+      for (const auto& entry : ul->PQ) {
+        std::cout << "[" << NAME << " PQ] "
+          << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
+        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+      }
+    } else {
+      std::cout << NAME << " PQ empty" << std::endl;
     }
-  } else {
-    std::cout << NAME << " PQ empty" << std::endl;
   }
 }

@@ -10,7 +10,7 @@ SCENARIO("The virtual memory generates a full period of page numbers") {
     constexpr unsigned levels = 3;
     constexpr uint64_t pte_page_size = 1ull << 12;
     constexpr auto vmem_size_bits = LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES)*levels;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory uut{pte_page_size, levels, 200, dram};
 
     WHEN("All pages are exhausted") {

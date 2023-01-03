@@ -64,18 +64,21 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
   std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
   std::size_t get_set_index(uint64_t address) const;
 
+  std::deque<PACKET> internal_PQ{};
   std::deque<PACKET> inflight_tag_check{};
   std::deque<PACKET> translation_stash{};
   std::deque<PACKET> returned_data{};
   std::deque<PACKET> returned_translation{};
 
 public:
-  MemoryRequestConsumer* lower_level;
-  MemoryRequestConsumer* lower_translate;
+  std::vector<champsim::channel*> upper_levels;
+  champsim::channel* lower_level;
+  champsim::channel* lower_translate;
 
   uint32_t cpu = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
+  const std::size_t PQ_SIZE;
   const uint64_t HIT_LATENCY, FILL_LATENCY;
   const unsigned OFFSET_BITS;
   set_type block{NUM_SET * NUM_WAY};
@@ -90,15 +93,8 @@ public:
 
   std::vector<stats_type> sim_stats{}, roi_stats{};
 
-  champsim::channel& queues;
   std::deque<PACKET> MSHR;
   std::deque<PACKET> inflight_writes;
-
-  // functions
-  bool add_rq(const PACKET& packet) override final;
-  bool add_wq(const PACKET& packet) override final;
-  bool add_pq(const PACKET& packet) override final;
-  bool add_ptwq(const PACKET& packet) override final;
 
   void operate() override final;
 
@@ -127,15 +123,14 @@ public:
   const std::bitset<NUM_REPLACEMENT_MODULES> repl_type;
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
-  // constructor
+  // Uncapped internal PQ size
   CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, champsim::channel& queue_set, MemoryRequestConsumer* lt, MemoryRequestConsumer* ll,
-        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl)
-      : champsim::operable(freq_scale), lower_level(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
-        OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref),
-        pref_activate_mask(pref_mask), queues(queue_set), repl_type(repl), pref_type(pref)
-  {
-  }
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll,
+        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
+
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll,
+        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
 };
 
 #endif

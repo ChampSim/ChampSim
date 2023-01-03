@@ -9,10 +9,8 @@ struct merge_testbed
   constexpr static uint64_t hit_latency = 5;
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
-  champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-  CACHE uut{"431-uut", 1, 1, 8, 32, hit_latency, 1, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-  to_rq_MRP<CACHE> seed_ul{&uut};
-  to_rq_MRP<CACHE> test_ul{&uut};
+  to_rq_MRP seed_ul, test_ul;
+  CACHE uut{"431-uut", 1, 1, 8, 32, hit_latency, 1, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), {&seed_ul.queues, &test_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
   uint32_t pkt_id = 0;
 
   std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &seed_ul, &test_ul}};

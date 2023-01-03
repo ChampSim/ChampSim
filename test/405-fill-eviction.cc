@@ -8,10 +8,9 @@ SCENARIO("A cache evicts a block when required") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     do_nothing_MRC mock_ll;
-    champsim::channel uut_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"405-uut", 1, 1, 1, 32, hit_latency, miss_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, nullptr, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_wq_MRP mock_ul_seed{&uut};
-    to_rq_MRP mock_ul_test{&uut};
+    to_wq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{"405-uut", 1, 1, 1, 32, hit_latency, miss_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul_seed, &mock_ul_test}};
 

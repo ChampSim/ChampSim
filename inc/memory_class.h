@@ -54,10 +54,6 @@ struct is_valid<PACKET> {
 class MemoryRequestConsumer
 {
 public:
-  virtual bool add_rq(const PACKET& packet) = 0;
-  virtual bool add_wq(const PACKET& packet) = 0;
-  virtual bool add_pq(const PACKET& packet) = 0;
-  virtual bool add_ptwq(const PACKET& packet) = 0;
   virtual std::size_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
   virtual std::size_t get_size(uint8_t queue_type, uint64_t address) = 0;
 
