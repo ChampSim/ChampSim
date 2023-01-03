@@ -33,7 +33,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     WHEN("A " + std::string{str} + " is issued") {
       test::replacement_update_state_collector[&uut].clear();
 
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.is_translated = true;
       test.cpu = 0;
@@ -96,7 +96,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       elem->begin_phase();
     }
 
-    PACKET test;
+    decltype(mock_ul)::request_type test;
     test.address = 0xdeadbeef;
     test.cpu = 0;
     test.type = type;
@@ -159,7 +159,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
 
     WHEN("A packet is issued") {
       uint64_t id = 0;
-      PACKET seed;
+      decltype(mock_ul_seed)::request_type seed;
       seed.address = 0xdeadbeef;
       seed.v_address = 0xdeadbeef;
       seed.cpu = 0;
@@ -178,7 +178,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
 
       AND_WHEN("A packet with a different address is issued") {
 
-        PACKET test = seed;
+        decltype(mock_ul_test)::request_type test = seed;
         test.address = 0xcafebabe;
         test.instr_id = id++;
         test.type = LOAD;

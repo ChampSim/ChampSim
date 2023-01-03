@@ -4,7 +4,6 @@
 #include <limits>
 
 #include "cache.h"
-#include "memory_class.h"
 #include "operable.h"
 
 /*
@@ -12,7 +11,7 @@
  */
 class do_nothing_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets, ready_packets;
+  std::deque<champsim::channel::request_type> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
 
@@ -25,7 +24,7 @@ class do_nothing_MRC : public champsim::operable
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
-      auto add_pkt = [&](PACKET pkt) {
+      auto add_pkt = [&](auto pkt) {
         pkt.event_cycle = current_cycle + latency;
         pkt.data = ++ret_data;
         addresses.push_back(pkt.address);
@@ -40,11 +39,11 @@ class do_nothing_MRC : public champsim::operable
       queues.WQ.clear();
       queues.PQ.clear();
 
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
       packets.erase(std::begin(packets), end);
 
-      for (PACKET &pkt : ready_packets) {
+      for (auto &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
           ret->push_back(pkt);
       }
@@ -59,7 +58,7 @@ class do_nothing_MRC : public champsim::operable
  */
 class filter_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets, ready_packets;
+  std::deque<champsim::channel::request_type> packets, ready_packets;
   const uint64_t ret_addr;
   const uint64_t latency = 0;
   std::size_t mpacket_count = 0;
@@ -72,7 +71,7 @@ class filter_MRC : public champsim::operable
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
-      auto add_pkt = [&](PACKET pkt) {
+      auto add_pkt = [&](auto pkt) {
         if (pkt.address == ret_addr) {
           pkt.event_cycle = current_cycle + latency;
           packets.push_back(pkt);
@@ -88,10 +87,10 @@ class filter_MRC : public champsim::operable
       queues.WQ.clear();
       queues.PQ.clear();
 
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 
-      for (PACKET &pkt : ready_packets) {
+      for (auto &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
           ret->push_back(pkt);
       }
@@ -106,7 +105,7 @@ class filter_MRC : public champsim::operable
  */
 class release_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets;
+  std::deque<champsim::channel::request_type> packets;
   std::size_t mpacket_count = 0;
 
   public:
@@ -116,7 +115,7 @@ class release_MRC : public champsim::operable
     }
 
     void operate() override {
-      auto add_pkt = [&](PACKET pkt) {
+      auto add_pkt = [&](auto pkt) {
         packets.push_back(pkt);
         ++mpacket_count;
       };
@@ -149,7 +148,7 @@ class release_MRC : public champsim::operable
  */
 struct counting_MRP
 {
-  std::deque<PACKET> returned{};
+  std::deque<champsim::channel::response_type> returned{};
 
   unsigned count = 0;
 
@@ -161,25 +160,29 @@ struct counting_MRP
 
 struct queue_issue_MRP : public champsim::operable
 {
+  using request_type = typename champsim::channel::request_type;
+  using response_type = typename champsim::channel::response_type;
+
+  std::deque<response_type> returned{};
   champsim::channel queues{};
-  std::deque<PACKET> returned{};
 
   struct result_data {
-    PACKET pkt;
+    request_type pkt;
     uint64_t issue_time;
     uint64_t return_time;
   };
   std::deque<result_data> packets;
 
-  std::function<bool(PACKET, PACKET)> top_finder;
+  using func_type = std::function<bool(request_type, response_type)>;
+  func_type top_finder;
 
-  queue_issue_MRP() : queue_issue_MRP([](PACKET x, PACKET y){ return x.address == y.address; }) {}
-  explicit queue_issue_MRP(std::function<bool(PACKET, PACKET)> finder) : champsim::operable(1), top_finder(finder) {
+  queue_issue_MRP() : queue_issue_MRP([](auto x, auto y){ return x.address == y.address; }) {}
+  explicit queue_issue_MRP(func_type finder) : champsim::operable(1), top_finder(finder) {
     queues.sim_stats.emplace_back();
   }
 
   void operate() override {
-    auto finder = [&](PACKET to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
+    auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
     for (auto pkt : returned) {
       auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
@@ -191,7 +194,7 @@ struct queue_issue_MRP : public champsim::operable
   }
 
   protected:
-  PACKET mark_packet(PACKET pkt)
+  request_type mark_packet(request_type pkt)
   {
     pkt.to_return = {&returned};
     packets.push_back({pkt, current_cycle, 0});
@@ -205,7 +208,8 @@ struct queue_issue_MRP : public champsim::operable
 struct to_wq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
-  bool issue(const PACKET &pkt) { return queues.add_wq(mark_packet(pkt)); }
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_wq(mark_packet(pkt)); }
 };
 
 /*
@@ -214,7 +218,8 @@ struct to_wq_MRP : public queue_issue_MRP
 struct to_rq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
-  bool issue(const PACKET &pkt) { return queues.add_rq(mark_packet(pkt)); }
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_rq(mark_packet(pkt)); }
 };
 
 /*
@@ -223,6 +228,7 @@ struct to_rq_MRP : public queue_issue_MRP
 struct to_pq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
-  bool issue(const PACKET &pkt) { return queues.add_pq(mark_packet(pkt)); }
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_pq(mark_packet(pkt)); }
 };
 

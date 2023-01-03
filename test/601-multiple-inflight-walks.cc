@@ -23,13 +23,13 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
     uut.begin_phase();
 
     WHEN("The PTW receives two requests") {
-      PACKET test_a;
+      decltype(mock_ul)::request_type test_a;
       test_a.address = 0xdeadbeefdeadbeef;
       test_a.v_address = test_a.address;
       test_a.cpu = 0;
       test_a.to_return = {&mock_ul.returned};
 
-      PACKET test_b;
+      decltype(mock_ul)::request_type test_b;
       test_b.address = 0xcafebabecafebabe;
       test_b.v_address = test_b.address;
       test_b.cpu = 0;

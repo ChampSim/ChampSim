@@ -4,35 +4,35 @@
 #include "champsim_constants.h"
 
 template <typename Q>
-bool issue_wq (Q& uut, PACKET pkt)
+bool issue_wq (Q& uut, typename Q::request_type pkt)
 {
   return uut.add_wq(pkt);
 }
 
 template <typename Q>
-bool issue_rq (Q& uut, PACKET pkt)
+bool issue_rq (Q& uut, typename Q::request_type pkt)
 {
   return uut.add_rq(pkt);
 }
 
 template <typename Q>
-bool issue_pq (Q& uut, PACKET pkt)
+bool issue_pq (Q& uut, typename Q::request_type pkt)
 {
   return uut.add_pq(pkt);
 }
 
 template <typename Q>
-bool issue_pq_skip(Q &uut, PACKET pkt)
+bool issue_pq_skip(Q &uut, typename Q::request_type pkt)
 {
   pkt.skip_fill = true;
   return uut.add_pq(pkt);
 }
 
 template <typename Q, typename F>
-bool issue(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F&& func)
+bool issue(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *ret, F&& func)
 {
   // Create a test packet
-  PACKET seed;
+  typename Q::request_type seed;
   seed.address = seed_addr;
   seed.v_address = 0;
   seed.is_translated = true;
@@ -46,7 +46,7 @@ template <typename Q, typename F>
 bool issue(Q &uut, uint64_t seed_addr, F&& func)
 {
   // Create a test packet
-  PACKET seed;
+  typename Q::request_type seed;
   seed.address = seed_addr;
   seed.v_address = 0;
   seed.is_translated = true;
@@ -56,10 +56,10 @@ bool issue(Q &uut, uint64_t seed_addr, F&& func)
 }
 
 template <typename Q, typename F>
-bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F&& func)
+bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *ret, F&& func)
 {
   // Create a test packet
-  PACKET seed;
+  typename Q::request_type seed;
   seed.address = seed_addr;
   seed.v_address = seed_addr;
   seed.is_translated = false;

@@ -13,7 +13,6 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
-#include "memory_class.h"
 #include "operable.h"
 
 struct cache_stats {
@@ -37,12 +36,17 @@ class CACHE : public champsim::operable
       "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL{
       FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16};
 
-  bool try_hit(const PACKET& handle_pkt);
-  bool handle_fill(const PACKET& fill_mshr);
-  bool handle_miss(const PACKET& handle_pkt);
-  bool handle_write(const PACKET& handle_pkt);
-  void finish_packet(const PACKET& packet);
-  void finish_translation(const PACKET& packet);
+  using channel_type = champsim::channel;
+  using mshr_type = typename channel_type::request_type;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
+
+  bool try_hit(const request_type& handle_pkt);
+  bool handle_fill(const mshr_type& fill_mshr);
+  bool handle_miss(const request_type& handle_pkt);
+  bool handle_write(const request_type& handle_pkt);
+  void finish_packet(const response_type& packet);
+  void finish_translation(const response_type& packet);
 
   void issue_translation();
   void detect_misses();
@@ -64,16 +68,19 @@ class CACHE : public champsim::operable
   std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
   std::size_t get_set_index(uint64_t address) const;
 
-  std::deque<PACKET> internal_PQ{};
-  std::deque<PACKET> inflight_tag_check{};
-  std::deque<PACKET> translation_stash{};
-  std::deque<PACKET> returned_data{};
-  std::deque<PACKET> returned_translation{};
+  template <typename T>
+  bool should_activate_prefetcher(const T& pkt) const;
+
+  std::deque<request_type> internal_PQ{};
+  std::deque<request_type> inflight_tag_check{};
+  std::deque<request_type> translation_stash{};
+  std::deque<response_type> returned_data{};
+  std::deque<response_type> returned_translation{};
 
 public:
-  std::vector<champsim::channel*> upper_levels;
-  champsim::channel* lower_level;
-  champsim::channel* lower_translate;
+  std::vector<channel_type*> upper_levels;
+  channel_type* lower_level;
+  channel_type* lower_translate;
 
   uint32_t cpu = 0;
   const std::string NAME;
@@ -93,8 +100,8 @@ public:
 
   std::vector<stats_type> sim_stats{}, roi_stats{};
 
-  std::deque<PACKET> MSHR;
-  std::deque<PACKET> inflight_writes;
+  std::deque<mshr_type> MSHR;
+  std::deque<mshr_type> inflight_writes;
 
   void operate() override final;
 
@@ -114,8 +121,6 @@ public:
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
-  bool should_activate_prefetcher(const PACKET& pkt) const;
-
   void print_deadlock() override;
 
 #include "cache_modules.inc"
@@ -125,11 +130,11 @@ public:
 
   // Uncapped internal PQ size
   CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll,
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
 
   CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll,
+        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
         std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
 };
 

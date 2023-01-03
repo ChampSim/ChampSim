@@ -94,7 +94,7 @@ SCENARIO("A prefetch fill the first level") {
 
       AND_WHEN("A packet with the same address is sent")
       {
-        PACKET test;
+        decltype(mock_ut)::request_type test;
         test.address = 0xdeadbeef;
         test.cpu = 0;
 
@@ -151,7 +151,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
       {
         mock_ut.packets.clear();
 
-        PACKET test;
+        decltype(mock_ut)::request_type test;
         test.address = 0xdeadbeef;
         test.is_translated = true;
         test.cpu = 0;
@@ -190,7 +190,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
       {
         mock_ul.packets.clear();
 
-        PACKET test;
+        decltype(mock_ul)::request_type test;
         test.address = 0xbebacafe;
         test.is_translated = true;
         test.cpu = 0;

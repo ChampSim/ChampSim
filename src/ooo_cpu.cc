@@ -298,7 +298,7 @@ void O3_CPU::fetch_instruction()
 
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
-  PACKET fetch_packet;
+  CacheBus::request_type fetch_packet;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
@@ -559,7 +559,7 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 
 bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 {
-  PACKET data_packet;
+  CacheBus::request_type data_packet;
   data_packet.v_address = sq_entry.virtual_address;
   data_packet.instr_id = sq_entry.instr_id;
   data_packet.ip = sq_entry.ip;
@@ -573,7 +573,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 
 bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 {
-  PACKET data_packet;
+  CacheBus::request_type data_packet;
   data_packet.v_address = lq_entry.virtual_address;
   data_packet.instr_id = lq_entry.instr_id;
   data_packet.ip = lq_entry.ip;
@@ -624,7 +624,7 @@ void O3_CPU::complete_inflight_instruction()
 void O3_CPU::handle_memory_return()
 {
   for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.returned.empty(); --to_read) {
-    PACKET& l1i_entry = L1I_bus.returned.front();
+    auto& l1i_entry = L1I_bus.returned.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
@@ -744,7 +744,7 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
   }
 }
 
-bool CacheBus::issue_read(PACKET data_packet)
+bool CacheBus::issue_read(request_type data_packet)
 {
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;
@@ -755,7 +755,7 @@ bool CacheBus::issue_read(PACKET data_packet)
   return lower_level->add_rq(data_packet);
 }
 
-bool CacheBus::issue_write(PACKET data_packet)
+bool CacheBus::issue_write(request_type data_packet)
 {
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;

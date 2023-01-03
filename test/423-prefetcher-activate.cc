@@ -70,7 +70,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     WHEN("A " + std::string{str} + " is issued") {
       test::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
 
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.type = type;
@@ -118,7 +118,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
     WHEN("A " + std::string{str} + " is issued") {
       test::address_operate_collector[&uut].clear();
 
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.type = type;

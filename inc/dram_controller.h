@@ -8,7 +8,6 @@
 
 #include "champsim_constants.h"
 #include "channel.h"
-#include "memory_class.h"
 #include "operable.h"
 #include "util.h"
 
@@ -20,7 +19,8 @@ struct dram_stats {
 };
 
 struct DRAM_CHANNEL {
-  using queue_type = std::vector<PACKET>;
+  using value_type = typename champsim::channel::request_type;
+  using queue_type = std::vector<value_type>;
   queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
 
   struct BANK_REQUEST {
@@ -48,6 +48,7 @@ struct DRAM_CHANNEL {
 
 class MEMORY_CONTROLLER : public champsim::operable
 {
+  using request_type = typename champsim::channel::request_type;
   std::vector<champsim::channel*> queues;
 
   // Latencies
@@ -59,8 +60,8 @@ class MEMORY_CONTROLLER : public champsim::operable
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   void initiate_requests();
-  bool add_rq(const PACKET& pkt);
-  bool add_wq(const PACKET& pkt);
+  bool add_rq(const request_type& pkt);
+  bool add_wq(const request_type& pkt);
 
 public:
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;

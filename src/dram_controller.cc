@@ -117,13 +117,13 @@ void MEMORY_CONTROLLER::operate()
     auto next_schedule = [](const auto& lhs, const auto& rhs) {
       return !(rhs.address != 0 && !rhs.scheduled) || ((lhs.address != 0 && !lhs.scheduled) && lhs.event_cycle < rhs.event_cycle);
     };
-    std::vector<PACKET>::iterator iter_next_schedule;
+    DRAM_CHANNEL::queue_type::iterator iter_next_schedule;
     if (channel.write_mode)
       iter_next_schedule = std::min_element(std::begin(channel.WQ), std::end(channel.WQ), next_schedule);
     else
       iter_next_schedule = std::min_element(std::begin(channel.RQ), std::end(channel.RQ), next_schedule);
 
-    if (is_valid<PACKET>()(*iter_next_schedule) && iter_next_schedule->event_cycle <= current_cycle) {
+    if (is_valid<DRAM_CHANNEL::value_type>()(*iter_next_schedule) && iter_next_schedule->event_cycle <= current_cycle) {
       uint32_t op_rank = dram_get_rank(iter_next_schedule->address), op_bank = dram_get_bank(iter_next_schedule->address),
                op_row = dram_get_row(iter_next_schedule->address);
 
@@ -171,8 +171,8 @@ void MEMORY_CONTROLLER::end_phase(unsigned)
 void DRAM_CHANNEL::check_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
-    if (is_valid<PACKET>{}(*wq_it) && !wq_it->forward_checked) {
-      eq_addr<PACKET> checker{wq_it->address, LOG2_BLOCK_SIZE};
+    if (is_valid<value_type>{}(*wq_it) && !wq_it->forward_checked) {
+      eq_addr<value_type> checker{wq_it->address, LOG2_BLOCK_SIZE};
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         *wq_it = {};
       } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
@@ -184,8 +184,8 @@ void DRAM_CHANNEL::check_collision()
   }
 
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
-    if (is_valid<PACKET>{}(*rq_it) && !rq_it->forward_checked) {
-      eq_addr<PACKET> checker{rq_it->address, LOG2_BLOCK_SIZE};
+    if (is_valid<value_type>{}(*rq_it) && !rq_it->forward_checked) {
+      eq_addr<value_type> checker{rq_it->address, LOG2_BLOCK_SIZE};
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         rq_it->data = wq_it->data;
         for (auto ret : rq_it->to_return)
@@ -238,12 +238,12 @@ void MEMORY_CONTROLLER::initiate_requests()
   }
 }
 
-bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
+bool MEMORY_CONTROLLER::add_rq(const request_type& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<PACKET>()); rq_it != std::end(channel.RQ)) {
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), is_valid<request_type>()); rq_it != std::end(channel.RQ)) {
     *rq_it = packet;
     rq_it->forward_checked = false;
     rq_it->event_cycle = current_cycle;
@@ -254,12 +254,12 @@ bool MEMORY_CONTROLLER::add_rq(const PACKET& packet)
   return false;
 }
 
-bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
+bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<PACKET>()); wq_it != std::end(channel.WQ)) {
+  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), is_valid<request_type>()); wq_it != std::end(channel.WQ)) {
     *wq_it = packet;
     wq_it->forward_checked = false;
     wq_it->event_cycle = current_cycle;

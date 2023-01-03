@@ -20,7 +20,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
     WHEN("A packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = 0xffff'003f;
       seed.instr_id = id++;
       seed.cpu = 0;

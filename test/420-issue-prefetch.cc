@@ -44,7 +44,7 @@ SCENARIO("A prefetch can be issued") {
 
       AND_WHEN("A packet with the same address is sent") {
         // Create a test packet
-        PACKET test;
+        decltype(mock_ul)::request_type test;
         test.address = 0xdeadbeef;
         test.cpu = 0;
 

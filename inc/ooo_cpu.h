@@ -14,7 +14,6 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "instruction.h"
-#include "memory_class.h"
 #include "operable.h"
 #include "util.h"
 
@@ -23,15 +22,19 @@ enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 class CACHE;
 class CacheBus
 {
-  champsim::channel* lower_level;
-  std::deque<PACKET> returned{};
+  using channel_type = champsim::channel;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
+
+  channel_type* lower_level;
+  std::deque<response_type> returned{};
   uint32_t cpu;
 
   friend class O3_CPU;
 public:
   CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
-  bool issue_read(PACKET packet);
-  bool issue_write(PACKET packet);
+  bool issue_read(request_type packet);
+  bool issue_write(request_type packet);
 };
 
 struct cpu_stats {

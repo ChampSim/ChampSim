@@ -35,7 +35,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       test::address_operate_collector[&uut].clear();
 
       uint64_t id = 1;
-      PACKET test_a;
+      decltype(mock_ul_seed)::request_type test_a;
       test_a.address = 0xdeadbeef;
       test_a.cpu = 0;
       test_a.type = LOAD;
@@ -59,7 +59,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       AND_WHEN("A packet with the same address is sent before the fill has completed") {
         test::address_operate_collector[&uut].clear();
 
-        PACKET test_b = test_a;
+        decltype(mock_ul_test)::request_type test_b = test_a;
         test_b.instr_id = id++;
 
         auto test_b_result = mock_ul_test.issue(test_b);

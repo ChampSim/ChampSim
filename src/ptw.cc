@@ -20,7 +20,7 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
   }
 }
 
-bool PageTableWalker::handle_read(const PACKET& handle_pkt)
+bool PageTableWalker::handle_read(const request_type& handle_pkt)
 {
   pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
   std::vector<std::optional<pscl_entry>> pscl_hits;
@@ -38,7 +38,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
     std::cout << " translation_level: " << walk_init.level << std::endl;
   }
 
-  PACKET packet = handle_pkt;
+  request_type packet = handle_pkt;
   packet.v_address = handle_pkt.address;
   packet.init_translation_level = walk_init.level;
   packet.cycle_enqueued = current_cycle;
@@ -46,7 +46,7 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   return step_translation(champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE), packet.init_translation_level, packet);
 }
 
-bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
+bool PageTableWalker::handle_fill(const mshr_type& fill_mshr)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
@@ -75,7 +75,7 @@ bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
   }
 }
 
-bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source)
+bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, const request_type& source)
 {
   auto fwd_pkt = source;
   fwd_pkt.address = addr;
@@ -127,10 +127,10 @@ void PageTableWalker::operate()
   }
 }
 
-void PageTableWalker::finish_packet(const PACKET& packet)
+void PageTableWalker::finish_packet(const response_type& packet)
 {
   for (auto& mshr_entry : MSHR) {
-    if (eq_addr<PACKET>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {
+    if (eq_addr<mshr_type>{packet.address, LOG2_BLOCK_SIZE}(mshr_entry)) {
       uint64_t penalty;
       if (mshr_entry.translation_level == 0)
         std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
@@ -158,7 +158,7 @@ void PageTableWalker::print_deadlock()
   if (!std::empty(MSHR)) {
     std::cout << NAME << " MSHR Entry" << std::endl;
     std::size_t j = 0;
-    for (PACKET entry : MSHR) {
+    for (mshr_type entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
       std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
       std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;

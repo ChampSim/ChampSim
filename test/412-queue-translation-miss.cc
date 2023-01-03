@@ -9,7 +9,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
     constexpr uint64_t fill_latency = 3;
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
-    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{"412a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
@@ -22,7 +22,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
       test.is_translated = false;

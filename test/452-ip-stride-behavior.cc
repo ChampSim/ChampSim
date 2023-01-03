@@ -20,7 +20,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
 
     // Create a test packet
     static uint64_t id = 1;
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xffff'003f;
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;

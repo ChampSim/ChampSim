@@ -27,7 +27,7 @@ SCENARIO("The page table steps have correct offsets") {
     uint64_t addr = 0x0040'0200'c040'1000; // 0x4, 0x3, 0x2, 0x1
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = addr;
       test.v_address = test.address;
       test.cpu = 0;

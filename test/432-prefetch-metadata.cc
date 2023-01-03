@@ -74,7 +74,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
 
       test::metadata_fill_emitter[&lower] = seed_metadata;
 
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = seed_addr;
       seed.cpu = 0;
       auto seed_result = mock_ul.issue(seed);

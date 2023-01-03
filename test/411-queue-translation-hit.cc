@@ -8,7 +8,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
     constexpr uint64_t hit_latency = 10;
     do_nothing_MRC mock_translator;
     do_nothing_MRC mock_ll;
-    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
@@ -21,7 +21,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
       test.is_translated = false;
@@ -57,7 +57,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     constexpr uint64_t hit_latency = 10;
     release_MRC mock_translator; // release_MRC used because it does not manipulate the data field
     do_nothing_MRC mock_ll;
-    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
@@ -70,7 +70,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
       test.is_translated = false;

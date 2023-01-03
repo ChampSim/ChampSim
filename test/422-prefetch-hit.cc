@@ -19,7 +19,7 @@ SCENARIO("A prefetch can hit the cache") {
       elem->begin_phase();
     }
 
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef;
     seed.instr_id = 1;
     seed.cpu = 0;
@@ -62,7 +62,7 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
       elem->begin_phase();
     }
 
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef;
     seed.instr_id = 1;
     seed.cpu = 0;

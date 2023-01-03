@@ -29,7 +29,7 @@ CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32
 {
 }
 
-bool CACHE::handle_fill(const PACKET& fill_mshr)
+bool CACHE::handle_fill(const mshr_type& fill_mshr)
 {
   cpu = fill_mshr.cpu;
 
@@ -60,7 +60,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
   auto pkt_address = (virtual_prefetch ? fill_mshr.v_address : fill_mshr.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   if (way != set_end) {
     if (way->valid && way->dirty) {
-      PACKET writeback_packet;
+      request_type writeback_packet;
 
       writeback_packet.cpu = fill_mshr.cpu;
       writeback_packet.address = way->address;
@@ -117,7 +117,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
   return success;
 }
 
-bool CACHE::try_hit(const PACKET& handle_pkt)
+bool CACHE::try_hit(const request_type& handle_pkt)
 {
   cpu = handle_pkt.cpu;
 
@@ -171,7 +171,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
   return hit;
 }
 
-bool CACHE::handle_miss(const PACKET& handle_pkt)
+bool CACHE::handle_miss(const request_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -187,7 +187,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   cpu = handle_pkt.cpu;
 
   // check mshr
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(handle_pkt.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<mshr_type>(handle_pkt.address, OFFSET_BITS));
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
   if (mshr_entry != MSHR.end()) // miss already inflight
@@ -252,7 +252,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
   return true;
 }
 
-bool CACHE::handle_write(const PACKET& handle_pkt)
+bool CACHE::handle_write(const request_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -302,7 +302,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  std::vector<std::reference_wrapper<std::deque<PACKET>>> queues;
+  std::vector<std::reference_wrapper<std::deque<request_type>>> queues;
   for (auto ul : upper_levels) {
     queues.insert(std::cend(queues), {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)});
   }
@@ -384,7 +384,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   if (std::size(internal_PQ) >= PQ_SIZE)
     return false;
 
-  PACKET pf_packet;
+  request_type pf_packet;
   pf_packet.type = PREFETCH;
   pf_packet.prefetch_from_this = true;
   pf_packet.skip_fill = !fill_this_level;
@@ -405,10 +405,10 @@ int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_le
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
 
-void CACHE::finish_packet(const PACKET& packet)
+void CACHE::finish_packet(const response_type& packet)
 {
   // check MSHR information
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<PACKET>(packet.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<mshr_type>(packet.address, OFFSET_BITS));
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
   // sanity check
@@ -442,7 +442,7 @@ void CACHE::finish_packet(const PACKET& packet)
   std::iter_swap(mshr_entry, first_unreturned);
 }
 
-void CACHE::finish_translation(const PACKET& packet)
+void CACHE::finish_translation(const response_type& packet)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "_TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
@@ -584,14 +584,15 @@ void CACHE::end_phase(unsigned finished_cpu)
   }
 }
 
-bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }
+template <typename T>
+bool CACHE::should_activate_prefetcher(const T& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }
 
 void CACHE::print_deadlock()
 {
   if (!std::empty(MSHR)) {
     std::cout << NAME << " MSHR Entry" << std::endl;
     std::size_t j = 0;
-    for (PACKET entry : MSHR) {
+    for (mshr_type entry : MSHR) {
       std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
       std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
       std::cout << " event_cycle: " << entry.event_cycle << std::endl;

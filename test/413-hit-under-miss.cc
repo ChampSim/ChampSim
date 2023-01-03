@@ -10,7 +10,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
     constexpr static uint64_t address_that_will_hit = 0xcafebabe;
     filter_MRC mock_translator{address_that_will_hit};
     do_nothing_MRC mock_ll;
-    TestType mock_ul{[](PACKET x, PACKET y){ return x.v_address == y.v_address; }};
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{"413-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_translator, &mock_ul}};
@@ -23,7 +23,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
 
     WHEN("A packet is issued that will miss the translator") {
       // Create a test packet
-      PACKET seed;
+      typename TestType::request_type seed;
       seed.address = 0xdeadbeef;
       seed.v_address = 0xdeadbeef;
       seed.is_translated = false;
@@ -43,7 +43,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
       }
 
       AND_WHEN("An untranslated packet that will hit the translator is sent") {
-        PACKET test;
+        typename TestType::request_type test;
         test.address = address_that_will_hit;
         test.v_address = address_that_will_hit;
         seed.is_translated = false;
@@ -64,7 +64,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
       }
 
       AND_WHEN("A translated packet is sent") {
-        PACKET test;
+        typename TestType::request_type test;
         test.address = 0xfeedcafe;
         test.v_address = 0xdeadbeef;
         test.is_translated = true;

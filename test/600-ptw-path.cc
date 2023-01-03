@@ -23,7 +23,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
     uut.begin_phase();
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
       test.cpu = 0;
@@ -59,7 +59,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
     uut.begin_phase();
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xffff'ffff'ffff'ffff;
       test.v_address = test.address;
       test.cpu = 0;
@@ -96,7 +96,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     uut.warmup = false;
     uut.begin_phase();
 
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xffff'ffff'ffff'ffff;
     seed.v_address = seed.address;
     seed.cpu = 0;
@@ -128,7 +128,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a nearby request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ffff'ffc0'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -147,7 +147,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a less-nearby request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ffff'8000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -166,7 +166,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a distant request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ff00'0000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -185,7 +185,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a very distant request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xfffe'0000'0000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);

@@ -36,7 +36,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.instr_id = id++;
@@ -97,7 +97,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.instr_id = id++;

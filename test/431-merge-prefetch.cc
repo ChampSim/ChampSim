@@ -18,7 +18,7 @@ struct merge_testbed
   template <typename MRP>
   void issue_type(MRP& ul, uint8_t type, uint64_t delay = hit_latency+1)
   {
-    PACKET pkt;
+    typename MRP::request_type pkt;
     pkt.address = 0xdeadbeef;
     pkt.v_address = 0xdeadbeef;
     pkt.type = type;

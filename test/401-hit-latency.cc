@@ -36,7 +36,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = 0xdeadbeef;
       seed.is_translated = true;
       seed.instr_id = id++;

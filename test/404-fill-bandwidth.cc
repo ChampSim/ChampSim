@@ -24,10 +24,10 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
     // Get a list of packets
     uint64_t seed_base_addr = 0xdeadbeef;
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = seed_base_addr + i*BLOCK_SIZE;
       seed.instr_id = i;
       seed.cpu = 0;
@@ -87,10 +87,10 @@ SCENARIO("Writebacks respect the fill bandwidth") {
 
     // Get a list of packets
     uint64_t seed_base_addr = 0xdeadbeef;
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = seed_base_addr + i*BLOCK_SIZE;
       seed.instr_id = i;
       seed.type = WRITE;
