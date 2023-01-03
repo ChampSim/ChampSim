@@ -224,7 +224,7 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
       fwd_pkt.type = RFO;
 
     if (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill)
-      fwd_pkt.to_return = {&returned_data};
+      fwd_pkt.to_return = {&lower_level->returned};
     else
       fwd_pkt.to_return.clear();
 
@@ -286,12 +286,14 @@ void CACHE::operate()
     ul->check_collision();
 
   // Finish returns
-  std::for_each(std::cbegin(returned_data), std::cend(returned_data), [this](const auto& pkt){ this->finish_packet(pkt); });
-  returned_data.clear();
+  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt){ this->finish_packet(pkt); });
+  lower_level->returned.clear();
 
   // Finish translations
-  std::for_each(std::cbegin(returned_translation), std::cend(returned_translation), [this](const auto& pkt){ this->finish_translation(pkt); });
-  returned_translation.clear();
+  if (lower_translate != nullptr) {
+    std::for_each(std::cbegin(lower_translate->returned), std::cend(lower_translate->returned), [this](const auto& pkt){ this->finish_translation(pkt); });
+    lower_translate->returned.clear();
+  }
 
   // Perform fills
   auto fill_bw = MAX_FILL;
@@ -432,7 +434,7 @@ void CACHE::finish_packet(const response_type& packet)
     std::cout << " full_v_addr: " << mshr_entry->v_address;
     std::cout << " data: " << mshr_entry->data << std::dec;
     std::cout << " type: " << access_type_names.at(mshr_entry->type);
-    std::cout << " to_finish: " << std::size(returned_data);
+    std::cout << " to_finish: " << std::size(lower_level->returned);
     std::cout << " returned: " << packet.event_cycle;
     std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
   }
@@ -476,7 +478,7 @@ void CACHE::issue_translation()
       auto fwd_pkt = q_entry;
       fwd_pkt.type = LOAD;
       fwd_pkt.is_translated = true;
-      fwd_pkt.to_return = {&this->returned_translation};
+      fwd_pkt.to_return = {&this->lower_translate->returned};
       auto success = this->lower_translate->add_rq(fwd_pkt);
       if (success) {
         if constexpr (champsim::debug_print) {

@@ -184,19 +184,19 @@ struct queue_issue_MRP : public champsim::operable
   void operate() override {
     auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
-    for (auto pkt : returned) {
+    for (auto pkt : queues.returned) {
       auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
       if (it == std::rend(packets))
         throw std::invalid_argument{"Packet returned which was not sent"};
       it->return_time = current_cycle;
     }
-    returned.clear();
+    queues.returned.clear();
   }
 
   protected:
   request_type mark_packet(request_type pkt)
   {
-    pkt.to_return = {&returned};
+    pkt.to_return = {&queues.returned};
     packets.push_back({pkt, current_cycle, 0});
     return pkt;
   }

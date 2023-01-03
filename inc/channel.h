@@ -68,6 +68,7 @@ struct channel {
   using response_type = PACKET;
 
   std::deque<request_type> RQ{}, PQ{}, WQ{};
+  std::deque<response_type> returned{};
   const std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   const std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
   const std::size_t WQ_SIZE = std::numeric_limits<std::size_t>::max();

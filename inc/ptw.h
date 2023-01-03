@@ -29,7 +29,6 @@ class PageTableWalker : public champsim::operable
   using response_type = typename channel_type::response_type;
   using mshr_type = request_type;
 
-  std::deque<response_type> returned{};
   std::deque<mshr_type> MSHR;
 
   std::vector<channel_type*> upper_levels;

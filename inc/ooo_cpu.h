@@ -27,7 +27,6 @@ class CacheBus
   using response_type = typename channel_type::response_type;
 
   channel_type* lower_level;
-  std::deque<response_type> returned{};
   uint32_t cpu;
 
   friend class O3_CPU;

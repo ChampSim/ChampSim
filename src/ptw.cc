@@ -81,7 +81,7 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
   fwd_pkt.address = addr;
   fwd_pkt.is_translated = true;
   fwd_pkt.type = TRANSLATION;
-  fwd_pkt.to_return = {&returned};
+  fwd_pkt.to_return = {&lower_level->returned};
   fwd_pkt.translation_level = transl_level;
 
   auto matches_and_inflight = [addr](const auto& x) {
@@ -105,9 +105,9 @@ bool PageTableWalker::step_translation(uint64_t addr, std::size_t transl_level, 
 
 void PageTableWalker::operate()
 {
-  for (const auto& x : returned)
+  for (const auto& x : lower_level->returned)
     finish_packet(x);
-  returned.clear();
+  lower_level->returned.clear();
 
   auto fill_this_cycle = MAX_FILL;
   while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {

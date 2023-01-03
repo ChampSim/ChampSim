@@ -623,8 +623,8 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.returned.empty(); --to_read) {
-    auto& l1i_entry = L1I_bus.returned.front();
+  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.lower_level->returned.empty(); --to_read) {
+    auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
@@ -642,11 +642,11 @@ void O3_CPU::handle_memory_return()
 
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty())
-      L1I_bus.returned.pop_front();
+      L1I_bus.lower_level->returned.pop_front();
   }
 
-  auto l1d_it = std::begin(L1D_bus.returned);
-  for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.returned); --l1d_bw, ++l1d_it) {
+  auto l1d_it = std::begin(L1D_bus.lower_level->returned);
+  for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.lower_level->returned); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
         lq_entry->finish(std::begin(ROB), std::end(ROB));
@@ -654,7 +654,7 @@ void O3_CPU::handle_memory_return()
       }
     }
   }
-  L1D_bus.returned.erase(std::begin(L1D_bus.returned), l1d_it);
+  L1D_bus.lower_level->returned.erase(std::begin(L1D_bus.lower_level->returned), l1d_it);
 }
 
 void O3_CPU::retire_rob()
@@ -750,7 +750,7 @@ bool CacheBus::issue_read(request_type data_packet)
   data_packet.is_translated = false;
   data_packet.cpu = cpu;
   data_packet.type = LOAD;
-  data_packet.to_return = {&returned};
+  data_packet.to_return = {&lower_level->returned};
 
   return lower_level->add_rq(data_packet);
 }

@@ -74,8 +74,6 @@ class CACHE : public champsim::operable
   std::deque<request_type> internal_PQ{};
   std::deque<request_type> inflight_tag_check{};
   std::deque<request_type> translation_stash{};
-  std::deque<response_type> returned_data{};
-  std::deque<response_type> returned_translation{};
 
 public:
   std::vector<channel_type*> upper_levels;
