@@ -11,7 +11,7 @@
 #include "util.h"
 #include "vmem.h"
 
-class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
+class PageTableWalker : public champsim::operable
 {
   struct pscl_entry {
     uint64_t vaddr;
@@ -55,9 +55,6 @@ public:
   bool handle_read(const PACKET& pkt);
   bool handle_fill(const PACKET& pkt);
   bool step_translation(uint64_t addr, std::size_t transl_level, const PACKET& source);
-
-  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   void print_deadlock() override final;
 };

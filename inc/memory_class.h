@@ -21,7 +21,6 @@ enum access_type {
 
 struct ooo_model_instr;
 
-// message packet
 class PACKET
 {
 public:
@@ -49,21 +48,6 @@ public:
 template <>
 struct is_valid<PACKET> {
   bool operator()(const PACKET& test) { return test.address != 0; }
-};
-
-class MemoryRequestConsumer
-{
-public:
-  virtual std::size_t get_occupancy(uint8_t queue_type, uint64_t address) = 0;
-  virtual std::size_t get_size(uint8_t queue_type, uint64_t address) = 0;
-
-  explicit MemoryRequestConsumer() {}
-};
-
-class MemoryRequestProducer
-{
-protected:
-  MemoryRequestProducer() {}
 };
 
 #endif

@@ -144,31 +144,13 @@ void PageTableWalker::finish_packet(const PACKET& packet)
         std::cout << " v_address: " << mshr_entry.v_address;
         std::cout << " data: " << mshr_entry.data << std::dec;
         std::cout << " translation_level: " << +mshr_entry.translation_level;
-        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
+        std::cout << " occupancy: " << std::size(MSHR);
         std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
       }
     }
   }
 
   std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
-}
-
-std::size_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t)
-{
-  if (queue_type == 0)
-    return std::size(MSHR);
-  //else if (queue_type == 1)
-    //return std::size(upper_level->RQ);
-  return 0;
-}
-
-std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
-{
-  if (queue_type == 0)
-    return MSHR_SIZE;
-  //else if (queue_type == 1)
-    //return upper_level->RQ_SIZE;
-  return 0;
 }
 
 void PageTableWalker::print_deadlock()

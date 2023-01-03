@@ -21,7 +21,7 @@
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;
-class CacheBus : public MemoryRequestProducer
+class CacheBus
 {
   champsim::channel* lower_level;
   std::deque<PACKET> returned{};

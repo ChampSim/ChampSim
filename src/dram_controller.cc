@@ -306,30 +306,4 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_ROWS));
 }
 
-std::size_t MEMORY_CONTROLLER::get_occupancy(uint8_t queue_type, uint64_t address)
-{
-  uint32_t channel = dram_get_channel(address);
-  if (queue_type == 1)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].RQ), std::end(channels[channel].RQ), is_valid<PACKET>()));
-  else if (queue_type == 2)
-    return static_cast<std::size_t>(std::count_if(std::begin(channels[channel].WQ), std::end(channels[channel].WQ), is_valid<PACKET>()));
-  else if (queue_type == 3)
-    return get_occupancy(1, address);
-
-  return 0;
-}
-
-std::size_t MEMORY_CONTROLLER::get_size(uint8_t queue_type, uint64_t address)
-{
-  uint32_t channel = dram_get_channel(address);
-  if (queue_type == 1)
-    return channels[channel].RQ.size();
-  else if (queue_type == 2)
-    return channels[channel].WQ.size();
-  else if (queue_type == 3)
-    return get_size(1, address);
-
-  return 0;
-}
-
 std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }

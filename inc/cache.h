@@ -31,7 +31,7 @@ struct cache_stats {
   uint64_t total_miss_latency = 0;
 };
 
-class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
+class CACHE : public champsim::operable
 {
   enum [[deprecated(
       "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL{
@@ -102,8 +102,8 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
+  std::size_t get_occupancy(uint8_t queue_type, uint64_t address);
+  std::size_t get_size(uint8_t queue_type, uint64_t address);
 
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;

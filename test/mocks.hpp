@@ -10,7 +10,7 @@
 /*
  * A MemoryRequestConsumer that simply returns all packets on the next cycle
  */
-class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
+class do_nothing_MRC : public champsim::operable
 {
   std::deque<PACKET> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
@@ -19,7 +19,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
   public:
     champsim::channel queues{};
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {
+    do_nothing_MRC(uint64_t lat) : champsim::operable(1), latency(lat) {
       queues.sim_stats.emplace_back();
     }
     do_nothing_MRC() : do_nothing_MRC(0) {}
@@ -51,16 +51,13 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
       ready_packets.clear();
     }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
-
     std::size_t packet_count() const { return std::size(addresses); }
 };
 
 /*
  * A MemoryRequestConsumer that returns only a particular address
  */
-class filter_MRC : public MemoryRequestConsumer, public champsim::operable
+class filter_MRC : public champsim::operable
 {
   std::deque<PACKET> packets, ready_packets;
   const uint64_t ret_addr;
@@ -69,7 +66,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
 
   public:
     champsim::channel queues{};
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {
+    filter_MRC(uint64_t ret_addr_, uint64_t lat) : champsim::operable(1), ret_addr(ret_addr_), latency(lat) {
       queues.sim_stats.emplace_back();
     }
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
@@ -101,23 +98,20 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
       ready_packets.clear();
     }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
-
     std::size_t packet_count() const { return mpacket_count; }
 };
 
 /*
  * A MemoryRequestConsumer that releases blocks when instructed to
  */
-class release_MRC : public MemoryRequestConsumer, public champsim::operable
+class release_MRC : public champsim::operable
 {
   std::deque<PACKET> packets;
   std::size_t mpacket_count = 0;
 
   public:
     champsim::channel queues{};
-    release_MRC() : MemoryRequestConsumer(), champsim::operable(1) {
+    release_MRC() : champsim::operable(1) {
       queues.sim_stats.emplace_back();
     }
 
@@ -136,9 +130,6 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
       queues.PQ.clear();
     }
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
-
     std::size_t packet_count() const { return mpacket_count; }
 
     void release(uint64_t addr)
@@ -156,7 +147,7 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
 /*
  * A MemoryRequestProducer that counts how many returns it receives
  */
-struct counting_MRP : public MemoryRequestProducer
+struct counting_MRP
 {
   std::deque<PACKET> returned{};
 
@@ -168,7 +159,7 @@ struct counting_MRP : public MemoryRequestProducer
   }
 };
 
-struct queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
+struct queue_issue_MRP : public champsim::operable
 {
   champsim::channel queues{};
   std::deque<PACKET> returned{};

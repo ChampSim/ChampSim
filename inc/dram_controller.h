@@ -46,7 +46,7 @@ struct DRAM_CHANNEL {
   void check_collision();
 };
 
-class MEMORY_CONTROLLER : public champsim::operable, public MemoryRequestConsumer
+class MEMORY_CONTROLLER : public champsim::operable
 {
   std::vector<champsim::channel*> queues;
 
@@ -71,9 +71,6 @@ public:
   void operate() override final;
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
-
-  std::size_t get_occupancy(uint8_t queue_type, uint64_t address) override final;
-  std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   std::size_t size() const;
 
