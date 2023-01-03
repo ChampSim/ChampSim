@@ -29,6 +29,15 @@ CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32
 {
 }
 
+CACHE::mshr_type::mshr_type(request_type req, uint64_t cycle)
+  : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
+    type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+{}
+
+CACHE::BLOCK::BLOCK(mshr_type mshr)
+  : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
+{}
+
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
 {
   cpu = fill_mshr.cpu;
@@ -82,12 +91,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       if (fill_mshr.type == PREFETCH)
         sim_stats.back().pf_fill++;
 
-      way->valid = true;
-      way->prefetch = fill_mshr.prefetch_from_this;
-      way->dirty = (fill_mshr.type == WRITE);
-      way->address = fill_mshr.address;
-      way->v_address = fill_mshr.v_address;
-      way->data = fill_mshr.data;
+      *way = BLOCK{fill_mshr};
 
       metadata_thru =
           impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
@@ -108,8 +112,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     // COLLECT STATS
     sim_stats.back().total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
-    response_type response{fill_mshr};
-    response.pf_metadata = metadata_thru;
+    response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
     for (auto ret : fill_mshr.to_return)
       ret->push_back(response);
   }
@@ -187,7 +190,7 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
   cpu = handle_pkt.cpu;
 
   // check mshr
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<mshr_type>(handle_pkt.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match=handle_pkt.address >> OFFSET_BITS, shamt=OFFSET_BITS](const auto& entry){ return (entry.address >> shamt) == match; });
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
   if (mshr_entry != MSHR.end()) // miss already inflight
@@ -207,11 +210,10 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
       auto to_return = std::move(mshr_entry->to_return);
-      *mshr_entry = handle_pkt;
+      *mshr_entry = mshr_type{handle_pkt, current_cycle};
 
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
-      mshr_entry->cycle_enqueued = current_cycle;
       mshr_entry->to_return = std::move(to_return);
     }
   } else {
@@ -242,10 +244,8 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
 
     // Allocate an MSHR
     if (!std::empty(fwd_pkt.to_return)) {
-      mshr_entry = MSHR.insert(std::end(MSHR), handle_pkt);
-      mshr_entry->pf_metadata = fwd_pkt.pf_metadata;
-      mshr_entry->cycle_enqueued = current_cycle;
-      mshr_entry->event_cycle = std::numeric_limits<uint64_t>::max();
+      MSHR.emplace_back(handle_pkt, current_cycle);
+      MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
   }
 
@@ -264,9 +264,8 @@ bool CACHE::handle_write(const request_type& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   }
 
-  inflight_writes.push_back(handle_pkt);
+  inflight_writes.emplace_back(handle_pkt, current_cycle);
   inflight_writes.back().event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
-  inflight_writes.back().cycle_enqueued = current_cycle;
 
   return true;
 }
@@ -413,7 +412,7 @@ int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_le
 void CACHE::finish_packet(const response_type& packet)
 {
   // check MSHR information
-  auto mshr_entry = std::find_if(MSHR.begin(), MSHR.end(), eq_addr<mshr_type>(packet.address, OFFSET_BITS));
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match=packet.address >> OFFSET_BITS, shamt=OFFSET_BITS](const auto& entry){ return (entry.address >> shamt) == match; });
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
   // sanity check

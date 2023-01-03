@@ -37,9 +37,30 @@ class CACHE : public champsim::operable
       FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16};
 
   using channel_type = champsim::channel;
-  using mshr_type = typename channel_type::request_type;
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
+
+  struct mshr_type {
+    uint64_t address;
+    uint64_t v_address;
+    uint64_t data;
+    uint64_t ip;
+    uint64_t instr_id;
+
+    uint32_t pf_metadata;
+    uint32_t cpu;
+
+    uint8_t type;
+    bool prefetch_from_this;
+
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    uint64_t cycle_enqueued;
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
+
+    mshr_type(request_type req, uint64_t cycle);
+  };
 
   bool try_hit(const request_type& handle_pkt);
   bool handle_fill(const mshr_type& fill_mshr);
@@ -61,6 +82,9 @@ class CACHE : public champsim::operable
     uint64_t data = 0;
 
     uint32_t pf_metadata = 0;
+
+    BLOCK() = default;
+    explicit BLOCK(mshr_type mshr);
   };
   using set_type = std::vector<BLOCK>;
 
