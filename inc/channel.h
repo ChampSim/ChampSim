@@ -59,9 +59,6 @@ struct channel {
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response>*> to_return{};
-
-    std::size_t translation_level = 0;
-    std::size_t init_translation_level = 0;
   };
 
   struct response {
@@ -71,7 +68,8 @@ struct channel {
     uint32_t pf_metadata = 0;
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
 
-    response() = default;
+    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps) :
+      address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps) {}
     explicit response(request req) : address(req.address), v_address(req.v_address), data(req.data), pf_metadata(req.pf_metadata), instr_depend_on_me(req.instr_depend_on_me) {}
   };
 
