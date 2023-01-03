@@ -43,10 +43,11 @@ template <typename Iter>
 bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
-    source.data = destination.data;
-    source.pf_metadata = destination.pf_metadata;
+    champsim::channel::response_type response{source};
+    response.data = destination.data;
+    response.pf_metadata = destination.pf_metadata;
     for (auto ret : source.to_return)
-      ret->push_back(source);
+      ret->push_back(response);
   });
 }
 

@@ -20,6 +20,7 @@ struct dram_stats {
 
 struct DRAM_CHANNEL {
   using value_type = typename champsim::channel::request_type;
+  using response_type = typename champsim::channel::response_type;
   using queue_type = std::vector<value_type>;
   queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
 
@@ -49,6 +50,7 @@ struct DRAM_CHANNEL {
 class MEMORY_CONTROLLER : public champsim::operable
 {
   using request_type = typename champsim::channel::request_type;
+  using response_type = typename champsim::channel::response_type;
   std::vector<champsim::channel*> queues;
 
   // Latencies

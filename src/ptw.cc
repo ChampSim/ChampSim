@@ -59,13 +59,13 @@ bool PageTableWalker::handle_fill(const mshr_type& fill_mshr)
   }
 
   if (fill_mshr.translation_level == 0) {
-    auto ret_pkt = fill_mshr;
+    response_type ret_pkt{fill_mshr};
     ret_pkt.address = fill_mshr.v_address;
 
-    for (auto ret : ret_pkt.to_return)
+    for (auto ret : fill_mshr.to_return)
       ret->push_back(ret_pkt);
 
-    total_miss_latency += current_cycle - ret_pkt.cycle_enqueued;
+    total_miss_latency += current_cycle - fill_mshr.cycle_enqueued;
     return true;
   } else {
     const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;

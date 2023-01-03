@@ -23,30 +23,6 @@ enum access_type {
 namespace champsim
 {
 
-class PACKET
-{
-public:
-  bool scheduled = false;
-  bool forward_checked = false;
-  bool translate_issued = false;
-  bool prefetch_from_this = false;
-  bool skip_fill = false;
-  bool is_translated = true;
-
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
-
-  uint32_t pf_metadata = 0;
-  uint32_t cpu = std::numeric_limits<uint32_t>::max();
-
-  uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
-
-  std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
-  std::vector<std::deque<PACKET>*> to_return{};
-
-  std::size_t translation_level = 0;
-  std::size_t init_translation_level = 0;
-};
-
 struct cache_queue_stats {
   uint64_t RQ_ACCESS = 0;
   uint64_t RQ_MERGED = 0;
@@ -64,8 +40,43 @@ struct cache_queue_stats {
 };
 
 struct channel {
-  using request_type = PACKET;
-  using response_type = PACKET;
+  struct response;
+  struct request
+  {
+    bool scheduled = false;
+    bool forward_checked = false;
+    bool translate_issued = false;
+    bool prefetch_from_this = false;
+    bool skip_fill = false;
+    bool is_translated = true;
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0;
+
+    uint32_t pf_metadata = 0;
+    uint32_t cpu = std::numeric_limits<uint32_t>::max();
+
+    uint64_t address = 0, v_address = 0, data = 0, instr_id = 0, ip = 0, event_cycle = std::numeric_limits<uint64_t>::max(), cycle_enqueued = 0;
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response>*> to_return{};
+
+    std::size_t translation_level = 0;
+    std::size_t init_translation_level = 0;
+  };
+
+  struct response {
+    uint64_t address;
+    uint64_t v_address;
+    uint64_t data;
+    uint32_t pf_metadata = 0;
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+
+    response() = default;
+    explicit response(request req) : address(req.address), v_address(req.v_address), data(req.data), pf_metadata(req.pf_metadata), instr_depend_on_me(req.instr_depend_on_me) {}
+  };
+
+  using response_type = response;
+  using request_type = request;
 
   std::deque<request_type> RQ{}, PQ{}, WQ{};
   std::deque<response_type> returned{};
@@ -83,7 +94,7 @@ struct channel {
   channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
 
   template <typename R>
-  bool do_add_queue(R& queue, std::size_t queue_size, const request_type& packet);
+    bool do_add_queue(R& queue, std::size_t queue_size, const request_type& packet);
 
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);

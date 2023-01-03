@@ -45,7 +45,7 @@ class do_nothing_MRC : public champsim::operable
 
       for (auto &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
-          ret->push_back(pkt);
+          ret->push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
@@ -92,7 +92,7 @@ class filter_MRC : public champsim::operable
 
       for (auto &pkt : ready_packets) {
         for (auto ret : pkt.to_return)
-          ret->push_back(pkt);
+          ret->push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
@@ -136,7 +136,7 @@ class release_MRC : public champsim::operable
         auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
         if (pkt_it != std::end(packets)) {
             for (auto ret : pkt_it->to_return) {
-                ret->push_back(*pkt_it);
+                ret->push_back(champsim::channel::response_type{*pkt_it});
             }
         }
         packets.erase(pkt_it);

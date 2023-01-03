@@ -28,8 +28,9 @@ void MEMORY_CONTROLLER::operate()
   for (auto& channel : channels) {
     if (warmup) {
       for (auto& entry : channel.RQ) {
+        response_type response{entry};
         for (auto ret : entry.to_return)
-          ret->push_back(entry);
+          ret->push_back(response);
 
         entry = {};
       }
@@ -43,8 +44,9 @@ void MEMORY_CONTROLLER::operate()
 
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
+      response_type response{*channel.active_request->pkt};
       for (auto ret : channel.active_request->pkt->to_return)
-        ret->push_back(*channel.active_request->pkt);
+        ret->push_back(response);
 
       channel.active_request->valid = false;
 
@@ -187,9 +189,10 @@ void DRAM_CHANNEL::check_collision()
     if (is_valid<value_type>{}(*rq_it) && !rq_it->forward_checked) {
       eq_addr<value_type> checker{rq_it->address, LOG2_BLOCK_SIZE};
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        rq_it->data = wq_it->data;
+        response_type response{*rq_it};
+        response.data = wq_it->data;
         for (auto ret : rq_it->to_return)
-          ret->push_back(*rq_it);
+          ret->push_back(response);
 
         *rq_it = {};
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {

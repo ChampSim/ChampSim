@@ -108,10 +108,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     // COLLECT STATS
     sim_stats.back().total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
-    auto copy{fill_mshr};
-    copy.pf_metadata = metadata_thru;
-    for (auto ret : copy.to_return)
-      ret->push_back(copy);
+    response_type response{fill_mshr};
+    response.pf_metadata = metadata_thru;
+    for (auto ret : fill_mshr.to_return)
+      ret->push_back(response);
   }
 
   return success;
@@ -151,11 +151,11 @@ bool CACHE::try_hit(const request_type& handle_pkt)
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0, handle_pkt.type, true);
 
-    auto copy{handle_pkt};
-    copy.data = way->data;
-    copy.pf_metadata = metadata_thru;
-    for (auto ret : copy.to_return)
-      ret->push_back(copy);
+    response_type response{handle_pkt};
+    response.data = way->data;
+    response.pf_metadata = metadata_thru;
+    for (auto ret : handle_pkt.to_return)
+      ret->push_back(response);
 
     way->dirty = (handle_pkt.type == WRITE);
 
@@ -304,20 +304,23 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  std::vector<std::reference_wrapper<std::deque<request_type>>> queues;
-  for (auto ul : upper_levels) {
-    queues.insert(std::cend(queues), {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)});
-  }
-  queues.push_back(std::ref(internal_PQ));
-
   auto tag_bw = MAX_TAG;
-  for (auto q : queues) {
-    auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
-    tag_bw -= std::distance(begin, end);
-    auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
-    q.get().erase(begin, end);
-    std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){ entry.event_cycle = cycle; });
+  for (auto ul : upper_levels) {
+    for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
+      auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
+      tag_bw -= std::distance(begin, end);
+      auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
+      q.get().erase(begin, end);
+      std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){
+          entry.event_cycle = cycle;
+      });
+    }
   }
+  auto [begin, end] = champsim::get_span(std::cbegin(internal_PQ), std::cend(internal_PQ), tag_bw);
+  tag_bw -= std::distance(begin, end);
+  auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
+  internal_PQ.erase(begin, end);
+  std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){ entry.event_cycle = cycle; });
 
   // Issue translations
   issue_translation();
@@ -415,11 +418,10 @@ void CACHE::finish_packet(const response_type& packet)
 
   // sanity check
   if (mshr_entry == MSHR.end()) {
-    std::cerr << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet.instr_id << " cannot find a matching entry!";
+    std::cerr << "[" << NAME << "_MSHR] " << __func__ << " cannot find a matching entry!";
     std::cerr << " address: " << std::hex << packet.address;
-    std::cerr << " v_address: " << packet.v_address;
     std::cerr << " address: " << (packet.address >> OFFSET_BITS) << std::dec;
-    std::cerr << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
+    std::cerr << " cycle: " << current_cycle << std::endl;
     assert(0);
   }
 
@@ -435,7 +437,6 @@ void CACHE::finish_packet(const response_type& packet)
     std::cout << " data: " << mshr_entry->data << std::dec;
     std::cout << " type: " << access_type_names.at(mshr_entry->type);
     std::cout << " to_finish: " << std::size(lower_level->returned);
-    std::cout << " returned: " << packet.event_cycle;
     std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
   }
 
@@ -447,10 +448,10 @@ void CACHE::finish_packet(const response_type& packet)
 void CACHE::finish_translation(const response_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
+    std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
     std::cout << " address: " << std::hex << packet.address;
     std::cout << " data: " << packet.data << std::dec;
-    std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
+    std::cout << " cycle: " << current_cycle << std::endl;
   }
 
   // Find all packets that match the page of the returned packet
