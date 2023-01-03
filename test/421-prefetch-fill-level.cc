@@ -122,7 +122,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
 
-    champsim::channel uul_queues{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uul_queues{32, 32, 32, LOG2_BLOCK_SIZE, false};
 
     to_rq_MRP mock_ul;
     to_rq_MRP mock_ut;

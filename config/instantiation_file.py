@@ -11,12 +11,11 @@ pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, 
 vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {pq_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {{{{{_ulptr}}}}}, {_ltptr}, {_llptr}, {pref_enum_string}, {repl_enum_string}}};'
-queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
+queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
 default_ptw_queue = {
                 'wq_size':0,
                 'pq_size':0,
-                'ptwq_size':0,
                 '_offset_bits':'champsim::lg2(PAGE_SIZE)',
                 'wq_check_full_addr':False
         }
@@ -31,7 +30,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     upper_levels = {k: {'uppers': tuple(x[1] for x in v)} for k,v in itertools.groupby(sorted(upper_level_pairs, key=operator.itemgetter(0)), key=operator.itemgetter(0))}
 
-    subdict_keys = ('rq_size', 'pq_size', 'wq_size', 'ptwq_size', '_offset_bits', 'wq_check_full_addr')
+    subdict_keys = ('rq_size', 'pq_size', 'wq_size', '_offset_bits', 'wq_check_full_addr')
     upper_levels = util.chain(upper_levels,
             *({c['name']: util.subdict(c, subdict_keys)} for c in caches),
             *({p['name']: util.chain(default_ptw_queue, util.subdict(p, subdict_keys))} for p in ptws),
@@ -39,7 +38,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                     'rq_size':'std::numeric_limits<std::size_t>::max()',
                     'wq_size':'std::numeric_limits<std::size_t>::max()',
                     'pq_size':'std::numeric_limits<std::size_t>::max()',
-                    'ptwq_size':'std::numeric_limits<std::size_t>::max()',
                     '_offset_bits':'champsim::lg2(BLOCK_SIZE)',
                     'wq_check_full_addr':False
                 }

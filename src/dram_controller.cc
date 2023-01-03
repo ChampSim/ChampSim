@@ -223,7 +223,7 @@ void MEMORY_CONTROLLER::initiate_requests()
 {
   // Initiate read requests
   for (auto ul : queues) {
-    for (auto q : {std::ref(ul->PTWQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
+    for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
           return pkt.event_cycle <= cycle && this->add_rq(pkt);
           });

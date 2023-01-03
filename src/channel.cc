@@ -4,8 +4,8 @@
 #include "instruction.h"
 #include "util.h"
 
-champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, unsigned offset_bits, bool match_offset)
-      : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), PTWQ_SIZE(ptwq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
+champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
+      : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
   {
   }
 
@@ -164,16 +164,3 @@ bool champsim::channel::add_pq(const PACKET& packet)
   return result;
 }
 
-bool champsim::channel::add_ptwq(const PACKET& packet)
-{
-  sim_stats.back().PTWQ_ACCESS++;
-
-  auto result = do_add_queue(PTWQ, PTWQ_SIZE, packet);
-
-  if (result)
-    sim_stats.back().PTWQ_TO_CACHE++;
-  else
-    sim_stats.back().PTWQ_FULL++;
-
-  return result;
-}

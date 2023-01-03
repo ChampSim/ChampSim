@@ -35,12 +35,10 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
       std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
-      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
-      queues.PTWQ.clear();
 
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
@@ -88,12 +86,10 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
       std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
-      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
-      queues.PTWQ.clear();
 
       auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
@@ -134,12 +130,10 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
       std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
-      std::for_each(std::begin(queues.PTWQ), std::end(queues.PTWQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
-      queues.PTWQ.clear();
     }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }

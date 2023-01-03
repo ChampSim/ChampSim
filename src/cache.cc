@@ -304,7 +304,7 @@ void CACHE::operate()
   // Initiate tag checks
   std::vector<std::reference_wrapper<std::deque<PACKET>>> queues;
   for (auto ul : upper_levels) {
-    queues.insert(std::cend(queues), {std::ref(ul->WQ), std::ref(ul->PTWQ), std::ref(ul->RQ), std::ref(ul->PQ)});
+    queues.insert(std::cend(queues), {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)});
   }
   queues.push_back(std::ref(internal_PQ));
 
@@ -526,8 +526,6 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
     //return upper_levels->WQ_SIZE;
   //else if (queue_type == 3)
     //return upper_levels->PQ_SIZE;
-  //else if (queue_type == 4)
-    //return upper_levels->PTWQ_SIZE;
 
   return 0;
 }

@@ -72,7 +72,7 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<PACKET> *ret, F
 SCENARIO("Cache queues perform forwarding WQ to WQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
@@ -119,7 +119,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
 SCENARIO("Cache queues perform forwarding RQ to RQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     // These are here to give us pointers to MRPs
@@ -172,7 +172,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
 SCENARIO("Cache queues perform forwarding PQ to PQ") {
   GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     // These are here to give us pointers to MRPs
@@ -225,7 +225,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
 SCENARIO("Cache queues forward WQ to RQ") {
   GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
@@ -262,7 +262,7 @@ SCENARIO("Cache queues forward WQ to RQ") {
 SCENARIO("Cache queues forward WQ to PQ") {
   GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
@@ -300,7 +300,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
   GIVEN("A read queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
     do_nothing_MRC mock_ll{2};
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     // These are just here to give us pointers to MemoryRequestProducers
@@ -322,7 +322,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
 SCENARIO("Non-translating cache queues forward PQ to PQ with different fill levels") {
   GIVEN("A prefetch queue with one item") {
     constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, 0, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
     // These are just here to give us pointers to MemoryRequestProducers
