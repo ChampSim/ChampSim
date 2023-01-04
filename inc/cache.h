@@ -40,6 +40,33 @@ class CACHE : public champsim::operable
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
 
+  struct tag_lookup_type {
+    uint64_t address;
+    uint64_t v_address;
+    uint64_t data;
+    uint64_t ip;
+    uint64_t instr_id;
+
+    uint32_t pf_metadata;
+    uint32_t cpu;
+
+    uint8_t type;
+    bool prefetch_from_this;
+    bool skip_fill;
+    bool is_translated;
+    bool translate_issued = false;
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
+
+    explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
+    tag_lookup_type(request_type req, bool local_pref, bool skip);
+  };
+
   struct mshr_type {
     uint64_t address;
     uint64_t v_address;
@@ -53,19 +80,21 @@ class CACHE : public champsim::operable
     uint8_t type;
     bool prefetch_from_this;
 
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint64_t cycle_enqueued;
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    mshr_type(request_type req, uint64_t cycle);
+    mshr_type(tag_lookup_type req, uint64_t cycle);
   };
 
-  bool try_hit(const request_type& handle_pkt);
+  bool try_hit(const tag_lookup_type& handle_pkt);
   bool handle_fill(const mshr_type& fill_mshr);
-  bool handle_miss(const request_type& handle_pkt);
-  bool handle_write(const request_type& handle_pkt);
+  bool handle_miss(const tag_lookup_type& handle_pkt);
+  bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
@@ -95,9 +124,9 @@ class CACHE : public champsim::operable
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
 
-  std::deque<request_type> internal_PQ{};
-  std::deque<request_type> inflight_tag_check{};
-  std::deque<request_type> translation_stash{};
+  std::deque<tag_lookup_type> internal_PQ{};
+  std::deque<tag_lookup_type> inflight_tag_check{};
+  std::deque<tag_lookup_type> translation_stash{};
 
 public:
   std::vector<channel_type*> upper_levels;

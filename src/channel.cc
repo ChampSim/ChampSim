@@ -28,7 +28,6 @@ template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
-    destination.skip_fill &= source.skip_fill; // If one of the package will fill this level the resulted package should also fill this level
     auto instr_copy = std::move(destination.instr_depend_on_me);
     auto ret_copy = std::move(destination.to_return);
 
@@ -102,23 +101,13 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const req
   assert(packet.address != 0);
 
   // check occupancy
-  if (std::size(queue) >= queue_size) {
-    if constexpr (champsim::debug_print) {
-      std::cout << " FULL" << std::endl;
-    }
-
+  if (std::size(queue) >= queue_size)
     return false; // cannot handle this request
-  }
 
   // Insert the packet ahead of the translation misses
   auto fwd_pkt = packet;
   fwd_pkt.forward_checked = false;
-  fwd_pkt.translate_issued = false;
   queue.push_back(fwd_pkt);
-
-  if constexpr (champsim::debug_print) {
-    std::cout << " ADDED event_cycle: " << fwd_pkt.event_cycle << std::endl;
-  }
 
   return true;
 }

@@ -21,13 +21,6 @@ bool issue_pq (Q& uut, typename Q::request_type pkt)
   return uut.add_pq(pkt);
 }
 
-template <typename Q>
-bool issue_pq_skip(Q &uut, typename Q::request_type pkt)
-{
-  pkt.skip_fill = true;
-  return uut.add_pq(pkt);
-}
-
 template <typename Q, typename F>
 bool issue(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *ret, F&& func)
 {
@@ -314,29 +307,6 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
       uut.check_collision();
       THEN("The two packets are not merged") {
         REQUIRE(std::size(uut.RQ) == 2);
-      }
-    }
-  }
-}
-
-SCENARIO("Non-translating cache queues forward PQ to PQ with different fill levels") {
-  GIVEN("A prefetch queue with one item") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
-
-    // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0, ul1;
-
-    issue(uut, address, &ul0.returned, issue_pq_skip<decltype(uut)>);
-
-    WHEN("A packet with the same address but different fill level is sent") {
-      issue(uut, address, &ul1.returned, issue_pq<decltype(uut)>);
-
-      uut.check_collision();
-      THEN("The two packets are merged and fill this level") {
-        REQUIRE(std::size(uut.PQ) == 1);
-        REQUIRE(uut.PQ.front().skip_fill == false);
       }
     }
   }

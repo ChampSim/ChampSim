@@ -231,14 +231,14 @@ void MEMORY_CONTROLLER::initiate_requests()
   for (auto ul : queues) {
     for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
-          return pkt.event_cycle <= cycle && this->add_rq(pkt);
+          return this->add_rq(pkt);
           });
       q.get().erase(begin, end);
     }
 
     // Initiate write requests
     auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
-        return pkt.event_cycle <= cycle && this->add_wq(pkt);
+        return this->add_wq(pkt);
         });
     ul->WQ.erase(wq_begin, wq_end);
   }

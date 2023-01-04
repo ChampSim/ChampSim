@@ -11,7 +11,11 @@
  */
 class do_nothing_MRC : public champsim::operable
 {
-  std::deque<champsim::channel::request_type> packets, ready_packets;
+  struct packet : champsim::channel::request_type
+  {
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+  };
+  std::deque<packet> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
 
@@ -25,10 +29,11 @@ class do_nothing_MRC : public champsim::operable
 
     void operate() override {
       auto add_pkt = [&](auto pkt) {
-        pkt.event_cycle = current_cycle + latency;
-        pkt.data = ++ret_data;
-        addresses.push_back(pkt.address);
-        packets.push_back(pkt);
+        packet to_insert{pkt};
+        to_insert.event_cycle = current_cycle + latency;
+        to_insert.data = ++ret_data;
+        addresses.push_back(to_insert.address);
+        packets.push_back(to_insert);
       };
 
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
@@ -58,7 +63,11 @@ class do_nothing_MRC : public champsim::operable
  */
 class filter_MRC : public champsim::operable
 {
-  std::deque<champsim::channel::request_type> packets, ready_packets;
+  struct packet : champsim::channel::request_type
+  {
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+  };
+  std::deque<packet> packets, ready_packets;
   const uint64_t ret_addr;
   const uint64_t latency = 0;
   std::size_t mpacket_count = 0;
@@ -73,8 +82,9 @@ class filter_MRC : public champsim::operable
     void operate() override {
       auto add_pkt = [&](auto pkt) {
         if (pkt.address == ret_addr) {
-          pkt.event_cycle = current_cycle + latency;
-          packets.push_back(pkt);
+          packet to_insert{pkt};
+          to_insert.event_cycle = current_cycle + latency;
+          packets.push_back(to_insert);
           ++mpacket_count;
         }
       };

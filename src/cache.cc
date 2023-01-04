@@ -29,7 +29,12 @@ CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32
 {
 }
 
-CACHE::mshr_type::mshr_type(request_type req, uint64_t cycle)
+CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
+  : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
+    type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+{}
+
+CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
   : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
     type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
 {}
@@ -120,7 +125,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   return success;
 }
 
-bool CACHE::try_hit(const request_type& handle_pkt)
+bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 {
   cpu = handle_pkt.cpu;
 
@@ -154,9 +159,7 @@ bool CACHE::try_hit(const request_type& handle_pkt)
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0, handle_pkt.type, true);
 
-    response_type response{handle_pkt};
-    response.data = way->data;
-    response.pf_metadata = metadata_thru;
+    response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
     for (auto ret : handle_pkt.to_return)
       ret->push_back(response);
 
@@ -174,7 +177,7 @@ bool CACHE::try_hit(const request_type& handle_pkt)
   return hit;
 }
 
-bool CACHE::handle_miss(const request_type& handle_pkt)
+bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -220,18 +223,24 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
     if (mshr_full)  // not enough MSHR resource
       return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
 
-    auto fwd_pkt = handle_pkt;
+    request_type fwd_pkt;
 
-    if (fwd_pkt.type == WRITE)
-      fwd_pkt.type = RFO;
+    fwd_pkt.asid[0] = handle_pkt.asid[0];
+    fwd_pkt.asid[1] = handle_pkt.asid[1];
+    fwd_pkt.type = (handle_pkt.type == WRITE) ? RFO : handle_pkt.type;
+    fwd_pkt.pf_metadata = handle_pkt.pf_metadata;
+    fwd_pkt.cpu = handle_pkt.cpu;
+
+    fwd_pkt.address = handle_pkt.address;
+    fwd_pkt.v_address = handle_pkt.v_address;
+    fwd_pkt.data = handle_pkt.data;
+    fwd_pkt.instr_id = handle_pkt.instr_id;
+    fwd_pkt.ip = handle_pkt.ip;
+
+    fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
 
     if (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill)
       fwd_pkt.to_return = {&lower_level->returned};
-    else
-      fwd_pkt.to_return.clear();
-
-    fwd_pkt.skip_fill = false;
-    fwd_pkt.prefetch_from_this = false;
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -252,7 +261,7 @@ bool CACHE::handle_miss(const request_type& handle_pkt)
   return true;
 }
 
-bool CACHE::handle_write(const request_type& handle_pkt)
+bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -304,22 +313,23 @@ void CACHE::operate()
 
   // Initiate tag checks
   auto tag_bw = MAX_TAG;
+  auto tag_initializer = [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](const auto& entry){
+          tag_lookup_type retval{entry};
+          retval.event_cycle = cycle;
+          return retval;
+      };
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
       tag_bw -= std::distance(begin, end);
-      auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
+      std::transform(begin, end, std::back_inserter(inflight_tag_check), tag_initializer);
       q.get().erase(begin, end);
-      std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){
-          entry.event_cycle = cycle;
-      });
     }
   }
   auto [begin, end] = champsim::get_span(std::cbegin(internal_PQ), std::cend(internal_PQ), tag_bw);
   tag_bw -= std::distance(begin, end);
-  auto inserted_tags = inflight_tag_check.insert(std::cend(inflight_tag_check), begin, end);
+  std::transform(begin, end, std::back_inserter(inflight_tag_check), tag_initializer);
   internal_PQ.erase(begin, end);
-  std::for_each(inserted_tags, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry){ entry.event_cycle = cycle; });
 
   // Issue translations
   issue_translation();
@@ -390,15 +400,13 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
 
   request_type pf_packet;
   pf_packet.type = PREFETCH;
-  pf_packet.prefetch_from_this = true;
-  pf_packet.skip_fill = !fill_this_level;
   pf_packet.pf_metadata = prefetch_metadata;
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.is_translated = !virtual_prefetch;
 
-  internal_PQ.push_back(pf_packet);
+  internal_PQ.emplace_back(pf_packet, true, !fill_this_level);
   ++sim_stats.back().pf_issued;
 
   return true;
@@ -475,9 +483,21 @@ void CACHE::issue_translation()
 {
   std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& q_entry) {
     if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
-      auto fwd_pkt = q_entry;
+      request_type fwd_pkt;
+      fwd_pkt.asid[0] = q_entry.asid[0];
+      fwd_pkt.asid[1] = q_entry.asid[1];
       fwd_pkt.type = LOAD;
+      fwd_pkt.cpu = q_entry.cpu;
+
+      fwd_pkt.address = q_entry.address;
+      fwd_pkt.v_address = q_entry.v_address;
+      fwd_pkt.data = q_entry.data;
+      fwd_pkt.instr_id = q_entry.instr_id;
+      fwd_pkt.ip = q_entry.ip;
+
+      fwd_pkt.instr_depend_on_me = q_entry.instr_depend_on_me;
       fwd_pkt.is_translated = true;
+
       fwd_pkt.to_return = {&this->lower_translate->returned};
       auto success = this->lower_translate->add_rq(fwd_pkt);
       if (success) {
@@ -608,8 +628,7 @@ void CACHE::print_deadlock()
       for (const auto& entry : ul->RQ) {
         std::cout << "[" << NAME << " RQ] "
           << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
       }
     } else {
       std::cout << NAME << " RQ empty" << std::endl;
@@ -619,8 +638,7 @@ void CACHE::print_deadlock()
       for (const auto& entry : ul->WQ) {
         std::cout << "[" << NAME << " WQ] "
           << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
       }
     } else {
       std::cout << NAME << " WQ empty" << std::endl;
@@ -630,8 +648,7 @@ void CACHE::print_deadlock()
       for (const auto& entry : ul->PQ) {
         std::cout << "[" << NAME << " PQ] "
           << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-        std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
       }
     } else {
       std::cout << NAME << " PQ empty" << std::endl;
