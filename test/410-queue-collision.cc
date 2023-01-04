@@ -22,7 +22,7 @@ bool issue_pq (Q& uut, typename Q::request_type pkt)
 }
 
 template <typename Q, typename F>
-bool issue(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *ret, F&& func)
+bool issue(Q &uut, uint64_t seed_addr, bool want_return, F&& func)
 {
   // Create a test packet
   typename Q::request_type seed;
@@ -30,7 +30,7 @@ bool issue(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *re
   seed.v_address = 0;
   seed.is_translated = true;
   seed.cpu = 0;
-  seed.to_return = {ret};
+  seed.response_requested = want_return;
 
   return std::invoke(std::forward<F>(func), uut, seed);
 }
@@ -49,7 +49,7 @@ bool issue(Q &uut, uint64_t seed_addr, F&& func)
 }
 
 template <typename Q, typename F>
-bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<typename Q::response_type> *ret, F&& func)
+bool issue_non_translated(Q &uut, uint64_t seed_addr, F&& func)
 {
   // Create a test packet
   typename Q::request_type seed;
@@ -57,7 +57,6 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, std::deque<typename Q::res
   seed.v_address = seed_addr;
   seed.is_translated = false;
   seed.cpu = 0;
-  seed.to_return = {ret};
 
   return std::invoke(std::forward<F>(func), uut, seed);
 }
@@ -115,9 +114,6 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
-    // These are here to give us pointers to MRPs
-    to_rq_MRP ul0, ul1;
-
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.back().RQ_ACCESS == 0);
       CHECK(uut.sim_stats.back().RQ_TO_CACHE == 0);
@@ -125,7 +121,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
     }
 
     WHEN("A packet is sent to the read queue") {
-      auto seed_result = issue(uut, address, &ul0.returned, issue_rq<champsim::channel>);
+      auto seed_result = issue(uut, address, issue_rq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -136,7 +132,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
-        auto test_result = issue(uut, address, &ul1.returned, issue_rq<champsim::channel>);
+        auto test_result = issue(uut, address, issue_rq<champsim::channel>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -149,9 +145,6 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
         uut.check_collision();
         THEN("The two packets are merged") {
           CHECK(std::size(uut.RQ) == 1);
-          CHECK(std::size(uut.RQ.front().to_return) == 2);
-          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul0.returned) == 1);
-          CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().RQ_MERGED == 1);
@@ -168,9 +161,6 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
-    // These are here to give us pointers to MRPs
-    to_rq_MRP ul0, ul1;
-
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.back().PQ_ACCESS == 0);
       CHECK(uut.sim_stats.back().PQ_TO_CACHE == 0);
@@ -178,7 +168,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
     }
 
     WHEN("A packet is sent to the prefetch queue") {
-      auto seed_result = issue(uut, address, &ul0.returned, issue_pq<champsim::channel>);
+      auto seed_result = issue(uut, address, false, issue_pq<champsim::channel>);
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
 
@@ -189,7 +179,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the prefetch queue") {
-        auto test_result = issue(uut, address, &ul1.returned, issue_pq<champsim::channel>);
+        auto test_result = issue(uut, address, true, issue_pq<champsim::channel>);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
 
@@ -202,9 +192,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
         uut.check_collision();
         THEN("The two packets are merged") {
           CHECK(std::size(uut.PQ) == 1);
-          CHECK(std::size(uut.PQ.front().to_return) == 2);
-          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul0.returned) == 1);
-          CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1.returned) == 1);
+          CHECK(uut.PQ.front().response_requested == true);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().PQ_MERGED == 1);
@@ -233,15 +221,13 @@ SCENARIO("Cache queues forward WQ to RQ") {
       }
 
       AND_WHEN("A packet with the same address is sent to the read queue") {
-        counting_MRP counter;
-        issue(uut, address, &counter.returned, issue_rq<champsim::channel>);
+        issue(uut, address, true, issue_rq<champsim::channel>);
         uut.check_collision();
-        counter.operate();
 
         THEN("The two packets are merged") {
           CHECK(std::size(uut.WQ) == 1);
           CHECK(std::size(uut.RQ) == 0);
-          CHECK(counter.count == 1);
+          CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
@@ -270,15 +256,13 @@ SCENARIO("Cache queues forward WQ to PQ") {
       }
 
       WHEN("A packet with the same address is sent to the prefetch queue") {
-        counting_MRP counter;
-        issue(uut, address, &counter.returned, issue_pq<champsim::channel>);
+        issue(uut, address, true, issue_pq<champsim::channel>);
         uut.check_collision();
-        counter.operate();
 
         THEN("The two packets are merged") {
           CHECK(std::size(uut.WQ) == 1);
           CHECK(std::size(uut.PQ) == 0);
-          CHECK(counter.count == 1);
+          CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
@@ -296,13 +280,10 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
     uut.sim_stats.emplace_back();
 
-    // These are just here to give us pointers to MemoryRequestProducers
-    to_wq_MRP ul0, ul1;
-
-    issue(uut, address, &ul0.returned, issue_rq<decltype(uut)>);
+    issue(uut, address, issue_rq<decltype(uut)>);
 
     WHEN("A packet with the same physical address but non translated is sent") {
-      issue_non_translated(uut, address, &ul1.returned, issue_rq<decltype(uut)>);
+      issue_non_translated(uut, address, issue_rq<decltype(uut)>);
 
       uut.check_collision();
       THEN("The two packets are not merged") {

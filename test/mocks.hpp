@@ -49,8 +49,8 @@ class do_nothing_MRC : public champsim::operable
       packets.erase(std::begin(packets), end);
 
       for (auto &pkt : ready_packets) {
-        for (auto ret : pkt.to_return)
-          ret->push_back(champsim::channel::response_type{pkt});
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
@@ -101,8 +101,8 @@ class filter_MRC : public champsim::operable
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 
       for (auto &pkt : ready_packets) {
-        for (auto ret : pkt.to_return)
-          ret->push_back(champsim::channel::response_type{pkt});
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
@@ -145,9 +145,8 @@ class release_MRC : public champsim::operable
     {
         auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
         if (pkt_it != std::end(packets)) {
-            for (auto ret : pkt_it->to_return) {
-                ret->push_back(champsim::channel::response_type{*pkt_it});
-            }
+          if (pkt_it->response_requested)
+            queues.returned.push_back(champsim::channel::response_type{*pkt_it});
         }
         packets.erase(pkt_it);
     }
@@ -202,14 +201,6 @@ struct queue_issue_MRP : public champsim::operable
     }
     queues.returned.clear();
   }
-
-  protected:
-  request_type mark_packet(request_type pkt)
-  {
-    pkt.to_return = {&queues.returned};
-    packets.push_back({pkt, current_cycle, 0});
-    return pkt;
-  }
 };
 
 /*
@@ -219,7 +210,10 @@ struct to_wq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
-  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_wq(mark_packet(pkt)); }
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_wq(pkt);
+  }
 };
 
 /*
@@ -229,7 +223,10 @@ struct to_rq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
-  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_rq(mark_packet(pkt)); }
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_rq(pkt);
+  }
 };
 
 /*
@@ -239,6 +236,9 @@ struct to_pq_MRP : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
-  bool issue(const queue_issue_MRP::request_type &pkt) { return queues.add_pq(mark_packet(pkt)); }
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_pq(pkt);
+  }
 };
 

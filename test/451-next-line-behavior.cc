@@ -24,7 +24,6 @@ SCENARIO("The next line prefetcher issues prefetches") {
       seed.address = 0xffff'003f;
       seed.instr_id = id++;
       seed.cpu = 0;
-      seed.to_return = {&mock_ul.returned};
 
       // Issue it to the uut
       auto seed_result = mock_ul.issue(seed);

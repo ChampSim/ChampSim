@@ -27,7 +27,6 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
       test.address = 0xdeadbeef;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul.returned};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -63,7 +62,6 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
       test.address = 0xffff'ffff'ffff'ffff;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul.returned};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -100,7 +98,6 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     seed.address = 0xffff'ffff'ffff'ffff;
     seed.v_address = seed.address;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul.returned};
 
     auto seed_result = mock_ul.issue(seed);
     REQUIRE(seed_result);

@@ -28,25 +28,20 @@ template <typename Iter>
 bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
+    destination.response_requested |= source.response_requested;
     auto instr_copy = std::move(destination.instr_depend_on_me);
-    auto ret_copy = std::move(destination.to_return);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
                    std::back_inserter(destination.instr_depend_on_me), ooo_model_instr::program_order);
-    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(source.to_return), std::end(source.to_return),
-                   std::back_inserter(destination.to_return));
   });
 }
 
 template <typename Iter>
-bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
+bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt, std::deque<champsim::channel::response_type>& returned)
 {
-  return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
-    champsim::channel::response_type response{source};
-    response.data = destination.data;
-    response.pf_metadata = destination.pf_metadata;
-    for (auto ret : source.to_return)
-      ret->push_back(response);
+  return do_collision_for(begin, end, packet, shamt, [&](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
+    if (source.response_requested)
+      returned.emplace_back(source.address, source.v_address, destination.data, destination.pf_metadata, source.instr_depend_on_me);
   });
 }
 
@@ -68,7 +63,7 @@ void champsim::channel::check_collision()
 
   // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&request_type::forward_checked)); rq_it != std::end(RQ);) {
-    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt)) {
+    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt, returned)) {
       sim_stats.back().WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
     } else if (do_collision_for_merge(std::begin(RQ), rq_it, *rq_it, read_shamt)) {
@@ -82,7 +77,7 @@ void champsim::channel::check_collision()
 
   // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&request_type::forward_checked)); pq_it != std::end(PQ);) {
-    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt)) {
+    if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt, returned)) {
       sim_stats.back().WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
     } else if (do_collision_for_merge(std::begin(PQ), pq_it, *pq_it, read_shamt)) {

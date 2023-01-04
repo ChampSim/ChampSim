@@ -25,7 +25,6 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul.returned};
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);

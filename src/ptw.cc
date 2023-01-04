@@ -21,13 +21,13 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
 }
 
 PageTableWalker::mshr_type::mshr_type(request_type req, std::size_t level)
-  : address(req.address), v_address(req.v_address), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return), pf_metadata(req.pf_metadata), cpu(req.cpu), translation_level(level)
+  : address(req.address), v_address(req.v_address), instr_depend_on_me(req.instr_depend_on_me), pf_metadata(req.pf_metadata), cpu(req.cpu), translation_level(level)
 {
   asid[0] = req.asid[0];
   asid[1] = req.asid[1];
 }
 
-bool PageTableWalker::handle_read(const request_type& handle_pkt)
+bool PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* ul)
 {
   pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
   std::vector<std::optional<pscl_entry>> pscl_hits;
@@ -48,6 +48,8 @@ bool PageTableWalker::handle_read(const request_type& handle_pkt)
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
   fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
   fwd_mshr.v_address = handle_pkt.address;
+  if (handle_pkt.response_requested)
+    fwd_mshr.to_return = {&ul->returned};
 
   return step_translation(fwd_mshr);
 }
@@ -101,7 +103,6 @@ bool PageTableWalker::step_translation(const mshr_type& source)
     packet.asid[1] = source.asid[1];
     packet.is_translated = true;
     packet.type = TRANSLATION;
-    packet.to_return = {&lower_level->returned};
 
     success = lower_level->add_rq(packet);
   }
@@ -130,7 +131,7 @@ void PageTableWalker::operate()
 
   auto tag_bw = MAX_READ;
   for (auto ul : upper_levels) {
-    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [this](const auto& pkt) { return this->handle_read(pkt); });
+    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [ul, this](const auto& pkt) { return this->handle_read(pkt, ul); });
     tag_bw -= std::distance(rq_begin, rq_end);
     ul->RQ.erase(rq_begin, rq_end);
   }

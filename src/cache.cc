@@ -31,7 +31,7 @@ CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
   : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-    type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+    type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
 {}
 
 CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
@@ -83,6 +83,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       writeback_packet.ip = 0;
       writeback_packet.type = WRITE;
       writeback_packet.pf_metadata = way->pf_metadata;
+      writeback_packet.response_requested = false;
 
       success = lower_level->add_wq(writeback_packet);
     }
@@ -238,9 +239,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     fwd_pkt.ip = handle_pkt.ip;
 
     fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
-
-    if (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill)
-      fwd_pkt.to_return = {&lower_level->returned};
+    fwd_pkt.response_requested = (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill);
 
     bool success;
     if (prefetch_as_load || handle_pkt.type != PREFETCH)
@@ -252,7 +251,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       return false;
 
     // Allocate an MSHR
-    if (!std::empty(fwd_pkt.to_return)) {
+    if (fwd_pkt.response_requested) {
       MSHR.emplace_back(handle_pkt, current_cycle);
       MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
@@ -313,22 +312,29 @@ void CACHE::operate()
 
   // Initiate tag checks
   auto tag_bw = MAX_TAG;
-  auto tag_initializer = [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](const auto& entry){
-          tag_lookup_type retval{entry};
-          retval.event_cycle = cycle;
-          return retval;
-      };
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
       tag_bw -= std::distance(begin, end);
-      std::transform(begin, end, std::back_inserter(inflight_tag_check), tag_initializer);
+      std::transform(begin, end, std::back_inserter(inflight_tag_check),
+        [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul](const auto& entry){
+            tag_lookup_type retval{entry};
+            retval.event_cycle = cycle;
+            if (entry.response_requested)
+              retval.to_return = {&ul->returned};
+            return retval;
+        });
       q.get().erase(begin, end);
     }
   }
   auto [begin, end] = champsim::get_span(std::cbegin(internal_PQ), std::cend(internal_PQ), tag_bw);
   tag_bw -= std::distance(begin, end);
-  std::transform(begin, end, std::back_inserter(inflight_tag_check), tag_initializer);
+  std::transform(begin, end, std::back_inserter(inflight_tag_check),
+    [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](const auto& entry){
+        tag_lookup_type retval{entry};
+        retval.event_cycle = cycle;
+        return retval;
+    });
   internal_PQ.erase(begin, end);
 
   // Issue translations
@@ -498,7 +504,6 @@ void CACHE::issue_translation()
       fwd_pkt.instr_depend_on_me = q_entry.instr_depend_on_me;
       fwd_pkt.is_translated = true;
 
-      fwd_pkt.to_return = {&this->lower_translate->returned};
       auto success = this->lower_translate->add_rq(fwd_pkt);
       if (success) {
         if constexpr (champsim::debug_print) {

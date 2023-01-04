@@ -52,7 +52,7 @@ class PageTableWalker : public champsim::operable
   std::vector<channel_type*> upper_levels;
   channel_type* lower_level;
 
-  bool handle_read(const request_type& pkt);
+  bool handle_read(const request_type& pkt, channel_type* ul);
   bool handle_fill(const mshr_type& pkt);
   bool step_translation(const mshr_type& source);
 

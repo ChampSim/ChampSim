@@ -230,8 +230,8 @@ void MEMORY_CONTROLLER::initiate_requests()
   // Initiate read requests
   for (auto ul : queues) {
     for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
-          return this->add_rq(pkt);
+      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [ul, this](const auto& pkt){
+          return this->add_rq(pkt, ul);
           });
       q.get().erase(begin, end);
     }
@@ -245,13 +245,13 @@ void MEMORY_CONTROLLER::initiate_requests()
 }
 
 DRAM_CHANNEL::request_type::request_type(typename champsim::channel::request_type req)
-  : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+  : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
 {
   asid[0] = req.asid[0];
   asid[1] = req.asid[1];
 }
 
-bool MEMORY_CONTROLLER::add_rq(const request_type& packet)
+bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
@@ -260,6 +260,8 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet)
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
+    if (packet.response_requested)
+      rq_it->value().to_return = {&ul->returned};
 
     return true;
   }

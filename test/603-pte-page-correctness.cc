@@ -31,7 +31,6 @@ SCENARIO("The page table steps have correct offsets") {
       test.address = addr;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul.returned};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);

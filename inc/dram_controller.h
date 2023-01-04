@@ -82,7 +82,7 @@ class MEMORY_CONTROLLER : public champsim::operable
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   void initiate_requests();
-  bool add_rq(const request_type& pkt);
+  bool add_rq(const request_type& pkt, champsim::channel* ul);
   bool add_wq(const request_type& pkt);
 
 public:
