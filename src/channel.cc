@@ -91,7 +91,7 @@ void champsim::channel::check_collision()
 }
 
 template <typename R>
-bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const request_type& packet)
+bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet)
 {
   assert(packet.address != 0);
 
