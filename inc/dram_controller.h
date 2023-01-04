@@ -20,8 +20,27 @@ struct dram_stats {
 };
 
 struct DRAM_CHANNEL {
-  using value_type = typename champsim::channel::request_type;
   using response_type = typename champsim::channel::response_type;
+  struct request_type
+  {
+    bool scheduled = false;
+    bool forward_checked = false;
+
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+    uint32_t pf_metadata = 0;
+
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
+
+    explicit request_type(typename champsim::channel::request_type);
+  };
+  using value_type = request_type;
   using queue_type = std::vector<std::optional<value_type>>;
   queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
 

@@ -43,7 +43,7 @@ struct channel {
   struct response;
   struct request
   {
-    bool scheduled = false;
+    //bool scheduled = false;
     bool forward_checked = false;
     bool translate_issued = false;
     bool prefetch_from_this = false;
