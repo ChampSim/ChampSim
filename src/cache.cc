@@ -314,28 +314,22 @@ void CACHE::operate()
   auto tag_bw = MAX_TAG;
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto [begin, end] = champsim::get_span(std::cbegin(q.get()), std::cend(q.get()), tag_bw);
-      tag_bw -= std::distance(begin, end);
-      std::transform(begin, end, std::back_inserter(inflight_tag_check),
-        [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul](const auto& entry){
+      tag_bw -= operate_queue(q.get(), tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul, this](const auto& entry){
             tag_lookup_type retval{entry};
             retval.event_cycle = cycle;
             if (entry.response_requested)
               retval.to_return = {&ul->returned};
-            return retval;
+            this->inflight_tag_check.push_back(retval);
+            return true;
         });
-      q.get().erase(begin, end);
     }
   }
-  auto [begin, end] = champsim::get_span(std::cbegin(internal_PQ), std::cend(internal_PQ), tag_bw);
-  tag_bw -= std::distance(begin, end);
-  std::transform(begin, end, std::back_inserter(inflight_tag_check),
-    [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](const auto& entry){
+  tag_bw -= operate_queue(internal_PQ, tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), this](const auto& entry){
         tag_lookup_type retval{entry};
         retval.event_cycle = cycle;
-        return retval;
+        this->inflight_tag_check.push_back(retval);
+        return true;
     });
-  internal_PQ.erase(begin, end);
 
   // Issue translations
   issue_translation();
