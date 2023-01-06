@@ -47,6 +47,7 @@ def get_module_data(names_key, paths_key, values, directories, get_func):
 
 def data_getter(prefix, module_name, funcs):
     return {
+        'name': module_name,
         'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',) },
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
@@ -63,80 +64,173 @@ def get_pref_data(module_name, is_instruction_cache=False):
 def get_repl_data(module_name):
     return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
 
-def get_module_variant(fname, rtype, join_op, args, varname, keynamelist, fnamelist):
+def mangled_declarations(rtype, names, args, attrs=[]):
+    if rtype != 'void':
+        local_attrs = ('nodiscard',)
+    else:
+        local_attrs = tuple()
+    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+
+    argstring = ', '.join(a[0] for a in args)
+    yield from ('[[{}]] {} {}({});'.format(attrstring, rtype, name, argstring) for name in names)
+
+def mangled_prohibited_definitions(rtype, names, args, attrs=[]):
+    local_attrs = ('noreturn',)
+    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+
+    argstring = ', '.join(a[0] for a in args)
+    yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }}'.format(attrstring, rtype, name, argstring) for name in names)
+
+def discriminator_function_declaration(fname, rtype, args, attrs=[], classname=None):
+    if rtype != 'void':
+        local_attrs = ('nodiscard',)
+    else:
+        local_attrs = tuple()
+
+    if classname is None:
+        attrstring = '[[' + ', '.join(itertools.chain(attrs, local_attrs)) + ']]'
+        argstring = ', '.join(a[0] for a in args)
+    else:
+        attrstring = ''
+        argstring = ', '.join((a[0]+' '+a[1]) for a in args)
+
+    funcstring = ((classname + '::') if classname is not None else '') + 'impl_' + fname
+    yield '{} {} {}({}){}'.format(attrstring, rtype, funcstring, argstring, ';' if classname is None else '')
+
+def discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs):
     joiner = '' if rtype == 'void' else 'result ' + join_op + ' '
-    nodiscard = '' if rtype == 'void' else '[[nodiscard]] '
 
-    # Declare name-mangled functions
-    yield from (('{}{} {}({});').format(nodiscard, rtype, name, ', '.join(a[0] for a in args)) for name in fnamelist)
-
-    # Define discriminator function
-    yield from ('{}{} impl_{}({})'.format(nodiscard, rtype, fname, ', '.join(a[0]+' '+a[1] for a in args)), '{')
+    yield '{'
 
     # If the function expects a result, declare it
     if rtype != 'void':
         yield '  ' + rtype + ' result{};'
 
     # Discriminate between the module variants
-    yield from (('  if ({}[champsim::lg2({})]) {}{}({});').format(varname, k, joiner, n, ', '.join(a[1] for a in args)) for k,n in zip(keynamelist, fnamelist))
+    yield from ('  if ({}[champsim::lg2({})]) {}{}({});'.format(varname, k, joiner, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
     # Return result
     if rtype != 'void':
         yield '  return result;'
 
     yield '}'
+
+def get_module_variant_declarations(fname, rtype, args, fnamelist, attrs=[]):
+    yield from mangled_declarations(rtype, fnamelist, args, attrs=attrs)
+    yield from discriminator_function_declaration(fname, rtype, args, attrs=attrs)
     yield ''
 
-def get_all_variant_lines(prefix, num_varname, varname, mod_data, variant_data):
+def get_discriminator(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, attrs=[], classname=None):
+    yield from discriminator_function_declaration(fname, rtype, args, attrs=attrs, classname=classname)
+    yield from discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs)
+    yield ''
+
+def constants_for_modules(prefix, num_varname, mod_data):
     yield f'constexpr static std::size_t {num_varname} = {len(mod_data)};'
-    yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ull << {1};'.format(prefix, *x, prec=max(len(k) for k in mod_data)) for x in enumerate(mod_data))
-
-    kv = {k: [(prefix+name, v['func_map'][k]) for name,v in mod_data.items()] for k in variant_data.keys()}
-    yield ''
-    yield from itertools.chain.from_iterable(get_module_variant(funcargs[0], *funcargs[1], varname, *zip(*kv[funcargs[0]])) for funcargs in variant_data.items())
+    yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ull << {1};'.format(prefix, n, data['name'], prec=max(len(k['name']) for k in mod_data)) for n,data in enumerate(mod_data))
 
 def get_branch_lines(branch_data):
-    branch_variant_data = {
-        'initialize_branch_predictor': ('void', '', tuple()),
-        'last_branch_result': ('void', '', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type'))),
-        'predict_branch': ('uint8_t', '|=', (('uint64_t','ip'),))
-    }
+    prefix = 'b'
+    varname = 'bpred_type'
+    varname_size_name = 'NUM_BRANCH_MODULES'
+    branch_variant_data = [
+        ('initialize_branch_predictor', 'void', '', tuple()),
+        ('last_branch_result', 'void', '', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type'))),
+        ('predict_branch', 'uint8_t', '|=', (('uint64_t','ip'),))
+    ]
 
-    yield from get_all_variant_lines('b', 'NUM_BRANCH_MODULES', 'bpred_type', branch_data, branch_variant_data)
+    return (
+        itertools.chain(
+            constants_for_modules(prefix, varname_size_name, branch_data.values()), ('',),
+
+            # Declare name-mangled functions
+            *(get_module_variant_declarations(fname, rtype, args, [v['func_map'][fname] for v in branch_data.values()]) for fname, rtype, _, args in branch_variant_data)
+        ),
+
+        itertools.chain(
+            *(get_discriminator(fname, rtype, join_op, args, varname, [(prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], classname='O3_CPU') for fname, rtype, join_op, args in branch_variant_data)
+        )
+       )
 
 def get_btb_lines(btb_data):
-    btb_variant_data = {
-        'initialize_btb': ('void', '', tuple()),
-        'update_btb': ('void', '', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type'))),
-        'btb_prediction': ('std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'),))
-    }
+    prefix = 't'
+    varname = 'btb_type'
+    varname_size_name = 'NUM_BTB_MODULES'
+    btb_variant_data = [
+        ('initialize_btb', 'void', '', tuple()),
+        ('update_btb', 'void', '', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type'))),
+        ('btb_prediction', 'std::pair<uint64_t, uint8_t>', '=', (('uint64_t','ip'),))
+    ]
 
-    yield from get_all_variant_lines('t', 'NUM_BTB_MODULES', 'btb_type', btb_data, btb_variant_data)
+    return (
+        itertools.chain(
+            constants_for_modules(prefix, varname_size_name, btb_data.values()), ('',),
+
+            # Declare name-mangled functions
+            *(get_module_variant_declarations(fname, rtype, args, [v['func_map'][fname] for v in btb_data.values()]) for fname, rtype, _, args in btb_variant_data)
+        ),
+
+        itertools.chain(
+            *(get_discriminator(fname, rtype, join_op, args, varname, [(prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], classname='O3_CPU') for fname, rtype, join_op, args in btb_variant_data)
+        )
+       )
 
 def get_pref_lines(pref_data):
-    pref_nonbranch_variant_data = {
-        'prefetcher_initialize': ('void', '', tuple()),
-        'prefetcher_cache_operate': ('uint32_t', '^=', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in'))),
-        'prefetcher_cache_fill': ('uint32_t', '^=', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in'))),
-        'prefetcher_cycle_operate': ('void', '', tuple()),
-        'prefetcher_final_stats': ('void', '', tuple())
-    }
+    prefix = 'p'
+    varname = 'pref_type'
+    varname_size_name = 'NUM_PREFETCH_MODULES'
 
-    pref_branch_variant_data = {
-        'prefetcher_branch_operate': ('void', '', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')))
-    }
+    pref_nonbranch_variant_data = [
+        ('prefetcher_initialize', 'void', '', tuple()),
+        ('prefetcher_cache_operate', 'uint32_t', '^=', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in'))),
+        ('prefetcher_cache_fill', 'uint32_t', '^=', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in'))),
+        ('prefetcher_cycle_operate', 'void', '', tuple()),
+        ('prefetcher_final_stats', 'void', '', tuple())
+    ]
 
-    yield from get_all_variant_lines('p', 'NUM_PREFETCH_MODULES', 'pref_type', pref_data, pref_nonbranch_variant_data)
-    yield '// Assert data prefetchers do not operate on branches'
-    yield from ('void {}(uint64_t, uint8_t, uint64_t) {{ assert(false); }}'.format(p['func_map']['prefetcher_branch_operate']) for p in pref_data.values() if not p.get('_is_instruction_prefetcher'))
-    yield from (get_module_variant('prefetcher_branch_operate', *pref_branch_variant_data['prefetcher_branch_operate'], 'pref_type', *zip(*(('p'+kv[0],kv[1]['func_map']['prefetcher_branch_operate']) for kv in pref_data.items() if kv[1].get('_is_instruction_prefetcher')))))
+    pref_branch_variant_data = [
+        ('prefetcher_branch_operate', 'void', '', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')))
+    ]
+
+    return (
+        itertools.chain(
+            constants_for_modules(prefix, varname_size_name, pref_data.values()), ('',),
+
+            # Establish functions common to all prefetchers
+            *(get_module_variant_declarations(fname, rtype, args, [v['func_map'][fname] for v in pref_data.values()]) for fname, rtype, _, args in pref_nonbranch_variant_data),
+
+            # Establish functions that only matter to instruction prefetchers
+            ('', '// Assert data prefetchers do not operate on branches'),
+            *(mangled_prohibited_definitions(rtype, [v['func_map'][fname] for v in pref_data.values() if not v.get('_is_instruction_prefetcher')], args) for fname, rtype, _, args in pref_branch_variant_data),
+            *(get_module_variant_declarations(fname, rtype, args, [v['func_map'][fname] for v in pref_data.values() if v.get('_is_instruction_prefetcher')]) for fname, rtype, _, args in pref_branch_variant_data)
+        ),
+
+        itertools.chain(
+            *(get_discriminator(fname, rtype, join_op, args, varname, [(prefix + v['name'], v['func_map'][fname]) for v in pref_data.values()], classname='CACHE') for fname, rtype, join_op, args in itertools.chain(pref_nonbranch_variant_data, pref_branch_variant_data))
+        )
+       )
 
 def get_repl_lines(repl_data):
-    repl_variant_data = {
-        'initialize_replacement': ('void', '', tuple()),
-        'find_victim': ('uint32_t', '=', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type'))),
-        'update_replacement_state': ('void', '', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit'))),
-        'replacement_final_stats': ('void', '', tuple())
-    }
+    prefix = 'r'
+    varname = 'repl_type'
+    varname_size_name = 'NUM_REPLACEMENT_MODULES'
 
-    yield from get_all_variant_lines('r', 'NUM_REPLACEMENT_MODULES', 'repl_type', repl_data, repl_variant_data)
+    repl_variant_data = [
+        ('initialize_replacement', 'void', '', tuple()),
+        ('find_victim', 'uint32_t', '=', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type'))),
+        ('update_replacement_state', 'void', '', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit'))),
+        ('replacement_final_stats', 'void', '', tuple())
+    ]
+
+    return (
+        itertools.chain(
+            constants_for_modules(prefix, varname_size_name, repl_data.values()), ('',),
+
+            # Declare name-mangled functions
+            *(get_module_variant_declarations(fname, rtype, args, [v['func_map'][fname] for v in repl_data.values()]) for fname, rtype, _, args in repl_variant_data)
+        ),
+
+        itertools.chain(
+            *(get_discriminator(fname, rtype, join_op, args, varname, [(prefix + v['name'], v['func_map'][fname]) for v in repl_data.values()], classname='CACHE') for fname, rtype, join_op, args in repl_variant_data)
+        )
+       )
