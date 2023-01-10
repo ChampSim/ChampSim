@@ -38,6 +38,7 @@ $(build_objs) $(module_objs):
 
 # Add address sanitizers for tests
 #$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
+$(test_main_name): CXXFLAGS += -Wconversion
 
 # Link test executable
 $(test_main_name):
