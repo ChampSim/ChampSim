@@ -469,7 +469,7 @@ void CACHE::finish_translation(const response_type& packet)
     }
   }
 
-  auto stash_it = std::remove_if(std::begin(translation_stash), std::end(translation_stash), [cycle=current_cycle, page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) == page_num; });
+  auto stash_it = std::stable_partition(std::begin(translation_stash), std::end(translation_stash), [cycle=current_cycle, page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
   auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
   translation_stash.erase(stash_it, std::end(translation_stash));
   std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data](auto& entry) {
@@ -516,7 +516,8 @@ void CACHE::issue_translation()
 void CACHE::detect_misses()
 {
   // Find entries that would be ready except that they have not finished translation
-  auto q_it = std::remove_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), [cycle=current_cycle](auto x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+  auto missed = [cycle=current_cycle](auto x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; };
+  auto q_it = std::stable_partition(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::not_fn(missed));
 
   // Move them to the stash
   translation_stash.insert(std::cend(translation_stash), q_it, std::end(inflight_tag_check));

@@ -143,12 +143,12 @@ class release_MRC : public champsim::operable
 
     void release(uint64_t addr)
     {
-        auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
-        if (pkt_it != std::end(packets)) {
-          if (pkt_it->response_requested)
-            queues.returned.push_back(champsim::channel::response_type{*pkt_it});
-        }
-        packets.erase(pkt_it);
+        auto pkt_it = std::partition(std::begin(packets), std::end(packets), [addr](auto x){ return x.address != addr; });
+        std::for_each(pkt_it, std::end(packets), [&](const auto& pkt) {
+          if (pkt.response_requested)
+            queues.returned.push_back(champsim::channel::response_type{pkt});
+        });
+        packets.erase(pkt_it, std::end(packets));
     }
 };
 
