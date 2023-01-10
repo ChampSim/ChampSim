@@ -485,7 +485,7 @@ void CACHE::finish_translation(const response_type& packet)
     }
   }
 
-  auto stash_it = std::stable_partition(std::begin(translation_stash), std::end(translation_stash), [cycle=current_cycle, page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
+  auto stash_it = std::stable_partition(std::begin(translation_stash), std::end(translation_stash), [page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
   auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
   translation_stash.erase(stash_it, std::end(translation_stash));
   std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data](auto& entry) {
