@@ -96,7 +96,7 @@ class address_slice_impl
     constexpr self_type& operator+=(difference_type delta)
     {
       self_type& derived = static_cast<self_type&>(*this);
-      value = static_cast<underlying_type>(value + delta);
+      value += static_cast<underlying_type>(delta);
       value &= bitmask(derived.upper - derived.lower);
       return derived;
     }

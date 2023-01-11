@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <exception>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -46,6 +47,19 @@ struct table_tagger {
 // recognizes types that support slicing
 template <typename T>
 using dynamically_sliceable = decltype( std::declval<T>().slice(0,0) );
+
+template< class T, class U >
+constexpr bool cmp_equal( T t, U u ) noexcept
+{
+  using UT = std::make_unsigned_t<T>;
+  using UU = std::make_unsigned_t<U>;
+  if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
+    return t == u;
+  else if constexpr (std::is_signed_v<T>)
+    return t < 0 ? false : UT(t) == u;
+  else
+    return u < 0 ? false : t == UU(u);
+}
 } // namespace detail
 
 template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>>
@@ -65,10 +79,10 @@ private:
   SetProj set_projection;
   TagProj tag_projection;
 
-  std::size_t NUM_SET;
+  diff_type NUM_SET;
   diff_type NUM_WAY;
   uint64_t access_count = 0;
-  block_vec_type block{NUM_SET * NUM_WAY};
+  block_vec_type block;
 
   auto get_set_span(const value_type& elem)
   {
@@ -78,7 +92,9 @@ private:
     } else {
       set_idx = static_cast<diff_type>(set_projection(elem));
     }
-    diff_type raw_idx{(set_idx % static_cast<diff_type>(NUM_SET)) * NUM_WAY};
+    if (set_idx < 0)
+      throw std::runtime_error{"Set projection produced negative set index: "+std::to_string(set_idx)};
+    diff_type raw_idx{(set_idx % NUM_SET) * NUM_WAY};
     return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), NUM_WAY);
   }
 
@@ -139,11 +155,14 @@ public:
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
-      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
+      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways), block(sets*ways)
   {
-    assert(sets > 0);
-    assert(ways > 0);
-    assert(sets == (1ull << lg2(sets)));
+    if (!detail::cmp_equal(sets, static_cast<diff_type>(sets)))
+      throw std::runtime_error{"Sets is out of bounds"};
+    if (!detail::cmp_equal(ways, static_cast<diff_type>(ways)))
+      throw std::runtime_error{"Ways is out of bounds"};
+    if ((sets & (sets-1)) != 0)
+      throw std::runtime_error{"Sets is not a power of 2"};
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}
