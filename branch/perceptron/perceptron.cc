@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <array>
 #include <bitset>
+#include <cfenv>
 #include <cmath>
 #include <deque>
 #include <map>
@@ -153,7 +154,8 @@ void O3_CPU::last_branch_result(champsim::address ip, champsim::address branch_t
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  const int THETA = std::floor(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
+  std::fesetround(FE_TOWARDZERO);
+  const auto THETA = std::lrint(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
   if ((output <= THETA && output >= -THETA) || (prediction != taken))
     ::perceptrons[this][index].update(taken, history);
 }

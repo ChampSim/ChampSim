@@ -57,7 +57,10 @@ champsim::address VirtualMemory::ppage_front() const
 
 void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
-std::size_t VirtualMemory::available_ppages() const { return champsim::offset(next_ppage, last_ppage) / PAGE_SIZE; }
+std::size_t VirtualMemory::available_ppages() const {
+  assert(next_ppage <= last_ppage);
+  return static_cast<std::size_t>(champsim::offset(next_ppage, last_ppage)) / PAGE_SIZE; // Cast protected by prior assert
+}
 
 std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
 {

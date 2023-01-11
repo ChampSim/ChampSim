@@ -7,7 +7,7 @@
 
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
   auto pte_page_size = (1ull << 11);
-  auto level = GENERATE(2,3,4);
+  auto level = GENERATE(2u,3u,4u);
 
   GIVEN("A large virtual memory") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
@@ -21,7 +21,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
       champsim::address req_page{~(champsim::bitmask(size) << shamt)};
       for (std::size_t i = 0; i < size; ++i) {
         given_pages.push_back(uut.get_pte_pa(0, req_page, level).first);
-        req_page += 1ull << shamt;
+        req_page = champsim::address{champsim::splice(req_page, champsim::address_slice{64, shamt, 1})};
       }
       std::sort(std::begin(given_pages), std::end(given_pages));
 

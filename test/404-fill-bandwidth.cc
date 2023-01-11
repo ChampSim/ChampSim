@@ -33,7 +33,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
     for (long i = 0; i < size; ++i) {
       PACKET seed;
       seed.address = champsim::address{seed_base_addr + i};
-      seed.instr_id = i;
+      seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
@@ -59,7 +59,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = (size-1)/fill_bandwidth;
+      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         REQUIRE(mock_ul.packets.back().return_time == 101 + fill_latency + cycle);
@@ -99,7 +99,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
     for (long i = 0; i < size; ++i) {
       PACKET seed;
       seed.address = champsim::address{seed_base_addr + i};
-      seed.instr_id = i;
+      seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
@@ -117,7 +117,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = (size-1)/fill_bandwidth;
+      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + fill_latency + cycle);

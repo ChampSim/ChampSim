@@ -7,7 +7,7 @@
 namespace
 {
 constexpr std::size_t REGION_COUNT = 128;
-constexpr std::size_t MAX_DISTANCE = 256;
+constexpr int MAX_DISTANCE = 256;
 constexpr int PREFETCH_DEGREE = 2;
 
 using block_in_page = champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>;
@@ -71,10 +71,10 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
 
   // attempt to prefetch in the positive, then negative direction
   for (auto direction : {1, -1}) {
-    for (std::size_t i = 1, prefetches_issued = 0; i <= MAX_DISTANCE && prefetches_issued < PREFETCH_DEGREE; i++) {
-      const auto pos_step_addr = block_addr + direction * i;
-      const auto neg_step_addr = block_addr - direction * i;
-      const auto neg_2step_addr = block_addr - direction * 2 * i;
+    for (int i = 1, prefetches_issued = 0; i <= MAX_DISTANCE && prefetches_issued < PREFETCH_DEGREE; i++) {
+      const auto pos_step_addr = block_addr + (direction * i);
+      const auto neg_step_addr = block_addr - (direction * i);
+      const auto neg_2step_addr = block_addr - (direction * 2 * i);
       if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr)
           && !::check_cl_prefetch(this, pos_step_addr)) {
         // found something that we should prefetch

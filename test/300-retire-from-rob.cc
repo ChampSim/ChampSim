@@ -2,7 +2,7 @@
 #include "mocks.hpp"
 #include "ooo_cpu.h"
 
-SCENARIO("Completed instructions are retired") {
+SCENARIO("An empty ROB retires no instructions") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
@@ -21,7 +21,9 @@ SCENARIO("Completed instructions are retired") {
       }
     }
   }
+}
 
+SCENARIO("A ROB with uncompleted instructions retires no instructions") {
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
@@ -54,7 +56,9 @@ SCENARIO("Completed instructions are retired") {
       }
     }
   }
+}
 
+SCENARIO("A ROB retires only the head instruction") {
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 2;
@@ -93,7 +97,9 @@ SCENARIO("Completed instructions are retired") {
       }
     }
   }
+}
 
+SCENARIO("A ROB's retirement is bandwidth-limited") {
   GIVEN("A ROB with twice as many instructions as retire bandwidth") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
@@ -114,7 +120,7 @@ SCENARIO("Completed instructions are retired") {
         op->_operate();
 
       THEN("The bandwidth of instructions are retired") {
-        REQUIRE(std::size(uut.ROB) == old_rob_occupancy-uut.RETIRE_WIDTH);
+        REQUIRE(std::size(uut.ROB) + (std::size_t)uut.RETIRE_WIDTH == old_rob_occupancy);
         REQUIRE(uut.num_retired == old_num_retired+uut.RETIRE_WIDTH);
       }
 
