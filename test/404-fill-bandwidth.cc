@@ -7,7 +7,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t fill_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 3*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 3*fill_bandwidth));
 
   GIVEN("An empty cache") {
     release_MRC mock_ll;
@@ -27,18 +27,18 @@ SCENARIO("The MSHR respects the fill bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    champsim::address seed_base_addr{0xdeadbeef};
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
-    for (std::size_t i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       PACKET seed;
-      seed.address = seed_base_addr + i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     WHEN(std::to_string(size) + " packets are sent") {
       for (auto &seed : seeds) {
@@ -73,7 +73,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t fill_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 3*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 3*fill_bandwidth));
 
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
@@ -93,18 +93,18 @@ SCENARIO("Writebacks respect the fill bandwidth") {
     uut_queues.begin_phase();
 
     // Get a list of packets
-    champsim::address seed_base_addr{0xdeadbeef};
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
-    for (std::size_t i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       PACKET seed;
-      seed.address = seed_base_addr + i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     WHEN(std::to_string(size) + " packets are sent") {
       for (auto &seed : seeds) {

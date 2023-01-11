@@ -60,25 +60,26 @@ private:
     value_type data;
   };
   using block_vec_type = std::vector<block_t>;
+  using diff_type = typename block_vec_type::difference_type;
 
   SetProj set_projection;
   TagProj tag_projection;
 
-  std::size_t NUM_SET, NUM_WAY;
+  std::size_t NUM_SET;
+  diff_type NUM_WAY;
   uint64_t access_count = 0;
   block_vec_type block{NUM_SET * NUM_WAY};
 
   auto get_set_span(const value_type& elem)
   {
-    using diff_type = typename block_vec_type::difference_type;
     diff_type set_idx;
     if constexpr (champsim::is_detected_v<detail::dynamically_sliceable, std::invoke_result_t<SetProj, decltype(elem)>>) {
       set_idx = set_projection(elem).template to<decltype(set_idx)>();
     } else {
       set_idx = static_cast<diff_type>(set_projection(elem));
     }
-    diff_type raw_idx = (set_idx % NUM_SET) * static_cast<diff_type>(NUM_WAY);
-    return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), static_cast<diff_type>(NUM_WAY));
+    diff_type raw_idx{(set_idx % static_cast<diff_type>(NUM_SET)) * NUM_WAY};
+    return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), NUM_WAY);
   }
 
   auto match_func(const value_type& elem)

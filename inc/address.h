@@ -96,11 +96,12 @@ class address_slice_impl
     constexpr self_type& operator+=(difference_type delta)
     {
       self_type& derived = static_cast<self_type&>(*this);
-      value = (value + delta) & bitmask(derived.upper - derived.lower);
+      value = static_cast<underlying_type>(value + delta);
+      value &= bitmask(derived.upper - derived.lower);
       return derived;
     }
 
-    constexpr self_type& operator-=(difference_type delta) { return *this += (-delta); }
+    constexpr self_type& operator-=(difference_type delta) { return operator+=(-delta); }
 
     [[nodiscard]] constexpr self_type operator+(difference_type delta) const
     {
@@ -109,12 +110,7 @@ class address_slice_impl
       return retval;
     }
 
-    [[nodiscard]] constexpr self_type operator-(difference_type delta) const
-    {
-      self_type retval = static_cast<const self_type&>(*this);
-      retval -= delta;
-      return retval;
-    }
+    [[nodiscard]] constexpr self_type operator-(difference_type delta) const { return operator+(-delta); }
 
     template <std::size_t slice_upper, std::size_t slice_lower, typename D = self_type, std::enable_if_t<D::is_static, bool> = true>
     [[nodiscard]] constexpr auto slice() const -> address_slice<D::lower + slice_upper, D::lower + slice_lower>

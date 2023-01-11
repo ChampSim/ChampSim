@@ -8,7 +8,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t tag_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 4*tag_bandwidth));
+  auto size = GENERATE(range<long>(1, 4*tag_bandwidth));
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
@@ -31,7 +31,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
     champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
-    for (std::size_t i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       PACKET seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
@@ -39,7 +39,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);
@@ -79,7 +79,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t tag_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 4*tag_bandwidth));
+  auto size = GENERATE(range<long>(1, 4*tag_bandwidth));
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
@@ -103,7 +103,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     champsim::block_number seed_base_addr{0xcafebabe};
     std::vector<PACKET> seeds;
 
-    for (std::size_t i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       PACKET seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
@@ -111,7 +111,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);
@@ -151,7 +151,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t tag_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 4*tag_bandwidth));
+  auto size = GENERATE(range<long>(1, 4*tag_bandwidth));
   auto lowest = GENERATE(true, false);
 
   GIVEN("A cache with a few elements where the lowest level is " + std::to_string(lowest)) {
@@ -176,7 +176,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
     champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<PACKET> seeds;
 
-    for (std::size_t i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       PACKET seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = i;
@@ -184,7 +184,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (std::size(seeds)-1)});
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = warmup_ul.issue(seed);
