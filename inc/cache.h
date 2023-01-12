@@ -90,7 +90,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
     uint32_t pf_metadata = 0;
 
-    friend class eq_addr<BLOCK>;
+    friend struct eq_addr<BLOCK>;
   };
   using set_type = std::vector<BLOCK>;
 
