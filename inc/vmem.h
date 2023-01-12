@@ -33,8 +33,8 @@ inline constexpr std::size_t PTE_BYTES = 8;
 class VirtualMemory
 {
 private:
-  std::map<std::pair<uint16_t, uint64_t>, uint64_t> vpage_to_ppage_map;
-  std::map<std::tuple<uint16_t, uint64_t, uint32_t>, uint64_t> page_table;
+  std::map<std::pair<int, uint64_t>, uint64_t> vpage_to_ppage_map;
+  std::map<std::tuple<int, uint64_t, uint32_t>, uint64_t> page_table;
 
   uint64_t next_pte_page = 0;
 
@@ -54,8 +54,8 @@ public:
   uint64_t shamt(std::size_t level) const;
   uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
   std::size_t available_ppages() const;
-  std::pair<uint64_t, uint64_t> va_to_pa(uint16_t asid, uint64_t vaddr);
-  std::pair<uint64_t, uint64_t> get_pte_pa(uint16_t asid, uint64_t vaddr, std::size_t level);
+  std::pair<uint64_t, uint64_t> va_to_pa(int asid, uint64_t vaddr);
+  std::pair<uint64_t, uint64_t> get_pte_pa(int asid, uint64_t vaddr, std::size_t level);
 };
 
 #endif

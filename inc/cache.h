@@ -82,7 +82,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
     bool prefetch = false;
     bool dirty = false;
 
-    uint16_t asid = std::numeric_limits<uint16_t>::max();
+    int asid = std::numeric_limits<int>::max();
 
     uint64_t address = 0;
     uint64_t v_address = 0;
@@ -161,7 +161,7 @@ public:
   };
 
   uint32_t cpu = 0;
-  uint16_t asid = 0;
+  int asid = 0;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   const uint32_t FILL_LATENCY;
@@ -199,9 +199,9 @@ public:
   std::size_t get_size(uint8_t queue_type, uint64_t address) override final;
 
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
-  [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint16_t asid, uint64_t address, uint64_t set) const;
+  [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(int asid, uint64_t address, uint64_t set) const;
 
-  uint64_t invalidate_entry(uint16_t asid, uint64_t inval_addr);
+  uint64_t invalidate_entry(int asid, uint64_t inval_addr);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int

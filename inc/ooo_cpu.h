@@ -66,7 +66,7 @@ struct LSQ_ENTRY {
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
 
-  uint16_t asid = std::numeric_limits<uint16_t>::max();
+  int asid = std::numeric_limits<int>::max();
 
   bool fetch_issued = false;
 

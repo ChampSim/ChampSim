@@ -49,7 +49,7 @@ public:
   bool is_translated = true;
 
   uint8_t type = 0;
-  uint16_t asid = std::numeric_limits<uint16_t>::max();
+  int asid = std::numeric_limits<int>::max();
 
   uint32_t pf_metadata = 0;
   uint32_t cpu = std::numeric_limits<uint32_t>::max();

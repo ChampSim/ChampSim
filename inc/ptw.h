@@ -30,7 +30,7 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
 {
   struct pscl_entry
   {
-    uint16_t asid;
+    int asid;
     uint64_t vaddr;
     uint64_t ptw_addr;
     std::size_t level;

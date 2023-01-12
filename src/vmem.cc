@@ -58,7 +58,7 @@ void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
 std::size_t VirtualMemory::available_ppages() const { return (last_ppage - next_ppage) / PAGE_SIZE; }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint16_t asid, uint64_t vaddr)
+std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(int asid, uint64_t vaddr)
 {
   auto [ppage, fault] = vpage_to_ppage_map.insert({{asid, vaddr >> LOG2_PAGE_SIZE}, ppage_front()});
 
@@ -69,7 +69,7 @@ std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint16_t asid, uint64_t va
   return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
 }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint16_t asid, uint64_t vaddr, std::size_t level)
+std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(int asid, uint64_t vaddr, std::size_t level)
 {
   if (next_pte_page == 0) {
     next_pte_page = ppage_front();

@@ -339,13 +339,13 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
   return get_span(std::cbegin(block), static_cast<std::vector<BLOCK>::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
 }
 
-uint64_t CACHE::get_way(uint16_t address_space, uint64_t address, uint64_t set) const
+uint64_t CACHE::get_way(int address_space, uint64_t address, uint64_t set) const
 {
   auto [begin, end] = get_set_span(address);
   return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address_space, address, OFFSET_BITS)));
 }
 
-uint64_t CACHE::invalidate_entry(uint16_t address_space, uint64_t inval_addr)
+uint64_t CACHE::invalidate_entry(int address_space, uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
   auto inv_way = std::find_if(begin, end, eq_addr<BLOCK>(address_space, inval_addr, OFFSET_BITS));
