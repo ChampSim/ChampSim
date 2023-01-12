@@ -17,10 +17,12 @@ import itertools
 
 from . import util
 
+# Utility function to get a mangled module name from the path to its sources
 def get_module_name(path):
     fname_translation_table = str.maketrans('./-','_DH')
     return path.translate(fname_translation_table)
 
+# Return a normalized directory: variables and user shorthands are expanded
 def norm_dirname(f):
     return os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
 
@@ -37,6 +39,10 @@ def default_dir(dirnames, f):
         (f,) # Interpret as file path
     ))))
 
+# Produce a dictionary of all modules used in the "values".
+# The module names and paths are located at the keys given.
+# The given directories are searched for the modules
+# The function is used to fill the module data
 def get_module_data(names_key, paths_key, values, directories, get_func):
     namekey_pairs = itertools.chain(*(zip(c[names_key], c[paths_key], itertools.repeat(c.get('_is_instruction_prefetcher', False))) for c in values))
     data = util.combine_named(
@@ -45,6 +51,7 @@ def get_module_data(names_key, paths_key, values, directories, get_func):
         )
     return {k: util.chain((get_func(k,v['_is_instruction_prefetcher']) if v['_is_instruction_prefetcher'] else get_func(k)), v) for k,v in data.items()}
 
+# A unifying function for the four module types to return their information
 def data_getter(prefix, module_name, funcs):
     return {
         'name': module_name,
@@ -64,6 +71,7 @@ def get_pref_data(module_name, is_instruction_cache=False):
 def get_repl_data(module_name):
     return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
 
+# Generate C++ code giving the mangled module specialization functions
 def mangled_declarations(rtype, names, args, attrs=[]):
     if rtype != 'void':
         local_attrs = ('nodiscard',)
@@ -74,6 +82,7 @@ def mangled_declarations(rtype, names, args, attrs=[]):
     argstring = ', '.join(a[0] for a in args)
     yield from ('[[{}]] {} {}({});'.format(attrstring, rtype, name, argstring) for name in names)
 
+# Generate C++ code giving the mangled module specialization functions that are not implemented
 def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=[]):
     local_attrs = ('noreturn',)
     attrstring = ', '.join(itertools.chain(attrs, local_attrs))
@@ -81,6 +90,7 @@ def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *ta
     argstring = ', '.join(a[0] for a in args)
     yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }}'.format(attrstring, rtype, name, argstring) for name in names)
 
+# Generate C++ code giving the declaration for a discriminator function. If the class name is given, the declaration is assumed to be outside the class declaration
 def discriminator_function_declaration(fname, rtype, args, attrs=[], classname=None):
     if rtype != 'void':
         local_attrs = ('nodiscard',)
@@ -97,17 +107,13 @@ def discriminator_function_declaration(fname, rtype, args, attrs=[], classname=N
     funcstring = ((classname + '::') if classname is not None else '') + 'impl_' + fname
     yield '{} {} {}({}){}'.format(attrstring, rtype, funcstring, argstring, ';' if classname is None else '')
 
+# Generate C++ code for the body of a discriminator function that returns void
 def discriminator_function_definition_void(fname, args, varname, zipped_keys_and_funcs):
-    yield '{'
-
     # Discriminate between the module variants
     yield from ('  if ({}[champsim::lg2({})]) {}({});'.format(varname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
-    yield '}'
-
+# Generate C++ code for the body of a discriminator function that returns nonvoid
 def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs):
-    yield '{'
-
     # Declare result
     yield '  ' + rtype + ' result{};'
     yield '  ' + join_op + ' joiner{};'
@@ -117,28 +123,36 @@ def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varna
 
     # Return result
     yield '  return result;'
-    yield '}'
 
+# Generate C++ code for the body of a discriminator function
 def discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs):
+    yield '{'
+
     if rtype == 'void':
         yield from discriminator_function_definition_void(fname, args, varname, zipped_keys_and_funcs)
     else:
         yield from discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs)
 
+    yield '}'
+
+# For a given module function, generate C++ code declaring its mangled specialization declarations and a discriminator function
 def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void', *tail, attrs=[]):
     yield from mangled_declarations(rtype, fnamelist, args, attrs=attrs)
     yield from discriminator_function_declaration(fname, rtype, args, attrs=attrs)
     yield ''
 
+# For a given module function, generate C++ code defining the discriminator function
 def get_discriminator(fname, varname, zipped_keys_and_funcs, args=tuple(), rtype='void', join_op=None, *tail, attrs=[], classname=None):
     yield from discriminator_function_declaration(fname, rtype, args, attrs=attrs, classname=classname)
     yield from discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs)
     yield ''
 
+# For a set of module data, generate C++ code defining the constants that distinguish the modules
 def constants_for_modules(prefix, num_varname, mod_data):
     yield f'constexpr static std::size_t {num_varname} = {len(mod_data)};'
     yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ull << {1};'.format(prefix, n, data['name'], prec=max(len(k['name']) for k in mod_data)) for n,data in enumerate(mod_data))
 
+# Return a pair containing two generators: The first generates C++ code declaring all functions for the branch direction predictors, and the second generates C++ code defining the functions
 def get_branch_lines(branch_data):
     prefix = 'b'
     varname = 'bpred_type'
@@ -162,6 +176,7 @@ def get_branch_lines(branch_data):
         )
        )
 
+# Return a pair containing two generators: The first generates C++ code declaring all functions for the branch target predictors, and the second generates C++ code defining the functions
 def get_btb_lines(btb_data):
     prefix = 't'
     varname = 'btb_type'
@@ -185,6 +200,7 @@ def get_btb_lines(btb_data):
         )
        )
 
+# Return a pair containing two generators: The first generates C++ code declaring all functions for the memory prefetchers, and the second generates C++ code defining the functions
 def get_pref_lines(pref_data):
     prefix = 'p'
     varname = 'pref_type'
@@ -220,6 +236,7 @@ def get_pref_lines(pref_data):
         )
        )
 
+# Return a pair containing two generators: The first generates C++ code declaring all functions for the replacement policies, and the second generates C++ code defining the functions
 def get_repl_lines(repl_data):
     prefix = 'r'
     varname = 'repl_type'
