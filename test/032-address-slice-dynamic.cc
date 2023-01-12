@@ -262,6 +262,34 @@ TEST_CASE("A const dynamically-sized address slice can subtract") {
   REQUIRE(champsim::address{result} == champsim::address{0x20000});
 }
 
+TEST_CASE("An dynamically-sized address slice can pre-increment") {
+  champsim::address_slice lhs{20,16,1};
+  auto result = ++lhs;
+  REQUIRE(result == champsim::address_slice{20,16,2});
+  REQUIRE(lhs == champsim::address_slice{20,16,2});
+}
+
+TEST_CASE("An dynamically-sized address slice can post-increment") {
+  champsim::address_slice lhs{20,16,1};
+  auto result = lhs++;
+  REQUIRE(result == champsim::address_slice{20,16,1});
+  REQUIRE(lhs == champsim::address_slice{20,16,2});
+}
+
+TEST_CASE("An dynamically-sized address slice can pre-decrement") {
+  champsim::address_slice lhs{20,16,2};
+  auto result = --lhs;
+  REQUIRE(result == champsim::address_slice{20,16,1});
+  REQUIRE(lhs == champsim::address_slice{20,16,1});
+}
+
+TEST_CASE("An dynamically-sized address slice can post-decrement") {
+  champsim::address_slice lhs{20,16,2};
+  auto result = lhs--;
+  REQUIRE(result == champsim::address_slice{20,16,2});
+  REQUIRE(lhs == champsim::address_slice{20,16,1});
+}
+
 TEST_CASE("Dynamic address slices with the same size can be spliced") {
   champsim::address_slice a{64,0,0xaaaa'aaaa'aaaa'aaaa};
   champsim::address_slice b{64,0,0xbbbb'bbbb'bbbb'bbbb};

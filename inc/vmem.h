@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <deque>
 #include <map>
+#include <optional>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -38,12 +39,13 @@ private:
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
 
-  champsim::address next_pte_page{};
+  champsim::page_number active_pte_page{};
+  champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  champsim::address next_ppage;
-  champsim::address last_ppage;
+  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY/PAGE_SIZE};
+  champsim::page_number last_ppage;
 
-  champsim::address ppage_front() const;
+  champsim::page_number ppage_front() const;
   void ppage_pop();
 
 public:

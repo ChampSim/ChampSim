@@ -34,8 +34,7 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
           }
 
           THEN("The pages are remove from the available pages") {
-            // an additional one because it should remove one extra page
-            REQUIRE(original_size - 3 == uut.available_ppages());
+            REQUIRE(original_size - 2 == uut.available_ppages());
           }
         }
       }

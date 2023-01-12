@@ -15,13 +15,13 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
 
     auto size = PAGE_SIZE / pte_page_size;
     WHEN("A full set of requests for PTE entries at level " + std::to_string(level) + " are called for") {
-      auto shamt = LOG2_PAGE_SIZE + champsim::lg2(pte_page_size)*level;
+      auto shamt = LOG2_PAGE_SIZE + (champsim::lg2(pte_page_size/PTE_BYTES))*level;
       std::vector<champsim::address> given_pages;
 
-      champsim::address req_page{~(champsim::bitmask(size) << shamt)};
+      champsim::address_slice req_page{64, shamt, 0};
       for (std::size_t i = 0; i < size; ++i) {
-        given_pages.push_back(uut.get_pte_pa(0, req_page, level).first);
-        req_page = champsim::address{champsim::splice(req_page, champsim::address_slice{64, shamt, 1})};
+        given_pages.push_back(uut.get_pte_pa(0, champsim::address{req_page}, level).first);
+        req_page++;
       }
       std::sort(std::begin(given_pages), std::end(given_pages));
 
