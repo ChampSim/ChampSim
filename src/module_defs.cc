@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#include "ooo_cpu.h"
 #include "cache.h"
+#include "ooo_cpu.h"
 
 #include <functional>
 
-namespace {
-    struct take_last
-    {
-      template <typename T, typename U>
-      U operator()(T&&, U&& last) const {
-        return std::forward<U>(last);
-      }
-    };
-}
+namespace
+{
+struct take_last {
+  template <typename T, typename U>
+  U operator()(T&&, U&& last) const
+  {
+    return std::forward<U>(last);
+  }
+};
+} // namespace
 
 #include "module_defs.inc"
-
