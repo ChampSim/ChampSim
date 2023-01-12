@@ -6,15 +6,14 @@
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 1, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
     CACHE uut{"451-uut", 1, 1, 8, 32, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDnext_line, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     uut.warmup = false;

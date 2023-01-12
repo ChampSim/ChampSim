@@ -113,8 +113,8 @@ class GLOBAL_REGISTER
 {
 public:
   // Global counters to calculate global prefetching accuracy
-  uint64_t pf_useful, pf_issued,
-      global_accuracy; // Alpha value in Section III. Equation 3
+  uint32_t pf_useful, pf_issued;
+  uint32_t global_accuracy; // Alpha value in Section III. Equation 3
 
   // Global History Register (GHR) entries
   uint8_t valid[MAX_GHR_ENTRY];

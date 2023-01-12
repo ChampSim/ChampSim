@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2023 The ChampSim Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -64,57 +80,29 @@ struct eq_addr<T, std::void_t<decltype(T::asid)>>
     }
 };
 
-template <typename T, typename BIN, typename U = T, typename UN_T = is_valid<T>, typename UN_U = is_valid<U>>
-struct invalid_is_minimal {
-  bool operator()(const T& lhs, const U& rhs)
-  {
-    UN_T lhs_unary;
-    UN_U rhs_unary;
-    BIN cmp;
-
-    return !lhs_unary(lhs) || (rhs_unary(rhs) && cmp(lhs, rhs));
-  }
-};
-
-template <typename T, typename BIN, typename U = T, typename UN_T = is_valid<T>, typename UN_U = is_valid<U>>
-struct invalid_is_maximal {
-  bool operator()(const T& lhs, const U& rhs)
-  {
-    UN_T lhs_unary;
-    UN_U rhs_unary;
-    BIN cmp;
-
-    return !rhs_unary(rhs) || (lhs_unary(lhs) && cmp(lhs, rhs));
-  }
-};
-
-template <typename T, typename U = T>
-struct cmp_event_cycle {
-  bool operator()(const T& lhs, const U& rhs) { return lhs.event_cycle < rhs.event_cycle; }
-};
-
-template <typename T>
-struct min_event_cycle : invalid_is_maximal<T, cmp_event_cycle<T>> {
-};
-
-template <typename T, typename U = T>
-struct ord_event_cycle {
-  using first_argument_type = T;
-  using second_argument_type = U;
-  bool operator()(const first_argument_type& lhs, const second_argument_type& rhs)
-  {
-    is_valid<first_argument_type> first_validtest;
-    is_valid<second_argument_type> second_validtest;
-    return !second_validtest(rhs) || (first_validtest(lhs) && lhs.event_cycle < rhs.event_cycle);
-  }
-};
-
 namespace champsim
 {
 using msl::bitmask;
 using msl::lg2;
 using msl::lru_table;
 using msl::splice_bits;
+
+template <typename It>
+std::pair<It, It> get_span(It begin, It end, typename std::iterator_traits<It>::difference_type sz)
+{
+  assert(std::distance(begin, end) >= 0);
+  assert(sz >= 0);
+  auto distance = std::min(std::distance(begin, end), sz);
+  return {begin, std::next(begin, distance)};
+}
+
+template <typename It, typename F>
+std::pair<It, It> get_span_p(It begin, It end, typename std::iterator_traits<It>::difference_type sz, F&& func)
+{
+  auto [span_begin, span_end] = get_span(begin, end, sz);
+  return {span_begin, std::find_if_not(span_begin, span_end, std::forward<F>(func))};
+}
+
 } // namespace champsim
 
 #endif

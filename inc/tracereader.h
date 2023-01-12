@@ -1,10 +1,29 @@
+/*
+ *    Copyright 2023 The ChampSim Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef TRACEREADER_H
+#define TRACEREADER_H
+
 #include <cstdio>
 #include <deque>
 #include <memory>
 #include <string>
 #include <variant>
 
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
 #include <ext/stdio_filebuf.h>
 #endif
 
@@ -30,7 +49,7 @@ protected:
   static FILE* get_fptr(std::string fname);
 
   std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
-#ifdef __GNUG__
+#if defined(__GNUG__) && !defined(__APPLE__)
   __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
 #endif
 
@@ -49,3 +68,5 @@ protected:
 };
 
 std::unique_ptr<tracereader> get_tracereader(std::string fname, uint16_t cpu, bool is_cloudsuite);
+
+#endif

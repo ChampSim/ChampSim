@@ -19,15 +19,14 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     release_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1u<<type), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -89,15 +88,14 @@ SCENARIO("The replacement policy is triggered on a hit") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1u<<type), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {
@@ -154,7 +152,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, hit_latency, LOG2_BLOCK_SIZE, false};
+    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE uut{"442-uut-3", 1, 1, 1, 32, fill_latency, 1, 1, 0, false, false, false, (1u<<LOAD), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
     to_wq_MRP mock_ul_seed{&uut};
     to_rq_MRP mock_ul_test{&uut};
@@ -162,8 +160,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     std::array<champsim::operable*, 5> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut_queues, &uut}};
 
     // Initialize the prefetching and replacement
-    uut.impl_prefetcher_initialize();
-    uut.impl_replacement_initialize();
+    uut.initialize();
 
     // Turn off warmup
     for (auto elem : elements) {

@@ -5,8 +5,8 @@
 
 namespace test
 {
-  std::map<CACHE*, std::vector<uint32_t>> address_operate_collector;
-  std::map<CACHE*, std::vector<uint32_t>> address_fill_collector;
+  std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
+  std::map<CACHE*, std::vector<uint64_t>> address_fill_collector;
 }
 
 void CACHE::prefetcher_initialize() {}

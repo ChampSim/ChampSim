@@ -41,6 +41,7 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -84,6 +85,7 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -112,6 +114,7 @@ class release_MRC : public MemoryRequestConsumer, public champsim::operable
     bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
     bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
+    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
 
     std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
     std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
@@ -145,7 +148,7 @@ class counting_MRP : public MemoryRequestProducer
   }
 };
 
-template <typename Fun>
+template <typename MRC, typename Fun>
 class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 {
   public:
@@ -158,7 +161,7 @@ class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 
     Fun issue_func;
 
-    queue_issue_MRP(MemoryRequestConsumer* ll, Fun func) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func) {}
+    queue_issue_MRP(MRC* ll, Fun func) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func) {}
 
     void operate() override {}
 
@@ -166,7 +169,7 @@ class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
       auto copy = pkt;
       copy.to_return = {this};
       packets.push_back({copy, current_cycle, 0});
-      return issue_func(*static_cast<CACHE*>(lower_level), copy);
+      return issue_func(*static_cast<MRC*>(lower_level), copy);
     }
 
     void return_data(const PACKET &pkt) override {
@@ -180,27 +183,33 @@ class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
 /*
  * A MemoryRequestProducer that sends its packets to the write queue and notes when packets are returned
  */
-class to_wq_MRP : public queue_issue_MRP<decltype(std::mem_fn(&CACHE::add_wq))>
+template <typename MRC>
+class to_wq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>
 {
+  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>;
   public:
-    to_wq_MRP(MemoryRequestConsumer* ll) : queue_issue_MRP(ll, std::mem_fn(&CACHE::add_wq)) {}
+    explicit to_wq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_wq)) {}
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-class to_rq_MRP : public queue_issue_MRP<decltype(std::mem_fn(&CACHE::add_rq))>
+template <typename MRC>
+class to_rq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>
 {
+  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>;
   public:
-    to_rq_MRP(MemoryRequestConsumer* ll) : queue_issue_MRP(ll, std::mem_fn(&CACHE::add_rq)) {}
+    explicit to_rq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_rq)) {}
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-class to_pq_MRP : public queue_issue_MRP<decltype(std::mem_fn(&CACHE::add_pq))>
+template<typename MRC>
+class to_pq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>
 {
+  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>;
   public:
-    to_pq_MRP(MemoryRequestConsumer* ll) : queue_issue_MRP(ll, std::mem_fn(&CACHE::add_pq)) {}
+    explicit to_pq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_pq)) {}
 };
 

@@ -1,10 +1,22 @@
+#    Copyright 2023 The ChampSim Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import itertools
 import operator
 import math
 
 from . import defaults
-from . import instantiation_file
-from . import constants_file
 from . import modules
 from . import util
 
@@ -12,7 +24,7 @@ default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 100
 default_core = { 'frequency' : 4000, 'ifetch_buffer_size': 64, 'decode_buffer_size': 32, 'dispatch_buffer_size': 32, 'rob_size': 352, 'lq_size': 128, 'sq_size': 72, 'fetch_width' : 6, 'decode_width' : 6, 'dispatch_width' : 6, 'execute_width' : 4, 'lq_width' : 2, 'sq_width' : 2, 'retire_width' : 5, 'mispredict_penalty' : 1, 'scheduler_size' : 128, 'decode_latency' : 1, 'dispatch_latency' : 1, 'schedule_latency' : 0, 'execute_latency' : 0, 'branch_predictor': 'bimodal', 'btb': 'basic_btb' }
 default_dib  = { 'window_size': 16,'sets': 32, 'ways': 8 }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
-default_vmem = { 'size': 8589934592, 'num_levels': 5, 'minor_fault_penalty': 200 }
+default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
 
 # Assign defaults that are unique per core
 def upper_levels_for(system, names):
@@ -92,6 +104,16 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
             (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
             )
 
+    ## DEPRECATION
+    # The keys "max_read" and "max_write" are deprecated. For now, permit them but print a warning
+    for cache in caches.values():
+        if "max_read" in cache:
+            print('WARNING: key "max_read" in cache ', cache['name'], ' is deprecated. Use "max_tag_check" instead.')
+            cache['max_tag_check'] = cache['max_read']
+        if "max_write" in cache:
+            print('WARNING: key "max_write" in cache ', cache['name'], ' is deprecated. Use "max_fill" instead.')
+            cache['max_fill'] = cache['max_write']
+
     # Remove caches that are inaccessible
     caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
 
@@ -132,12 +154,8 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, ['branch', *branch_dir], modules.get_branch_data);
     btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, ['btb', *btb_dir], modules.get_btb_data);
 
-    module_info = dict(itertools.chain(repl_data.items(), pref_data.items(), branch_data.items(), btb_data.items()))
-
-    inst_file = instantiation_file.get_instantiation_string(cores, caches.values(), ptws.values(), pmem, vmem) # Instantiation file
-    core_mods = modules.get_branch_string(branch_data) + modules.get_btb_string(btb_data)                      # Core modules file
-    cache_mods = modules.get_repl_string(repl_data) + modules.get_pref_string(pref_data)                       # Cache modules file
-    const_file = constants_file.get_constants_file(config_file, pmem)                                          # Constants header
+    elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
+    module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
 
     name = config_file.get('name')
     executable = config_file.get('executable_name', 'champsim' + ('' if name is None else '_'+name))
@@ -145,5 +163,7 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     env = dict(filter(lambda kv: kv[0] in env_vars, config_file.items()))
 
-    return executable, inst_file, core_mods, cache_mods, const_file, module_info, env
+    extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
+
+    return executable, elements, module_info, {k: config_file[k] for k in extern_config_file_keys}, env
 

@@ -1,27 +1,23 @@
 #include "catch.hpp"
 #include "mocks.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
-SCENARIO("A prefetch can be issued") {
+SCENARIO("Duplicate prefetches do not count each other as useful") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"420-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{"424-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&uut};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     THEN("The number of prefetches is zero") {
       REQUIRE(uut.sim_stats.back().pf_issued == 0);
@@ -31,7 +27,7 @@ SCENARIO("A prefetch can be issued") {
 
     WHEN("A prefetch is issued") {
       constexpr uint64_t seed_addr = 0xdeadbeef;
-      uut.asid = 10; // fix the address space
+      uut.asid = 10;
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
@@ -47,14 +43,9 @@ SCENARIO("A prefetch can be issued") {
         REQUIRE(uut.sim_stats.back().pf_fill == 1);
       }
 
-      AND_WHEN("A packet with the same address is sent") {
-        // Create a test packet
-        PACKET test;
-        test.address = 0xdeadbeef;
-        test.asid = 10;
-        test.cpu = 0;
-
-        auto test_result = mock_ul.issue(test);
+      AND_WHEN("Another prefetch with the same address is sent") {
+        uut.asid = 10;
+        auto test_result = uut.prefetch_line(seed_addr, true, 0);
         THEN("The issue is accepted") {
           REQUIRE(test_result);
         }
@@ -63,16 +54,16 @@ SCENARIO("A prefetch can be issued") {
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The packet hits the cache") {
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+        THEN("The number of issued prefetches is incremented") {
+          REQUIRE(uut.sim_stats.back().pf_issued == 2);
         }
 
-        THEN("The number of useful prefetches is incremented") {
-          REQUIRE(uut.sim_stats.back().pf_issued == 1);
-          REQUIRE(uut.sim_stats.back().pf_useful == 1);
+        THEN("The number of useful prefetches is not incremented") {
+          REQUIRE(uut.sim_stats.back().pf_useful == 0);
         }
       }
     }
   }
 }
+
 

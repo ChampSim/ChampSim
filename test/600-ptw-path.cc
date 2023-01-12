@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 
 #include "champsim_constants.h"
+#include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"
 
@@ -11,7 +12,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
-    VirtualMemory vmem{20, 1<<12, levels, 200, dram};
+    VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     PageTableWalker uut{"600-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
@@ -48,7 +49,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
-    VirtualMemory vmem{33, 1<<12, levels, 200, dram};
+    VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     PageTableWalker uut{"600-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
     to_rq_MRP mock_ul{&uut};
@@ -88,10 +89,10 @@ struct pscl_testbench
   constexpr static std::size_t levels = 5;
   constexpr static uint64_t seed_addr = 0xffff'ffff'ffff'ffff;
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
-  VirtualMemory vmem{33, 1<<12, levels, 200, dram};
+  VirtualMemory vmem{1<<12, levels, 200, dram};
   do_nothing_MRC mock_ll;
   PageTableWalker uut{"600-uut-2", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
-  to_rq_MRP mock_ul{&uut};
+  to_rq_MRP<PageTableWalker> mock_ul{&uut};
 
   std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 

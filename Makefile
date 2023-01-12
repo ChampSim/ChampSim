@@ -1,5 +1,5 @@
-CPPFLAGS += -Iinc -MMD
-CXXFLAGS += --std=c++17 -Wall -Wextra -Wshadow -Wpedantic -O3
+CPPFLAGS += -MMD -Iinc
+CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 .phony: all all_execs clean configclean test makedirs
 
@@ -38,6 +38,7 @@ $(build_objs) $(module_objs):
 
 # Add address sanitizers for tests
 #$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
+$(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
 
 # Link test executable
 $(test_main_name):

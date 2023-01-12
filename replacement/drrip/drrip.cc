@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "cache.h"
+#include "msl/fwcounter.h"
 
 namespace
 {
@@ -12,12 +13,10 @@ constexpr std::size_t SDM_SIZE = 32;
 constexpr std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
 constexpr unsigned BIP_MAX = 32;
 constexpr unsigned PSEL_WIDTH = 10;
-constexpr std::size_t PSEL_MAX = (1 << PSEL_WIDTH) - 1;
-constexpr std::size_t PSEL_THRS = PSEL_MAX / 2;
 
 std::map<CACHE*, unsigned> bip_counter;
 std::map<CACHE*, std::vector<std::size_t>> rand_sets;
-std::map<std::pair<CACHE*, std::size_t>, unsigned> PSEL;
+std::map<std::pair<CACHE*, std::size_t>, champsim::msl::fwcounter<PSEL_WIDTH>> PSEL;
 std::map<CACHE*, std::vector<unsigned>> rrpv;
 } // namespace
 
@@ -62,31 +61,30 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   auto end = std::next(begin, ::NUM_POLICY * ::SDM_SIZE);
   auto leader = std::find(begin, end, set);
 
-  if (leader == end) {                                                // follower sets
-    if (::PSEL[std::make_pair(this, triggering_cpu)] > ::PSEL_THRS) { // follow BIP
+  if (leader == end) { // follower sets
+    auto selector = ::PSEL[std::make_pair(this, triggering_cpu)];
+    if (selector.value() > (selector.maximum / 2)) { // follow BIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
       ::bip_counter[this]++;
-      if (::bip_counter[this] == ::BIP_MAX)
+      if (::bip_counter[this] == ::BIP_MAX) {
         ::bip_counter[this] = 0;
-      if (::bip_counter[this] == 0)
         ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
+      }
     } else { // follow SRRIP
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     }
   } else if (leader == begin) { // leader 0: BIP
-    if (::PSEL[std::make_pair(this, triggering_cpu)] > 0)
-      ::PSEL[std::make_pair(this, triggering_cpu)]--;
+    ::PSEL[std::make_pair(this, triggering_cpu)]--;
     ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV;
 
     ::bip_counter[this]++;
-    if (::bip_counter[this] == ::BIP_MAX)
+    if (::bip_counter[this] == ::BIP_MAX) {
       ::bip_counter[this] = 0;
-    if (::bip_counter[this] == 0)
       ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
+    }
   } else if (leader == std::next(begin)) { // leader 1: SRRIP
-    if (::PSEL[std::make_pair(this, triggering_cpu)] < ::PSEL_MAX)
-      ::PSEL[std::make_pair(this, triggering_cpu)]++;
+    ::PSEL[std::make_pair(this, triggering_cpu)]++;
     ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
   }
 }
@@ -102,7 +100,9 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
   for (auto it = begin; it != end; ++it)
     *it += ::maxRRPV - *victim;
 
-  return std::distance(begin, victim);
+  assert(begin <= victim);
+  assert(victim < end);
+  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
 }
 
 // use this function to print out your own stats at the end of simulation

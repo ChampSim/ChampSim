@@ -1,6 +1,8 @@
 #include "catch.hpp"
 #include "util.h"
 
+#include <type_traits>
+
 namespace {
   struct strong_type
   {
@@ -29,6 +31,14 @@ namespace {
       return value;
     }
   };
+}
+
+TEMPLATE_TEST_CASE("An lru_table is copiable and moveable", "",
+    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+  STATIC_REQUIRE(std::is_copy_constructible_v<TestType>);
+  STATIC_REQUIRE(std::is_move_constructible_v<TestType>);
+  STATIC_REQUIRE(std::is_copy_assignable_v<TestType>);
+  STATIC_REQUIRE(std::is_move_assignable_v<TestType>);
 }
 
 TEMPLATE_TEST_CASE("An empty lru_table misses", "",
