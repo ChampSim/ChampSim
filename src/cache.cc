@@ -157,7 +157,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
     way->dirty = (handle_pkt.type == WRITE);
 
     // update prefetch stats and reset prefetch bit
-    if (way->prefetch) {
+    if (way->prefetch && !handle_pkt.prefetch_from_this) {
       sim_stats.back().pf_useful++;
       way->prefetch = false;
     }
