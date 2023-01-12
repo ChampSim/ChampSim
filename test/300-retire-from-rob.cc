@@ -121,7 +121,7 @@ SCENARIO("A ROB's retirement is bandwidth-limited") {
 
       THEN("The bandwidth of instructions are retired") {
         REQUIRE(std::size(uut.ROB) + (std::size_t)uut.RETIRE_WIDTH == old_rob_occupancy);
-        REQUIRE(uut.num_retired == old_num_retired+uut.RETIRE_WIDTH);
+        REQUIRE(uut.num_retired == old_num_retired+(std::size_t)uut.RETIRE_WIDTH);
       }
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
