@@ -179,6 +179,14 @@ void PageTableWalker::finish_packet(const response_type& packet)
   std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
 }
 
+void PageTableWalker::begin_phase()
+{
+  for (auto ul : upper_levels) {
+    ul->roi_stats.emplace_back();
+    ul->sim_stats.emplace_back();
+  }
+}
+
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {

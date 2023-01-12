@@ -181,6 +181,11 @@ void MEMORY_CONTROLLER::begin_phase()
     chan.sim_stats.emplace_back();
     chan.sim_stats.back().name = "Channel " + std::to_string(chan_idx++);
   }
+
+  for (auto ul : queues) {
+    ul->roi_stats.emplace_back();
+    ul->sim_stats.emplace_back();
+  }
 }
 
 void MEMORY_CONTROLLER::end_phase(unsigned)
@@ -246,14 +251,14 @@ void MEMORY_CONTROLLER::initiate_requests()
   // Initiate read requests
   for (auto ul : queues) {
     for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), std::numeric_limits<std::size_t>::max(), [ul, this](const auto& pkt){
+      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), [ul, this](const auto& pkt){
           return this->add_rq(pkt, ul);
           });
       q.get().erase(begin, end);
     }
 
     // Initiate write requests
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), std::numeric_limits<std::size_t>::max(), [cycle = current_cycle, this](const auto& pkt){
+    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), [cycle = current_cycle, this](const auto& pkt){
         return this->add_wq(pkt);
         });
     ul->WQ.erase(wq_begin, wq_end);
