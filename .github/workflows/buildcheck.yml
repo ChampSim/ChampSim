@@ -34,7 +34,7 @@ jobs:
 
     - name: Set up
       run: |
-        vcpkg/vcpkg-bootstrap.sh
+        vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
 
     - name: Configure
@@ -64,7 +64,7 @@ jobs:
 
     - name: Set up
       run: |
-        vcpkg/vcpkg-bootstrap.sh
+        vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
 
     - name: Configure
