@@ -121,6 +121,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set up
+      run: git submodule update --init
+      run: vcpkg/vcpkg-bootstrap.sh
+      run: vcpkg/vcpkg install
+
     - name: Configure
       run: ./config.sh
 
@@ -137,6 +142,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Set up
+      run: git submodule update --init
+      run: vcpkg/vcpkg-bootstrap.sh
+      run: vcpkg/vcpkg install
 
     - name: Configure
       run: ./config.sh

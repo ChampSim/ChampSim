@@ -1,0 +1,7 @@
+{
+  "name": "champsim",
+  "version-string": "1.0",
+  "dependencies": [
+    "catch2"
+  ]
+}
