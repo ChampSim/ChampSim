@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bitset>
 #include <deque>
+#include <iostream>
 #include <map>
 
 #include "msl/lru_table.h"

@@ -17,8 +17,6 @@
 #ifndef OPERABLE_H
 #define OPERABLE_H
 
-#include <iostream>
-
 namespace champsim
 {
 

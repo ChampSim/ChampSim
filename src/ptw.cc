@@ -18,6 +18,8 @@
 
 #include <numeric>
 
+#include <fmt/core.h>
+
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
@@ -47,11 +49,8 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
   auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-    std::cout << " address: " << std::hex << walk_init.vaddr;
-    std::cout << " v_address: " << handle_pkt.v_address << std::dec;
-    std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
-    std::cout << " translation_level: " << walk_init.level << std::endl;
+    fmt::print("[{}] {} instr_id: {} address: {:x} v_address: {:x} pt_page_offset: {} translation_level: {}\n",
+        NAME, __func__, handle_pkt.instr_id, walk_init.vaddr, handle_pkt.v_address, walk_offset / PTE_BYTES, walk_init.level);
   }
 
   PACKET packet = handle_pkt;
@@ -65,13 +64,9 @@ bool PageTableWalker::handle_read(const PACKET& handle_pkt)
 bool PageTableWalker::handle_fill(const PACKET& fill_mshr)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr.instr_id;
-    std::cout << " address: " << std::hex << fill_mshr.address;
-    std::cout << " v_address: " << fill_mshr.v_address;
-    std::cout << " data: " << fill_mshr.data << std::dec;
-    std::cout << " pt_page offset: " << ((fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES));
-    std::cout << " translation_level: " << +fill_mshr.translation_level;
-    std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
+    fmt::print("[{}] {} instr_id: {} address: {:x} v_address: {:x} data: {:x} pt_page_offset: {} translation_level: {} event: {} current: {}\n",
+        NAME, __func__, fill_mshr.instr_id, fill_mshr.address, fill_mshr.v_address, fill_mshr.data,
+        (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES), fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
   if (fill_mshr.translation_level == 0) {
@@ -166,13 +161,8 @@ void PageTableWalker::return_data(const PACKET& packet)
       mshr_entry.event_cycle = current_cycle + (warmup ? 0 : penalty);
 
       if constexpr (champsim::debug_print) {
-        std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
-        std::cout << " address: " << std::hex << mshr_entry.address;
-        std::cout << " v_address: " << mshr_entry.v_address;
-        std::cout << " data: " << mshr_entry.data << std::dec;
-        std::cout << " translation_level: " << +mshr_entry.translation_level;
-        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
-        std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
+        fmt::print("[{}] {} instr_id: {} address: {:x} v_address: {:x} data: {:x} translation_level: {} event: {} current: {}\n",
+            NAME, __func__, packet.instr_id, packet.address, packet.v_address, packet.data, packet.translation_level, mshr_entry.event_cycle, current_cycle);
       }
     }
   }
@@ -201,14 +191,13 @@ std::size_t PageTableWalker::get_size(uint8_t queue_type, uint64_t)
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {
-    std::cout << NAME << " MSHR Entry" << std::endl;
+    fmt::print("{} MSHR Entry\n", NAME);
     std::size_t j = 0;
     for (PACKET entry : MSHR) {
-      std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;
+      fmt::print("[{}_MSHR] {} instr_id: {} address: {:x} v_address: {:x} type: {} translation_level: {} event_cycle: {}\n",
+          NAME, j++, entry.instr_id, entry.address, entry.v_address, +entry.type, +entry.translation_level, entry.event_cycle);
     }
   } else {
-    std::cout << NAME << " MSHR empty" << std::endl;
+    fmt::print("{} MSHR empty\n", NAME);
   }
 }

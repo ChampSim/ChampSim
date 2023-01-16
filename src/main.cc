@@ -19,10 +19,11 @@
 #include <fstream>
 #include <functional>
 #include <getopt.h>
-#include <iostream>
 #include <signal.h>
 #include <string>
 #include <vector>
+
+#include <fmt/core.h>
 
 #include "cache.h"
 #include "champsim.h"
@@ -137,22 +138,14 @@ int main(int argc, char** argv)
   std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, trace_names},
                                             champsim::phase_info{"Simulation", false, simulation_instructions, trace_names}}};
 
-  std::cout << std::endl;
-  std::cout << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl;
-  std::cout << std::endl;
-  std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
-  std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
-  std::cout << "Number of CPUs: " << std::size(ooo_cpu) << std::endl;
-  std::cout << "Page size: " << PAGE_SIZE << std::endl;
-  std::cout << std::endl;
+  fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
+      phases.at(0).length, phases.at(1).length, std::size(ooo_cpu), PAGE_SIZE);
 
   init_structures();
 
   champsim_main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
 
-  std::cout << std::endl;
-  std::cout << "ChampSim completed all CPUs" << std::endl;
-  std::cout << std::endl;
+  fmt::print("\nChampSim completed all CPUs\n\n");
 
   auto phase_stats = zip_phase_stats(phases, ooo_cpu, caches, DRAM);
 

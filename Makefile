@@ -1,5 +1,6 @@
 CPPFLAGS += -MMD -Iinc
 CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
+LDLIBS   += -lfmt
 
 # vcpkg integration
 TRIPLET_DIR = $(firstword $(filter-out vcpkg_installed/vcpkg/, $(wildcard vcpkg_installed/*/)))

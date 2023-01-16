@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <fmt/core.h>
+
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
@@ -140,9 +142,8 @@ void CACHE::TranslatingQueues::do_issue_translation(R& queue)
       auto success = lower_level->add_rq(fwd_pkt);
       if (success) {
         if constexpr (champsim::debug_print) {
-          std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << q_entry.instr_id;
-          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
-          std::cout << " type: " << +q_entry.type << " occupancy: " << std::size(queue) << std::endl;
+          fmt::print("[TRANSLATE] {} instr_id: {} address: {:x} v_address: {:x} type: {} occupancy: {}\n",
+              __func__, q_entry.instr_id, q_entry.address, q_entry.v_address, +q_entry.type, std::size(queue));
         }
 
         q_entry.translate_issued = true;
@@ -175,10 +176,6 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size,
 
   // check occupancy
   if (std::size(queue) >= queue_size) {
-    if constexpr (champsim::debug_print) {
-      std::cout << " FULL" << std::endl;
-    }
-
     return false; // cannot handle this request
   }
 
@@ -189,10 +186,6 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size,
   fwd_pkt.translate_issued = false;
   fwd_pkt.event_cycle = current_cycle + (warmup ? 0 : HIT_LATENCY);
   queue.insert(ins_loc, fwd_pkt);
-
-  if constexpr (champsim::debug_print) {
-    std::cout << " ADDED event_cycle: " << fwd_pkt.event_cycle << std::endl;
-  }
 
   return true;
 }
@@ -278,10 +271,8 @@ bool CACHE::NonTranslatingQueues::ptwq_has_ready() const { return is_ready(PTWQ.
 void CACHE::TranslatingQueues::return_data(const PACKET& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[TRANSLATE] " << __func__ << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " data: " << packet.data << std::dec;
-    std::cout << " event: " << packet.event_cycle << " current: " << current_cycle << std::endl;
+    fmt::print("[TRANSLATE] {} instr_id: {} address: {:x} data: {:x} event: {} current: {}\n",
+        __func__, packet.instr_id, packet.address, packet.data, packet.event_cycle, current_cycle);
   }
 
   // Find all packets that match the page of the returned packet

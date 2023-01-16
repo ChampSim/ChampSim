@@ -20,6 +20,8 @@
 #include <cfenv>
 #include <cmath>
 
+#include <fmt/core.h>
+
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util.h"
@@ -159,12 +161,12 @@ void MEMORY_CONTROLLER::operate()
 void MEMORY_CONTROLLER::initialize()
 {
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
-  std::cout << "Off-chip DRAM Size: ";
+  fmt::print("Off-chip DRAM Size: ");
   if (dram_size > 1024)
-    std::cout << dram_size / 1024 << " GiB";
+    fmt::print("{} GiB", dram_size / 1024);
   else
-    std::cout << dram_size << " MiB";
-  std::cout << " Channels: " << DRAM_CHANNELS << " Width: " << 8 * DRAM_CHANNEL_WIDTH << "-bit Data Rate: " << DRAM_IO_FREQ << " MT/s" << std::endl;
+    fmt::print("{} MiB", dram_size);
+  fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
 }
 
 void MEMORY_CONTROLLER::begin_phase()

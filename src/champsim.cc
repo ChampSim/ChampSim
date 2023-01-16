@@ -23,11 +23,12 @@
 #include <cmath>
 #include <fstream>
 #include <functional>
-#include <getopt.h>
-#include <iomanip>
 #include <numeric>
 #include <string.h>
 #include <vector>
+
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 
 #include "ooo_cpu.h"
 #include "operable.h"
@@ -36,13 +37,9 @@
 
 auto start_time = std::chrono::steady_clock::now();
 
-std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
+std::chrono::seconds elapsed_time()
 {
-  auto diff = std::chrono::steady_clock::now() - start_time;
-  auto elapsed_hour = std::chrono::duration_cast<std::chrono::hours>(diff);
-  auto elapsed_minute = std::chrono::duration_cast<std::chrono::minutes>(diff) - elapsed_hour;
-  auto elapsed_second = std::chrono::duration_cast<std::chrono::seconds>(diff) - elapsed_hour - elapsed_minute;
-  return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
+  return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
 }
 
 struct phase_info {
@@ -77,12 +74,9 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
         try {
           op._operate();
         } catch (champsim::deadlock& dl) {
-          // ooo_cpu[dl.which].print_deadlock();
-          // std::cout << std::endl;
-          // for (auto c : caches)
           for (champsim::operable& c : operables) {
             c.print_deadlock();
-            std::cout << std::endl;
+            fmt::print("\n");
           }
 
           abort();
@@ -101,7 +95,7 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
           // Reopen trace if we've reached the end of the file
           if (traces[cpu.cpu]->eof()) {
             auto name = traces[cpu.cpu]->trace_string;
-            std::cout << "*** Reached end of trace: " << name << std::endl;
+            fmt::print("*** Reached end of trace: {}\n", name);
             traces[cpu.cpu] = get_tracereader(name, cpu.cpu, knob_cloudsuite);
           }
         }
@@ -110,7 +104,6 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
       }
 
       // Check for phase finish
-      auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
       for (O3_CPU& cpu : ooo_cpu) {
         // Phase complete
         if (!phase_complete[cpu.cpu] && (cpu.sim_instr() >= length)) {
@@ -118,20 +111,15 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
           for (champsim::operable& op : operables)
             op.end_phase(cpu.cpu);
 
-          std::cout << phase_name << " finished CPU " << cpu.cpu;
-          std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
-                    << " cumulative IPC: " << std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle());
-          std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+          fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
+              phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
         }
       }
     }
 
-    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
     for (O3_CPU& cpu : ooo_cpu) {
-      std::cout << std::endl;
-      std::cout << phase_name << " complete CPU " << cpu.cpu << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle();
-      std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-      std::cout << std::endl;
+      fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
+          phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
     }
   }
 
