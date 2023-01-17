@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <bitset>
-#include <iostream>
 #include <map>
 
 #include "msl/fwcounter.h"
@@ -27,7 +26,7 @@ std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vec
 }
 } // namespace
 
-void O3_CPU::initialize_branch_predictor() { std::cout << "CPU " << cpu << " GSHARE branch predictor" << std::endl; }
+void O3_CPU::initialize_branch_predictor() {}
 
 uint8_t O3_CPU::predict_branch(uint64_t ip)
 {

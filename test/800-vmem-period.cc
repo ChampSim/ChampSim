@@ -1,8 +1,6 @@
 #include "catch.hpp"
 #include "vmem.h"
 
-#include <iostream>
-
 #include "dram_controller.h"
 
 SCENARIO("The virtual memory generates a full period of page numbers") {

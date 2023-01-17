@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <array>
-#include <iostream>
 #include <map>
 #include <optional>
 
@@ -87,7 +86,7 @@ public:
 std::map<CACHE*, tracker> trackers;
 } // namespace
 
-void CACHE::prefetcher_initialize() { std::cout << NAME << " IP-based stride prefetcher" << std::endl; }
+void CACHE::prefetcher_initialize() {}
 
 void CACHE::prefetcher_cycle_operate() { ::trackers[this].advance_lookahead(this); }
 

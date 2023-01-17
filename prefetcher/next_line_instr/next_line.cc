@@ -1,8 +1,6 @@
-#include <iostream>
-
 #include "cache.h"
 
-void CACHE::prefetcher_initialize() { std::cout << NAME << " next line prefetcher" << std::endl; }
+void CACHE::prefetcher_initialize() {}
 
 void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
 
