@@ -205,8 +205,8 @@ public:
       uint32_t m_mshr_size{};
       uint32_t m_hit_lat{};
       uint32_t m_fill_lat{};
-      uint32_t m_max_read{};
-      uint32_t m_max_write{};
+      uint32_t m_max_tag{};
+      uint32_t m_max_fill{};
       std::size_t m_offset_bits{};
       bool m_pref_load{};
       bool m_wq_full_addr{};
@@ -232,8 +232,8 @@ public:
       Builder& latency(uint32_t lat_) { m_fill_lat = lat_/2; m_hit_lat = lat_ - m_fill_lat; return *this; }
       Builder& hit_latency(uint32_t hit_lat_) { m_hit_lat = hit_lat_; return *this; }
       Builder& fill_latency(uint32_t fill_lat_) { m_fill_lat = fill_lat_; return *this; }
-      Builder& max_read(uint32_t max_read_) { m_max_read = max_read_; return *this; }
-      Builder& max_write(uint32_t max_write_) { m_max_write = max_write_; return *this; }
+      Builder& tag_bandwidth(uint32_t max_read_) { m_max_tag = max_read_; return *this; }
+      Builder& fill_bandwidth(uint32_t max_write_) { m_max_fill = max_write_; return *this; }
       Builder& offset_bits(std::size_t offset_bits_) { m_offset_bits = offset_bits_; return *this; }
       Builder& set_prefetch_as_load(bool pref_load_) { m_pref_load = pref_load_; return *this; }
       Builder& set_wq_checks_full_addr(bool wq_full_addr_) { m_wq_full_addr = wq_full_addr_; return *this; }

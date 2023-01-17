@@ -25,7 +25,7 @@
 #include "vmem.h"
 
 PageTableWalker::PageTableWalker(Builder b)
-    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), RQ_SIZE(b.m_rq_size), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_read),
+    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), RQ_SIZE(b.m_rq_size), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
       MAX_FILL(b.m_max_fill), HIT_LATENCY(b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
   std::vector<std::array<uint32_t, 3>> local_pscl_dims{};

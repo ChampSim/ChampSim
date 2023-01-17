@@ -18,8 +18,6 @@ import operator
 
 from . import util
 
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {rq_size}, {mshr_size}, {max_read}, {max_write}, 1, {{{{{_ulptr}}}}}, {_llptr}, vmem);'
-
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
 
@@ -59,8 +57,8 @@ cache_builder_parts = {
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',
     'fill_latency': '.fill_latency({fill_latency})',
-    'max_read': '.max_read({max_read})',
-    'max_write': '.max_write({max_write})',
+    'max_tag_check': '.tag_bandwidth({max_tag_check})',
+    'max_fill': '.fill_bandwidth({max_fill})',
     'offset_bits': '.offset_bits({offset_bits})'
 }
 
@@ -128,9 +126,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if "mshr_size" in ptw:
             yield '.mshr_size({mshr_size})'.format(**ptw)
         if "max_read" in ptw:
-            yield '.max_read({max_read})'.format(**ptw)
+            yield '.tag_bandwidth({max_read})'.format(**ptw)
         if "max_write" in ptw:
-            yield '.max_fill({max_write})'.format(**ptw)
+            yield '.fill_bandwidth({max_write})'.format(**ptw)
 
         yield '.latency(0)'.format(**ptw)
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))

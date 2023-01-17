@@ -92,7 +92,7 @@ public:
       std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
       uint32_t m_rq_size{};
       uint32_t m_mshr_size{};
-      uint32_t m_max_read{};
+      uint32_t m_max_tag_check{};
       uint32_t m_max_fill{};
       unsigned m_latency{};
       std::vector<PageTableWalker::channel_type*> m_uls{};
@@ -109,8 +109,8 @@ public:
       Builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way) { m_pscl.at(lvl) = {lvl, set, way}; return *this; }
       Builder& rq_size(uint32_t rq_size_) { m_rq_size = rq_size_; return *this; }
       Builder& mshr_size(uint32_t mshr_size_) { m_mshr_size = mshr_size_; return *this; }
-      Builder& max_read(uint32_t max_read_) { m_max_read = max_read_; return *this; }
-      Builder& max_fill(uint32_t max_fill_) { m_max_fill = max_fill_; return *this; }
+      Builder& tag_bandwidth(uint32_t max_read_) { m_max_tag_check = max_read_; return *this; }
+      Builder& fill_bandwidth(uint32_t max_fill_) { m_max_fill = max_fill_; return *this; }
       Builder& latency(unsigned latency_) { m_latency = latency_; return *this; }
       Builder& upper_levels(std::vector<PageTableWalker::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }
       Builder& lower_level(PageTableWalker::channel_type* ll_) { m_ll = ll_; return *this; }
