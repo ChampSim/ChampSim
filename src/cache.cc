@@ -17,6 +17,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <iterator>
 #include <numeric>
@@ -513,7 +514,11 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.back().pf_useless = sim_stats.back().pf_useless;
   roi_stats.back().pf_fill = sim_stats.back().pf_fill;
 
-  roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
+  auto total_miss = 0ull;
+  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
+    total_miss = std::accumulate(std::begin(roi_stats.back().hits.at(type)), std::end(roi_stats.back().hits.at(type)), total_miss);
+  }
+  roi_stats.back().avg_miss_latency = std::ceil(sim_stats.back().total_miss_latency) / total_miss;
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }

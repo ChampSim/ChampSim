@@ -156,8 +156,7 @@ int main(int argc, char** argv)
 
   auto phase_stats = zip_phase_stats(phases, ooo_cpu, caches, DRAM);
 
-  champsim::plain_printer default_print{std::cout};
-  default_print.print(phase_stats);
+  champsim::plain_printer{std::cout}.print(phase_stats);
 
   for (CACHE& cache : caches)
     cache.impl_prefetcher_final_stats();
@@ -166,13 +165,10 @@ int main(int argc, char** argv)
     cache.impl_replacement_final_stats();
 
   if (knob_json_out) {
-    if (json_file.is_open()) {
-      champsim::json_printer printer{json_file};
-      printer.print(phase_stats);
-    } else {
-      champsim::json_printer printer{std::cout};
-      printer.print(phase_stats);
-    }
+    if (json_file.is_open())
+      champsim::json_printer{json_file}.print(phase_stats);
+    else
+      champsim::json_printer{std::cout}.print(phase_stats);
   }
 
   return 0;

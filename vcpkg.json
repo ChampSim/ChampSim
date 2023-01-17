@@ -2,6 +2,7 @@
   "name": "champsim",
   "version-string": "1.0",
   "dependencies": [
+    "nlohmann-json",
     "catch2"
   ]
 }
