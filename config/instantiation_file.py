@@ -48,6 +48,12 @@ core_builder_parts = {
     'dib_window': '  .dib_window({DIB[window_size]})'
 }
 
+dib_builder_parts = {
+    'sets': '  .dib_set({DIB[sets]})',
+    'ways': '  .dib_way({DIB[ways]})',
+    'window_size': '  .dib_window({DIB[window_size]})'
+}
+
 cache_builder_parts = {
     'frequency': '.frequency({frequency})',
     'sets': '.sets({sets})',
@@ -200,6 +206,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.l1d_bandwidth(caches.at({}).MAX_TAG)'.format(l1d_idx)
 
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
+        yield from (v.format(**cpu['DIB']) for k,v in dib_builder_parts.items() if k in cpu)
 
         if elem.get('_branch_predictor_modnames'):
             yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
