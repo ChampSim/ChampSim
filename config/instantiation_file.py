@@ -199,7 +199,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         l1d_idx = [c['name'] for c in caches].index(cpu['L1D'])
 
         yield '.index({index})'.format(**cpu)
-        yield '.freq_scale({frequency})'.format(**cpu)
+        yield '.frequency({frequency})'.format(**cpu)
         yield '.l1i(&caches.at({}))'.format(l1i_idx)
         yield '.l1i_bandwidth(caches.at({}).MAX_TAG)'.format(l1i_idx)
         yield '.l1d_bandwidth(caches.at({}).MAX_TAG)'.format(l1d_idx)

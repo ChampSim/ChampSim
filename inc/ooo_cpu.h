@@ -230,7 +230,7 @@ public:
     public:
 
     Builder& index(uint32_t cpu_) { m_cpu = cpu_; return *this; };
-    Builder& freq_scale(double freq_scale_) { m_freq_scale = freq_scale_; return *this; };
+    Builder& frequency(double freq_scale_) { m_freq_scale = freq_scale_; return *this; };
     Builder& dib_set(std::size_t dib_set_) { m_dib_set = dib_set_; return *this; };
     Builder& dib_way(std::size_t dib_way_) { m_dib_way = dib_way_; return *this; };
     Builder& dib_window(std::size_t dib_window_) { m_dib_window = dib_window_; return *this; };
