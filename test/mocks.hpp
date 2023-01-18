@@ -159,7 +159,7 @@ struct counting_MRP
 {
   std::deque<champsim::channel::response_type> returned{};
 
-  unsigned count = 0;
+  std::size_t count = 0;
 
   void operate() {
     count += std::size(returned);
