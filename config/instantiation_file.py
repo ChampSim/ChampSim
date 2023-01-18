@@ -115,9 +115,10 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
 
     for i,ptw in enumerate(ptws):
-        yield 'PageTableWalker{PageTableWalker::Builder{}'
+        yield 'PageTableWalker{PageTableWalker::Builder{champsim::defaults::default_ptw}'
         yield '.name("{name}")'.format(**ptw)
         yield '.cpu({cpu})'.format(**ptw)
+        yield '.virtual_memory(&vmem)'
 
         if "pscl5_set" in ptw or "pscl5_way" in ptw:
             yield '.add_pscl(5, {pscl5_set}, {pscl5_way})'.format(**ptw)
@@ -127,8 +128,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             yield '.add_pscl(3, {pscl3_set}, {pscl3_way})'.format(**ptw)
         if "pscl2_set" in ptw or "pscl2_way" in ptw:
             yield '.add_pscl(2, {pscl2_set}, {pscl2_way})'.format(**ptw)
-        if "rq_size" in ptw:
-            yield '.rq_size({rq_size})'.format(**ptw)
         if "mshr_size" in ptw:
             yield '.mshr_size({mshr_size})'.format(**ptw)
         if "max_read" in ptw:

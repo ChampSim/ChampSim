@@ -249,7 +249,7 @@ public:
       Builder& replacement(std::bitset<NUM_REPLACEMENT_MODULES> repl_) { m_repl = repl_; return *this; }
   };
 
-  CACHE(Builder b);
+  explicit CACHE(Builder b);
 };
 
 #endif

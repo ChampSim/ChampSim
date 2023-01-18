@@ -165,7 +165,6 @@ namespace defaults
         .replacement(CACHE::rreplacementDlru);
 
     const auto default_ptw = PageTableWalker::Builder{}
-        .rq_size(16)
         .tag_bandwidth(2)
         .fill_bandwidth(2)
         .mshr_size(5)

@@ -76,7 +76,7 @@ class PageTableWalker : public champsim::operable
 
 public:
   const std::string NAME;
-  const uint32_t RQ_SIZE, MSHR_SIZE;
+  const uint32_t MSHR_SIZE;
   const long int MAX_READ, MAX_FILL;
   const uint64_t HIT_LATENCY;
 
@@ -90,7 +90,6 @@ public:
       double m_freq_scale{};
       uint32_t m_cpu{};
       std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
-      uint32_t m_rq_size{};
       uint32_t m_mshr_size{};
       uint32_t m_max_tag_check{};
       uint32_t m_max_fill{};
@@ -107,7 +106,6 @@ public:
       Builder& frequency(double freq_scale_) { m_freq_scale = freq_scale_; return *this; }
       Builder& cpu(uint32_t cpu_) { m_cpu = cpu_; return *this; }
       Builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way) { m_pscl.at(lvl) = {lvl, set, way}; return *this; }
-      Builder& rq_size(uint32_t rq_size_) { m_rq_size = rq_size_; return *this; }
       Builder& mshr_size(uint32_t mshr_size_) { m_mshr_size = mshr_size_; return *this; }
       Builder& tag_bandwidth(uint32_t max_read_) { m_max_tag_check = max_read_; return *this; }
       Builder& fill_bandwidth(uint32_t max_fill_) { m_max_fill = max_fill_; return *this; }
@@ -117,7 +115,7 @@ public:
       Builder& virtual_memory(VirtualMemory* vmem_) { m_vmem = vmem_; return *this; }
   };
 
-  PageTableWalker(Builder builder);
+  explicit PageTableWalker(Builder builder);
 
   void operate() override final;
 
