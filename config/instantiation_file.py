@@ -161,11 +161,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k in elem)
 
         # Create prefetch activation masks
-        type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
-        yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
+        if elem.get('prefetch_activate'):
+            type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
+            yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
 
-        yield '.replacement({})'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
-        yield '.prefetcher({})'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))
+        if elem.get('_replacement_modnames'):
+            yield '.replacement({})'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
+
+        if elem.get('_prefetcher_modnames'):
+            yield '.prefetcher({})'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))
+
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_level']))
 

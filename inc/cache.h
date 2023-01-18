@@ -203,8 +203,9 @@ public:
       uint32_t m_ways{};
       std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
       uint32_t m_mshr_size{};
-      uint32_t m_hit_lat{};
-      uint32_t m_fill_lat{};
+      uint64_t m_hit_lat{};
+      uint64_t m_fill_lat{};
+      uint64_t m_latency{};
       uint32_t m_max_tag{};
       uint32_t m_max_fill{};
       std::size_t m_offset_bits{};
@@ -230,8 +231,9 @@ public:
       Builder& pq_size(uint32_t pq_size_) { m_pq_size = pq_size_; return *this; }
       Builder& mshr_size(uint32_t mshr_size_) { m_mshr_size = mshr_size_; return *this; }
       Builder& latency(uint32_t lat_) { m_fill_lat = lat_/2; m_hit_lat = lat_ - m_fill_lat; return *this; }
-      Builder& hit_latency(uint32_t hit_lat_) { m_hit_lat = hit_lat_; return *this; }
-      Builder& fill_latency(uint32_t fill_lat_) { m_fill_lat = fill_lat_; return *this; }
+      Builder& hit_latency(uint64_t hit_lat_) { m_hit_lat = hit_lat_; return *this; }
+      Builder& fill_latency(uint64_t fill_lat_) { m_fill_lat = fill_lat_; return *this; }
+      Builder& latency(uint64_t lat_) { m_latency = lat_; return *this; }
       Builder& tag_bandwidth(uint32_t max_read_) { m_max_tag = max_read_; return *this; }
       Builder& fill_bandwidth(uint32_t max_write_) { m_max_fill = max_write_; return *this; }
       Builder& offset_bits(std::size_t offset_bits_) { m_offset_bits = offset_bits_; return *this; }
@@ -239,7 +241,7 @@ public:
       Builder& set_wq_checks_full_addr(bool wq_full_addr_) { m_wq_full_addr = wq_full_addr_; return *this; }
       Builder& set_virtual_prefetch(bool va_pref_) { m_va_pref = va_pref_; return *this; }
       template <typename... Elems>
-      Builder& prefetch_activate(Elems... pref_act_elems) { m_pref_act_mask = ((1u<<pref_act_elems) | ...); return *this; }
+      Builder& prefetch_activate(Elems... pref_act_elems) { m_pref_act_mask = ((1u<<pref_act_elems) | ... | 0); return *this; }
       Builder& upper_levels(std::vector<CACHE::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }
       Builder& lower_level(CACHE::channel_type* ll_) { m_ll = ll_; return *this; }
       Builder& lower_translate(CACHE::channel_type* lt_) { m_lt = lt_; return *this; }

@@ -117,9 +117,6 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     # Remove caches that are inaccessible
     caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
 
-    # Establish latencies in caches
-    caches = util.combine_named(caches.values(), ({'name': c['name'], 'hit_latency': (c.get('latency',100) - c['fill_latency'])} for c in caches.values()))
-
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
