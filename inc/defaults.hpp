@@ -34,7 +34,12 @@ namespace defaults
         .schedule_latency(0)
         .execute_latency(0)
         .l1i_bandwidth(1)
-        .l1d_bandwidth(1);
+        .l1d_bandwidth(1)
+        // Specifying default branch predictors and BTBs like this is probably dangerous
+        // since the names could change.
+        // We're doing it anyway, for now.
+        .branch_predictor(O3_CPU::bbranchDbimodal)
+        .btb(O3_CPU::tbtbDbasic_btb);
 
     const auto default_l1i = CACHE::Builder{}
         .sets(64)

@@ -130,10 +130,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if "max_write" in ptw:
             yield '.fill_bandwidth({max_write})'.format(**ptw)
 
-        yield '.latency(0)'.format(**ptw)
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
-        yield '.virtual_memory(&vmem)'
 
         if i < (len(ptws)-1):
             yield '},'
@@ -197,16 +195,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
         yield '.index({index})'.format(**cpu)
         yield '.freq_scale({frequency})'.format(**cpu)
-        yield '.dib_set({DIB[sets]})'.format(**cpu)
-        yield '.dib_way({DIB[ways]})'.format(**cpu)
-        yield '.dib_window({DIB[window_size]})'.format(**cpu)
         yield '.l1i(&caches.at({}))'.format(l1i_idx)
         yield '.l1i_bandwidth(caches.at({}).MAX_TAG)'.format(l1i_idx)
         yield '.l1d_bandwidth(caches.at({}).MAX_TAG)'.format(l1d_idx)
 
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
-        yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
-        yield '.btb({})'.format(' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']))
+
+        if elem.get('_branch_predictor_modnames'):
+            yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
+        if elem.get('_btb_modnames'):
+            yield '.btb({})'.format(' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']))
+
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))
 
