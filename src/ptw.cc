@@ -30,7 +30,7 @@ PageTableWalker::PageTableWalker(Builder b)
 {
   std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x){ return std::get<0>(x) == 0; });
-  std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims));
+  std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
 
   for (auto [level, sets, ways] : local_pscl_dims)
     pscl.emplace_back(sets, ways, pscl_indexer{b.m_vmem->shamt(level)}, pscl_indexer{b.m_vmem->shamt(level)});
@@ -96,6 +96,7 @@ bool PageTableWalker::handle_fill(const mshr_type& fill_mshr)
     mshr_type fwd_mshr = fill_mshr;
     fwd_mshr.address = fill_mshr.data;
     fwd_mshr.translation_level = fill_mshr.translation_level - 1;
+    fwd_mshr.event_cycle = std::numeric_limits<uint64_t>::max();
 
     return step_translation(fwd_mshr);
   }

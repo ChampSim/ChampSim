@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 #include "repl_interface.h"
@@ -20,7 +21,18 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     constexpr uint64_t fill_latency = 2;
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, true, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("442a-uut-"+std::string{str})
+      .sets(1)
+      .ways(1)
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(1u<<type)
+      .offset_bits(0)
+      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -86,7 +98,18 @@ SCENARIO("The replacement policy is triggered on a hit") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("442b-uut-"+std::string{str})
+      .sets(1)
+      .ways(1)
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(1u<<type)
+      .offset_bits(0)
+      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -147,7 +170,18 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"442-uut-3", 1, 1, 1, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<LOAD), {&mock_ul_seed.queues, &mock_ul_test.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("442c-uut")
+      .sets(1)
+      .ways(1)
+      .upper_levels({&mock_ul_seed.queues, &mock_ul_test.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(1u<<LOAD)
+      .offset_bits(0)
+      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+    };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};
 

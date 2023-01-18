@@ -30,7 +30,7 @@ using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{ "LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION" };
 
 CACHE::CACHE(Builder b)
-      : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), NAME(b.m_name), NUM_SET(b.m_sets), NUM_WAY(b.m_ways),
+      : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets), NUM_WAY(b.m_ways),
         MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY(b.m_hit_lat), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag),
         MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         repl_type(b.m_repl), pref_type(b.m_pref)
@@ -73,6 +73,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     std::cout << " set: " << get_set_index(fill_mshr.address);
     std::cout << " way: " << way_idx;
     std::cout << " type: " << access_type_names.at(fill_mshr.type);
+    std::cout << " prefetch_metadata: " << fill_mshr.pf_metadata;
     std::cout << " cycle_enqueued: " << fill_mshr.cycle_enqueued;
     std::cout << " cycle: " << current_cycle << std::endl;
   }

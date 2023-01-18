@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -13,10 +14,12 @@ namespace test
 
 SCENARIO("A prefetch does not trigger itself") {
   GIVEN("A single cache") {
-    constexpr uint64_t hit_latency = 2;
-    constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE uut{"423-uut-0", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("423a-uut")
+      .lower_level(&mock_ll.queues)
+      .prefetcher(CACHE::ptestDmodulesDprefetcherDaddress_collector)
+    };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
 
@@ -53,11 +56,15 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
   using namespace std::literals;
   auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
-    constexpr uint64_t hit_latency = 2;
-    constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"423-uut-1", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("423b-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .prefetch_activate(type)
+      .prefetcher(CACHE::ptestDmodulesDprefetcherDaddress_collector)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -86,11 +93,11 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
           elem->_operate();
 
       THEN("The prefetcher is called exactly once") {
-        REQUIRE(std::size(test::address_operate_collector[&uut]) == 1);
+        REQUIRE(std::size(test::address_operate_collector.at(&uut)) == 1);
       }
 
       THEN("The prefetcher is called with the issued address") {
-        REQUIRE(test::address_operate_collector[&uut].front() == test.address);
+        REQUIRE(test::address_operate_collector.at(&uut).at(0) == test.address);
       }
     }
   }
@@ -98,14 +105,27 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
 
 SCENARIO("The prefetcher is not triggered if the packet does not match the activate field") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, mask, str] = GENERATE(table< access_type, std::array<access_type, 4>, std::string_view >({
+        std::tuple{LOAD, std::array{RFO, PREFETCH, WRITE, TRANSLATION}, "load"sv},
+        std::tuple{RFO, std::array{LOAD, PREFETCH, WRITE, TRANSLATION}, "RFO"sv},
+        std::tuple{PREFETCH, std::array{LOAD, RFO, WRITE, TRANSLATION}, "prefetch"sv},
+        std::tuple{WRITE, std::array{LOAD, RFO, PREFETCH, TRANSLATION}, "write"sv},
+        std::tuple{TRANSLATION, std::array{LOAD, RFO, PREFETCH, WRITE}, "translation"sv}
+      }));
+
   GIVEN("A single cache") {
-    constexpr uint64_t hit_latency = 2;
-    constexpr uint64_t fill_latency = 2;
-    auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)) & ~(1u<<type);
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"423-uut-2", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, mask, {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+
+    CACHE::Builder builder = CACHE::Builder{champsim::defaults::default_l1d}
+      .name("423c-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .prefetcher(CACHE::ptestDmodulesDprefetcherDaddress_collector);
+
+    builder = std::apply([&](auto... types){ return builder.prefetch_activate(types...); }, mask);
+
+    CACHE uut{builder};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 

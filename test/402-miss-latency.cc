@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -16,10 +17,16 @@ SCENARIO("A cache returns a miss after the specified latency") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     constexpr uint64_t fill_latency = 2;
-    constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul;
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, mask, {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402-uut-"+std::string(str))
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION)
+    };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
@@ -77,10 +84,17 @@ SCENARIO("A cache completes a fill after the specified latency") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     constexpr uint64_t fill_latency = 2;
-    constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, match_offset, false, mask, {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402-uut-"+std::string(str))
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .set_wq_checks_full_addr(match_offset)
+      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION)
+    };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 

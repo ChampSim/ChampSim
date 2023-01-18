@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -9,7 +10,13 @@ SCENARIO("A prefetch can hit the cache") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"422-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("422-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -52,7 +59,13 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"422-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("422-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 

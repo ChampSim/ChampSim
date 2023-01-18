@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -15,7 +16,12 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600a-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -50,7 +56,16 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"600-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600b-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .add_pscl(5,1,1)
+      .add_pscl(4,1,1)
+      .add_pscl(3,1,1)
+      .add_pscl(2,1,1)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -87,7 +102,16 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"600-uut-2", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600c-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .add_pscl(5,1,1)
+      .add_pscl(4,1,1)
+      .add_pscl(3,1,1)
+      .add_pscl(2,1,1)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 

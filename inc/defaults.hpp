@@ -32,7 +32,9 @@ namespace defaults
         .decode_latency(1)
         .dispatch_latency(1)
         .schedule_latency(0)
-        .execute_latency(0);
+        .execute_latency(0)
+        .l1i_bandwidth(1)
+        .l1d_bandwidth(1);
 
     const auto default_l1i = CACHE::Builder{}
         .sets(64)
@@ -47,7 +49,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(true)
         .set_wq_checks_full_addr(true)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         // Specifying default prefetchers and replacement policies like this is probably dangerous
         // since the names could change.
         // We're doing it anyway, for now.
@@ -67,7 +69,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(false)
         .set_wq_checks_full_addr(true)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 
@@ -84,7 +86,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(false)
         .set_wq_checks_full_addr(false)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 
@@ -101,7 +103,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(true)
         .set_wq_checks_full_addr(true)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 
@@ -118,7 +120,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(false)
         .set_wq_checks_full_addr(true)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 
@@ -135,7 +137,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(false)
         .set_wq_checks_full_addr(false)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 
@@ -153,7 +155,7 @@ namespace defaults
         .set_prefetch_as_load(false)
         .set_virtual_prefetch(false)
         .set_wq_checks_full_addr(false)
-        .prefetch_activate((1 << LOAD) | (1 << PREFETCH))
+        .prefetch_activate(LOAD, PREFETCH)
         .prefetcher(CACHE::pprefetcherDno)
         .replacement(CACHE::rreplacementDlru);
 

@@ -162,7 +162,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
         # Create prefetch activation masks
         type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
-        yield '.prefetch_activate({})'.format(' | '.join('(1 << {})'.format(t) for t in type_list if t in elem.get('prefetch_activate', tuple())))
+        yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
 
         yield '.replacement({})'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
         yield '.prefetcher({})'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))

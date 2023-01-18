@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -15,7 +16,14 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 2, 2, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("601-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .tag_bandwidth(2)
+      .fill_bandwidth(2)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 

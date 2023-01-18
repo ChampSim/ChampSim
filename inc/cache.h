@@ -238,7 +238,8 @@ public:
       Builder& set_prefetch_as_load(bool pref_load_) { m_pref_load = pref_load_; return *this; }
       Builder& set_wq_checks_full_addr(bool wq_full_addr_) { m_wq_full_addr = wq_full_addr_; return *this; }
       Builder& set_virtual_prefetch(bool va_pref_) { m_va_pref = va_pref_; return *this; }
-      Builder& prefetch_activate(unsigned pref_act_mask_) { m_pref_act_mask = pref_act_mask_; return *this; }
+      template <typename... Elems>
+      Builder& prefetch_activate(Elems... pref_act_elems) { m_pref_act_mask = ((1u<<pref_act_elems) | ...); return *this; }
       Builder& upper_levels(std::vector<CACHE::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }
       Builder& lower_level(CACHE::channel_type* ll_) { m_ll = ll_; return *this; }
       Builder& lower_translate(CACHE::channel_type* lt_) { m_lt = lt_; return *this; }

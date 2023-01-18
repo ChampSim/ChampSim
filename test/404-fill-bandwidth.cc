@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 
 SCENARIO("The MSHR respects the fill bandwidth") {
@@ -12,7 +13,15 @@ SCENARIO("The MSHR respects the fill bandwidth") {
   GIVEN("An empty cache") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"404-uut-"+std::to_string(size)+"m", 1, 1, 8, 32, hit_latency, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("404-uut-m")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .tag_bandwidth(10)
+      .fill_bandwidth(fill_bandwidth)
+    };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
@@ -74,7 +83,16 @@ SCENARIO("Writebacks respect the fill bandwidth") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll{20};
     to_wq_MRP mock_ul;
-    CACHE uut{"404-uut-"+std::to_string(size)+"w", 1, 1, 8, 32, hit_latency, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("404-uut-w")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .tag_bandwidth(10)
+      .set_wq_checks_full_addr(false)
+      .fill_bandwidth(fill_bandwidth)
+    };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
