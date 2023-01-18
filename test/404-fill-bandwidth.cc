@@ -90,7 +90,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .tag_bandwidth(10)
-      .set_wq_checks_full_addr(false)
+      .reset_wq_checks_full_addr()
       .fill_bandwidth(fill_bandwidth)
     };
 

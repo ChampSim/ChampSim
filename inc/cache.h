@@ -237,9 +237,12 @@ public:
       Builder& tag_bandwidth(uint32_t max_read_) { m_max_tag = max_read_; return *this; }
       Builder& fill_bandwidth(uint32_t max_write_) { m_max_fill = max_write_; return *this; }
       Builder& offset_bits(std::size_t offset_bits_) { m_offset_bits = offset_bits_; return *this; }
-      Builder& set_prefetch_as_load(bool pref_load_) { m_pref_load = pref_load_; return *this; }
-      Builder& set_wq_checks_full_addr(bool wq_full_addr_) { m_wq_full_addr = wq_full_addr_; return *this; }
-      Builder& set_virtual_prefetch(bool va_pref_) { m_va_pref = va_pref_; return *this; }
+      Builder& set_prefetch_as_load() { m_pref_load = true; return *this; }
+      Builder& reset_prefetch_as_load() { m_pref_load = false; return *this; }
+      Builder& set_wq_checks_full_addr() { m_wq_full_addr = true; return *this; }
+      Builder& reset_wq_checks_full_addr() { m_wq_full_addr = false; return *this; }
+      Builder& set_virtual_prefetch() { m_va_pref = true; return *this; }
+      Builder& reset_virtual_prefetch() { m_va_pref = false; return *this; }
       template <typename... Elems>
       Builder& prefetch_activate(Elems... pref_act_elems) { m_pref_act_mask = ((1u<<pref_act_elems) | ... | 0); return *this; }
       Builder& upper_levels(std::vector<CACHE::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }

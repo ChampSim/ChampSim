@@ -155,13 +155,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.name("{name}")'.format(**elem)
 
         local_cache_builder_parts = {
-            'prefetch_as_load': '.set_prefetch_as_load(' + ('true' if elem.get('prefetch_as_load') else 'false') + ')',
-            'wq_check_full_addr': '.set_wq_checks_full_addr(' + ('true' if elem.get('wq_check_full_addr') else 'false') + ')',
-            'virtual_prefetch': '.set_virtual_prefetch(' + ('true' if elem.get('virtual_prefetch') else 'false') + ')'
+            ('prefetch_as_load', True): '.set_prefetch_as_load()',
+            ('prefetch_as_load', False): '.reset_prefetch_as_load()',
+            ('wq_check_full_addr', True): '.set_wq_checks_full_addr()',
+            ('wq_check_full_addr', False): '.reset_wq_checks_full_addr()',
+            ('virtual_prefetch', True): '.set_virtual_prefetch()',
+            ('virtual_prefetch', False): '.reset_virtual_prefetch()'
         }
 
         yield from (v.format(**elem) for k,v in cache_builder_parts.items() if k in elem)
-        yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k in elem)
+        yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
 
         # Create prefetch activation masks
         if elem.get('prefetch_activate'):

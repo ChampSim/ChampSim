@@ -86,15 +86,20 @@ SCENARIO("A cache completes a fill after the specified latency") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    auto builder = CACHE::Builder{champsim::defaults::default_l1d}
       .name("402-uut-"+std::string(str))
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .set_wq_checks_full_addr(match_offset)
-      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION)
-    };
+      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION);
+
+    if (match_offset)
+      builder = builder.set_wq_checks_full_addr();
+    else
+      builder = builder.reset_wq_checks_full_addr();
+
+    CACHE uut{builder};
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
