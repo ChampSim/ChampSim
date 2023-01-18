@@ -59,7 +59,7 @@ cache_builder_parts = {
     'fill_latency': '.fill_latency({fill_latency})',
     'max_tag_check': '.tag_bandwidth({max_tag_check})',
     'max_fill': '.fill_bandwidth({max_fill})',
-    'offset_bits': '.offset_bits({offset_bits})'
+    '_offset_bits': '.offset_bits({_offset_bits})'
 }
 
 default_ptw_queue = {
