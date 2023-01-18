@@ -24,7 +24,6 @@ def named_l1i_defaults(cpu):
         'rq_size': 64,
         'wq_size': 64,
         'pq_size': 32,
-        'ptwq_size': 0,
         'wq_check_full_addr': True,
         'lower_level': util.read_element_name(cpu, 'L2C'),
         'lower_translate': util.read_element_name(cpu, 'ITLB'),
@@ -40,7 +39,6 @@ def named_l1d_defaults(cpu):
         'rq_size': 64,
         'wq_size': 64,
         'pq_size': 8,
-        'ptwq_size': 5,
         'wq_check_full_addr': True,
         'lower_level': util.read_element_name(cpu, 'L2C'),
         'lower_translate': util.read_element_name(cpu, 'DTLB'),
@@ -55,7 +53,6 @@ def named_itlb_defaults(cpu):
         'rq_size': 16,
         'wq_size': 16,
         'pq_size': 0,
-        'ptwq_size': 0,
         'wq_check_full_addr': True,
         'lower_level': util.read_element_name(cpu, 'STLB'),
         '_defaults': 'champsim::defaults::default_itlb'
@@ -68,7 +65,6 @@ def named_dtlb_defaults(cpu):
         'rq_size': 16,
         'wq_size': 16,
         'pq_size': 0,
-        'ptwq_size': 0,
         'wq_check_full_addr': True,
         'lower_level': util.read_element_name(cpu, 'STLB'),
         '_defaults': 'champsim::defaults::default_dtlb'
@@ -135,7 +131,6 @@ def named_ptw_defaults(cpu):
         'rq_size': 32,
         'wq_size': 32,
         'pq_size': 0,
-        'ptwq_size': 0,
         'lower_level': util.read_element_name(cpu, 'L1D')
     }
 
@@ -149,7 +144,6 @@ def named_llc_defaults(name, uls):
         'rq_size': 32*len(uls),
         'wq_size': 32*len(uls),
         'pq_size': 32*len(uls),
-        'ptwq_size': 5*len(uls),
         'mshr_size': 64*len(uls),
         'wq_check_full_addr': False,
         'max_tag_check': len(uls),
