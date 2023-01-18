@@ -43,9 +43,9 @@ core_builder_parts = {
     'dispatch_latency': '.dispatch_latency({dispatch_latency})',
     'schedule_latency': '.schedule_latency({schedule_latency})',
     'execute_latency': '.execute_latency({execute_latency})',
-    'dib_set': '  .dib_set({DIB[sets]})',
-    'dib_way': '  .dib_way({DIB[ways]})',
-    'dib_window': '  .dib_window({DIB[window_size]})'
+    'dib_set': '  .dib_set({dib_set})',
+    'dib_way': '  .dib_way({dib_way})',
+    'dib_window': '  .dib_window({dib_window})'
 }
 
 dib_builder_parts = {
