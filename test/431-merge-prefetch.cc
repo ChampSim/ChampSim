@@ -16,7 +16,7 @@ struct merge_testbed
   std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &seed_ul, &test_ul}};
 
   template <typename MRP>
-  void issue_type(MRP& ul, uint8_t type, uint64_t delay = hit_latency+1)
+  void issue_type(MRP& ul, access_type type, uint64_t delay = hit_latency+1)
   {
     typename MRP::request_type pkt;
     pkt.address = 0xdeadbeef;
@@ -33,7 +33,7 @@ struct merge_testbed
         elem->_operate();
   }
 
-  explicit merge_testbed(uint8_t type)
+  explicit merge_testbed(access_type type)
   {
     for (auto elem : elements) {
       elem->initialize();
@@ -44,7 +44,7 @@ struct merge_testbed
     issue_type(seed_ul, type);
   }
 
-  void issue_type(uint8_t type, uint64_t delay = hit_latency+1)
+  void issue_type(access_type type, uint64_t delay = hit_latency+1)
   {
     issue_type(test_ul, type, delay);
   }
@@ -52,7 +52,7 @@ struct merge_testbed
 
 SCENARIO("A prefetch that hits an MSHR is dropped") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a " + std::string{str} + " miss") {
     merge_testbed testbed{type};
 
@@ -76,7 +76,7 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
 
 SCENARIO("A prefetch MSHR that gets hit is promoted") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a prefetch miss") {
     merge_testbed testbed{PREFETCH};
 

@@ -63,7 +63,7 @@ class channel {
     bool response_requested = true;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-    uint8_t type = 0;
+    access_type type{LOAD};
 
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
