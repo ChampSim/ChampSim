@@ -141,6 +141,15 @@ class release_MRC : public champsim::operable
 
     std::size_t packet_count() const { return mpacket_count; }
 
+    void release_all()
+    {
+      for (const auto &pkt : packets) {
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
+      }
+      packets.clear();
+    }
+
     void release(uint64_t addr)
     {
         auto pkt_it = std::partition(std::begin(packets), std::end(packets), [addr](auto x){ return x.address != addr; });
@@ -159,7 +168,7 @@ struct counting_MRP
 {
   std::deque<champsim::channel::response_type> returned{};
 
-  unsigned count = 0;
+  std::size_t count = 0;
 
   void operate() {
     count += std::size(returned);
@@ -194,10 +203,10 @@ struct queue_issue_MRP : public champsim::operable
     auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
     for (auto pkt : queues.returned) {
-      auto it = std::find_if(std::rbegin(packets), std::rend(packets), std::bind(finder, pkt, std::placeholders::_1));
-      if (it == std::rend(packets))
+      auto it = std::partition(std::begin(packets), std::end(packets), std::not_fn(std::bind(finder, pkt, std::placeholders::_1)));
+      if (it == std::end(packets))
         throw std::invalid_argument{"Packet returned which was not sent"};
-      it->return_time = current_cycle;
+      std::for_each(it, std::end(packets), [cycle=current_cycle](auto& x){ return x.return_time = cycle; });
     }
     queues.returned.clear();
   }
