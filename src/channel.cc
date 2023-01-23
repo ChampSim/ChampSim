@@ -125,6 +125,14 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 
 bool champsim::channel::add_rq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    std::cout << "[channel_rq] " << __func__;
+    std::cout << " instr_id: " << packet.instr_id;
+    std::cout << " address: " << std::hex << packet.address;
+    std::cout << " v_addr: " << packet.v_address << std::dec;
+    std::cout << " type: " << packet.type << std::endl;
+  }
+
   sim_stats.back().RQ_ACCESS++;
 
   auto result = do_add_queue(RQ, RQ_SIZE, packet);
@@ -139,6 +147,14 @@ bool champsim::channel::add_rq(const request_type& packet)
 
 bool champsim::channel::add_wq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    std::cout << "[channel_wq] " << __func__;
+    std::cout << " instr_id: " << packet.instr_id;
+    std::cout << " address: " << std::hex << packet.address;
+    std::cout << " v_addr: " << packet.v_address << std::dec;
+    std::cout << " type: " << packet.type << std::endl;
+  }
+
   sim_stats.back().WQ_ACCESS++;
 
   auto result = do_add_queue(WQ, WQ_SIZE, packet);
@@ -153,6 +169,14 @@ bool champsim::channel::add_wq(const request_type& packet)
 
 bool champsim::channel::add_pq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    std::cout << "[channel_pq] " << __func__;
+    std::cout << " instr_id: " << packet.instr_id;
+    std::cout << " address: " << std::hex << packet.address;
+    std::cout << " v_addr: " << packet.v_address << std::dec;
+    std::cout << " type: " << packet.type << std::endl;
+  }
+
   sim_stats.back().PQ_ACCESS++;
 
   auto fwd_pkt = packet;

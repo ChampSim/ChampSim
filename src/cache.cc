@@ -470,28 +470,35 @@ void CACHE::finish_packet(const response_type& packet)
 
 void CACHE::finish_translation(const response_type& packet)
 {
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " data: " << packet.data << std::dec;
-    std::cout << " cycle: " << current_cycle << std::endl;
-  }
-
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       entry.address = champsim::splice_bits(packet.data, entry.v_address, LOG2_PAGE_SIZE); // translated address
       entry.is_translated = true; // This entry is now translated
+
+      if constexpr (champsim::debug_print) {
+        std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
+        std::cout << " paddr: " << std::hex << entry.address;
+        std::cout << " vaddr: " << entry.v_address << std::dec;
+        std::cout << " cycle: " << current_cycle << std::endl;
+      }
     }
   }
 
   auto stash_it = std::stable_partition(std::begin(translation_stash), std::end(translation_stash), [page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
   auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
   translation_stash.erase(stash_it, std::end(translation_stash));
-  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data](auto& entry) {
+  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data, this](auto& entry) {
       entry.address = champsim::splice_bits(addr, entry.v_address, LOG2_PAGE_SIZE); // translated address
       entry.event_cycle = cycle;
       entry.is_translated = true; // This entry is now translated
+
+      if constexpr (champsim::debug_print) {
+        std::cout << "[" << this->NAME << "_TRANSLATE] " << __func__;
+        std::cout << " paddr: " << std::hex << entry.address;
+        std::cout << " vaddr: " << entry.v_address << std::dec;
+        std::cout << " cycle: " << this->current_cycle << std::endl;
+      }
     });
 }
 
