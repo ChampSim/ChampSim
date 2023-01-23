@@ -43,7 +43,7 @@ PageTableWalker::mshr_type::mshr_type(request_type req, std::size_t level)
   asid[1] = req.asid[1];
 }
 
-bool PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* ul)
+auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* ul) -> std::optional<mshr_type>
 {
   pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
   std::vector<std::optional<pscl_entry>> pscl_hits;
@@ -53,24 +53,24 @@ bool PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 
   auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
 
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " address: " << std::hex << walk_init.vaddr;
-    std::cout << " v_address: " << handle_pkt.v_address << std::dec;
-    std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
-    std::cout << " translation_level: " << walk_init.level << std::endl;
-  }
-
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
   fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
   fwd_mshr.v_address = handle_pkt.address;
   if (handle_pkt.response_requested)
     fwd_mshr.to_return = {&ul->returned};
 
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "] " << __func__;
+    std::cout << " address: " << std::hex << fwd_mshr.address;
+    std::cout << " v_address: " << handle_pkt.v_address << std::dec;
+    std::cout << " pt_page offset: " << walk_offset / PTE_BYTES;
+    std::cout << " translation_level: " << walk_init.level << std::endl;
+  }
+
   return step_translation(fwd_mshr);
 }
 
-bool PageTableWalker::handle_fill(const mshr_type& fill_mshr)
+auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -82,51 +82,34 @@ bool PageTableWalker::handle_fill(const mshr_type& fill_mshr)
     std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
   }
 
-  if (fill_mshr.translation_level == 0) {
-    response_type ret_pkt{fill_mshr.v_address, fill_mshr.v_address, fill_mshr.data, fill_mshr.pf_metadata, fill_mshr.instr_depend_on_me};
+  const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
+  pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
 
-    for (auto ret : fill_mshr.to_return)
-      ret->push_back(ret_pkt);
+  mshr_type fwd_mshr = fill_mshr;
+  fwd_mshr.address = fill_mshr.data;
+  fwd_mshr.translation_level = fill_mshr.translation_level - 1;
 
-    return true;
-  } else {
-    const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
-    pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
-
-    mshr_type fwd_mshr = fill_mshr;
-    fwd_mshr.address = fill_mshr.data;
-    fwd_mshr.translation_level = fill_mshr.translation_level - 1;
-
-    return step_translation(fwd_mshr);
-  }
+  return step_translation(fwd_mshr);
 }
 
-bool PageTableWalker::step_translation(const mshr_type& source)
+auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional<mshr_type>
 {
-  auto matches_and_inflight = [addr=source.address](const auto& x) {
-    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE) && x.event_cycle == std::numeric_limits<uint64_t>::max();
-  };
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_and_inflight);
+  request_type packet;
+  packet.address = source.address;
+  packet.v_address = source.v_address;
+  packet.pf_metadata = source.pf_metadata;
+  packet.cpu = source.cpu;
+  packet.asid[0] = source.asid[0];
+  packet.asid[1] = source.asid[1];
+  packet.is_translated = true;
+  packet.type = TRANSLATION;
 
-  bool success = true;
-  if (mshr_entry == std::end(MSHR)) {
-    request_type packet;
-    packet.address = source.address;
-    packet.v_address = source.v_address;
-    packet.pf_metadata = source.pf_metadata;
-    packet.cpu = source.cpu;
-    packet.asid[0] = source.asid[0];
-    packet.asid[1] = source.asid[1];
-    packet.is_translated = true;
-    packet.type = TRANSLATION;
-
-    success = lower_level->add_rq(packet);
-  }
+  bool success = lower_level->add_rq(packet);
 
   if (success)
-    MSHR.push_back(source);
+    return source;
 
-  return success;
+  return std::nullopt;
 }
 
 void PageTableWalker::operate()
@@ -135,48 +118,79 @@ void PageTableWalker::operate()
     finish_packet(x);
   lower_level->returned.clear();
 
-  auto fill_this_cycle = MAX_FILL;
-  while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
-    auto success = handle_fill(MSHR.front());
-    if (!success)
-      break;
+  std::vector<mshr_type> next_steps{};
 
-    MSHR.pop_front();
-    fill_this_cycle--;
-  }
+  auto fill_bw = MAX_FILL;
+  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, [cycle=current_cycle](const auto& pkt) {
+      return pkt.event_cycle == cycle;
+    });
+  std::for_each(complete_begin, complete_end, [](auto& mshr_entry){
+      for (auto ret : mshr_entry.to_return)
+        ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
+    });
+  fill_bw -= std::distance(complete_begin, complete_end);
+  completed.erase(complete_begin, complete_end);
+
+  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [&next_steps, this](const auto& pkt) {
+      auto result = this->handle_fill(pkt);
+      if (result.has_value())
+        next_steps.push_back(*result);
+      return result.has_value();
+    });
+  finished.erase(mshr_begin, mshr_end);
 
   auto tag_bw = MAX_READ;
   for (auto ul : upper_levels) {
-    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [ul, this](const auto& pkt) { return this->handle_read(pkt, ul); });
+    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [&next_steps, ul, this](const auto& pkt) {
+        auto result = this->handle_read(pkt, ul);
+        if (result.has_value())
+          next_steps.push_back(*result);
+        return result.has_value();
+      });
     tag_bw -= std::distance(rq_begin, rq_end);
     ul->RQ.erase(rq_begin, rq_end);
   }
+
+  MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
 }
 
 void PageTableWalker::finish_packet(const response_type& packet)
 {
-  for (auto& mshr_entry : MSHR) {
-    if ((mshr_entry.address >> LOG2_BLOCK_SIZE) == (packet.address >> LOG2_BLOCK_SIZE)) {
+  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), [addr=packet.address](auto x){ return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
+  auto inserted_finished = finished.insert(std::cend(finished), std::begin(MSHR), last_finished);
+  MSHR.erase(std::begin(MSHR), last_finished);
+
+  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x){ return x.translation_level > 0; });
+  std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
       uint64_t penalty;
-      if (mshr_entry.translation_level == 0)
-        std::tie(mshr_entry.data, penalty) = vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
-      else
-        std::tie(mshr_entry.data, penalty) = vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
-      mshr_entry.event_cycle = current_cycle + (warmup ? 0 : penalty);
+      std::tie(mshr_entry.data, penalty) = this->vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty);
 
       if constexpr (champsim::debug_print) {
-        std::cout << "[" << NAME << "_MSHR] " << __func__;
+        std::cout << "[" << this->NAME << "_MSHR] finish_packet";
         std::cout << " address: " << std::hex << mshr_entry.address;
         std::cout << " v_address: " << mshr_entry.v_address;
         std::cout << " data: " << mshr_entry.data << std::dec;
-        std::cout << " translation_level: " << +mshr_entry.translation_level;
-        std::cout << " occupancy: " << std::size(MSHR);
-        std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
+        std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
       }
-    }
-  }
+    });
 
-  std::sort(std::begin(MSHR), std::end(MSHR), [](const auto& x, const auto& y) { return x.event_cycle < y.event_cycle; });
+  std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
+      uint64_t penalty;
+      std::tie(mshr_entry.data, penalty) = this->vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty);
+
+      if constexpr (champsim::debug_print) {
+        std::cout << "[" << this->NAME << "_MSHR] complete_packet";
+        std::cout << " address: " << std::hex << mshr_entry.address;
+        std::cout << " v_address: " << mshr_entry.v_address;
+        std::cout << " data: " << mshr_entry.data << std::dec;
+        std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
+      }
+    });
+
+  completed.insert(std::cend(completed), last_unfinished, std::end(finished));
+  finished.erase(last_unfinished, std::end(finished));
 }
 
 void PageTableWalker::begin_phase()
