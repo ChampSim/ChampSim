@@ -62,7 +62,7 @@ SCENARIO("Concurrent page table walks can be merged") {
     constexpr uint64_t nearby_address = 0xffff'ffff'ffff'efff;
 
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    VirtualMemory vmem{1<<12, levels, 10, dram};
     release_MRC mock_ll;
     to_rq_MRP mock_ul{[](auto x, auto y){ return (x.address >> LOG2_BLOCK_SIZE) == (y.address >> LOG2_BLOCK_SIZE); }};
     PageTableWalker uut{"601-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {0,0}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};

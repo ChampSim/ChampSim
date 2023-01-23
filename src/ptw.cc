@@ -131,7 +131,10 @@ void PageTableWalker::operate()
   fill_bw -= std::distance(complete_begin, complete_end);
   completed.erase(complete_begin, complete_end);
 
-  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [&next_steps, this](const auto& pkt) {
+  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [cycle=current_cycle](const auto& pkt) {
+      return pkt.event_cycle <= cycle;
+    });
+  std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, cycle=current_cycle, this](const auto& pkt) {
       auto result = this->handle_fill(pkt);
       if (result.has_value())
         next_steps.push_back(*result);
@@ -164,7 +167,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
   std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
       uint64_t penalty;
       std::tie(mshr_entry.data, penalty) = this->vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
-      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty);
+      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty+HIT_LATENCY);
 
       if constexpr (champsim::debug_print) {
         std::cout << "[" << this->NAME << "_MSHR] finish_packet";
@@ -178,7 +181,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
   std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
       uint64_t penalty;
       std::tie(mshr_entry.data, penalty) = this->vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
-      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty);
+      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty+HIT_LATENCY);
 
       if constexpr (champsim::debug_print) {
         std::cout << "[" << this->NAME << "_MSHR] complete_packet";
