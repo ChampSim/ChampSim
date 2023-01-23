@@ -130,7 +130,7 @@ SCENARIO("Concurrent page table walks can be merged") {
           }
 
           AND_WHEN("The lower level returns") {
-            auto nearby_paddr = 0x103ff8; // Hard coded to get the test to work...
+            uint64_t nearby_paddr = 0x103ff8; // Hard coded to get the test to work...
 
             mock_ll.release(nearby_paddr);
 

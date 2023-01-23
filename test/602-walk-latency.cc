@@ -7,7 +7,7 @@
 #include "vmem.h"
 
 SCENARIO("The issued steps incur appropriate latencies") {
-  auto level = GENERATE(1,2,3,4,5);
+  auto level = GENERATE(1u,2u,3u,4u,5u);
 
   GIVEN("A 5-level virtual memory primed for "+std::to_string(level)+" accesses") {
     constexpr std::size_t vmem_levels = 5;
