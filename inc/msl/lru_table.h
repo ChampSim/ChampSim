@@ -107,12 +107,14 @@ public:
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
-    auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
+    if (set_begin != set_end) {
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-    if (tag_projection(hit->data) == tag)
-      *hit = {++access_count, elem};
-    else
-      *miss = {++access_count, elem};
+      if (tag_projection(hit->data) == tag)
+        *hit = {++access_count, elem};
+      else
+        *miss = {++access_count, elem};
+    }
   }
 
   std::optional<value_type> invalidate(const value_type& elem)
@@ -129,9 +131,9 @@ public:
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
       : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
   {
-    assert(sets > 0);
-    assert(ways > 0);
-    assert(sets == (1ull << lg2(sets)));
+    assert(sets >= 0);
+    assert(ways >= 0);
+    assert(sets == 0 || sets == (1ull << lg2(sets)));
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}
