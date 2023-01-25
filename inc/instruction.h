@@ -73,7 +73,9 @@ struct ooo_model_instr {
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
 
 private:
-  class conversion_tag {};
+  class conversion_tag
+  {
+  };
 
   template <typename T>
   ooo_model_instr(conversion_tag, T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
@@ -89,8 +91,8 @@ private:
     bool reads_flags = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_FLAGS);
     bool reads_ip = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_INSTRUCTION_POINTER);
     bool reads_other = std::count_if(std::begin(source_registers), std::end(source_registers), [](uint8_t r) {
-        return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
-      });
+      return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
+    });
 
     // determine what kind of branch this is, if any
     if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
