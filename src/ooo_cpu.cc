@@ -196,70 +196,14 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 {
   arch_instr.instr_id = instr_unique_id++;
 
-  bool writes_sp = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
-  bool writes_ip = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_INSTRUCTION_POINTER);
-  bool reads_sp = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_STACK_POINTER);
-  bool reads_flags = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_FLAGS);
-  bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_INSTRUCTION_POINTER);
-  bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
-    return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
-  });
-
-  // determine what kind of branch this is, if any
-  if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
-    // direct jump
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_DIRECT_JUMP;
-  } else if (!reads_sp && !reads_flags && writes_ip && reads_other) {
-    // indirect branch
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_INDIRECT;
-  } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
-    // conditional branch
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-    arch_instr.branch_type = BRANCH_CONDITIONAL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
-    // direct call
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_DIRECT_CALL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
-    // indirect call
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_INDIRECT_CALL;
-  } else if (reads_sp && !reads_ip && writes_sp && writes_ip) {
-    // return
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_RETURN;
-  } else if (writes_ip) {
-    // some other branch type that doesn't fit the above categories
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-    arch_instr.branch_type = BRANCH_OTHER;
-  } else {
-    assert(!arch_instr.is_branch);
-    assert(arch_instr.branch_type == NOT_BRANCH);
-    arch_instr.branch_taken = 0;
-  }
-
-  if (arch_instr.branch_taken != 1) {
-    // clear the branch target for non-taken instructions
-    arch_instr.branch_target = 0;
-  }
-
-  ::do_stack_pointer_folding(arch_instr);
-  do_predict_branch(arch_instr);
-
   // fast warmup eliminates register dependencies between instructions branch predictor, cache contents, and prefetchers are still warmed up
   if (warmup) {
     arch_instr.source_registers.clear();
     arch_instr.destination_registers.clear();
   }
+
+  ::do_stack_pointer_folding(arch_instr);
+  do_predict_branch(arch_instr);
 }
 
 void O3_CPU::check_dib()

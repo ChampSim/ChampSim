@@ -74,7 +74,7 @@ void tracereader::refresh_buffer()
 
   // Set branch targets
   for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
-    std::prev(it)->branch_target = it->ip;
+    std::prev(it)->branch_target = (std::prev(it)->is_branch && std::prev(it)->branch_taken) ? it->ip : 0;
 }
 
 template <typename T>
