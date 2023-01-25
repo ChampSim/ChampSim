@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <functional>
+
 #include "cache.h"
 #include "ooo_cpu.h"
-
-#include <functional>
 
 namespace
 {
