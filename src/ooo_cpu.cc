@@ -233,26 +233,23 @@ void O3_CPU::fetch_instruction()
   auto fetch_ready = [](const ooo_model_instr& x) {
     return x.dib_checked == COMPLETED && !x.fetched;
   };
-  auto to_read = L1I_BANDWIDTH;
+
+  // Find the chunk of instructions in the block
+  auto no_match_ip = [](const auto& lhs, const auto& rhs) {
+    return (lhs.ip >> LOG2_BLOCK_SIZE) != (rhs.ip >> LOG2_BLOCK_SIZE);
+  };
+
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
-  while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
-    // Find the chunk of instructions in the block
-    auto match_ip = [](const auto& lhs, const auto& rhs) {
-      return (lhs.ip >> LOG2_BLOCK_SIZE) == (rhs.ip >> LOG2_BLOCK_SIZE);
-    };
-    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), std::not_fn(match_ip));
+  for (auto to_read = L1I_BANDWIDTH; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
+    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
     if (l1i_req_end != std::end(IFETCH_BUFFER))
       l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
 
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
-    if (success) {
-      for (auto it = l1i_req_begin; it != l1i_req_end; ++it)
-        it->fetched = INFLIGHT;
-      break;
-    }
+    if (success)
+      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x){ x.fetched = INFLIGHT; });
 
-    --to_read;
     l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
   }
 }
