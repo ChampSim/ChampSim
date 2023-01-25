@@ -248,7 +248,7 @@ void O3_CPU::fetch_instruction()
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
     if (success)
-      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x){ x.fetched = INFLIGHT; });
+      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
 
     l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
   }
