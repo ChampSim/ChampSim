@@ -134,7 +134,7 @@ void PageTableWalker::operate()
   auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [cycle=current_cycle](const auto& pkt) {
       return pkt.event_cycle <= cycle;
     });
-  std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, cycle=current_cycle, this](const auto& pkt) {
+  std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, this](const auto& pkt) {
       auto result = this->handle_fill(pkt);
       if (result.has_value())
         next_steps.push_back(*result);
