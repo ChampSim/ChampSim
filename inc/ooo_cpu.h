@@ -91,9 +91,7 @@ public:
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
 
   // instruction
-  uint64_t instr_unique_id = 0;
   uint64_t instrs_to_read_this_cycle = 0;
-  uint64_t instrs_to_fetch_this_cycle = 0;
   uint64_t num_retired = 0;
 
   bool show_heartbeat = true;

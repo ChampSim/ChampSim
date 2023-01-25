@@ -194,8 +194,6 @@ void O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
 void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 {
-  arch_instr.instr_id = instr_unique_id++;
-
   // fast warmup eliminates register dependencies between instructions branch predictor, cache contents, and prefetchers are still warmed up
   if (warmup) {
     arch_instr.source_registers.clear();

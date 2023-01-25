@@ -24,6 +24,7 @@
 #include <iostream>
 #endif
 
+uint64_t tracereader::instr_unique_id = 0;
 void detail::pclose_file(FILE* f) { pclose(f); }
 
 FILE* tracereader::get_fptr(std::string fname)
@@ -86,6 +87,7 @@ ooo_model_instr tracereader::impl_get()
   auto retval = instr_buffer.front();
   instr_buffer.pop_front();
 
+  retval.instr_id = instr_unique_id++;
   return retval;
 }
 

@@ -36,6 +36,7 @@ void pclose_file(FILE* f);
 
 class tracereader
 {
+  static uint64_t instr_unique_id;
 public:
   const std::string trace_string;
   tracereader(uint8_t cpu_idx, std::string _ts) : trace_string(_ts), cpu(cpu_idx) {}
