@@ -153,13 +153,9 @@ void O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip);
-  if (always_taken) {
-    arch_instr.branch_prediction = true;
-  }
-  if (arch_instr.branch_prediction == 0) {
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  if (arch_instr.branch_prediction == 0)
     predicted_branch_target = 0;
-  }
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
@@ -240,10 +236,12 @@ void O3_CPU::fetch_instruction()
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
     // Find the chunk of instructions in the block
-    auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
-      return (find_ip >> LOG2_BLOCK_SIZE) != (x.ip >> LOG2_BLOCK_SIZE);
+    auto match_ip = [](const auto& lhs, const auto& rhs) {
+      return (lhs.ip >> LOG2_BLOCK_SIZE) == (rhs.ip >> LOG2_BLOCK_SIZE);
     };
-    auto l1i_req_end = std::find_if(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
+    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), std::not_fn(match_ip));
+    if (l1i_req_end != std::end(IFETCH_BUFFER))
+      l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
 
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
