@@ -120,6 +120,27 @@ void O3_CPU::initialize_instruction()
   }
 }
 
+namespace {
+  void do_stack_pointer_folding(ooo_model_instr& arch_instr)
+  {
+    // The exact, true value of the stack pointer for any given instruction can usually be determined immediately after the instruction is decoded without
+    // waiting for the stack pointer's dependency chain to be resolved.
+    bool writes_sp = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
+    if (writes_sp) {
+      // Avoid creating register dependencies on the stack pointer for calls, returns, pushes, and pops, but not for variable-sized changes in the
+      // stack pointer position. reads_other indicates that the stack pointer is being changed by a variable amount, which can't be determined before
+      // execution.
+      bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
+          return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
+        });
+      if ((arch_instr.is_branch != 0) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
+        auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
+        arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
+      }
+    }
+  }
+}
+
 void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 {
   instrs_to_read_this_cycle--;
@@ -183,24 +204,7 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   }
 
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
-
-  // Stack Pointer Folding
-  // The exact, true value of the stack pointer for any given instruction can
-  // usually be determined immediately after the instruction is decoded without
-  // waiting for the stack pointer's dependency chain to be resolved.
-  // We're doing it here because we already have writes_sp and reads_other
-  // handy, and in ChampSim it doesn't matter where before execution you do it.
-  if (writes_sp) {
-    // Avoid creating register dependencies on the stack pointer for calls,
-    // returns, pushes, and pops, but not for variable-sized changes in the
-    // stack pointer position. reads_other indicates that the stack pointer is
-    // being changed by a variable amount, which can't be determined before
-    // execution.
-    if ((arch_instr.is_branch != 0) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
-      auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
-      arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
-    }
-  }
+  ::do_stack_pointer_folding(arch_instr);
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
