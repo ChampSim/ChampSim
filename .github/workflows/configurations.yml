@@ -1,0 +1,69 @@
+name: Compile-only configurations
+
+on:
+  push:
+    branches: 
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/configurations.yml'
+
+  pull_request:
+    branches:
+      - master
+      - develop
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - '.github/workflows/*.yml'
+      # re-include current file to not be excluded
+      - '!.github/workflows/configurations.yml'
+
+jobs:
+  matrix-generate:
+    runs-on: ubuntu-latest
+    outputs:
+      mat: "${{ steps.generate.outputs.matrix }}"
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: nahsi/files-to-matrix@v1
+        id: generate
+        with:
+          files: test/config/compile-only/*,
+          settings: >-
+            [
+              {
+                "name": "name",
+                "level": 3,
+                "trim": true
+              },
+            ]
+
+  check-configurations:
+    runs-on: ubuntu-latest
+    needs: matrix-generate
+    strategy:
+      matrix:
+        tests: "${{ fromJSON(needs.matrix-generate.outputs.mat) }}"
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
+
+    - name: Configure
+      run: ./config.sh test/config/compile-only/${{ matrix.tests.name }}.json
+
+    - name: Make
+      run: make
+

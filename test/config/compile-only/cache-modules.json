@@ -1,0 +1,7 @@
+{
+    "L1D": {
+        "sets": 256, "ways": 4,
+        "prefetcher": "next_line",
+        "replacement": "drrip"
+    }
+}
