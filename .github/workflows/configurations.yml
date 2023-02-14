@@ -41,7 +41,7 @@ jobs:
                 "name": "name",
                 "level": 3,
                 "trim": true
-              },
+              }
             ]
 
   check-configurations:
