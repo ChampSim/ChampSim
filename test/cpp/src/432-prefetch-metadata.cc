@@ -20,7 +20,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     do_nothing_MRC mock_ll;
     CACHE::NonTranslatingQueues lower_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE::NonTranslatingQueues upper_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE lower{"432-lower", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
+    CACHE lower{"432-lower", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, &mock_ll, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, &lower, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 5> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper}};
@@ -64,8 +64,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     do_nothing_MRC mock_ll;
     CACHE::NonTranslatingQueues lower_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
     CACHE::NonTranslatingQueues upper_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE lower{"432-lower", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, &mock_ll, CACHE::ptestDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
-    CACHE upper{"432-upper", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, &lower, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
+    CACHE lower{"432-lower", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), lower_queues, &mock_ll, CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
+    CACHE upper{"432-upper", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), upper_queues, &lower, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     to_rq_MRP mock_ul{&upper};
 
     std::array<champsim::operable*, 6> elements{{&mock_ll, &lower_queues, &upper_queues, &lower, &upper, &mock_ul}};
