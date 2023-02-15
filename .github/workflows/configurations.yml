@@ -38,7 +38,7 @@ jobs:
           type: ".json"
       
       - id: set-matrix
-        run: echo "paths=[" $(echo "${{ steps.get-list.outputs.paths }}" | tr ' ' ',') "]" >> $GITHUB_OUTPUT
+        run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "paths=[ "out" ]"}' >> $GITHUB_OUTPUT
 
   check-configurations:
     runs-on: ubuntu-latest
