@@ -27,7 +27,7 @@ jobs:
   matrix-generate:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.paths }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v1
 
@@ -38,7 +38,7 @@ jobs:
           type: ".json"
       
       - id: set-matrix
-        run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "paths=[ "out" ]"}' >> $GITHUB_OUTPUT
+        run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "matrix={path:[ "out" ]}"}' >> $GITHUB_OUTPUT
 
   check-configurations:
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh ${{ matrix.file }}
+      run: ./config.sh ${{ matrix.file.path }}
 
     - name: Make
       run: make
