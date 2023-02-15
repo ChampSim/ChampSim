@@ -31,18 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: nahsi/files-to-matrix@v1
-        id: generate
-        with:
-          files: test/config/compile-only/*,
-          settings: >-
-            [
-              {
-                "name": "name",
-                "level": 3,
-                "trim": true
-              }
-            ]
+      - id: generate
+        # Get python to list the contents of test/config/compile-only in json format
+        run: echo "matrix=$(python3 -c 'import os, json; print(json.dumps({\"file\": os.listdir(\'test/config/compile-only\')}))'" >> $GITHUB_OUTPUT
 
   check-configurations:
     runs-on: ubuntu-latest
@@ -62,7 +53,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh test/config/compile-only/${{ matrix.tests.name }}.json
+      run: ./config.sh test/config/compile-only/${{ matrix.tests.file }}
 
     - name: Make
       run: make
