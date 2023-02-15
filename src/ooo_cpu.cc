@@ -38,8 +38,6 @@ std::chrono::seconds elapsed_time();
 
 void O3_CPU::operate()
 {
-  instrs_to_read_this_cycle = std::min<std::size_t>(FETCH_WIDTH, IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER));
-
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
   execute_instruction();           // execute instructions
@@ -50,13 +48,6 @@ void O3_CPU::operate()
   dispatch_instruction(); // dispatch
   decode_instruction();   // decode
   promote_to_decode();
-
-  // if we had a branch mispredict, turn fetching back on after the branch
-  // mispredict penalty
-  if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
-    fetch_stall = 0;
-    fetch_resume_cycle = 0;
-  }
 
   fetch_instruction(); // fetch
   check_dib();
@@ -115,108 +106,59 @@ void O3_CPU::end_phase(unsigned finished_cpu)
 
 void O3_CPU::initialize_instruction()
 {
-  while (fetch_stall == 0 && instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
-    do_init_instruction(input_queue.front());
+  auto instrs_to_read_this_cycle = std::min(FETCH_WIDTH, static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER)));
+
+  while (current_cycle >= fetch_resume_cycle && instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
+    instrs_to_read_this_cycle--;
+
+    auto stop_fetch = do_init_instruction(input_queue.front());
+    if (stop_fetch)
+      instrs_to_read_this_cycle = 0;
+
+    // Add to IFETCH_BUFFER
+    IFETCH_BUFFER.push_back(input_queue.front());
     input_queue.pop_front();
+
+    IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
 }
 
-void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
+namespace
 {
-  instrs_to_read_this_cycle--;
-
-  arch_instr.instr_id = instr_unique_id;
-
-  bool writes_sp = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
-  bool writes_ip = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_INSTRUCTION_POINTER);
-  bool reads_sp = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_STACK_POINTER);
-  bool reads_flags = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_FLAGS);
-  bool reads_ip = std::count(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), champsim::REG_INSTRUCTION_POINTER);
-  bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
-    return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
-  });
-
-  // determine what kind of branch this is, if any
-  if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
-    // direct jump
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_DIRECT_JUMP;
-  } else if (!reads_sp && !reads_flags && writes_ip && reads_other) {
-    // indirect branch
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_INDIRECT;
-  } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
-    // conditional branch
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-    arch_instr.branch_type = BRANCH_CONDITIONAL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
-    // direct call
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_DIRECT_CALL;
-  } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
-    // indirect call
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_INDIRECT_CALL;
-  } else if (reads_sp && !reads_ip && writes_sp && writes_ip) {
-    // return
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = 1;
-    arch_instr.branch_type = BRANCH_RETURN;
-  } else if (writes_ip) {
-    // some other branch type that doesn't fit the above categories
-    arch_instr.is_branch = 1;
-    arch_instr.branch_taken = arch_instr.branch_taken; // don't change this
-    arch_instr.branch_type = BRANCH_OTHER;
-  } else {
-    assert(!arch_instr.is_branch);
-    assert(arch_instr.branch_type == NOT_BRANCH);
-    arch_instr.branch_taken = 0;
-  }
-
-  if (arch_instr.branch_taken != 1) {
-    // clear the branch target for non-taken instructions
-    arch_instr.branch_target = 0;
-  }
-
-  sim_stats.back().total_branch_types[arch_instr.branch_type]++;
-
-  // Stack Pointer Folding
-  // The exact, true value of the stack pointer for any given instruction can
-  // usually be determined immediately after the instruction is decoded without
+void do_stack_pointer_folding(ooo_model_instr& arch_instr)
+{
+  // The exact, true value of the stack pointer for any given instruction can usually be determined immediately after the instruction is decoded without
   // waiting for the stack pointer's dependency chain to be resolved.
-  // We're doing it here because we already have writes_sp and reads_other
-  // handy, and in ChampSim it doesn't matter where before execution you do it.
+  bool writes_sp = std::count(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
   if (writes_sp) {
-    // Avoid creating register dependencies on the stack pointer for calls,
-    // returns, pushes, and pops, but not for variable-sized changes in the
-    // stack pointer position. reads_other indicates that the stack pointer is
-    // being changed by a variable amount, which can't be determined before
+    // Avoid creating register dependencies on the stack pointer for calls, returns, pushes, and pops, but not for variable-sized changes in the
+    // stack pointer position. reads_other indicates that the stack pointer is being changed by a variable amount, which can't be determined before
     // execution.
+    bool reads_other = std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers), [](uint8_t r) {
+      return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
+    });
     if ((arch_instr.is_branch != 0) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
       auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
       arch_instr.destination_registers.erase(nonsp_end, std::end(arch_instr.destination_registers));
     }
   }
+}
+} // namespace
+
+bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
+{
+  bool stop_fetch = false;
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.back().total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip);
-  if (always_taken) {
-    arch_instr.branch_prediction = true;
-  }
-  if (arch_instr.branch_prediction == 0) {
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  if (arch_instr.branch_prediction == 0)
     predicted_branch_target = 0;
-  }
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
-      fmt::print("[BRANCH] instr_id: {} ip: {:x} taken: {}\n", instr_unique_id, arch_instr.ip, arch_instr.branch_taken);
+      fmt::print("[BRANCH] instr_id: {} ip: {:x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
 
     // call code prefetcher every time the branch predictor is used
@@ -228,34 +170,31 @@ void O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
       sim_stats.back().total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       sim_stats.back().branch_type_misses[arch_instr.branch_type]++;
       if (!warmup) {
-        fetch_stall = 1;
-        instrs_to_read_this_cycle = 0;
+        fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+        stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
       }
     } else {
-      // if correctly predicted taken, then we can't fetch anymore instructions this cycle
-      if (arch_instr.branch_taken == 1) {
-        instrs_to_read_this_cycle = 0;
-      }
+      stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
   }
 
-  arch_instr.event_cycle = current_cycle;
+  return stop_fetch;
+}
 
-  // fast warmup eliminates register dependencies between instructions
-  // branch predictor, cache contents, and prefetchers are still warmed up
+bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
+{
+  // fast warmup eliminates register dependencies between instructions branch predictor, cache contents, and prefetchers are still warmed up
   if (warmup) {
     arch_instr.source_registers.clear();
     arch_instr.destination_registers.clear();
   }
 
-  // Add to IFETCH_BUFFER
-  IFETCH_BUFFER.push_back(arch_instr);
-
-  instr_unique_id++;
+  ::do_stack_pointer_folding(arch_instr);
+  return do_predict_branch(arch_instr);
 }
 
 void O3_CPU::check_dib()
@@ -290,24 +229,23 @@ void O3_CPU::fetch_instruction()
   auto fetch_ready = [](const ooo_model_instr& x) {
     return x.dib_checked == COMPLETED && !x.fetched;
   };
-  auto to_read = L1I_BANDWIDTH;
+
+  // Find the chunk of instructions in the block
+  auto no_match_ip = [](const auto& lhs, const auto& rhs) {
+    return (lhs.ip >> LOG2_BLOCK_SIZE) != (rhs.ip >> LOG2_BLOCK_SIZE);
+  };
+
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
-  while (to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER)) {
-    // Find the chunk of instructions in the block
-    auto no_match_ip = [find_ip = l1i_req_begin->ip](const ooo_model_instr& x) {
-      return (find_ip >> LOG2_BLOCK_SIZE) != (x.ip >> LOG2_BLOCK_SIZE);
-    };
-    auto l1i_req_end = std::find_if(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
+  for (auto to_read = L1I_BANDWIDTH; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
+    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
+    if (l1i_req_end != std::end(IFETCH_BUFFER))
+      l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
 
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
-    if (success) {
-      for (auto it = l1i_req_begin; it != l1i_req_end; ++it)
-        it->fetched = INFLIGHT;
-      break;
-    }
+    if (success)
+      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
 
-    --to_read;
     l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
   }
 }
