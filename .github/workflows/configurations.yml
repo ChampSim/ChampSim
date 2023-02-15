@@ -27,15 +27,18 @@ jobs:
   matrix-generate:
     runs-on: ubuntu-latest
     outputs:
-      matrix: "[ $(echo ${{ steps.set-matrix.outputs.paths }} | tr ' ' ',') ]"
+      matrix: ${{ steps.set-matrix.outputs.paths }}
     steps:
       - uses: actions/checkout@v1
 
-      - id: set-matrix
+      - id: get-list
         uses: Rishabh510/Path-lister-action@master
         with:
           path: "test/config/compile-only"
           type: ".json"
+      
+      - id: set-matrix
+        run: echo "paths=[" $(echo ${{ steps.get-list.outputs.paths }} | tr ' ' ',') "]" >> $GITHUB_OUTPUT
 
   check-configurations:
     runs-on: ubuntu-latest
