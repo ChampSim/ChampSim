@@ -40,7 +40,7 @@ jobs:
     needs: matrix-generate
     strategy:
       matrix:
-        file: "${{ needs.matrix-generate.outputs.matrix }}"
+        file: ${{ needs.matrix-generate.outputs.matrix }}
 
     steps:
     - uses: actions/checkout@v3
