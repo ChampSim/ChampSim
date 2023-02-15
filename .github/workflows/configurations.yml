@@ -29,6 +29,8 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.paths }}
     steps:
+      - uses: actions/checkout@v1
+
       - id: set-matrix
         uses: Rishabh510/Path-lister-action@master
         with:
