@@ -24,12 +24,23 @@ on:
       - '!.github/workflows/configurations.yml'
 
 jobs:
+  matrix-generate:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.paths }}
+    steps:
+      - id: set-matrix
+        uses: Rishabh510/Path-lister-action@master
+        with:
+          path: "test/config/compile-only/"
+          type: ".json"
+
   check-configurations:
     runs-on: ubuntu-latest
+    needs: matrix-generate
     strategy:
       matrix:
-        # Get python to list the contents of test/config/compile-only in json format
-        tests: "${{ fromJSON($(python3 -c 'import os, json; print(json.dumps(os.listdir(\'test/config/compile-only\')))')) }}"
+        file: "${{ needs.matrix-generate.outputs.matrix }}"
 
     steps:
     - uses: actions/checkout@v3
@@ -42,7 +53,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh test/config/compile-only/${{ matrix.tests.file }}
+      run: ./config.sh test/config/compile-only/${{ matrix.file }}
 
     - name: Make
       run: make
