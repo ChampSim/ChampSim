@@ -27,29 +27,22 @@ jobs:
   matrix-generate:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.paths }}
+      matrix: "[ $(echo ${{ steps.set-matrix.outputs.paths }} | tr ' ' ',') ]"
     steps:
       - uses: actions/checkout@v1
 
       - id: set-matrix
         uses: Rishabh510/Path-lister-action@master
         with:
-          path: "test/config/compile-only/"
+          path: "test/config/compile-only"
           type: ".json"
-
-      - name: Output results
-        run: |
-          echo "Found ${{ steps.set-matrix.outputs.path_count }} file(s) with this extension:"
-          for i in ${{ steps.set-matrix.outputs.paths }}; do
-          echo $i
-          done
 
   check-configurations:
     runs-on: ubuntu-latest
     needs: matrix-generate
     strategy:
       matrix:
-        file: ${{ needs.matrix-generate.outputs.matrix }}
+        file: ${{ fromJSON(needs.matrix-generate.outputs.matrix) }}
 
     steps:
     - uses: actions/checkout@v3
@@ -62,7 +55,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh test/config/compile-only/${{ matrix.file }}
+      run: ./config.sh ${{ matrix.file }}
 
     - name: Make
       run: make
