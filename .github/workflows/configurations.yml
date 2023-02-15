@@ -40,6 +40,11 @@ jobs:
       - id: set-matrix
         run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "matrix={path:[ "out" ]}"}' >> $GITHUB_OUTPUT
 
+      - name: Debug
+        run: |
+          echo ${{ steps.set-matrix.outputs.matrix }}
+          echo ${{ toJSON(steps.set-matrix.outputs.matrix }}
+
   check-configurations:
     runs-on: ubuntu-latest
     needs: matrix-generate
