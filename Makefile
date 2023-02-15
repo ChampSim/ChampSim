@@ -1,6 +1,11 @@
 CPPFLAGS += -MMD -Iinc
 CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
+# vcpkg integration
+TRIPLET_DIR = $(firstword $(filter-out vcpkg_installed/vcpkg/, $(wildcard vcpkg_installed/*/)))
+CPPFLAGS += -I$(TRIPLET_DIR)/include
+LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+
 .phony: all all_execs clean configclean test makedirs
 
 test_main_name=test/bin/000-test-main
@@ -39,14 +44,15 @@ $(build_objs) $(module_objs):
 # Add address sanitizers for tests
 #$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
+$(test_main_name): LDLIBS   += -lCatch2Main -lCatch2
 
 # Link test executable
 $(test_main_name):
-	$(LINK.cc) $(OUTPUT_OPTION) $(filter-out %/main.o, $^)
+	$(LINK.cc) $(LDFLAGS) -o $@ $(filter-out %/main.o, $^) $(LOADLIBES) $(LDLIBS)
 
 # Link main executables
 $(filter-out $(test_main_name), $(executable_name)):
-	$(LINK.cc) $(OUTPUT_OPTION) $^
+	$(LINK.cc) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
 test: $(test_main_name)

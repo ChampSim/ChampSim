@@ -8,6 +8,15 @@
 git clone https://github.com/ChampSim/ChampSim.git
 ```
 
+# Download dependencies
+
+ChampSim uses [vcpkg](https://vcpkg.io) to manage its dependencies. In this repository, vcpkg is included as a submodule. You can download the dependencies with
+```
+git submodule update --init
+vcpkg/bootstrap-vcpkg.sh
+vcpkg/vcpkg install
+```
+
 # Compile
 
 ChampSim takes a JSON configuration script. Examine `champsim_config.json` for a fully-specified example. All options described in this file are optional and will be replaced with defaults if not specified. The configuration scrip can also be run without input, in which case an empty file is assumed.

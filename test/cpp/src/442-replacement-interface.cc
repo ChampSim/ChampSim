@@ -31,7 +31,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<type)
       .offset_bits(0)
-      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+      .replacement(CACHE::rtestDcppDmodulesDreplacementDlru_collect)
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -108,7 +108,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<type)
       .offset_bits(0)
-      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+      .replacement(CACHE::rtestDcppDmodulesDreplacementDlru_collect)
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -180,7 +180,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<LOAD)
       .offset_bits(0)
-      .replacement(CACHE::rtestDmodulesDreplacementDlru_collect)
+      .replacement(CACHE::rtestDcppDmodulesDreplacementDlru_collect)
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};

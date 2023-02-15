@@ -73,23 +73,76 @@ struct ooo_model_instr {
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
 
 private:
+  class conversion_tag
+  {
+  };
+
   template <typename T>
-  ooo_model_instr(T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
+  ooo_model_instr(conversion_tag, T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
     std::remove_copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::back_inserter(this->destination_memory), 0);
     std::remove_copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::back_inserter(this->source_memory), 0);
+
+    bool writes_sp = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_STACK_POINTER);
+    bool writes_ip = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_INSTRUCTION_POINTER);
+    bool reads_sp = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_STACK_POINTER);
+    bool reads_flags = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_FLAGS);
+    bool reads_ip = std::count(std::begin(source_registers), std::end(source_registers), champsim::REG_INSTRUCTION_POINTER);
+    bool reads_other = std::count_if(std::begin(source_registers), std::end(source_registers), [](uint8_t r) {
+      return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER;
+    });
+
+    // determine what kind of branch this is, if any
+    if (!reads_sp && !reads_flags && writes_ip && !reads_other) {
+      // direct jump
+      is_branch = true;
+      branch_taken = true;
+      branch_type = BRANCH_DIRECT_JUMP;
+    } else if (!reads_sp && !reads_flags && writes_ip && reads_other) {
+      // indirect branch
+      is_branch = true;
+      branch_taken = true;
+      branch_type = BRANCH_INDIRECT;
+    } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
+      // conditional branch
+      is_branch = true;
+      branch_taken = instr.branch_taken; // don't change this
+      branch_type = BRANCH_CONDITIONAL;
+    } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
+      // direct call
+      is_branch = true;
+      branch_taken = true;
+      branch_type = BRANCH_DIRECT_CALL;
+    } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
+      // indirect call
+      is_branch = true;
+      branch_taken = true;
+      branch_type = BRANCH_INDIRECT_CALL;
+    } else if (reads_sp && !reads_ip && writes_sp && writes_ip) {
+      // return
+      is_branch = true;
+      branch_taken = true;
+      branch_type = BRANCH_RETURN;
+    } else if (writes_ip) {
+      // some other branch type that doesn't fit the above categories
+      is_branch = true;
+      branch_taken = instr.branch_taken; // don't change this
+      branch_type = BRANCH_OTHER;
+    } else {
+      branch_taken = false;
+    }
   }
 
 public:
-  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr)
+  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(conversion_tag{}, instr)
   {
     asid[0] = cpu;
     asid[1] = cpu;
   }
 
-  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(instr)
+  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(conversion_tag{}, instr)
   {
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }

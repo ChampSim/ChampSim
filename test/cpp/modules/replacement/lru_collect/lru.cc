@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "cache.h"
-#include "../../../repl_interface.h"
+#include "../../../src/repl_interface.h"
 
 namespace
 {

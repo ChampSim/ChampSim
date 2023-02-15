@@ -103,6 +103,9 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
             (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
             )
 
+    # The name 'DRAM' is reserved for the physical memory
+    caches = {k:v for k,v in caches.items() if k != 'DRAM'}
+
     ## DEPRECATION
     # The keys "max_read" and "max_write" are deprecated. For now, permit them but print a warning
     for cache in caches.values():

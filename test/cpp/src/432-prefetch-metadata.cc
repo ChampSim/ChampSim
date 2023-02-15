@@ -26,7 +26,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDmodulesDprefetcherDmetadata_collector)
+      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector)
     };
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
       .name("432a-upper")
@@ -44,6 +44,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     }
 
     WHEN("The upper level issues a prefetch with metadata") {
+      test::metadata_operate_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
+
       // Request a prefetch
       constexpr uint64_t seed_addr = 0xdeadbeef;
       constexpr uint32_t seed_metadata = 0xcafebabe;
@@ -56,8 +58,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
           elem->_operate();
 
       THEN("The lower level sees the metadata in prefetcher_cache_operate()") {
-        REQUIRE(std::size(test::metadata_operate_collector[&lower]) == 1);
-        REQUIRE(test::metadata_operate_collector[&lower].front() == seed_metadata);
+        REQUIRE(std::size(test::metadata_operate_collector.at(&lower)) == 1);
+        REQUIRE(test::metadata_operate_collector.at(&lower).front() == seed_metadata);
       }
     }
   }
@@ -77,7 +79,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDmodulesDprefetcherDmetadata_emitter)
+      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter)
     };
 
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
@@ -86,7 +88,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDmodulesDprefetcherDmetadata_collector)
+      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector)
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
@@ -102,6 +104,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       constexpr uint32_t seed_metadata = 0xcafebabe;
 
       test::metadata_fill_emitter.insert_or_assign(&lower, seed_metadata);
+      test::metadata_fill_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
 
       decltype(mock_ul)::request_type seed;
       seed.address = seed_addr;
