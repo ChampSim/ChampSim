@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <string>
 
 #include "champsim_constants.h"
 #include "memory_class.h"
