@@ -37,7 +37,7 @@ jobs:
       
       - id: set-matrix
         name: Parse output
-        run: python3 -c 'import os, json; print("matrix=", json.dumps(dict(path=os.listdir("test/config/compile-only"))))' >> $GITHUB_OUTPUT
+        run: python3 -c 'import os, json; print("matrix="+json.dumps(os.listdir("test/config/compile-only")))' >> $GITHUB_OUTPUT
 #        run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "matrix={path:[ "out" ]}"}' >> $GITHUB_OUTPUT
 
     outputs:
