@@ -19,7 +19,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
-    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
+    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
     CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &lower_queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &lower, &upper}};
@@ -31,6 +31,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     }
 
     WHEN("The upper level issues a prefetch with metadata") {
+      test::metadata_operate_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
+
       // Request a prefetch
       constexpr uint64_t seed_addr = 0xdeadbeef;
       constexpr uint32_t seed_metadata = 0xcafebabe;
@@ -43,8 +45,8 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
           elem->_operate();
 
       THEN("The lower level sees the metadata in prefetcher_cache_operate()") {
-        REQUIRE(std::size(test::metadata_operate_collector[&lower]) == 1);
-        REQUIRE(test::metadata_operate_collector[&lower].front() == seed_metadata);
+        REQUIRE(std::size(test::metadata_operate_collector.at(&lower)) == 1);
+        REQUIRE(test::metadata_operate_collector.at(&lower).front() == seed_metadata);
       }
     }
   }
@@ -57,8 +59,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
     to_rq_MRP mock_ul;
-    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
-    CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &lower_queues, CACHE::ptestDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
+    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
+    CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &lower_queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
 
@@ -72,7 +74,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       constexpr uint64_t seed_addr = 0xdeadbeef;
       constexpr uint32_t seed_metadata = 0xcafebabe;
 
-      test::metadata_fill_emitter[&lower] = seed_metadata;
+      test::metadata_fill_emitter.insert_or_assign(&lower, seed_metadata);
+      test::metadata_fill_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
 
       decltype(mock_ul)::request_type seed;
       seed.address = seed_addr;
@@ -86,8 +89,8 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
           elem->_operate();
 
       THEN("The upper level sees the metadata in prefetcher_cache_operate()") {
-        //REQUIRE(std::size(test::metadata_collector[&upper]) == 1);
-        REQUIRE(std::count(std::begin(test::metadata_fill_collector[&upper]), std::end(test::metadata_fill_collector[&upper]), seed_metadata) == 1);
+        //REQUIRE(std::size(test::metadata_collector.at(&upper)) == 1);
+        REQUIRE(std::count(std::begin(test::metadata_fill_collector.at(&upper)), std::end(test::metadata_fill_collector.at(&upper)), seed_metadata) == 1);
       }
     }
   }

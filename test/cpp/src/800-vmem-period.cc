@@ -37,4 +37,3 @@ SCENARIO("The virtual memory generates a full period of page numbers") {
     }
   }
 }
-

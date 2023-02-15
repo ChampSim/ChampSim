@@ -16,7 +16,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::ptestDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 

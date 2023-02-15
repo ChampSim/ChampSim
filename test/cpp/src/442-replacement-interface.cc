@@ -20,7 +20,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     constexpr uint64_t fill_latency = 2;
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, true, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, true, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDlru_collect};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -86,7 +86,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{"442-uut-1-"+std::string{str}, 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<type), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDlru_collect};
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
@@ -147,7 +147,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"442-uut-3", 1, 1, 1, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<LOAD), {&mock_ul_seed.queues, &mock_ul_test.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDmodulesDreplacementDlru_collect};
+    CACHE uut{"442-uut-3", 1, 1, 1, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1u<<LOAD), {&mock_ul_seed.queues, &mock_ul_test.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDlru_collect};
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};
 

@@ -120,6 +120,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
 
     - name: Configure
       run: ./config.sh
@@ -137,6 +144,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
 
     - name: Configure
       run: ./config.sh
