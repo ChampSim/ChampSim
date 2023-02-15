@@ -43,7 +43,7 @@ jobs:
       - name: Debug
         run: |
           echo ${{ steps.set-matrix.outputs.matrix }}
-          echo ${{ toJSON(steps.set-matrix.outputs.matrix }}
+          echo ${{ toJSON(steps.set-matrix.outputs.matrix) }}
 
   check-configurations:
     runs-on: ubuntu-latest
