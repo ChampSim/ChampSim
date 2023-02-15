@@ -24,23 +24,12 @@ on:
       - '!.github/workflows/configurations.yml'
 
 jobs:
-  matrix-generate:
-    runs-on: ubuntu-latest
-    outputs:
-      mat: "${{ steps.generate.outputs.matrix }}"
-    steps:
-      - uses: actions/checkout@v3
-
-      - id: generate
-        # Get python to list the contents of test/config/compile-only in json format
-        run: echo "matrix=$(python3 -c 'import os, json; print(json.dumps({\"file\": os.listdir(\'test/config/compile-only\')}))'" >> $GITHUB_OUTPUT
-
   check-configurations:
     runs-on: ubuntu-latest
-    needs: matrix-generate
     strategy:
       matrix:
-        tests: "${{ fromJSON(needs.matrix-generate.outputs.mat) }}"
+        # Get python to list the contents of test/config/compile-only in json format
+        tests: "${{ fromJSON($(python3 -c 'import os, json; print(json.dumps(os.listdir(\'test/config/compile-only\')))')) }}"
 
     steps:
     - uses: actions/checkout@v3
