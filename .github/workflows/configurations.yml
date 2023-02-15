@@ -27,18 +27,11 @@ jobs:
   matrix-generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-
-#      - id: get-list
-#        uses: Rishabh510/Path-lister-action@master
-#        with:
-#          path: "test/config/compile-only"
-#          type: ".json"
+      - uses: actions/checkout@v3
       
       - id: set-matrix
         name: Parse output
         run: python3 -c 'import os, json; print("matrix="+json.dumps(os.listdir("test/config/compile-only")))' >> $GITHUB_OUTPUT
-#        run: echo "${{ steps.get-list.outputs.paths }}" | awk '{out=$1; for(i=2;i<=NF;i++){ out = out","$i }; print "matrix={path:[ "out" ]}"}' >> $GITHUB_OUTPUT
 
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
