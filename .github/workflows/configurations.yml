@@ -35,6 +35,13 @@ jobs:
           path: "test/config/compile-only/"
           type: ".json"
 
+      - name: Output results
+        run: |
+          echo "Found ${{ steps.set-matrix.outputs.path_count }} file(s) with this extension:"
+          for i in ${{ steps.set-matrix.outputs.paths }}; do
+          echo $i
+          done
+
   check-configurations:
     runs-on: ubuntu-latest
     needs: matrix-generate
