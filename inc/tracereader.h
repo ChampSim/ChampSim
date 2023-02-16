@@ -36,6 +36,8 @@ void pclose_file(FILE* f);
 
 class tracereader
 {
+  static uint64_t instr_unique_id;
+
 public:
   const std::string trace_string;
   tracereader(uint16_t _asid, std::string _ts) : trace_string(_ts), asid(_asid) {}

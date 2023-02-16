@@ -92,9 +92,6 @@ public:
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
 
   // instruction
-  uint64_t instr_unique_id = 0;
-  uint64_t instrs_to_read_this_cycle = 0;
-  uint64_t instrs_to_fetch_this_cycle = 0;
   uint64_t num_retired = 0;
 
   bool show_heartbeat = true;
@@ -131,7 +128,6 @@ public:
   const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
-  uint8_t fetch_stall = 0;
   uint64_t fetch_resume_cycle = 0;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
@@ -159,7 +155,8 @@ public:
   void handle_memory_return();
   void retire_rob();
 
-  void do_init_instruction(ooo_model_instr& instr);
+  bool do_init_instruction(ooo_model_instr& instr);
+  bool do_predict_branch(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);

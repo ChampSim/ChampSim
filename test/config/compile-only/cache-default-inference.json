@@ -1,0 +1,11 @@
+{
+    "num_cores": 4,
+    "ooo_cpu": [
+        { "L2C": { "lower_level": "llcA"} },
+        { "L2C": { "lower_level": "llcB"} }
+    ],
+    "caches": [
+        { "name": "llcA" },
+        { "name": "llcB" }
+    ]
+}

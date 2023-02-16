@@ -58,10 +58,10 @@ if __name__ == '__main__':
     config_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), ({},))
 
     parsed_test = parse.parse_config({'executable_name': '000-test-main'},
-                branch_dir=['test/modules/branch'],
-                btb_dir=['test/modules/btb'],
-                pref_dir=['test/modules/prefetcher'],
-                repl_dir=['test/modules/replacement']
+                branch_dir=['test/cpp/modules/branch'],
+                btb_dir=['test/cpp/modules/btb'],
+                pref_dir=['test/cpp/modules/prefetcher'],
+                repl_dir=['test/cpp/modules/replacement']
             )
     parsed_configs = (
             parse.parse_config(*c,
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
     filewrite.write_files(itertools.chain(
         ((*c, bindir_name, ('src',), objdir_name) for c in parsed_configs),
-        ((*parsed_test, 'test/bin', ('src','test'), '.csconfig/test'),)
+        ((*parsed_test, 'test/bin', ('src','test/cpp/src'), '.csconfig/test'),)
     ))
 
 # vim: set filetype=python:
