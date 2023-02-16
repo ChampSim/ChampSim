@@ -321,7 +321,7 @@ void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
 
 void O3_CPU::dispatch_instruction()
 {
-  std::size_t available_dispatch_bandwidth = DISPATCH_WIDTH;
+  auto available_dispatch_bandwidth = DISPATCH_WIDTH;
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
@@ -601,10 +601,11 @@ void O3_CPU::handle_memory_return()
 void O3_CPU::retire_rob()
 {
   auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.executed == COMPLETED; });
+  assert(std::distance(retire_begin, retire_end) >= 0); // end succeeds begin
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [](const auto& x) { std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
   }
-  num_retired += std::distance(retire_begin, retire_end);
+  num_retired += static_cast<std::size_t>(std::distance(retire_begin, retire_end)); // cast protected by prior assert
   ROB.erase(retire_begin, retire_end);
 
   // Check for deadlock
