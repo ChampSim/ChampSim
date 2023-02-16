@@ -1,0 +1,11 @@
+{
+    "num_cores": 2,
+    "ooo_cpu": [
+        { "L1D": "cacheA" },
+        { "L1D": "cacheB" }
+    ],
+    "caches": [
+        { "name": "cacheA", "replacement": "lru" },
+        { "name": "cacheB", "replacement": "srrip" }
+    ]
+}

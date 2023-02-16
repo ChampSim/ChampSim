@@ -24,6 +24,7 @@
 #include <iostream>
 #endif
 
+uint64_t tracereader::instr_unique_id = 0;
 void detail::pclose_file(FILE* f) { pclose(f); }
 
 FILE* tracereader::get_fptr(std::string fname)
@@ -74,7 +75,7 @@ void tracereader::refresh_buffer()
 
   // Set branch targets
   for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
-    std::prev(it)->branch_target = it->ip;
+    std::prev(it)->branch_target = (std::prev(it)->is_branch && std::prev(it)->branch_taken) ? it->ip : champsim::address{};
 }
 
 template <typename T>
@@ -86,6 +87,7 @@ ooo_model_instr tracereader::impl_get()
   auto retval = instr_buffer.front();
   instr_buffer.pop_front();
 
+  retval.instr_id = instr_unique_id++;
   return retval;
 }
 

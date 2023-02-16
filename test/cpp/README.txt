@@ -1,6 +1,6 @@
-This directory includes the testing infrastructure for ChampSim. The tests rely on CATCH2, given here as "catch.hpp".
+This directory includes the testing infrastructure for ChampSim. The tests rely on CATCH2, a publicly available framework.
 
-The files are organized as follows: "xxx-descriptive-name.cc", where "xxx" is a three-digit number whose value indicates the portion of the simulator being tested.
+The files are organized as follows: "src/xxx-descriptive-name.cc", where "xxx" is a three-digit number whose value indicates the portion of the simulator being tested.
 
 000 - Reserved: main function
 001-099 - Top-level and utility functionality
