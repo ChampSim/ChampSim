@@ -123,7 +123,11 @@ jobs:
       with:
         submodules: 'true'
 
-    - name: Set up
+    - name: Set up pkg-config
+      if: startsWith(matrix.config.os, 'macos')
+      run: brew install pkg-config
+      
+    - name: Set up vcpkg
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
