@@ -537,9 +537,6 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   for (ooo_model_instr& dependent : instr.registers_instrs_depend_on_me) {
     dependent.num_reg_dependent--;
     assert(dependent.num_reg_dependent >= 0);
-
-    if (dependent.num_reg_dependent == 0)
-      dependent.scheduled = COMPLETED;
   }
 
   if (instr.branch_mispredicted)
@@ -670,7 +667,8 @@ LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<u
 {
 }
 
-void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const
+template <typename It>
+void LSQ_ENTRY::finish(It begin, It end) const
 {
   auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
   assert(rob_entry != end);
