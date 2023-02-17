@@ -3,7 +3,7 @@ CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
 
 # vcpkg integration
 TRIPLET_DIR = $(firstword $(filter-out vcpkg_installed/vcpkg/, $(wildcard vcpkg_installed/*/)))
-CPPFLAGS += -I$(TRIPLET_DIR)/include
+CPPFLAGS += -isystem $(TRIPLET_DIR)/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 
 .phony: all all_execs clean configclean test makedirs
