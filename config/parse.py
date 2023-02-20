@@ -40,11 +40,7 @@ def scale_frequencies(it):
         x['frequency'] = max_freq / x['frequency']
 
 def merge_names(x,y):
-    if x is None:
-        return y
-    if y is None:
-        return x
-    return x + '_' + y
+    return [e for e in itertools.chain(util.wrap_list(x), util.wrap_list(y)) if e is not None]
 
 def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     config_file = util.chain(*configs, default_root, merge_funcs={'name': merge_names})
@@ -160,8 +156,7 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
     module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
 
-    name = config_file.get('name')
-    executable = config_file.get('executable_name', 'champsim' + ('' if name is None else '_'+name))
+    executable = config_file.get('executable_name', '_'.join(itertools.chain(('champsim',), config_file.get('name',[]))))
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     env = dict(filter(lambda kv: kv[0] in env_vars, config_file.items()))
