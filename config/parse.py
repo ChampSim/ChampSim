@@ -159,9 +159,7 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     executable = config_file.get('executable_name', '_'.join(itertools.chain(('champsim',), config_file.get('name',[]))))
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
-    env = dict(filter(lambda kv: kv[0] in env_vars, config_file.items()))
-
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
 
-    return executable, elements, module_info, {k: config_file[k] for k in extern_config_file_keys}, env
+    return executable, elements, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
 
