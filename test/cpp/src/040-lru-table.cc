@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include <catch.hpp>
 #include "util/lru_table.h"
 
 #include "champsim.h"

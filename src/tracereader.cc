@@ -62,7 +62,7 @@ void tracereader::refresh_buffer()
   eof_ = trace_file.eof();
 #else
   bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-  eof_ = (bytes_read > 0);
+  eof_ = !(bytes_read > 0);
 #endif
 
   // Transform bytes into trace format instructions

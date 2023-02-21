@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include <catch.hpp>
 #include "mocks.hpp"
 
 #include "cache.h"

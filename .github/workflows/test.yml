@@ -104,11 +104,11 @@ jobs:
           }
 
         # AppleClang
-        #- {
-        #    name: "macOS Clang",
-        #    os: macos-latest,
-        #    cxx: "clang++",
-        #  }
+        - {
+            name: "macOS Clang",
+            os: macos-latest,
+            cxx: "clang++",
+          }
 
         # MSVC 2022
         #- {
@@ -123,7 +123,11 @@ jobs:
       with:
         submodules: 'true'
 
-    - name: Set up
+    - name: Set up pkg-config
+      if: startsWith(matrix.config.os, 'macos')
+      run: brew install pkg-config
+      
+    - name: Set up vcpkg
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
@@ -132,7 +136,7 @@ jobs:
       run: ./config.sh
 
     - name: Make
-      run: make test/bin/000-test-main
+      run: make $(pwd)/test/bin/000-test-main
       env:
         CXX: ${{ matrix.config.cxx }}
 
