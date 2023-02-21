@@ -65,11 +65,9 @@ if __name__ == '__main__':
             parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir)
         for c in config_files)
 
-    core_sources = os.path.join(champsim_root, 'src')
-    test_sources = os.path.join(test_root, 'cpp', 'src')
-    filewrite.write_files(itertools.chain(
-        ((*c, bindir_name, (core_sources,), objdir_name) for c in parsed_configs),
-        ((*parsed_test, os.path.join(test_root, 'bin'), (core_sources, test_sources), '.csconfig/test'),)
-    ))
+    with filewrite.writer(bindir_name, objdir_name) as wr:
+        for c in parsed_configs:
+            wr.write_files(c)
+        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name='.csconfig/test')
 
 # vim: set filetype=python:

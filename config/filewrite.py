@@ -18,6 +18,7 @@ import itertools
 import operator
 import os
 import json
+import contextlib
 
 from . import makefile
 from . import instantiation_file
@@ -50,46 +51,73 @@ def write_if_different(fname, new_file_string):
 def get_map_lines(fname_map):
     yield from ('#define {} {}'.format(*x) for x in fname_map.items())
 
-def get_files(executable, elements, module_info, config_file, env, bindir_name, srcdir_names, objdir_name):
-    build_id = hashlib.shake_128(json.dumps((executable, elements, module_info, config_file, env)).encode('utf-8')).hexdigest(4)
+class FileWriter:
+    def __init__(self, bindir_name=None, objdir_name=None):
+        champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        core_sources = os.path.join(champsim_root, 'src')
 
-    inc_dir = os.path.join(os.path.abspath(objdir_name), build_id, 'inc')
+        self.fileparts = []
+        self.bindir_name = bindir_name
+        self.core_sources = core_sources
+        self.objdir_name = objdir_name
 
-    yield os.path.join(inc_dir, instantiation_file_name), instantiation_file.get_instantiation_lines(**elements) # Instantiation file
-    yield os.path.join(inc_dir, constants_file_name), constants_file.get_constants_file(config_file, elements['pmem']) # Constants header
+    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
+        local_bindir_name = bindir_name or self.bindir_name
+        local_srcdir_names = (*(srcdir_names or []), self.core_sources)
+        local_objdir_name = objdir_name or self.objdir_name
 
-    # Core modules file
-    branch_declarations, branch_definitions = modules.get_branch_lines(module_info['branch'])
-    btb_declarations, btb_definitions = modules.get_btb_lines(module_info['btb'])
+        build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
 
-    yield os.path.join(inc_dir, core_modules_file_name), branch_declarations
-    yield os.path.join(inc_dir, core_modules_file_name), btb_declarations
-    yield os.path.join(inc_dir, module_definition_file_name), branch_definitions
-    yield os.path.join(inc_dir, module_definition_file_name), btb_definitions
+        inc_dir = os.path.join(os.path.abspath(local_objdir_name), build_id, 'inc')
 
-    # Cache modules file
-    repl_declarations, repl_definitions = modules.get_repl_lines(module_info['repl'])
-    pref_declarations, pref_definitions = modules.get_pref_lines(module_info['pref'])
+        executable, elements, module_info, config_file, env = parsed_config
 
-    yield os.path.join(inc_dir, cache_modules_file_name), repl_declarations
-    yield os.path.join(inc_dir, cache_modules_file_name), pref_declarations
-    yield os.path.join(inc_dir, module_definition_file_name), repl_definitions
-    yield os.path.join(inc_dir, module_definition_file_name), pref_definitions
+        self.fileparts.append((os.path.join(inc_dir, instantiation_file_name), instantiation_file.get_instantiation_lines(**elements))) # Instantiation file
+        self.fileparts.append((os.path.join(inc_dir, constants_file_name), constants_file.get_constants_file(config_file, elements['pmem']))) # Constants header
 
-    joined_module_info = util.chain(*module_info.values()) # remove module type tag
-    yield from ((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(m['func_map'])) for m in joined_module_info.values())
-    yield makefile_file_name, makefile.get_makefile_lines(objdir_name, build_id, os.path.normpath(os.path.join(bindir_name, executable)), srcdir_names, joined_module_info, env)
+        # Core modules file
+        branch_declarations, branch_definitions = modules.get_branch_lines(module_info['branch'])
+        btb_declarations, btb_definitions = modules.get_btb_lines(module_info['btb'])
 
-def write_files(iterable):
-    fileparts = itertools.chain(*itertools.starmap(get_files, iterable))
-    for fname, fcontents in itertools.groupby(sorted(fileparts, key=operator.itemgetter(0)), key=operator.itemgetter(0)):
-        os.makedirs(os.path.abspath(os.path.dirname(fname)), exist_ok=True)
-        if os.path.splitext(fname)[1] in ('.cc', '.h', '.inc'):
-            contents_with_header = itertools.chain(cxx_generated_warning, *(f[1] for f in fcontents))
-        elif os.path.splitext(fname)[1] in ('.mk',):
-            contents_with_header = itertools.chain(make_generated_warning, *(f[1] for f in fcontents))
-        else:
-            contents_with_header = itertools.chain.from_iterable(f[1] for f in fcontents) # no header
+        self.fileparts.extend((
+            (os.path.join(inc_dir, core_modules_file_name), branch_declarations),
+            (os.path.join(inc_dir, core_modules_file_name), btb_declarations),
+            (os.path.join(inc_dir, module_definition_file_name), branch_definitions),
+            (os.path.join(inc_dir, module_definition_file_name), btb_definitions)
+        ))
 
-        write_if_different(fname, '\n'.join(contents_with_header))
+        # Cache modules file
+        repl_declarations, repl_definitions = modules.get_repl_lines(module_info['repl'])
+        pref_declarations, pref_definitions = modules.get_pref_lines(module_info['pref'])
 
+        self.fileparts.extend((
+            (os.path.join(inc_dir, cache_modules_file_name), repl_declarations),
+            (os.path.join(inc_dir, cache_modules_file_name), pref_declarations),
+            (os.path.join(inc_dir, module_definition_file_name), repl_definitions),
+            (os.path.join(inc_dir, module_definition_file_name), pref_definitions)
+        ))
+
+        joined_module_info = util.chain(*module_info.values()) # remove module type tag
+        self.fileparts.extend((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(m['func_map'])) for m in joined_module_info.values())
+        self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)))
+
+    def finish(self):
+        for fname, fcontents in itertools.groupby(sorted(self.fileparts, key=operator.itemgetter(0)), key=operator.itemgetter(0)):
+            os.makedirs(os.path.abspath(os.path.dirname(fname)), exist_ok=True)
+            if os.path.splitext(fname)[1] in ('.cc', '.h', '.inc'):
+                contents_with_header = itertools.chain(cxx_generated_warning, *(f[1] for f in fcontents))
+            elif os.path.splitext(fname)[1] in ('.mk',):
+                contents_with_header = itertools.chain(make_generated_warning, *(f[1] for f in fcontents))
+            else:
+                contents_with_header = itertools.chain.from_iterable(f[1] for f in fcontents) # no header
+
+            write_if_different(fname, '\n'.join(contents_with_header))
+
+
+@contextlib.contextmanager
+def writer(bindir_name=None, objdir_name=None):
+    w = FileWriter(bindir_name, objdir_name)
+    try:
+        yield w
+    finally:
+        w.finish()
