@@ -132,24 +132,24 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     # Get module path names and unique module names
     caches = util.combine_named(caches.values(), ({
             'name': c['name'],
-            '_replacement_modpaths': [modules.default_dir(['replacement', *repl_dir], f) for f in util.wrap_list(c.get('replacement', []))],
-            '_prefetcher_modpaths':  [modules.default_dir(['prefetcher', *pref_dir], f) for f in util.wrap_list(c.get('prefetcher', []))],
-            '_replacement_modnames': [modules.get_module_name(modules.default_dir(['replacement', *repl_dir], f)) for f in util.wrap_list(c.get('replacement', []))],
-            '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir(['prefetcher', *pref_dir], f)) for f in util.wrap_list(c.get('prefetcher', []))]
+            '_replacement_modpaths': [modules.default_dir(repl_dir, f) for f in util.wrap_list(c.get('replacement', []))],
+            '_prefetcher_modpaths':  [modules.default_dir(pref_dir, f) for f in util.wrap_list(c.get('prefetcher', []))],
+            '_replacement_modnames': [modules.get_module_name(modules.default_dir(repl_dir, f)) for f in util.wrap_list(c.get('replacement', []))],
+            '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir(pref_dir, f)) for f in util.wrap_list(c.get('prefetcher', []))]
             } for c in caches.values()))
 
     cores = list(util.combine_named(cores, ({
             'name': c['name'],
-            '_branch_predictor_modpaths': [modules.default_dir(['branch', *branch_dir], f) for f in util.wrap_list(c.get('branch_predictor', []))],
-            '_btb_modpaths':  [modules.default_dir(['btb', *btb_dir], f) for f in util.wrap_list(c.get('btb', []))],
-            '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir(['branch', *branch_dir], f)) for f in util.wrap_list(c.get('branch_predictor', []))],
-            '_btb_modnames':  [modules.get_module_name(modules.default_dir(['btb', *btb_dir], f)) for f in util.wrap_list(c.get('btb', []))]
+            '_branch_predictor_modpaths': [modules.default_dir(branch_dir, f) for f in util.wrap_list(c.get('branch_predictor', []))],
+            '_btb_modpaths':  [modules.default_dir(btb_dir, f) for f in util.wrap_list(c.get('btb', []))],
+            '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir(branch_dir, f)) for f in util.wrap_list(c.get('branch_predictor', []))],
+            '_btb_modnames':  [modules.get_module_name(modules.default_dir(btb_dir, f)) for f in util.wrap_list(c.get('btb', []))]
             } for c in cores)).values())
 
-    repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), ['replacement', *repl_dir], modules.get_repl_data);
-    pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), ['prefetcher', *pref_dir], modules.get_pref_data);
-    branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, ['branch', *branch_dir], modules.get_branch_data);
-    btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, ['btb', *btb_dir], modules.get_btb_data);
+    repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), repl_dir, modules.get_repl_data);
+    pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), pref_dir, modules.get_pref_data);
+    branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, branch_dir, modules.get_branch_data);
+    btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, btb_dir, modules.get_btb_data);
 
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
     module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
