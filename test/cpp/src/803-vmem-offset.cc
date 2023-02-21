@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include <catch.hpp>
 #include "vmem.h"
 
 #include "dram_controller.h"
