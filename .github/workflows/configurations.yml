@@ -54,7 +54,7 @@ jobs:
         vcpkg/vcpkg install
 
     - name: Configure
-      run: ./config.sh ${{ matrix.file.path }}
+      run: ./config.sh ${{ matrix.file }}
 
     - name: Make
       run: make
