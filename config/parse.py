@@ -39,11 +39,9 @@ def scale_frequencies(it):
     for x in it_b:
         x['frequency'] = max_freq / x['frequency']
 
-def merge_names(x,y):
-    return [e for e in itertools.chain(util.wrap_list(x), util.wrap_list(y)) if e is not None]
-
 def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
-    config_file = util.chain(*configs, default_root, merge_funcs={'name': merge_names})
+    name_parts = ['champsim', *(c.get('name') for c in configs if c.get('name') is not None)]
+    config_file = util.chain(*configs, default_root)
 
     pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
     vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
@@ -156,7 +154,7 @@ def parse_config(*configs, branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[]):
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
     module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
 
-    executable = config_file.get('executable_name', '_'.join(itertools.chain(('champsim',), config_file.get('name',[]))))
+    executable = config_file.get('executable_name', '_'.join(name_parts))
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
