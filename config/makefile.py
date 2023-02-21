@@ -33,7 +33,7 @@ $({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})
 '''
 )
 def per_source(src_dirs, dest_dir, build_id):
-    for i, src_dir in enumerate(src_dirs):
+    for i, src_dir in enumerate(map(os.path.abspath, src_dirs)):
         local_dir_varname = '{}_dirs_{}'.format(build_id, i)
         local_obj_varname = '{}_objs_{}'.format(build_id, i)
 
@@ -94,7 +94,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, c
     global_overrides = {k:config_file.get(k,'') for k in ('CXX',)}
 
     yield from itertools.chain(
-        executable_opts(objdir, build_id, executable, source_dirs, global_opts, global_overrides),
-        *(module_opts((v['fname'],), objdir, build_id, k, extend_each(global_opts, v['opts']), executable) for k,v in module_info.items())
+        executable_opts(os.path.abspath(objdir), build_id, os.path.abspath(executable), source_dirs, global_opts, global_overrides),
+        *(module_opts((v['fname'],), os.path.abspath(objdir), build_id, k, extend_each(global_opts, v['opts']), os.path.abspath(executable)) for k,v in module_info.items())
     )
 
