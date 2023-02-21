@@ -34,19 +34,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configure ChampSim')
 
     parser.add_argument('--prefix', default='.',
-            help='The prefix for the ChampSim sources')
+            help='The prefix for the configured outputs')
     parser.add_argument('--bindir',
             help='The directory to store the resulting executables')
-    parser.add_argument('--module-dir', action='append', default=[],
+
+    search_group = parser.add_argument_group(title='Search Paths', description='Options that direct ChampSim to search additional paths for modules')
+
+    search_group.add_argument('--module-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for all modules. The structure is assumed to follow the same as the ChampSim repository: branch direction predictors are under `branch/`, replacement policies under `replacement/`, etc.')
-    parser.add_argument('--branch-dir', action='append', default=[],
+    search_group.add_argument('--branch-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for branch direction predictors')
-    parser.add_argument('--btb-dir', action='append', default=[],
+    search_group.add_argument('--btb-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for branch target predictors')
-    parser.add_argument('--prefetcher-dir', action='append', default=[],
+    search_group.add_argument('--prefetcher-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for prefetchers')
-    parser.add_argument('--replacement-dir', action='append', default=[],
+    search_group.add_argument('--replacement-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for replacement policies')
+
     parser.add_argument('files', nargs='*',
             help='A sequence of JSON files describing the configuration. The last file specified has the highest priority.')
 
@@ -68,6 +72,6 @@ if __name__ == '__main__':
     with filewrite.writer(bindir_name, objdir_name) as wr:
         for c in parsed_configs:
             wr.write_files(c)
-        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name='.csconfig/test')
+        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
 
 # vim: set filetype=python:
