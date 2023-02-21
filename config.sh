@@ -30,6 +30,7 @@ def parse_file(fname):
 
 if __name__ == '__main__':
     champsim_root = os.path.dirname(os.path.abspath(__file__))
+    test_root = os.path.join(champsim_root, 'test')
     parser = argparse.ArgumentParser(description='Configure ChampSim')
 
     parser.add_argument('--prefix', default='.',
@@ -58,27 +59,17 @@ if __name__ == '__main__':
         print("No configuration specified. Building default ChampSim with no prefetching.")
     config_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), ({},))
 
-    test_search_dirs = [os.path.join(champsim_root, 'test', 'cpp', 'modules'), champsim_root]
-    parsed_test = parse.parse_config({'executable_name': '000-test-main'},
-                branch_dir=[os.path.join(d,'branch') for d in test_search_dirs],
-                btb_dir=[os.path.join(d,'btb') for d in test_search_dirs],
-                pref_dir=[os.path.join(d,'prefetcher') for d in test_search_dirs],
-                repl_dir=[os.path.join(d,'replacement') for d in test_search_dirs]
-            )
+    parsed_test = parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')])
 
-    search_dirs = [*args.module_dir, champsim_root]
     parsed_configs = (
-            parse.parse_config(*c,
-                branch_dir=[*(os.path.join(d,'branch') for d in search_dirs), *args.branch_dir],
-                btb_dir=[*(os.path.join(d,'btb') for d in search_dirs), *args.btb_dir],
-                pref_dir=[*(os.path.join(d,'prefetcher') for d in search_dirs), *args.prefetcher_dir],
-                repl_dir=[*(os.path.join(d,'replacement') for d in search_dirs), *args.replacement_dir]
-            )
+            parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir)
         for c in config_files)
 
+    core_sources = os.path.join(champsim_root, 'src')
+    test_sources = os.path.join(test_root, 'cpp', 'src')
     filewrite.write_files(itertools.chain(
-        ((*c, bindir_name, (os.path.join(champsim_root, 'src'),), objdir_name) for c in parsed_configs),
-        ((*parsed_test, 'test/bin', (os.path.join(champsim_root, 'src'), os.path.join(champsim_root, 'test/cpp/src')), '.csconfig/test'),)
+        ((*c, bindir_name, (core_sources,), objdir_name) for c in parsed_configs),
+        ((*parsed_test, os.path.join(test_root, 'bin'), (core_sources, test_sources), '.csconfig/test'),)
     ))
 
 # vim: set filetype=python:
