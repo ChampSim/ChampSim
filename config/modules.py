@@ -19,8 +19,9 @@ from . import util
 
 # Utility function to get a mangled module name from the path to its sources
 def get_module_name(path):
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     fname_translation_table = str.maketrans('./-','_DH')
-    return path.translate(fname_translation_table)
+    return os.path.relpath(path, start=champsim_root).translate(fname_translation_table)
 
 # Return a normalized directory: variables and user shorthands are expanded
 def norm_dirname(f):
@@ -34,7 +35,7 @@ def default_modules(dirname):
 
 # Try the built-in module directories, then try to interpret as a path
 def default_dir(dirnames, f):
-    return next(filter(os.path.exists, map(norm_dirname, itertools.chain(
+    return norm_dirname(next(filter(os.path.exists, itertools.chain(
         (os.path.join(dirname, f) for dirname in dirnames), # Prepend search paths
         (f,) # Interpret as file path
     ))))
