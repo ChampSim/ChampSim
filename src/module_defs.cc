@@ -21,13 +21,10 @@
 
 namespace
 {
-struct take_last {
-  template <typename T, typename U>
-  U operator()(T&&, U&& last) const
-  {
-    return std::forward<U>(last);
-  }
-};
+  template <typename T>
+    struct take_last {
+      T operator()(T, T last) const { return last; }
+    };
 } // namespace
 
 #include "module_defs.inc"
