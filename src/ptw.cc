@@ -122,7 +122,7 @@ void PageTableWalker::operate()
 
   auto fill_bw = MAX_FILL;
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, [cycle=current_cycle](const auto& pkt) {
-      return pkt.event_cycle == cycle;
+      return pkt.event_cycle <= cycle;
     });
   std::for_each(complete_begin, complete_end, [](auto& mshr_entry){
       for (auto ret : mshr_entry.to_return)
