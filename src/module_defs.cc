@@ -21,10 +21,10 @@
 
 namespace
 {
-  template <typename T>
-    struct take_last {
-      T operator()(T, T last) const { return last; }
-    };
+template <typename T>
+struct take_last {
+  T operator()(T, T last) const { return last; }
+};
 } // namespace
 
 #include "module_defs.inc"
