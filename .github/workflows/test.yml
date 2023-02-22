@@ -136,7 +136,7 @@ jobs:
       run: ./config.sh
 
     - name: Make
-      run: make test/bin/000-test-main
+      run: make $(pwd)/test/bin/000-test-main
       env:
         CXX: ${{ matrix.config.cxx }}
 
