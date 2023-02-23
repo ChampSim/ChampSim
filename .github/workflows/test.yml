@@ -165,7 +165,7 @@ jobs:
     - name: Validate JSON
       run: python3 -m json.tool test.json
 
-   coveralls:
+  coveralls:
     runs-on: ubuntu-latest
 
     steps:
