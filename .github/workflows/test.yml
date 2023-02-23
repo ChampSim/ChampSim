@@ -2,9 +2,6 @@ name: Run Tests
 
 on:
   push:
-    branches: 
-      - master
-      - develop
     paths-ignore:
       - '.gitignore'
       - '*.md'
@@ -168,3 +165,37 @@ jobs:
     - name: Validate JSON
       run: python3 -m json.tool test.json
 
+   coveralls:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - name: Set up
+      run: |
+        vcpkg/bootstrap-vcpkg.sh
+        vcpkg/vcpkg install
+        sudo apt-get install lcov
+
+    - name: Configure
+      run: ./config.sh
+
+    - name: Make
+      run: make $(pwd)/test/bin/000-test-main
+      env:
+        CXXFLAGS: '--coverage'
+        LDFLAGS: '--coverage'
+
+    - name: Run
+      run: test/bin/000-test-main
+
+    - name: Capture LCOV
+      run: lcov --capture --no-external --exclude 'test/*' --exclude 'tracer/*' --directory . --output-file lcov.info
+
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: lcov.info
