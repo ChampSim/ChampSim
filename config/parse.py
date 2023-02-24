@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import operator
 import os
 import math
 
@@ -27,9 +26,10 @@ default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, '
 default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
 
 # Assign defaults that are unique per core
-def upper_levels_for(system, names):
-    upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
-    upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
+def upper_levels_for(system, names, key='lower_level'):
+    finder = lambda x: x.get(key, '')
+    upper_levels = sorted(system, key=finder)
+    upper_levels = itertools.groupby(upper_levels, key=finder)
     yield from ((k,v) for k,v in upper_levels if k in names)
 
 # Scale frequencies
@@ -62,47 +62,108 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     # Default core elements
     cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB', dict())}, {'DIB': dict()}, default_core) for i,cpu in enumerate(cores)]
 
-    # Establish defaults for first-level caches
+    pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
             config_file.get('cache', []),
-            # Copy values from the core specification and config root, if these are dicts
-            ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
-            ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(config_file.get(cn[1]), dict)),
-            # Apply defaults named after the cores
-            map(defaults.named_l1i_defaults, cores),
-            map(defaults.named_l1d_defaults, cores),
-            map(defaults.named_itlb_defaults, cores),
-            map(defaults.named_dtlb_defaults, cores)
-            )
 
-    cores = [util.chain({n: util.read_element_name(cpu, n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB')}, cpu) for cpu in cores]
+            # Copy values from the core specification, if these are dicts
+            ({'name': util.read_element_name(core,name), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
 
-    # Establish defaults for second-level caches
-    caches = util.combine_named(
-            caches.values(),
-            # Copy values from the core specification and config root, if these are dicts
-            ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(cn[0].get(cn[1]), dict)),
-            ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L2C', 'STLB')) if isinstance(config_file.get(cn[1]), dict)),
-            # Apply defaults named after the second-level caches
-            (defaults.sequence_l2c_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['L1D']]['lower_level'] for c in cores])),
-            (defaults.sequence_stlb_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[c['DTLB']]['lower_level'] for c in cores])),
-            # Apply defaults named after the cores
-            map(defaults.named_l2c_defaults, cores),
-            map(defaults.named_stlb_defaults, cores),
-            )
-
-    # Establish defaults for third-level caches
-    ptws = util.combine_named(
-                     config_file.get('ptws',[]),
-                     ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
-                     ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
-                     map(defaults.named_ptw_defaults, cores),
-                    )
-
-    caches = util.combine_named(
-            caches.values(),
+            # Copy values from the config root, if these are dicts
+            ({'name': util.read_element_name(core,name), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
             ({'name': 'LLC', **config_file.get('LLC', {})},),
-            (defaults.named_llc_defaults(*ul) for ul in upper_levels_for(caches.values(), [caches[caches[c['L1D']]['lower_level']]['lower_level'] for c in cores]))
+
+            # Apply defaults named after the cores
+            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C', lt_name='ITLB') for cpu in cores),
+            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C', lt_name='DTLB') for cpu in cores),
+            (defaults.core_defaults(cpu, 'ITLB', ll_name='STLB') for cpu in cores),
+            (defaults.core_defaults(cpu, 'DTLB', ll_name='STLB') for cpu in cores),
+            ({**defaults.core_defaults(cpu, 'L2C', lt_name='STLB'), 'lower_level': 'LLC'} for cpu in cores),
+            (defaults.core_defaults(cpu, 'STLB', ll_name='PTW') for cpu in cores)
+            )
+
+    ptws = util.combine_named(
+            config_file.get('ptws',[]),
+
+            # Copy values from the core specification, if these are dicts
+            ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+
+            # Copy values from the config root, if these are dicts
+            ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
+
+            # Apply defaults named after the cores
+            (defaults.core_defaults(cpu, 'PTW', ll_name='L1D') for cpu in cores)
+            )
+
+    # Convert all core values to labels
+    cores = [util.chain({n: util.read_element_name(cpu, n) for n in (*pinned_cache_names, 'PTW')}, cpu) for cpu in cores]
+
+    # Apply defaults named after the first-level caches
+    inferred_l1i = [c['L1I'] for c in cores]
+    inferred_l1d = [c['L1D'] for c in cores]
+    inferred_itlb = [c['ITLB'] for c in cores]
+    inferred_dtlb = [c['DTLB'] for c in cores]
+    caches = util.combine_named(
+            caches.values(),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=64, mshr_factor=32, bandwidth_factor=1),
+                '_defaults': 'champsim::defaults::default_l1i'
+            } for name,uls in upper_levels_for(cores, inferred_l1i, key='L1I')),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=64, mshr_factor=32, bandwidth_factor=1),
+                '_defaults': 'champsim::defaults::default_l1d'
+            } for name,uls in upper_levels_for(cores, inferred_l1d, key='L1D')),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
+                '_defaults': 'champsim::defaults::default_itlb'
+            } for name,uls in upper_levels_for(cores, inferred_itlb, key='ITLB')),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
+                '_defaults': 'champsim::defaults::default_dtlb'
+            } for name,uls in upper_levels_for(cores, inferred_dtlb, key='DTLB'))
+            )
+
+    # Apply defaults named after the second-level caches
+    inferred_l2c = [caches[name]['lower_level'] for name in itertools.chain(inferred_l1i, inferred_l1d)]
+    inferred_stlb = [caches[name]['lower_level'] for name in itertools.chain(inferred_itlb, inferred_dtlb)]
+    caches = util.combine_named(
+            caches.values(),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=512, mshr_factor=32, bandwidth_factor=0.5),
+                '_defaults': 'champsim::defaults::default_l2c'
+            } for name,uls in upper_levels_for(caches.values(), inferred_l2c)),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=64, mshr_factor=8, bandwidth_factor=0.5),
+                '_defaults': 'champsim::defaults::default_stlb'
+             } for name,uls in upper_levels_for(caches.values(), inferred_stlb))
+            )
+
+    # Apply defaults named after the third-level caches
+    inferred_llc = [caches[name]['lower_level'] for name in inferred_l2c]
+    caches = util.combine_named(
+            caches.values(),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, set_factor=2048, mshr_factor=64, bandwidth_factor=1),
+                'lower_level': 'DRAM',
+                '_defaults': 'champsim::defaults::default_llc'
+            } for name,uls in upper_levels_for(caches.values(), inferred_llc))
+            )
+
+    # Apply defaults to PTW
+    ptws = util.combine_named(
+            ptws.values(),
+            ({
+                'name': name,
+                **defaults.ul_dependent_defaults(*uls, queue_factor=16, mshr_factor=5, bandwidth_factor=2)
+            } for name,uls in upper_levels_for(caches.values(), [cpu['PTW'] for cpu in cores])),
+            ({'name': cpu['PTW'], 'cpu': cpu['index']} for cpu in cores)
             )
 
     # The name 'DRAM' is reserved for the physical memory
@@ -135,7 +196,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
     caches = util.combine_named(
             ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
-            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_needs_translate', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
+            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_first_level', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
             caches.values()
             )
 
