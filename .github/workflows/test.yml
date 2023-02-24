@@ -193,7 +193,6 @@ jobs:
 
     - name: Capture LCOV
       run: |
-        lcov --zerocounters --directory .
         lcov --capture --no-external --directory . --output-file lcov.info
         lcov --remove lcov.info .csconfig/\* --directory . --output-file lcov.info
         lcov --remove lcov.info test/\* --directory . --output-file lcov.info
