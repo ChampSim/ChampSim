@@ -58,6 +58,7 @@ jobs:
             name: "Ubuntu 22.04 GCC 11",
             os: ubuntu-22.04,
             cxx: "g++-11",
+            coverage: true
           }
 
         # Clang-10
@@ -116,6 +117,9 @@ jobs:
         #}
 
     steps:
+    - env:
+        CXX: ${{ matrix.config.cxx }}
+
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
@@ -123,22 +127,45 @@ jobs:
     - name: Set up pkg-config
       if: startsWith(matrix.config.os, 'macos')
       run: brew install pkg-config
-      
+
     - name: Set up vcpkg
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
+
+    - name: Set Coverage Environment
+      if: ${{ matrix.config.coverage }}
+      run: |
+        sudo apt-get install lcov
+        echo "CXXFLAGS=--coverage" >> $GITHUB_ENV
+        echo "LDFLAGS=--coverage" >> $GITHUB_ENV
 
     - name: Configure
       run: ./config.sh
 
     - name: Make
       run: make $(pwd)/test/bin/000-test-main
-      env:
-        CXX: ${{ matrix.config.cxx }}
 
     - name: Run
       run: test/bin/000-test-main
+
+    - name: Capture LCOV
+      if: ${{ matrix.config.coverage }}
+      run: |
+        lcov --capture --no-external \
+        --directory . \
+        --exclude $(pwd)/.csconfig/\* \
+        --exclude $(pwd)/test/\* \
+        --exclude $(pwd)/tracer/\* \
+        --exclude $(pwd)/vcpkg_installed/\* \
+        --output-file lcov.info
+
+    - name: Coveralls
+      if: ${{ matrix.config.coverage }}
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: lcov.info
 
   output:
     runs-on: ubuntu-latest
@@ -165,44 +192,3 @@ jobs:
     - name: Validate JSON
       run: python3 -m json.tool test.json
 
-  coveralls:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'true'
-
-    - name: Set up
-      run: |
-        vcpkg/bootstrap-vcpkg.sh
-        vcpkg/vcpkg install
-        sudo apt-get install lcov
-
-    - name: Configure
-      run: ./config.sh
-
-    - name: Make
-      run: make $(pwd)/test/bin/000-test-main
-      env:
-        CXXFLAGS: '--coverage'
-        LDFLAGS: '--coverage'
-
-    - name: Run
-      run: test/bin/000-test-main
-
-    - name: Capture LCOV
-      run: |
-        lcov --capture --no-external \
-        --directory . \
-        --exclude $(pwd)/.csconfig/\* \
-        --exclude $(pwd)/test/\* \
-        --exclude $(pwd)/tracer/\* \
-        --exclude $(pwd)/vcpkg_installed/\* \
-        --output-file lcov.info 
-
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: lcov.info
