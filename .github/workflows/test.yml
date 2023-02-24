@@ -195,7 +195,13 @@ jobs:
       run: |
         lcov --zero-counters --directory .
         lcov --capture --no-external --directory . --output-file lcov.info
-        lcov --remove lcov.info --directory . --output-file lcov-filtered.info 'test' 'tracer' 'vcpkg_installed' 
+        lcov \
+          --remove lcov.info .csconfig/\* \
+          --remove lcov.info test/\* \
+          --remove lcov.info tracer/\* \
+          --remove lcov.info vcpkg_installed/\* \
+          --directory . \
+          --output-file lcov-filtered.info
 
     - name: Coveralls
       uses: coverallsapp/github-action@master
