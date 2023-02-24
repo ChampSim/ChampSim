@@ -192,7 +192,7 @@ jobs:
       run: test/bin/000-test-main
 
     - name: Capture LCOV
-      run: lcov --capture --no-external --exclude 'test/*' --exclude 'tracer/*' --directory . --output-file lcov.info
+      run: lcov --capture --no-external --exclude 'test/\*' --exclude 'tracer/\*' --exclude 'vcpkg_installed/\*' --directory . --output-file lcov.info
 
     - name: Coveralls
       uses: coverallsapp/github-action@master
