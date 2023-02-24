@@ -671,7 +671,7 @@ void O3_CPU::print_deadlock()
 }
 
 LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
-  : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
+    : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
 {
 }
 
