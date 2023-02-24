@@ -413,14 +413,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   for (auto& smem : instr.source_memory) {
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry){ return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
-    q_entry->emplace(LSQ_ENTRY{instr.instr_id,
-                               smem,
-                               instr.ip,
-                               std::numeric_limits<uint64_t>::max(),
-                               {instr.asid[0], instr.asid[1]},
-                               false,
-                               std::numeric_limits<uint64_t>::max(),
-                               {}}); // add it to the load queue
+    q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid); // add it to the load queue
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -446,14 +439,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
   // store
   for (auto& dmem : instr.destination_memory)
-    SQ.push_back({instr.instr_id,
-                  dmem,
-                  instr.ip,
-                  std::numeric_limits<uint64_t>::max(),
-                  {instr.asid[0], instr.asid[1]},
-                  false,
-                  std::numeric_limits<uint64_t>::max(),
-                  {}}); // add it to the store queue
+    SQ.emplace_back(instr.instr_id, dmem, instr.ip, instr.asid); // add it to the store queue
 
   if constexpr (champsim::debug_print) {
     std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " loads: " << std::size(instr.source_memory)
@@ -683,6 +669,11 @@ void O3_CPU::print_deadlock()
       std::cout << lq_entry->instr_id << " ";
     std::cout << std::endl;
   }
+}
+
+LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
+    : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
+{
 }
 
 void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const

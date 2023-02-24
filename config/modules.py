@@ -117,7 +117,7 @@ def discriminator_function_definition_void(fname, args, varname, zipped_keys_and
 def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs):
     # Declare result
     yield '  ' + rtype + ' result{};'
-    yield '  ' + join_op + ' joiner{};'
+    yield '  ' + join_op + '<decltype(result)> joiner{};'
 
     # Discriminate between the module variants
     yield from ('  if ({}[champsim::lg2({})]) result = joiner(result, {}({}));'.format(varname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)

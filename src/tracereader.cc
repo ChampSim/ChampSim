@@ -43,7 +43,7 @@ FILE* tracereader::get_fptr(std::string fname)
   }
 
   char gunzip_command[4096];
-  sprintf(gunzip_command, cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
+  snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
   return popen(gunzip_command, "r");
 }
 
