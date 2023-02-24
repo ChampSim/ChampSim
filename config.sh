@@ -33,9 +33,11 @@ if __name__ == '__main__':
     test_root = os.path.join(champsim_root, 'test')
     parser = argparse.ArgumentParser(description='Configure ChampSim')
 
-    parser.add_argument('--prefix', default='.',
+    path_group = parser.add_argument_group(title='Path Configuration', description='Options that control the output locations of ChampSim configuration')
+
+    path_group.add_argument('--prefix', default='.',
             help='The prefix for the configured outputs')
-    parser.add_argument('--bindir',
+    path_group.add_argument('--bindir',
             help='The directory to store the resulting executables')
 
     search_group = parser.add_argument_group(title='Search Paths', description='Options that direct ChampSim to search additional paths for modules')
