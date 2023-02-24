@@ -124,6 +124,12 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
+    # Mark caches that are first-level
+    caches = util.combine_named(caches.values(), ({'name': cpu[name], '_first_level': True} for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
+
+    # Mark queues that need to match full addresses on collision
+    caches = util.combine_named(caches.values(), ({'name': k, '_queue_check_full_addr': c.get('_first_level', False) or c.get('wq_check_full_addr', False)} for k,c in caches.items()))
+
     # TLBs use page offsets, Caches use block offsets
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))

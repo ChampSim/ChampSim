@@ -21,7 +21,7 @@ from . import util
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
 
-queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
+queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
 core_builder_parts = {
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
@@ -72,7 +72,7 @@ default_ptw_queue = {
                 'wq_size':0,
                 'pq_size':0,
                 '_offset_bits':'champsim::lg2(PAGE_SIZE)',
-                'wq_check_full_addr':False
+                '_queue_check_full_addr':False
         }
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
@@ -85,7 +85,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     upper_levels = {k: {'uppers': tuple(x[1] for x in v)} for k,v in itertools.groupby(sorted(upper_level_pairs, key=operator.itemgetter(0)), key=operator.itemgetter(0))}
 
-    subdict_keys = ('rq_size', 'pq_size', 'wq_size', '_offset_bits', 'wq_check_full_addr')
+    subdict_keys = ('rq_size', 'pq_size', 'wq_size', '_offset_bits', '_queue_check_full_addr')
     upper_levels = util.chain(upper_levels,
             *({c['name']: util.subdict(c, subdict_keys)} for c in caches),
             *({p['name']: util.chain(default_ptw_queue, util.subdict(p, subdict_keys))} for p in ptws),
@@ -94,7 +94,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                     'wq_size':'std::numeric_limits<std::size_t>::max()',
                     'pq_size':'std::numeric_limits<std::size_t>::max()',
                     '_offset_bits':'champsim::lg2(BLOCK_SIZE)',
-                    'wq_check_full_addr':False
+                    '_queue_check_full_addr':False
                 }
             }
         )
