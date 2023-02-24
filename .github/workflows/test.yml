@@ -193,12 +193,13 @@ jobs:
 
     - name: Capture LCOV
       run: |
-        lcov --capture --no-external --directory . --output-file lcov.info
-        lcov --remove lcov.info .csconfig/\* --directory . --output-file lcov.info
-        lcov --remove lcov.info test/\* --directory . --output-file lcov.info
-        lcov --remove lcov.info tracer/\* --directory . --output-file lcov.info
-        lcov --remove lcov.info vpkg_installed/\* --directory . --output-file lcov.info
-        lcov --list lcov.info  
+        lcov --capture --no-external \
+        --directory . \
+        --exclude $(pwd)/.csconfig/\* \
+        --exclude $(pwd)/test/\* \
+        --exclude $(pwd)/tracer/\* \
+        --exclude $(pwd)/vcpkg_installed/\* \
+        --output-file lcov.info 
 
     - name: Coveralls
       uses: coverallsapp/github-action@master
