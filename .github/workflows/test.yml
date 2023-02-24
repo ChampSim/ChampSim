@@ -24,6 +24,8 @@ jobs:
   internal:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      CXX: ${{ matrix.config.cxx }}
 
     strategy:
       fail-fast: false
@@ -117,9 +119,6 @@ jobs:
         #}
 
     steps:
-    - env:
-        CXX: ${{ matrix.config.cxx }}
-
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
