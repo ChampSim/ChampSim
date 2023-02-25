@@ -200,6 +200,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             ({
                 'name': cpu['PTW'],
                 **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2),
+                'frequency': cpu['frequency'],
                 'cpu': cpu['index']
             } for cpu in cores)
             )
