@@ -18,8 +18,7 @@ from . import util
 
 def core_defaults(cpu, name, ll_name=None, lt_name=None):
     retval = {
-        'name': util.read_element_name(cpu, name),
-        'frequency': cpu['frequency']
+        'name': util.read_element_name(cpu, name)
     }
     if ll_name is not None:
         retval.update(lower_level=util.read_element_name(cpu, ll_name))
@@ -29,7 +28,6 @@ def core_defaults(cpu, name, ll_name=None, lt_name=None):
 
 def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32, bandwidth_factor=0.5):
     return {
-        'frequency': max(x['frequency'] for x in uls),
         'sets': set_factor*len(uls),
         'rq_size': math.ceil(bandwidth_factor*queue_factor*len(uls)),
         'wq_size': math.ceil(bandwidth_factor*queue_factor*len(uls)),
