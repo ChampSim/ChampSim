@@ -13,44 +13,35 @@
 # limitations under the License.
 
 import itertools, operator
+import collections
 import os
 
-def walk_to(source_dir, dest_dir, extensions=('.cc',)):
-    for base,dirs,files in os.walk(source_dir):
-        reldir = os.path.join(dest_dir, os.path.relpath(base, source_dir))
-        yield reldir, [os.path.normpath(os.path.join(reldir, f)+'.o') for f,ext in map(os.path.splitext, files) if ext in extensions]
+from . import util
 
 def extend_each(x,y):
     merges = {k: (*x[k],*y[k]) for k in x if k in y}
     return {**x, **y, **merges}
 
-def linejoin(elems):
-    return '\\\n  '.join(elems)
-
 per_source_fmtstr = (
-'''{local_dir_varname} = {dirs}
-{local_obj_varname} = {objs}
-$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | $({local_dir_varname})
+'''{local_dir_varname} = {dest_dir}
+{local_obj_varname} = $(patsubst {src_dir}/%.cc, {dest_dir}/%.o, $(wildcard {src_dir}/*.cc))
+$({local_obj_varname}): {dest_dir}/%.o: {src_dir}/%.cc | {dest_dir}
 -include $(wildcard {dest_dir}/*.d))
 '''
 )
 def per_source(src_dirs, dest_dir, build_id):
-    for i, src_dir in enumerate(map(os.path.abspath, src_dirs)):
+    for i, base_source in enumerate(itertools.chain(*([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs))):
         local_dir_varname = '{}_dirs_{}'.format(build_id, i)
         local_obj_varname = '{}_objs_{}'.format(build_id, i)
 
-        obj_dirnames, obj_filenames = next(walk_to(src_dir, dest_dir))
-
-        dirs = os.path.normpath(obj_dirnames)
-        objs = linejoin(sorted(obj_filenames))
+        src_dir, base = base_source
+        reldir = os.path.relpath(base, src_dir)
 
         yield local_dir_varname, local_obj_varname, per_source_fmtstr.format(
                 local_dir_varname=local_dir_varname,
                 local_obj_varname=local_obj_varname,
-                dirs=dirs,
-                objs=objs,
-                dest_dir=dest_dir,
-                src_dir=src_dir
+                dest_dir=os.path.abspath(os.path.join(dest_dir, reldir)),
+                src_dir=os.path.abspath(os.path.join(src_dir, reldir))
                 )
 
 def make_part(source_dirs, obj_dir, build_id, executable, part_opts, part_overrides, global_dirs, global_objs):
@@ -82,21 +73,20 @@ def executable_opts(obj_root, build_id, executable, source_dirs, opts, overrides
     yield 'build_dirs += {}'.format(os.path.split(executable)[0])
     yield 'executable_name += {}'.format(executable)
 
-def module_opts(source_dirs, obj_dir, build_id, name, opts, exe):
+def module_opts(obj_dir, build_id, module_name, source_dirs, opts, exe):
     build_dir = os.path.normpath(os.path.join(obj_dir, build_id))
-    dest_dir = os.path.normpath(os.path.join(build_dir, name))
+    dest_dir = os.path.normpath(os.path.join(build_dir, module_name))
 
-    local_opts = extend_each(opts, {'CPPFLAGS': (*('-I'+s for s in source_dirs), '-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(name))})
+    local_opts = extend_each(opts, {'CPPFLAGS': (*('-I'+s for s in source_dirs), '-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(module_name))})
 
-    yield from ('', '###', '# Build ID: ' + build_id, '# Module: ' + name, '# Source: ' + source_dirs[0], '# Destination: ' + dest_dir, '###', '')
-    yield from make_part(source_dirs, dest_dir, build_id+'_'+name, exe, local_opts, {}, 'module_dirs', 'module_objs')
+    yield from ('', '###', '# Build ID: ' + build_id, '# Module: ' + module_name, '# Source: ' + source_dirs[0], '# Destination: ' + dest_dir, '###', '')
+    yield from make_part(source_dirs, dest_dir, build_id+'_'+module_name, exe, local_opts, {}, 'module_dirs', 'module_objs')
 
 def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, config_file):
-    global_opts = {k:config_file.get(k,[]) for k in ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')}
-    global_overrides = {k:config_file.get(k,'') for k in ('CXX',)}
+    global_opts = collections.defaultdict(list, **util.subdict(config_file, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')))
+    global_overrides = collections.defaultdict(str, **util.subdict(config_file, ('CXX',)))
 
-    yield from itertools.chain(
-        executable_opts(os.path.abspath(objdir), build_id, os.path.abspath(executable), source_dirs, global_opts, global_overrides),
-        *(module_opts((v['fname'],), os.path.abspath(objdir), build_id, k, extend_each(global_opts, v['opts']), os.path.abspath(executable)) for k,v in module_info.items())
-    )
+    yield from executable_opts(os.path.abspath(objdir), build_id, os.path.abspath(executable), source_dirs, global_opts, global_overrides)
+    for k,v in module_info.items():
+        yield from module_opts(os.path.abspath(objdir), build_id, k, (v['fname'],), extend_each(global_opts, v['opts']), os.path.abspath(executable))
 
