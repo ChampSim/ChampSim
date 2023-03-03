@@ -12,7 +12,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher(CACHE::pprefetcherDnext_line)
+      .prefetcher<CACHE::pprefetcherDnext_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

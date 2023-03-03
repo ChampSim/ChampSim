@@ -111,11 +111,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield 'std::tuple< std::vector<O3_CPU>, std::vector<CACHE>, std::vector<PageTableWalker> > init_structures() {'
 
-    yield 'std::vector<PageTableWalker> ptws {{'
-    yield ''
+    yield 'auto ptws = [](){'
+    yield 'std::vector<PageTableWalker> result{};'
 
-    for i,ptw in enumerate(ptws):
-        yield 'PageTableWalker{PageTableWalker::Builder{champsim::defaults::default_ptw}'
+    for ptw in ptws:
+        yield 'result.emplace_back(PageTableWalker::Builder{champsim::defaults::default_ptw}'
         yield '.name("{name}")'.format(**ptw)
         yield '.cpu({cpu})'.format(**ptw)
         yield '.virtual_memory(&vmem)'
@@ -138,20 +138,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
 
-        if i < (len(ptws)-1):
-            yield '},'
-        else:
-            yield '}'
-        yield ''
+        yield ');'
 
-    yield '}};'
+    yield 'return result;'
+    yield '}(); // immediately invoked'
     yield ''
 
-    yield 'std::vector<CACHE> caches {{'
-    yield ''
+    yield 'auto caches = [](){'
+    yield 'std::vector<CACHE> result{};'
 
-    for i,elem in enumerate(caches):
-        yield 'CACHE{{CACHE::Builder{{ {} }}'.format(elem.get('_defaults', ''))
+    for elem in caches:
+        yield 'result.emplace_back(CACHE::Builder{{ {} }}'.format(elem.get('_defaults', ''))
         yield '.name("{name}")'.format(**elem)
 
         local_cache_builder_parts = {
@@ -172,10 +169,10 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
 
         if elem.get('_replacement_modnames'):
-            yield '.replacement({})'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
+            yield '.replacement<{}>()'.format(' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']))
 
         if elem.get('_prefetcher_modnames'):
-            yield '.prefetcher({})'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))
+            yield '.prefetcher<{}>()'.format(' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']))
 
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_level']))
@@ -183,20 +180,18 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if 'lower_translate' in elem:
             yield '.lower_translate({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate']))
 
-        if i < (len(caches)-1):
-            yield '},'
-        else:
-            yield '}'
+        yield ');'
         yield ''
 
-    yield '}};'
+    yield 'return result;'
+    yield '}(); // immediately invoked'
     yield ''
 
-    yield 'std::vector<O3_CPU> ooo_cpu {{'
-    yield ''
+    yield 'auto ooo_cpu = [&](){'
+    yield 'std::vector<O3_CPU> result{};'
 
-    for i,cpu in enumerate(cores):
-        yield 'O3_CPU {{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
+    for cpu in cores:
+        yield 'result.emplace_back(O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
         l1i_idx = [c['name'] for c in caches].index(cpu['L1I'])
         l1d_idx = [c['name'] for c in caches].index(cpu['L1D'])
@@ -211,20 +206,18 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (v.format(**cpu['DIB']) for k,v in dib_builder_parts.items() if k in cpu)
 
         if elem.get('_branch_predictor_modnames'):
-            yield '.branch_predictor({})'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
+            yield '.branch_predictor<{}>()'.format(' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']))
         if elem.get('_btb_modnames'):
-            yield '.btb({})'.format(' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']))
+            yield '.btb<{}>()'.format(' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']))
 
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))
 
-        if i < (len(cores)-1):
-            yield '},'
-        else:
-            yield '}'
+        yield ');'
         yield ''
 
-    yield '}};'
+    yield 'return result;'
+    yield '}(); // immediately invoked'
     yield ''
 
     yield '    return {std::move(ooo_cpu), std::move(caches), std::move(ptws)};'

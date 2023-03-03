@@ -26,7 +26,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector>()
     };
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
       .name("432a-upper")
@@ -79,7 +79,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter>()
     };
 
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
@@ -88,7 +88,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};

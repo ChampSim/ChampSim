@@ -22,7 +22,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
-      .prefetcher(CACHE::ptestDcppDmodulesDprefetcherDaddress_collector)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
