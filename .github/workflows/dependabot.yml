@@ -6,9 +6,11 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    target-branch: "develop"
 
   # Maintain dependencies for submodules
   - package-ecosystem: "gitsubmodules"
     directory: "/"
     schedule:
       interval: "monthly"
+    target-branch: "develop"
