@@ -71,7 +71,7 @@ class FileWriter:
 
         inc_dir = os.path.join(os.path.abspath(local_objdir_name), build_id, 'inc')
 
-        executable, elements, module_info, config_file, env = parsed_config
+        executable, elements, modules_to_compile, module_info, config_file, env = parsed_config
 
         self.fileparts.append((os.path.join(inc_dir, instantiation_file_name), instantiation_file.get_instantiation_lines(**elements))) # Instantiation file
         self.fileparts.append((os.path.join(inc_dir, constants_file_name), constants_file.get_constants_file(config_file, elements['pmem']))) # Constants header
@@ -92,7 +92,7 @@ class FileWriter:
             (os.path.join(inc_dir, cache_module_definition_file_name), cache_definitions)
         ))
 
-        joined_module_info = util.chain(*module_info.values()) # remove module type tag
+        joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         self.fileparts.extend((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(m['func_map'])) for m in joined_module_info.values())
         self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)))
 
