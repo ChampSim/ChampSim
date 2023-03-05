@@ -100,7 +100,7 @@ def discriminator_function_declaration(fname, rtype, args, varname, secondary_va
 # Generate C++ code for the body of a discriminator function that returns void
 def discriminator_function_definition_void(fname, args, varname, zipped_keys_and_funcs, classname):
     # Discriminate between the module variants
-    yield from ('  if constexpr ({} & {}::{}) intern_->{}({});'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
+    yield from ('  if constexpr (({} & {}::{}) != 0) intern_->{}({});'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
 # Generate C++ code for the body of a discriminator function that returns nonvoid
 def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, classname):
@@ -109,7 +109,7 @@ def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varna
     yield '  ' + join_op + '<decltype(result)> joiner{};'
 
     # Discriminate between the module variants
-    yield from ('  if constexpr ({} & {}::{}) result = joiner(result, intern_->{}({}));'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
+    yield from ('  if constexpr (({} & {}::{}) != 0) result = joiner(result, intern_->{}({}));'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
     # Return result
     yield '  return result;'

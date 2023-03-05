@@ -122,16 +122,19 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='L1I'), set_factor=64, mshr_factor=32, bandwidth_factor=1),
             '_first_level': True,
+            'prefetcher': 'no_instr', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_l1i'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=512, mshr_factor=32, bandwidth_factor=0.5),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_l2c'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=2048, mshr_factor=64, bandwidth_factor=1),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_llc'
         })
     )
@@ -142,16 +145,19 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='L1D'), set_factor=64, mshr_factor=32, bandwidth_factor=1),
             '_first_level': True,
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_l1d'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=512, mshr_factor=32, bandwidth_factor=0.5),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_l2c'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=2048, mshr_factor=64, bandwidth_factor=1),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_llc'
         })
     )
@@ -162,11 +168,13 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='ITLB'), set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
             '_first_level': True,
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_itlb'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=64, mshr_factor=8, bandwidth_factor=0.5),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_stlb'
         })
     )
@@ -177,11 +185,13 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='DTLB'), set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
             '_first_level': True,
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_dtlb'
         }),
         (lambda name: {
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=64, mshr_factor=8, bandwidth_factor=0.5),
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_stlb'
         })
     )
@@ -226,11 +236,6 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     for c in cores:
         c.setdefault('branch_predictor', 'bimodal')
         c.setdefault('btb', 'basic_btb')
-
-    # All caches have a default prefetcher and replacement
-    for c in caches.values():
-        c.setdefault('prefetcher', 'no')
-        c.setdefault('replacement', 'lru')
 
     # Mark queues that need to match full addresses on collision
     caches = util.combine_named(caches.values(), ({'name': k, '_queue_check_full_addr': c.get('_first_level', False) or c.get('wq_check_full_addr', False)} for k,c in caches.items()))
