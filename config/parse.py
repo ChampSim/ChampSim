@@ -33,11 +33,6 @@ def upper_levels_for(system, name, key='lower_level'):
     upper_levels = itertools.groupby(upper_levels, key=finder)
     return next(filter(lambda kv: kv[0] == name, upper_levels))[1]
 
-def pairwise(iterable):
-    a,b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a,b)
-
 # Scale frequencies
 def scale_frequencies(it):
     it_a, it_b = itertools.tee(it, 2)
@@ -70,7 +65,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
-            config_file.get('cache', []),
+            config_file.get('caches', []),
 
             # Copy values from the core specification, if these are dicts
             ({'name': util.read_element_name(core,name), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
