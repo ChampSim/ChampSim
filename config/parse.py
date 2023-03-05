@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import operator
 import os
 import math
 
@@ -29,8 +28,8 @@ default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penal
 
 # Assign defaults that are unique per core
 def upper_levels_for(system, names):
-    upper_levels = sorted(system, key=operator.itemgetter('lower_level'))
-    upper_levels = itertools.groupby(upper_levels, key=operator.itemgetter('lower_level'))
+    upper_levels = sorted(system, key=lambda x: x.get('lower_level', ''))
+    upper_levels = itertools.groupby(upper_levels, key=lambda x: x.get('lower_level', ''))
     yield from ((k,v) for k,v in upper_levels if k in names)
 
 # Scale frequencies
@@ -65,7 +64,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
 
     # Establish defaults for first-level caches
     caches = util.combine_named(
-            config_file.get('cache', []),
+            config_file.get('caches', []),
             # Copy values from the core specification and config root, if these are dicts
             ({'name': util.read_element_name(*cn), **cn[0][cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(cn[0].get(cn[1]), dict)),
             ({'name': util.read_element_name(*cn), **config_file[cn[1]]} for cn in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')) if isinstance(config_file.get(cn[1]), dict)),
