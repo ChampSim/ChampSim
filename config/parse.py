@@ -221,6 +221,17 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
+    # TODO can these be removed in favor of the defaults in inc/defaults.hpp?
+    # All cores have a default branch predictor and BTB
+    for c in cores:
+        c.setdefault('branch_predictor', 'bimodal')
+        c.setdefault('btb', 'basic_btb')
+
+    # All caches have a default prefetcher and replacement
+    for c in caches.values():
+        c.setdefault('prefetcher', 'no')
+        c.setdefault('replacement', 'lru')
+
     # Mark queues that need to match full addresses on collision
     caches = util.combine_named(caches.values(), ({'name': k, '_queue_check_full_addr': c.get('_first_level', False) or c.get('wq_check_full_addr', False)} for k,c in caches.items()))
 
