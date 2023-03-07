@@ -24,7 +24,7 @@ on:
       - '!.github/workflows/test.yml'
 
 jobs:
-  internal:
+  cpp:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     env:
@@ -168,6 +168,14 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: lcov.info
+
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run
+      run: PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -v --start-directory='test/python'
 
   output:
     runs-on: ubuntu-latest
