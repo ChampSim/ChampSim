@@ -218,6 +218,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set Coverage Environment
+      run: sudo apt-get install lcov
+
     - uses: actions/download-artifact@v3
       with:
         name: lcov-cpp
