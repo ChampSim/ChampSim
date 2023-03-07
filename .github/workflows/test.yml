@@ -147,6 +147,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/checkout@v3
     - name: Run
       run: PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -v --start-directory='test/python'
 
