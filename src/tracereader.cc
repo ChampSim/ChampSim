@@ -43,7 +43,7 @@ FILE* tracereader::get_fptr(std::string fname)
   }
 
   char gunzip_command[4096];
-  sprintf(gunzip_command, cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
+  snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
   return popen(gunzip_command, "r");
 }
 
@@ -62,7 +62,7 @@ void tracereader::refresh_buffer()
   eof_ = trace_file.eof();
 #else
   bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-  eof_ = (bytes_read > 0);
+  eof_ = !(bytes_read > 0);
 #endif
 
   // Transform bytes into trace format instructions

@@ -2,6 +2,7 @@
 _configuration.mk
 
 **/__pycache__/
+*.pyc
 
 bin/
 

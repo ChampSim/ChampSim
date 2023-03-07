@@ -49,7 +49,7 @@ struct ooo_model_instr {
   bool branch_prediction = 0;
   bool branch_mispredicted = 0; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
 
-  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
   uint8_t branch_type = NOT_BRANCH;
   uint64_t branch_target = 0;
@@ -73,12 +73,8 @@ struct ooo_model_instr {
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
 
 private:
-  class conversion_tag
-  {
-  };
-
   template <typename T>
-  ooo_model_instr(conversion_tag, T instr) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken)
+  ooo_model_instr(T instr, std::array<uint8_t, 2> local_asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(local_asid)
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
@@ -136,16 +132,8 @@ private:
   }
 
 public:
-  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(conversion_tag{}, instr)
-  {
-    asid[0] = cpu;
-    asid[1] = cpu;
-  }
-
-  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(conversion_tag{}, instr)
-  {
-    std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
-  }
+  ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr, {cpu, cpu}) {}
+  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
 
   std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 
