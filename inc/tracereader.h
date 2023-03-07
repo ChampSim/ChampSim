@@ -49,9 +49,11 @@ public:
 protected:
   static FILE* get_fptr(std::string fname);
 
-  std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
 #if defined(__GNUG__) && !defined(__APPLE__)
+  std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
   __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
+#elif defined(__APPLE__)
+  FILE* fp = get_fptr(trace_string);
 #endif
 
   uint8_t cpu;

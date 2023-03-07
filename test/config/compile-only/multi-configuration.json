@@ -1,0 +1,18 @@
+[
+  {
+    "name": "two-level",
+    "L2C": { "lower_level": "DRAM" }
+  },
+  {
+    "name": "multi-core",
+    "num_cores": 2,
+    "ooo_cpu": [
+        { "L1D": "cacheA" },
+        { "L1D": "cacheB" }
+    ],
+    "caches": [
+        { "name": "cacheA", "replacement": "lru" },
+        { "name": "cacheB", "replacement": "srrip" }
+    ]
+  }
+]

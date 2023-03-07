@@ -19,8 +19,9 @@ from . import util
 
 # Utility function to get a mangled module name from the path to its sources
 def get_module_name(path):
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     fname_translation_table = str.maketrans('./-','_DH')
-    return path.translate(fname_translation_table)
+    return os.path.relpath(path, start=champsim_root).translate(fname_translation_table)
 
 # Return a normalized directory: variables and user shorthands are expanded
 def norm_dirname(f):
@@ -34,7 +35,7 @@ def default_modules(dirname):
 
 # Try the built-in module directories, then try to interpret as a path
 def default_dir(dirnames, f):
-    return next(filter(os.path.exists, map(norm_dirname, itertools.chain(
+    return norm_dirname(next(filter(os.path.exists, itertools.chain(
         (os.path.join(dirname, f) for dirname in dirnames), # Prepend search paths
         (f,) # Interpret as file path
     ))))
@@ -116,7 +117,7 @@ def discriminator_function_definition_void(fname, args, varname, zipped_keys_and
 def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs):
     # Declare result
     yield '  ' + rtype + ' result{};'
-    yield '  ' + join_op + ' joiner{};'
+    yield '  ' + join_op + '<decltype(result)> joiner{};'
 
     # Discriminate between the module variants
     yield from ('  if ({}[champsim::lg2({})]) result = joiner(result, {}({}));'.format(varname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)

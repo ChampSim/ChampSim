@@ -7,7 +7,7 @@
 namespace
 {
 constexpr std::size_t REGION_COUNT = 128;
-constexpr std::size_t MAX_DISTANCE = 256;
+constexpr int MAX_DISTANCE = 256;
 constexpr int PREFETCH_DEGREE = 2;
 
 struct region_type {
@@ -65,7 +65,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
 
   // attempt to prefetch in the positive, then negative direction
   for (auto direction : {1, -1}) {
-    for (std::size_t i = 1, prefetches_issued = 0; i <= MAX_DISTANCE && prefetches_issued < PREFETCH_DEGREE; i++) {
+    for (int i = 1, prefetches_issued = 0; i <= MAX_DISTANCE && prefetches_issued < PREFETCH_DEGREE; i++) {
       const auto pos_step_addr = addr + direction * (i * BLOCK_SIZE);
       const auto neg_step_addr = addr - direction * (i * BLOCK_SIZE);
       const auto neg_2step_addr = addr - direction * (2 * i * BLOCK_SIZE);
