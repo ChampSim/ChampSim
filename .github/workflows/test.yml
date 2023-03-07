@@ -24,7 +24,7 @@ on:
       - '!.github/workflows/test.yml'
 
 jobs:
-  internal:
+  cpp:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
 
@@ -142,6 +142,13 @@ jobs:
 
     - name: Run
       run: test/bin/000-test-main
+
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Run
+      run: PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -v --start-directory='test/python'
 
   output:
     runs-on: ubuntu-latest

@@ -19,9 +19,9 @@ import sys,os
 import itertools
 import argparse
 
-import config.filewrite as filewrite
-import config.parse as parse
-import config.util as util
+import config.filewrite
+import config.parse
+import config.util
 
 # Read the config file
 def parse_file(fname):
@@ -66,15 +66,15 @@ if __name__ == '__main__':
 
     if not args.files:
         print("No configuration specified. Building default ChampSim with no prefetching.")
-    config_files = itertools.product(*(util.wrap_list(parse_file(f)) for f in reversed(args.files)), ({},))
+    config_files = itertools.product(*(config.util.wrap_list(parse_file(f)) for f in reversed(args.files)), ({},))
 
-    parsed_test = parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')], compile_all_modules=True)
+    parsed_test = config.parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')], compile_all_modules=True)
 
     parsed_configs = (
-            parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules)
+            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules)
         for c in config_files)
 
-    with filewrite.writer(bindir_name, objdir_name) as wr:
+    with config.filewrite.writer(bindir_name, objdir_name) as wr:
         for c in parsed_configs:
             wr.write_files(c)
         wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
