@@ -186,14 +186,6 @@ jobs:
         name: lcov-python
         path: lcov_python.info
 
-  python:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Run
-      run: PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -v --start-directory='test/python'
-
   output:
     runs-on: ubuntu-latest
 
@@ -220,6 +212,7 @@ jobs:
       run: python3 -m json.tool test.json
 
   upload_coveralls:
+    needs: [cpp, python]
     steps:
     - uses: actions/checkout@v3
 
