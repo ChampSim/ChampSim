@@ -34,8 +34,8 @@ def wrap_list(attr):
 def chain(*dicts):
     def merge_dicts(x,y):
         dict_merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
-        list_merges = {k:[*v, *y[k]] for k,v in x.items() if isinstance(v, list) and isinstance(y.get(k), list)}
-        return { **y, **x, **dict_merges, **list_merges }
+        list_merges = {k:(v + y[k]) for k,v in x.items() if isinstance(v, list) and isinstance(y.get(k), list)}
+        return dict(itertools.chain(y.items(), x.items(), dict_merges.items(), list_merges.items()))
 
     return functools.reduce(merge_dicts, dicts)
 
