@@ -179,8 +179,8 @@ jobs:
 
     - name: Run
       run: |
-        PYTHONPATH=$PYTHONPATH:$(pwd) coverage run -m unittest discover -v --start-directory='test/python'
-        coverage lcov --include=config/\*.py -o lcov_python.info
+        PYTHONPATH=$PYTHONPATH:$(pwd) coverage run --source=config -m unittest discover -v --start-directory='test/python'
+        coverage lcov --include=config/\*.py --omit=*/__*__.py -o lcov_python.info
 
     - uses: actions/upload-artifact@v3.1.2
       with:
