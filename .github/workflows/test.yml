@@ -212,6 +212,7 @@ jobs:
       run: python3 -m json.tool test.json
 
   upload_coveralls:
+    runs-on: ubuntu-latest
     needs: [cpp, python]
     steps:
     - uses: actions/checkout@v3
