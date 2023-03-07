@@ -1,4 +1,3 @@
-import sys, os
 import unittest
 import operator
 
