@@ -233,7 +233,6 @@ jobs:
       run: lcov --add-tracefile lcov_cpp.info --add-tracefile lcov_python.info --output-file lcov.info
 
     - name: Coveralls
-      if: ${{ matrix.config.coverage }}
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
