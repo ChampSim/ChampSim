@@ -3,6 +3,7 @@
 ![GitHub](https://img.shields.io/github/license/ChampSim/ChampSim)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ChampSim/ChampSim/test.yml)
 ![GitHub forks](https://img.shields.io/github/forks/ChampSim/ChampSim)
+[![Coverage Status](https://coveralls.io/repos/github/ChampSim/ChampSim/badge.svg?branch=coveralls)](https://coveralls.io/github/ChampSim/ChampSim?branch=coveralls)
 
 ChampSim is a trace-based simulator for a microarchitecture study. You can sign up to the public mailing list by sending an empty mail to champsim+subscribe@googlegroups.com. If you have questions about how to use ChampSim, you can often receive a quicker response on the mailing list. Please reserve GitHub Issues for bugs.
 
