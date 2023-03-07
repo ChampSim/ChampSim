@@ -163,6 +163,7 @@ jobs:
         --output-file lcov_cpp.info
 
     - uses: actions/upload-artifact@v3.1.2
+      if: ${{ matrix.config.coverage }}
       with:
         name: lcov-cpp
         path: lcov_cpp.info
