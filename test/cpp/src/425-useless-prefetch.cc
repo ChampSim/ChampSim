@@ -29,7 +29,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
         elem->_operate();
 
     WHEN("A packet is sent") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      const champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
@@ -43,7 +43,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
       AND_WHEN("A packet with a different address is sent") {
         PACKET test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = LOAD;
         test_b.instr_id = 1;
