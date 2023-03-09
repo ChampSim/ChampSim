@@ -48,6 +48,9 @@ def duplicate_to_length(elements, n):
     repeat_factor = math.ceil(n / len(elements));
     return list(itertools.islice(itertools.chain(*(itertools.repeat(e, repeat_factor) for e in elements)), n))
 
+def filter_inaccessible(system, roots, key='lower_level'):
+    return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
+
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
@@ -117,7 +120,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             cache['max_fill'] = cache['max_write']
 
     # Remove caches that are inaccessible
-    caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
+    caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
 
     # Establish latencies in caches
     caches = util.combine_named(caches.values(), ({'name': c['name'], 'hit_latency': (c.get('latency',100) - c['fill_latency'])} for c in caches.values()))
