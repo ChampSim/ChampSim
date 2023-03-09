@@ -40,9 +40,9 @@ class ModuleSearchContext:
         return self.data_from_path(path)
 
     def find_all(self):
-        files = itertools.chain(*((os.path.join(p, d) for d in os.listdir(p)) for p in self.paths))
-        files = filter(os.path.isdir, files)
-        yield from (self.data_from_path(f) for f in files)
+        base_dirs = [next(os.walk(p)) for p in self.paths]
+        files = itertools.starmap(os.path.join, itertools.chain(*(zip(itertools.repeat(b), d) for b,d,_ in base_dirs)))
+        return [self.data_from_path(f) for f in files]
 
 # A unifying function for the four module types to return their information
 def data_getter(prefix, module_name, funcs):
