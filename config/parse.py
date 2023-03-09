@@ -62,7 +62,8 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file['num_cores'])
 
     # Default core elements
-    cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB', dict())}, {'DIB': dict()}, default_core) for i,cpu in enumerate(cores)]
+    core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
+    cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i}, util.subdict(config_file, core_keys_to_copy), {'DIB': dict()}, default_core) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
@@ -272,14 +273,14 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             }
 
     if compile_all_modules:
-        modules_to_compile = list(itertools.chain(*(d.keys() for d in module_info.values())))
+        modules_to_compile = [*set(itertools.chain(*(d.keys() for d in module_info.values())))]
     else:
-        modules_to_compile = [
-            *itertools.chain(*(c['_replacement_data'] for c in caches.values())),
-            *itertools.chain(*(c['_prefetcher_data'] for c in caches.values())),
-            *itertools.chain(*(c['_branch_predictor_data'] for c in cores)),
-            *itertools.chain(*(c['_btb_data'] for c in cores)),
-        ]
+        modules_to_compile = [*set(d['name'] for d in itertools.chain(
+            *(c['_replacement_data'] for c in caches.values()),
+            *(c['_prefetcher_data'] for c in caches.values()),
+            *(c['_branch_predictor_data'] for c in cores),
+            *(c['_btb_data'] for c in cores)
+        ))]
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')

@@ -580,6 +580,34 @@ class FoundMoreContext:
 
 class CompileAllModulesTests(unittest.TestCase):
 
+    def test_no_compile_all_finds_given_branch(self):
+        result = config.parse.parse_config_in_context({ 'branch_predictor': 'test_branch' }, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        self.assertIn('test_branch', result[1])
+
+        result_all = config.parse.parse_config_in_context({ 'branch_predictor': 'test_branch' }, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
+        self.assertIn('test_branch', result_all[1])
+
+    def test_no_compile_all_finds_given_btb(self):
+        result = config.parse.parse_config_in_context({ 'btb': 'test_btb' }, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
+        self.assertIn('test_btb', result[1])
+
+        result_all = config.parse.parse_config_in_context({ 'btb': 'test_btb' }, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
+        self.assertIn('test_btb', result_all[1])
+
+    def test_no_compile_all_finds_given_pref(self):
+        result = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_pref' } }, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
+        self.assertIn('test_pref', result[1])
+
+        result_all = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_pref' } }, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
+        self.assertIn('test_pref', result_all[1])
+
+    def test_no_compile_all_finds_given_repl(self):
+        result = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_repl' } }, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
+        self.assertIn('test_repl', result[1])
+
+        result_all = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_repl' } }, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
+        self.assertIn('test_repl', result_all[1])
+
     def test_compile_all_finds_extra_branch(self):
         result = config.parse.parse_config_in_context({}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertNotIn('extra', result[1])
