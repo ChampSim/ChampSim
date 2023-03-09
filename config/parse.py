@@ -272,7 +272,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             }
 
     if compile_all_modules:
-        modules_to_compile = list(itertools.chain(*(d.keys() for d in module_info)))
+        modules_to_compile = list(itertools.chain(*(d.keys() for d in module_info.values())))
     else:
         modules_to_compile = [
             *itertools.chain(*(c['_replacement_data'] for c in caches.values())),

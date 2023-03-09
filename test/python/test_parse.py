@@ -571,4 +571,40 @@ class ConfigRootPassthroughParseTests(unittest.TestCase):
         self.assertIn('heartbeat_frequency', result[3])
         self.assertEqual(test_config.get('heartbeat_frequency'), result[3].get('heartbeat_frequency'))
 
+class FoundMoreContext:
+    def find(self, module):
+        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+
+    def find_all(self):
+        return [{'name': 'extra', 'fname': 'aaaabbbb/extra', '_is_instruction_prefetcher': False}]
+
+class CompileAllModulesTests(unittest.TestCase):
+
+    def test_compile_all_finds_extra_branch(self):
+        result = config.parse.parse_config_in_context({}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        self.assertNotIn('extra', result[1])
+
+        result_all = config.parse.parse_config_in_context({}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
+        self.assertIn('extra', result_all[1])
+
+    def test_compile_all_finds_extra_btb(self):
+        result = config.parse.parse_config_in_context({}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
+        self.assertNotIn('extra', result[1])
+
+        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
+        self.assertIn('extra', result_all[1])
+
+    def test_compile_all_finds_extra_pref(self):
+        result = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
+        self.assertNotIn('extra', result[1])
+
+        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
+        self.assertIn('extra', result_all[1])
+
+    def test_compile_all_finds_extra_repl(self):
+        result = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
+        self.assertNotIn('extra', result[1])
+
+        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
+        self.assertIn('extra', result_all[1])
 
