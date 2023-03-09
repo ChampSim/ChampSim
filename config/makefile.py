@@ -16,6 +16,7 @@ import itertools, operator
 import os
 
 from . import util
+
 def dereference(var):
     return '$(' + var + ')'
 
