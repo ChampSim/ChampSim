@@ -60,5 +60,8 @@ $(filter-out $(test_main_name), $(executable_name)):
 test: $(test_main_name)
 	$(test_main_name)
 
+pytest:
+	PYTHONPATH=$(PYTHONPATH):$(shell pwd) python3 -m unittest discover -v --start-directory='test/python'
+
 -include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 

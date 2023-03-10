@@ -80,16 +80,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             _llptr='&{}_to_{}_queues'.format(elem['name'], elem['lower_level']),
             _ltptr=('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate'])) if 'lower_translate' in elem else 'nullptr',
             prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
-            repl_enum_string=' | '.join(f'CACHE::r{k}' for k in elem['_replacement_modnames']),\
-            pref_enum_string=' | '.join(f'CACHE::p{k}' for k in elem['_prefetcher_modnames']),\
+            repl_enum_string=' | '.join('CACHE::r{}'.format(k['name']) for k in elem['_replacement_data']),\
+            pref_enum_string=' | '.join('CACHE::p{}'.format(k['name']) for k in elem['_prefetcher_data']),\
             **elem)
     yield ''
 
     yield from ('O3_CPU ' + cpu['name'] + cpu_fmtstr.format(
                 _l1iptr='&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']),
                 _l1dptr='&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']),
-                branch_enum_string=' | '.join(f'O3_CPU::b{k}' for k in cpu['_branch_predictor_modnames']),
-                btb_enum_string=' | '.join(f'O3_CPU::t{k}' for k in cpu['_btb_modnames']),
+                branch_enum_string=' | '.join('O3_CPU::b{}'.format(k['name']) for k in cpu['_branch_predictor_data']),
+                btb_enum_string=' | '.join('O3_CPU::t{}'.format(k['name']) for k in cpu['_btb_data']),
                 **cpu) + ';' for cpu in cores)
     yield ''
 

@@ -26,10 +26,10 @@ SCENARIO("The issued steps incur appropriate latencies") {
 
     if (level == 5) {
       (void)vmem.va_to_pa(0, access_address);
-      for (int i = 0; i < 4; ++i)
+      for (unsigned i = 0; i < 4; ++i)
         (void)vmem.get_pte_pa(0, access_address, i);
     } else {
-      for (int i = 0; i < level; ++i)
+      for (unsigned i = 0; i < level; ++i)
         (void)vmem.get_pte_pa(0, access_address, i);
     }
 
