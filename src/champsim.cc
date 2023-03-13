@@ -45,12 +45,6 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
   return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
 }
 
-struct phase_info {
-  std::string name;
-  bool is_warmup;
-  uint64_t length;
-};
-
 int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
                   std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
