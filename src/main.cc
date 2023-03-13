@@ -16,9 +16,9 @@
 
 #include <algorithm>
 #include <array>
+#include <CLI/CLI.hpp>
 #include <fstream>
 #include <functional>
-#include <getopt.h>
 #include <iostream>
 #include <signal.h>
 #include <string>
@@ -89,50 +89,33 @@ int main(int argc, char** argv)
   sigIntHandler.sa_flags = 0;
   sigaction(SIGINT, &sigIntHandler, NULL);
 
-  // initialize knobs
-  uint8_t knob_cloudsuite = 0;
-  uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
-  bool knob_json_out = false;
-  std::ofstream json_file;
+  CLI::App app{"A microarchitecture simulator for research and education"};
 
-  // check to see if knobs changed using getopt_long()
-  int traces_encountered = 0;
-  static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
-                                         {"simulation_instructions", required_argument, 0, 'i'},
-                                         {"hide_heartbeat", no_argument, 0, 'h'},
-                                         {"cloudsuite", no_argument, 0, 'c'},
-                                         {"json", optional_argument, 0, 'j'},
-                                         {"traces", no_argument, &traces_encountered, 1},
-                                         {0, 0, 0, 0}};
+  bool knob_cloudsuite{false};
+  uint64_t warmup_instructions = 1000000;
+  uint64_t simulation_instructions = 10000000;
+  std::string json_file_name;
+  std::vector<std::string> trace_names;
 
-  int c;
-  while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered) {
-    switch (c) {
-    case 'w':
-      warmup_instructions = atol(optarg);
-      break;
-    case 'i':
-      simulation_instructions = atol(optarg);
-      break;
-    case 'h':
-      for (O3_CPU& cpu : ooo_cpu)
-        cpu.show_heartbeat = false;
-      break;
-    case 'c':
-      knob_cloudsuite = 1;
-      break;
-    case 'j':
-      knob_json_out = true;
-      if (optarg)
-        json_file.open(optarg);
-    case 0:
-      break;
-    default:
-      abort();
-    }
-  }
+  auto set_heartbeat_callback = [&](auto){
+    for (O3_CPU& cpu : ooo_cpu)
+      cpu.show_heartbeat = false;
+  };
 
-  std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
+  app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
+  app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
+  app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
+  app.add_option("-i,--simulation-instructions", simulation_instructions, "The number of instructions in the detailed phase");
+
+  auto json_option = app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")
+    ->expected(0,1);
+
+  app.add_option("traces", trace_names, "The paths to the traces")
+    ->required()
+    ->expected(NUM_CPUS)
+    ->check(CLI::ExistingFile);
+
+  CLI11_PARSE(app, argc, argv);
 
   std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, trace_names},
                                             champsim::phase_info{"Simulation", false, simulation_instructions, trace_names}}};
@@ -156,8 +139,7 @@ int main(int argc, char** argv)
 
   auto phase_stats = zip_phase_stats(phases, ooo_cpu, caches, DRAM);
 
-  champsim::plain_printer default_print{std::cout};
-  default_print.print(phase_stats);
+  champsim::plain_printer{std::cout}.print(phase_stats);
 
   for (CACHE& cache : caches)
     cache.impl_prefetcher_final_stats();
@@ -165,13 +147,12 @@ int main(int argc, char** argv)
   for (CACHE& cache : caches)
     cache.impl_replacement_final_stats();
 
-  if (knob_json_out) {
-    if (json_file.is_open()) {
-      champsim::json_printer printer{json_file};
-      printer.print(phase_stats);
+  if (json_option->count() > 0) {
+    if (json_file_name.empty()) {
+      champsim::json_printer{std::cout}.print(phase_stats);
     } else {
-      champsim::json_printer printer{std::cout};
-      printer.print(phase_stats);
+      std::ofstream json_file{json_file_name};
+      champsim::json_printer{json_file}.print(phase_stats);
     }
   }
 
