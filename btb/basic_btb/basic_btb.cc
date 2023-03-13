@@ -130,14 +130,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::CONDITIONAL;
 
   auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
-  
-  if (taken) {
-    if (opt_entry->type == ::branch_info::CONDITIONAL && type == ::branch_info::ALWAYS_TAKEN) {
-      type = ::branch_info::CONDITIONAL;
-    }
-  }
-  
   if (opt_entry.has_value()) {
+    if (taken) {
+      if (opt_entry->type == ::branch_info::CONDITIONAL && type == ::branch_info::ALWAYS_TAKEN) {
+        type = ::branch_info::CONDITIONAL;
+      }
+    }
+
     opt_entry->type = type;
     if (branch_target != 0)
       opt_entry->target = branch_target;
