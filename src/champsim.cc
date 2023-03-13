@@ -51,7 +51,7 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
   for (champsim::operable& op : operables)
     op.initialize();
 
-  std::vector<std::unique_ptr<tracereader>> traces;
+  std::vector<champsim::tracereader> traces;
   for (auto name : trace_names)
     traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
@@ -85,23 +85,8 @@ int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vec
       std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
       // Read from trace
-      for (O3_CPU& cpu : ooo_cpu) {
-        auto num_instrs = cpu.IN_QUEUE_SIZE - std::size(cpu.input_queue);
-        std::vector<typename decltype(cpu.input_queue)::value_type> from_trace{};
-
-        for (std::size_t i = 0; i < num_instrs; ++i) {
-          from_trace.push_back((*traces[cpu.cpu])());
-
-          // Reopen trace if we've reached the end of the file
-          if (traces[cpu.cpu]->eof()) {
-            auto name = traces[cpu.cpu]->trace_string;
-            std::cout << "*** Reached end of trace: " << name << std::endl;
-            traces[cpu.cpu] = get_tracereader(name, cpu.cpu, knob_cloudsuite);
-          }
-        }
-
-        cpu.input_queue.insert(std::cend(cpu.input_queue), std::begin(from_trace), std::end(from_trace));
-      }
+      for (O3_CPU& cpu : ooo_cpu)
+        std::generate_n(std::back_inserter(cpu.input_queue), cpu.IN_QUEUE_SIZE - std::size(cpu.input_queue), traces[cpu.cpu]);
 
       // Check for phase finish
       auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();

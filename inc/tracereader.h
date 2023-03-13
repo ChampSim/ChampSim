@@ -17,59 +17,59 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
-#include <cstdio>
-#include <deque>
+#include <iostream>
 #include <memory>
 #include <string>
-#include <variant>
-
-#if defined(__GNUG__) && !defined(__APPLE__)
-#include <ext/stdio_filebuf.h>
-#endif
-
-namespace detail
-{
-void pclose_file(FILE* f);
-}
 
 #include "instruction.h"
 
-class tracereader
+namespace champsim
 {
-  static uint64_t instr_unique_id;
+  class tracereader
+  {
+    struct reader_concept
+    {
+      static uint64_t instr_unique_id;
+      virtual ~reader_concept() = default;
+      virtual ooo_model_instr operator()() = 0;
+      virtual std::string trace_string() const = 0;
+    };
 
-public:
-  const std::string trace_string;
-  tracereader(uint8_t cpu_idx, std::string _ts) : trace_string(_ts), cpu(cpu_idx) {}
-  virtual ~tracereader() = default;
+    template <typename T>
+    struct reader_model final : public reader_concept
+    {
+      T intern_;
+      reader_model(T&& val) : intern_(std::move(val)) {}
 
-  virtual ooo_model_instr operator()() = 0;
-  bool eof() const;
+      ooo_model_instr operator()() override {
+        auto retval = intern_();
+        retval.instr_id = instr_unique_id++;
 
-protected:
-  static FILE* get_fptr(std::string fname);
+        // Reopen trace if we've reached the end of the file
+        if (intern_.eof()) {
+          auto name = intern_.trace_string;
+          std::cout << "*** Reached end of trace: " << name << std::endl;
+          intern_.restart();
+        }
 
-#if defined(__GNUG__) && !defined(__APPLE__)
-  std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
-  __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
-#elif defined(__APPLE__)
-  FILE* fp = get_fptr(trace_string);
-#endif
+        return retval;
+      }
 
-  uint8_t cpu;
-  bool eof_ = false;
+      std::string trace_string() const { return intern_.trace_string; }
+    };
 
-  constexpr static std::size_t buffer_size = 128;
-  constexpr static std::size_t refresh_thresh = 1;
-  std::deque<ooo_model_instr> instr_buffer;
+    std::unique_ptr<reader_concept> pimpl_;
 
-  template <typename T>
-  void refresh_buffer();
+    public:
 
-  template <typename T>
-  ooo_model_instr impl_get();
-};
+    template <typename T>
+    tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val))) {}
 
-std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+    auto operator()() { return (*pimpl_)(); }
+    std::string trace_string() const { return pimpl_->trace_string(); }
+  };
+}
+
+champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
 
 #endif
