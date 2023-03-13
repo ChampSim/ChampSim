@@ -86,7 +86,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], true};
   }
 
-  return { btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL };
+  return {btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
