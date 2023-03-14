@@ -47,7 +47,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
 
 namespace champsim
 {
-void do_phase(champsim::phase_info phase, std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables, std::vector<champsim::tracereader>& traces)
+void do_phase(phase_info phase, std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<operable>>& operables, std::vector<tracereader>& traces)
 {
   auto [phase_name, is_warmup, length, trace_names] = phase;
 
@@ -109,8 +109,7 @@ void do_phase(champsim::phase_info phase, std::vector<std::reference_wrapper<O3_
 }
 
 // simulation entry point
-int main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<champsim::operable>>& operables,
-                  std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
+int main(std::vector<std::reference_wrapper<O3_CPU>>& ooo_cpu, std::vector<std::reference_wrapper<operable>>& operables, std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
 {
   for (champsim::operable& op : operables)
     op.initialize();

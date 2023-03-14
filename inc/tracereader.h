@@ -17,7 +17,6 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -32,7 +31,6 @@ namespace champsim
       static uint64_t instr_unique_id;
       virtual ~reader_concept() = default;
       virtual ooo_model_instr operator()() = 0;
-      virtual std::string trace_string() const = 0;
     };
 
     template <typename T>
@@ -45,17 +43,8 @@ namespace champsim
         auto retval = intern_();
         retval.instr_id = instr_unique_id++;
 
-        // Reopen trace if we've reached the end of the file
-        if (intern_.eof()) {
-          auto name = intern_.trace_string;
-          std::cout << "*** Reached end of trace: " << name << std::endl;
-          intern_.restart();
-        }
-
         return retval;
       }
-
-      std::string trace_string() const { return intern_.trace_string; }
     };
 
     std::unique_ptr<reader_concept> pimpl_;
@@ -66,7 +55,6 @@ namespace champsim
     tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val))) {}
 
     auto operator()() { return (*pimpl_)(); }
-    std::string trace_string() const { return pimpl_->trace_string(); }
   };
 }
 

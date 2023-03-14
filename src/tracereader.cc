@@ -20,11 +20,11 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <iostream>
 #include <string>
 
 #if defined(__GNUG__) && !defined(__APPLE__)
 #include <ext/stdio_filebuf.h>
-#include <iostream>
 #endif
 
 namespace champsim
@@ -144,6 +144,13 @@ ooo_model_instr bulk_tracereader<T>::operator()()
 
   auto retval = instr_buffer.front();
   instr_buffer.pop_front();
+
+  // Reopen trace if we've reached the end of the file
+  if (eof()) {
+    std::cout << "*** Reached end of trace: " << trace_string << std::endl;
+    restart();
+  }
+
   return retval;
 }
 
