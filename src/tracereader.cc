@@ -27,6 +27,8 @@
 #include <ext/stdio_filebuf.h>
 #endif
 
+#include "repeatable.h"
+
 namespace champsim
 {
 namespace detail
@@ -145,12 +147,6 @@ ooo_model_instr bulk_tracereader<T>::operator()()
   auto retval = instr_buffer.front();
   instr_buffer.pop_front();
 
-  // Reopen trace if we've reached the end of the file
-  if (eof()) {
-    std::cout << "*** Reached end of trace: " << trace_string << std::endl;
-    restart();
-  }
-
   return retval;
 }
 
@@ -161,8 +157,8 @@ bool bulk_tracereader<T>::eof() const { return eof_ && std::size(instr_buffer) <
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
   if (is_cloudsuite)
-    return champsim::tracereader{champsim::bulk_tracereader<cloudsuite_instr>(cpu, fname)};
+    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<cloudsuite_instr>(cpu, fname)}};
   else
-    return champsim::tracereader{champsim::bulk_tracereader<input_instr>(cpu, fname)};
+    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<input_instr>(cpu, fname)}};
 }
 
