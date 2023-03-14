@@ -90,7 +90,7 @@ public:
   void restart() { start(); }
 };
 
-uint64_t tracereader::reader_concept::instr_unique_id = 0;
+uint64_t tracereader::instr_unique_id = 0;
 
 template <typename T>
 void bulk_tracereader<T>::start()

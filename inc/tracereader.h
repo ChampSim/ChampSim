@@ -26,9 +26,9 @@ namespace champsim
 {
   class tracereader
   {
+    static uint64_t instr_unique_id;
     struct reader_concept
     {
-      static uint64_t instr_unique_id;
       virtual ~reader_concept() = default;
       virtual ooo_model_instr operator()() = 0;
     };
@@ -39,12 +39,7 @@ namespace champsim
       T intern_;
       reader_model(T&& val) : intern_(std::move(val)) {}
 
-      ooo_model_instr operator()() override {
-        auto retval = intern_();
-        retval.instr_id = instr_unique_id++;
-
-        return retval;
-      }
+      ooo_model_instr operator()() override { return intern_(); }
     };
 
     std::unique_ptr<reader_concept> pimpl_;
@@ -54,7 +49,11 @@ namespace champsim
     template <typename T>
     tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val))) {}
 
-    auto operator()() { return (*pimpl_)(); }
+    auto operator()() {
+      auto retval = (*pimpl_)();
+      retval.instr_id = instr_unique_id++;
+      return retval;
+    }
   };
 }
 
