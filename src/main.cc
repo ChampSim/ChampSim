@@ -40,8 +40,10 @@ void init_structures();
 
 #include "core_inst.inc"
 
-int champsim_main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
+namespace champsim {
+int main(std::vector<std::reference_wrapper<O3_CPU>>& cpus, std::vector<std::reference_wrapper<champsim::operable>>& operables,
                   std::vector<champsim::phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
+}
 
 void signal_handler(int signal)
 {
@@ -148,7 +150,7 @@ int main(int argc, char** argv)
 
   init_structures();
 
-  champsim_main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
+  champsim::main(ooo_cpu, operables, phases, knob_cloudsuite, trace_names);
 
   std::cout << std::endl;
   std::cout << "ChampSim completed all CPUs" << std::endl;
