@@ -33,10 +33,9 @@ namespace champsim
 {
 namespace detail
 {
-  struct pcloser
-  {
-    void operator()(FILE* f) const { pclose(f); }
-  };
+struct pcloser {
+  void operator()(FILE* f) const { pclose(f); }
+};
 
 FILE* get_fptr(std::string fname)
 {
@@ -57,7 +56,7 @@ FILE* get_fptr(std::string fname)
   snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
   return popen(gunzip_command, "r");
 }
-}
+} // namespace detail
 
 template <typename T>
 class bulk_tracereader
@@ -83,10 +82,7 @@ public:
   ooo_model_instr operator()();
 
   const std::string trace_string;
-  bulk_tracereader(uint8_t cpu_idx, std::string _ts) : cpu(cpu_idx), trace_string(_ts)
-  {
-    start();
-  }
+  bulk_tracereader(uint8_t cpu_idx, std::string _ts) : cpu(cpu_idx), trace_string(_ts) { start(); }
 
   bool eof() const;
   void restart() { start(); }
@@ -151,8 +147,11 @@ ooo_model_instr bulk_tracereader<T>::operator()()
 }
 
 template <typename T>
-bool bulk_tracereader<T>::eof() const { return eof_ && std::size(instr_buffer) <= refresh_thresh; }
+bool bulk_tracereader<T>::eof() const
+{
+  return eof_ && std::size(instr_buffer) <= refresh_thresh;
 }
+} // namespace champsim
 
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
@@ -161,4 +160,3 @@ champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cl
   else
     return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<input_instr>(cpu, fname)}};
 }
-

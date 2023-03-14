@@ -9,8 +9,7 @@ namespace champsim
 {
 class repeatable
 {
-  struct repeatable_concept
-  {
+  struct repeatable_concept {
     virtual ~repeatable_concept() = default;
     virtual ooo_model_instr operator()() = 0;
     virtual bool eof() const = 0;
@@ -19,8 +18,7 @@ class repeatable
   };
 
   template <typename T>
-  struct repeatable_model final : public repeatable_concept
-  {
+  struct repeatable_model final : public repeatable_concept {
     T intern_;
     repeatable_model(T&& val) : intern_(std::move(val)) {}
 
@@ -32,13 +30,14 @@ class repeatable
 
   std::unique_ptr<repeatable_concept> pimpl_;
 
-  public:
-
+public:
   template <typename T>
-  repeatable(T&& val) : pimpl_(std::make_unique<repeatable_model<T>>(std::move(val))) {}
+  repeatable(T&& val) : pimpl_(std::make_unique<repeatable_model<T>>(std::move(val)))
+  {
+  }
 
   ooo_model_instr operator()();
 };
-}
+} // namespace champsim
 
 #endif

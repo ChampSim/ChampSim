@@ -13,4 +13,3 @@ ooo_model_instr champsim::repeatable::operator()()
 
   return (*pimpl_)();
 }
-

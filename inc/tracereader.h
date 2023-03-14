@@ -24,38 +24,38 @@
 
 namespace champsim
 {
-  class tracereader
-  {
-    static uint64_t instr_unique_id;
-    struct reader_concept
-    {
-      virtual ~reader_concept() = default;
-      virtual ooo_model_instr operator()() = 0;
-    };
-
-    template <typename T>
-    struct reader_model final : public reader_concept
-    {
-      T intern_;
-      reader_model(T&& val) : intern_(std::move(val)) {}
-
-      ooo_model_instr operator()() override { return intern_(); }
-    };
-
-    std::unique_ptr<reader_concept> pimpl_;
-
-    public:
-
-    template <typename T>
-    tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val))) {}
-
-    auto operator()() {
-      auto retval = (*pimpl_)();
-      retval.instr_id = instr_unique_id++;
-      return retval;
-    }
+class tracereader
+{
+  static uint64_t instr_unique_id;
+  struct reader_concept {
+    virtual ~reader_concept() = default;
+    virtual ooo_model_instr operator()() = 0;
   };
-}
+
+  template <typename T>
+  struct reader_model final : public reader_concept {
+    T intern_;
+    reader_model(T&& val) : intern_(std::move(val)) {}
+
+    ooo_model_instr operator()() override { return intern_(); }
+  };
+
+  std::unique_ptr<reader_concept> pimpl_;
+
+public:
+  template <typename T>
+  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val)))
+  {
+  }
+
+  auto operator()()
+  {
+    auto retval = (*pimpl_)();
+    retval.instr_id = instr_unique_id++;
+    return retval;
+  }
+};
+} // namespace champsim
 
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
 
