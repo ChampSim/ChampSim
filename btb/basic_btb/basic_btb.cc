@@ -142,7 +142,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       opt_entry->target = branch_target;
   }
 
-  if (branch_target != 0){
+  if (branch_target != 0) {
     ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type}));
   }
 }
