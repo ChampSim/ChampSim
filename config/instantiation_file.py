@@ -17,12 +17,12 @@ import operator
 
 from . import util
 
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem);'
+ptw_fmtstr = 'PageTableWalker {name}{{"{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 1, &{lower_level}, vmem}};'
 
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {{champsim::lg2({DIB[window_size]})}}, {{champsim::lg2({DIB[window_size]})}}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, {L1I}.MAX_TAG, &{L1D}, {L1D}.MAX_TAG, {branch_enum_string}, {btb_enum_string}}}'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}({frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time});'
-vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}}};'
+vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {name}_queues, &{lower_level}, {pref_enum_string}, {repl_enum_string}}};'
 queue_fmtstr = 'CACHE::{_type} {name}_queues{{{frequency}, {rq_size}, {pq_size}, {wq_size}, {ptwq_size}, {hit_latency}, {_offset_bits}, {wq_check_full_addr:b}}};'
@@ -38,6 +38,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     # Remove name index
     memory_system = sorted(memory_system.values(), key=operator.itemgetter('_fill_level'), reverse=True)
+
+    yield '#include "environment.h"'
+    yield 'namespace champsim::configured {'
+    yield 'struct generated_environment final : public champsim::environment {'
+    yield ''
 
     yield pmem_fmtstr.format(**pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
@@ -61,27 +66,46 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                 btb_enum_string=' | '.join('O3_CPU::t{}'.format(k['name']) for k in cpu['_btb_data']),
                 **cpu) + ';' for cpu in cores)
 
-    yield 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{'
-    yield ', '.join('{name}'.format(**elem) for elem in cores)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<CACHE>> caches {{'
-    yield ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptws {{'
-    yield ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' in elem)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<champsim::operable>> operables {{'
-    yield ', '.join('{name}'.format(**elem) for elem in cores) + ','
-    yield ', '.join('{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem) + ','
-    yield ', '.join('{name}, {name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem) + ','
-    yield '{name}'.format(**pmem)
-    yield '}};'
+    yield ''
+    yield 'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in cores)
+    yield '  };'
+    yield '}'
     yield ''
 
-    yield 'void init_structures() {'
+    yield 'std::vector<std::reference_wrapper<CACHE>> cache_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' not in elem)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in reversed(memory_system) if 'pscl5_set' in elem)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'MEMORY_CONTROLLER& dram_view() override {{ return {}; }}'.format(pmem['name'])
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<champsim::operable>> operable_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in cores) + ','
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in memory_system if 'pscl5_set' in elem) + ','
+    yield '    ' + ', '.join('std::ref({name}), std::ref({name}_queues)'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem) + ','
+    yield '    ' + 'std::ref({name})'.format(**pmem)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'generated_environment() {'
     yield from ('  {name}_queues.lower_level = &{lower_translate};'.format(**elem) for elem in memory_system if elem.get('_needs_translate'))
+    yield '}'
+
+    yield ''
+    yield '};'
     yield '}'
 
