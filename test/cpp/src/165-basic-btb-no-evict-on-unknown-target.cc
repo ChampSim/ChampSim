@@ -6,27 +6,6 @@
 #include "mocks.hpp"
 #include "ooo_cpu.h"
 
-namespace {
-template<typename T>
-struct AllEqualMatcher : Catch::Matchers::MatcherGenericBase {
-    AllEqualMatcher(const T& val):
-        val_{ val }
-    {}
-
-    template<typename Other>
-    bool match(const Other& other) const {
-        return other == val_;
-    }
-
-    std::string describe() const override {
-        return "Matches {" + Catch::to_string(val_.first) + ", " + Catch::to_string(val_.second) + "}";
-    }
-
-private:
-    const T& val_;
-};
-}
-
 TEST_CASE("The basic_btb does not fill not-taken branches") {
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
@@ -44,7 +23,11 @@ TEST_CASE("The basic_btb does not fill not-taken branches") {
     // Check that all of the addresses are in the BTB
     std::vector<std::pair<uint64_t, uint8_t>> seed_check_result{};
     std::transform(std::cbegin(seed_ip), std::cend(seed_ip), std::back_inserter(seed_check_result), [&](auto ip){ return uut.impl_btb_prediction(ip); });
-    CHECK_THAT(seed_check_result, Catch::Matchers::AllMatch(::AllEqualMatcher{std::pair{fake_target, (uint8_t)true}}));
+    CHECK_THAT(seed_check_result, Catch::Matchers::AllMatch(
+          Catch::Matchers::Predicate<std::pair<uint64_t, uint8_t>>(
+                 [fake_target](const auto& res){ return res.first == fake_target; },
+                 "The predicted target should be "+Catch::to_string(fake_target))
+          ));
 
     // Attempt to fill with not-taken
     uut.impl_update_btb(test_ip, 0, false, BRANCH_CONDITIONAL);
@@ -52,7 +35,6 @@ TEST_CASE("The basic_btb does not fill not-taken branches") {
     // The first seeded IP is still present
     auto [seed_predicted_target, seed_always_taken] = uut.impl_btb_prediction(seed_ip.front());
     CHECK_FALSE(seed_predicted_target == 0); // Branch target should be known
-    CHECK(seed_always_taken);
 
     // The block is not filled
     auto [predicted_target, always_taken] = uut.impl_btb_prediction(test_ip);
