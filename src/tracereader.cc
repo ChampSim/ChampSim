@@ -30,9 +30,6 @@ void detail::pclose_file(FILE* f) { pclose(f); }
 FILE* tracereader::get_fptr(std::string fname)
 {
   std::string cmd_fmtstr = "%1$s %2$s";
-  if (fname.substr(0, 4) == "http")
-    cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s";
-
   std::string decomp_program = "cat";
   if (fname.back() == 'z') {
     std::string last_dot = fname.substr(fname.find_last_of("."));
