@@ -25,7 +25,7 @@ class repeatable
     ooo_model_instr operator()() override { return intern_(); }
     bool eof() const override { return intern_.eof(); }
     std::string trace_string() const override { return intern_.trace_string; } // forward to member variable
-    void restart() { intern_.restart(); }
+    void restart() override { intern_.restart(); }
   };
 
   std::unique_ptr<repeatable_concept> pimpl_;
