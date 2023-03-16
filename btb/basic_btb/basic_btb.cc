@@ -124,7 +124,7 @@ void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, b
     type = ::branch_info::INDIRECT;
   else if (branch_type == BRANCH_RETURN)
     type = ::branch_info::RETURN;
-  else if ((branch_target == champsim::address{}) || !taken)
+  else if (branch_type == BRANCH_CONDITIONAL)
     type = ::branch_info::CONDITIONAL;
 
   auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
@@ -134,5 +134,7 @@ void O3_CPU::update_btb(champsim::address ip, champsim::address branch_target, b
       opt_entry->target = branch_target;
   }
 
-  ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type}));
+  if (branch_target != champsim::address{}) {
+    ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type}));
+  }
 }

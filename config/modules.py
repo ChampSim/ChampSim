@@ -18,39 +18,31 @@ import itertools
 from . import util
 
 # Utility function to get a mangled module name from the path to its sources
-def get_module_name(path):
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     fname_translation_table = str.maketrans('./-','_DH')
-    return os.path.relpath(path, start=champsim_root).translate(fname_translation_table)
+    return os.path.relpath(path, start=start).translate(fname_translation_table)
 
-# Return a normalized directory: variables and user shorthands are expanded
-def norm_dirname(f):
-    return os.path.relpath(os.path.expandvars(os.path.expanduser(f)))
+class ModuleSearchContext:
+    def __init__(self, paths):
+        self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
 
-# Get the paths to built-in modules
-def default_modules(dirname):
-    files = (os.path.join(dirname, d) for d in os.listdir(dirname))
-    files = filter(os.path.isdir, files)
-    yield from ({'name': get_module_name(f), 'fname': f, '_is_instruction_prefetcher': f.endswith('_instr')} for f in files)
+    def data_from_path(self, path):
+        return {'name': get_module_name(path), 'fname': path, '_is_instruction_prefetcher': path.endswith('_instr')}
 
-# Try the built-in module directories, then try to interpret as a path
-def default_dir(dirnames, f):
-    return norm_dirname(next(filter(os.path.exists, itertools.chain(
-        (os.path.join(dirname, f) for dirname in dirnames), # Prepend search paths
-        (f,) # Interpret as file path
-    ))))
+    # Try the context's module directories, then try to interpret as a path
+    def find(self, module):
+        # Return a normalized directory: variables and user shorthands are expanded
+        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, itertools.chain(
+            (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
+            (module,) # Interpret as file path
+        ))))))
 
-# Produce a dictionary of all modules used in the "values".
-# The module names and paths are located at the keys given.
-# The given directories are searched for the modules
-# The function is used to fill the module data
-def get_module_data(names_key, paths_key, values, directories, get_func):
-    namekey_pairs = itertools.chain(*(zip(c[names_key], c[paths_key], itertools.repeat(c.get('_is_instruction_prefetcher', False))) for c in values))
-    data = util.combine_named(
-        itertools.chain(*(default_modules(directory) for directory in directories if os.path.exists(directory))),
-        ({'name': name, 'fname': path, '_is_instruction_prefetcher': is_instr} for name,path,is_instr in namekey_pairs)
-        )
-    return {k: util.chain((get_func(k,v['_is_instruction_prefetcher']) if v['_is_instruction_prefetcher'] else get_func(k)), v) for k,v in data.items()}
+        return self.data_from_path(path)
+
+    def find_all(self):
+        base_dirs = [next(os.walk(p)) for p in self.paths]
+        files = itertools.starmap(os.path.join, itertools.chain(*(zip(itertools.repeat(b), d) for b,d,_ in base_dirs)))
+        return [self.data_from_path(f) for f in files]
 
 # A unifying function for the four module types to return their information
 def data_getter(prefix, module_name, funcs):

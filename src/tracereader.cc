@@ -17,17 +17,27 @@
 #include "tracereader.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
+#include <deque>
+#include <iostream>
 #include <string>
 
 #if defined(__GNUG__) && !defined(__APPLE__)
-#include <iostream>
+#include <ext/stdio_filebuf.h>
 #endif
 
-uint64_t tracereader::instr_unique_id = 0;
-void detail::pclose_file(FILE* f) { pclose(f); }
+#include "repeatable.h"
 
-FILE* tracereader::get_fptr(std::string fname)
+namespace champsim
+{
+namespace detail
+{
+struct pcloser {
+  void operator()(FILE* f) const { pclose(f); }
+};
+
+FILE* get_fptr(std::string fname)
 {
   std::string cmd_fmtstr = "%1$s %2$s";
   if (fname.substr(0, 4) == "http")
@@ -46,9 +56,55 @@ FILE* tracereader::get_fptr(std::string fname)
   snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
   return popen(gunzip_command, "r");
 }
+} // namespace detail
 
 template <typename T>
-void tracereader::refresh_buffer()
+class bulk_tracereader
+{
+#if defined(__GNUG__) && !defined(__APPLE__)
+  std::unique_ptr<FILE, detail::pcloser> fp;
+  __gnu_cxx::stdio_filebuf<char> filebuf;
+#elif defined(__APPLE__)
+  FILE* fp{nullptr};
+#endif
+
+  uint8_t cpu;
+  bool eof_ = false;
+
+  constexpr static std::size_t buffer_size = 128;
+  constexpr static std::size_t refresh_thresh = 1;
+  std::deque<ooo_model_instr> instr_buffer;
+
+  void refresh_buffer();
+  void start();
+
+public:
+  ooo_model_instr operator()();
+
+  const std::string trace_string;
+  bulk_tracereader(uint8_t cpu_idx, std::string _ts) : cpu(cpu_idx), trace_string(_ts) { start(); }
+
+  bool eof() const;
+  void restart() { start(); }
+};
+
+uint64_t tracereader::instr_unique_id = 0;
+
+template <typename T>
+void bulk_tracereader<T>::start()
+{
+#if defined(__GNUG__) && !defined(__APPLE__)
+  fp = std::unique_ptr<FILE, detail::pcloser>(detail::get_fptr(trace_string));
+  filebuf = __gnu_cxx::stdio_filebuf<char>{fp.get(), std::ios::in};
+#elif defined(__APPLE__)
+  if (fp != nullptr)
+    pclose(fp);
+  fp = detail::get_fptr(trace_string);
+#endif
+}
+
+template <typename T>
+void bulk_tracereader<T>::refresh_buffer()
 {
   std::array<T, buffer_size - refresh_thresh> trace_read_buf;
   std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
@@ -79,32 +135,28 @@ void tracereader::refresh_buffer()
 }
 
 template <typename T>
-ooo_model_instr tracereader::impl_get()
+ooo_model_instr bulk_tracereader<T>::operator()()
 {
   if (std::size(instr_buffer) <= refresh_thresh)
-    refresh_buffer<T>();
+    refresh_buffer();
 
   auto retval = instr_buffer.front();
   instr_buffer.pop_front();
 
-  retval.instr_id = instr_unique_id++;
   return retval;
 }
 
 template <typename T>
-class bulk_tracereader : public tracereader
+bool bulk_tracereader<T>::eof() const
 {
-public:
-  using tracereader::tracereader;
-  ooo_model_instr operator()() override final { return impl_get<T>(); }
-};
+  return eof_ && std::size(instr_buffer) <= refresh_thresh;
+}
+} // namespace champsim
 
-std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
   if (is_cloudsuite)
-    return std::make_unique<bulk_tracereader<cloudsuite_instr>>(cpu, fname);
+    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<cloudsuite_instr>(cpu, fname)}};
   else
-    return std::make_unique<bulk_tracereader<input_instr>>(cpu, fname);
+    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<input_instr>(cpu, fname)}};
 }
-
-bool tracereader::eof() const { return eof_ && std::size(instr_buffer) <= refresh_thresh; }
