@@ -22,11 +22,10 @@
 #include <string>
 #include <vector>
 
-#include <string_view>
-
 #include "cache.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
+#include <string_view>
 
 namespace champsim
 {

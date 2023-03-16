@@ -27,6 +27,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "core_inst.inc"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
 #include "operable.h"
@@ -35,8 +36,6 @@
 #include "stats_printer.h"
 #include "util.h"
 #include "vmem.h"
-
-#include "core_inst.inc"
 
 namespace champsim
 {

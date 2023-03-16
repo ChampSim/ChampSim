@@ -10,7 +10,8 @@
 #include "operable.h"
 #include "ptw.h"
 
-namespace champsim {
+namespace champsim
+{
 struct environment {
   virtual std::vector<std::reference_wrapper<O3_CPU>> cpu_view() = 0;
   virtual std::vector<std::reference_wrapper<CACHE>> cache_view() = 0;
@@ -18,6 +19,6 @@ struct environment {
   virtual MEMORY_CONTROLLER& dram_view() = 0;
   virtual std::vector<std::reference_wrapper<operable>> operable_view() = 0;
 };
-}
+} // namespace champsim
 
 #endif
