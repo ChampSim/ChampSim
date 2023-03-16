@@ -17,12 +17,12 @@ import operator
 
 from . import util
 
-ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {rq_size}, {mshr_size}, {max_read}, {max_write}, 1, {{{{{_ulptr}}}}}, {_llptr}, vmem);'
+ptw_fmtstr = 'PageTableWalker {name}{{"{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {rq_size}, {mshr_size}, {max_read}, {max_write}, 1, {{{{{_ulptr}}}}}, {_llptr}, vmem}};'
 
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {{champsim::lg2({DIB[window_size]})}}, {{champsim::lg2({DIB[window_size]})}}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, {_l1iptr}, {L1I}.MAX_TAG, {_l1dptr}, {L1D}.MAX_TAG, {branch_enum_string}, {btb_enum_string}}}'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
-vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
+vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {pq_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {{{{{_ulptr}}}}}, {_ltptr}, {_llptr}, {pref_enum_string}, {repl_enum_string}}};'
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
@@ -57,6 +57,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                 }
             }
         )
+
+    yield '#include "environment.h"'
+    yield 'namespace champsim::configured {'
+    yield 'struct generated_environment final : public champsim::environment {'
+    yield ''
 
     for ll,v in upper_levels.items():
         for ul in v['uppers']:
@@ -93,20 +98,39 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                 **cpu) + ';' for cpu in cores)
     yield ''
 
-    yield 'std::vector<std::reference_wrapper<O3_CPU>> ooo_cpu {{'
-    yield ', '.join('{name}'.format(**elem) for elem in cores)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<CACHE>> caches {{'
-    yield ', '.join('{name}'.format(**elem) for elem in caches)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptws {{'
-    yield ', '.join('{name}'.format(**elem) for elem in ptws)
-    yield '}};'
-
-    yield 'std::vector<std::reference_wrapper<champsim::operable>> operables {{'
-    yield ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
-    yield '}};'
     yield ''
+    yield 'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in cores)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<CACHE>> cache_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in caches)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in ptws)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'MEMORY_CONTROLLER& dram_view() override {{ return {}; }}'.format(pmem['name'])
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<champsim::operable>> operable_view() override {'
+    yield '  return {'
+    yield ', '.join('std::ref({name})'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield ''
+    yield '};'
+    yield '}'
 
