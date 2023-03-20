@@ -100,12 +100,12 @@ int main(int argc, char** argv)
   std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
 
   std::vector<champsim::tracereader> traces;
-  std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces), [knob_cloudsuite, i=uint8_t(0)](auto name) mutable {
-      return get_tracereader(name, i++, knob_cloudsuite);
-    });
+  std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
+                 [knob_cloudsuite, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite); });
 
-  std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
-                                            champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
+  std::vector<champsim::phase_info> phases{
+      {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
+       champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
 
   for (auto& p : phases)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);

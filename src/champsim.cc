@@ -112,10 +112,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [](const O3_CPU& cpu) { return cpu.roi_stats; });
 
   auto caches = env.cache_view();
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats),
-                 [](const CACHE& cache) { return cache.sim_stats; });
-  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats),
-                 [](const CACHE& cache) { return cache.roi_stats; });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats), [](const CACHE& cache) { return cache.sim_stats; });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats), [](const CACHE& cache) { return cache.roi_stats; });
 
   auto dram = env.dram_view();
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
