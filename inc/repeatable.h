@@ -2,6 +2,7 @@
 #define REPEATABLE_H
 
 #include <memory>
+#include <string>
 
 #include "instruction.h"
 
