@@ -40,28 +40,6 @@ std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
 
 namespace champsim
 {
-template <typename CPU, typename C, typename D>
-champsim::phase_stats get_phase_stats(const champsim::phase_info& phase, const std::vector<CPU>& cpus, const std::vector<C>& cache_list, const D& dram)
-{
-  champsim::phase_stats stats;
-
-  stats.name = phase.name;
-  stats.trace_names = phase.trace_names;
-
-  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [](const O3_CPU& cpu) { return cpu.sim_stats; });
-  std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.sim_cache_stats),
-                 [](const CACHE& cache) { return cache.sim_stats; });
-  std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
-                 [](const DRAM_CHANNEL& chan) { return chan.sim_stats; });
-  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [](const O3_CPU& cpu) { return cpu.roi_stats; });
-  std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.roi_cache_stats),
-                 [](const CACHE& cache) { return cache.roi_stats; });
-  std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
-                 [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
-
-  return stats;
-}
-
 phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader>& traces)
 {
   auto [phase_name, is_warmup, length, trace_names] = phase;
@@ -123,7 +101,27 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     std::cout << std::endl;
   }
 
-  return get_phase_stats(phase, env.cpu_view(), env.cache_view(), env.dram_view());
+  phase_stats stats;
+  stats.name = phase.name;
+  stats.trace_names = phase.trace_names;
+
+  auto cpus = env.cpu_view();
+  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [](const O3_CPU& cpu) { return cpu.sim_stats; });
+  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [](const O3_CPU& cpu) { return cpu.roi_stats; });
+
+  auto caches = env.cache_view();
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats),
+                 [](const CACHE& cache) { return cache.sim_stats; });
+  std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats),
+                 [](const CACHE& cache) { return cache.roi_stats; });
+
+  auto dram = env.dram_view();
+  std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
+                 [](const DRAM_CHANNEL& chan) { return chan.sim_stats; });
+  std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
+                 [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
+
+  return stats;
 }
 
 // simulation entry point
