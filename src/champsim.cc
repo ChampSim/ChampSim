@@ -125,14 +125,10 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 }
 
 // simulation entry point
-std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names)
+std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces)
 {
   for (champsim::operable& op : env.operable_view())
     op.initialize();
-
-  std::vector<champsim::tracereader> traces;
-  for (auto name : trace_names)
-    traces.push_back(get_tracereader(name, traces.size(), knob_cloudsuite));
 
   std::vector<phase_stats> results;
   for (auto phase : phases) {

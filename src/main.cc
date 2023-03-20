@@ -22,22 +22,18 @@
 #include <string>
 #include <vector>
 
-#include "cache.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "core_inst.inc"
-#include "dram_controller.h"
-#include "ooo_cpu.h"
-#include "operable.h"
 #include "phase_info.h"
-#include "ptw.h"
 #include "stats_printer.h"
+#include "tracereader.h"
 #include "util.h"
 #include "vmem.h"
 
 namespace champsim
 {
-std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, bool knob_cloudsuite, std::vector<std::string> trace_names);
+std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
 void signal_handler(int signal)
@@ -102,6 +98,11 @@ int main(int argc, char** argv)
 
   std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
 
+  std::vector<champsim::tracereader> traces;
+  std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces), [knob_cloudsuite, i=uint8_t(0)](auto name) mutable {
+      return get_tracereader(name, i++, knob_cloudsuite);
+    });
+
   std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, trace_names},
                                             champsim::phase_info{"Simulation", false, simulation_instructions, trace_names}}};
 
@@ -114,7 +115,7 @@ int main(int argc, char** argv)
   std::cout << "Page size: " << PAGE_SIZE << std::endl;
   std::cout << std::endl;
 
-  auto phase_stats = champsim::main(gen_environment, phases, knob_cloudsuite, trace_names);
+  auto phase_stats = champsim::main(gen_environment, phases, traces);
 
   std::cout << std::endl;
   std::cout << "ChampSim completed all CPUs" << std::endl;
