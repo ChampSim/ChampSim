@@ -93,10 +93,10 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield 'std::vector<std::reference_wrapper<champsim::operable>> operable_view() override {'
     yield '  return {'
-    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in cores) + ','
-    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in memory_system if 'pscl5_set' in elem) + ','
-    yield '    ' + ', '.join('std::ref({name}), std::ref({name}_queues)'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem) + ','
-    yield '    ' + 'std::ref({name})'.format(**pmem)
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in cores) + ','
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in memory_system if 'pscl5_set' in elem) + ','
+    yield '    ' + ', '.join('{name}, {name}_queues'.format(**elem) for elem in memory_system if 'pscl5_set' not in elem) + ','
+    yield '    ' + '{name}'.format(**pmem)
     yield '  };'
     yield '}'
     yield ''
