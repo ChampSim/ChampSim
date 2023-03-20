@@ -100,7 +100,7 @@ public:
 
     using stats_type = cache_queue_stats;
 
-    std::vector<stats_type> sim_stats, roi_stats;
+    stats_type sim_stats, roi_stats;
 
     NonTranslatingQueues(double freq_scale, std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t ptwq_size, uint64_t hit_latency,
                          unsigned offset_bits, bool match_offset)
@@ -166,7 +166,7 @@ public:
 
   using stats_type = cache_stats;
 
-  std::vector<stats_type> sim_stats{}, roi_stats{};
+  stats_type sim_stats, roi_stats;
 
   NonTranslatingQueues& queues;
   std::deque<PACKET> MSHR;

@@ -48,16 +48,16 @@ champsim::phase_stats get_phase_stats(const champsim::phase_info& phase, const s
   stats.name = phase.name;
   stats.trace_names = phase.trace_names;
 
-  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [](const O3_CPU& cpu) { return cpu.sim_stats.back(); });
+  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [](const O3_CPU& cpu) { return cpu.sim_stats; });
   std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.sim_cache_stats),
-                 [](const CACHE& cache) { return cache.sim_stats.back(); });
+                 [](const CACHE& cache) { return cache.sim_stats; });
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
-                 [](const DRAM_CHANNEL& chan) { return chan.sim_stats.back(); });
-  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [](const O3_CPU& cpu) { return cpu.roi_stats.back(); });
+                 [](const DRAM_CHANNEL& chan) { return chan.sim_stats; });
+  std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.roi_cpu_stats), [](const O3_CPU& cpu) { return cpu.roi_stats; });
   std::transform(std::begin(cache_list), std::end(cache_list), std::back_inserter(stats.roi_cache_stats),
-                 [](const CACHE& cache) { return cache.roi_stats.back(); });
+                 [](const CACHE& cache) { return cache.roi_stats; });
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
-                 [](const DRAM_CHANNEL& chan) { return chan.roi_stats.back(); });
+                 [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
 
   return stats;
 }
