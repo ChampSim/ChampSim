@@ -34,6 +34,7 @@ struct phase_info {
   std::string name;
   bool is_warmup;
   uint64_t length;
+  std::vector<std::size_t> trace_index;
   std::vector<std::string> trace_names;
 };
 

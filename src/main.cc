@@ -18,6 +18,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
+#include <numeric>
 #include <signal.h>
 #include <string>
 #include <vector>
@@ -103,8 +104,11 @@ int main(int argc, char** argv)
       return get_tracereader(name, i++, knob_cloudsuite);
     });
 
-  std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, trace_names},
-                                            champsim::phase_info{"Simulation", false, simulation_instructions, trace_names}}};
+  std::vector<champsim::phase_info> phases{{champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
+                                            champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
+
+  for (auto& p : phases)
+    std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
 
   std::cout << std::endl;
   std::cout << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl;
