@@ -15,9 +15,7 @@
  */
 
 #include <algorithm>
-#include <array>
 #include <fstream>
-#include <functional>
 #include <getopt.h>
 #include <iostream>
 #include <signal.h>

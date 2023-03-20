@@ -17,16 +17,8 @@
 #include "champsim.h"
 
 #include <algorithm>
-#include <array>
-#include <bitset>
 #include <chrono>
-#include <cmath>
-#include <fstream>
-#include <functional>
-#include <getopt.h>
-#include <iomanip>
 #include <numeric>
-#include <string.h>
 #include <vector>
 
 #include "environment.h"

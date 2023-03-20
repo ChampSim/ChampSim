@@ -18,7 +18,6 @@
 #define DRAM_H
 
 #include <array>
-#include <cassert>
 #include <cmath>
 #include <limits>
 

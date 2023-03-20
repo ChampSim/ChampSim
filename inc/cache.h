@@ -17,12 +17,8 @@
 #ifndef CACHE_H
 #define CACHE_H
 
-#include <array>
 #include <bitset>
-#include <cassert>
 #include <deque>
-#include <functional>
-#include <list>
 #include <string>
 #include <vector>
 

@@ -18,10 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
 #include <numeric>
-#include <utility>
-#include <vector>
 
 #include "cache.h"
 #include "champsim.h"

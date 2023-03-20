@@ -20,7 +20,6 @@
 #include <array>
 #include <bitset>
 #include <deque>
-#include <functional>
 #include <limits>
 #include <optional>
 #include <queue>

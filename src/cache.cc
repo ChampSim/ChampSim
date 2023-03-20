@@ -18,8 +18,6 @@
 
 #include <algorithm>
 #include <iomanip>
-#include <iterator>
-#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
