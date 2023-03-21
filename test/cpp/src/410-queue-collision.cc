@@ -65,7 +65,6 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.WQ_ACCESS == 0);
@@ -112,7 +111,6 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.RQ_ACCESS == 0);
@@ -159,7 +157,6 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
   GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.PQ_ACCESS == 0);
@@ -207,7 +204,6 @@ SCENARIO("Cache queues forward WQ to RQ") {
   GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -242,7 +238,6 @@ SCENARIO("Cache queues forward WQ to PQ") {
   GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -278,7 +273,6 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     constexpr uint64_t address = 0xdeadbeef;
     do_nothing_MRC mock_ll{2};
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     issue(uut, address, issue_rq<decltype(uut)>);
 
