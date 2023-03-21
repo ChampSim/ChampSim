@@ -22,9 +22,7 @@ class do_nothing_MRC : public champsim::operable
   public:
     champsim::channel queues{};
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t lat) : champsim::operable(1), latency(lat) {
-      queues.sim_stats.emplace_back();
-    }
+    do_nothing_MRC(uint64_t lat) : champsim::operable(1), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
@@ -74,9 +72,7 @@ class filter_MRC : public champsim::operable
 
   public:
     champsim::channel queues{};
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : champsim::operable(1), ret_addr(ret_addr_), latency(lat) {
-      queues.sim_stats.emplace_back();
-    }
+    filter_MRC(uint64_t ret_addr_, uint64_t lat) : champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
@@ -120,9 +116,7 @@ class release_MRC : public champsim::operable
 
   public:
     champsim::channel queues{};
-    release_MRC() : champsim::operable(1) {
-      queues.sim_stats.emplace_back();
-    }
+    release_MRC() : champsim::operable(1) {}
 
     void operate() override {
       auto add_pkt = [&](auto pkt) {
@@ -195,9 +189,7 @@ struct queue_issue_MRP : public champsim::operable
   func_type top_finder;
 
   queue_issue_MRP() : queue_issue_MRP([](auto x, auto y){ return x.address == y.address; }) {}
-  explicit queue_issue_MRP(func_type finder) : champsim::operable(1), top_finder(finder) {
-    queues.sim_stats.emplace_back();
-  }
+  explicit queue_issue_MRP(func_type finder) : champsim::operable(1), top_finder(finder) {}
 
   void operate() override {
     auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };

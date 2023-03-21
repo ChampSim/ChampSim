@@ -66,7 +66,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
         }
 
         THEN("The number of useless prefetches is increased") {
-          REQUIRE(uut.sim_stats.back().pf_useless == 1);
+          REQUIRE(uut.sim_stats.pf_useless == 1);
         }
       }
     }

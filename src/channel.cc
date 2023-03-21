@@ -69,7 +69,7 @@ void champsim::channel::check_collision()
   // Check WQ for duplicates, merging if they are found
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&request_type::forward_checked)); wq_it != std::end(WQ);) {
     if (do_collision_for_merge(std::begin(WQ), wq_it, *wq_it, write_shamt)) {
-      sim_stats.back().WQ_MERGED++;
+      sim_stats.WQ_MERGED++;
       wq_it = WQ.erase(wq_it);
     } else {
       wq_it->forward_checked = true;
@@ -80,10 +80,10 @@ void champsim::channel::check_collision()
   // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&request_type::forward_checked)); rq_it != std::end(RQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt, returned)) {
-      sim_stats.back().WQ_FORWARD++;
+      sim_stats.WQ_FORWARD++;
       rq_it = RQ.erase(rq_it);
     } else if (do_collision_for_merge(std::begin(RQ), rq_it, *rq_it, read_shamt)) {
-      sim_stats.back().RQ_MERGED++;
+      sim_stats.RQ_MERGED++;
       rq_it = RQ.erase(rq_it);
     } else {
       rq_it->forward_checked = true;
@@ -94,10 +94,10 @@ void champsim::channel::check_collision()
   // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&request_type::forward_checked)); pq_it != std::end(PQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt, returned)) {
-      sim_stats.back().WQ_FORWARD++;
+      sim_stats.WQ_FORWARD++;
       pq_it = PQ.erase(pq_it);
     } else if (do_collision_for_merge(std::begin(PQ), pq_it, *pq_it, read_shamt)) {
-      sim_stats.back().PQ_MERGED++;
+      sim_stats.PQ_MERGED++;
       pq_it = PQ.erase(pq_it);
     } else {
       pq_it->forward_checked = true;
@@ -133,14 +133,14 @@ bool champsim::channel::add_rq(const request_type& packet)
     std::cout << " type: " << packet.type << std::endl;
   }
 
-  sim_stats.back().RQ_ACCESS++;
+  sim_stats.RQ_ACCESS++;
 
   auto result = do_add_queue(RQ, RQ_SIZE, packet);
 
   if (result)
-    sim_stats.back().RQ_TO_CACHE++;
+    sim_stats.RQ_TO_CACHE++;
   else
-    sim_stats.back().RQ_FULL++;
+    sim_stats.RQ_FULL++;
 
   return result;
 }
@@ -155,14 +155,14 @@ bool champsim::channel::add_wq(const request_type& packet)
     std::cout << " type: " << packet.type << std::endl;
   }
 
-  sim_stats.back().WQ_ACCESS++;
+  sim_stats.WQ_ACCESS++;
 
   auto result = do_add_queue(WQ, WQ_SIZE, packet);
 
   if (result)
-    sim_stats.back().WQ_TO_CACHE++;
+    sim_stats.WQ_TO_CACHE++;
   else
-    sim_stats.back().WQ_FULL++;
+    sim_stats.WQ_FULL++;
 
   return result;
 }
@@ -177,14 +177,14 @@ bool champsim::channel::add_pq(const request_type& packet)
     std::cout << " type: " << packet.type << std::endl;
   }
 
-  sim_stats.back().PQ_ACCESS++;
+  sim_stats.PQ_ACCESS++;
 
   auto fwd_pkt = packet;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
-    sim_stats.back().PQ_TO_CACHE++;
+    sim_stats.PQ_TO_CACHE++;
   else
-    sim_stats.back().PQ_FULL++;
+    sim_stats.PQ_FULL++;
 
   return result;
 }

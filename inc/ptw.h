@@ -17,7 +17,6 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <cassert>
 #include <deque>
 #include <string>
 

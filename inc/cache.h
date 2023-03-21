@@ -19,10 +19,7 @@
 
 #include <array>
 #include <bitset>
-#include <cassert>
 #include <deque>
-#include <functional>
-#include <list>
 #include <string>
 #include <vector>
 
@@ -165,7 +162,7 @@ public:
 
   using stats_type = cache_stats;
 
-  std::vector<stats_type> sim_stats{}, roi_stats{};
+  stats_type sim_stats, roi_stats;
 
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> inflight_writes;

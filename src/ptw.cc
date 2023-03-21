@@ -199,8 +199,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
 void PageTableWalker::begin_phase()
 {
   for (auto ul : upper_levels) {
-    ul->roi_stats.emplace_back();
-    ul->sim_stats.emplace_back();
+    channel_type::stats_type ul_new_roi_stats, ul_new_sim_stats;
+    ul->roi_stats = ul_new_roi_stats;
+    ul->sim_stats = ul_new_sim_stats;
   }
 }
 

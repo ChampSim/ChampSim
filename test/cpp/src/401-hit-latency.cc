@@ -30,7 +30,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     }
 
     THEN("The number of hits starts at zero") {
-      REQUIRE(uut.sim_stats.back().hits.at(type).at(0) == 0);
+      REQUIRE(uut.sim_stats.hits.at(type).at(0) == 0);
     }
 
     WHEN("A " + std::string{str} + " packet is issued") {
@@ -73,7 +73,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
         }
 
         THEN("The number of hits increases") {
-          REQUIRE(uut.sim_stats.back().hits.at(type).at(0) == 1);
+          REQUIRE(uut.sim_stats.hits.at(type).at(0) == 1);
         }
       }
     }

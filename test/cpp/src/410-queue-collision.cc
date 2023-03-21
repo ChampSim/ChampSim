@@ -65,12 +65,11 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().WQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().WQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().WQ_MERGED == 0);
+      CHECK(uut.sim_stats.WQ_ACCESS == 0);
+      CHECK(uut.sim_stats.WQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.WQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the write queue") {
@@ -79,8 +78,8 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -90,8 +89,8 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().WQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().WQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.WQ_ACCESS == 2);
+            CHECK(uut.sim_stats.WQ_TO_CACHE == 2);
           }
         }
 
@@ -100,7 +99,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
           REQUIRE(std::size(uut.WQ) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.WQ_MERGED == 1);
           }
         }
       }
@@ -112,12 +111,11 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
   GIVEN("An empty write queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().RQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().RQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().RQ_MERGED == 0);
+      CHECK(uut.sim_stats.RQ_ACCESS == 0);
+      CHECK(uut.sim_stats.RQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.RQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the read queue") {
@@ -126,8 +124,8 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().RQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().RQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.RQ_ACCESS == 1);
+          CHECK(uut.sim_stats.RQ_TO_CACHE == 1);
         }
       }
 
@@ -137,8 +135,8 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().RQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().RQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.RQ_ACCESS == 2);
+            CHECK(uut.sim_stats.RQ_TO_CACHE == 2);
           }
         }
 
@@ -147,7 +145,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
           CHECK(std::size(uut.RQ) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().RQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.RQ_MERGED == 1);
           }
         }
       }
@@ -159,12 +157,11 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
   GIVEN("An empty prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().PQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().PQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().PQ_MERGED == 0);
+      CHECK(uut.sim_stats.PQ_ACCESS == 0);
+      CHECK(uut.sim_stats.PQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.PQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the prefetch queue") {
@@ -173,8 +170,8 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().PQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().PQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.PQ_ACCESS == 1);
+          CHECK(uut.sim_stats.PQ_TO_CACHE == 1);
         }
       }
 
@@ -184,8 +181,8 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().PQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().PQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.PQ_ACCESS == 2);
+            CHECK(uut.sim_stats.PQ_TO_CACHE == 2);
           }
         }
 
@@ -195,7 +192,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
           CHECK(uut.PQ.front().response_requested == true);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().PQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.PQ_MERGED == 1);
           }
         }
       }
@@ -207,7 +204,6 @@ SCENARIO("Cache queues forward WQ to RQ") {
   GIVEN("An empty write queue and read queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -215,8 +211,8 @@ SCENARIO("Cache queues forward WQ to RQ") {
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -230,7 +226,7 @@ SCENARIO("Cache queues forward WQ to RQ") {
           CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+            REQUIRE(uut.sim_stats.WQ_FORWARD == 1);
           }
         }
       }
@@ -242,7 +238,6 @@ SCENARIO("Cache queues forward WQ to PQ") {
   GIVEN("An empty write queue and prefetch queue") {
     constexpr uint64_t address = 0xdeadbeef;
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -250,8 +245,8 @@ SCENARIO("Cache queues forward WQ to PQ") {
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -265,7 +260,7 @@ SCENARIO("Cache queues forward WQ to PQ") {
           CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+            REQUIRE(uut.sim_stats.WQ_FORWARD == 1);
           }
         }
       }
@@ -278,7 +273,6 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
     constexpr uint64_t address = 0xdeadbeef;
     do_nothing_MRC mock_ll{2};
     champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
-    uut.sim_stats.emplace_back();
 
     issue(uut, address, issue_rq<decltype(uut)>);
 

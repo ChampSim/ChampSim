@@ -16,10 +16,7 @@
 
 #include "vmem.h"
 
-#include <algorithm>
 #include <cassert>
-#include <iostream>
-#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
