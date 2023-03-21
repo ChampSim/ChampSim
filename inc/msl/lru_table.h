@@ -131,8 +131,6 @@ public:
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
       : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
   {
-    assert(sets >= 0);
-    assert(ways >= 0);
     assert(sets == 0 || sets == (1ull << lg2(sets)));
   }
 

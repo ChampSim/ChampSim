@@ -101,7 +101,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
     yield 'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() override {'
     yield '  return {'
-    yield '    ' + ', '.join('{name}'.format(**elem) for elem in cores)
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in cores)
     yield '  };'
     yield '}'
     yield ''
