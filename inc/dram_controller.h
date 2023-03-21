@@ -18,7 +18,6 @@
 #define DRAM_H
 
 #include <array>
-#include <cassert>
 #include <cmath>
 #include <limits>
 #include <optional>
@@ -78,16 +77,17 @@ struct DRAM_CHANNEL {
   uint64_t dbus_cycle_available = 0;
 
   using stats_type = dram_stats;
-  std::vector<stats_type> roi_stats{}, sim_stats{};
+  stats_type roi_stats, sim_stats;
 
   void check_collision();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
 {
-  using request_type = typename champsim::channel::request_type;
-  using response_type = typename champsim::channel::response_type;
-  std::vector<champsim::channel*> queues;
+  using channel_type = champsim::channel;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
+  std::vector<channel_type*> queues;
 
   // Latencies
   const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
@@ -104,7 +104,7 @@ class MEMORY_CONTROLLER : public champsim::operable
 public:
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<champsim::channel*>&& ul);
+  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() override final;
   void operate() override final;

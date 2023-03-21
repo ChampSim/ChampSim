@@ -26,9 +26,9 @@ SCENARIO("Duplicate prefetches do not count each other as useful") {
     }
 
     THEN("The number of prefetches is zero") {
-      REQUIRE(uut.sim_stats.back().pf_issued == 0);
-      REQUIRE(uut.sim_stats.back().pf_useful == 0);
-      REQUIRE(uut.sim_stats.back().pf_fill == 0);
+      REQUIRE(uut.sim_stats.pf_issued == 0);
+      REQUIRE(uut.sim_stats.pf_useful == 0);
+      REQUIRE(uut.sim_stats.pf_fill == 0);
     }
 
     WHEN("A prefetch is issued") {
@@ -45,7 +45,7 @@ SCENARIO("Duplicate prefetches do not count each other as useful") {
           elem->_operate();
 
       THEN("The number of prefetch fills is incremented") {
-        REQUIRE(uut.sim_stats.back().pf_fill == 1);
+        REQUIRE(uut.sim_stats.pf_fill == 1);
       }
 
       AND_WHEN("Another prefetch with the same address is sent") {
@@ -59,11 +59,11 @@ SCENARIO("Duplicate prefetches do not count each other as useful") {
             elem->_operate();
 
         THEN("The number of issued prefetches is incremented") {
-          REQUIRE(uut.sim_stats.back().pf_issued == 2);
+          REQUIRE(uut.sim_stats.pf_issued == 2);
         }
 
         THEN("The number of useful prefetches is not incremented") {
-          REQUIRE(uut.sim_stats.back().pf_useful == 0);
+          REQUIRE(uut.sim_stats.pf_useful == 0);
         }
       }
     }

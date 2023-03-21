@@ -37,7 +37,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     }
 
     THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.back().misses.at(type).at(0) == 0);
+      REQUIRE(uut.sim_stats.misses.at(type).at(0) == 0);
     }
 
     WHEN("A " + std::string{str} + " packet is issued") {
@@ -65,11 +65,11 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.front().misses.at(type).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.at(type).at(0) == 1);
       }
 
       THEN("The average miss latency increases") {
-        REQUIRE(uut.sim_stats.front().total_miss_latency == miss_latency + fill_latency);
+        REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
       }
     }
   }
@@ -110,7 +110,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     }
 
     THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.back().misses.at(type).at(0) == 0);
+      REQUIRE(uut.sim_stats.misses.at(type).at(0) == 0);
     }
 
     WHEN("A " + std::string{str} + " packet is issued") {
@@ -141,14 +141,14 @@ SCENARIO("A cache completes a fill after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.front().misses.at(type).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.at(type).at(0) == 1);
       }
 
       THEN("The average miss latency increases") {
         if (match_offset)
-          REQUIRE(uut.sim_stats.front().total_miss_latency == miss_latency + fill_latency);
+          REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
         else
-          REQUIRE(uut.sim_stats.front().total_miss_latency == fill_latency - 1); // -1 due to ordering of elements
+          REQUIRE(uut.sim_stats.total_miss_latency == fill_latency-1); // -1 due to ordering of elements
       }
     }
   }

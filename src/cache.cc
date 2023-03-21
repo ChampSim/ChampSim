@@ -18,8 +18,6 @@
 
 #include <algorithm>
 #include <iomanip>
-#include <iterator>
-#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -93,10 +91,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       auto evicting_address = (ever_seen_data ? way->address : way->v_address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
       if (way->prefetch)
-        sim_stats.back().pf_useless++;
+        ++sim_stats.pf_useless;
 
       if (fill_mshr.type == PREFETCH)
-        sim_stats.back().pf_fill++;
+        ++sim_stats.pf_fill;
 
       *way = BLOCK{fill_mshr};
 
@@ -117,7 +115,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   if (success) {
     // COLLECT STATS
-    sim_stats.back().total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
+    sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
     response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
     for (auto ret : fill_mshr.to_return)
@@ -155,7 +153,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
 
   if (hit) {
-    sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
+    ++sim_stats.hits[handle_pkt.type][handle_pkt.cpu];
 
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
@@ -169,11 +167,11 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
     // update prefetch stats and reset prefetch bit
     if (way->prefetch && !handle_pkt.prefetch_from_this) {
-      sim_stats.back().pf_useful++;
+      ++sim_stats.pf_useful;
       way->prefetch = false;
     }
   } else {
-    sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;
+    ++sim_stats.misses[handle_pkt.type][handle_pkt.cpu];
   }
 
   return hit;
@@ -211,7 +209,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this)
-        sim_stats.back().pf_useful++;
+        ++sim_stats.pf_useful;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
       auto to_return = std::move(mshr_entry->to_return);
@@ -394,7 +392,7 @@ uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 
 int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-  sim_stats.back().pf_requested++;
+  ++sim_stats.pf_requested;
 
   if (std::size(internal_PQ) >= PQ_SIZE)
     return false;
@@ -408,7 +406,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.is_translated = !virtual_prefetch;
 
   internal_PQ.emplace_back(pf_packet, true, !fill_this_level);
-  ++sim_stats.back().pf_issued;
+  ++sim_stats.pf_issued;
 
   return true;
 }
@@ -561,49 +559,52 @@ void CACHE::initialize()
 
 void CACHE::begin_phase()
 {
-  roi_stats.emplace_back();
-  sim_stats.emplace_back();
+  stats_type new_roi_stats, new_sim_stats;
 
-  roi_stats.back().name = NAME;
-  sim_stats.back().name = NAME;
+  new_roi_stats.name = NAME;
+  new_sim_stats.name = NAME;
+
+  roi_stats = new_roi_stats;
+  sim_stats = new_sim_stats;
 
   for (auto ul : upper_levels) {
-    ul->roi_stats.emplace_back();
-    ul->sim_stats.emplace_back();
+    channel_type::stats_type ul_new_roi_stats, ul_new_sim_stats;
+    ul->roi_stats = ul_new_roi_stats;
+    ul->sim_stats = ul_new_sim_stats;
   }
 }
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    roi_stats.back().hits.at(type).at(finished_cpu) = sim_stats.back().hits.at(type).at(finished_cpu);
-    roi_stats.back().misses.at(type).at(finished_cpu) = sim_stats.back().misses.at(type).at(finished_cpu);
+    roi_stats.hits.at(type).at(finished_cpu) = sim_stats.hits.at(type).at(finished_cpu);
+    roi_stats.misses.at(type).at(finished_cpu) = sim_stats.misses.at(type).at(finished_cpu);
   }
 
-  roi_stats.back().pf_requested = sim_stats.back().pf_requested;
-  roi_stats.back().pf_issued = sim_stats.back().pf_issued;
-  roi_stats.back().pf_useful = sim_stats.back().pf_useful;
-  roi_stats.back().pf_useless = sim_stats.back().pf_useless;
-  roi_stats.back().pf_fill = sim_stats.back().pf_fill;
+  roi_stats.pf_requested = sim_stats.pf_requested;
+  roi_stats.pf_issued = sim_stats.pf_issued;
+  roi_stats.pf_useful = sim_stats.pf_useful;
+  roi_stats.pf_useless = sim_stats.pf_useless;
+  roi_stats.pf_fill = sim_stats.pf_fill;
 
-  roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
+  roi_stats.total_miss_latency = sim_stats.total_miss_latency;
 
   for (auto ul : upper_levels) {
-    ul->roi_stats.back().RQ_ACCESS = ul->sim_stats.back().RQ_ACCESS;
-    ul->roi_stats.back().RQ_MERGED = ul->sim_stats.back().RQ_MERGED;
-    ul->roi_stats.back().RQ_FULL = ul->sim_stats.back().RQ_FULL;
-    ul->roi_stats.back().RQ_TO_CACHE = ul->sim_stats.back().RQ_TO_CACHE;
+    ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;
+    ul->roi_stats.RQ_MERGED = ul->sim_stats.RQ_MERGED;
+    ul->roi_stats.RQ_FULL = ul->sim_stats.RQ_FULL;
+    ul->roi_stats.RQ_TO_CACHE = ul->sim_stats.RQ_TO_CACHE;
 
-    ul->roi_stats.back().PQ_ACCESS = ul->sim_stats.back().PQ_ACCESS;
-    ul->roi_stats.back().PQ_MERGED = ul->sim_stats.back().PQ_MERGED;
-    ul->roi_stats.back().PQ_FULL = ul->sim_stats.back().PQ_FULL;
-    ul->roi_stats.back().PQ_TO_CACHE = ul->sim_stats.back().PQ_TO_CACHE;
+    ul->roi_stats.PQ_ACCESS = ul->sim_stats.PQ_ACCESS;
+    ul->roi_stats.PQ_MERGED = ul->sim_stats.PQ_MERGED;
+    ul->roi_stats.PQ_FULL = ul->sim_stats.PQ_FULL;
+    ul->roi_stats.PQ_TO_CACHE = ul->sim_stats.PQ_TO_CACHE;
 
-    ul->roi_stats.back().WQ_ACCESS = ul->sim_stats.back().WQ_ACCESS;
-    ul->roi_stats.back().WQ_MERGED = ul->sim_stats.back().WQ_MERGED;
-    ul->roi_stats.back().WQ_FULL = ul->sim_stats.back().WQ_FULL;
-    ul->roi_stats.back().WQ_TO_CACHE = ul->sim_stats.back().WQ_TO_CACHE;
-    ul->roi_stats.back().WQ_FORWARD = ul->sim_stats.back().WQ_FORWARD;
+    ul->roi_stats.WQ_ACCESS = ul->sim_stats.WQ_ACCESS;
+    ul->roi_stats.WQ_MERGED = ul->sim_stats.WQ_MERGED;
+    ul->roi_stats.WQ_FULL = ul->sim_stats.WQ_FULL;
+    ul->roi_stats.WQ_TO_CACHE = ul->sim_stats.WQ_TO_CACHE;
+    ul->roi_stats.WQ_FORWARD = ul->sim_stats.WQ_FORWARD;
   }
 }
 

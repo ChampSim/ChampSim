@@ -19,7 +19,7 @@ import operator
 from . import util
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
-vmem_fmtstr = 'VirtualMemory vmem({pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name});'
+vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
@@ -99,6 +99,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             }
         )
 
+    yield '#include "environment.h"'
+    yield 'namespace champsim::configured {'
+    yield 'struct generated_environment final : public champsim::environment {'
+    yield ''
+
     for ll,v in upper_levels.items():
         for ul in v['uppers']:
             yield queue_fmtstr.format(name='{}_to_{}_queues'.format(ul, ll), **v)
@@ -109,13 +114,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             **pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
 
-    yield 'std::tuple< std::vector<O3_CPU>, std::vector<CACHE>, std::vector<PageTableWalker> > init_structures() {'
-
-    yield 'auto ptws = [](){'
-    yield 'std::vector<PageTableWalker> result{};'
-
     for ptw in ptws:
-        yield 'result.emplace_back(PageTableWalker::Builder{champsim::defaults::default_ptw}'
+        yield 'PageTableWalker {name}{{PageTableWalker::Builder{{champsim::defaults::default_ptw}}'.format(**ptw)
         yield '.name("{name}")'.format(**ptw)
         yield '.cpu({cpu})'.format(**ptw)
         yield '.virtual_memory(&vmem)'
@@ -138,17 +138,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
 
-        yield ');'
-
-    yield 'return result;'
-    yield '}(); // immediately invoked'
-    yield ''
-
-    yield 'auto caches = [](){'
-    yield 'std::vector<CACHE> result{};'
+        yield '};'
+        yield ''
 
     for elem in caches:
-        yield 'result.emplace_back(CACHE::Builder{{ {} }}'.format(elem.get('_defaults', ''))
+        yield 'CACHE {}{{CACHE::Builder{{ {} }}'.format(elem['name'], elem.get('_defaults', ''))
         yield '.name("{name}")'.format(**elem)
 
         local_cache_builder_parts = {
@@ -180,27 +174,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if 'lower_translate' in elem:
             yield '.lower_translate({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate']))
 
-        yield ');'
+        yield '};'
         yield ''
 
-    yield 'return result;'
-    yield '}(); // immediately invoked'
-    yield ''
-
-    yield 'auto ooo_cpu = [&](){'
-    yield 'std::vector<O3_CPU> result{};'
-
     for cpu in cores:
-        yield 'result.emplace_back(O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
-
-        l1i_idx = [c['name'] for c in caches].index(cpu['L1I'])
-        l1d_idx = [c['name'] for c in caches].index(cpu['L1D'])
+        yield 'O3_CPU {}{{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
         yield '.index({index})'.format(**cpu)
         yield '.frequency({frequency})'.format(**cpu)
-        yield '.l1i(&caches.at({}))'.format(l1i_idx)
-        yield '.l1i_bandwidth(caches.at({}).MAX_TAG)'.format(l1i_idx)
-        yield '.l1d_bandwidth(caches.at({}).MAX_TAG)'.format(l1d_idx)
+        yield '.l1i(&{L1I})'.format(**cpu)
+        yield '.l1i_bandwidth({L1I}.MAX_TAG)'.format(**cpu)
+        yield '.l1d_bandwidth({L1D}.MAX_TAG)'.format(**cpu)
 
         yield from (v.format(**cpu) for k,v in core_builder_parts.items() if k in cpu)
         yield from (v.format(**cpu['DIB']) for k,v in dib_builder_parts.items() if k in cpu)
@@ -213,12 +197,40 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))
 
-        yield ');'
+        yield '};'
         yield ''
 
-    yield 'return result;'
-    yield '}(); // immediately invoked'
+    yield ''
+    yield 'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in cores)
+    yield '  };'
+    yield '}'
     yield ''
 
-    yield '    return {std::move(ooo_cpu), std::move(caches), std::move(ptws)};'
+    yield 'std::vector<std::reference_wrapper<CACHE>> cache_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in caches)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in ptws)
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield 'MEMORY_CONTROLLER& dram_view() override {{ return {}; }}'.format(pmem['name'])
+    yield ''
+
+    yield 'std::vector<std::reference_wrapper<champsim::operable>> operable_view() override {'
+    yield '  return {'
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, caches, ptws, (pmem,)))
+    yield '  };'
+    yield '}'
+    yield ''
+
+    yield '};'
     yield '}'
