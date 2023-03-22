@@ -211,7 +211,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     auto ret_copy = std::move(mshr_entry->to_return);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
-                   std::back_inserter(mshr_entry->instr_depend_on_me), ooo_model_instr::program_order);
+                   std::back_inserter(mshr_entry->instr_depend_on_me));
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
                    std::back_inserter(mshr_entry->to_return));
 

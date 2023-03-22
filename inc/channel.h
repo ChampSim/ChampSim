@@ -23,8 +23,6 @@
 #include <limits>
 #include <vector>
 
-struct ooo_model_instr;
-
 enum access_type {
   LOAD = 0,
   RFO,
@@ -72,7 +70,7 @@ class channel
     uint64_t instr_id = 0;
     uint64_t ip = 0;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
   };
 
   struct response {
@@ -80,9 +78,9 @@ class channel
     uint64_t v_address;
     uint64_t data;
     uint32_t pf_metadata = 0;
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
+    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<uint64_t> deps)
         : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
     {
     }
