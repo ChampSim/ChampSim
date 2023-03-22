@@ -69,7 +69,7 @@ struct ooo_model_instr {
   std::vector<uint64_t> source_memory = {};
 
   // these are indices of instructions in the ROB that depend on me
-  std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
+  std::vector<uint64_t> registers_instrs_depend_on_me;
 
 private:
   template <typename T>

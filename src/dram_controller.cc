@@ -236,7 +236,7 @@ void DRAM_CHANNEL::check_collision()
         auto ret_copy = std::move(found->value().to_return);
 
         std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+                       std::back_inserter(found->value().instr_depend_on_me));
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 
@@ -246,7 +246,7 @@ void DRAM_CHANNEL::check_collision()
         auto ret_copy = std::move(found->value().to_return);
 
         std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+                       std::back_inserter(found->value().instr_depend_on_me));
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 

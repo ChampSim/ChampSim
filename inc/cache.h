@@ -73,7 +73,7 @@ class CACHE : public champsim::operable
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
@@ -98,7 +98,7 @@ class CACHE : public champsim::operable
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint64_t cycle_enqueued;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(tag_lookup_type req, uint64_t cycle);
