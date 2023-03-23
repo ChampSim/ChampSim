@@ -192,9 +192,9 @@ public:
 
 #include "cache_module_decl.inc"
 
-  struct module_concept
+  struct prefetcher_module_concept
   {
-    virtual ~module_concept() = default;
+    virtual ~prefetcher_module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
     virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) = 0;
@@ -202,6 +202,11 @@ public:
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
     virtual void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) = 0;
+  };
+
+  struct replacement_module_concept
+  {
+    virtual ~replacement_module_concept() = default;
 
     virtual void impl_initialize_replacement() = 0;
     virtual uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) = 0;
@@ -209,11 +214,11 @@ public:
     virtual void impl_replacement_final_stats() = 0;
   };
 
-  template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-  struct module_model final : module_concept
+  template <unsigned long long P_FLAG>
+  struct prefetcher_module_model final : prefetcher_module_concept
   {
     CACHE* intern_;
-    explicit module_model(CACHE* cache) : intern_(cache) {}
+    explicit prefetcher_module_model(CACHE* cache) : intern_(cache) {}
 
     void impl_prefetcher_initialize();
     uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
@@ -221,27 +226,33 @@ public:
     void impl_prefetcher_cycle_operate();
     void impl_prefetcher_final_stats();
     void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+  };
 
+  template <unsigned long long R_FLAG>
+  struct replacement_module_model final : replacement_module_concept
+  {
+    CACHE* intern_;
+    explicit replacement_module_model(CACHE* cache) : intern_(cache) {}
     void impl_initialize_replacement();
     uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
     void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit);
     void impl_replacement_final_stats();
   };
 
-  std::unique_ptr<module_concept> module_pimpl;
+  std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;
+  std::unique_ptr<replacement_module_concept> repl_module_pimpl;
 
-  void impl_prefetcher_initialize() { module_pimpl->impl_prefetcher_initialize(); }
-  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) { return module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); }
-  uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) { return module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in); }
-  void impl_prefetcher_cycle_operate() { module_pimpl->impl_prefetcher_cycle_operate(); }
-  void impl_prefetcher_final_stats() { module_pimpl->impl_prefetcher_final_stats(); }
-  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) { module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target); }
+  void impl_prefetcher_initialize() { pref_module_pimpl->impl_prefetcher_initialize(); }
+  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); }
+  uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in); }
+  void impl_prefetcher_cycle_operate() { pref_module_pimpl->impl_prefetcher_cycle_operate(); }
+  void impl_prefetcher_final_stats() { pref_module_pimpl->impl_prefetcher_final_stats(); }
+  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) { pref_module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target); }
 
-  void impl_initialize_replacement() { module_pimpl->impl_initialize_replacement(); }
-  uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) { return module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); }
-  void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit) { module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit); }
-  void impl_replacement_final_stats() { module_pimpl->impl_replacement_final_stats(); }
-
+  void impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
+  uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) { return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); }
+  void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit) { repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit); }
+  void impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
 
   class builder_conversion_tag {};
   template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
@@ -317,7 +328,8 @@ public:
   explicit CACHE(Builder<P_FLAG, R_FLAG> b)
       : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets), NUM_WAY(b.m_ways),
         MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY((b.m_hit_lat > 0) ? b.m_hit_lat : b.m_latency - b.m_fill_lat), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag),
-        MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask), module_pimpl(std::make_unique<module_model<P_FLAG, R_FLAG>>(this))
+        MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
+        pref_module_pimpl(std::make_unique<prefetcher_module_model<P_FLAG>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<R_FLAG>>(this))
   {
   }
 };

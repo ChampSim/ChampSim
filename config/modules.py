@@ -84,8 +84,8 @@ def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *ta
     yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }}'.format(attrstring, rtype, name, argstring) for name in names)
 
 # Generate C++ code giving the declaration for a discriminator function. If the class name is given, the declaration is assumed to be outside the class declaration
-def discriminator_function_declaration(fname, rtype, args, varname, secondary_varname, classname):
-    yield 'template <unsigned long long {}, unsigned long long {}>'.format(*sorted([varname, secondary_varname]))
+def discriminator_function_declaration(fname, rtype, args, varname, classname):
+    yield 'template <unsigned long long {}>'.format(varname)
     argstring = ', '.join((a[0]+' '+a[1]) for a in args)
     yield '{} {}::impl_{}({})'.format(rtype, classname, fname, argstring)
 
@@ -123,8 +123,8 @@ def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void'
     yield ''
 
 # For a given module function, generate C++ code defining the discriminator function
-def get_discriminator(fname, varname, secondary_varname, zipped_keys_and_funcs, args=tuple(), rtype='void', join_op=None, *tail, classname=None):
-    yield from discriminator_function_declaration(fname, rtype, args, varname, secondary_varname, classname)
+def get_discriminator(fname, varname, zipped_keys_and_funcs, args=tuple(), rtype='void', join_op=None, *tail, classname=None):
+    yield from discriminator_function_declaration(fname, rtype, args, varname, classname)
     yield from discriminator_function_definition(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, classname.split(':')[0])
     yield ''
 
@@ -136,6 +136,7 @@ def constants_for_modules(prefix, mod_data):
 def get_ooo_cpu_module_lines(branch_data, btb_data):
     branch_prefix = 'b'
     branch_varname = 'B_FLAG'
+    branch_classname = 'O3_CPU::branch_module_model<' + branch_varname + '>'
     branch_variant_data = [
         ('initialize_branch_predictor',),
         ('last_branch_result', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type'))),
@@ -144,13 +145,13 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
 
     btb_prefix = 't'
     btb_varname = 'T_FLAG'
+    btb_classname = 'O3_CPU::btb_module_model<' + btb_varname + '>'
     btb_variant_data = [
         ('initialize_btb',),
         ('update_btb', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type'))),
         ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>', 'champsim::detail::take_last')
     ]
 
-    classname = 'O3_CPU::module_model<' + branch_varname + ', ' + btb_varname + '>'
 
     return (
         itertools.chain(
@@ -163,8 +164,8 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         ),
 
         itertools.chain(
-            *(get_discriminator(fname, branch_varname, btb_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=classname) for fname, *finfo in branch_variant_data),
-            *(get_discriminator(fname, btb_varname, branch_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=classname) for fname, *finfo in btb_variant_data)
+            *(get_discriminator(fname, branch_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=branch_classname) for fname, *finfo in branch_variant_data),
+            *(get_discriminator(fname, btb_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=btb_classname) for fname, *finfo in btb_variant_data)
         )
        )
 
@@ -172,7 +173,7 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
 def get_cache_module_lines(pref_data, repl_data):
     pref_prefix = 'p'
     pref_varname = 'P_FLAG'
-
+    pref_classname = 'CACHE::prefetcher_module_model<' + pref_varname + '>'
     pref_nonbranch_variant_data = [
         ('prefetcher_initialize',),
         ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
@@ -187,15 +188,13 @@ def get_cache_module_lines(pref_data, repl_data):
 
     repl_prefix = 'r'
     repl_varname = 'R_FLAG'
-
+    repl_classname = 'CACHE::replacement_module_model<' + repl_varname + '>'
     repl_variant_data = [
         ('initialize_replacement',),
         ('find_victim', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type')), 'uint32_t', 'champsim::detail::take_last'),
         ('update_replacement_state', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit'))),
         ('replacement_final_stats',)
     ]
-
-    classname = 'CACHE::module_model<' + pref_varname + ', ' + repl_varname + '>'
 
     return (
         itertools.chain(
@@ -215,7 +214,7 @@ def get_cache_module_lines(pref_data, repl_data):
         ),
 
         itertools.chain(
-            *(get_discriminator(fname, pref_varname, repl_varname, [(pref_prefix + v['name'], v['func_map'][fname]) for v in pref_data.values()], *finfo, classname=classname) for fname, *finfo in itertools.chain(pref_nonbranch_variant_data, pref_branch_variant_data)),
-            *(get_discriminator(fname, repl_varname, pref_varname, [(repl_prefix + v['name'], v['func_map'][fname]) for v in repl_data.values()], *finfo, classname=classname) for fname, *finfo in repl_variant_data)
+            *(get_discriminator(fname, pref_varname, [(pref_prefix + v['name'], v['func_map'][fname]) for v in pref_data.values()], *finfo, classname=pref_classname) for fname, *finfo in itertools.chain(pref_nonbranch_variant_data, pref_branch_variant_data)),
+            *(get_discriminator(fname, repl_varname, [(repl_prefix + v['name'], v['func_map'][fname]) for v in repl_data.values()], *finfo, classname=repl_classname) for fname, *finfo in repl_variant_data)
         )
        )

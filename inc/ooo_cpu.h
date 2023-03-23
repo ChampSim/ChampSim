@@ -187,43 +187,56 @@ public:
 
 #include "ooo_cpu_module_decl.inc"
 
-  struct module_concept
+  struct branch_module_concept
   {
-    virtual ~module_concept() = default;
+    virtual ~branch_module_concept() = default;
 
     virtual void impl_initialize_branch_predictor() = 0;
     virtual void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) = 0;
     virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
+  };
+
+  struct btb_module_concept
+  {
+    virtual ~btb_module_concept() = default;
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
     virtual std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
   };
 
-  template <unsigned long long B_FLAG, unsigned long long T_FLAG>
-  struct module_model final : module_concept
+  template <unsigned long long B_FLAG>
+  struct branch_module_model final : branch_module_concept
   {
     O3_CPU* intern_;
-    explicit module_model(O3_CPU* core) : intern_(core) {}
+    explicit branch_module_model(O3_CPU* core) : intern_(core) {}
 
     void impl_initialize_branch_predictor();
     void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type);
     uint8_t impl_predict_branch(uint64_t ip);
+  };
+
+  template <unsigned long long T_FLAG>
+  struct btb_module_model final : btb_module_concept
+  {
+    O3_CPU* intern_;
+    explicit btb_module_model(O3_CPU* core) : intern_(core) {}
 
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
     std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
   };
 
-  std::unique_ptr<module_concept> module_pimpl;
+  std::unique_ptr<branch_module_concept> branch_module_pimpl;
+  std::unique_ptr<btb_module_concept> btb_module_pimpl;
 
-  void impl_initialize_branch_predictor() { module_pimpl->impl_initialize_branch_predictor(); }
-  void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) { module_pimpl->impl_last_branch_result(ip, target, taken, branch_type); }
-  uint8_t impl_predict_branch(uint64_t ip) { return module_pimpl->impl_predict_branch(ip); }
+  void impl_initialize_branch_predictor() { branch_module_pimpl->impl_initialize_branch_predictor(); }
+  void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) { branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type); }
+  uint8_t impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
 
-  void impl_initialize_btb() { module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) { module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type); }
-  std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  void impl_initialize_btb() { btb_module_pimpl->impl_initialize_btb(); }
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) { btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type); }
+  std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
 
 
   class builder_conversion_tag {};
@@ -323,7 +336,8 @@ public:
         FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width), SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width),
         LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width), BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency),
         DECODE_LATENCY(b.m_decode_latency), SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
+        branch_module_pimpl(std::make_unique<branch_module_model<B_FLAG>>(this)), btb_module_pimpl(std::make_unique<btb_module_model<T_FLAG>>(this))
   {
   }
 };
