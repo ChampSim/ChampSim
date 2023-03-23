@@ -117,6 +117,7 @@ class CACHE : public champsim::operable
   void issue_translation();
   void detect_misses();
 
+public:
   struct BLOCK {
     bool valid = false;
     bool prefetch = false;
@@ -131,6 +132,8 @@ class CACHE : public champsim::operable
     BLOCK() = default;
     explicit BLOCK(mshr_type mshr);
   };
+
+private:
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
@@ -214,29 +217,68 @@ public:
     virtual void impl_replacement_final_stats() = 0;
   };
 
-  template <unsigned long long P_FLAG>
+  template <typename... Ps>
   struct prefetcher_module_model final : prefetcher_module_concept
   {
-    CACHE* intern_;
-    explicit prefetcher_module_model(CACHE* cache) : intern_(cache) {}
+    std::tuple<Ps...> intern_;
+    explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
 
-    void impl_prefetcher_initialize();
-    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
-    uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    void impl_prefetcher_cycle_operate();
-    void impl_prefetcher_final_stats();
-    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+    void impl_prefetcher_initialize()
+    {
+      std::apply([](auto&... p){ (..., p.prefetcher_initialize()); }, intern_);
+    }
+
+    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+    {
+      return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
+    }
+
+    uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+    {
+      return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
+    }
+
+    void impl_prefetcher_cycle_operate()
+    {
+      std::apply([](auto&... p){ (..., p.prefetcher_cycle_operate()); }, intern_);
+    }
+
+    void impl_prefetcher_final_stats()
+    {
+      std::apply([](auto&... p){ (..., p.prefetcher_final_stats()); }, intern_);
+    }
+
+    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
+    {
+      std::apply([&](auto&... p){ (..., p.prefetcher_branch_operate(ip, branch_type, branch_target)); }, intern_);
+    }
   };
 
-  template <unsigned long long R_FLAG>
+  template <typename... Rs>
   struct replacement_module_model final : replacement_module_concept
   {
-    CACHE* intern_;
-    explicit replacement_module_model(CACHE* cache) : intern_(cache) {}
-    void impl_initialize_replacement();
-    uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
-    void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit);
-    void impl_replacement_final_stats();
+    std::tuple<Rs...> intern_;
+    explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) {}
+
+    void impl_initialize_replacement()
+    {
+      std::apply([](auto&... r){ (..., r.initialize_replacement()); }, intern_);
+    }
+
+    uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+    {
+      return std::apply([&](auto&... r){ return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
+    }
+
+    void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+    {
+      std::apply([&](auto&... r){ (..., r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit)); }, intern_);
+    }
+
+    void impl_replacement_final_stats()
+    {
+      std::apply([](auto&... r){ (..., r.replacement_final_stats()); }, intern_);
+    }
   };
 
   std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;
@@ -254,11 +296,13 @@ public:
   void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit) { repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit); }
   void impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
 
+  template <typename... Ts>
+  class builder_module_type_holder {};
   class builder_conversion_tag {};
-  template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
+  template <typename P = void, typename R = void>
   class Builder
   {
-      using self_type = Builder<P_FLAG, R_FLAG>;
+      using self_type = Builder<P, R>;
 
       std::string_view m_name{};
       double m_freq_scale{};
@@ -283,7 +327,7 @@ public:
 
       friend class CACHE;
 
-      template <unsigned long long OTHER_P, unsigned long long OTHER_R>
+      template <typename OTHER_P, typename OTHER_R>
       Builder(builder_conversion_tag, const Builder<OTHER_P, OTHER_R>& other) :
         m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size), m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat),
         m_latency(other.m_latency), m_max_tag(other.m_max_tag), m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr), m_va_pref(other.m_va_pref),
@@ -318,22 +362,35 @@ public:
       self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_) { m_uls = std::move(uls_); return *this; }
       self_type& lower_level(CACHE::channel_type* ll_) { m_ll = ll_; return *this; }
       self_type& lower_translate(CACHE::channel_type* lt_) { m_lt = lt_; return *this; }
-      template <unsigned long long P>
-      Builder<P, R_FLAG> prefetcher() { return Builder<P, R_FLAG>{builder_conversion_tag{}, *this}; }
-      template <unsigned long long R>
-      Builder<P_FLAG, R> replacement() { return Builder<P_FLAG, R>{builder_conversion_tag{}, *this}; }
+      template <typename... Ps>
+      Builder<builder_module_type_holder<Ps...>, R> prefetcher() { return {builder_conversion_tag{}, *this}; }
+      template <typename... Rs>
+      Builder<P, builder_module_type_holder<Rs...>> replacement() { return {builder_conversion_tag{}, *this}; }
   };
 
-  template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-  explicit CACHE(Builder<P_FLAG, R_FLAG> b)
+  template <typename... Ps, typename... Rs>
+  explicit CACHE(Builder<builder_module_type_holder<Ps...>, builder_module_type_holder<Rs...>> b)
       : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets), NUM_WAY(b.m_ways),
         MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY((b.m_hit_lat > 0) ? b.m_hit_lat : b.m_latency - b.m_fill_lat), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag),
         MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
-        pref_module_pimpl(std::make_unique<prefetcher_module_model<P_FLAG>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<R_FLAG>>(this))
+        pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
   {
   }
 };
 
+namespace champsim::modules
+{
+  struct prefetcher {
+    CACHE* intern_;
+    explicit prefetcher(CACHE* cache) : intern_(cache) {}
+  };
+
+  struct replacement {
+    CACHE* intern_;
+    explicit replacement(CACHE* cache) : intern_(cache) {}
+  };
+
 #include "cache_module_def.inc"
+}
 
 #endif

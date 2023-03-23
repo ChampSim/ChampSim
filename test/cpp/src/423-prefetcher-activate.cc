@@ -18,7 +18,7 @@ SCENARIO("A prefetch does not trigger itself") {
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
       .name("423a-uut")
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>()
+      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDaddress_collector>()
     };
 
     std::array<champsim::operable*, 2> elements{{&mock_ll, &uut}};
@@ -63,7 +63,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .prefetch_activate(type)
-      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>()
+      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDaddress_collector>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -121,7 +121,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       .name("423c-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>();
+      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDaddress_collector>();
 
     builder = std::apply([&](auto... types){ return builder.prefetch_activate(types...); }, mask);
 
