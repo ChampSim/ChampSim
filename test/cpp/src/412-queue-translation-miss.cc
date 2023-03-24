@@ -1,175 +1,69 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "cache.h"
+#include "defaults.hpp"
+#include "channel.h"
 #include "champsim_constants.h"
 
-SCENARIO("Cache queues detect translation misses in WQ") {
-  GIVEN("A write queue with one item") {
-    constexpr uint64_t hit_latency = 5;
-    do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
+TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
+  GIVEN("An empty cache with a translator") {
+    constexpr uint64_t hit_latency = 10;
+    constexpr uint64_t fill_latency = 3;
+    do_nothing_MRC mock_translator{2*hit_latency};
+    do_nothing_MRC mock_ll;
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("412a-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_translator.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = 0xdeadbeef;
+      test.is_translated = false;
       test.cpu = 0;
 
-      auto test_result = uut.add_wq(test);
-      REQUIRE(test_result);
+      auto test_result = mock_ul.issue(test);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
+      }
 
-      auto old_event_cycle = uut.current_cycle;
-
-      uut._operate();
-      mock_ll._operate();
+      for (auto elem : elements)
+        elem->_operate();
 
       THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.wq_has_ready());
+        REQUIRE(mock_translator.packet_count() == 1);
       }
 
-      // Operate enough cycles to hit
-      for (uint64_t i = 0; i < (hit_latency+1); ++i) {
-        mock_ll._operate();
-        uut._operate();
+      for (int i = 0; i < 100; ++i) {
+        for (auto elem : elements)
+          elem->_operate();
       }
 
-      AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.wq_has_ready());
+      THEN("The packet is translated") {
+        REQUIRE(std::size(mock_ll.addresses) == 1);
+        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
+        REQUIRE(mock_ul.packets.front().pkt.v_address == test.v_address);
       }
 
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i) {
-        mock_ll._operate();
-        uut._operate();
-      }
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.WQ.front().v_address == test.v_address);
-        REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.WQ.front().address == 0x11111eef);
-        REQUIRE(uut.wq_has_ready());
+      THEN("The packet restarted the tag lookup") {
+        REQUIRE(std::size(mock_ll.addresses) == 1);
+        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + 3*hit_latency+fill_latency+2); // latency = translator_time + hit_latency + fill_latency + 2 (clocking delay)
       }
     }
   }
 }
 
-SCENARIO("Cache queues detect translation misses in RQ") {
-  GIVEN("A read queue with one item") {
-    constexpr uint64_t hit_latency = 5;
-    do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
-      test.cpu = 0;
-
-      auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      uut._operate();
-      mock_ll._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.rq_has_ready());
-      }
-
-      // Operate enough cycles to hit
-      for (uint64_t i = 0; i < (hit_latency+1); ++i) {
-        mock_ll._operate();
-        uut._operate();
-      }
-
-      AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.rq_has_ready());
-      }
-
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i) {
-        mock_ll._operate();
-        uut._operate();
-      }
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.RQ.front().v_address == test.v_address);
-        REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.RQ.front().address == 0x11111eef);
-        REQUIRE(uut.rq_has_ready());
-      }
-    }
-  }
-}
-
-SCENARIO("Cache queues detect translation misses in PQ") {
-  GIVEN("A prefetch queue with one item") {
-    constexpr uint64_t hit_latency = 5;
-    do_nothing_MRC mock_ll{2*hit_latency};
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
-      test.cpu = 0;
-
-      auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      uut._operate();
-      mock_ll._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE_FALSE(uut.pq_has_ready());
-      }
-
-      // Operate enough cycles to hit
-      for (uint64_t i = 0; i < (hit_latency+1); ++i) {
-        mock_ll._operate();
-        uut._operate();
-      }
-
-      AND_THEN("A miss is detected") {
-        REQUIRE_FALSE(uut.pq_has_ready());
-      }
-
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i) {
-        mock_ll._operate();
-        uut._operate();
-      }
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.PQ.front().v_address == test.v_address);
-        REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + 3*hit_latency);
-        REQUIRE(uut.PQ.front().address == 0x11111eef);
-        REQUIRE(uut.pq_has_ready());
-      }
-    }
-  }
-}

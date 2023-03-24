@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -11,11 +12,16 @@
 SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600a-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -23,11 +29,10 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
     uut.begin_phase();
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -47,11 +52,20 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 SCENARIO("Issuing a PTW fills the PSCLs") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600b-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .add_pscl(5,1,1)
+      .add_pscl(4,1,1)
+      .add_pscl(3,1,1)
+      .add_pscl(2,1,1)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -59,11 +73,10 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
     uut.begin_phase();
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xffff'ffff'ffff'ffff;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -85,22 +98,30 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 SCENARIO("PSCLs can reduce the number of issued translation requests") {
   GIVEN("A 5-level virtual memory and one issued packet") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"600-uut-2", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("600c-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .add_pscl(5,1,1)
+      .add_pscl(4,1,1)
+      .add_pscl(3,1,1)
+      .add_pscl(2,1,1)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
     uut.warmup = false;
     uut.begin_phase();
 
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xffff'ffff'ffff'ffff;
     seed.v_address = seed.address;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul};
 
     auto seed_result = mock_ul.issue(seed);
     REQUIRE(seed_result);
@@ -128,7 +149,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a nearby request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ffff'ffc0'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -147,7 +168,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a less-nearby request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ffff'8000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -166,7 +187,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a distant request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xffff'ff00'0000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
@@ -185,7 +206,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     WHEN("The PTW receives a very distant request") {
       mock_ll.addresses.clear();
 
-      PACKET test = seed;
+      decltype(mock_ul)::request_type test = seed;
       test.address = 0xfffe'0000'0000'0000;
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);

@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -8,22 +9,24 @@ SCENARIO("A prefetch can hit the cache") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"422-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("422-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
-
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef;
     seed.instr_id = 1;
     seed.cpu = 0;
@@ -55,22 +58,24 @@ SCENARIO("A prefetch not intended to fill this level that would hit the cache is
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"422-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("422-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
-
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef;
     seed.instr_id = 1;
     seed.cpu = 0;

@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 
 SCENARIO("The MSHR respects the fill bandwidth") {
@@ -11,27 +12,31 @@ SCENARIO("The MSHR respects the fill bandwidth") {
 
   GIVEN("An empty cache") {
     release_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"404-uut-"+std::to_string(size)+"m", 1, 1, 8, 32, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("404-uut-m")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .tag_bandwidth(10)
+      .fill_bandwidth(fill_bandwidth)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Get a list of packets
     uint64_t seed_base_addr = 0xdeadbeef;
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = seed_base_addr + i*BLOCK_SIZE;
       seed.instr_id = i;
       seed.cpu = 0;
@@ -62,7 +67,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
       auto cycle = (size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        REQUIRE(mock_ul.packets.back().return_time == 101 + fill_latency + cycle);
+        REQUIRE(mock_ul.packets.back().return_time == 100 + fill_latency + cycle);
       }
     }
   }
@@ -73,33 +78,40 @@ SCENARIO("Writebacks respect the fill bandwidth") {
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t fill_bandwidth = 2;
 
-  auto size = GENERATE(range<std::size_t>(1, 3*fill_bandwidth));
+  auto size = GENERATE(range<std::size_t>(1, 4*fill_bandwidth));
 
   GIVEN("An empty cache") {
-    do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"404-uut-"+std::to_string(size)+"w", 1, 1, 8, 32, fill_latency, 10, fill_bandwidth, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_wq_MRP mock_ul{&uut};
+    do_nothing_MRC mock_ll{20};
+    to_wq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("404-uut-w")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .tag_bandwidth(10)
+      .reset_wq_checks_full_addr()
+      .fill_bandwidth(fill_bandwidth)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
     // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Get a list of packets
     uint64_t seed_base_addr = 0xdeadbeef;
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (std::size_t i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = seed_base_addr + i*BLOCK_SIZE;
       seed.instr_id = i;
+      seed.type = WRITE;
       seed.cpu = 0;
 
       seeds.push_back(seed);
@@ -118,6 +130,10 @@ SCENARIO("Writebacks respect the fill bandwidth") {
           elem->_operate();
 
       auto cycle = (size-1)/fill_bandwidth;
+
+      THEN("No packets were forwarded to the lower level") {
+        REQUIRE(mock_ll.packet_count() == 0);
+      }
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + fill_latency + cycle);
