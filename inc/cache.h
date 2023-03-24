@@ -231,12 +231,12 @@ public:
       std::apply([](auto&... p){ (..., p.prefetcher_initialize()); }, intern_);
     }
 
-    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
     {
       return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
     }
 
-    uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+    [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
     {
       return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
     }
@@ -273,7 +273,7 @@ public:
       std::apply([](auto&... r){ (..., r.initialize_replacement()); }, intern_);
     }
 
-    uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+    [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
     {
       return std::apply([&](auto&... r){ return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
     }
@@ -293,14 +293,14 @@ public:
   std::unique_ptr<replacement_module_concept> repl_module_pimpl;
 
   void impl_prefetcher_initialize() { pref_module_pimpl->impl_prefetcher_initialize(); }
-  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); }
-  uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in); }
+  [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); }
+  [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) { return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in); }
   void impl_prefetcher_cycle_operate() { pref_module_pimpl->impl_prefetcher_cycle_operate(); }
   void impl_prefetcher_final_stats() { pref_module_pimpl->impl_prefetcher_final_stats(); }
   void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) { pref_module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target); }
 
   void impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
-  uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) { return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); }
+  [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) { return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type); }
   void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit) { repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit); }
   void impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
 
