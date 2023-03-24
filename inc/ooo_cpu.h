@@ -220,7 +220,7 @@ public:
       std::apply([&](auto&... b){ (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
     }
 
-    uint8_t impl_predict_branch(uint64_t ip)
+    [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip)
     {
       return std::apply([&](auto&... b){ return (..., b.predict_branch(ip)); }, intern_);
     }
@@ -242,7 +242,7 @@ public:
       std::apply([&](auto&... t){ (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
     }
 
-    std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)
+    [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)
     {
       return std::apply([&](auto&... t){ return (..., t.btb_prediction(ip)); }, intern_);
     }
@@ -253,11 +253,11 @@ public:
 
   void impl_initialize_branch_predictor() { branch_module_pimpl->impl_initialize_branch_predictor(); }
   void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) { branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type); }
-  uint8_t impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
+  [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
 
   void impl_initialize_btb() { btb_module_pimpl->impl_initialize_btb(); }
   void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) { btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type); }
-  std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
+  [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
 
   template <typename... Ts>
   class builder_module_type_holder {};
