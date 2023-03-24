@@ -256,7 +256,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     # Get module path names and unique module names
     caches = util.combine_named(caches.values(),
             ({'name': c['name'], '_replacement_data': [replacement_context.find(f) for f in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
-            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': c.get('_is_instruction_cache',False)}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
+            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': True} if c.get('_is_instruction_cache') else {}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
             )
 
     cores = list(util.combine_named(cores,
@@ -301,7 +301,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
 
     module_info = {
             'repl': {k: util.chain(v, modules.get_repl_data(v['name'])) for k,v in module_info['repl'].items()},
-            'pref': {k: util.chain(v, modules.get_pref_data(v['name'], v['_is_instruction_prefetcher'])) for k,v in module_info['pref'].items()},
+            'pref': {k: util.chain(v, modules.get_pref_data(v['name'], v.get('_is_instruction_prefetcher',False))) for k,v in module_info['pref'].items()},
             'branch': {k: util.chain(v, modules.get_branch_data(v['name'])) for k,v in module_info['branch'].items()},
             'btb': {k: util.chain(v, modules.get_btb_data(v['name'])) for k,v in module_info['btb'].items()},
             }

@@ -25,7 +25,7 @@ class ModuleSearchContext:
         self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
 
     def data_from_path(self, path):
-        return {'name': get_module_name(path), 'fname': path, '_is_instruction_prefetcher': path.endswith('_instr')}
+        return {'name': get_module_name(path), 'fname': path, 'legacy': ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])}
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
