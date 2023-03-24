@@ -75,14 +75,6 @@ def mangled_declarations(fname, names, args=tuple(), rtype='void', *tail, attrs=
     argstring = ', '.join(a[0] for a in args)
     yield from ('[[{}]] {} {}({});'.format(attrstring, rtype, name, argstring) for name in names)
 
-# Generate C++ code giving the mangled module specialization functions that are not implemented
-def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=[]):
-    local_attrs = ('noreturn',)
-    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
-
-    argstring = ', '.join(a[0] for a in args)
-    yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }}'.format(attrstring, rtype, name, argstring) for name in names)
-
 # For a given module function, generate C++ code defining the discriminator function
 def get_discriminator(variant_data, module_data, classname):
     yield 'struct {} : {}'.format(module_data['name'], classname)
@@ -154,11 +146,7 @@ def get_cache_module_lines(pref_data, repl_data):
         itertools.chain(
             # Establish functions common to all prefetchers
             *(mangled_declarations(fname, [v['func_map'][fname] for v in pref_data.values()], *finfo) for fname, *finfo in pref_nonbranch_variant_data),
-
-            # Establish functions that only matter to instruction prefetchers
-            ('', '// Assert data prefetchers do not operate on branches'),
-            *(mangled_prohibited_definitions(fname, [v['func_map'][fname] for v in pref_data.values() if not v.get('_is_instruction_prefetcher')], *finfo) for fname, *finfo in pref_branch_variant_data),
-            *(mangled_declarations(fname, [v['func_map'][fname] for v in pref_data.values() if v.get('_is_instruction_prefetcher')], *finfo) for fname, *finfo in pref_branch_variant_data),
+            *(mangled_declarations(fname, [v['func_map'][fname] for v in pref_data.values()], *finfo) for fname, *finfo in pref_branch_variant_data),
 
             # Declare name-mangled functions
             *(mangled_declarations(fname, [v['func_map'][fname] for v in repl_data.values()], *finfo) for fname, *finfo in repl_variant_data)
@@ -166,7 +154,8 @@ def get_cache_module_lines(pref_data, repl_data):
 
         itertools.chain(
             ('namespace generated','{'),
-            *(get_discriminator(pref_nonbranch_variant_data + pref_branch_variant_data, v, 'prefetcher') for v in pref_data.values()),
+            *(get_discriminator(pref_nonbranch_variant_data + pref_branch_variant_data, v, 'prefetcher') for v in pref_data.values() if v.get('_is_instruction_prefetcher')),
+            *(get_discriminator(pref_nonbranch_variant_data, v, 'prefetcher') for v in pref_data.values() if not v.get('_is_instruction_prefetcher')),
             *(get_discriminator(repl_variant_data, v, 'replacement') for v in repl_data.values()),
             ('}',)
         )

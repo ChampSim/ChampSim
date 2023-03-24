@@ -30,6 +30,7 @@
 #include "channel.h"
 #include "module_impl.h"
 #include "operable.h"
+#include "util/detect.h"
 
 struct cache_stats {
   std::string name;
@@ -220,6 +221,9 @@ public:
   template <typename... Ps>
   struct prefetcher_module_model final : prefetcher_module_concept
   {
+    template <typename T>
+    using has_branch_operate = decltype( std::declval<T>().prefetcher_branch_operate(0, 0, 0) );
+
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
 
@@ -250,7 +254,12 @@ public:
 
     void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
     {
-      std::apply([&](auto&... p){ (..., p.prefetcher_branch_operate(ip, branch_type, branch_target)); }, intern_);
+      auto process_one = [&](auto& p) {
+            if constexpr (champsim::is_detected_v<has_branch_operate, decltype(p)>)
+              p.prefetcher_branch_operate(ip, branch_type, branch_target);
+          };
+
+      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
     }
   };
 
