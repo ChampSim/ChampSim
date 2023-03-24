@@ -59,7 +59,7 @@ namespace defaults
         // Specifying default prefetchers and replacement policies like this is probably dangerous
         // since the names could change.
         // We're doing it anyway, for now.
-        .prefetcher<champsim::modules::generated::prefetcherDno_instr>()
+        .prefetcher<champsim::modules::generated::prefetcherDno>()
         .replacement<champsim::modules::generated::replacementDlru>();
 
     const auto default_l1d = CACHE::Builder{}

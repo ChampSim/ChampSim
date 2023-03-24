@@ -119,7 +119,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             'name': name,
             **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='L1I'), set_factor=64, mshr_factor=32, bandwidth_factor=1),
             '_first_level': True, '_is_instruction_cache': True,
-            'prefetcher': 'no_instr', 'replacement': 'lru',
+            'prefetcher': 'no', 'replacement': 'lru',
             '_defaults': 'champsim::defaults::default_l1i'
         }),
         (lambda name: {
