@@ -5,6 +5,7 @@
 #include "champsim_constants.h"
 #include "ooo_cpu.h"
 #include "ptw.h"
+#include "module_def.inc"
 
 namespace champsim
 {

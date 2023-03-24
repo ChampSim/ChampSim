@@ -31,7 +31,6 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "instruction.h"
-#include "module_impl.h"
 #include "operable.h"
 #include "util.h"
 
@@ -364,20 +363,5 @@ public:
   {
   }
 };
-
-namespace champsim::modules
-{
-  struct branch_predictor {
-    O3_CPU* intern_;
-    explicit branch_predictor(O3_CPU* cpu) : intern_(cpu) {}
-  };
-
-  struct btb {
-    O3_CPU* intern_;
-    explicit btb(O3_CPU* cpu) : intern_(cpu) {}
-  };
-
-#include "ooo_cpu_module_def.inc"
-}
 
 #endif

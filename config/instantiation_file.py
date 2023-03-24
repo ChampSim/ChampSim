@@ -100,6 +100,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         )
 
     yield '#include "environment.h"'
+    yield '#include "module_def.inc"'
+
     yield 'namespace champsim::configured {'
     yield 'struct generated_environment final : public champsim::environment {'
     yield ''

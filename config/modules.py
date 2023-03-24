@@ -114,7 +114,7 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         ),
 
         itertools.chain(
-            ('namespace generated','{'),
+            ('namespace champsim::modules::generated','{'),
             *(get_discriminator(branch_variant_data, v, 'branch_predictor') for v in branch_data.values()),
             *(get_discriminator(btb_variant_data, v, 'btb') for v in btb_data.values()),
             ('}',)
@@ -153,7 +153,7 @@ def get_cache_module_lines(pref_data, repl_data):
         ),
 
         itertools.chain(
-            ('namespace generated','{'),
+            ('namespace champsim::modules::generated','{'),
             *(get_discriminator(pref_nonbranch_variant_data + pref_branch_variant_data, v, 'prefetcher') for v in pref_data.values() if v.get('_is_instruction_prefetcher')),
             *(get_discriminator(pref_nonbranch_variant_data, v, 'prefetcher') for v in pref_data.values() if not v.get('_is_instruction_prefetcher')),
             *(get_discriminator(repl_variant_data, v, 'replacement') for v in repl_data.values()),

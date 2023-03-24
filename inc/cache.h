@@ -28,7 +28,6 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
-#include "module_impl.h"
 #include "operable.h"
 #include "util/detect.h"
 
@@ -386,20 +385,5 @@ public:
   {
   }
 };
-
-namespace champsim::modules
-{
-  struct prefetcher {
-    CACHE* intern_;
-    explicit prefetcher(CACHE* cache) : intern_(cache) {}
-  };
-
-  struct replacement {
-    CACHE* intern_;
-    explicit replacement(CACHE* cache) : intern_(cache) {}
-  };
-
-#include "cache_module_def.inc"
-}
 
 #endif
