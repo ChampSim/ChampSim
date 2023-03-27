@@ -124,7 +124,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, c
 
     dir_varnames, obj_varnames = yield from executable_opts(os.path.abspath(objdir), build_id, executable_path, source_dirs)
     for k,v in module_info.items():
-        module_dir_varnames, module_obj_varnames = yield from module_opts(os.path.abspath(objdir), build_id, k, (v['fname'],), v['opts'])
+        module_dir_varnames, module_obj_varnames = yield from module_opts(os.path.abspath(objdir), build_id, k, (v['path'],), v['opts'])
         yield dependency(executable_path, *map(dereference, module_obj_varnames))
         dir_varnames.extend(module_dir_varnames)
         obj_varnames.extend(module_obj_varnames)

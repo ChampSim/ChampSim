@@ -27,7 +27,7 @@ class ModuleSearchContext:
     def data_from_path(self, path):
         name = get_module_name(path)
         is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
-        return {'name': name, 'fname': path, 'legacy': is_legacy, 'classname': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)}
+        return {'name': name, 'path': path, 'legacy': is_legacy, 'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)}
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
@@ -98,7 +98,7 @@ def mangled_declarations(variant_data, module_data):
 
 # For a given module function, generate C++ code defining the discriminator function
 def get_discriminator(variant_data, module_data, classname):
-    yield 'struct {} : {}'.format(module_data['name'], classname)
+    yield 'struct {} : {}'.format(module_data['class'].split('::')[-1], classname)
     yield '{'
     yield '  using {0}::{0};'.format(classname)
 

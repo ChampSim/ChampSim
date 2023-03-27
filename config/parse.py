@@ -52,6 +52,11 @@ def duplicate_to_length(elements, n):
 def filter_inaccessible(system, roots, key='lower_level'):
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
 
+def module_parse(mod, context):
+    if isinstance(mod, dict):
+        return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
+    return context.find(mod)
+
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
@@ -255,13 +260,13 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
     # Get module path names and unique module names
     caches = util.combine_named(caches.values(),
-            ({'name': c['name'], '_replacement_data': [replacement_context.find(f) for f in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
-            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': True} if c.get('_is_instruction_cache') else {}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
+            ({'name': c['name'], '_replacement_data': [module_parse(m, replacement_context) for m in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
+            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': True} if c.get('_is_instruction_cache') else {}, module_parse(m, prefetcher_context)) for m in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
             )
 
     cores = list(util.combine_named(cores,
-            ({'name': c['name'], '_branch_predictor_data': [branch_context.find(f) for f in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
-            ({'name': c['name'], '_btb_data': [btb_context.find(f) for f in util.wrap_list(c.get('btb',[]))]} for c in cores)
+            ({'name': c['name'], '_branch_predictor_data': [module_parse(m, branch_context) for m in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
+            ({'name': c['name'], '_btb_data': [module_parse(m, btb_context) for m in util.wrap_list(c.get('btb',[]))]} for c in cores)
             ).values())
 
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
