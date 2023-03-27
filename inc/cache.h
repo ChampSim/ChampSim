@@ -221,6 +221,15 @@ public:
   struct prefetcher_module_model final : prefetcher_module_concept
   {
     template <typename T>
+    using has_initialize = decltype( std::declval<T>().prefetcher_initialize() );
+
+    template <typename T>
+    using has_cycle_operate = decltype( std::declval<T>().prefetcher_cycle_operate() );
+
+    template <typename T>
+    using has_final_stats = decltype( std::declval<T>().prefetcher_final_stats() );
+
+    template <typename T>
     using has_branch_operate = decltype( std::declval<T>().prefetcher_branch_operate(0, 0, 0) );
 
     std::tuple<Ps...> intern_;
@@ -228,7 +237,12 @@ public:
 
     void impl_prefetcher_initialize()
     {
-      std::apply([](auto&... p){ (..., p.prefetcher_initialize()); }, intern_);
+      auto process_one = [&](auto& p) {
+            if constexpr (champsim::is_detected_v<has_initialize, decltype(p)>)
+              p.prefetcher_initialize();
+          };
+
+      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
     }
 
     [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
@@ -243,12 +257,22 @@ public:
 
     void impl_prefetcher_cycle_operate()
     {
-      std::apply([](auto&... p){ (..., p.prefetcher_cycle_operate()); }, intern_);
+      auto process_one = [&](auto& p) {
+            if constexpr (champsim::is_detected_v<has_cycle_operate, decltype(p)>)
+              p.prefetcher_cycle_operate();
+          };
+
+      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
     }
 
     void impl_prefetcher_final_stats()
     {
-      std::apply([](auto&... p){ (..., p.prefetcher_final_stats()); }, intern_);
+      auto process_one = [&](auto& p) {
+            if constexpr (champsim::is_detected_v<has_final_stats, decltype(p)>)
+              p.prefetcher_final_stats();
+          };
+
+      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
     }
 
     void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)

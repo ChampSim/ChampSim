@@ -4,6 +4,8 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
+#include "../../../prefetcher/ip_stride/ip_stride.h"
+
 SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   auto stride = GENERATE(as<int64_t>{}, -4, -3, -2, -1, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
@@ -13,7 +15,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       .name("452-uut-["+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<champsim::modules::generated::prefetcherDip_stride>()
+      .prefetcher<ip_stride>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

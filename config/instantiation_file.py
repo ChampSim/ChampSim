@@ -15,6 +15,7 @@
 import itertools
 import functools
 import operator
+import os
 
 from . import util
 
@@ -102,6 +103,12 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "environment.h"'
     yield '#include "module_def.inc"'
 
+    for m in itertools.chain(*(c['_branch_predictor_data'] for c in cores), *(c['_btb_data'] for c in cores), *(c['_prefetcher_data'] for c in caches), *(c['_replacement_data'] for c in caches)):
+        for base,_,files in os.walk(m['fname']):
+            for f in files:
+                if os.path.splitext(f)[1] == '.h':
+                    yield '#include "../../../'+os.path.join(base, f)+'"'
+
     yield 'namespace champsim::configured {'
     yield 'struct generated_environment final : public champsim::environment {'
     yield ''
@@ -165,10 +172,10 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
 
         if elem.get('_replacement_data'):
-            yield '.replacement<{}>()'.format(', '.join('champsim::modules::generated::{}'.format(k['name']) for k in elem['_replacement_data']))
+            yield '.replacement<{}>()'.format(', '.join(k['classname'] for k in elem['_replacement_data']))
 
         if elem.get('_prefetcher_data'):
-            yield '.prefetcher<{}>()'.format(', '.join('champsim::modules::generated::{}'.format(k['name']) for k in elem['_prefetcher_data']))
+            yield '.prefetcher<{}>()'.format(', '.join(k['classname'] for k in elem['_prefetcher_data']))
 
         yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_level']))
@@ -192,9 +199,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (v.format(**cpu['DIB']) for k,v in dib_builder_parts.items() if k in cpu)
 
         if cpu.get('_branch_predictor_data'):
-            yield '.branch_predictor<{}>()'.format(', '.join('champsim::modules::generated::{}'.format(k['name']) for k in cpu['_branch_predictor_data']))
+            yield '.branch_predictor<{}>()'.format(', '.join(k['classname'] for k in cpu['_branch_predictor_data']))
         if cpu.get('_btb_data'):
-            yield '.btb<{}>()'.format(', '.join('champsim::modules::generated::{}'.format(k['name']) for k in cpu['_btb_data']))
+            yield '.btb<{}>()'.format(', '.join(k['classname'] for k in cpu['_btb_data']))
 
         yield '.fetch_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1I']))
         yield '.data_queues({})'.format('&{}_to_{}_queues'.format(cpu['name'], cpu['L1D']))

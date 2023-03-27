@@ -85,7 +85,7 @@ def executable_opts(obj_root, build_id, executable, source_dirs):
     dest_dir = os.path.join(obj_root, build_id)
 
     # Add compiler flags
-    local_opts = {'CPPFLAGS': ('-I'+os.path.join(dest_dir, 'inc'),)}
+    local_opts = {'CPPFLAGS': ['-I'+os.path.join(dest_dir, 'inc')]}
 
     yield '######'
     yield '# Build ID: ' + build_id
@@ -108,7 +108,7 @@ def module_opts(obj_dir, build_id, module_name, source_dirs, opts):
     build_dir = os.path.join(obj_dir, build_id)
     dest_dir = os.path.join(build_dir, module_name)
 
-    local_opts = {'CPPFLAGS': ('-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(module_name))}
+    local_opts = {'CPPFLAGS': ['-I'+os.path.join(build_dir, 'inc')]}
 
     dir_varnames, obj_varnames = yield from make_part(source_dirs, dest_dir, build_id+'_'+module_name)
     yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(opts))

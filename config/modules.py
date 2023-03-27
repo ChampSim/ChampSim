@@ -25,7 +25,9 @@ class ModuleSearchContext:
         self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
 
     def data_from_path(self, path):
-        return {'name': get_module_name(path), 'fname': path, 'legacy': ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])}
+        name = get_module_name(path)
+        is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
+        return {'name': name, 'fname': path, 'legacy': is_legacy, 'classname': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)}
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
@@ -46,7 +48,7 @@ class ModuleSearchContext:
 def data_getter(prefix, module_name, funcs):
     return {
         'name': module_name,
-        'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',) },
+        'opts': { 'CXXFLAGS': ['-Wno-unused-parameter'] },
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
 

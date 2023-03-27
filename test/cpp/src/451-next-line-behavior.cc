@@ -61,7 +61,7 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<champsim::modules::generated::prefetcherDnext_line_instr>()
+      .prefetcher<champsim::modules::generated::prefetcherDnext_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
 
 #include <map>
 
@@ -16,24 +17,29 @@ SCENARIO("The replacement policy can bypass") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"441-uut", 1.0, 1, 1, 32, fill_latency, 1, 1, 0, false, false, false, 0, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDmock_replacement};
-    to_wq_MRP mock_ul_seed{&uut};
-    to_rq_MRP mock_ul_test{&uut};
+    to_wq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("441-uut")
+      .sets(1)
+      .ways(1)
+      .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .replacement<champsim::modules::generated::testDcppDmodulesDreplacementDmock_replacement>()
+    };
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 4> elements{{&mock_ul_seed, &mock_ul_test, &uut, &mock_ll}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
     for (auto elem : elements) {
+      elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
     }
 
     WHEN("A packet is issued") {
-      PACKET test;
+      decltype(mock_ul_seed)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.type = WRITE;
@@ -51,7 +57,7 @@ SCENARIO("The replacement policy can bypass") {
       AND_WHEN("A packet with a different address is sent") {
         test::evict_way.insert_or_assign(&uut, 1);
 
-        PACKET test_b;
+        decltype(mock_ul_test)::request_type test_b;
         test_b.address = 0xcafebabe;
         test_b.cpu = 0;
         test_b.type = LOAD;
@@ -66,7 +72,7 @@ SCENARIO("The replacement policy can bypass") {
         THEN("The issue is received") {
           CHECK(test_b_result);
           CHECK(mock_ll.packet_count() == 1);
-          CHECK(mock_ll.addresses.back() == test_b.address);
+          CHECK(mock_ll.addresses.at(0) == test_b.address);
         }
 
         for (uint64_t i = 0; i < 2*(fill_latency+hit_latency); ++i)
