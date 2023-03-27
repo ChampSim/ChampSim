@@ -55,7 +55,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   assert(way <= set_end);
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
-  //if constexpr (champsim::debug_print) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << fill_mshr.instr_id << " address: " << std::hex << (fill_mshr.address >> OFFSET_BITS);
     std::cout << " full_addr: " << fill_mshr.address;
@@ -66,7 +66,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     std::cout << " prefetch_metadata: " << fill_mshr.pf_metadata;
     std::cout << " cycle_enqueued: " << fill_mshr.cycle_enqueued;
     std::cout << " cycle: " << current_cycle << std::endl;
-  //}
+  }
 
   bool success = true;
   auto metadata_thru = fill_mshr.pf_metadata;
@@ -134,7 +134,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   auto way = std::find_if(set_begin, set_end, eq_addr<BLOCK>(handle_pkt.address, OFFSET_BITS));
   const auto hit = (way != set_end);
 
-  //if constexpr (champsim::debug_print) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
@@ -143,7 +143,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     std::cout << " way: " << std::distance(set_begin, way) << " (" << (hit ? "HIT" : "MISS") << ")";
     std::cout << " type: " << access_type_names.at(handle_pkt.type);
     std::cout << " cycle: " << current_cycle << std::endl;
-  //}
+  }
 
   // update prefetcher on load instructions and prefetches from upper levels
   auto metadata_thru = handle_pkt.pf_metadata;
@@ -179,7 +179,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
 bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 {
-  //if constexpr (champsim::debug_print) {
+  if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
     std::cout << " full_addr: " << handle_pkt.address;
@@ -188,7 +188,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this;
     std::cout << " create mshr?: " << !handle_pkt.skip_fill << std::noboolalpha;
     std::cout << " cycle: " << current_cycle << std::endl;
-  //}
+  }
 
   cpu = handle_pkt.cpu;
 
