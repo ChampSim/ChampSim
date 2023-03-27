@@ -1,15 +1,20 @@
 #include <catch.hpp>
 #include "mocks.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 #include "defaults.hpp"
+#include "modules.h"
 
-#include <map>
-
-namespace test
+template <uint64_t bypass_addr>
+struct bypass_replacement : champsim::modules::replacement
 {
-  extern std::map<CACHE*, uint32_t> evict_way;
-}
+  using replacement::replacement;
+  auto find_victim(uint32_t, uint64_t, uint32_t, const CACHE::BLOCK*, uint64_t, uint64_t addr, uint32_t)
+  {
+    if (addr == bypass_addr)
+      return 1;
+    return 0;
+  }
+};
 
 SCENARIO("The replacement policy can bypass") {
   using namespace std::literals;
@@ -27,7 +32,7 @@ SCENARIO("The replacement policy can bypass") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .replacement<champsim::modules::generated::testDcppDmodulesDreplacementDmock_replacement>()
+      .replacement<bypass_replacement<0xcafebabe>>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ul_seed, &mock_ul_test, &uut, &mock_ll}};
@@ -55,8 +60,6 @@ SCENARIO("The replacement policy can bypass") {
           elem->_operate();
 
       AND_WHEN("A packet with a different address is sent") {
-        test::evict_way.insert_or_assign(&uut, 1);
-
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = 0xcafebabe;
         test_b.cpu = 0;

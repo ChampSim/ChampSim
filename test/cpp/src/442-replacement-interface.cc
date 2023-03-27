@@ -4,6 +4,7 @@
 #include "cache.h"
 #include "champsim_constants.h"
 #include "repl_interface.h"
+#include "module_def.inc"
 
 #include <map>
 #include <vector>

@@ -3,6 +3,7 @@
 #include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "module_def.inc"
 
 #include <map>
 

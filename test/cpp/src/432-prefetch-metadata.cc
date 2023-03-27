@@ -3,6 +3,7 @@
 #include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "module_def.inc"
 
 #include <map>
 #include <vector>
@@ -11,8 +12,16 @@ namespace test
 {
   extern std::map<CACHE*, std::vector<uint32_t>> metadata_operate_collector;
   extern std::map<CACHE*, std::vector<uint32_t>> metadata_fill_collector;
-  extern std::map<CACHE*, uint32_t> metadata_fill_emitter;
 }
+
+template <uint32_t to_emit>
+struct metadata_fill_emitter : champsim::modules::prefetcher
+{
+  using prefetcher::prefetcher;
+
+  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) { return metadata_in; }
+  uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) { return to_emit; }
+};
 
 SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level") {
   GIVEN("An upper and lower level pair of caches") {
@@ -69,6 +78,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
   GIVEN("An upper and lower level pair of caches") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
+    constexpr uint32_t seed_metadata = 0xcafebabe;
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
     to_rq_MRP mock_ul;
@@ -79,7 +89,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDmetadata_emitter>()
+      .prefetcher<metadata_fill_emitter<seed_metadata>>()
     };
 
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
@@ -101,9 +111,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
 
     WHEN("The upper level experiences a miss and the lower level emits metadata on the fill") {
       constexpr uint64_t seed_addr = 0xdeadbeef;
-      constexpr uint32_t seed_metadata = 0xcafebabe;
 
-      test::metadata_fill_emitter.insert_or_assign(&lower, seed_metadata);
       test::metadata_fill_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
 
       decltype(mock_ul)::request_type seed;

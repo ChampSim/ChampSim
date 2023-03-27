@@ -6,6 +6,10 @@ class O3_CPU;
 
 namespace champsim::modules
 {
+  inline constexpr bool warn_if_any_missing = true;
+  template <typename T>
+    [[deprecated]] void does_not_have() {};
+
   struct branch_predictor {
     O3_CPU* intern_;
     explicit branch_predictor(O3_CPU* cpu) : intern_(cpu) {}
@@ -26,5 +30,8 @@ namespace champsim::modules
     explicit replacement(CACHE* cache) : intern_(cache) {}
   };
 }
+
+#include "cache.h"
+#include "ooo_cpu.h"
 
 #endif

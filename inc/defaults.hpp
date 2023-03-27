@@ -5,7 +5,10 @@
 #include "champsim_constants.h"
 #include "ooo_cpu.h"
 #include "ptw.h"
-#include "module_def.inc"
+#include "../branch/bimodal/bimodal.h"
+#include "../btb/basic_btb/basic_btb.h"
+#include "../prefetcher/no/no.h"
+#include "../replacement/lru/lru.h"
 
 namespace champsim
 {
@@ -39,8 +42,8 @@ namespace defaults
         // Specifying default branch predictors and BTBs like this is probably dangerous
         // since the names could change.
         // We're doing it anyway, for now.
-        .branch_predictor<champsim::modules::generated::branchDbimodal>()
-        .btb<champsim::modules::generated::btbDbasic_btb>();
+        .branch_predictor<bimodal>()
+        .btb<basic_btb>();
 
     const auto default_l1i = CACHE::Builder{}
         .sets(64)
@@ -59,8 +62,8 @@ namespace defaults
         // Specifying default prefetchers and replacement policies like this is probably dangerous
         // since the names could change.
         // We're doing it anyway, for now.
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_l1d = CACHE::Builder{}
         .sets(64)
@@ -76,8 +79,8 @@ namespace defaults
         .reset_virtual_prefetch()
         .set_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_l2c = CACHE::Builder{}
         .sets(1024)
@@ -93,8 +96,8 @@ namespace defaults
         .reset_virtual_prefetch()
         .reset_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_itlb = CACHE::Builder{}
         .sets(16)
@@ -110,8 +113,8 @@ namespace defaults
         .set_virtual_prefetch()
         .set_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_dtlb = CACHE::Builder{}
         .sets(16)
@@ -127,8 +130,8 @@ namespace defaults
         .reset_virtual_prefetch()
         .set_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_stlb = CACHE::Builder{}
         .sets(128)
@@ -144,8 +147,8 @@ namespace defaults
         .reset_virtual_prefetch()
         .reset_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_llc = CACHE::Builder{}
         .name("LLC")
@@ -162,8 +165,8 @@ namespace defaults
         .reset_virtual_prefetch()
         .reset_wq_checks_full_addr()
         .prefetch_activate(LOAD, PREFETCH)
-        .prefetcher<champsim::modules::generated::prefetcherDno>()
-        .replacement<champsim::modules::generated::replacementDlru>();
+        .prefetcher<no>()
+        .replacement<lru>();
 
     const auto default_ptw = PageTableWalker::Builder{}
         .tag_bandwidth(2)

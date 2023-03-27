@@ -4,6 +4,8 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
+#include "../../../prefetcher/next_line/next_line.h"
+
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
@@ -12,7 +14,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<champsim::modules::generated::prefetcherDnext_line>()
+      .prefetcher<next_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -61,7 +63,7 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<champsim::modules::generated::prefetcherDnext_line>()
+      .prefetcher<next_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
