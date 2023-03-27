@@ -4,15 +4,31 @@
 #include "cache.h"
 #include "champsim_constants.h"
 #include "repl_interface.h"
-#include "module_def.inc"
+#include "modules.h"
 
 #include <map>
 #include <vector>
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<repl_update_interface>> replacement_update_state_collector;
+  std::map<CACHE*, std::vector<repl_update_interface>> replacement_update_state_collector;
 }
+
+struct update_state_collector : champsim::modules::replacement
+{
+  using replacement::replacement;
+
+  uint32_t find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+  {
+    return 0;
+  }
+
+  void update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+  {
+    auto usc_it = test::replacement_update_state_collector.try_emplace(intern_);
+    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit});
+  }
+};
 
 SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
   using namespace std::literals;
@@ -32,7 +48,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<type)
       .offset_bits(0)
-      .replacement<champsim::modules::generated::testDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -109,7 +125,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<type)
       .offset_bits(0)
-      .replacement<champsim::modules::generated::testDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -181,7 +197,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .fill_latency(fill_latency)
       .prefetch_activate(1u<<LOAD)
       .offset_bits(0)
-      .replacement<champsim::modules::generated::testDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};

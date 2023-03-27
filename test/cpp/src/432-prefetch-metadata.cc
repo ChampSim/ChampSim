@@ -3,16 +3,34 @@
 #include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
-#include "module_def.inc"
+#include "modules.h"
 
 #include <map>
 #include <vector>
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<uint32_t>> metadata_operate_collector;
-  extern std::map<CACHE*, std::vector<uint32_t>> metadata_fill_collector;
+  std::map<CACHE*, std::vector<uint32_t>> metadata_operate_collector;
+  std::map<CACHE*, std::vector<uint32_t>> metadata_fill_collector;
 }
+
+struct metadata_collector : champsim::modules::prefetcher
+{
+  using prefetcher::prefetcher;
+
+  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) {
+    auto it = test::metadata_operate_collector.try_emplace(intern_);
+    it.first->second.push_back(metadata_in);
+    return metadata_in;
+  }
+
+  uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+  {
+    auto it = test::metadata_fill_collector.try_emplace(intern_);
+    it.first->second.push_back(metadata_in);
+    return metadata_in;
+  }
+};
 
 template <uint32_t to_emit>
 struct metadata_fill_emitter : champsim::modules::prefetcher
@@ -35,7 +53,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDmetadata_collector>()
+      .prefetcher<metadata_collector>()
     };
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
       .name("432a-upper")
@@ -98,7 +116,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<champsim::modules::generated::testDcppDmodulesDprefetcherDmetadata_collector>()
+      .prefetcher<metadata_collector>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
