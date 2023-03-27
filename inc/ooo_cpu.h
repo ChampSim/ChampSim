@@ -33,6 +33,7 @@
 #include "instruction.h"
 #include "operable.h"
 #include "util.h"
+#include "util/detect.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -207,12 +208,20 @@ public:
   template <typename... Bs>
   struct branch_module_model final : branch_module_concept
   {
+    template <typename T>
+    using has_initialize = decltype( std::declval<T>().initialize_branch_predictor() );
+
     std::tuple<Bs...> intern_;
     explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
 
     void impl_initialize_branch_predictor()
     {
-      std::apply([](auto&... b){ (..., b.initialize_branch_predictor()); }, intern_);
+      auto process_one = [&](auto& b) {
+            if constexpr (champsim::is_detected_v<has_initialize, decltype(b)>)
+              b.initialize_branch_predictor();
+          };
+
+      std::apply([&](auto&... b){ (..., process_one(b)); }, intern_);
     }
 
     void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
@@ -229,12 +238,20 @@ public:
   template <typename... Ts>
   struct btb_module_model final : btb_module_concept
   {
+    template <typename T>
+    using has_initialize = decltype( std::declval<T>().initialize_btb() );
+
     std::tuple<Ts...> intern_;
     explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
 
     void impl_initialize_btb()
     {
-      std::apply([](auto&... t){ (..., t.initialize_btb()); }, intern_);
+      auto process_one = [&](auto& t) {
+            if constexpr (champsim::is_detected_v<has_initialize, decltype(t)>)
+              t.initialize_btb();
+          };
+
+      std::apply([&](auto&... t){ (..., process_one(t)); }, intern_);
     }
 
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)

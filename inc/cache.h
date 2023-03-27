@@ -289,12 +289,26 @@ public:
   template <typename... Rs>
   struct replacement_module_model final : replacement_module_concept
   {
+    template <typename T>
+    using has_initialize = decltype( std::declval<T>().initialize_replacement() );
+
+    template <typename T>
+    using has_update_state = decltype( std::declval<T>().update_replacement_state(0,0,0,0,0,0,0,0) );
+
+    template <typename T>
+    using has_final_stats = decltype( std::declval<T>().replacement_final_stats() );
+
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) {}
 
     void impl_initialize_replacement()
     {
-      std::apply([](auto&... r){ (..., r.initialize_replacement()); }, intern_);
+      auto process_one = [&](auto& r) {
+            if constexpr (champsim::is_detected_v<has_initialize, decltype(r)>)
+              r.initialize_replacement();
+          };
+
+      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
     }
 
     [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
@@ -304,12 +318,22 @@ public:
 
     void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
     {
-      std::apply([&](auto&... r){ (..., r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit)); }, intern_);
+      auto process_one = [&](auto& r) {
+            if constexpr (champsim::is_detected_v<has_update_state, decltype(r)>)
+              r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+          };
+
+      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
     }
 
     void impl_replacement_final_stats()
     {
-      std::apply([](auto&... r){ (..., r.replacement_final_stats()); }, intern_);
+      auto process_one = [&](auto& r) {
+            if constexpr (champsim::is_detected_v<has_final_stats, decltype(r)>)
+              r.replacement_final_stats();
+          };
+
+      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
     }
   };
 
