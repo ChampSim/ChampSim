@@ -307,8 +307,8 @@ public:
       auto process_one = [&](auto& r) {
             if constexpr (champsim::is_detected_v<has_initialize, decltype(r)>)
               r.initialize_replacement();
-            else if (champsim::modules::warn_if_any_missing)
-              champsim::modules::does_not_have<decltype(r)>();
+            //else if (champsim::modules::warn_if_any_missing)
+              //champsim::modules::does_not_have<decltype(r)>();
           };
 
       std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);

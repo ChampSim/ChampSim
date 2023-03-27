@@ -103,11 +103,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "environment.h"'
     yield '#include "module_def.inc"'
 
+    inc_files = set()
     for m in itertools.chain(*(c['_branch_predictor_data'] for c in cores), *(c['_btb_data'] for c in cores), *(c['_prefetcher_data'] for c in caches), *(c['_replacement_data'] for c in caches)):
         for base,_,files in os.walk(m['path']):
-            for f in files:
-                if os.path.splitext(f)[1] == '.h':
-                    yield '#include "../../../'+os.path.join(base, f)+'"'
+            inc_files.update([os.path.join(base, f) for f in files if os.path.splitext(f)[1] == '.h'])
+    yield from ('#include "../../../'+f+'"' for f in inc_files)
 
     yield 'namespace champsim::configured {'
     yield 'struct generated_environment final : public champsim::environment {'
