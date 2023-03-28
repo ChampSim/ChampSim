@@ -50,7 +50,8 @@ bool check_cl_prefetch(CACHE* cache, uint64_t v_addr)
 
 } // anonymous namespace
 
-void CACHE::prefetcher_initialize() {
+void CACHE::prefetcher_initialize()
+{
   std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl;
 
   regions.insert_or_assign(this, decltype(regions)::mapped_type{});
@@ -78,7 +79,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
       const auto neg_step_addr = addr - direction * (i * (signed)BLOCK_SIZE);
       const auto neg_2step_addr = addr - direction * (2 * i * (signed)BLOCK_SIZE);
 
-      if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr) && !::check_cl_prefetch(this, pos_step_addr)) {
+      if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr)
+          && !::check_cl_prefetch(this, pos_step_addr)) {
         // found something that we should prefetch
         if ((addr >> LOG2_BLOCK_SIZE) != (pos_step_addr >> LOG2_BLOCK_SIZE)) {
           bool prefetch_success = prefetch_line(pos_step_addr, get_occupancy(0, pos_step_addr) < get_size(0, pos_step_addr) / 2, metadata_in);
