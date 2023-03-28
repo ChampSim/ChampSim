@@ -7,6 +7,7 @@
 #include "cache.h"
 #include "modules.h"
 #include "msl/bits.h"
+#include "msl/fwcounter.h"
 
 struct ship : champsim::modules::replacement
 {
@@ -21,7 +22,7 @@ struct ship : champsim::modules::replacement
   {
   public:
     bool valid = false;
-    uint8_t used = 0;
+    bool used = false;
     uint64_t address = 0, cl_addr = 0, ip = 0;
     uint64_t last_used = 0;
   };
@@ -35,7 +36,7 @@ struct ship : champsim::modules::replacement
   std::vector<int> rrpv_values;
 
   // prediction table structure
-  std::array<std::array<unsigned, SHCT_SIZE>, NUM_CPUS> SHCT;
+  std::array<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX+1)>, SHCT_SIZE>, NUM_CPUS> SHCT;
 
   explicit ship(CACHE* cache);
 

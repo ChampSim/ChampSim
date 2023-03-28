@@ -62,24 +62,19 @@ void ship::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint3
     auto match = std::find_if(s_set_begin, s_set_end,
                               [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && (x.address >> shamt) == (addr >> shamt); });
     if (match != s_set_end) {
-      auto SHCT_idx = match->ip % SHCT_PRIME;
-      if (SHCT[triggering_cpu][SHCT_idx] > 0)
-        SHCT[triggering_cpu][SHCT_idx]--;
+      SHCT[triggering_cpu][match->ip % SHCT_PRIME]--;
 
-      match->used = 1;
+      match->used = true;
     } else {
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
-      if (match->used) {
-        auto SHCT_idx = match->ip % SHCT_PRIME;
-        if (SHCT[triggering_cpu][SHCT_idx] < SHCT_MAX)
-          SHCT[triggering_cpu][SHCT_idx]++;
-      }
+      if (match->used)
+        SHCT[triggering_cpu][match->ip % SHCT_PRIME]++;
 
-      match->valid = 1;
+      match->valid = true;
       match->address = full_addr;
       match->ip = ip;
-      match->used = 0;
+      match->used = false;
     }
 
     // update LRU state
@@ -90,10 +85,8 @@ void ship::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint3
     rrpv_values[set * NUM_WAY + way] = 0;
   else {
     // SHIP prediction
-    auto SHCT_idx = ip % SHCT_PRIME;
-
     rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
-    if (SHCT[triggering_cpu][SHCT_idx] == SHCT_MAX)
+    if (SHCT[triggering_cpu][ip % SHCT_PRIME].is_max())
       rrpv_values[set * NUM_WAY + way] = maxRRPV;
   }
 }

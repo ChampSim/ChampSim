@@ -8,7 +8,7 @@ namespace champsim::modules
 {
   inline constexpr bool warn_if_any_missing = true;
   template <typename T>
-    [[deprecated]] void does_not_have() {};
+    [[deprecated]] void does_not_have() {}
 
   struct branch_predictor {
     O3_CPU* intern_;

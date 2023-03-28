@@ -6,7 +6,6 @@
 
 #include <map>
 #include <vector>
-#include <iostream>
 
 namespace
 {
@@ -16,14 +15,13 @@ namespace
   {
     using prefetcher::prefetcher;
 
-    uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+    uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, uint8_t, uint32_t metadata_in)
     {
-      std::cout << "Got address " << std::hex << addr << std::dec << std::endl;
       ::address_operate_collector[intern_].push_back(addr);
       return metadata_in;
     }
 
-    uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+    uint32_t prefetcher_cache_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t metadata_in)
     {
       return metadata_in;
     }

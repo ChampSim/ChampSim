@@ -19,6 +19,22 @@ drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WA
   }
 }
 
+void drrip::update_bip(uint32_t set, uint32_t way)
+{
+  rrpv[set * NUM_WAY + way] = maxRRPV;
+
+  bip_counter++;
+  if (bip_counter == BIP_MAX) {
+    bip_counter = 0;
+    rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+  }
+}
+
+void drrip::update_srrip(uint32_t set, uint32_t way)
+{
+  rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+}
+
 // called on every cache hit and cache fill
 void drrip::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit)
@@ -43,28 +59,16 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   if (leader == end) { // follower sets
     auto selector = PSEL[triggering_cpu];
     if (selector.value() > (selector.maximum / 2)) { // follow BIP
-      rrpv[set * NUM_WAY + way] = maxRRPV;
-
-      bip_counter++;
-      if (bip_counter == BIP_MAX) {
-        bip_counter = 0;
-        rrpv[set * NUM_WAY + way] = maxRRPV - 1;
-      }
+      update_bip(set, way);
     } else { // follow SRRIP
-      rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+      update_srrip(set, way);
     }
   } else if (leader == begin) { // leader 0: BIP
     PSEL[triggering_cpu]--;
-    rrpv[set * NUM_WAY + way] = maxRRPV;
-
-    bip_counter++;
-    if (bip_counter == BIP_MAX) {
-      bip_counter = 0;
-      rrpv[set * NUM_WAY + way] = maxRRPV - 1;
-    }
+    update_bip(set, way);
   } else if (leader == std::next(begin)) { // leader 1: SRRIP
     PSEL[triggering_cpu]++;
-    rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+    update_srrip(set, way);
   }
 }
 

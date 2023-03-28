@@ -2,6 +2,7 @@
 #define BTB_BASIC_BTB_RETURN_STACK_H
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <deque>
 

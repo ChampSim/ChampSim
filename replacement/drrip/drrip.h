@@ -33,6 +33,9 @@ struct drrip : champsim::modules::replacement
 
   // use this function to print out your own stats at the end of simulation
   //void replacement_final_stats() {}
+
+  void update_bip(uint32_t set, uint32_t way);
+  void update_srrip(uint32_t set, uint32_t way);
 };
 
 #endif
