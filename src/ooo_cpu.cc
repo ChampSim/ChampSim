@@ -18,10 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
 #include <numeric>
-#include <utility>
-#include <vector>
 
 #include "cache.h"
 #include "champsim.h"
@@ -87,20 +84,20 @@ void O3_CPU::begin_phase()
   stats.name = "CPU " + std::to_string(cpu);
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
-  sim_stats.push_back(stats);
+  sim_stats = stats;
 }
 
 void O3_CPU::end_phase(unsigned finished_cpu)
 {
   // Record where the phase ended (overwrite if this is later)
-  sim_stats.back().end_instrs = num_retired;
-  sim_stats.back().end_cycles = current_cycle;
+  sim_stats.end_instrs = num_retired;
+  sim_stats.end_cycles = current_cycle;
 
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
 
-    roi_stats.push_back(sim_stats.back());
+    roi_stats = sim_stats;
   }
 }
 
@@ -150,7 +147,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   bool stop_fetch = false;
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
-  sim_stats.back().total_branch_types[arch_instr.branch_type]++;
+  sim_stats.total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (arch_instr.branch_prediction == 0)
@@ -168,8 +165,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     if (predicted_branch_target != arch_instr.branch_target
         || (arch_instr.branch_type == BRANCH_CONDITIONAL
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
-      sim_stats.back().total_rob_occupancy_at_branch_mispredict += std::size(ROB);
-      sim_stats.back().branch_type_misses[arch_instr.branch_type]++;
+      sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+      sim_stats.branch_type_misses[arch_instr.branch_type]++;
       if (!warmup) {
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
         stop_fetch = true;

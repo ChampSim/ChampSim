@@ -24,9 +24,9 @@ SCENARIO("A prefetch can be issued") {
     uut_queues.begin_phase();
 
     THEN("The number of prefetches is zero") {
-      REQUIRE(uut.sim_stats.back().pf_issued == 0);
-      REQUIRE(uut.sim_stats.back().pf_useful == 0);
-      REQUIRE(uut.sim_stats.back().pf_fill == 0);
+      REQUIRE(uut.sim_stats.pf_issued == 0);
+      REQUIRE(uut.sim_stats.pf_useful == 0);
+      REQUIRE(uut.sim_stats.pf_fill == 0);
     }
 
     WHEN("A prefetch is issued") {
@@ -43,7 +43,7 @@ SCENARIO("A prefetch can be issued") {
           elem->_operate();
 
       THEN("The number of prefetch fills is incremented") {
-        REQUIRE(uut.sim_stats.back().pf_fill == 1);
+        REQUIRE(uut.sim_stats.pf_fill == 1);
       }
 
       AND_WHEN("A packet with the same address is sent") {
@@ -66,8 +66,8 @@ SCENARIO("A prefetch can be issued") {
         }
 
         THEN("The number of useful prefetches is incremented") {
-          REQUIRE(uut.sim_stats.back().pf_issued == 1);
-          REQUIRE(uut.sim_stats.back().pf_useful == 1);
+          REQUIRE(uut.sim_stats.pf_issued == 1);
+          REQUIRE(uut.sim_stats.pf_useful == 1);
         }
       }
     }

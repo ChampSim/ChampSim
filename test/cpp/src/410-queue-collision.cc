@@ -88,9 +88,9 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTra
     uut.begin_phase();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().WQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().WQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().WQ_MERGED == 0);
+      CHECK(uut.sim_stats.WQ_ACCESS == 0);
+      CHECK(uut.sim_stats.WQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.WQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the write queue") {
@@ -99,8 +99,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTra
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -110,8 +110,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTra
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().WQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().WQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.WQ_ACCESS == 2);
+            CHECK(uut.sim_stats.WQ_TO_CACHE == 2);
           }
         }
 
@@ -119,7 +119,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding WQ to WQ", "", CACHE::NonTra
           REQUIRE(std::size(uut.WQ) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.WQ_MERGED == 1);
           }
         }
       }
@@ -140,9 +140,9 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
     uut.begin_phase();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().RQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().RQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().RQ_MERGED == 0);
+      CHECK(uut.sim_stats.RQ_ACCESS == 0);
+      CHECK(uut.sim_stats.RQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.RQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the read queue") {
@@ -151,8 +151,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().RQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().RQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.RQ_ACCESS == 1);
+          CHECK(uut.sim_stats.RQ_TO_CACHE == 1);
         }
       }
 
@@ -162,8 +162,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().RQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().RQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.RQ_ACCESS == 2);
+            CHECK(uut.sim_stats.RQ_TO_CACHE == 2);
           }
         }
 
@@ -174,7 +174,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding RQ to RQ", "", CACHE::NonTra
           CHECK(std::count(std::begin(uut.RQ.front().to_return), std::end(uut.RQ.front().to_return), &ul1) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().RQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.RQ_MERGED == 1);
           }
         }
       }
@@ -195,9 +195,9 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
     uut.begin_phase();
 
     THEN("The statistics are zero") {
-      CHECK(uut.sim_stats.back().PQ_ACCESS == 0);
-      CHECK(uut.sim_stats.back().PQ_TO_CACHE == 0);
-      CHECK(uut.sim_stats.back().PQ_MERGED == 0);
+      CHECK(uut.sim_stats.PQ_ACCESS == 0);
+      CHECK(uut.sim_stats.PQ_TO_CACHE == 0);
+      CHECK(uut.sim_stats.PQ_MERGED == 0);
     }
 
     WHEN("A packet is sent to the prefetch queue") {
@@ -206,8 +206,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().PQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().PQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.PQ_ACCESS == 1);
+          CHECK(uut.sim_stats.PQ_TO_CACHE == 1);
         }
       }
 
@@ -217,8 +217,8 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
           REQUIRE(test_result);
 
           AND_THEN("The statistics reflect the issue") {
-            CHECK(uut.sim_stats.back().PQ_ACCESS == 2);
-            CHECK(uut.sim_stats.back().PQ_TO_CACHE == 2);
+            CHECK(uut.sim_stats.PQ_ACCESS == 2);
+            CHECK(uut.sim_stats.PQ_TO_CACHE == 2);
           }
         }
 
@@ -229,7 +229,7 @@ TEMPLATE_TEST_CASE("Cache queues perform forwarding PQ to PQ", "", CACHE::NonTra
           CHECK(std::count(std::begin(uut.PQ.front().to_return), std::end(uut.PQ.front().to_return), &ul1) == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().PQ_MERGED == 1);
+            REQUIRE(uut.sim_stats.PQ_MERGED == 1);
           }
         }
       }
@@ -252,8 +252,8 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQue
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -267,7 +267,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to RQ", "", CACHE::NonTranslatingQue
           CHECK(counter.count == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+            REQUIRE(uut.sim_stats.WQ_FORWARD == 1);
           }
         }
       }
@@ -290,8 +290,8 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", CACHE::NonTranslatingQue
         REQUIRE(seed_result);
 
         AND_THEN("The statistics reflect the issue") {
-          CHECK(uut.sim_stats.back().WQ_ACCESS == 1);
-          CHECK(uut.sim_stats.back().WQ_TO_CACHE == 1);
+          CHECK(uut.sim_stats.WQ_ACCESS == 1);
+          CHECK(uut.sim_stats.WQ_TO_CACHE == 1);
         }
       }
 
@@ -305,7 +305,7 @@ TEMPLATE_TEST_CASE("Cache queues forward WQ to PQ", "", CACHE::NonTranslatingQue
           CHECK(counter.count == 1);
 
           AND_THEN("The statistics reflect the merge") {
-            REQUIRE(uut.sim_stats.back().WQ_FORWARD == 1);
+            REQUIRE(uut.sim_stats.WQ_FORWARD == 1);
           }
         }
       }

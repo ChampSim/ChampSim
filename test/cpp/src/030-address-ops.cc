@@ -209,6 +209,8 @@ namespace {
 TEST_CASE("The offset between two addresses is signed") {
   STATIC_REQUIRE(champsim::is_detected_v<::can_find_offset, champsim::address, champsim::address>);
   STATIC_REQUIRE(std::is_signed_v<::can_find_offset<champsim::address, champsim::address>>);
+  STATIC_REQUIRE(champsim::is_detected_v<::can_find_offset, champsim::block_number, champsim::block_number>);
+  STATIC_REQUIRE(std::is_signed_v<::can_find_offset<champsim::block_number, champsim::block_number>>);
 }
 
 TEST_CASE("The offset between two addresses is correct") {

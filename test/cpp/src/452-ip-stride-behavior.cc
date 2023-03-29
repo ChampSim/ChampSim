@@ -1,7 +1,26 @@
 #include <catch.hpp>
+#include <algorithm>
+#include <numeric>
+#include "address.h"
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+
+struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
+  champsim::block_number::difference_type stride;
+
+  explicit StrideMatcher(champsim::block_number::difference_type s) : stride(s) {}
+
+    template<typename Range>
+    bool match(const Range& range) const {
+      std::vector<decltype(stride)> diffs;
+      return std::adjacent_find(std::cbegin(range), std::cend(range), [stride=stride](const auto& x, const auto& y){ return champsim::offset(champsim::block_number{x}, champsim::block_number{y}) != stride; }) == std::cend(range);
+    }
+
+    std::string describe() const override {
+        return "has stride " + std::to_string(stride);
+    }
+};
 
 SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   auto stride = GENERATE(as<int64_t>{}, -4, -3, -2, -1, 1, 2, 3, 4);
@@ -67,16 +86,8 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 6 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 6);
-      }
-
-      THEN("All of the issued requests have the same stride") {
-        REQUIRE(champsim::block_number{mock_ll.addresses.at(0)} + stride == champsim::block_number{mock_ll.addresses.at(1)});
-        REQUIRE(champsim::block_number{mock_ll.addresses.at(1)} + stride == champsim::block_number{mock_ll.addresses.at(2)});
-        REQUIRE(champsim::block_number{mock_ll.addresses.at(2)} + stride == champsim::block_number{mock_ll.addresses.at(3)});
-        REQUIRE(champsim::block_number{mock_ll.addresses.at(3)} + stride == champsim::block_number{mock_ll.addresses.at(4)});
-        REQUIRE(champsim::block_number{mock_ll.addresses.at(4)} + stride == champsim::block_number{mock_ll.addresses.at(5)});
+      THEN("A total of 6 requests were generated with the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(6) && StrideMatcher{stride});
       }
     }
   }

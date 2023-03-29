@@ -18,8 +18,6 @@
 
 #include <algorithm>
 #include <iomanip>
-#include <iterator>
-#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -75,10 +73,10 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
       champsim::address evicting_address{(ever_seen_data ? way->address : way->v_address).slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
 
       if (way->prefetch)
-        sim_stats.back().pf_useless++;
+        ++sim_stats.pf_useless;
 
       if (fill_mshr.type == PREFETCH)
-        sim_stats.back().pf_fill++;
+        ++sim_stats.pf_fill;
 
       metadata_thru =
           impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == PREFETCH, evicting_address, metadata_thru);
@@ -97,7 +95,7 @@ bool CACHE::handle_fill(const PACKET& fill_mshr)
 
   if (success) {
     // COLLECT STATS
-    sim_stats.back().total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
+    sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
     auto copy{fill_mshr};
     copy.pf_metadata = metadata_thru;
@@ -136,7 +134,7 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
   }
 
   if (hit) {
-    sim_stats.back().hits[handle_pkt.type][handle_pkt.cpu]++;
+    ++sim_stats.hits[handle_pkt.type][handle_pkt.cpu];
 
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
@@ -152,11 +150,11 @@ bool CACHE::try_hit(const PACKET& handle_pkt)
 
     // update prefetch stats and reset prefetch bit
     if (way->prefetch && !handle_pkt.prefetch_from_this) {
-      sim_stats.back().pf_useful++;
+      ++sim_stats.pf_useful;
       way->prefetch = false;
     }
   } else {
-    sim_stats.back().misses[handle_pkt.type][handle_pkt.cpu]++;
+    ++sim_stats.misses[handle_pkt.type][handle_pkt.cpu];
   }
 
   return hit;
@@ -193,7 +191,7 @@ bool CACHE::handle_miss(const PACKET& handle_pkt)
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this)
-        sim_stats.back().pf_useful++;
+        ++sim_stats.pf_useful;
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
       auto to_return = std::move(mshr_entry->to_return);
@@ -383,7 +381,7 @@ bool CACHE::add_ptwq(const PACKET& packet)
 
 int CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-  sim_stats.back().pf_requested++;
+  ++sim_stats.pf_requested;
 
   PACKET pf_packet;
   pf_packet.type = PREFETCH;
@@ -396,7 +394,7 @@ int CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32
 
   auto success = this->add_pq(pf_packet);
   if (success)
-    ++sim_stats.back().pf_issued;
+    ++sim_stats.pf_issued;
   return success;
 }
 
@@ -492,27 +490,29 @@ void CACHE::initialize()
 
 void CACHE::begin_phase()
 {
-  roi_stats.emplace_back();
-  sim_stats.emplace_back();
+  stats_type new_roi_stats, new_sim_stats;
 
-  roi_stats.back().name = NAME;
-  sim_stats.back().name = NAME;
+  new_roi_stats.name = NAME;
+  new_sim_stats.name = NAME;
+
+  roi_stats = new_roi_stats;
+  sim_stats = new_sim_stats;
 }
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    roi_stats.back().hits.at(type).at(finished_cpu) = sim_stats.back().hits.at(type).at(finished_cpu);
-    roi_stats.back().misses.at(type).at(finished_cpu) = sim_stats.back().misses.at(type).at(finished_cpu);
+    roi_stats.hits.at(type).at(finished_cpu) = sim_stats.hits.at(type).at(finished_cpu);
+    roi_stats.misses.at(type).at(finished_cpu) = sim_stats.misses.at(type).at(finished_cpu);
   }
 
-  roi_stats.back().pf_requested = sim_stats.back().pf_requested;
-  roi_stats.back().pf_issued = sim_stats.back().pf_issued;
-  roi_stats.back().pf_useful = sim_stats.back().pf_useful;
-  roi_stats.back().pf_useless = sim_stats.back().pf_useless;
-  roi_stats.back().pf_fill = sim_stats.back().pf_fill;
+  roi_stats.pf_requested = sim_stats.pf_requested;
+  roi_stats.pf_issued = sim_stats.pf_issued;
+  roi_stats.pf_useful = sim_stats.pf_useful;
+  roi_stats.pf_useless = sim_stats.pf_useless;
+  roi_stats.pf_fill = sim_stats.pf_fill;
 
-  roi_stats.back().total_miss_latency = sim_stats.back().total_miss_latency;
+  roi_stats.total_miss_latency = sim_stats.total_miss_latency;
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }

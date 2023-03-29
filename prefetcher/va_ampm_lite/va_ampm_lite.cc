@@ -36,28 +36,32 @@ std::map<CACHE*, std::array<region_type, REGION_COUNT>> regions;
 bool check_cl_access(CACHE* cache, champsim::block_number v_addr)
 {
   auto [vpn, page_offset] = page_and_block(v_addr);
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn=vpn](auto x) { return x.vpn == vpn; });
-
-  return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset.to<uint64_t>());
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn = vpn](auto x) { return x.vpn == vpn; });
+  return (region != std::end(regions.at(cache))) && region->access_map.test(page_offset.to<uint64_t>());
 }
 
 bool check_cl_prefetch(CACHE* cache, champsim::block_number v_addr)
 {
   auto [vpn, page_offset] = page_and_block(v_addr);
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn=vpn](auto x) { return x.vpn == vpn; });
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn = vpn](auto x) { return x.vpn == vpn; });
 
   return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset.to<uint64_t>());
 }
 
 } // anonymous namespace
 
-void CACHE::prefetcher_initialize() { std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl; }
+void CACHE::prefetcher_initialize()
+{
+  std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl;
+
+  regions.insert_or_assign(this, decltype(regions)::mapped_type{});
+}
 
 uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
   const champsim::block_number block_addr{addr};
   auto [current_vpn, page_offset] = page_and_block(block_addr);
-  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [current_vpn=current_vpn](auto x) { return x.vpn == current_vpn; });
+  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [vpn = current_vpn](auto x) { return x.vpn == vpn; });
 
   if (demand_region == std::end(::regions.at(this))) {
     // not tracking this region yet, so replace the LRU region
@@ -75,15 +79,15 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
       const auto pos_step_addr = block_addr + (direction * i);
       const auto neg_step_addr = block_addr - (direction * i);
       const auto neg_2step_addr = block_addr - (direction * 2 * i);
-      if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr)
-          && !::check_cl_prefetch(this, pos_step_addr)) {
+
+      if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr) && !::check_cl_prefetch(this, pos_step_addr)) {
         // found something that we should prefetch
         if (block_addr != champsim::block_number{pos_step_addr}) {
           champsim::address pf_addr{pos_step_addr};
           bool prefetch_success = prefetch_line(pf_addr, get_occupancy(0, pf_addr) < get_size(0, pf_addr) / 2, metadata_in);
           if (prefetch_success) {
             auto [pf_vpn, pf_page_offset] = page_and_block(pf_addr);
-            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [pf_vpn=pf_vpn](auto x) { return x.vpn == pf_vpn; });
+            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });
 
             if (pf_region == std::end(::regions.at(this))) {
               // we're not currently tracking this region, so allocate a new region so we can mark it
