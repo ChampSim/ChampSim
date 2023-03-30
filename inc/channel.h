@@ -106,7 +106,7 @@ class channel {
   std::deque<request_type> RQ{}, PQ{}, WQ{};
   std::deque<response_type> returned{};
 
-  stats_type sim_stats, roi_stats;
+  stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
   channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
