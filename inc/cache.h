@@ -229,7 +229,7 @@ public:
     using has_final_stats = decltype(std::declval<T>().prefetcher_final_stats());
 
     template <typename T>
-    using has_branch_operate = decltype(std::declval<T>().prefetcher_branch_operate(0, 0, 0));
+    using has_branch_operate = decltype( std::declval<T>().prefetcher_branch_operate(std::declval<uint64_t>(), std::declval<uint8_t>(), std::declval<uint64_t>()) );
 
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
@@ -291,7 +291,10 @@ public:
     using has_initialize = decltype(std::declval<T>().initialize_replacement());
 
     template <typename T>
-    using has_update_state = decltype(std::declval<T>().update_replacement_state(0, 0, 0, 0, 0, 0, 0, 0));
+    using has_update_state = decltype( std::declval<T>().update_replacement_state(std::declval<uint32_t>(), std::declval<long>(), std::declval<long>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>(), std::declval<uint8_t>()));
+
+    // Assert that at least one has an update state
+    //static_assert(std::disjunction<champsim::is_detected<has_update_state, Rs>...>::value, "At least one replacement policy must update its state");
 
     template <typename T>
     using has_final_stats = decltype(std::declval<T>().replacement_final_stats());
