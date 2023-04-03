@@ -92,9 +92,8 @@ def get_repl_data(module_name):
     return data_getter('repl', module_name, (v[0] for v in repl_variant_data))
 
 # Generate C++ code giving the mangled module specialization functions
-def mangled_declarations(variant_data, module_data):
-    for fname, args, rtype in variant_data:
-        yield '{} {}({});'.format(rtype, module_data['func_map'][fname], ', '.join(a[0] for a in args))
+def mangled_declaration(fname, args, rtype, module_data):
+    return '{} {}({});'.format(rtype, module_data['func_map'][fname], ', '.join(a[0] for a in args))
 
 # For a given module function, generate C++ code defining the discriminator function
 def get_discriminator(variant_data, module_data, classname):
@@ -113,37 +112,23 @@ def get_discriminator(variant_data, module_data, classname):
     yield '};'
     yield ''
 
-# Return a pair containing two generators: The first generates C++ code declaring all functions for the O3_CPU modules, and the second generates C++ code defining the functions
-def get_ooo_cpu_module_lines(branch_data, btb_data):
+# Return a pair containing three generators: The first and second generate C++ code declaring all functions for the O3_CPU and CACHE modules, and the third generates C++ code defining the functions
+def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
     return (
-        itertools.chain(
-            # Declare name-mangled functions
-            *(mangled_declarations(branch_variant_data, v) for v in branch_data.values()),
-            *(mangled_declarations(btb_variant_data, v) for v in btb_data.values())
-        ),
+        (mangled_declaration(*var, data) for var,data in itertools.chain(
+            itertools.product(branch_variant_data, branch_data),
+            itertools.product(btb_variant_data, btb_data)
+        )),
+
+        (mangled_declaration(*var, data) for var,data in itertools.chain(
+            itertools.product(pref_nonbranch_variant_data + pref_branch_variant_data, pref_data),
+            itertools.product(repl_variant_data, repl_data)
+        )),
 
         itertools.chain(
-            ('namespace champsim::modules::generated','{'),
-            *(get_discriminator(branch_variant_data, v, 'branch_predictor') for v in branch_data.values()),
-            *(get_discriminator(btb_variant_data, v, 'btb') for v in btb_data.values()),
-            ('}',)
-        )
-       )
-
-# Return a pair containing two generators: The first generates C++ code declaring all functions for the cache modules, and the second generates C++ code defining the functions
-def get_cache_module_lines(pref_data, repl_data):
-    return (
-        itertools.chain(
-            # Declare name-mangled functions
-            *(mangled_declarations(pref_nonbranch_variant_data + pref_branch_variant_data, v) for v in pref_data.values()),
-            *(mangled_declarations(repl_variant_data, v) for v in repl_data.values())
-        ),
-
-        itertools.chain(
-            ('namespace champsim::modules::generated','{'),
-            *(get_discriminator(pref_nonbranch_variant_data + pref_branch_variant_data, v, 'prefetcher') for v in pref_data.values() if v.get('_is_instruction_prefetcher')),
-            *(get_discriminator(pref_nonbranch_variant_data, v, 'prefetcher') for v in pref_data.values() if not v.get('_is_instruction_prefetcher')),
-            *(get_discriminator(repl_variant_data, v, 'replacement') for v in repl_data.values()),
-            ('}',)
+            *(get_discriminator(branch_variant_data, v, 'branch_predictor') for v in branch_data),
+            *(get_discriminator(btb_variant_data, v, 'btb') for v in btb_data),
+            *(get_discriminator(pref_nonbranch_variant_data + (pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []), v, 'prefetcher') for v in pref_data),
+            *(get_discriminator(repl_variant_data, v, 'replacement') for v in repl_data)
         )
        )

@@ -78,37 +78,28 @@ class FileWriter:
         self.fileparts.append((os.path.join(inc_dir, instantiation_file_name), instantiation_file.get_instantiation_lines(**elements))) # Instantiation file
         self.fileparts.append((os.path.join(inc_dir, constants_file_name), constants_file.get_constants_file(config_file, elements['pmem']))) # Constants header
 
-        self.fileparts.append((os.path.join(inc_dir, module_definition_file_name), ('#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"')))
+        self.fileparts.append((os.path.join(inc_dir, module_definition_file_name), ('#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{')))
 
-        # Core modules file
-        core_declarations, core_definitions = modules.get_ooo_cpu_module_lines(
-                {k:v for k,v in module_info['branch'].items() if v.get('legacy')},
-                {k:v for k,v in module_info['btb'].items() if v.get('legacy')}
+        core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
+                [v for v in module_info['branch'].values() if v.get('legacy')],
+                [v for v in module_info['btb'].values() if v.get('legacy')],
+                [v for v in module_info['pref'].values() if v.get('legacy')],
+                [v for v in module_info['repl'].values() if v.get('legacy')]
             )
 
         self.fileparts.extend((
             (os.path.join(inc_dir, core_module_declaration_file_name), core_declarations),
-            (os.path.join(inc_dir, module_definition_file_name), core_definitions)
-        ))
-
-        # Cache modules file
-        cache_declarations, cache_definitions = modules.get_cache_module_lines(
-                {k:v for k,v in module_info['pref'].items() if v.get('legacy')},
-                {k:v for k,v in module_info['repl'].items() if v.get('legacy')}
-            )
-
-        self.fileparts.extend((
             (os.path.join(inc_dir, cache_module_declaration_file_name), cache_declarations),
-            (os.path.join(inc_dir, module_definition_file_name), cache_definitions)
+            (os.path.join(inc_dir, module_definition_file_name), module_definitions)
         ))
 
-        self.fileparts.append((os.path.join(inc_dir, module_definition_file_name), ('#endif',)))
+        self.fileparts.append((os.path.join(inc_dir, module_definition_file_name), ('}','#endif')))
 
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        self.fileparts.extend((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(m['func_map'])) for m in joined_module_info.values() if m.get('legacy'))
-        for v in joined_module_info.values():
-            if v.get('legacy'):
-                v['opts']['CPPFLAGS'] = v['opts'].get('CPPFLAGS',[]) + ['-include '+v['name']+'.inc']
+        for v in filter(lambda v: v.get('legacy'), joined_module_info.values()):
+            incfilename = v['name'] + '.inc'
+            self.fileparts.append((os.path.join(inc_dir, incfilename), get_map_lines(v['func_map'])))
+            v['opts']['CPPFLAGS'] = v['opts'].get('CPPFLAGS',[]) + ['-include '+incfilename]
         self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)))
 
     def finish(self):
