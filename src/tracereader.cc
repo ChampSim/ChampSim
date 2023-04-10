@@ -61,6 +61,8 @@ FILE* get_fptr(std::string fname)
 template <typename T>
 class bulk_tracereader
 {
+  static_assert(std::is_trivial_v<T>);
+  static_assert(std::is_standard_layout_v<T>);
 #if defined(__GNUG__) && !defined(__APPLE__)
   std::unique_ptr<FILE, detail::pcloser> fp;
   __gnu_cxx::stdio_filebuf<char> filebuf;
