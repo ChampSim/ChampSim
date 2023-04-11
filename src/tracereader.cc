@@ -132,8 +132,13 @@ void bulk_tracereader<T>::refresh_buffer()
   std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
 
   // Set branch targets
-  for (auto it = std::next(std::begin(instr_buffer)); it != std::end(instr_buffer); ++it)
-    std::prev(it)->branch_target = (std::prev(it)->is_branch && std::prev(it)->branch_taken) ? it->ip : 0;
+  set_branch_targets(std::begin(instr_buffer), std::end(instr_buffer));
+}
+
+ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target)
+{
+  branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : 0;
+  return branch;
 }
 
 template <typename T>

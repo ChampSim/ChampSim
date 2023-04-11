@@ -55,6 +55,15 @@ public:
     return retval;
   }
 };
+
+ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);
+
+template <typename It>
+void set_branch_targets(It begin, It end)
+{
+  for (auto it = std::next(begin); it != end; ++it)
+    *std::prev(it) = apply_branch_target(*std::prev(it), *it);
+}
 } // namespace champsim
 
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
