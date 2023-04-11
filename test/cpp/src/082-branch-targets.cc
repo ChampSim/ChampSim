@@ -10,6 +10,8 @@ ooo_model_instr non_branch_inst(uint64_t ip)
 {
   input_instr i;
   i.ip = ip;
+  i.is_branch = false;
+  i.branch_taken = false;
   return ooo_model_instr{0, i};
 }
 

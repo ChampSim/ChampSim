@@ -50,8 +50,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
           elem->_operate();
 
       THEN("The lower level sees the metadata in prefetcher_cache_operate()") {
-        REQUIRE(std::size(test::metadata_operate_collector.at(&lower)) == 1);
-        REQUIRE(test::metadata_operate_collector.at(&lower).front() == seed_metadata);
+        REQUIRE_THAT(test::metadata_operate_collector.at(&lower), Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(seed_metadata));
       }
     }
   }
@@ -100,7 +99,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
 
       THEN("The upper level sees the metadata in prefetcher_cache_operate()") {
         //REQUIRE(std::size(test::metadata_collector.at(&upper)) == 1);
-        REQUIRE(std::count(std::begin(test::metadata_fill_collector.at(&upper)), std::end(test::metadata_fill_collector.at(&upper)), seed_metadata) == 1);
+        REQUIRE_THAT(test::metadata_fill_collector.at(&upper), Catch::Matchers::Contains(seed_metadata));
       }
     }
   }
