@@ -18,6 +18,7 @@
 #define TRACEREADER_H
 
 #include <memory>
+#include <numeric>
 #include <string>
 
 #include "instruction.h"
@@ -61,8 +62,8 @@ ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_inst
 template <typename It>
 void set_branch_targets(It begin, It end)
 {
-  for (auto it = std::next(begin); it != end; ++it)
-    *std::prev(it) = apply_branch_target(*std::prev(it), *it);
+  std::reverse_iterator rbegin{end}, rend{begin};
+  std::adjacent_difference(rbegin, rend, rbegin, apply_branch_target);
 }
 } // namespace champsim
 
