@@ -40,22 +40,20 @@ struct pcloser {
 
 std::string get_fptr_cmd(std::string_view fname)
 {
-  std::string cmd_fmtstr = "%1$s %2$s";
+  using namespace std::literals::string_literals;
+  auto last_dot = fname.substr(fname.find_last_of("."));
+  std::string unzip_command{"cat "};
+  if (last_dot == ".gz") // gzip format
+    unzip_command = "gzip -dc ";
+  else if (last_dot == ".xz") // xz
+    unzip_command = "xz -dc ";
+
   if (fname.substr(0, 4) == "http")
-    cmd_fmtstr = "wget -qO- -o /dev/null %2$s | %1$s";
+    unzip_command += "<(wget -qO- -o /dev/null "s + fname.data() + ")"s;
+  else
+    unzip_command += fname.data();
 
-  std::string decomp_program = "cat";
-  if (fname.back() == 'z') {
-    auto last_dot = fname.substr(fname.find_last_of("."));
-    if (last_dot[1] == 'g') // gzip format
-      decomp_program = "gzip -dc";
-    else if (last_dot[1] == 'x') // xz
-      decomp_program = "xz -dc";
-  }
-
-  char gunzip_command[4096];
-  snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.data());
-  return gunzip_command;
+  return unzip_command;
 }
 
 template <typename T>
