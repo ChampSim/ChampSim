@@ -163,7 +163,7 @@ bool bulk_tracereader<T>::eof() const
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
   if (is_cloudsuite)
-    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<cloudsuite_instr>(cpu, fname)}};
+    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<cloudsuite_instr>>(cpu, fname)};
   else
-    return champsim::tracereader{champsim::repeatable{champsim::bulk_tracereader<input_instr>(cpu, fname)}};
+    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<input_instr>>(cpu, fname)};
 }
