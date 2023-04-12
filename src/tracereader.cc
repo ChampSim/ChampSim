@@ -36,8 +36,9 @@ namespace detail
 struct pcloser {
   void operator()(FILE* f) const { pclose(f); }
 };
+} // namespace detail
 
-FILE* get_fptr(std::string fname)
+std::string get_fptr_cmd(std::string_view fname)
 {
   std::string cmd_fmtstr = "%1$s %2$s";
   if (fname.substr(0, 4) == "http")
@@ -45,7 +46,7 @@ FILE* get_fptr(std::string fname)
 
   std::string decomp_program = "cat";
   if (fname.back() == 'z') {
-    std::string last_dot = fname.substr(fname.find_last_of("."));
+    auto last_dot = fname.substr(fname.find_last_of("."));
     if (last_dot[1] == 'g') // gzip format
       decomp_program = "gzip -dc";
     else if (last_dot[1] == 'x') // xz
@@ -53,10 +54,9 @@ FILE* get_fptr(std::string fname)
   }
 
   char gunzip_command[4096];
-  snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.c_str());
-  return popen(gunzip_command, "r");
+  snprintf(gunzip_command, std::size(gunzip_command), cmd_fmtstr.c_str(), decomp_program.c_str(), fname.data());
+  return gunzip_command;
 }
-} // namespace detail
 
 template <typename T>
 class bulk_tracereader
@@ -96,12 +96,12 @@ template <typename T>
 void bulk_tracereader<T>::start()
 {
 #if defined(__GNUG__) && !defined(__APPLE__)
-  fp = std::unique_ptr<FILE, detail::pcloser>(detail::get_fptr(trace_string));
+  fp = std::unique_ptr<FILE, detail::pcloser>(popen(trace_string.c_str(), "r"));
   filebuf = __gnu_cxx::stdio_filebuf<char>{fp.get(), std::ios::in};
 #elif defined(__APPLE__)
   if (fp != nullptr)
     pclose(fp);
-  fp = detail::get_fptr(trace_string);
+  fp = popen(trace_string.c_str(), "r");
 #endif
 }
 
@@ -162,8 +162,9 @@ bool bulk_tracereader<T>::eof() const
 
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
+  auto fptr_cmd = champsim::get_fptr_cmd(fname);
   if (is_cloudsuite)
-    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<cloudsuite_instr>>(cpu, fname)};
+    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<cloudsuite_instr>>(cpu, fptr_cmd)};
   else
-    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<input_instr>>(cpu, fname)};
+    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<input_instr>>(cpu, fptr_cmd)};
 }

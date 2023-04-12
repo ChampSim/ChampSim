@@ -57,6 +57,7 @@ public:
   }
 };
 
+std::string get_fptr_cmd(std::string_view fname);
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);
 
 template <typename It>
