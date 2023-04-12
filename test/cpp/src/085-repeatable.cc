@@ -16,11 +16,16 @@ namespace {
 
     explicit mock_repeatable(bool r, F&& func) : ever_repeats(r), callback(func) {}
   };
+
+  struct restart_indicator {
+    bool* ext;
+    void operator()() { *ext = true; }
+  };
 }
 
 TEST_CASE("A repeatable repeats") {
   bool restart_called = false;
-  auto func = [&](){ restart_called = true; };
+  ::restart_indicator func{&restart_called};
   champsim::repeatable<mock_repeatable<decltype(func)>> uut{true, func};
 
   (void)uut();
