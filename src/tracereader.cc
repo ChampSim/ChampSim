@@ -56,8 +56,7 @@ std::string get_fptr_cmd(std::string_view fname)
   return unzip_command;
 }
 
-struct popen_istream
-{
+struct popen_istream {
   std::unique_ptr<FILE, detail::pcloser> fp{nullptr};
   std::streamsize gcount_;
   bool eof_ = false;
