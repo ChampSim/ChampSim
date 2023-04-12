@@ -81,7 +81,7 @@ class bulk_tracereader
 public:
   ooo_model_instr operator()();
 
-  const std::string trace_string;
+  std::string trace_string;
   bulk_tracereader(uint8_t cpu_idx, std::string _ts) : cpu(cpu_idx), trace_string(_ts) { start(); }
 
   bool eof() const;
@@ -158,11 +158,13 @@ bool bulk_tracereader<T>::eof() const
 }
 } // namespace champsim
 
+template <typename T>
+using reader_t = champsim::repeatable<champsim::bulk_tracereader<T>, uint8_t, std::string>;
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
   auto fptr_cmd = champsim::get_fptr_cmd(fname);
   if (is_cloudsuite)
-    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<cloudsuite_instr>>(cpu, fptr_cmd)};
+    return champsim::tracereader{reader_t<cloudsuite_instr>(cpu, fptr_cmd)};
   else
-    return champsim::tracereader{champsim::repeatable<champsim::bulk_tracereader<input_instr>>(cpu, fptr_cmd)};
+    return champsim::tracereader{reader_t<input_instr>(cpu, fptr_cmd)};
 }

@@ -9,22 +9,26 @@
 
 namespace champsim
 {
-template <typename T>
-struct repeatable : public T
+template <typename T, typename... Args>
+struct repeatable
 {
-  template <typename... Args>
-  explicit repeatable(Args... args) : T(std::forward<Args>(args)...) {}
+  static_assert(std::is_move_constructible_v<T>);
+  static_assert(std::is_move_assignable_v<T>);
+  std::tuple<Args...> args_;
+  T intern_{std::apply([](auto... x){ return T{x...}; }, args_)};
+  explicit repeatable(Args... args) : args_(args...) {}
 
   auto operator()()
   {
     // Reopen trace if we've reached the end of the file
-    if (T::eof()) {
-      auto name = T::trace_string;
-      std::cout << "*** Reached end of trace: " << name << std::endl;
-      T::restart();
+    if (intern_.eof()) {
+      std::cout << "*** Reached end of trace: { ";
+      std::apply([&](auto... x){ (..., (std::cout << x << ", ")); }, args_);
+      std::cout << "\b\b }" << std::endl;
+      intern_ = T{std::apply([](auto... x){ return T{x...}; }, args_)};
     }
 
-    return T::operator()();
+    return intern_();
   }
 };
 } // namespace champsim

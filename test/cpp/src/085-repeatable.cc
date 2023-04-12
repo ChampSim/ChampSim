@@ -3,18 +3,16 @@
 #include "repeatable.h"
 
 namespace {
-  template <typename F>
   struct mock_repeatable {
-    std::string trace_string = "TESTtestTEST";
     bool ever_repeats;
-    F callback;
+
+    inline static int constructor_calls = 0;
 
     bool eof() const { return ever_repeats; }
-    void restart() { callback(); }
 
     ooo_model_instr operator()() { return ooo_model_instr{0, input_instr{}}; }
 
-    explicit mock_repeatable(bool r, F&& func) : ever_repeats(r), callback(func) {}
+    explicit mock_repeatable(bool r) : ever_repeats(r) { constructor_calls++; }
   };
 
   struct restart_indicator {
@@ -24,20 +22,17 @@ namespace {
 }
 
 TEST_CASE("A repeatable repeats") {
-  bool restart_called = false;
-  ::restart_indicator func{&restart_called};
-  champsim::repeatable<mock_repeatable<decltype(func)>> uut{true, func};
+  champsim::repeatable<mock_repeatable, bool> uut{true};
 
+  auto old_calls = mock_repeatable::constructor_calls;
   (void)uut();
-  REQUIRE(restart_called);
+  REQUIRE(mock_repeatable::constructor_calls > old_calls);
 }
 
 namespace {
   template <typename T>
   struct configurable_repeatable {
-    std::string trace_string = "TESTtestTEST";
     bool eof() const { return true; }
-    void restart() {}
 
     T operator()() { return T{}; }
   };
