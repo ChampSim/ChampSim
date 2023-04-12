@@ -27,19 +27,19 @@ TEST_CASE("Remote files can be retrieved")
 {
   std::string fname{"http://example.com/files/test.champsimtrace"};
   auto test_string = champsim::get_fptr_cmd(fname);
-  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("wget"));
+  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("curl"));
 }
 
 TEST_CASE("Remote gzip-compressed files can be retrieved")
 {
   std::string fname{"http://example.com/files/test.gz"};
   auto test_string = champsim::get_fptr_cmd(fname);
-  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("wget") && Catch::Matchers::ContainsSubstring("gzip"));
+  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("curl") && Catch::Matchers::ContainsSubstring("gzip"));
 }
 
 TEST_CASE("Remote xz-compressed files can be retrieved")
 {
   std::string fname{"http://example.com/files/test.xz"};
   auto test_string = champsim::get_fptr_cmd(fname);
-  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("wget") && Catch::Matchers::ContainsSubstring("xz"));
+  REQUIRE_THAT(test_string, Catch::Matchers::ContainsSubstring("curl") && Catch::Matchers::ContainsSubstring("xz"));
 }

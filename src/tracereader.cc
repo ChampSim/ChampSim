@@ -41,17 +41,16 @@ struct pcloser {
 std::string get_fptr_cmd(std::string_view fname)
 {
   using namespace std::literals::string_literals;
-  auto last_dot = fname.substr(fname.find_last_of("."));
   std::string unzip_command{"cat "};
-  if (last_dot == ".gz") // gzip format
-    unzip_command = "gzip -dc ";
-  else if (last_dot == ".xz") // xz
-    unzip_command = "xz -dc ";
-
   if (fname.substr(0, 4) == "http")
-    unzip_command += "<(wget -qO- -o /dev/null "s + fname.data() + ")"s;
-  else
-    unzip_command += fname.data();
+    unzip_command = "curl -s "s;
+  unzip_command += fname.data();
+
+  auto last_dot = fname.substr(fname.find_last_of("."));
+  if (last_dot == ".gz") // gzip format
+    unzip_command += " | gzip -dc";
+  else if (last_dot == ".xz") // xz
+    unzip_command += " | xz -dc";
 
   return unzip_command;
 }
