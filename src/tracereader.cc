@@ -56,110 +56,36 @@ std::string get_fptr_cmd(std::string_view fname)
   return unzip_command;
 }
 
-template <typename T>
-class bulk_tracereader
+struct popen_istream
 {
-  static_assert(std::is_trivial_v<T>);
-  static_assert(std::is_standard_layout_v<T>);
-#if defined(__GNUG__) && !defined(__APPLE__)
-  std::unique_ptr<FILE, detail::pcloser> fp;
-  __gnu_cxx::stdio_filebuf<char> filebuf;
-#elif defined(__APPLE__)
-  FILE* fp{nullptr};
-#endif
-
-  uint8_t cpu;
+  std::unique_ptr<FILE, detail::pcloser> fp{nullptr};
+  std::streamsize gcount_;
   bool eof_ = false;
 
-  constexpr static std::size_t buffer_size = 128;
-  constexpr static std::size_t refresh_thresh = 1;
-  std::deque<ooo_model_instr> instr_buffer;
+  popen_istream& read(char* s, std::streamsize count)
+  {
+    gcount_ = fread(s, sizeof(char), count, fp.get());
+    eof_ = !(gcount_ > 0);
+    return *this;
+  }
 
-  void refresh_buffer();
-  void start();
+  bool eof() const { return eof_; }
+  std::streamsize gcount() const { return gcount_; }
 
-public:
-  ooo_model_instr operator()();
-
-  std::string trace_string;
-  bulk_tracereader(uint8_t cpu_idx, std::string _ts) : cpu(cpu_idx), trace_string(_ts) { start(); }
-
-  bool eof() const;
-  void restart() { start(); }
+  explicit popen_istream(std::string s) : fp(popen(s.c_str(), "r")) {}
 };
 
 uint64_t tracereader::instr_unique_id = 0;
-
-template <typename T>
-void bulk_tracereader<T>::start()
-{
-#if defined(__GNUG__) && !defined(__APPLE__)
-  fp = std::unique_ptr<FILE, detail::pcloser>(popen(trace_string.c_str(), "r"));
-  filebuf = __gnu_cxx::stdio_filebuf<char>{fp.get(), std::ios::in};
-#elif defined(__APPLE__)
-  if (fp != nullptr)
-    pclose(fp);
-  fp = popen(trace_string.c_str(), "r");
-#endif
-}
-
-template <typename T>
-void bulk_tracereader<T>::refresh_buffer()
-{
-  std::array<T, buffer_size - refresh_thresh> trace_read_buf;
-  std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
-  std::size_t bytes_read;
-
-  // Read from trace file
-#if defined(__GNUG__) && !defined(__APPLE__)
-  std::istream trace_file{&filebuf};
-  trace_file.read(std::data(raw_buf), std::size(raw_buf));
-  bytes_read = static_cast<std::size_t>(trace_file.gcount());
-  eof_ = trace_file.eof();
-#else
-  bytes_read = fread(std::data(raw_buf), sizeof(char), std::size(raw_buf), fp);
-  eof_ = !(bytes_read > 0);
-#endif
-
-  // Transform bytes into trace format instructions
-  std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
-
-  // Inflate trace format into core model instructions
-  auto begin = std::begin(trace_read_buf);
-  auto end = std::next(begin, bytes_read / sizeof(T));
-  std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
-
-  // Set branch targets
-  set_branch_targets(std::begin(instr_buffer), std::end(instr_buffer));
-}
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target)
 {
   branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : 0;
   return branch;
 }
-
-template <typename T>
-ooo_model_instr bulk_tracereader<T>::operator()()
-{
-  if (std::size(instr_buffer) <= refresh_thresh)
-    refresh_buffer();
-
-  auto retval = instr_buffer.front();
-  instr_buffer.pop_front();
-
-  return retval;
-}
-
-template <typename T>
-bool bulk_tracereader<T>::eof() const
-{
-  return eof_ && std::size(instr_buffer) <= refresh_thresh;
-}
 } // namespace champsim
 
 template <typename T>
-using reader_t = champsim::repeatable<champsim::bulk_tracereader<T>, uint8_t, std::string>;
+using reader_t = champsim::repeatable<champsim::bulk_tracereader<T, champsim::popen_istream>, uint8_t, std::string>;
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
   auto fptr_cmd = champsim::get_fptr_cmd(fname);
