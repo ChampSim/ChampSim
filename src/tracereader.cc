@@ -20,12 +20,9 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <string>
-
-#if defined(__GNUG__) && !defined(__APPLE__)
-#include <ext/stdio_filebuf.h>
-#endif
 
 #include "repeatable.h"
 
@@ -82,13 +79,23 @@ ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_inst
 }
 } // namespace champsim
 
-template <typename T>
-using reader_t = champsim::repeatable<champsim::bulk_tracereader<T, champsim::popen_istream>, uint8_t, std::string>;
+template <typename T, typename S>
+using reader_t = champsim::repeatable<champsim::bulk_tracereader<T, S>, uint8_t, std::string>;
 champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
 {
-  auto fptr_cmd = champsim::get_fptr_cmd(fname);
-  if (is_cloudsuite)
-    return champsim::tracereader{reader_t<cloudsuite_instr>(cpu, fptr_cmd)};
-  else
-    return champsim::tracereader{reader_t<input_instr>(cpu, fptr_cmd)};
+  bool is_url = (fname.substr(0, 4) == "http");
+  bool is_compressed = (fname.substr(std::size(fname)-2) == "gz") || (fname.substr(std::size(fname)-2) == "xz");
+
+  if (is_url || is_compressed) {
+    auto fptr_cmd = champsim::get_fptr_cmd(fname);
+    if (is_cloudsuite)
+      return champsim::tracereader{reader_t<cloudsuite_instr, champsim::popen_istream>(cpu, fptr_cmd)};
+    else
+      return champsim::tracereader{reader_t<input_instr, champsim::popen_istream>(cpu, fptr_cmd)};
+  } else {
+    if (is_cloudsuite)
+      return champsim::tracereader{reader_t<cloudsuite_instr, std::ifstream>(cpu, fname)};
+    else
+      return champsim::tracereader{reader_t<input_instr, std::ifstream>(cpu, fname)};
+  }
 }
