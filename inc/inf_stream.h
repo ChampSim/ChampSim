@@ -1,12 +1,12 @@
 #ifndef INF_STREAM_H
 #define INF_STREAM_H
 
+#include <bzlib.h>
 #include <cassert>
 #include <iostream>
 #include <lzma.h>
 #include <memory>
 #include <zlib.h>
-#include <bzlib.h>
 
 namespace champsim
 {
