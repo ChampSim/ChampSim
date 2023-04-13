@@ -3,6 +3,9 @@
   "version-string": "1.0",
   "dependencies": [
     "fmt",
+    "bzip2",
+    "liblzma",
+    "zlib",
     "catch2"
   ]
 }

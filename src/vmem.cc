@@ -16,9 +16,7 @@
 
 #include "vmem.h"
 
-#include <algorithm>
 #include <cassert>
-#include <numeric>
 
 #include <fmt/core.h>
 

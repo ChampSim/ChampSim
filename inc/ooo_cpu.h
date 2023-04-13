@@ -20,7 +20,6 @@
 #include <array>
 #include <bitset>
 #include <deque>
-#include <functional>
 #include <limits>
 #include <optional>
 #include <queue>
@@ -99,7 +98,7 @@ public:
 
   using stats_type = cpu_stats;
 
-  std::vector<stats_type> roi_stats{}, sim_stats{};
+  stats_type roi_stats{}, sim_stats{};
 
   // instruction buffer
   struct dib_shift {
@@ -171,10 +170,10 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  uint64_t roi_instr() const { return roi_stats.back().instrs(); }
-  uint64_t roi_cycle() const { return roi_stats.back().cycles(); }
+  uint64_t roi_instr() const { return roi_stats.instrs(); }
+  uint64_t roi_cycle() const { return roi_stats.cycles(); }
   uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
-  uint64_t sim_cycle() const { return current_cycle - sim_stats.back().begin_cycles; }
+  uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
   void print_deadlock() override final;
 

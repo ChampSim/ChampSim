@@ -17,10 +17,6 @@ import os
 
 from . import util
 
-def extend_each(x,y):
-    merges = {k: (*x[k],*y[k]) for k in x if k in y}
-    return {**x, **y, **merges}
-
 def dereference(var):
     return '$(' + var + ')'
 

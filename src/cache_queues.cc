@@ -87,7 +87,7 @@ void CACHE::NonTranslatingQueues::check_collision()
   // Check WQ for duplicates, merging if they are found
   for (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), std::not_fn(&PACKET::forward_checked)); wq_it != std::end(WQ);) {
     if (do_collision_for_merge(std::begin(WQ), wq_it, *wq_it, write_shamt)) {
-      sim_stats.back().WQ_MERGED++;
+      ++sim_stats.WQ_MERGED;
       wq_it = WQ.erase(wq_it);
     } else {
       wq_it->forward_checked = true;
@@ -98,10 +98,10 @@ void CACHE::NonTranslatingQueues::check_collision()
   // Check RQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto rq_it = std::find_if(std::begin(RQ), std::end(RQ), std::not_fn(&PACKET::forward_checked)); rq_it != std::end(RQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *rq_it, write_shamt)) {
-      sim_stats.back().WQ_FORWARD++;
+      ++sim_stats.WQ_FORWARD;
       rq_it = RQ.erase(rq_it);
     } else if (do_collision_for_merge(std::begin(RQ), rq_it, *rq_it, read_shamt)) {
-      sim_stats.back().RQ_MERGED++;
+      ++sim_stats.RQ_MERGED;
       rq_it = RQ.erase(rq_it);
     } else {
       rq_it->forward_checked = true;
@@ -112,10 +112,10 @@ void CACHE::NonTranslatingQueues::check_collision()
   // Check PQ for forwarding from WQ (return if found), then for duplicates (merge if found)
   for (auto pq_it = std::find_if(std::begin(PQ), std::end(PQ), std::not_fn(&PACKET::forward_checked)); pq_it != std::end(PQ);) {
     if (do_collision_for_return(std::begin(WQ), std::end(WQ), *pq_it, write_shamt)) {
-      sim_stats.back().WQ_FORWARD++;
+      ++sim_stats.WQ_FORWARD;
       pq_it = PQ.erase(pq_it);
     } else if (do_collision_for_merge(std::begin(PQ), pq_it, *pq_it, read_shamt)) {
-      sim_stats.back().PQ_MERGED++;
+      ++sim_stats.PQ_MERGED;
       pq_it = PQ.erase(pq_it);
     } else {
       pq_it->forward_checked = true;
@@ -192,7 +192,7 @@ bool CACHE::NonTranslatingQueues::do_add_queue(R& queue, std::size_t queue_size,
 
 bool CACHE::NonTranslatingQueues::add_rq(const PACKET& packet)
 {
-  sim_stats.back().RQ_ACCESS++;
+  ++sim_stats.RQ_ACCESS;
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
@@ -200,16 +200,16 @@ bool CACHE::NonTranslatingQueues::add_rq(const PACKET& packet)
   auto result = do_add_queue(RQ, RQ_SIZE, fwd_pkt);
 
   if (result)
-    sim_stats.back().RQ_TO_CACHE++;
+    ++sim_stats.RQ_TO_CACHE;
   else
-    sim_stats.back().RQ_FULL++;
+    ++sim_stats.RQ_FULL;
 
   return result;
 }
 
 bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
 {
-  sim_stats.back().WQ_ACCESS++;
+  ++sim_stats.WQ_ACCESS;
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
@@ -217,31 +217,31 @@ bool CACHE::NonTranslatingQueues::add_wq(const PACKET& packet)
   auto result = do_add_queue(WQ, WQ_SIZE, fwd_pkt);
 
   if (result)
-    sim_stats.back().WQ_TO_CACHE++;
+    ++sim_stats.WQ_TO_CACHE;
   else
-    sim_stats.back().WQ_FULL++;
+    ++sim_stats.WQ_FULL;
 
   return result;
 }
 
 bool CACHE::NonTranslatingQueues::add_pq(const PACKET& packet)
 {
-  sim_stats.back().PQ_ACCESS++;
+  ++sim_stats.PQ_ACCESS;
 
   auto fwd_pkt = packet;
   fwd_pkt.is_translated = (fwd_pkt.v_address != fwd_pkt.address) && fwd_pkt.address != 0;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result)
-    sim_stats.back().PQ_TO_CACHE++;
+    ++sim_stats.PQ_TO_CACHE;
   else
-    sim_stats.back().PQ_FULL++;
+    ++sim_stats.PQ_FULL;
 
   return result;
 }
 
 bool CACHE::NonTranslatingQueues::add_ptwq(const PACKET& packet)
 {
-  sim_stats.back().PTWQ_ACCESS++;
+  ++sim_stats.PTWQ_ACCESS;
 
   auto fwd_pkt = packet;
   fwd_pkt.fill_this_level = true;
@@ -249,9 +249,9 @@ bool CACHE::NonTranslatingQueues::add_ptwq(const PACKET& packet)
   auto result = do_add_queue(PTWQ, PTWQ_SIZE, fwd_pkt);
 
   if (result)
-    sim_stats.back().PTWQ_TO_CACHE++;
+    ++sim_stats.PTWQ_TO_CACHE;
   else
-    sim_stats.back().PTWQ_FULL++;
+    ++sim_stats.PTWQ_FULL;
 
   return result;
 }
@@ -303,25 +303,27 @@ void CACHE::TranslatingQueues::return_data(const PACKET& packet)
 
 void CACHE::NonTranslatingQueues::begin_phase()
 {
-  roi_stats.emplace_back();
-  sim_stats.emplace_back();
+  stats_type new_roi_stats, new_sim_stats;
+
+  roi_stats = new_roi_stats;
+  sim_stats = new_sim_stats;
 }
 
 void CACHE::NonTranslatingQueues::end_phase(unsigned)
 {
-  roi_stats.back().RQ_ACCESS = sim_stats.back().RQ_ACCESS;
-  roi_stats.back().RQ_MERGED = sim_stats.back().RQ_MERGED;
-  roi_stats.back().RQ_FULL = sim_stats.back().RQ_FULL;
-  roi_stats.back().RQ_TO_CACHE = sim_stats.back().RQ_TO_CACHE;
+  roi_stats.RQ_ACCESS = sim_stats.RQ_ACCESS;
+  roi_stats.RQ_MERGED = sim_stats.RQ_MERGED;
+  roi_stats.RQ_FULL = sim_stats.RQ_FULL;
+  roi_stats.RQ_TO_CACHE = sim_stats.RQ_TO_CACHE;
 
-  roi_stats.back().PQ_ACCESS = sim_stats.back().PQ_ACCESS;
-  roi_stats.back().PQ_MERGED = sim_stats.back().PQ_MERGED;
-  roi_stats.back().PQ_FULL = sim_stats.back().PQ_FULL;
-  roi_stats.back().PQ_TO_CACHE = sim_stats.back().PQ_TO_CACHE;
+  roi_stats.PQ_ACCESS = sim_stats.PQ_ACCESS;
+  roi_stats.PQ_MERGED = sim_stats.PQ_MERGED;
+  roi_stats.PQ_FULL = sim_stats.PQ_FULL;
+  roi_stats.PQ_TO_CACHE = sim_stats.PQ_TO_CACHE;
 
-  roi_stats.back().WQ_ACCESS = sim_stats.back().WQ_ACCESS;
-  roi_stats.back().WQ_MERGED = sim_stats.back().WQ_MERGED;
-  roi_stats.back().WQ_FULL = sim_stats.back().WQ_FULL;
-  roi_stats.back().WQ_TO_CACHE = sim_stats.back().WQ_TO_CACHE;
-  roi_stats.back().WQ_FORWARD = sim_stats.back().WQ_FORWARD;
+  roi_stats.WQ_ACCESS = sim_stats.WQ_ACCESS;
+  roi_stats.WQ_MERGED = sim_stats.WQ_MERGED;
+  roi_stats.WQ_FULL = sim_stats.WQ_FULL;
+  roi_stats.WQ_TO_CACHE = sim_stats.WQ_TO_CACHE;
+  roi_stats.WQ_FORWARD = sim_stats.WQ_FORWARD;
 }

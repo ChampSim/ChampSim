@@ -39,25 +39,26 @@ def scale_frequencies(it):
     for x in it_b:
         x['frequency'] = max_freq / x['frequency']
 
-def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
-    name_parts = ['champsim', *(c.get('name') for c in configs if c.get('name') is not None)]
+def executable_name(*config_list):
+    name_by_parts = '_'.join(('champsim', *(c.get('name') for c in config_list if c.get('name') is not None)))
+    name_by_specification = next(reversed(list(c.get('executable_name') for c in config_list if c.get('executable_name') is not None)), name_by_parts)
+    return name_by_specification
 
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    branch_search_dirs = [*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]
-    btb_search_dirs = [*(os.path.join(m, 'btb') for m in module_dir), *btb_dir, os.path.join(champsim_root, 'btb')]
-    prefetcher_search_dirs = [*(os.path.join(m, 'prefetcher') for m in module_dir), *pref_dir, os.path.join(champsim_root, 'prefetcher')]
-    replacement_search_dirs = [*(os.path.join(m, 'replacement') for m in module_dir), *repl_dir, os.path.join(champsim_root, 'replacement')]
+def duplicate_to_length(elements, n):
+    repeat_factor = math.ceil(n / len(elements));
+    return list(itertools.islice(itertools.chain(*(itertools.repeat(e, repeat_factor) for e in elements)), n))
 
-    config_file = util.chain(*configs, default_root)
+def filter_inaccessible(system, roots, key='lower_level'):
+    return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
+
+def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+    config_file = util.chain(merged_configs, default_root)
 
     pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
     vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
 
-    cores = config_file.get('ooo_cpu', [{}])
-
     # Copy or trim cores as necessary to fill out the specified number of cores
-    cpu_repeat_factor = math.ceil(config_file['num_cores'] / len(cores));
-    cores = list(itertools.islice(itertools.chain.from_iterable(itertools.repeat(c, cpu_repeat_factor) for c in cores), config_file['num_cores']))
+    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file['num_cores'])
 
     # Default core elements
     cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i, 'DIB': config_file.get('DIB',{})}, {'DIB': default_dib}, default_core) for i,cpu in enumerate(cores)]
@@ -119,7 +120,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             cache['max_fill'] = cache['max_write']
 
     # Remove caches that are inaccessible
-    caches = util.combine_named(*(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))))
+    caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
 
     # Establish latencies in caches
     caches = util.combine_named(caches.values(), ({'name': c['name'], 'hit_latency': (c.get('latency',100) - c['fill_latency'])} for c in caches.values()))
@@ -137,40 +138,47 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             )
 
     # Get module path names and unique module names
-    caches = util.combine_named(caches.values(), ({
-            'name': c['name'],
-            '_replacement_modpaths': [modules.default_dir(replacement_search_dirs, f) for f in util.wrap_list(c.get('replacement', []))],
-            '_prefetcher_modpaths':  [modules.default_dir(prefetcher_search_dirs, f) for f in util.wrap_list(c.get('prefetcher', []))],
-            '_replacement_modnames': [modules.get_module_name(modules.default_dir(replacement_search_dirs, f)) for f in util.wrap_list(c.get('replacement', []))],
-            '_prefetcher_modnames':  [modules.get_module_name(modules.default_dir(prefetcher_search_dirs, f)) for f in util.wrap_list(c.get('prefetcher', []))]
-            } for c in caches.values()))
+    caches = util.combine_named(caches.values(),
+            ({'name': c['name'], '_replacement_data': [replacement_context.find(f) for f in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
+            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': c.get('_is_instruction_cache',False)}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
+            )
 
-    cores = list(util.combine_named(cores, ({
-            'name': c['name'],
-            '_branch_predictor_modpaths': [modules.default_dir(branch_search_dirs, f) for f in util.wrap_list(c.get('branch_predictor', []))],
-            '_btb_modpaths':  [modules.default_dir(btb_search_dirs, f) for f in util.wrap_list(c.get('btb', []))],
-            '_branch_predictor_modnames': [modules.get_module_name(modules.default_dir(branch_search_dirs, f)) for f in util.wrap_list(c.get('branch_predictor', []))],
-            '_btb_modnames':  [modules.get_module_name(modules.default_dir(btb_search_dirs, f)) for f in util.wrap_list(c.get('btb', []))]
-            } for c in cores)).values())
-
-    repl_data   = modules.get_module_data('_replacement_modnames', '_replacement_modpaths', caches.values(), replacement_search_dirs, modules.get_repl_data);
-    pref_data   = modules.get_module_data('_prefetcher_modnames', '_prefetcher_modpaths', caches.values(), prefetcher_search_dirs, modules.get_pref_data);
-    branch_data = modules.get_module_data('_branch_predictor_modnames', '_branch_predictor_modpaths', cores, branch_search_dirs, modules.get_branch_data);
-    btb_data    = modules.get_module_data('_btb_modnames', '_btb_modpaths', cores, btb_search_dirs, modules.get_btb_data);
-
-    if not compile_all_modules:
-        repl_data = util.subdict(repl_data, list(itertools.chain(*(c['_replacement_modnames'] for c in caches.values()))))
-        pref_data = util.subdict(pref_data, list(itertools.chain(*(c['_prefetcher_modnames'] for c in caches.values()))))
-        branch_data = util.subdict(branch_data, list(itertools.chain(*(c['_branch_predictor_modnames'] for c in cores))))
-        btb_data = util.subdict(btb_data, list(itertools.chain(*(c['_btb_modnames'] for c in cores))))
+    cores = list(util.combine_named(cores,
+            ({'name': c['name'], '_branch_predictor_data': [branch_context.find(f) for f in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
+            ({'name': c['name'], '_btb_data': [btb_context.find(f) for f in util.wrap_list(c.get('btb',[]))]} for c in cores)
+            ).values())
 
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
-    module_info = {'repl': dict(repl_data.items()), 'pref': dict(pref_data.items()), 'branch': dict(branch_data.items()), 'btb': dict(btb_data.items())}
-
-    executable = config_file.get('executable_name', '_'.join(name_parts))
+    module_info = {
+            'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all() if compile_all_modules else []),
+            'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all() if compile_all_modules else []),
+            'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all() if compile_all_modules else []),
+            'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all() if compile_all_modules else [])
+            }
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
 
-    return executable, elements, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+    return elements, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+
+def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    name = executable_name(*configs)
+    elements, module_info, config_file, env = parse_config_in_context(util.chain(*configs),
+        branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]),
+        btb_context = modules.ModuleSearchContext([*(os.path.join(m, 'btb') for m in module_dir), *btb_dir, os.path.join(champsim_root, 'btb')]),
+        replacement_context = modules.ModuleSearchContext([*(os.path.join(m, 'replacement') for m in module_dir), *repl_dir, os.path.join(champsim_root, 'replacement')]),
+        prefetcher_context = modules.ModuleSearchContext([*(os.path.join(m, 'prefetcher') for m in module_dir), *pref_dir, os.path.join(champsim_root, 'prefetcher')]),
+        compile_all_modules = compile_all_modules
+    )
+
+    module_info = {
+            'repl': {k: util.chain(v, modules.get_repl_data(v['name'])) for k,v in module_info['repl'].items()},
+            'pref': {k: util.chain(v, modules.get_pref_data(v['name'], v['_is_instruction_prefetcher'])) for k,v in module_info['pref'].items()},
+            'branch': {k: util.chain(v, modules.get_branch_data(v['name'])) for k,v in module_info['branch'].items()},
+            'btb': {k: util.chain(v, modules.get_btb_data(v['name'])) for k,v in module_info['btb'].items()},
+            }
+
+    return name, elements, module_info, config_file, env
 
