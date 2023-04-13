@@ -19,8 +19,8 @@
 #include <fstream>
 #include <string>
 
-#include "repeatable.h"
 #include "inf_stream.h"
+#include "repeatable.h"
 
 namespace champsim
 {
@@ -38,8 +38,8 @@ using reader_t = champsim::repeatable<champsim::bulk_tracereader<T, S>, uint8_t,
 template <typename T>
 champsim::tracereader get_tracereader_for_type(std::string fname, uint8_t cpu)
 {
-  bool is_gzip_compressed = (fname.substr(std::size(fname)-2) == "gz");
-  bool is_lzma_compressed = (fname.substr(std::size(fname)-2) == "xz");
+  bool is_gzip_compressed = (fname.substr(std::size(fname) - 2) == "gz");
+  bool is_lzma_compressed = (fname.substr(std::size(fname) - 2) == "xz");
 
   if (is_gzip_compressed)
     return champsim::tracereader{reader_t<T, champsim::inf_istream<champsim::decomp_tags::gzip_tag_t<>>>(cpu, fname)};
