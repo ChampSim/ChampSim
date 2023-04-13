@@ -20,6 +20,7 @@
 #include <array>
 #include <bitset>
 #include <deque>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
