@@ -22,6 +22,9 @@
 #include <string>
 #include <vector>
 
+#include "cache.h"
+#include "dram_controller.h"
+#include "ooo_cpu.h"
 #include <string_view>
 
 namespace champsim
@@ -31,7 +34,16 @@ struct phase_info {
   std::string name;
   bool is_warmup;
   uint64_t length;
+  std::vector<std::size_t> trace_index;
   std::vector<std::string> trace_names;
+};
+
+struct phase_stats {
+  std::string name;
+  std::vector<std::string> trace_names;
+  std::vector<O3_CPU::stats_type> roi_cpu_stats, sim_cpu_stats;
+  std::vector<CACHE::stats_type> roi_cache_stats, sim_cache_stats;
+  std::vector<DRAM_CHANNEL::stats_type> roi_dram_stats, sim_dram_stats;
 };
 
 } // namespace champsim

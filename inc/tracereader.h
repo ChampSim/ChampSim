@@ -17,59 +17,114 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
-#include <cstdio>
+#include <cstring>
 #include <deque>
 #include <memory>
+#include <numeric>
 #include <string>
-#include <variant>
-
-#if defined(__GNUG__) && !defined(__APPLE__)
-#include <ext/stdio_filebuf.h>
-#endif
-
-namespace detail
-{
-void pclose_file(FILE* f);
-}
 
 #include "instruction.h"
 
+namespace champsim
+{
 class tracereader
 {
   static uint64_t instr_unique_id;
+  struct reader_concept {
+    virtual ~reader_concept() = default;
+    virtual ooo_model_instr operator()() = 0;
+  };
+
+  template <typename T>
+  struct reader_model final : public reader_concept {
+    T intern_;
+    reader_model(T&& val) : intern_(std::move(val)) {}
+
+    ooo_model_instr operator()() override { return intern_(); }
+  };
+
+  std::unique_ptr<reader_concept> pimpl_;
 
 public:
-  const std::string trace_string;
-  tracereader(uint8_t cpu_idx, std::string _ts) : trace_string(_ts), cpu(cpu_idx) {}
-  virtual ~tracereader() = default;
+  template <typename T>
+  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val)))
+  {
+  }
 
-  virtual ooo_model_instr operator()() = 0;
-  bool eof() const;
+  auto operator()()
+  {
+    auto retval = (*pimpl_)();
+    retval.instr_id = instr_unique_id++;
+    return retval;
+  }
+};
 
-protected:
-  static FILE* get_fptr(std::string fname);
-
-#if defined(__GNUG__) && !defined(__APPLE__)
-  std::unique_ptr<FILE, decltype(&detail::pclose_file)> fp{get_fptr(trace_string), &detail::pclose_file};
-  __gnu_cxx::stdio_filebuf<char> filebuf{fp.get(), std::ios::in};
-#elif defined(__APPLE__)
-  FILE* fp = get_fptr(trace_string);
-#endif
+template <typename T, typename F>
+class bulk_tracereader
+{
+  static_assert(std::is_trivial_v<T>);
+  static_assert(std::is_standard_layout_v<T>);
 
   uint8_t cpu;
   bool eof_ = false;
+  F trace_file;
 
   constexpr static std::size_t buffer_size = 128;
   constexpr static std::size_t refresh_thresh = 1;
   std::deque<ooo_model_instr> instr_buffer;
 
-  template <typename T>
-  void refresh_buffer();
+public:
+  ooo_model_instr operator()();
 
-  template <typename T>
-  ooo_model_instr impl_get();
+  bulk_tracereader(uint8_t cpu_idx, std::string tf) : cpu(cpu_idx), trace_file(tf) {}
+  bulk_tracereader(uint8_t cpu_idx, F&& file) : cpu(cpu_idx), trace_file(std::move(file)) {}
+
+  bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
 };
 
-std::unique_ptr<tracereader> get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);
+
+template <typename It>
+void set_branch_targets(It begin, It end)
+{
+  std::reverse_iterator rbegin{end}, rend{begin};
+  std::adjacent_difference(rbegin, rend, rbegin, apply_branch_target);
+}
+
+template <typename T, typename F>
+ooo_model_instr bulk_tracereader<T, F>::operator()()
+{
+  if (std::size(instr_buffer) <= refresh_thresh) {
+    std::array<T, buffer_size - refresh_thresh> trace_read_buf;
+    std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
+    std::size_t bytes_read;
+
+    // Read from trace file
+    trace_file.read(std::data(raw_buf), std::size(raw_buf));
+    bytes_read = static_cast<std::size_t>(trace_file.gcount());
+    eof_ = trace_file.eof();
+
+    // Transform bytes into trace format instructions
+    std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
+
+    // Inflate trace format into core model instructions
+    auto begin = std::begin(trace_read_buf);
+    auto end = std::next(begin, bytes_read / sizeof(T));
+    std::transform(begin, end, std::back_inserter(instr_buffer), [cpu = this->cpu](T t) { return ooo_model_instr{cpu, t}; });
+
+    // Set branch targets
+    set_branch_targets(std::begin(instr_buffer), std::end(instr_buffer));
+  }
+
+  auto retval = instr_buffer.front();
+  instr_buffer.pop_front();
+
+  return retval;
+}
+
+std::string get_fptr_cmd(std::string_view fname);
+} // namespace champsim
+
+champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
 
 #endif
