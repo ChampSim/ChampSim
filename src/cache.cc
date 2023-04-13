@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -518,7 +519,7 @@ void CACHE::end_phase(unsigned finished_cpu)
   for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
     total_miss = std::accumulate(std::begin(roi_stats.hits.at(type)), std::end(roi_stats.hits.at(type)), total_miss);
   }
-  roi_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / total_miss;
+  roi_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(total_miss);
 }
 
 bool CACHE::should_activate_prefetcher(const PACKET& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }
