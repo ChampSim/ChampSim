@@ -149,7 +149,7 @@ jobs:
       run: make $(pwd)/test/bin/000-test-main
 
     - name: Run
-      run: test/bin/000-test-main
+      run: test/bin/000-test-main --order rand --warn NoAssertions --invisibles
 
     - name: Capture LCOV
       if: ${{ matrix.config.coverage }}

@@ -25,33 +25,42 @@ uint64_t region_type::region_lru = 0;
 
 std::map<CACHE*, std::array<region_type, REGION_COUNT>> regions;
 
+auto page_and_offset(uint64_t addr)
+{
+  auto page_number = addr >> LOG2_PAGE_SIZE;
+  auto page_offset = (addr & champsim::msl::bitmask(LOG2_PAGE_SIZE)) >> LOG2_BLOCK_SIZE;
+  return std::pair{page_number, page_offset};
+}
+
 bool check_cl_access(CACHE* cache, uint64_t v_addr)
 {
-  uint64_t vpn = v_addr >> LOG2_PAGE_SIZE;
-  uint64_t page_offset = (v_addr >> LOG2_BLOCK_SIZE) & 63;
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn](auto x) { return x.vpn == vpn; });
+  auto [vpn, page_offset] = page_and_offset(v_addr);
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn = vpn](auto x) { return x.vpn == vpn; });
 
-  return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset);
+  return (region != std::end(regions.at(cache))) && region->access_map.test(page_offset);
 }
 
 bool check_cl_prefetch(CACHE* cache, uint64_t v_addr)
 {
-  uint64_t vpn = v_addr >> LOG2_PAGE_SIZE;
-  uint64_t page_offset = (v_addr >> LOG2_BLOCK_SIZE) & 63;
-  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn](auto x) { return x.vpn == vpn; });
+  auto [vpn, page_offset] = page_and_offset(v_addr);
+  auto region = std::find_if(std::begin(regions.at(cache)), std::end(regions.at(cache)), [vpn = vpn](auto x) { return x.vpn == vpn; });
 
   return (region != std::end(regions.at(cache))) && region->prefetch_map.test(page_offset);
 }
 
 } // anonymous namespace
 
-void CACHE::prefetcher_initialize() { std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl; }
+void CACHE::prefetcher_initialize()
+{
+  std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl;
+
+  regions.insert_or_assign(this, decltype(regions)::mapped_type{});
+}
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
-  auto current_vpn = addr >> LOG2_PAGE_SIZE;
-  auto page_offset = (addr & champsim::msl::bitmask(LOG2_PAGE_SIZE)) >> LOG2_BLOCK_SIZE;
-  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [current_vpn](auto x) { return x.vpn == current_vpn; });
+  auto [current_vpn, page_offset] = ::page_and_offset(addr);
+  auto demand_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [vpn = current_vpn](auto x) { return x.vpn == vpn; });
 
   if (demand_region == std::end(::regions.at(this))) {
     // not tracking this region yet, so replace the LRU region
@@ -66,18 +75,18 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
   // attempt to prefetch in the positive, then negative direction
   for (auto direction : {1, -1}) {
     for (int i = 1, prefetches_issued = 0; i <= MAX_DISTANCE && prefetches_issued < PREFETCH_DEGREE; i++) {
-      const auto pos_step_addr = addr + direction * (i * BLOCK_SIZE);
-      const auto neg_step_addr = addr - direction * (i * BLOCK_SIZE);
-      const auto neg_2step_addr = addr - direction * (2 * i * BLOCK_SIZE);
+      const auto pos_step_addr = addr + direction * (i * (signed)BLOCK_SIZE);
+      const auto neg_step_addr = addr - direction * (i * (signed)BLOCK_SIZE);
+      const auto neg_2step_addr = addr - direction * (2 * i * (signed)BLOCK_SIZE);
+
       if (::check_cl_access(this, neg_step_addr) && ::check_cl_access(this, neg_2step_addr) && !::check_cl_access(this, pos_step_addr)
           && !::check_cl_prefetch(this, pos_step_addr)) {
         // found something that we should prefetch
         if ((addr >> LOG2_BLOCK_SIZE) != (pos_step_addr >> LOG2_BLOCK_SIZE)) {
           bool prefetch_success = prefetch_line(pos_step_addr, get_occupancy(0, pos_step_addr) < get_size(0, pos_step_addr) / 2, metadata_in);
           if (prefetch_success) {
-            auto pf_vpn = pos_step_addr >> LOG2_PAGE_SIZE;
-            auto pf_page_offset = (pos_step_addr & champsim::msl::bitmask(LOG2_PAGE_SIZE)) >> LOG2_BLOCK_SIZE;
-            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [pf_vpn](auto x) { return x.vpn == pf_vpn; });
+            auto [pf_vpn, pf_page_offset] = ::page_and_offset(pos_step_addr);
+            auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });
 
             if (pf_region == std::end(::regions.at(this))) {
               // we're not currently tracking this region, so allocate a new region so we can mark it

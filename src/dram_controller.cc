@@ -110,20 +110,20 @@ void MEMORY_CONTROLLER::operate()
 
         if (iter_next_process->row_buffer_hit)
           if (channel.write_mode)
-            channel.sim_stats.back().WQ_ROW_BUFFER_HIT++;
+            ++channel.sim_stats.WQ_ROW_BUFFER_HIT;
           else
-            channel.sim_stats.back().RQ_ROW_BUFFER_HIT++;
+            ++channel.sim_stats.RQ_ROW_BUFFER_HIT;
         else if (channel.write_mode)
-          channel.sim_stats.back().WQ_ROW_BUFFER_MISS++;
+          ++channel.sim_stats.WQ_ROW_BUFFER_MISS;
         else
-          channel.sim_stats.back().RQ_ROW_BUFFER_MISS++;
+          ++channel.sim_stats.RQ_ROW_BUFFER_MISS;
       } else {
         // Bus is congested
         if (channel.active_request != std::end(channel.bank_request))
-          channel.sim_stats.back().dbus_cycle_congested += (channel.active_request->event_cycle - current_cycle);
+          channel.sim_stats.dbus_cycle_congested += (channel.active_request->event_cycle - current_cycle);
         else
-          channel.sim_stats.back().dbus_cycle_congested += (channel.dbus_cycle_available - current_cycle);
-        channel.sim_stats.back().dbus_count_congested++;
+          channel.sim_stats.dbus_cycle_congested += (channel.dbus_cycle_available - current_cycle);
+        ++channel.sim_stats.dbus_count_congested;
       }
     }
 
@@ -171,15 +171,17 @@ void MEMORY_CONTROLLER::begin_phase()
 {
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
-    chan.sim_stats.emplace_back();
-    chan.sim_stats.back().name = "Channel " + std::to_string(chan_idx++);
+    DRAM_CHANNEL::stats_type new_stats;
+    new_stats.name = "Channel " + std::to_string(chan_idx++);
+    chan.sim_stats = new_stats;
   }
 }
 
 void MEMORY_CONTROLLER::end_phase(unsigned)
 {
-  for (auto& chan : channels)
-    chan.roi_stats.push_back(chan.sim_stats.back());
+  for (auto& chan : channels) {
+    chan.roi_stats = chan.sim_stats;
+  }
 }
 
 void DRAM_CHANNEL::check_collision()
@@ -262,7 +264,7 @@ bool MEMORY_CONTROLLER::add_wq(const PACKET& packet)
     return true;
   }
 
-  channel.sim_stats.back().WQ_FULL++;
+  ++channel.sim_stats.WQ_FULL;
   return false;
 }
 

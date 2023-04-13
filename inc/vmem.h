@@ -18,7 +18,6 @@
 #define VMEM_H
 
 #include <cstdint>
-#include <deque>
 #include <map>
 
 #include "champsim_constants.h"
