@@ -6,12 +6,52 @@
 #include <lzma.h>
 #include <memory>
 #include <zlib.h>
+#include <bzlib.h>
 
 namespace champsim
 {
 namespace decomp_tags
 {
 enum class status_t { CAN_CONTINUE, END, ERROR };
+
+struct bzip2_tag_t {
+  using state_type = bz_stream;
+  using in_char_type = std::remove_pointer_t<decltype(state_type::next_in)>;
+  using out_char_type = std::remove_pointer_t<decltype(state_type::next_out)>;
+  using deflate_state_type = std::unique_ptr<state_type, decltype(&::BZ2_bzCompressEnd)>;
+  using inflate_state_type = std::unique_ptr<state_type, decltype(&::BZ2_bzDecompressEnd)>;
+  using status_type = status_t;
+
+  static status_type deflate(deflate_state_type& x, bool flush)
+  {
+    auto ret = ::BZ2_bzCompress(x.get(), flush ? BZ_FLUSH : BZ_RUN);
+    if (ret == BZ_RUN_OK)
+      return status_type::CAN_CONTINUE;
+    if (ret == BZ_FLUSH_OK)
+      return status_type::END;
+    return status_type::ERROR;
+  }
+
+  static status_type inflate(inflate_state_type& x)
+  {
+    ::BZ2_bzDecompress(x.get());
+    return status_type::CAN_CONTINUE;
+  }
+
+  static deflate_state_type new_deflate_state()
+  {
+    deflate_state_type state{new state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL}, &::BZ2_bzCompressEnd};
+    ::BZ2_bzCompressInit(state.get(), 9, 0, 0);
+    return state;
+  }
+
+  static inflate_state_type new_inflate_state()
+  {
+    inflate_state_type state{new state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL}, &::BZ2_bzDecompressEnd};
+    ::BZ2_bzDecompressInit(state.get(), 0, 0);
+    return state;
+  }
+};
 
 template <int window = 15 + 16, int compression = Z_DEFAULT_COMPRESSION>
 struct gzip_tag_t {

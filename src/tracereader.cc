@@ -40,11 +40,14 @@ champsim::tracereader get_tracereader_for_type(std::string fname, uint8_t cpu)
 {
   bool is_gzip_compressed = (fname.substr(std::size(fname) - 2) == "gz");
   bool is_lzma_compressed = (fname.substr(std::size(fname) - 2) == "xz");
+  bool is_bzip2_compressed = (fname.substr(std::size(fname) - 3) == "bz2");
 
   if (is_gzip_compressed)
     return champsim::tracereader{reader_t<T, champsim::inf_istream<champsim::decomp_tags::gzip_tag_t<>>>(cpu, fname)};
   else if (is_lzma_compressed)
     return champsim::tracereader{reader_t<T, champsim::inf_istream<champsim::decomp_tags::lzma_tag_t<>>>(cpu, fname)};
+  else if (is_bzip2_compressed)
+    return champsim::tracereader{reader_t<T, champsim::inf_istream<champsim::decomp_tags::bzip2_tag_t>>(cpu, fname)};
   else
     return champsim::tracereader{reader_t<T, std::ifstream>(cpu, fname)};
 }
