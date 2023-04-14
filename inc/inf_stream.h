@@ -16,14 +16,15 @@ enum class status_t { CAN_CONTINUE, END, ERROR };
 
 namespace detail
 {
-  template <typename State, typename R, R (*Del)(State*)>
-  struct end_deleter {
-    void operator()(State* s) {
-      Del(s);
-      delete s;
-    }
-  };
-}
+template <typename State, typename R, R (*Del)(State*)>
+struct end_deleter {
+  void operator()(State* s)
+  {
+    Del(s);
+    delete s;
+  }
+};
+} // namespace detail
 
 struct bzip2_tag_t {
   using state_type = bz_stream;
@@ -256,7 +257,8 @@ auto inf_istream<T, S>::inf_streambuf<I>::underflow() -> int_type
 
   auto bytes_remaining = std::size(uns_out_buf) - strm->avail_out;
   assert(bytes_remaining <= std::numeric_limits<std::make_signed_t<decltype(bytes_remaining)>>::max());
-  this->setg(this->out_buf.data(), this->out_buf.data(), std::next(this->out_buf.data(), static_cast<std::make_signed_t<decltype(bytes_remaining)>>(bytes_remaining)));
+  this->setg(this->out_buf.data(), this->out_buf.data(),
+             std::next(this->out_buf.data(), static_cast<std::make_signed_t<decltype(bytes_remaining)>>(bytes_remaining)));
   return base_type::traits_type::to_int_type(this->out_buf.front());
 }
 } // namespace champsim
