@@ -26,14 +26,14 @@ struct AdjDiffMatcher : Catch::Matchers::MatcherGenericBase {
 
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
   auto pte_page_size = (1ull << 11);
-  auto level = GENERATE(2,3,4);
+  auto level = GENERATE(as<std::size_t>{}, 2,3,4);
 
   GIVEN("A large virtual memory") {
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
     VirtualMemory uut{pte_page_size, 5, 200, dram};
 
     uint64_t dist = PAGE_SIZE;
-    for (auto i = 0; i < level; ++i)
+    for (std::size_t i = 0; i < level; ++i)
       dist *= pte_page_size;
     std::vector<uint64_t> req_pages(PAGE_SIZE / pte_page_size, dist);
     req_pages.front() = 0xcccc000000000000;

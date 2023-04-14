@@ -6,7 +6,7 @@
 TEST_CASE("The virtual memory evaluates the correct shift amounts") {
   constexpr std::size_t log2_pte_page_size = 12;
 
-  auto level = GENERATE(1,2,3,4,5);
+  auto level = GENERATE(as<std::size_t>{}, 1,2,3,4,5);
 
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
   VirtualMemory uut{1 << log2_pte_page_size, 5, 200, dram};

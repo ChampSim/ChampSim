@@ -229,7 +229,9 @@ auto inf_istream<T, S>::inf_streambuf<I>::underflow() -> int_type
       // Read data from the stream and convert to zlib-appropriate format
       std::array<char_type, std::tuple_size<decltype(in_buf)>::value> sig_in_buf;
       src->read(sig_in_buf.data(), sig_in_buf.size());
-      std::memcpy(in_buf.data(), sig_in_buf.data(), src->gcount());
+      auto bytes_read = src->gcount();
+      assert(bytes_read >= 0);
+      std::memcpy(in_buf.data(), sig_in_buf.data(), static_cast<std::size_t>(src->gcount()));
 
       // Record that bytes are available in in_buf
       strm->avail_in = static_cast<unsigned>(src->gcount());
@@ -252,7 +254,9 @@ auto inf_istream<T, S>::inf_streambuf<I>::underflow() -> int_type
   // Copy into a format appropriate for the stream
   std::memcpy(this->out_buf.data(), uns_out_buf.data(), uns_out_buf.size() - strm->avail_out);
 
-  this->setg(this->out_buf.data(), this->out_buf.data(), std::next(this->out_buf.data(), uns_out_buf.size() - strm->avail_out));
+  auto bytes_remaining = std::size(uns_out_buf) - strm->avail_out;
+  assert(bytes_remaining <= std::numeric_limits<std::make_signed_t<decltype(bytes_remaining)>>::max());
+  this->setg(this->out_buf.data(), this->out_buf.data(), std::next(this->out_buf.data(), static_cast<std::make_signed_t<decltype(bytes_remaining)>>(bytes_remaining)));
   return base_type::traits_type::to_int_type(this->out_buf.front());
 }
 } // namespace champsim
