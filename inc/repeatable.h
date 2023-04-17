@@ -1,6 +1,7 @@
 #ifndef REPEATABLE_H
 #define REPEATABLE_H
 
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -8,36 +9,26 @@
 
 namespace champsim
 {
-class repeatable
-{
-  struct repeatable_concept {
-    virtual ~repeatable_concept() = default;
-    virtual ooo_model_instr operator()() = 0;
-    virtual bool eof() const = 0;
-    virtual std::string trace_string() const = 0;
-    virtual void restart() = 0;
-  };
+template <typename T, typename... Args>
+struct repeatable {
+  static_assert(std::is_move_constructible_v<T>);
+  static_assert(std::is_move_assignable_v<T>);
+  std::tuple<Args...> args_;
+  T intern_{std::apply([](auto... x) { return T{x...}; }, args_)};
+  explicit repeatable(Args... args) : args_(args...) {}
 
-  template <typename T>
-  struct repeatable_model final : public repeatable_concept {
-    T intern_;
-    repeatable_model(T&& val) : intern_(std::move(val)) {}
-
-    ooo_model_instr operator()() override { return intern_(); }
-    bool eof() const override { return intern_.eof(); }
-    std::string trace_string() const override { return intern_.trace_string; } // forward to member variable
-    void restart() override { intern_.restart(); }
-  };
-
-  std::unique_ptr<repeatable_concept> pimpl_;
-
-public:
-  template <typename T>
-  repeatable(T&& val) : pimpl_(std::make_unique<repeatable_model<T>>(std::move(val)))
+  auto operator()()
   {
-  }
+    // Reopen trace if we've reached the end of the file
+    if (intern_.eof()) {
+      std::cout << "*** Reached end of trace: { ";
+      std::apply([&](auto... x) { (..., (std::cout << x << ", ")); }, args_);
+      std::cout << "\b\b }" << std::endl;
+      intern_ = T{std::apply([](auto... x) { return T{x...}; }, args_)};
+    }
 
-  ooo_model_instr operator()();
+    return intern_();
+  }
 };
 } // namespace champsim
 

@@ -57,7 +57,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
 
     WHEN("Two more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = static_cast<uint64_t>(static_cast<int64_t>(seed.address) + stride*BLOCK_SIZE);
       test_a.instr_id = id++;
 
       auto test_result_a = mock_ul.issue(test_a);
@@ -66,7 +66,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = static_cast<uint64_t>(static_cast<int64_t>(test_a.address) + stride*BLOCK_SIZE);
       test_b.instr_id = id++;
 
       auto test_result_b = mock_ul.issue(test_b);

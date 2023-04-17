@@ -114,8 +114,8 @@ SCENARIO("Completed instructions are retired") {
         op->_operate();
 
       THEN("The bandwidth of instructions are retired") {
-        REQUIRE(std::size(uut.ROB) == old_rob_occupancy-uut.RETIRE_WIDTH);
-        REQUIRE(uut.num_retired == old_num_retired+uut.RETIRE_WIDTH);
+        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-static_cast<std::size_t>(uut.RETIRE_WIDTH)));
+        REQUIRE(uut.num_retired == old_num_retired+static_cast<std::size_t>(uut.RETIRE_WIDTH));
       }
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
