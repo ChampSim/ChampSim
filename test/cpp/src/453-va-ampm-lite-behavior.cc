@@ -26,15 +26,17 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    to_rq_MRP mock_ul;
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
       .name("453-uut-["+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
       .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
     };
 
-    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
     for (auto elem : elements) {
       elem->initialize();
@@ -50,6 +52,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);
@@ -112,15 +115,17 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    to_rq_MRP mock_ul;
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
       .name("453-uut-[-"+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
       .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
     };
 
-    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &mock_lt, &uut}};
 
     for (auto elem : elements) {
       elem->initialize();
@@ -136,6 +141,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);

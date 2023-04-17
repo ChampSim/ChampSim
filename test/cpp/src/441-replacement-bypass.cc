@@ -33,11 +33,8 @@ SCENARIO("The replacement policy can bypass") {
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
     for (auto elem : elements) {
+      elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
     }

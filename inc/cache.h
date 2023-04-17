@@ -66,7 +66,7 @@ class CACHE : public champsim::operable
     uint32_t pf_metadata;
     uint32_t cpu;
 
-    uint8_t type;
+    access_type type;
     bool prefetch_from_this;
     bool skip_fill;
     bool is_translated;
@@ -93,7 +93,7 @@ class CACHE : public champsim::operable
     uint32_t pf_metadata;
     uint32_t cpu;
 
-    uint8_t type;
+    access_type type;
     bool prefetch_from_this;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};

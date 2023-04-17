@@ -48,6 +48,7 @@ class CacheBus
   uint32_t cpu;
 
   friend class O3_CPU;
+
 public:
   CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
   bool issue_read(request_type packet);

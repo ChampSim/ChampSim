@@ -2,16 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "ooo_cpu.h"
-
-namespace
-{
-ooo_model_instr inst(uint64_t addr)
-{
-    input_instr i;
-    i.ip = addr;
-    return ooo_model_instr{0, i};
-}
-}
+#include "instr.h"
 
 SCENARIO("A late-added instruction does not miss the IFB") {
   GIVEN("An IFETCH_BUFFER with one inflight instruction") {
@@ -25,7 +16,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_L1I, &mock_L1D}};
 
-    uut.IFETCH_BUFFER.push_back(inst(0xdeadbeef));
+    uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeef));
     for (auto &instr : uut.IFETCH_BUFFER) {
       instr.event_cycle = uut.current_cycle;
       //instr.dib_checked = COMPLETED;
@@ -44,7 +35,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
     WHEN("A new instruction is added, and the first request returns") {
       mock_L1I.release(0xdeadbeef);
 
-      uut.IFETCH_BUFFER.push_back(inst(0xdeadbeee)); // same cache line as first instruction
+      uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeee)); // same cache line as first instruction
 
       for (int i = 0; i < 3; ++i) {
           for (auto op : elements)

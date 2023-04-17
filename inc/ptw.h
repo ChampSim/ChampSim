@@ -44,8 +44,7 @@ class PageTableWalker : public champsim::operable
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
 
-  struct mshr_type
-  {
+  struct mshr_type {
     uint64_t address = 0;
     uint64_t v_address = 0;
     uint64_t data = 0;
@@ -64,13 +63,15 @@ class PageTableWalker : public champsim::operable
   };
 
   std::deque<mshr_type> MSHR;
+  std::deque<mshr_type> finished;
+  std::deque<mshr_type> completed;
 
   std::vector<channel_type*> upper_levels;
   channel_type* lower_level;
 
-  bool handle_read(const request_type& pkt, channel_type* ul);
-  bool handle_fill(const mshr_type& pkt);
-  bool step_translation(const mshr_type& source);
+  std::optional<mshr_type> handle_read(const request_type& pkt, channel_type* ul);
+  std::optional<mshr_type> handle_fill(const mshr_type& pkt);
+  std::optional<mshr_type> step_translation(const mshr_type& source);
 
   void finish_packet(const response_type& packet);
 

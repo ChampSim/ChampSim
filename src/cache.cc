@@ -25,21 +25,24 @@
 #include "util.h"
 
 using namespace std::literals::string_view_literals;
-constexpr std::array<std::string_view, NUM_TYPES> access_type_names{ "LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION" };
+constexpr std::array<std::string_view, NUM_TYPES> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"};
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
-  : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-    type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
-{}
+    : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
+      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
+{
+}
 
 CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
-  : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-    type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
-{}
+    : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
+      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+{
+}
 
 CACHE::BLOCK::BLOCK(mshr_type mshr)
-  : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
-{}
+    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
+{
+}
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
 {
@@ -193,7 +196,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   cpu = handle_pkt.cpu;
 
   // check mshr
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match=handle_pkt.address >> OFFSET_BITS, shamt=OFFSET_BITS](const auto& entry){ return (entry.address >> shamt) == match; });
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
+    return (entry.address >> shamt) == match;
+  });
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
   if (mshr_entry != MSHR.end()) // miss already inflight
@@ -292,43 +297,41 @@ void CACHE::operate()
     ul->check_collision();
 
   // Finish returns
-  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt){ this->finish_packet(pkt); });
+  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
   lower_level->returned.clear();
 
   // Finish translations
   if (lower_translate != nullptr) {
-    std::for_each(std::cbegin(lower_translate->returned), std::cend(lower_translate->returned), [this](const auto& pkt){ this->finish_translation(pkt); });
+    std::for_each(std::cbegin(lower_translate->returned), std::cend(lower_translate->returned), [this](const auto& pkt) { this->finish_translation(pkt); });
     lower_translate->returned.clear();
   }
 
   // Perform fills
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    fill_bw -= operate_queue(q.get(), fill_bw, [cycle = current_cycle, this](const auto& x) {
-        return x.event_cycle <= cycle && this->handle_fill(x);
-    });
+    fill_bw -= operate_queue(q.get(), fill_bw, [cycle = current_cycle, this](const auto& x) { return x.event_cycle <= cycle && this->handle_fill(x); });
   }
 
   // Initiate tag checks
   auto tag_bw = MAX_TAG;
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      tag_bw -= operate_queue(q.get(), tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul, this](const auto& entry){
-            tag_lookup_type retval{entry};
-            retval.event_cycle = cycle;
-            if (entry.response_requested)
-              retval.to_return = {&ul->returned};
-            this->inflight_tag_check.push_back(retval);
-            return true;
-        });
-    }
-  }
-  tag_bw -= operate_queue(internal_PQ, tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), this](const auto& entry){
+      tag_bw -= operate_queue(q.get(), tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul, this](const auto& entry) {
         tag_lookup_type retval{entry};
         retval.event_cycle = cycle;
+        if (entry.response_requested)
+          retval.to_return = {&ul->returned};
         this->inflight_tag_check.push_back(retval);
         return true;
-    });
+      });
+    }
+  }
+  tag_bw -= operate_queue(internal_PQ, tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), this](const auto& entry) {
+    tag_lookup_type retval{entry};
+    retval.event_cycle = cycle;
+    this->inflight_tag_check.push_back(retval);
+    return true;
+  });
 
   // Issue translations
   issue_translation();
@@ -338,11 +341,11 @@ void CACHE::operate()
 
   // Perform tag checks
   operate_queue(inflight_tag_check, MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && pkt.is_translated && (this->try_hit(pkt) ||
-          ((pkt.type == WRITE && !this->match_offset_bits)
-           ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
-           : this->handle_miss(pkt) // Treat writes (that is, stores) like reads
-       ));
+    return pkt.event_cycle <= cycle && pkt.is_translated
+           && (this->try_hit(pkt)
+               || ((pkt.type == WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
+                                                                   : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
+                   ));
   });
 
   impl_prefetcher_cycle_operate();
@@ -419,7 +422,8 @@ int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_le
 void CACHE::finish_packet(const response_type& packet)
 {
   // check MSHR information
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match=packet.address >> OFFSET_BITS, shamt=OFFSET_BITS](const auto& entry){ return (entry.address >> shamt) == match; });
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR),
+                                 [match = packet.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
 
   // sanity check
@@ -453,29 +457,38 @@ void CACHE::finish_packet(const response_type& packet)
 
 void CACHE::finish_translation(const response_type& packet)
 {
-  if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " data: " << packet.data << std::dec;
-    std::cout << " cycle: " << current_cycle << std::endl;
-  }
-
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
       entry.address = champsim::splice_bits(packet.data, entry.v_address, LOG2_PAGE_SIZE); // translated address
-      entry.is_translated = true; // This entry is now translated
+      entry.is_translated = true;                                                          // This entry is now translated
+
+      if constexpr (champsim::debug_print) {
+        std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
+        std::cout << " paddr: " << std::hex << entry.address;
+        std::cout << " vaddr: " << entry.v_address << std::dec;
+        std::cout << " cycle: " << current_cycle << std::endl;
+      }
     }
   }
 
-  auto stash_it = std::stable_partition(std::begin(translation_stash), std::end(translation_stash), [page_num=packet.v_address>>LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
+  auto stash_it =
+      std::stable_partition(std::begin(translation_stash), std::end(translation_stash),
+                            [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
   auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
   translation_stash.erase(stash_it, std::end(translation_stash));
-  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle=current_cycle+(warmup ? 0 : HIT_LATENCY), addr=packet.data](auto& entry) {
-      entry.address = champsim::splice_bits(addr, entry.v_address, LOG2_PAGE_SIZE); // translated address
-      entry.event_cycle = cycle;
-      entry.is_translated = true; // This entry is now translated
-    });
+  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), addr = packet.data, this](auto& entry) {
+    entry.address = champsim::splice_bits(addr, entry.v_address, LOG2_PAGE_SIZE); // translated address
+    entry.event_cycle = cycle;
+    entry.is_translated = true; // This entry is now translated
+
+    if constexpr (champsim::debug_print) {
+      std::cout << "[" << this->NAME << "_TRANSLATE] " << __func__;
+      std::cout << " paddr: " << std::hex << entry.address;
+      std::cout << " vaddr: " << entry.v_address << std::dec;
+      std::cout << " cycle: " << this->current_cycle << std::endl;
+    }
+  });
 }
 
 void CACHE::issue_translation()
@@ -515,7 +528,9 @@ void CACHE::issue_translation()
 void CACHE::detect_misses()
 {
   // Find entries that would be ready except that they have not finished translation
-  auto missed = [cycle=current_cycle](auto x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; };
+  auto missed = [cycle = current_cycle](auto x) {
+    return x.event_cycle < cycle && !x.is_translated && x.translate_issued;
+  };
   auto q_it = std::stable_partition(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::not_fn(missed));
 
   // Move them to the stash
@@ -527,12 +542,12 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return std::size(MSHR);
-  //else if (queue_type == 1)
-    //return std::size(upper_levels->RQ);
-  //else if (queue_type == 2)
-    //return std::size(upper_levels->WQ);
-  //else if (queue_type == 3)
-    //return std::size(upper_levels->PQ);
+  // else if (queue_type == 1)
+  // return std::size(upper_levels->RQ);
+  // else if (queue_type == 2)
+  // return std::size(upper_levels->WQ);
+  // else if (queue_type == 3)
+  // return std::size(upper_levels->PQ);
 
   return 0;
 }
@@ -541,12 +556,12 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return MSHR_SIZE;
-  //else if (queue_type == 1)
-    //return upper_levels->RQ_SIZE;
-  //else if (queue_type == 2)
-    //return upper_levels->WQ_SIZE;
-  //else if (queue_type == 3)
-    //return upper_levels->PQ_SIZE;
+  // else if (queue_type == 1)
+  // return upper_levels->RQ_SIZE;
+  // else if (queue_type == 2)
+  // return upper_levels->WQ_SIZE;
+  // else if (queue_type == 3)
+  // return upper_levels->PQ_SIZE;
 
   return 0;
 }
@@ -609,7 +624,10 @@ void CACHE::end_phase(unsigned finished_cpu)
 }
 
 template <typename T>
-bool CACHE::should_activate_prefetcher(const T& pkt) const { return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this; }
+bool CACHE::should_activate_prefetcher(const T& pkt) const
+{
+  return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this;
+}
 
 void CACHE::print_deadlock()
 {
@@ -629,8 +647,9 @@ void CACHE::print_deadlock()
     if (!std::empty(ul->RQ)) {
       for (const auto& entry : ul->RQ) {
         std::cout << "[" << NAME << " RQ] "
-          << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
+                  << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
+                  << std::endl;
       }
     } else {
       std::cout << NAME << " RQ empty" << std::endl;
@@ -639,8 +658,9 @@ void CACHE::print_deadlock()
     if (!std::empty(ul->WQ)) {
       for (const auto& entry : ul->WQ) {
         std::cout << "[" << NAME << " WQ] "
-          << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
+                  << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
+                  << std::endl;
       }
     } else {
       std::cout << NAME << " WQ empty" << std::endl;
@@ -649,8 +669,9 @@ void CACHE::print_deadlock()
     if (!std::empty(ul->PQ)) {
       for (const auto& entry : ul->PQ) {
         std::cout << "[" << NAME << " PQ] "
-          << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type) << std::endl;
+                  << " instr_id: " << entry.instr_id;
+        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
+                  << std::endl;
       }
     } else {
       std::cout << NAME << " PQ empty" << std::endl;

@@ -54,7 +54,7 @@ SCENARIO("A prefetch does not trigger itself") {
 
 SCENARIO("The prefetcher is triggered if the packet matches the activate field") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;

@@ -55,15 +55,15 @@ struct cache_queue_stats {
   uint64_t WQ_FORWARD = 0;
 };
 
-class channel {
-  struct request
-  {
+class channel
+{
+  struct request {
     bool forward_checked = false;
     bool is_translated = true;
     bool response_requested = true;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-    uint8_t type = 0;
+    access_type type{LOAD};
 
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
@@ -84,13 +84,15 @@ class channel {
     uint32_t pf_metadata = 0;
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps) :
-      address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps) {}
+    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
+        : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
+    {
+    }
     explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.instr_depend_on_me) {}
   };
 
   template <typename R>
-    bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
+  bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
 
   std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
@@ -98,7 +100,7 @@ class channel {
   unsigned OFFSET_BITS = 0;
   bool match_offset_bits = false;
 
-  public:
+public:
   using response_type = response;
   using request_type = request;
   using stats_type = cache_queue_stats;
@@ -106,7 +108,7 @@ class channel {
   std::deque<request_type> RQ{}, PQ{}, WQ{};
   std::deque<response_type> returned{};
 
-  stats_type sim_stats, roi_stats;
+  stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
   channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
@@ -117,6 +119,6 @@ class channel {
 
   void check_collision();
 };
-}
+} // namespace champsim
 
 #endif

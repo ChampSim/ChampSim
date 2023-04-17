@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "ooo_cpu.h"
+#include "instr.h"
 
 SCENARIO("The scheduler can detect RAW hazards") {
   GIVEN("A ROB with a single instruction") {
@@ -16,7 +17,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
       .data_queues(&mock_L1D.queues)
     };
 
-    uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
+    uut.ROB.push_back(champsim::test::instruction_with_ip(1));
     for (auto &instr : uut.ROB)
       instr.event_cycle = uut.current_cycle;
 
@@ -47,10 +48,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
       .data_queues(&mock_L1D.queues)
     };
 
-    input_instr dependent_instr;
-    dependent_instr.source_registers[0] = 42;
-    dependent_instr.destination_registers[0] = 42;
-    std::vector test_instructions( 2, ooo_model_instr{0,dependent_instr} );
+    std::vector test_instructions( 2, champsim::test::instruction_with_registers(42) );
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     for (auto &instr : uut.ROB)
@@ -88,10 +86,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
       .data_queues(&mock_L1D.queues)
     };
 
-    input_instr dependent_instr;
-    dependent_instr.source_registers[0] = 42;
-    dependent_instr.destination_registers[0] = 42;
-    std::vector test_instructions( schedule_width + 1, ooo_model_instr{0,dependent_instr} );
+    std::vector test_instructions( schedule_width + 1, champsim::test::instruction_with_registers(42) );
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     uint64_t id = 0;

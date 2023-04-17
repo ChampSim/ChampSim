@@ -15,7 +15,7 @@ namespace test
 
 SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
@@ -92,7 +92,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
 
 SCENARIO("The replacement policy is triggered on a hit") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A cache with one element") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
