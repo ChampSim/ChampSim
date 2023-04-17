@@ -16,24 +16,20 @@ SCENARIO("The replacement policy can bypass") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"441-uut", 1.0, 1, 1, 32, fill_latency, 1, 1, 0, false, false, false, 0, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDmock_replacement};
-    to_wq_MRP mock_ul_seed{&uut};
-    to_rq_MRP mock_ul_test{&uut};
+    to_wq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{"441-uut", 1.0, 1, 1, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, 0, {&mock_ul_seed.queues, &mock_ul_test.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDmock_replacement};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
     for (auto elem : elements) {
+      elem->initialize();
       elem->warmup = false;
       elem->begin_phase();
     }
 
     WHEN("A packet is issued") {
-      PACKET test;
+      decltype(mock_ul_seed)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.type = WRITE;
@@ -51,7 +47,7 @@ SCENARIO("The replacement policy can bypass") {
       AND_WHEN("A packet with a different address is sent") {
         test::evict_way.insert_or_assign(&uut, 1);
 
-        PACKET test_b;
+        decltype(mock_ul_test)::request_type test_b;
         test_b.address = 0xcafebabe;
         test_b.cpu = 0;
         test_b.type = LOAD;
@@ -59,14 +55,13 @@ SCENARIO("The replacement policy can bypass") {
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < hit_latency+1; ++i)
+        for (uint64_t i = 0; i < 2*hit_latency; ++i)
           for (auto elem : elements)
             elem->_operate();
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK(mock_ll.packet_count() == 1);
-          CHECK(mock_ll.addresses.back() == test_b.address);
+          CHECK_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(test_b.address));
         }
 
         for (uint64_t i = 0; i < 2*(fill_latency+hit_latency); ++i)

@@ -1,50 +1,57 @@
 #include <deque>
+#include <exception>
+#include <functional>
 #include <limits>
 
 #include "cache.h"
-#include "memory_class.h"
 #include "operable.h"
 
 /*
  * A MemoryRequestConsumer that simply returns all packets on the next cycle
  */
-class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
+class do_nothing_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets, ready_packets;
+  struct packet : champsim::channel::request_type
+  {
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+  };
+  std::deque<packet> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
   const uint64_t latency = 0;
 
-  void add(PACKET pkt) {
-    pkt.event_cycle = current_cycle + latency;
-    pkt.data = ++ret_data;
-    addresses.push_back(pkt.address);
-    packets.push_back(pkt);
-  }
-
   public:
+    champsim::channel queues{};
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), latency(lat) {}
+    do_nothing_MRC(uint64_t lat) : champsim::operable(1), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      auto add_pkt = [&](auto pkt) {
+        packet to_insert{pkt};
+        to_insert.event_cycle = current_cycle + latency;
+        to_insert.data = ++ret_data;
+        addresses.push_back(to_insert.address);
+        packets.push_back(to_insert);
+      };
+
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
       packets.erase(std::begin(packets), end);
 
-      for (PACKET &pkt : ready_packets) {
-        for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
+      for (auto &pkt : ready_packets) {
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
-
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
-
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
     std::size_t packet_count() const { return std::size(addresses); }
 };
@@ -52,43 +59,49 @@ class do_nothing_MRC : public MemoryRequestConsumer, public champsim::operable
 /*
  * A MemoryRequestConsumer that returns only a particular address
  */
-class filter_MRC : public MemoryRequestConsumer, public champsim::operable
+class filter_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets, ready_packets;
+  struct packet : champsim::channel::request_type
+  {
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+  };
+  std::deque<packet> packets, ready_packets;
   const uint64_t ret_addr;
   const uint64_t latency = 0;
   std::size_t mpacket_count = 0;
 
-  void add(PACKET pkt) {
-    if (pkt.address == ret_addr) {
-      pkt.event_cycle = current_cycle + latency;
-      packets.push_back(pkt);
-      ++mpacket_count;
-    }
-  }
-
   public:
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : MemoryRequestConsumer(), champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
+    champsim::channel queues{};
+    filter_MRC(uint64_t ret_addr_, uint64_t lat) : champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const PACKET &x){ return x.event_cycle <= cycle; });
+      auto add_pkt = [&](auto pkt) {
+        if (pkt.address == ret_addr) {
+          packet to_insert{pkt};
+          to_insert.event_cycle = current_cycle + latency;
+          packets.push_back(to_insert);
+          ++mpacket_count;
+        }
+      };
+
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
+
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 
-      for (PACKET &pkt : ready_packets) {
-        for (auto ret : pkt.to_return)
-          ret->return_data(pkt);
+      for (auto &pkt : ready_packets) {
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
     }
-
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
-
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
 
     std::size_t packet_count() const { return mpacket_count; }
 };
@@ -96,120 +109,137 @@ class filter_MRC : public MemoryRequestConsumer, public champsim::operable
 /*
  * A MemoryRequestConsumer that releases blocks when instructed to
  */
-class release_MRC : public MemoryRequestConsumer, public champsim::operable
+class release_MRC : public champsim::operable
 {
-  std::deque<PACKET> packets;
+  std::deque<champsim::channel::request_type> packets;
   std::size_t mpacket_count = 0;
 
-  void add(PACKET pkt) {
-      packets.push_back(pkt);
-      ++mpacket_count;
-  }
-
   public:
-    release_MRC() : MemoryRequestConsumer(), champsim::operable(1) {}
+    champsim::channel queues{};
+    release_MRC() : champsim::operable(1) {}
 
-    void operate() override {}
+    void operate() override {
+      auto add_pkt = [&](auto pkt) {
+        packets.push_back(pkt);
+        ++mpacket_count;
+      };
 
-    bool add_rq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_wq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_pq(const PACKET &pkt) override { add(pkt); return true; }
-    bool add_ptwq(const PACKET &pkt) override { add(pkt); return true; }
+      std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
+      std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
+      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
 
-    std::size_t get_occupancy(uint8_t, uint64_t) override { return std::size(packets); }
-    std::size_t get_size(uint8_t, uint64_t) override { return std::numeric_limits<uint32_t>::max(); }
+      queues.RQ.clear();
+      queues.WQ.clear();
+      queues.PQ.clear();
+    }
 
     std::size_t packet_count() const { return mpacket_count; }
 
+    void release_all()
+    {
+      for (const auto &pkt : packets) {
+        if (pkt.response_requested)
+          queues.returned.push_back(champsim::channel::response_type{pkt});
+      }
+      packets.clear();
+    }
+
     void release(uint64_t addr)
     {
-        auto pkt_it = std::find_if(std::begin(packets), std::end(packets), [addr](auto x){ return x.address == addr; });
-        if (pkt_it != std::end(packets)) {
-            for (auto ret : pkt_it->to_return) {
-                ret->return_data(*pkt_it);
-            }
-        }
-        packets.erase(pkt_it);
+        auto pkt_it = std::partition(std::begin(packets), std::end(packets), [addr](auto x){ return x.address != addr; });
+        std::for_each(pkt_it, std::end(packets), [&](const auto& pkt) {
+          if (pkt.response_requested)
+            queues.returned.push_back(champsim::channel::response_type{pkt});
+        });
+        packets.erase(pkt_it, std::end(packets));
     }
 };
 
 /*
  * A MemoryRequestProducer that counts how many returns it receives
  */
-class counting_MRP : public MemoryRequestProducer
+struct counting_MRP
 {
-  public:
-  unsigned count = 0;
+  std::deque<champsim::channel::response_type> returned{};
 
-  counting_MRP() : MemoryRequestProducer(nullptr) {}
+  std::size_t count = 0;
 
-  void return_data(const PACKET&) override {
-    count++;
+  void operate() {
+    count += std::size(returned);
+    returned.clear();
   }
 };
 
-template <typename MRC, typename Fun>
-class queue_issue_MRP : public MemoryRequestProducer, public champsim::operable
+struct queue_issue_MRP : public champsim::operable
 {
-  public:
-    struct result_data {
-      PACKET pkt;
-      uint64_t issue_time;
-      uint64_t return_time;
-    };
-    std::deque<result_data> packets;
+  using request_type = typename champsim::channel::request_type;
+  using response_type = typename champsim::channel::response_type;
 
-    Fun issue_func;
+  std::deque<response_type> returned{};
+  champsim::channel queues{};
 
-    queue_issue_MRP(MRC* ll, Fun func) : MemoryRequestProducer(ll), champsim::operable(1), issue_func(func) {}
+  struct result_data {
+    request_type pkt;
+    uint64_t issue_time;
+    uint64_t return_time;
+  };
+  std::deque<result_data> packets;
 
-    void operate() override {}
+  using func_type = std::function<bool(request_type, response_type)>;
+  func_type top_finder;
 
-    bool issue(const PACKET &pkt) {
-      auto copy = pkt;
-      copy.to_return = {this};
-      packets.push_back({copy, current_cycle, 0});
-      return issue_func(*static_cast<MRC*>(lower_level), copy);
+  queue_issue_MRP() : queue_issue_MRP([](auto x, auto y){ return x.address == y.address; }) {}
+  explicit queue_issue_MRP(func_type finder) : champsim::operable(1), top_finder(finder) {}
+
+  void operate() override {
+    auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
+
+    for (auto pkt : queues.returned) {
+      auto it = std::partition(std::begin(packets), std::end(packets), std::not_fn(std::bind(finder, pkt, std::placeholders::_1)));
+      if (it == std::end(packets))
+        throw std::invalid_argument{"Packet returned which was not sent"};
+      std::for_each(it, std::end(packets), [cycle=current_cycle](auto& x){ return x.return_time = cycle; });
     }
-
-    void return_data(const PACKET &pkt) override {
-      auto it = std::find_if(std::rbegin(packets), std::rend(packets), [addr=pkt.address](auto x) {
-          return x.pkt.address == addr;
-          });
-      it->return_time = current_cycle;
-    }
+    queues.returned.clear();
+  }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the write queue and notes when packets are returned
  */
-template <typename MRC>
-class to_wq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>
+struct to_wq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_wq))>;
-  public:
-    explicit to_wq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_wq)) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_wq(pkt);
+  }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-template <typename MRC>
-class to_rq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>
+struct to_rq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_rq))>;
-  public:
-    explicit to_rq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_rq)) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_rq(pkt);
+  }
 };
 
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-template<typename MRC>
-class to_pq_MRP : public queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>
+struct to_pq_MRP : public queue_issue_MRP
 {
-  using super_type = queue_issue_MRP<MRC, decltype(std::mem_fn(&MRC::add_pq))>;
-  public:
-    explicit to_pq_MRP(MRC* ll) : super_type(ll, std::mem_fn(&MRC::add_pq)) {}
+  using queue_issue_MRP::queue_issue_MRP;
+  using request_type = typename queue_issue_MRP::request_type;
+  bool issue(const queue_issue_MRP::request_type &pkt) {
+    packets.push_back({pkt, current_cycle, 0});
+    return queues.add_pq(pkt);
+  }
 };
 

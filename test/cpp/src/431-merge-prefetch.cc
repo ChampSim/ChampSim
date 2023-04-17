@@ -9,18 +9,16 @@ struct merge_testbed
   constexpr static uint64_t hit_latency = 5;
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
-  CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-  CACHE uut{"431-uut", 1, 1, 8, 32, 1, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-  to_rq_MRP<CACHE> seed_ul{&uut};
-  to_rq_MRP<CACHE> test_ul{&uut};
+  to_rq_MRP seed_ul, test_ul;
+  CACHE uut{"431-uut", 1, 1, 8, 32, hit_latency, 1, 1, 1, 0, false, true, false, (1<<LOAD)|(1<<PREFETCH), {&seed_ul.queues, &test_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
   uint32_t pkt_id = 0;
 
-  std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &seed_ul, &test_ul}};
+  std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &seed_ul, &test_ul}};
 
   template <typename MRP>
-  void issue_type(MRP& ul, uint8_t type, uint64_t delay = hit_latency+1)
+  void issue_type(MRP& ul, access_type type, uint64_t delay = hit_latency+1)
   {
-    PACKET pkt;
+    typename MRP::request_type pkt;
     pkt.address = 0xdeadbeef;
     pkt.v_address = 0xdeadbeef;
     pkt.type = type;
@@ -35,21 +33,18 @@ struct merge_testbed
         elem->_operate();
   }
 
-  explicit merge_testbed(uint8_t type)
+  explicit merge_testbed(access_type type)
   {
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     issue_type(seed_ul, type);
   }
 
-  void issue_type(uint8_t type, uint64_t delay = hit_latency+1)
+  void issue_type(access_type type, uint64_t delay = hit_latency+1)
   {
     issue_type(test_ul, type, delay);
   }
@@ -57,7 +52,7 @@ struct merge_testbed
 
 SCENARIO("A prefetch that hits an MSHR is dropped") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a " + std::string{str} + " miss") {
     merge_testbed testbed{type};
 
@@ -81,7 +76,7 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
 
 SCENARIO("A prefetch MSHR that gets hit is promoted") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a prefetch miss") {
     merge_testbed testbed{PREFETCH};
 

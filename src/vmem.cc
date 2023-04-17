@@ -92,7 +92,10 @@ std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64
     std::cout << " paddr: " << std::hex << paddr;
     std::cout << " vaddr: " << vaddr << std::dec;
     std::cout << " pt_page offset: " << offset;
-    std::cout << " translation_level: " << level << std::endl;
+    std::cout << " translation_level: " << level;
+    if (fault)
+      std::cout << " PAGE FAULT";
+    std::cout << std::endl;
   }
 
   return {paddr, fault ? minor_fault_penalty : 0};
