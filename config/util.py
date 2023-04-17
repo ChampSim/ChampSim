@@ -39,6 +39,10 @@ def chain(*dicts):
 
     return functools.reduce(merge_dicts, dicts)
 
+def extend_each(x,y):
+    merges = {k: (*x[k],*y[k]) for k in x if k in y}
+    return {**x, **y, **merges}
+
 def subdict(d, keys):
     return {k:v for k,v in d.items() if k in keys}
 

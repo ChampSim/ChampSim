@@ -28,23 +28,29 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "channel.h"
 #include "instruction.h"
-#include "memory_class.h"
 #include "operable.h"
 #include "util.h"
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
-class CacheBus : public MemoryRequestProducer
+class CACHE;
+class CacheBus
 {
+  using channel_type = champsim::channel;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
+
+  channel_type* lower_level;
   uint32_t cpu;
 
+  friend class O3_CPU;
+
 public:
-  std::deque<PACKET> PROCESSED;
-  CacheBus(uint32_t cpu_idx, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), cpu(cpu_idx) {}
-  bool issue_read(PACKET packet);
-  bool issue_write(PACKET packet);
-  void return_data(const PACKET& packet) override final;
+  CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
+  bool issue_read(request_type packet);
+  bool issue_write(request_type packet);
 };
 
 struct cpu_stats {
@@ -134,6 +140,7 @@ public:
   std::deque<ooo_model_instr> input_queue;
 
   CacheBus L1I_bus, L1D_bus;
+  CACHE* l1i;
 
   void initialize() override final;
   void operate() override final;
@@ -185,14 +192,14 @@ public:
   O3_CPU(uint32_t index, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
          std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width, unsigned dispatch_width,
          unsigned schedule_width, unsigned execute_width, long int lq_width, long int sq_width, unsigned retire_width, unsigned mispredict_penalty,
-         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, MemoryRequestConsumer* l1i, long int l1i_bw,
-         MemoryRequestConsumer* l1d, long int l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
+         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, CACHE* l1i_, champsim::channel* fetch_queues,
+         long int l1i_bw, champsim::channel* data_queues, long int l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
       : champsim::operable(freq_scale), cpu(index), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), DISPATCH_LATENCY(dispatch_latency),
         DECODE_LATENCY(decode_latency), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), L1I_BANDWIDTH(l1i_bw), L1D_BANDWIDTH(l1d_bw),
-        L1I_bus(cpu, l1i), L1D_bus(cpu, l1d), bpred_type(bpred), btb_type(btb)
+        L1I_bus(cpu, fetch_queues), L1D_bus(cpu, data_queues), l1i(l1i_), bpred_type(bpred), btb_type(btb)
   {
   }
 };
