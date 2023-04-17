@@ -3,16 +3,13 @@
 #include <vector>
 
 #include "tracereader.h"
+#include "instr.h"
 
 namespace
 {
 ooo_model_instr non_branch_inst(uint64_t ip)
 {
-  input_instr i;
-  i.ip = ip;
-  i.is_branch = false;
-  i.branch_taken = false;
-  return ooo_model_instr{0, i};
+  return champsim::test::instruction_with_ip(ip);
 }
 
 ooo_model_instr not_taken_inst(uint64_t ip)
