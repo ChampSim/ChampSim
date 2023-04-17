@@ -76,3 +76,24 @@ class WrapListTests(unittest.TestCase):
 
     def test_wrap_nonlist(self):
         self.assertEqual(config.util.wrap_list(1), [1])
+
+class ExtendEachTests(unittest.TestCase):
+
+    def test_no_lists(self):
+        a = {'a': 1}
+        b = {'b': 2}
+        self.assertEqual(config.util.extend_each(a,b), {'a': 1, 'b': 2});
+        self.assertEqual(config.util.extend_each(b,a), {'a': 1, 'b': 2});
+
+    def test_one_lists(self):
+        a = {'a': 1}
+        b = {'b': (2,3)}
+        self.assertEqual(config.util.extend_each(a,b), {'a': 1, 'b': (2,3)});
+        self.assertEqual(config.util.extend_each(b,a), {'a': 1, 'b': (2,3)});
+
+    def test_one_lists(self):
+        a = {'b': (1,4)}
+        b = {'b': (2,3)}
+        self.assertEqual(config.util.extend_each(a,b), {'b': (1,4,2,3)});
+        self.assertEqual(config.util.extend_each(b,a), {'b': (2,3,1,4)});
+
