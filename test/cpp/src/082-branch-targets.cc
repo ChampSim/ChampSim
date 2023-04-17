@@ -45,7 +45,7 @@ TEST_CASE("A sequence of instructions has correct branch targets for taken branc
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<uint64_t, uint64_t>> ip_target_pairs{};
-  std::transform(std::begin(generated_instrs), std::prev(std::end(generated_instrs)), std::next(std::begin(generated_instrs)), std::back_inserter(ip_target_pairs), [](const auto& branch, const auto& target){
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
     return std::pair{branch.branch_target, target.ip};
   });
 
@@ -68,7 +68,7 @@ TEST_CASE("A sequence of instructions has no branch targets for not-taken branch
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<uint64_t, uint64_t>> ip_target_pairs{};
-  std::transform(std::begin(generated_instrs), std::prev(std::end(generated_instrs)), std::next(std::begin(generated_instrs)), std::back_inserter(ip_target_pairs), [](const auto& branch, const auto& target){
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
     return std::pair{branch.branch_target, target.ip};
   });
 
@@ -92,7 +92,7 @@ TEST_CASE("A sequence of instructions has no branch targets for non-branches")
   champsim::set_branch_targets(std::begin(generated_instrs), std::end(generated_instrs));
 
   std::vector<std::pair<uint64_t, uint64_t>> ip_target_pairs{};
-  std::transform(std::begin(generated_instrs), std::prev(std::end(generated_instrs)), std::next(std::begin(generated_instrs)), std::back_inserter(ip_target_pairs), [](const auto& branch, const auto& target){
+  std::transform(std::next(std::begin(generated_instrs)), std::end(generated_instrs), std::begin(generated_instrs), std::back_inserter(ip_target_pairs), [](const auto& target, const auto& branch){
     return std::pair{branch.branch_target, target.ip};
   });
 

@@ -17,14 +17,14 @@ import operator
 
 from . import util
 
-ptw_fmtstr = 'PageTableWalker {name}{{"{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {rq_size}, {mshr_size}, {max_read}, {max_write}, 1, {{{{{_ulptr}}}}}, {_llptr}, vmem}};'
+ptw_fmtstr = 'PageTableWalker {name}{{"{name}", {cpu}, {frequency}, {{{{{pscl5_set}, {pscl5_way}}}, {{{pscl4_set}, {pscl4_way}}}, {{{pscl3_set}, {pscl3_way}}}, {{{pscl2_set}, {pscl2_way}}}}}, {rq_size}, {mshr_size}, {max_read}, {max_write}, 1, {{{_ulptr}}}, {_llptr}, vmem}};'
 
 cpu_fmtstr = '{{{index}, {frequency}, {{{DIB[sets]}, {DIB[ways]}, {{champsim::lg2({DIB[window_size]})}}, {{champsim::lg2({DIB[window_size]})}}}}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{L1I}, {_l1iptr}, {L1I}.MAX_TAG, {_l1dptr}, {L1D}.MAX_TAG, {branch_enum_string}, {btb_enum_string}}}'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
-cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {pq_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {{{{{_ulptr}}}}}, {_ltptr}, {_llptr}, {pref_enum_string}, {repl_enum_string}}};'
+cache_fmtstr = 'CACHE {name}{{"{name}", {frequency}, {sets}, {ways}, {mshr_size}, {pq_size}, {hit_latency}, {fill_latency}, {max_tag_check}, {max_fill}, {_offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {{{_ulptr}}}, {_ltptr}, {_llptr}, {pref_enum_string}, {repl_enum_string}}};'
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {wq_check_full_addr:b}}};'
 
 default_ptw_queue = {
@@ -33,6 +33,13 @@ default_ptw_queue = {
                 '_offset_bits':'champsim::lg2(PAGE_SIZE)',
                 'wq_check_full_addr':False
         }
+
+# Avoids a warning on clang under -Wbraced-scalar-init if there is only one member
+def vector_string(iterable):
+    hoisted = list(iterable)
+    if len(hoisted) == 1:
+        return hoisted[0]
+    return '{'+', '.join(hoisted)+'}'
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_level_pairs = tuple(itertools.chain(
@@ -69,19 +76,19 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
 
     yield pmem_fmtstr.format(
-            _ulptr=', '.join('&{}_to_{}_queues'.format(ul, pmem['name']) for ul in upper_levels[pmem['name']]['uppers']),
+            _ulptr=vector_string('&{}_to_{}_queues'.format(ul, pmem['name']) for ul in upper_levels[pmem['name']]['uppers']),
             **pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
 
     for elem in ptws:
         yield ptw_fmtstr.format(
-            _ulptr=', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']),
+            _ulptr=vector_string('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']),
             _llptr='&{}_to_{}_queues'.format(elem['name'], elem['lower_level']),
             **elem)
 
     for elem in caches:
         yield cache_fmtstr.format(
-            _ulptr=', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']),
+            _ulptr=vector_string('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']),
             _llptr='&{}_to_{}_queues'.format(elem['name'], elem['lower_level']),
             _ltptr=('&{}_to_{}_queues'.format(elem['name'], elem['lower_translate'])) if 'lower_translate' in elem else 'nullptr',
             prefetch_activate_mask=' | '.join(f'(1 << {t})' for t in elem['prefetch_activate'].split(',')),
