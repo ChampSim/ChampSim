@@ -24,14 +24,12 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "defaults.hpp"
+#include "core_inst.inc"
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "util.h"
 #include "vmem.h"
-
-#include "core_inst.inc"
 
 namespace champsim
 {
