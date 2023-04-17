@@ -25,9 +25,10 @@
 #include "vmem.h"
 
 PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
-                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, std::vector<champsim::channel*>&& ul, champsim::channel* ll, VirtualMemory& _vmem)
-    : champsim::operable(freq_scale), upper_levels(std::move(ul)), lower_level(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13), HIT_LATENCY(latency),
-      vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
+                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, std::vector<champsim::channel*>&& ul, champsim::channel* ll,
+                                 VirtualMemory& _vmem)
+    : champsim::operable(freq_scale), upper_levels(std::move(ul)), lower_level(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
+      HIT_LATENCY(latency), vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
 {
   auto level = std::size(pscl_dims) + 1;
   for (auto x : pscl_dims) {
@@ -37,7 +38,8 @@ PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale
 }
 
 PageTableWalker::mshr_type::mshr_type(request_type req, std::size_t level)
-  : address(req.address), v_address(req.v_address), instr_depend_on_me(req.instr_depend_on_me), pf_metadata(req.pf_metadata), cpu(req.cpu), translation_level(level)
+    : address(req.address), v_address(req.v_address), instr_depend_on_me(req.instr_depend_on_me), pf_metadata(req.pf_metadata), cpu(req.cpu),
+      translation_level(level)
 {
   asid[0] = req.asid[0];
   asid[1] = req.asid[1];
@@ -121,35 +123,33 @@ void PageTableWalker::operate()
   std::vector<mshr_type> next_steps{};
 
   auto fill_bw = MAX_FILL;
-  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, [cycle=current_cycle](const auto& pkt) {
-      return pkt.event_cycle <= cycle;
-    });
-  std::for_each(complete_begin, complete_end, [](auto& mshr_entry){
-      for (auto ret : mshr_entry.to_return)
-        ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
-    });
+  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw,
+                                                             [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle; });
+  std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
+    for (auto ret : mshr_entry.to_return)
+      ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
+  });
   fill_bw -= std::distance(complete_begin, complete_end);
   completed.erase(complete_begin, complete_end);
 
-  auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [cycle=current_cycle](const auto& pkt) {
-      return pkt.event_cycle <= cycle;
-    });
+  auto [mshr_begin, mshr_end] =
+      champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle; });
   std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, this](const auto& pkt) {
-      auto result = this->handle_fill(pkt);
-      if (result.has_value())
-        next_steps.push_back(*result);
-      return result.has_value();
-    });
+    auto result = this->handle_fill(pkt);
+    if (result.has_value())
+      next_steps.push_back(*result);
+    return result.has_value();
+  });
   finished.erase(mshr_begin, mshr_end);
 
   auto tag_bw = MAX_READ;
   for (auto ul : upper_levels) {
     auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [&next_steps, ul, this](const auto& pkt) {
-        auto result = this->handle_read(pkt, ul);
-        if (result.has_value())
-          next_steps.push_back(*result);
-        return result.has_value();
-      });
+      auto result = this->handle_read(pkt, ul);
+      if (result.has_value())
+        next_steps.push_back(*result);
+      return result.has_value();
+    });
     tag_bw -= std::distance(rq_begin, rq_end);
     ul->RQ.erase(rq_begin, rq_end);
   }
@@ -159,38 +159,39 @@ void PageTableWalker::operate()
 
 void PageTableWalker::finish_packet(const response_type& packet)
 {
-  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), [addr=packet.address](auto x){ return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
+  auto last_finished =
+      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
   auto inserted_finished = finished.insert(std::cend(finished), std::begin(MSHR), last_finished);
   MSHR.erase(std::begin(MSHR), last_finished);
 
-  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x){ return x.translation_level > 0; });
+  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x) { return x.translation_level > 0; });
   std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
-      uint64_t penalty;
-      std::tie(mshr_entry.data, penalty) = this->vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
-      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty+HIT_LATENCY);
+    uint64_t penalty;
+    std::tie(mshr_entry.data, penalty) = this->vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+    mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
-      if constexpr (champsim::debug_print) {
-        std::cout << "[" << this->NAME << "_MSHR] finish_packet";
-        std::cout << " address: " << std::hex << mshr_entry.address;
-        std::cout << " v_address: " << mshr_entry.v_address;
-        std::cout << " data: " << mshr_entry.data << std::dec;
-        std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
-      }
-    });
+    if constexpr (champsim::debug_print) {
+      std::cout << "[" << this->NAME << "_MSHR] finish_packet";
+      std::cout << " address: " << std::hex << mshr_entry.address;
+      std::cout << " v_address: " << mshr_entry.v_address;
+      std::cout << " data: " << mshr_entry.data << std::dec;
+      std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
+    }
+  });
 
   std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
-      uint64_t penalty;
-      std::tie(mshr_entry.data, penalty) = this->vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
-      mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty+HIT_LATENCY);
+    uint64_t penalty;
+    std::tie(mshr_entry.data, penalty) = this->vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+    mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
-      if constexpr (champsim::debug_print) {
-        std::cout << "[" << this->NAME << "_MSHR] complete_packet";
-        std::cout << " address: " << std::hex << mshr_entry.address;
-        std::cout << " v_address: " << mshr_entry.v_address;
-        std::cout << " data: " << mshr_entry.data << std::dec;
-        std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
-      }
-    });
+    if constexpr (champsim::debug_print) {
+      std::cout << "[" << this->NAME << "_MSHR] complete_packet";
+      std::cout << " address: " << std::hex << mshr_entry.address;
+      std::cout << " v_address: " << mshr_entry.v_address;
+      std::cout << " data: " << mshr_entry.data << std::dec;
+      std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
+    }
+  });
 
   completed.insert(std::cend(completed), last_unfinished, std::end(finished));
   finished.erase(last_unfinished, std::end(finished));

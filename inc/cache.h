@@ -193,13 +193,13 @@ public:
   const std::bitset<NUM_PREFETCH_MODULES> pref_type;
 
   // Uncapped internal PQ size
-  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
-        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill,
+        unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt,
+        channel_type* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
 
-  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag, long int max_fill, unsigned offset_bits,
-        bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls, channel_type* lt, channel_type* ll,
-        std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
+  CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
+        long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask, std::vector<channel_type*>&& uls,
+        channel_type* lt, channel_type* ll, std::bitset<NUM_PREFETCH_MODULES> pref, std::bitset<NUM_REPLACEMENT_MODULES> repl);
 };
 
 #endif

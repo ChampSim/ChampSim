@@ -55,9 +55,9 @@ struct cache_queue_stats {
   uint64_t WQ_FORWARD = 0;
 };
 
-class channel {
-  struct request
-  {
+class channel
+{
+  struct request {
     bool forward_checked = false;
     bool is_translated = true;
     bool response_requested = true;
@@ -84,13 +84,15 @@ class channel {
     uint32_t pf_metadata = 0;
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps) :
-      address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps) {}
+    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
+        : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
+    {
+    }
     explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.instr_depend_on_me) {}
   };
 
   template <typename R>
-    bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
+  bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
 
   std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
@@ -98,7 +100,7 @@ class channel {
   unsigned OFFSET_BITS = 0;
   bool match_offset_bits = false;
 
-  public:
+public:
   using response_type = response;
   using request_type = request;
   using stats_type = cache_queue_stats;
@@ -117,6 +119,6 @@ class channel {
 
   void check_collision();
 };
-}
+} // namespace champsim
 
 #endif

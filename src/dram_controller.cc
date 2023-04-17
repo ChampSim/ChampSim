@@ -31,9 +31,11 @@ uint64_t cycles(double time, int io_freq)
   return result < 0 ? 0 : static_cast<uint64_t>(result);
 }
 
-MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul)
-    : champsim::operable(freq_scale), queues(std::move(ul)), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
-      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround,
+                                     std::vector<channel_type*>&& ul)
+    : champsim::operable(freq_scale), queues(std::move(ul)), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)),
+      tCAS(cycles(t_cas / 1000, io_freq)), DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)),
+      DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
 {
 }
 
@@ -62,7 +64,9 @@ void MEMORY_CONTROLLER::operate()
 
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
-      response_type response{channel.active_request->pkt->value().address, channel.active_request->pkt->value().v_address, channel.active_request->pkt->value().data, channel.active_request->pkt->value().pf_metadata, channel.active_request->pkt->value().instr_depend_on_me};
+      response_type response{channel.active_request->pkt->value().address, channel.active_request->pkt->value().v_address,
+                             channel.active_request->pkt->value().data, channel.active_request->pkt->value().pf_metadata,
+                             channel.active_request->pkt->value().instr_depend_on_me};
       for (auto ret : channel.active_request->pkt->value().to_return)
         ret->push_back(response);
 
@@ -201,7 +205,9 @@ void DRAM_CHANNEL::check_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [addr = wq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
+      auto checker = [addr = wq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt) {
+        return pkt.has_value() && (pkt->address >> offset) == (addr >> offset);
+      };
       if (auto found = std::find_if(std::begin(WQ), wq_it, checker); found != wq_it) { // Forward check
         wq_it->reset();
       } else if (found = std::find_if(std::next(wq_it), std::end(WQ), checker); found != std::end(WQ)) { // Backward check
@@ -214,9 +220,12 @@ void DRAM_CHANNEL::check_collision()
 
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt){ return pkt.has_value() && (pkt->address >> offset) == (addr >> offset); };
+      auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt) {
+        return pkt.has_value() && (pkt->address >> offset) == (addr >> offset);
+      };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        response_type response{rq_it->value().address, rq_it->value().v_address, rq_it->value().data, rq_it->value().pf_metadata, rq_it->value().instr_depend_on_me};
+        response_type response{rq_it->value().address, rq_it->value().v_address, rq_it->value().data, rq_it->value().pf_metadata,
+                               rq_it->value().instr_depend_on_me};
         response.data = wq_it->value().data;
         for (auto ret : rq_it->value().to_return)
           ret->push_back(response);
@@ -254,18 +263,18 @@ void MEMORY_CONTROLLER::initiate_requests()
   // Initiate read requests
   for (auto ul : queues) {
     for (auto q : {std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), [ul, this](const auto& pkt){ return this->add_rq(pkt, ul); });
+      auto [begin, end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), [ul, this](const auto& pkt) { return this->add_rq(pkt, ul); });
       q.get().erase(begin, end);
     }
 
     // Initiate write requests
-    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), [this](const auto& pkt){ return this->add_wq(pkt); });
+    auto [wq_begin, wq_end] = champsim::get_span_p(std::cbegin(ul->WQ), std::cend(ul->WQ), [this](const auto& pkt) { return this->add_wq(pkt); });
     ul->WQ.erase(wq_begin, wq_end);
   }
 }
 
 DRAM_CHANNEL::request_type::request_type(typename champsim::channel::request_type req)
-  : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
+    : pf_metadata(req.pf_metadata), address(req.address), v_address(req.address), data(req.data), instr_depend_on_me(req.instr_depend_on_me)
 {
   asid[0] = req.asid[0];
   asid[1] = req.asid[1];
@@ -276,7 +285,8 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt){ return pkt.has_value(); }); rq_it != std::end(channel.RQ)) {
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
+      rq_it != std::end(channel.RQ)) {
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
@@ -294,7 +304,8 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt){ return pkt.has_value(); }); wq_it != std::end(channel.WQ)) {
+  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt) { return pkt.has_value(); });
+      wq_it != std::end(channel.WQ)) {
     *wq_it = DRAM_CHANNEL::request_type{packet};
     wq_it->value().forward_checked = false;
     wq_it->value().event_cycle = current_cycle;

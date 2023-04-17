@@ -45,6 +45,7 @@ class CacheBus
   uint32_t cpu;
 
   friend class O3_CPU;
+
 public:
   CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
   bool issue_read(request_type packet);
@@ -190,8 +191,8 @@ public:
   O3_CPU(uint32_t index, double freq_scale, dib_type&& dib, std::size_t ifetch_buffer_size, std::size_t decode_buffer_size, std::size_t dispatch_buffer_size,
          std::size_t rob_size, std::size_t lq_size, std::size_t sq_size, unsigned fetch_width, unsigned decode_width, unsigned dispatch_width,
          unsigned schedule_width, unsigned execute_width, long int lq_width, long int sq_width, unsigned retire_width, unsigned mispredict_penalty,
-         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, CACHE* l1i_, champsim::channel* fetch_queues, long int l1i_bw,
-         champsim::channel* data_queues, long int l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
+         unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency, unsigned execute_latency, CACHE* l1i_, champsim::channel* fetch_queues,
+         long int l1i_bw, champsim::channel* data_queues, long int l1d_bw, std::bitset<NUM_BRANCH_MODULES> bpred, std::bitset<NUM_BTB_MODULES> btb)
       : champsim::operable(freq_scale), cpu(index), DIB{std::move(dib)}, LQ(lq_size), IFETCH_BUFFER_SIZE(ifetch_buffer_size),
         DISPATCH_BUFFER_SIZE(dispatch_buffer_size), DECODE_BUFFER_SIZE(decode_buffer_size), ROB_SIZE(rob_size), SQ_SIZE(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),

@@ -36,8 +36,7 @@ struct dram_stats {
 
 struct DRAM_CHANNEL {
   using response_type = typename champsim::channel::response_type;
-  struct request_type
-  {
+  struct request_type {
     bool scheduled = false;
     bool forward_checked = false;
 

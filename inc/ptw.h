@@ -43,8 +43,7 @@ class PageTableWalker : public champsim::operable
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
 
-  struct mshr_type
-  {
+  struct mshr_type {
     uint64_t address = 0;
     uint64_t v_address = 0;
     uint64_t data = 0;

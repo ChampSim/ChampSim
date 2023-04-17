@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
+#include "channel.h"
+
 #include "cache.h"
 #include "champsim.h"
-#include "channel.h"
 #include "instruction.h"
 #include "util.h"
 
 champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
-      : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
-  {
-  }
+    : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
+{
+}
 
 template <typename Iter, typename F>
 bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt, F&& func)
@@ -32,7 +33,8 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
   // not this can happen: package with address virtual and physical X
   // (not translated) is inserted, package with physical address
   // (already translated) X.
-  if (auto found = std::find_if(begin, end, [addr=packet.address, shamt](const auto& x){ return (x.address >> shamt) == (addr >>shamt); }); found != end && packet.is_translated == found->is_translated) {
+  if (auto found = std::find_if(begin, end, [addr = packet.address, shamt](const auto& x) { return (x.address >> shamt) == (addr >> shamt); });
+      found != end && packet.is_translated == found->is_translated) {
     func(packet, *found);
     return true;
   }
@@ -53,7 +55,8 @@ bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_typ
 }
 
 template <typename Iter>
-bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt, std::deque<champsim::channel::response_type>& returned)
+bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt,
+                             std::deque<champsim::channel::response_type>& returned)
 {
   return do_collision_for(begin, end, packet, shamt, [&](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
     if (source.response_requested)
@@ -188,4 +191,3 @@ bool champsim::channel::add_pq(const request_type& packet)
 
   return result;
 }
-
