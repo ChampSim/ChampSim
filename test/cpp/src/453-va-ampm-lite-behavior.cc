@@ -25,32 +25,27 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"453-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{"453-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_lt.queues, &mock_ll.queues, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Create a test packet
     static uint64_t id = 1;
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef0020;
     seed.v_address = seed.address;
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul};
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);
@@ -113,32 +108,27 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"453-uut-[-"+std::to_string(stride)+"]", 1, 1, 8, 32, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{"453-uut-[-"+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_lt.queues, &mock_ll.queues, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Create a test packet
     static uint64_t id = 1;
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeefffe0;
     seed.v_address = seed.address;
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul};
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);

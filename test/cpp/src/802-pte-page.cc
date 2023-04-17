@@ -29,7 +29,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
   auto level = GENERATE(as<std::size_t>{}, 2,3,4);
 
   GIVEN("A large virtual memory") {
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory uut{pte_page_size, 5, 200, dram};
 
     uint64_t dist = PAGE_SIZE;
