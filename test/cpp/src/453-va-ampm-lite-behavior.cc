@@ -23,7 +23,7 @@ struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
 };
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the positive direction") {
-  auto stride = GENERATE(as<int64_t>{}, 1, 2, 3, 4);
+  auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
@@ -102,19 +102,19 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       THEN("A total of 5 requests were generated with the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{stride});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{static_cast<int64_t>(stride)});
       }
     }
   }
 }
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the negative direction") {
-  auto stride = GENERATE(as<int64_t>{}, -1, -2, -3, -4);
+  auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
-      .name("453-uut-["+std::to_string(stride)+"]")
+      .name("453-uut-[-"+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
@@ -150,7 +150,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
 
     WHEN("Three more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = static_cast<uint64_t>(seed.address - stride*BLOCK_SIZE);
       test_a.v_address = test_a.address;
       test_a.instr_id = id++;
 
@@ -160,7 +160,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = static_cast<uint64_t>(test_a.address - stride*BLOCK_SIZE);
       test_b.v_address = test_b.address;
       test_b.instr_id = id++;
 
@@ -174,7 +174,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       auto test_c = test_b;
-      test_c.address = static_cast<uint64_t>(test_b.address + stride*BLOCK_SIZE);
+      test_c.address = static_cast<uint64_t>(test_b.address - stride*BLOCK_SIZE);
       test_c.v_address = test_c.address;
       test_c.instr_id = id++;
 
@@ -188,7 +188,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       THEN("A total of 5 requests were generated with the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{stride});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{static_cast<int64_t>(-stride)});
       }
     }
   }
