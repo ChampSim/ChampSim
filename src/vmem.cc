@@ -92,7 +92,7 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
     std::cout << " pt_page offset: " << offset;
     std::cout << " translation_level: " << level;
     if (fault)
-      std::cout << " PAGE FAULT ";
+      std::cout << " PAGE FAULT";
     std::cout << std::endl;
   }
 

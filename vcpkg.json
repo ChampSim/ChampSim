@@ -2,6 +2,9 @@
   "name": "champsim",
   "version-string": "1.0",
   "dependencies": [
+    "bzip2",
+    "liblzma",
+    "zlib",
     "catch2"
   ]
 }

@@ -135,12 +135,14 @@ public:
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
-    auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
+    if (set_begin != set_end) {
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-    if (tag_projection(hit->data) == tag)
-      *hit = {++access_count, elem};
-    else
-      *miss = {++access_count, elem};
+      if (tag_projection(hit->data) == tag)
+        *hit = {++access_count, elem};
+      else
+        *miss = {++access_count, elem};
+    }
   }
 
   std::optional<value_type> invalidate(const value_type& elem)
@@ -161,6 +163,8 @@ public:
       throw std::overflow_error{"Sets is out of bounds"};
     if (!detail::cmp_equal(ways, static_cast<diff_type>(ways)))
       throw std::overflow_error{"Ways is out of bounds"};
+    if (sets <= 0)
+      throw std::range_error{"Sets is not positive"};
     if ((sets & (sets-1)) != 0)
       throw std::range_error{"Sets is not a power of 2"};
   }

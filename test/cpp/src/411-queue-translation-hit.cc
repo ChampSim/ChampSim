@@ -1,271 +1,105 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "cache.h"
+#include "channel.h"
 #include "champsim_constants.h"
 
-SCENARIO("Cache queues issue translations in WQ") {
-  GIVEN("A write queue with one item") {
-    constexpr uint64_t hit_latency = 1;
+TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
+  GIVEN("An empty cache with a translator") {
+    constexpr uint64_t hit_latency = 10;
+    do_nothing_MRC mock_translator;
     do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = champsim::address{0xdeadbeef};
       test.v_address = champsim::address{0xdeadbeef};
+      test.is_translated = false;
       test.cpu = 0;
 
-      auto test_result = uut.add_wq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.WQ.front().address == champsim::address{});
-        REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + hit_latency);
+      auto test_result = mock_ul.issue(test);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
       }
 
-      mock_ll._operate();
 
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.WQ.front().address == champsim::address{0x11111eef});
-        REQUIRE(uut.WQ.front().v_address == test.v_address);
-        REQUIRE(uut.wq_has_ready());
+      for (auto elem : elements)
+        elem->_operate();
+
+      THEN("The packet is issued for translation") {
+        REQUIRE(mock_translator.packet_count() == 1);
+      }
+
+      for (int i = 0; i < 100; ++i) {
+        for (auto elem : elements)
+          elem->_operate();
+      }
+
+      THEN("The packet is translated") {
+        REQUIRE(std::size(mock_ll.addresses) == 1);
+        REQUIRE(mock_ll.addresses.front() == champsim::address{0x11111eef});
       }
     }
   }
 }
 
-
-SCENARIO("Cache queues issue translations in RQ") {
-  GIVEN("A read queue with one item") {
-    constexpr uint64_t hit_latency = 1;
+TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the same", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
+  GIVEN("An empty cache with a translator") {
+    constexpr uint64_t hit_latency = 10;
+    release_MRC mock_translator; // release_MRC used because it does not manipulate the data field
     do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = champsim::address{0xdeadbeef};
-      test.v_address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
-
-      auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.RQ.front().address == champsim::address{});
-        REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + hit_latency);
-      }
-
-      mock_ll._operate();
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.RQ.front().address == champsim::address{0x11111eef});
-        REQUIRE(uut.RQ.front().v_address == test.v_address);
-        REQUIRE(uut.rq_has_ready());
-      }
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
     }
-  }
-}
-
-
-SCENARIO("Cache queues issue translations in PQ") {
-  GIVEN("A prefetch queue with one item") {
-    constexpr uint64_t hit_latency = 1;
-    do_nothing_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
 
     WHEN("A packet is sent") {
       // Create a test packet
-      PACKET test;
-      test.address = champsim::address{0xdeadbeef};
-      test.v_address = champsim::address{0xdeadbeef};
-      test.cpu = 0;
-
-      auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.PQ.front().address == champsim::address{});
-        REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + hit_latency);
-      }
-
-      mock_ll._operate();
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.PQ.front().address == champsim::address{0x11111eef});
-        REQUIRE(uut.PQ.front().v_address == test.v_address);
-        REQUIRE(uut.pq_has_ready());
-      }
-    }
-  }
-}
-
-SCENARIO("Translations in the WQ work even if the addresses happen to be the same") {
-  GIVEN("A write queue with one item") {
-    constexpr uint64_t hit_latency = 1;
-    release_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
+      typename TestType::request_type test;
       test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
+      test.is_translated = false;
       test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
 
-      auto test_result = uut.add_wq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.WQ.front().address == champsim::address{});
-        REQUIRE(uut.WQ.front().event_cycle == old_event_cycle + hit_latency);
+      auto test_result = mock_ul.issue(test);
+      THEN("The issue is accepted") {
+        REQUIRE(test_result);
       }
 
-      mock_ll.release(test.address);
+      for (auto elem : elements)
+        elem->_operate();
 
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.WQ.front().address == uut.WQ.front().v_address);
-        REQUIRE(uut.WQ.front().v_address == test.v_address);
-        REQUIRE(uut.wq_has_ready());
+      THEN("The packet is issued for translation") {
+        REQUIRE(mock_translator.packet_count() == 1);
+      }
+
+      mock_translator.release(test.address);
+      for (int i = 0; i < 100; ++i) {
+        for (auto elem : elements)
+          elem->_operate();
+      }
+
+      THEN("The packet is translated") {
+        REQUIRE(std::size(mock_ll.addresses) == 1);
+        REQUIRE(mock_ll.addresses.front() == test.address);
       }
     }
   }
 }
-
-
-SCENARIO("Translations in the RQ work even if the addresses happen to be the same") {
-  GIVEN("A read queue with one item") {
-    constexpr uint64_t hit_latency = 1;
-    release_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = champsim::address{0xdeadbeef};
-      test.v_address = test.address;
-      test.data = test.address;
-      test.cpu = 0;
-
-      auto test_result = uut.add_rq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.RQ.front().address == champsim::address{});
-        REQUIRE(uut.RQ.front().event_cycle == old_event_cycle + hit_latency);
-      }
-
-      mock_ll.release(test.address);
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.RQ.front().address == uut.RQ.front().v_address);
-        REQUIRE(uut.RQ.front().v_address == test.v_address);
-        REQUIRE(uut.rq_has_ready());
-      }
-    }
-  }
-}
-
-
-SCENARIO("Translations in the PQ work even if the addresses happen to be the same") {
-  GIVEN("A prefetch queue with one item") {
-    constexpr uint64_t hit_latency = 1;
-    release_MRC mock_ll;
-    CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    uut.lower_level = &mock_ll;
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    WHEN("A packet is sent") {
-      // Create a test packet
-      PACKET test;
-      test.address = champsim::address{0xdeadbeef};
-      test.v_address = test.address;
-      test.data = test.address;
-      test.cpu = 0;
-
-      auto test_result = uut.add_pq(test);
-      REQUIRE(test_result);
-
-      auto old_event_cycle = uut.current_cycle;
-
-      mock_ll._operate();
-      uut._operate();
-
-      THEN("The packet is issued for translation") {
-        REQUIRE(mock_ll.packet_count() == 1);
-        REQUIRE(uut.PQ.front().address == champsim::address{});
-        REQUIRE(uut.PQ.front().event_cycle == old_event_cycle + hit_latency);
-      }
-
-      mock_ll.release(test.address);
-
-      AND_THEN("The packet is translated") {
-        REQUIRE(uut.PQ.front().address == uut.PQ.front().address);
-        REQUIRE(uut.PQ.front().v_address == test.v_address);
-        REQUIRE(uut.pq_has_ready());
-      }
-    }
-  }
-}
-
-

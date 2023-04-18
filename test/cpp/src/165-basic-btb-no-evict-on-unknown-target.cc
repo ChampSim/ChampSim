@@ -8,7 +8,7 @@
 
 TEST_CASE("The basic_btb does not fill not-taken branches") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 0, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 1, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     std::array<champsim::address, 8> seed_ip{{champsim::address{0x110000}, champsim::address{0x111000}, champsim::address{0x112000}, champsim::address{0x113000}, champsim::address{0x114000}, champsim::address{0x115000}, champsim::address{0x116000}, champsim::address{0x117000}}};
     champsim::address test_ip{0x118000};

@@ -14,21 +14,17 @@ SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
     release_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"406-uut", 1, 8, 8, 32, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::ptestDcppDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul_seed{&uut};
-    to_rq_MRP mock_ul_test{&uut};
+    to_rq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &uut_queues, &uut, &mock_ul_seed, &mock_ul_test}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Run the uut for a few cycles
     for (auto i = 0; i < 10; ++i)
@@ -39,7 +35,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       uint64_t id = 1;
-      PACKET test_a;
+      decltype(mock_ul_seed)::request_type test_a;
       test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = LOAD;
@@ -47,7 +43,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
       auto test_a_result = mock_ul_seed.issue(test_a);
 
-      for (uint64_t i = 0; i < hit_latency+1; ++i)
+      for (uint64_t i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -63,7 +59,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       AND_WHEN("A packet with the same address is sent before the fill has completed") {
         test::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
-        PACKET test_b = test_a;
+        decltype(mock_ul_test)::request_type test_b = test_a;
         test_b.instr_id = id++;
 
         auto test_b_result = mock_ul_test.issue(test_b);

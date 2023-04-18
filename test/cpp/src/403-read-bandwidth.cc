@@ -3,7 +3,7 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
-SCENARIO("The read queue respects the tag bandwidth") {
+TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, to_wq_MRP, to_pq_MRP) {
   constexpr uint64_t hit_latency = 4;
   constexpr uint64_t fill_latency = 1;
   constexpr std::size_t tag_bandwidth = 2;
@@ -12,27 +12,23 @@ SCENARIO("The read queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"r", 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP warmup_ul{&uut}, mock_ul{&uut};
+    TestType mock_ul;
+    CACHE uut{"403-uut-"+std::to_string(size)+"r", 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Get a list of packets
     champsim::block_number seed_base_addr{0xdeadbeef};
-    std::vector<PACKET> seeds;
+    std::vector<typename TestType::request_type> seeds;
 
     for (long i = 0; i < size; ++i) {
-      PACKET seed;
+      typename TestType::request_type seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
@@ -42,7 +38,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
     REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
-      auto seed_result = warmup_ul.issue(seed);
+      auto seed_result = mock_ul.issue(seed);
       REQUIRE(seed_result);
     }
 
@@ -74,6 +70,7 @@ SCENARIO("The read queue respects the tag bandwidth") {
   }
 }
 
+/*
 SCENARIO("The prefetch queue respects the tag bandwidth") {
   constexpr uint64_t hit_latency = 4;
   constexpr uint64_t fill_latency = 1;
@@ -83,28 +80,23 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"p", 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP warmup_ul{&uut};
-    to_pq_MRP mock_ul{&uut};
+    to_pq_MRP mock_ul;
+    CACHE uut{"403-uut-"+std::to_string(size)+"p", 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Get a list of packets
     champsim::block_number seed_base_addr{0xcafebabe};
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (long i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
@@ -114,7 +106,7 @@ SCENARIO("The prefetch queue respects the tag bandwidth") {
     REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
-      auto seed_result = warmup_ul.issue(seed);
+      auto seed_result = mock_ul.issue(seed);
       REQUIRE(seed_result);
     }
 
@@ -156,28 +148,23 @@ SCENARIO("The write queue respects the tag bandwidth") {
 
   GIVEN("A cache with a few elements where the lowest level is " + std::to_string(lowest)) {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"403-uut-"+std::to_string(size)+"w-"+std::to_string(lowest), 1, 1, 8, 32, fill_latency, tag_bandwidth, 10, 0, false, lowest, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP warmup_ul{&uut};
-    to_wq_MRP mock_ul{&uut};
+    to_wq_MRP mock_ul;
+    CACHE uut{"403-uut-"+std::to_string(size)+"w-"+std::to_string(lowest), 1, 1, 8, 32, hit_latency, fill_latency, tag_bandwidth, 10, 0, false, lowest, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
 
-    std::array<champsim::operable*, 5> elements{{&mock_ll, &warmup_ul, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Get a list of packets
     champsim::block_number seed_base_addr{0xdeadbeef};
-    std::vector<PACKET> seeds;
+    std::vector<decltype(mock_ul)::request_type> seeds;
 
     for (long i = 0; i < size; ++i) {
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
@@ -187,7 +174,7 @@ SCENARIO("The write queue respects the tag bandwidth") {
     REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
-      auto seed_result = warmup_ul.issue(seed);
+      auto seed_result = mock_ul.issue(seed);
       REQUIRE(seed_result);
     }
 
@@ -218,4 +205,5 @@ SCENARIO("The write queue respects the tag bandwidth") {
     }
   }
 }
+*/
 

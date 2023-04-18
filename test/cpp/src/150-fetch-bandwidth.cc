@@ -2,16 +2,7 @@
 #include "mocks.hpp"
 
 #include "ooo_cpu.h"
-
-namespace
-{
-ooo_model_instr inst(uint64_t addr)
-{
-    input_instr i;
-    i.ip = addr;
-    return ooo_model_instr{0, i};
-}
-}
+#include "instr.h"
 
 SCENARIO("The fetch bandwidth limits the number of packets issued each cycle") {
   auto bandwidth = GENERATE(as<long>{}, 1,2,3,4,5);
@@ -20,12 +11,12 @@ SCENARIO("The fetch bandwidth limits the number of packets issued each cycle") {
 
     do_nothing_MRC mock_L1I;
     do_nothing_MRC mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 1, 0, &mock_L1I, bandwidth, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 1, 0, nullptr, &mock_L1I.queues, bandwidth, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
 
     std::array<champsim::operable*,3> elements = {&uut, &mock_L1I, &mock_L1D};
 
     std::for_each(std::begin(addrs), std::end(addrs), [&](auto x){
-      uut.IFETCH_BUFFER.push_back(::inst(x));
+      uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(x));
       uut.IFETCH_BUFFER.back().dib_checked = COMPLETED;
     });
 

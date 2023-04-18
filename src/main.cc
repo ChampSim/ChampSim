@@ -19,7 +19,6 @@
 #include <getopt.h>
 #include <iostream>
 #include <numeric>
-#include <signal.h>
 #include <string>
 #include <vector>
 
@@ -36,21 +35,8 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
-void signal_handler(int signal)
-{
-  std::cout << "Caught signal: " << signal << std::endl;
-  abort();
-}
-
 int main(int argc, char** argv)
 {
-  // interrupt signal hanlder
-  struct sigaction sigIntHandler;
-  sigIntHandler.sa_handler = signal_handler;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
-  sigaction(SIGINT, &sigIntHandler, NULL);
-
   champsim::configured::generated_environment gen_environment{};
 
   // initialize knobs

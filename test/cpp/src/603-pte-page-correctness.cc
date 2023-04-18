@@ -12,11 +12,11 @@ SCENARIO("The page table steps have correct offsets") {
   auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5};
+    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
-    PageTableWalker uut{"603-uut-"+std::to_string(level), 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, &mock_ll, vmem};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    PageTableWalker uut{"603-uut-"+std::to_string(level), 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -27,11 +27,10 @@ SCENARIO("The page table steps have correct offsets") {
     champsim::address addr{0x0040'0200'c040'1000}; // 0x4, 0x3, 0x2, 0x1
 
     WHEN("The PTW receives a request") {
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = addr;
       test.v_address = test.address;
       test.cpu = 0;
-      test.to_return = {&mock_ul};
 
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);

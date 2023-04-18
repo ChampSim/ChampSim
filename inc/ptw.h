@@ -21,12 +21,12 @@
 #include <string>
 
 #include "address.h"
-#include "memory_class.h"
+#include "channel.h"
 #include "operable.h"
 #include "util/lru_table.h"
 #include "vmem.h"
 
-class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
+class PageTableWalker : public champsim::operable
 {
   struct pscl_entry {
     champsim::address vaddr;
@@ -40,8 +40,40 @@ class PageTableWalker : public champsim::operable, public MemoryRequestConsumer,
   };
 
   using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
+  using channel_type = champsim::channel;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
 
-  bool step_translation(champsim::address addr, std::size_t transl_level, const PACKET& source);
+  struct mshr_type {
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
+
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    uint32_t pf_metadata = 0;
+    uint32_t cpu = std::numeric_limits<uint32_t>::max();
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+    std::size_t translation_level = 0;
+
+    mshr_type(request_type req, std::size_t level);
+  };
+
+  std::deque<mshr_type> MSHR;
+  std::deque<mshr_type> finished;
+  std::deque<mshr_type> completed;
+
+  std::vector<channel_type*> upper_levels;
+  channel_type* lower_level;
+
+  std::optional<mshr_type> handle_read(const request_type& pkt, channel_type* ul);
+  std::optional<mshr_type> handle_fill(const mshr_type& pkt);
+  std::optional<mshr_type> step_translation(const mshr_type& source);
+
+  void finish_packet(const response_type& packet);
 
 public:
   const std::string NAME;
@@ -49,34 +81,16 @@ public:
   const long int MAX_READ, MAX_FILL;
   const uint64_t HIT_LATENCY;
 
-  std::deque<PACKET> RQ;
-  std::deque<PACKET> MSHR;
-
-  uint64_t total_miss_latency = 0;
-
   std::vector<pscl_type> pscl;
   VirtualMemory& vmem;
 
   const champsim::address CR3_addr;
 
   PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, uint64_t latency, MemoryRequestConsumer* ll, VirtualMemory& _vmem);
+                  uint32_t v12, uint32_t v13, uint64_t latency, std::vector<channel_type*>&& ul, channel_type* ll, VirtualMemory& _vmem);
 
-  // functions
-  bool add_rq(const PACKET& packet) override final;
-  bool add_wq(const PACKET&) override final { assert(0); }
-  bool add_pq(const PACKET&) override final { assert(0); }
-  bool add_ptwq(const PACKET&) override final { assert(0); }
-
-  void return_data(const PACKET& packet) override final;
   void operate() override final;
-
-  bool handle_read(const PACKET& pkt);
-  bool handle_fill(const PACKET& pkt);
-
-  std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const override final;
-  std::size_t get_size(uint8_t queue_type, champsim::address address) const override final;
-
+  void begin_phase() override final;
   void print_deadlock() override final;
 };
 
