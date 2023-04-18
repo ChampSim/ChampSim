@@ -70,7 +70,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         abort();
       }
     }
-    std::sort(std::begin(operables), std::end(operables), [](const auto& lhs, const auto& rhs){ return lhs.leap_operation < rhs.leap_operation; });
+    std::sort(std::begin(operables), std::end(operables), [](const champsim::operable& lhs, const champsim::operable& rhs){ return lhs.leap_operation < rhs.leap_operation; });
 
     // Read from trace
     for (O3_CPU& cpu : env.cpu_view())
