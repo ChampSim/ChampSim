@@ -136,6 +136,18 @@ public:
 
   std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 
+  bool has_direct_branch_target() const
+  {
+    return is_branch && ((branch_type == BRANCH_DIRECT_JUMP)
+      || (branch_type == BRANCH_DIRECT_CALL)
+      || (branch_type == BRANCH_CONDITIONAL && branch_taken == branch_prediction));
+  }
+
+  bool has_indirect_branch_target() const
+  {
+    return is_branch && !has_direct_branch_target();
+  }
+
   static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
 };
 
