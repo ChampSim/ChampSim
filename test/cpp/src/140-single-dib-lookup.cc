@@ -43,8 +43,9 @@ SCENARIO("A late-added instruction does not miss the IFB") {
       }
 
       THEN("The IFETCH_BUFFER still has one member") {
-        REQUIRE(std::size(uut.IFETCH_BUFFER) == 1);
-        REQUIRE(uut.IFETCH_BUFFER.front().ip == 0xdeadbeee);
+        std::vector<uint64_t> ips;
+        std::transform(std::cbegin(uut.IFETCH_BUFFER), std::cend(uut.IFETCH_BUFFER), std::back_inserter(ips), [](const auto& x){ return x.ip; });
+        REQUIRE_THAT(ips, Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(0xdeadbeee));
       }
     }
   }

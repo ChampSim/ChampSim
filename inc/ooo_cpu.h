@@ -31,35 +31,20 @@
 #include <queue>
 #include <vector>
 
+#include "cache_bus.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "instruction.h"
 #include "module_impl.h"
 #include "operable.h"
+#include "reorder_buffer.h"
 #include "util/lru_table.h"
 #include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;
-class CacheBus
-{
-  using channel_type = champsim::channel;
-  using request_type = typename channel_type::request_type;
-  using response_type = typename channel_type::response_type;
-
-  channel_type* lower_level;
-  uint32_t cpu;
-
-  friend class O3_CPU;
-
-public:
-  CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
-  bool issue_read(request_type packet);
-  bool issue_write(request_type packet);
-};
-
 struct cpu_stats {
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
@@ -71,23 +56,6 @@ struct cpu_stats {
 
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
-};
-
-struct LSQ_ENTRY {
-  uint64_t instr_id = 0;
-  uint64_t virtual_address = 0;
-  uint64_t ip = 0;
-  uint64_t event_cycle = 0;
-
-  std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-  bool fetch_issued = false;
-
-  uint64_t producer_id = std::numeric_limits<uint64_t>::max();
-  std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
-
-  LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid);
-  template <typename It>
-  void finish(It begin, It end) const;
 };
 
 // cpu
@@ -104,9 +72,6 @@ public:
   uint64_t last_heartbeat_cycle = 0;
   uint64_t last_heartbeat_instr = 0;
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
-
-  // instruction
-  uint64_t num_retired = 0;
 
   bool show_heartbeat = true;
 
@@ -126,20 +91,13 @@ public:
   std::deque<ooo_model_instr> IFETCH_BUFFER;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
-  std::deque<ooo_model_instr> ROB;
-
-  std::vector<std::optional<LSQ_ENTRY>> LQ;
-  std::deque<LSQ_ENTRY> SQ;
-
-  std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
+  champsim::reorder_buffer ROB;
 
   // Constants
-  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
-  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
-  const long int LQ_WIDTH, SQ_WIDTH;
-  const long int RETIRE_WIDTH;
-  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
-  const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
+  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE;
+  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH;
+  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY;
+  const long int L1I_BANDWIDTH;
 
   // branch
   uint64_t fetch_resume_cycle = 0;
@@ -147,7 +105,7 @@ public:
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;
 
-  CacheBus L1I_bus, L1D_bus;
+  champsim::CacheBus L1I_bus;
   CACHE* l1i;
 
   void initialize() override final;
@@ -162,32 +120,17 @@ public:
   void promote_to_decode();
   void decode_instruction();
   void dispatch_instruction();
-  void schedule_instruction();
-  void execute_instruction();
-  void schedule_memory_instruction();
-  void operate_lsq();
-  void complete_inflight_instruction();
   void handle_memory_return();
-  void retire_rob();
 
   bool do_init_instruction(ooo_model_instr& instr);
   bool do_predict_branch(ooo_model_instr& instr);
   void do_check_dib(ooo_model_instr& instr);
   bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
-  void do_scheduling(ooo_model_instr& instr);
-  void do_execution(ooo_model_instr& rob_it);
-  void do_memory_scheduling(ooo_model_instr& instr);
-  void do_complete_execution(ooo_model_instr& instr);
-  void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
-
-  void do_finish_store(const LSQ_ENTRY& sq_entry);
-  bool do_complete_store(const LSQ_ENTRY& sq_entry);
-  bool execute_load(const LSQ_ENTRY& lq_entry);
 
   uint64_t roi_instr() const { return roi_stats.instrs(); }
   uint64_t roi_cycle() const { return roi_stats.cycles(); }
-  uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
+  uint64_t sim_instr() const { return ROB.retired_count() - begin_phase_instr; }
   uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
   void print_deadlock() override final;
@@ -454,11 +397,10 @@ public:
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
   explicit O3_CPU(Builder<B_FLAG, T_FLAG> b)
       : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
-        LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
-        ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
-        SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
-        BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
-        SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
+        ROB(b.m_cpu, b.m_rob_size, b.m_lq_size, b.m_sq_size, b.m_schedule_width, b.m_execute_width, b.m_lq_width, b.m_sq_width, b.m_l1d_bw, b.m_retire_width, mispredict_penalty, b.m_schedule_latency, b.m_execute_latency, data_queues),
+        IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
+        FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width), BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty),
+        DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency), L1I_BANDWIDTH(b.m_l1i_bw),
         L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }

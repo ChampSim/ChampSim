@@ -9,13 +9,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 128;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
-      .schedule_latency(schedule_latency)
-      .fetch_queues(&mock_L1I.queues)
-      .data_queues(&mock_L1D.queues)
-    };
+    do_nothing_MRC mock_L1D;
+    champsim::reorder_buffer uut{0, 352, 128, 72, schedule_width, 1, 2, 2, 1, 1, 1, schedule_latency, 0, &mock_L1D.queues};
 
     uut.ROB.push_back(champsim::test::instruction_with_ip(1));
     for (auto &instr : uut.ROB)
@@ -25,8 +20,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     WHEN("The instruction is not scheduled") {
       uut.ROB.front().scheduled = 0;
-      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
-        op->_operate();
+      uut.operate();
+      mock_L1D.operate();
 
       THEN("The instruction has no register dependencies") {
         REQUIRE(uut.ROB.front().num_reg_dependent == 0);
@@ -40,13 +35,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 128;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
-      .schedule_latency(schedule_latency)
-      .fetch_queues(&mock_L1I.queues)
-      .data_queues(&mock_L1D.queues)
-    };
+    do_nothing_MRC mock_L1D;
+    champsim::reorder_buffer uut{0, 352, 128, 72, schedule_width, 1, 2, 2, 1, 1, 1, schedule_latency, 0, &mock_L1D.queues};
 
     std::vector test_instructions( 2, champsim::test::instruction_with_registers(42) );
 
@@ -60,8 +50,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
       for (auto &instr : uut.ROB)
         instr.scheduled = 0;
 
-      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
-        op->_operate();
+      uut.operate();
+      mock_L1D.operate();
 
       THEN("The second instruction is dependent on the first") {
         REQUIRE(uut.ROB[0].num_reg_dependent == 0);
@@ -78,13 +68,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_width = 4;
     constexpr unsigned schedule_latency = 1;
 
-    do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
-      .schedule_latency(schedule_latency)
-      .fetch_queues(&mock_L1I.queues)
-      .data_queues(&mock_L1D.queues)
-    };
+    do_nothing_MRC mock_L1D;
+    champsim::reorder_buffer uut{0, 352, 128, 72, schedule_width, 1, 2, 2, 1, 1, 1, schedule_latency, 0, &mock_L1D.queues};
 
     std::vector test_instructions( schedule_width + 1, champsim::test::instruction_with_registers(42) );
 
@@ -103,8 +88,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
         instr.executed = 0;
       }
 
-      for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
-        op->_operate();
+      uut.operate();
+      mock_L1D.operate();
 
       THEN("The second instruction is dependent on the first") {
         REQUIRE(uut.ROB.at(0).num_reg_dependent >= 0);
