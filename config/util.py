@@ -51,3 +51,10 @@ def combine_named(*iterables):
     iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
     return {kv[0]: chain(*kv[1]) for kv in iterable}
 
+# Assign defaults that are unique per core
+def upper_levels_for(system, name, key='lower_level'):
+    finder = lambda x: x.get(key, '')
+    upper_levels = sorted(system, key=finder)
+    upper_levels = itertools.groupby(upper_levels, key=finder)
+    return next(filter(lambda kv: kv[0] == name, upper_levels))[1]
+
