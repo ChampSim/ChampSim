@@ -26,6 +26,18 @@ default_core = { 'frequency' : 4000 }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
 
+cache_deprecation_keys = {
+    'max_read': 'max_tag_check',
+    'max_write': 'max_fill'
+}
+
+ptw_deprecation_keys = {
+    'ptw_mshr_size': 'mshr_size',
+    'ptw_max_read': 'max_read',
+    'ptw_max_write': 'max_write',
+    'ptw_rq_size': 'rq_size'
+}
+
 # Scale frequencies
 def scale_frequencies(it):
     it_a, it_b = itertools.tee(it, 2)
@@ -120,14 +132,17 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             )
 
     ## DEPRECATION
-    # The keys "max_read" and "max_write" are deprecated. For now, permit them but print a warning
-    for cache in caches.values():
-        if "max_read" in cache:
-            print('WARNING: key "max_read" in cache ', cache['name'], ' is deprecated. Use "max_tag_check" instead.')
-            cache['max_tag_check'] = cache['max_read']
-        if "max_write" in cache:
-            print('WARNING: key "max_write" in cache ', cache['name'], ' is deprecated. Use "max_fill" instead.')
-            cache['max_fill'] = cache['max_write']
+    # The listed keys are deprecated. For now, permit them but print a warning
+    for cache, deprecations in itertools.product(caches.values(), cache_deprecation_keys.items()):
+        old, new = deprecations
+        if old in cache:
+            print('WARNING: key "{}" in cache {} is deprecated. Use "{}" instead.'.format(old, cache['name'], new))
+            cache[new] = cache[old]
+    for ptw, deprecations in itertools.product(ptws.values(), ptw_deprecation_keys.items()):
+        old, new = deprecations
+        if old in ptw:
+            print('WARNING: key "{}" in PTW {} is deprecated. Use "{}" instead.'.format(old, ptw['name'], new))
+            ptw[new] = ptw[old]
 
     # Remove caches that are inaccessible
     caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
