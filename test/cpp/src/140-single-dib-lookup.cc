@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "ooo_cpu.h"
 #include "instr.h"
 
@@ -7,20 +8,29 @@ SCENARIO("A late-added instruction does not miss the IFB") {
   GIVEN("An IFETCH_BUFFER with one inflight instruction") {
     release_MRC mock_L1I;
     do_nothing_MRC mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, 128, 1, 2, 2, 1, 1, 1, 1, 1, 0, nullptr, &mock_L1I.queues, 1, &mock_L1D.queues, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+      .dib_window(4)
+      .fetch_queues(&mock_L1I.queues)
+      .data_queues(&mock_L1D.queues)
+    };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_L1I, &mock_L1D}};
 
     uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeef));
-    for (auto &instr : uut.IFETCH_BUFFER)
+    for (auto &instr : uut.IFETCH_BUFFER) {
       instr.event_cycle = uut.current_cycle;
+      //instr.dib_checked = COMPLETED;
+    }
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 10; ++i) {
       for (auto op : elements)
         op->_operate();
     }
 
-    CHECK(mock_L1I.packet_count() == 1);
+    THEN("The instruction issues a fetch") {
+      REQUIRE(mock_L1I.packet_count() == 1);
+      REQUIRE(uut.IFETCH_BUFFER.front().ip == 0xdeadbeef);
+    }
 
     WHEN("A new instruction is added, and the first request returns") {
       mock_L1I.release(0xdeadbeef);
