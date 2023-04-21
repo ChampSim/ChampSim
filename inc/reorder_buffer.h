@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 
+#include "champsim.h"
 #include "instruction.h"
 #include "cache_bus.h"
 
@@ -92,8 +93,7 @@ struct reorder_buffer
       && ((std::size(inst.destination_memory) + std::size(SQ)) <= SQ_SIZE);
   }
 
-  auto& front() { return ROB.front(); }
-  auto& back() { return ROB.back(); }
+  bool is_deadlocked() const { return !empty() && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle; }
 
   auto begin() { return ROB.begin(); }
   auto end() { return ROB.end(); }
