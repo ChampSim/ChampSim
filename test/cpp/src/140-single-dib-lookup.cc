@@ -29,7 +29,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
 
     THEN("The instruction issues a fetch") {
       REQUIRE(mock_L1I.packet_count() == 1);
-      REQUIRE(uut.IFETCH_BUFFER.front().ip == 0xdeadbeef);
+      REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbeef});
     }
 
     WHEN("A new instruction is added, and the first request returns") {
