@@ -38,6 +38,8 @@ enum branch_type {
   BRANCH_OTHER = 7
 };
 
+enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
+
 struct ooo_model_instr {
   uint64_t instr_id = 0;
   uint64_t ip = 0;

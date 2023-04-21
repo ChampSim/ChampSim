@@ -37,8 +37,6 @@
 #include "util.h"
 #include <type_traits>
 
-enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
-
 class CACHE;
 struct cpu_stats {
   std::string name;
