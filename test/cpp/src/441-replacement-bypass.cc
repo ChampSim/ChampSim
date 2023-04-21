@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
 
 #include <map>
 
@@ -18,7 +19,17 @@ SCENARIO("The replacement policy can bypass") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"441-uut", 1.0, 1, 1, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, 0, {&mock_ul_seed.queues, &mock_ul_test.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rtestDcppDmodulesDreplacementDmock_replacement};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("441-uut")
+      .sets(1)
+      .ways(1)
+      .upper_levels({&mock_ul_seed.queues, &mock_ul_test.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .offset_bits(0)
+      .replacement<CACHE::rtestDcppDmodulesDreplacementDmock_replacement>()
+    };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
@@ -69,7 +80,7 @@ SCENARIO("The replacement policy can bypass") {
             elem->_operate();
 
         THEN("No blocks are evicted") {
-          REQUIRE(mock_ll.packet_count() == 1);
+          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1));
         }
       }
     }

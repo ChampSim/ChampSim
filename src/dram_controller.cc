@@ -33,11 +33,9 @@ uint64_t cycles(double time, int io_freq)
   return result < 0 ? 0 : static_cast<uint64_t>(result);
 }
 
-MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround,
-                                     std::vector<channel_type*>&& ul)
-    : champsim::operable(freq_scale), queues(std::move(ul)), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)),
-      tCAS(cycles(t_cas / 1000, io_freq)), DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)),
-      DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul)
+    : champsim::operable(freq_scale), queues(std::move(ul)), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
+      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1))
 {
 }
 

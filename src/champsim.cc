@@ -69,11 +69,13 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         abort();
       }
     }
-    std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
+    std::sort(std::begin(operables), std::end(operables),
+              [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
 
     // Read from trace
     for (O3_CPU& cpu : env.cpu_view())
-      std::generate_n(std::back_inserter(cpu.input_queue), cpu.IN_QUEUE_SIZE - std::size(cpu.input_queue), std::ref(traces.at(trace_index.at(cpu.cpu))));
+      std::generate_n(std::back_inserter(cpu.input_queue), cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)),
+                      std::ref(traces.at(trace_index.at(cpu.cpu))));
 
     // Check for phase finish
     for (O3_CPU& cpu : env.cpu_view()) {

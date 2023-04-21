@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 
 #include "champsim_constants.h"
+#include "defaults.hpp"
 #include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"
@@ -17,7 +18,12 @@ SCENARIO("The issued steps incur appropriate latencies") {
     VirtualMemory vmem{1<<12, vmem_levels, penalty, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"600-uut-0", 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 0, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("602-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
