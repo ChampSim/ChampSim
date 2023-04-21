@@ -48,20 +48,20 @@ void champsim::reorder_buffer::schedule_instruction()
 {
   auto search_bw = SCHEDULER_SIZE;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw > 0; ++rob_it) {
-    if (rob_it->scheduled == 0)
+    if (!rob_it->scheduled)
       do_scheduling(*rob_it);
 
-    if (rob_it->executed == 0)
+    if (!rob_it->executed)
       --search_bw;
   }
 }
 
-void champsim::reorder_buffer::do_scheduling(ooo_model_instr& instr)
+void champsim::reorder_buffer::do_scheduling(value_type& instr)
 {
   // Mark register dependencies
   for (auto src_reg : instr.source_registers) {
     if (!std::empty(reg_producers[src_reg])) {
-      ooo_model_instr& prior = reg_producers[src_reg].back();
+      value_type& prior = reg_producers[src_reg].back();
       if (prior.registers_instrs_depend_on_me.empty() || prior.registers_instrs_depend_on_me.back() != instr.instr_id) {
         prior.registers_instrs_depend_on_me.push_back(instr.instr_id);
         instr.num_reg_dependent++;
@@ -72,11 +72,11 @@ void champsim::reorder_buffer::do_scheduling(ooo_model_instr& instr)
   for (auto dreg : instr.destination_registers) {
     auto begin = std::begin(reg_producers[dreg]);
     auto end = std::end(reg_producers[dreg]);
-    auto ins = std::lower_bound(begin, end, instr, [](const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; });
+    auto ins = std::lower_bound(begin, end, instr, [](const value_type& lhs, const value_type& rhs) { return lhs.instr_id < rhs.instr_id; });
     reg_producers[dreg].insert(ins, std::ref(instr));
   }
 
-  instr.scheduled = COMPLETED;
+  instr.scheduled = true;
   instr.event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
 }
 
@@ -84,16 +84,16 @@ void champsim::reorder_buffer::execute_instruction()
 {
   auto exec_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw > 0; ++rob_it) {
-    if (rob_it->scheduled == COMPLETED && rob_it->executed == 0 && rob_it->num_reg_dependent == 0 && rob_it->event_cycle <= current_cycle) {
+    if (rob_it->event_cycle <= current_cycle && rob_it->scheduled && !rob_it->executed && rob_it->num_reg_dependent == 0) {
       do_execution(*rob_it);
       --exec_bw;
     }
   }
 }
 
-void champsim::reorder_buffer::do_execution(ooo_model_instr& rob_entry)
+void champsim::reorder_buffer::do_execution(value_type& rob_entry)
 {
-  rob_entry.executed = INFLIGHT;
+  rob_entry.executed = true;
   rob_entry.event_cycle = current_cycle + (warmup ? 0 : EXEC_LATENCY);
 
   // Mark LQ entries as ready to translate
@@ -111,7 +111,7 @@ void champsim::reorder_buffer::do_execution(ooo_model_instr& rob_entry)
   }
 }
 
-void champsim::reorder_buffer::do_memory_scheduling(ooo_model_instr& instr)
+void champsim::reorder_buffer::do_memory_scheduling(value_type& instr)
 {
   // load
   for (auto& smem : instr.source_memory) {
@@ -230,17 +230,17 @@ bool champsim::reorder_buffer::execute_load(const LSQ_ENTRY& lq_entry)
   return L1D_bus.issue_read(data_packet);
 }
 
-void champsim::reorder_buffer::do_complete_execution(ooo_model_instr& instr)
+void champsim::reorder_buffer::do_complete_execution(value_type& instr)
 {
   for (auto dreg : instr.destination_registers) {
     auto begin = std::begin(reg_producers[dreg]);
     auto end = std::end(reg_producers[dreg]);
-    auto elem = std::find_if(begin, end, [id = instr.instr_id](ooo_model_instr& x) { return x.instr_id == id; });
+    auto elem = std::find_if(begin, end, [id = instr.instr_id](value_type& x) { return x.instr_id == id; });
     assert(elem != end);
     reg_producers[dreg].erase(elem);
   }
 
-  instr.executed = COMPLETED;
+  instr.completed = false;
 
   for (auto dependent_id : instr.registers_instrs_depend_on_me) {
     auto dep_it = std::find_if(std::begin(ROB), std::end(ROB), [dependent_id](const auto& x) { return x.instr_id == dependent_id; });
@@ -257,7 +257,7 @@ void champsim::reorder_buffer::complete_inflight_instruction()
   // update ROB entries with completed executions
   auto complete_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw > 0; ++rob_it) {
-    if ((rob_it->executed == INFLIGHT) && (rob_it->event_cycle <= current_cycle) && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
+    if (rob_it->event_cycle <= current_cycle && rob_it->executed && !rob_it->completed && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
       do_complete_execution(*rob_it);
       --complete_bw;
     }
@@ -280,7 +280,7 @@ void champsim::reorder_buffer::handle_memory_return()
 
 void champsim::reorder_buffer::retire_rob()
 {
-  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.executed == COMPLETED; });
+  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.completed; });
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [](const auto& x) { std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
   }
@@ -300,8 +300,9 @@ void champsim::reorder_buffer::print_deadlock() const
     std::cout << "ROB head";
     std::cout << " instr_id: " << ROB.front().instr_id;
     std::cout << " fetched: " << +ROB.front().fetched;
-    std::cout << " scheduled: " << +ROB.front().scheduled;
-    std::cout << " executed: " << +ROB.front().executed;
+    std::cout << " scheduled: " << std::boolalpha << ROB.front().scheduled << std::noboolalpha;
+    std::cout << " executed: " << std::boolalpha << ROB.front().executed << std::noboolalpha;
+    std::cout << " completed: " << std::boolalpha << ROB.front().completed << std::noboolalpha;
     std::cout << " num_reg_dependent: " << +ROB.front().num_reg_dependent;
     std::cout << " num_mem_ops: " << ROB.front().num_mem_ops() - ROB.front().completed_mem_ops;
     std::cout << " event: " << ROB.front().event_cycle;

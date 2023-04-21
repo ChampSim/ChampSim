@@ -57,7 +57,7 @@ struct reorder_buffer
   void do_scheduling(value_type& instr);
   void do_execution(value_type& rob_it);
   void do_complete_execution(value_type& instr);
-  void do_memory_scheduling(ooo_model_instr& instr);
+  void do_memory_scheduling(value_type& instr);
 
   void do_finish_store(const LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);

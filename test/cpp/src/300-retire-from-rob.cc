@@ -34,8 +34,8 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.retired_count();
 
-    WHEN("The instruction is not executed") {
-      uut.ROB.front().executed = 0;
+    WHEN("The instruction is not completed") {
+      uut.ROB.front().completed = 0;
       uut.operate();
       mock_L1D.operate();
 
@@ -45,8 +45,8 @@ SCENARIO("Completed instructions are retired") {
       }
     }
 
-    WHEN("The instruction has been executed") {
-      uut.ROB.front().executed = COMPLETED;
+    WHEN("The instruction has been completed") {
+      uut.ROB.front().completed = true;
       uut.operate();
       mock_L1D.operate();
 
@@ -69,9 +69,9 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.retired_count();
 
-    WHEN("The second instruction is executed") {
-      uut.ROB[0].executed = 0;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("The second instruction is completed") {
+      uut.ROB[0].completed = 0;
+      uut.ROB[1].completed = true;
 
       uut.operate();
       mock_L1D.operate();
@@ -82,9 +82,9 @@ SCENARIO("Completed instructions are retired") {
       }
     }
 
-    WHEN("Both instructions are executed") {
-      uut.ROB[0].executed = COMPLETED;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("Both instructions are completed") {
+      uut.ROB[0].completed = true;
+      uut.ROB[1].completed = true;
 
       uut.operate();
       mock_L1D.operate();
@@ -108,9 +108,9 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.retired_count();
 
-    WHEN("All instructions are executed") {
-      uut.ROB[0].executed = COMPLETED;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("All instructions are completed") {
+      uut.ROB[0].completed = true;
+      uut.ROB[1].completed = true;
 
       uut.operate();
       mock_L1D.operate();

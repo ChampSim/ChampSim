@@ -58,8 +58,9 @@ struct ooo_model_instr {
   uint8_t dib_checked = 0;
   uint8_t fetched = 0;
   uint8_t decoded = 0;
-  uint8_t scheduled = 0;
-  uint8_t executed = 0;
+  bool scheduled = false;
+  bool executed = false;
+  bool completed = false;
 
   unsigned completed_mem_ops = 0;
   int num_reg_dependent = 0;
