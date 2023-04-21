@@ -1,7 +1,8 @@
 #ifndef MODULE_IMPL_H
 #define MODULE_IMPL_H
 
-namespace champsim {
+namespace champsim
+{
 
 namespace detail
 {
