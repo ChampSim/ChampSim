@@ -25,8 +25,6 @@
 #include "instruction.h"
 #include "util/span.h"
 
-constexpr uint64_t DEADLOCK_CYCLE = 1000000;
-
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 
 void O3_CPU::operate()
@@ -62,7 +60,7 @@ void O3_CPU::operate()
   }
 
   // LCOV_EXCL_START Check for deadlock
-  if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (ROB.is_deadlocked())
     throw champsim::deadlock{cpu};
   // LCOV_EXCL_STOP
 }
@@ -278,7 +276,7 @@ void O3_CPU::promote_to_decode()
   IFETCH_BUFFER.erase(window_begin, window_end);
 
   // LCOV_EXCL_START check for deadlock
-  if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
   // LCOV_EXCL_STOP
 }
@@ -307,7 +305,7 @@ void O3_CPU::decode_instruction()
   DECODE_BUFFER.erase(window_begin, window_end);
 
   // LCOV_EXCL_START check for deadlock
-  if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
   // LCOV_EXCL_STOP
 }
@@ -327,7 +325,7 @@ void O3_CPU::dispatch_instruction()
   }
 
   // LCOV_EXCL_START check for deadlock
-  if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
   // LCOV_EXCL_STOP
 }
