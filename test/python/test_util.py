@@ -97,3 +97,12 @@ class ExtendEachTests(unittest.TestCase):
         self.assertEqual(config.util.extend_each(a,b), {'b': (1,4,2,3)});
         self.assertEqual(config.util.extend_each(b,a), {'b': (2,3,1,4)});
 
+class UpperLevelsForTests(unittest.TestCase):
+    def test_upper_levels(self):
+        system = {
+                'a': {'next': 'c', 'id': 1},
+                'b': {'next': 'c', 'id': 2},
+                'c': {'next': 'a', 'id': 3}
+                }
+        self.assertEqual( list(map(operator.itemgetter('id'), config.util.upper_levels_for(system.values(), 'c', key='next'))), [1,2])
+

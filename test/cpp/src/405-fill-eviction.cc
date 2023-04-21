@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -10,7 +11,15 @@ SCENARIO("A cache evicts a block when required") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"405-uut", 1, 1, 1, 32, hit_latency, miss_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("405-uut")
+      .sets(1)
+      .ways(1)
+      .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(miss_latency)
+    };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul_seed, &mock_ul_test}};
 
@@ -59,8 +68,8 @@ SCENARIO("A cache evicts a block when required") {
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK(mock_ll.packet_count() == 1);
-          CHECK(mock_ll.addresses.back() == test_b.address);
+          REQUIRE(mock_ll.packet_count() == 1);
+          REQUIRE(mock_ll.addresses.back() == test_b.address);
         }
 
         for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
@@ -72,8 +81,8 @@ SCENARIO("A cache evicts a block when required") {
         }
 
         THEN("The first block is evicted") {
-          CHECK(mock_ll.packet_count() == 2);
-          CHECK(mock_ll.addresses.back() == test_a.address);
+          REQUIRE(mock_ll.packet_count() == 2);
+          REQUIRE(mock_ll.addresses.back() == test_a.address);
         }
       }
     }
