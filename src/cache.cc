@@ -28,25 +28,6 @@
 using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"};
 
-CACHE::CACHE(std::string name, double freq_scale, uint32_t sets, uint32_t ways, uint32_t mshr_size, uint64_t hit_lat, uint64_t fill_lat, long int max_tag,
-             long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask,
-             std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref,
-             std::bitset<NUM_REPLACEMENT_MODULES> repl)
-    : CACHE(name, freq_scale, sets, ways, mshr_size, std::numeric_limits<std::size_t>::max(), hit_lat, fill_lat, max_tag, max_fill, offset_bits, pref_load,
-            wq_full_addr, va_pref, pref_mask, std::move(uls), lt, ll, pref, repl)
-{
-}
-
-CACHE::CACHE(std::string v1, double freq_scale, uint32_t v2, uint32_t v3, uint32_t v8, std::size_t pq_size, uint64_t hit_lat, uint64_t fill_lat,
-             long int max_tag, long int max_fill, unsigned offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_mask,
-             std::vector<champsim::channel*>&& uls, champsim::channel* lt, champsim::channel* ll, std::bitset<NUM_PREFETCH_MODULES> pref,
-             std::bitset<NUM_REPLACEMENT_MODULES> repl)
-    : champsim::operable(freq_scale), upper_levels(std::move(uls)), lower_level(ll), lower_translate(lt), NAME(v1), NUM_SET(v2), NUM_WAY(v3), MSHR_SIZE(v8),
-      PQ_SIZE(pq_size), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_TAG(max_tag), MAX_FILL(max_fill),
-      prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_mask), repl_type(repl), pref_type(pref)
-{
-}
-
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
       type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
@@ -86,6 +67,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     std::cout << " set: " << get_set_index(fill_mshr.address);
     std::cout << " way: " << way_idx;
     std::cout << " type: " << access_type_names.at(fill_mshr.type);
+    std::cout << " prefetch_metadata: " << fill_mshr.pf_metadata;
     std::cout << " cycle_enqueued: " << fill_mshr.cycle_enqueued;
     std::cout << " cycle: " << current_cycle << std::endl;
   }

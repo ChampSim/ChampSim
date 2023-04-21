@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -19,8 +20,20 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
-    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
-    CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {}, nullptr, &lower_queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE lower{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("432a-lower")
+      .upper_levels({&lower_queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector>()
+    };
+    CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("432a-upper")
+      .lower_level(&lower_queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &lower, &upper}};
 
@@ -58,8 +71,24 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
     to_rq_MRP mock_ul;
-    CACHE lower{"432-lower", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&lower_queues}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter, CACHE::rreplacementDlru};
-    CACHE upper{"432-upper", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &lower_queues, CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector, CACHE::rreplacementDlru};
+
+    CACHE lower{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("432b-lower")
+      .upper_levels({&lower_queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter>()
+    };
+
+    CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("432b-upper")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&lower_queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector>()
+    };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &lower, &upper, &mock_ul}};
 
@@ -88,7 +117,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
           elem->_operate();
 
       THEN("The upper level sees the metadata in prefetcher_cache_operate()") {
-        REQUIRE_THAT(test::metadata_fill_collector.at(&upper), Catch::Matchers::Contains(seed_metadata));
+        REQUIRE_THAT(test::metadata_fill_collector.at(&upper), Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(seed_metadata));
       }
     }
   }

@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -16,7 +17,13 @@ SCENARIO("A cache merges two requests in the MSHR") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"406-uut", 1, 8, 8, 32, hit_latency, 1, 2, 2, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::ptestDcppDmodulesDprefetcherDaddress_collector, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("406-uut")
+      .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>()
+    };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 

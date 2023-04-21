@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "channel.h"
 #include "champsim_constants.h"
 
@@ -10,7 +11,14 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{"412a-uut", 1, 1, 8, 32, hit_latency, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("412a-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_translator.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 

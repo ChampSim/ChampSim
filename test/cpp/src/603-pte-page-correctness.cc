@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
+#include "defaults.hpp"
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -16,7 +17,20 @@ SCENARIO("The page table steps have correct offsets") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{"603-uut-"+std::to_string(level), 0, 1, {{1,1}, {1,1}, {1,1}, {1,1}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+      .name("603-uut-"+std::to_string(level))
+      //.rq_size(16)
+      //.tag_bandwidth(2)
+      //.fill_bandwidth(2)
+      //.mshr_size(5)
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .virtual_memory(&vmem)
+      .add_pscl(5,1,1)
+      .add_pscl(4,1,1)
+      .add_pscl(3,1,1)
+      .add_pscl(2,1,1)
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 

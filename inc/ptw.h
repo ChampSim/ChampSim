@@ -17,6 +17,7 @@
 #ifndef PTW_H
 #define PTW_H
 
+#include <array>
 #include <deque>
 #include <string>
 
@@ -24,8 +25,8 @@
 #include "channel.h"
 #include "operable.h"
 #include "util/lru_table.h"
-#include "vmem.h"
 
+class VirtualMemory;
 class PageTableWalker : public champsim::operable
 {
   struct pscl_entry {
@@ -77,17 +78,90 @@ class PageTableWalker : public champsim::operable
 
 public:
   const std::string NAME;
-  const uint32_t RQ_SIZE, MSHR_SIZE;
+  const uint32_t MSHR_SIZE;
   const long int MAX_READ, MAX_FILL;
   const uint64_t HIT_LATENCY;
 
   std::vector<pscl_type> pscl;
-  VirtualMemory& vmem;
+  VirtualMemory* vmem;
 
   const champsim::address CR3_addr;
 
-  PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10, uint32_t v11,
-                  uint32_t v12, uint32_t v13, uint64_t latency, std::vector<channel_type*>&& ul, channel_type* ll, VirtualMemory& _vmem);
+  class Builder
+  {
+    std::string_view m_name{};
+    double m_freq_scale{};
+    uint32_t m_cpu{};
+    std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
+    uint32_t m_mshr_size{};
+    uint32_t m_max_tag_check{};
+    uint32_t m_max_fill{};
+    unsigned m_latency{};
+    std::vector<PageTableWalker::channel_type*> m_uls{};
+    PageTableWalker::channel_type* m_ll{};
+    VirtualMemory* m_vmem{};
+
+    friend class PageTableWalker;
+
+  public:
+    Builder& name(std::string_view name_)
+    {
+      m_name = name_;
+      return *this;
+    }
+    Builder& frequency(double freq_scale_)
+    {
+      m_freq_scale = freq_scale_;
+      return *this;
+    }
+    Builder& cpu(uint32_t cpu_)
+    {
+      m_cpu = cpu_;
+      return *this;
+    }
+    Builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way)
+    {
+      m_pscl.at(lvl) = {lvl, set, way};
+      return *this;
+    }
+    Builder& mshr_size(uint32_t mshr_size_)
+    {
+      m_mshr_size = mshr_size_;
+      return *this;
+    }
+    Builder& tag_bandwidth(uint32_t max_read_)
+    {
+      m_max_tag_check = max_read_;
+      return *this;
+    }
+    Builder& fill_bandwidth(uint32_t max_fill_)
+    {
+      m_max_fill = max_fill_;
+      return *this;
+    }
+    Builder& latency(unsigned latency_)
+    {
+      m_latency = latency_;
+      return *this;
+    }
+    Builder& upper_levels(std::vector<PageTableWalker::channel_type*>&& uls_)
+    {
+      m_uls = std::move(uls_);
+      return *this;
+    }
+    Builder& lower_level(PageTableWalker::channel_type* ll_)
+    {
+      m_ll = ll_;
+      return *this;
+    }
+    Builder& virtual_memory(VirtualMemory* vmem_)
+    {
+      m_vmem = vmem_;
+      return *this;
+    }
+  };
+
+  explicit PageTableWalker(Builder builder);
 
   void operate() override final;
   void begin_phase() override final;

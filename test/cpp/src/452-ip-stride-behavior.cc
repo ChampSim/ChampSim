@@ -3,6 +3,7 @@
 #include <numeric>
 #include "address.h"
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -27,7 +28,12 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{"452-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, nullptr, &mock_ll.queues, CACHE::pprefetcherDip_stride, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("452-uut-["+std::to_string(stride)+"]")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .prefetcher<CACHE::pprefetcherDip_stride>()
+    };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
