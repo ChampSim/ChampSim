@@ -29,7 +29,7 @@ PageTableWalker::PageTableWalker(Builder b)
       MAX_FILL(b.m_max_fill), HIT_LATENCY(b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
   std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
-  std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x){ return std::get<0>(x) == 0; });
+  std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
   std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
 
   for (auto [level, sets, ways] : local_pscl_dims)
