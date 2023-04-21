@@ -42,8 +42,6 @@
 #include "util/lru_table.h"
 #include <type_traits>
 
-enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
-
 class CACHE;
 struct cpu_stats {
   std::string name;
@@ -397,11 +395,11 @@ public:
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
   explicit O3_CPU(Builder<B_FLAG, T_FLAG> b)
       : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
-        ROB(b.m_cpu, b.m_rob_size, b.m_lq_size, b.m_sq_size, b.m_schedule_width, b.m_execute_width, b.m_lq_width, b.m_sq_width, b.m_l1d_bw, b.m_retire_width, mispredict_penalty, b.m_schedule_latency, b.m_execute_latency, data_queues),
+        ROB(b.m_cpu, b.m_rob_size, b.m_lq_size, b.m_sq_size, b.m_schedule_width, b.m_execute_width, b.m_lq_width, b.m_sq_width, b.m_l1d_bw, b.m_retire_width, b.m_mispredict_penalty, b.m_schedule_latency, b.m_execute_latency, b.m_data_queues),
         IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width), BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty),
         DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency), L1I_BANDWIDTH(b.m_l1i_bw),
-        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        L1I_bus(b.m_cpu, b.m_fetch_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }
 };
