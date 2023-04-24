@@ -24,6 +24,8 @@ void champsim::reorder_buffer::operate()
   execute_instruction();           // execute instructions
   schedule_instruction();          // schedule instructions
   handle_memory_return();
+  operate_sq();
+  operate_lq();
   ++current_cycle;
 }
 
@@ -118,27 +120,7 @@ void champsim::reorder_buffer::do_memory_scheduling(value_type& instr)
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<decltype(LQ)::value_type>{});
     assert(q_entry != std::end(LQ));
     q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid); // add it to the load queue
-
-    // Check for forwarding
-    auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
-      return lhs.virtual_address != smem || (rhs.virtual_address == smem && lhs.instr_id < rhs.instr_id);
-    });
-    if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
-      if (sq_it->fetch_issued) { // Store already executed
-        q_entry->reset();
-        ++instr.completed_mem_ops;
-
-        if constexpr (champsim::debug_print)
-          std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " forwards from " << sq_it->instr_id << std::endl;
-      } else {
-        assert(sq_it->instr_id < instr.instr_id);   // The found SQ entry is a prior store
-        sq_it->lq_depend_on_me.push_back(*q_entry); // Forward the load when the store finishes
-        (*q_entry)->producer_id = sq_it->instr_id;  // The load waits on the store to finish
-
-        if constexpr (champsim::debug_print)
-          std::cout << "[DISPATCH] " << __func__ << " instr_id: " << instr.instr_id << " waits on " << sq_it->instr_id << std::endl;
-      }
-    }
+    do_forwarding_for_lq(*q_entry);
   }
 
   // store
@@ -151,7 +133,31 @@ void champsim::reorder_buffer::do_memory_scheduling(value_type& instr)
   }
 }
 
-void champsim::reorder_buffer::operate_lsq()
+void champsim::reorder_buffer::do_forwarding_for_lq(lq_value_type& q_entry)
+{
+  // Check for forwarding
+  auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem=q_entry->virtual_address](const auto& lhs, const auto& rhs) {
+    return lhs.virtual_address != smem || (rhs.virtual_address == smem && lhs.instr_id < rhs.instr_id);
+  });
+  if (sq_it != std::end(SQ) && sq_it->virtual_address == q_entry->virtual_address) {
+    if (sq_it->fetch_issued) { // Store already executed
+      q_entry->finish(std::begin(ROB), std::end(ROB));
+      q_entry.reset();
+
+      if constexpr (champsim::debug_print)
+        std::cout << "[DISPATCH] " << __func__ << " instr_id: " << q_entry->instr_id << " forwards from " << sq_it->instr_id << std::endl;
+    } else {
+      assert(sq_it->instr_id < q_entry->instr_id);   // The found SQ entry is a prior store
+      sq_it->lq_depend_on_me.push_back(q_entry); // Forward the load when the store finishes
+      q_entry->producer_id = sq_it->instr_id;  // The load waits on the store to finish
+
+      if constexpr (champsim::debug_print)
+        std::cout << "[DISPATCH] " << __func__ << " instr_id: " << q_entry->instr_id << " waits on " << sq_it->instr_id << std::endl;
+    }
+  }
+}
+
+void champsim::reorder_buffer::operate_sq()
 {
   auto store_bw = SQ_WIDTH;
 
@@ -171,9 +177,12 @@ void champsim::reorder_buffer::operate_lsq()
   });
 
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
-  store_bw -= std::distance(complete_begin, complete_end);
+  //store_bw -= std::distance(complete_begin, complete_end);
   SQ.erase(complete_begin, complete_end);
+}
 
+void champsim::reorder_buffer::operate_lq()
+{
   auto load_bw = LQ_WIDTH;
 
   for (auto& lq_entry : LQ) {

@@ -29,6 +29,7 @@ struct LSQ_ENTRY {
 struct reorder_buffer
 {
   using value_type = ooo_model_instr;
+  using lq_value_type = std::optional<LSQ_ENTRY>;
   std::array<std::vector<std::reference_wrapper<value_type>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
   bool warmup = true;
@@ -42,12 +43,13 @@ struct reorder_buffer
   uint64_t stall_resume_cycle = 0;
 
   std::deque<value_type> ROB;
-  std::vector<std::optional<LSQ_ENTRY>> LQ;
+  std::vector<lq_value_type> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
   champsim::CacheBus L1D_bus;
 
-  void operate_lsq();
+  void operate_sq();
+  void operate_lq();
   void schedule_instruction();
   void execute_instruction();
   void complete_inflight_instruction();
@@ -58,6 +60,7 @@ struct reorder_buffer
   void do_execution(value_type& rob_it);
   void do_complete_execution(value_type& instr);
   void do_memory_scheduling(value_type& instr);
+  void do_forwarding_for_lq(lq_value_type& q_entry);
 
   void do_finish_store(const LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
