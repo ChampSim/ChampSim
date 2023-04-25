@@ -2,6 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "ooo_cpu.h"
+#include "instr.h"
 
 SCENARIO("Completed instructions are retired") {
   GIVEN("An empty ROB") {
@@ -36,7 +37,7 @@ SCENARIO("Completed instructions are retired") {
       .data_queues(&mock_L1D.queues)
     };
 
-    uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
+    uut.ROB.push_back(champsim::test::instruction_with_ip(1));
 
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
@@ -73,7 +74,7 @@ SCENARIO("Completed instructions are retired") {
       .data_queues(&mock_L1D.queues)
     };
 
-    std::vector test_instructions( retire_bandwidth, ooo_model_instr{0,input_instr{}} );
+    std::vector test_instructions( retire_bandwidth, champsim::test::instruction_with_ip(1) );
 
     uut.ROB.insert(std::end(uut.ROB), std::begin(test_instructions), std::end(test_instructions));
 
@@ -116,7 +117,7 @@ SCENARIO("Completed instructions are retired") {
       .data_queues(&mock_L1D.queues)
     };
 
-    std::vector test_instructions( 2*retire_bandwidth, ooo_model_instr{0,input_instr{}} );
+    std::vector test_instructions( 2*retire_bandwidth, champsim::test::instruction_with_ip(1) );
 
     uut.ROB.insert(std::end(uut.ROB), std::begin(test_instructions), std::end(test_instructions));
 
@@ -131,8 +132,8 @@ SCENARIO("Completed instructions are retired") {
         op->_operate();
 
       THEN("The bandwidth of instructions are retired") {
-        REQUIRE(std::size(uut.ROB) == old_rob_occupancy-uut.RETIRE_WIDTH);
-        REQUIRE(uut.num_retired == old_num_retired+uut.RETIRE_WIDTH);
+        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-static_cast<std::size_t>(uut.RETIRE_WIDTH)));
+        REQUIRE(uut.num_retired == old_num_retired+static_cast<std::size_t>(uut.RETIRE_WIDTH));
       }
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})

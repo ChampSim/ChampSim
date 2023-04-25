@@ -26,12 +26,17 @@ default_core = { 'frequency' : 4000 }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
 
-# Assign defaults that are unique per core
-def upper_levels_for(system, name, key='lower_level'):
-    finder = lambda x: x.get(key, '')
-    upper_levels = sorted(system, key=finder)
-    upper_levels = itertools.groupby(upper_levels, key=finder)
-    return next(filter(lambda kv: kv[0] == name, upper_levels))[1]
+cache_deprecation_keys = {
+    'max_read': 'max_tag_check',
+    'max_write': 'max_fill'
+}
+
+ptw_deprecation_keys = {
+    'ptw_mshr_size': 'mshr_size',
+    'ptw_max_read': 'max_read',
+    'ptw_max_write': 'max_write',
+    'ptw_rq_size': 'rq_size'
+}
 
 # Scale frequencies
 def scale_frequencies(it):
@@ -118,114 +123,31 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             ), 1, None)
         )
 
-    # Inferred defaults for the first three levels down the instruction path
-    l1i_path_defaults = (
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='L1I'), set_factor=64, mshr_factor=32, bandwidth_factor=1),
-            '_first_level': True, '_is_instruction_cache': True,
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_l1i'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=512, mshr_factor=32, bandwidth_factor=0.5),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_l2c'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=2048, mshr_factor=64, bandwidth_factor=1),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_llc'
-        })
-    )
-
-    # Inferred defaults for the first three levels down the data path
-    l1d_path_defaults = (
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='L1D'), set_factor=64, mshr_factor=32, bandwidth_factor=1),
-            '_first_level': True,
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_l1d'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=512, mshr_factor=32, bandwidth_factor=0.5),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_l2c'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=2048, mshr_factor=64, bandwidth_factor=1),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_llc'
-        })
-    )
-
-    # Inferred defaults for the first two levels down the instruction translation path
-    itlb_path_defaults = (
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='ITLB'), set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
-            '_first_level': True,
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_itlb'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=64, mshr_factor=8, bandwidth_factor=0.5),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_stlb'
-        })
-    )
-
-    # Inferred defaults for the first two levels down the data translation path
-    dtlb_path_defaults = (
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(cores, name, key='DTLB'), set_factor=16, queue_factor=16, mshr_factor=8, bandwidth_factor=1),
-            '_first_level': True,
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_dtlb'
-        }),
-        (lambda name: {
-            'name': name,
-            **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), name), set_factor=64, mshr_factor=8, bandwidth_factor=0.5),
-            'prefetcher': 'no', 'replacement': 'lru',
-            '_defaults': 'champsim::defaults::default_stlb'
-        })
-    )
-
-    caches = util.combine_named(
-            caches.values(),
-            *(map(lambda f,c: f(c['name']), l1i_path_defaults, path) for path in [util.iter_system(caches, cpu['L1I']) for cpu in cores]),
-            *(map(lambda f,c: f(c['name']), l1d_path_defaults, path) for path in [util.iter_system(caches, cpu['L1D']) for cpu in cores]),
-            *(map(lambda f,c: f(c['name']), itlb_path_defaults, path) for path in [util.iter_system(caches, cpu['ITLB']) for cpu in cores]),
-            *(map(lambda f,c: f(c['name']), dtlb_path_defaults, path) for path in [util.iter_system(caches, cpu['DTLB']) for cpu in cores])
-            )
+    caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches));
 
     # Apply defaults to PTW
     ptws = util.combine_named(
             ptws.values(),
             ({
                 'name': cpu['PTW'],
-                **defaults.ul_dependent_defaults(*upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2),
+                **defaults.ul_dependent_defaults(*util.upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2),
                 'frequency': cpu['frequency'],
                 'cpu': cpu['index']
             } for cpu in cores)
             )
 
     ## DEPRECATION
-    # The keys "max_read" and "max_write" are deprecated. For now, permit them but print a warning
-    for cache in caches.values():
-        if "max_read" in cache:
-            print('WARNING: key "max_read" in cache ', cache['name'], ' is deprecated. Use "max_tag_check" instead.')
-            cache['max_tag_check'] = cache['max_read']
-        if "max_write" in cache:
-            print('WARNING: key "max_write" in cache ', cache['name'], ' is deprecated. Use "max_fill" instead.')
-            cache['max_fill'] = cache['max_write']
+    # The listed keys are deprecated. For now, permit them but print a warning
+    for cache, deprecations in itertools.product(caches.values(), cache_deprecation_keys.items()):
+        old, new = deprecations
+        if old in cache:
+            print('WARNING: key "{}" in cache {} is deprecated. Use "{}" instead.'.format(old, cache['name'], new))
+            cache[new] = cache[old]
+    for ptw, deprecations in itertools.product(ptws.values(), ptw_deprecation_keys.items()):
+        old, new = deprecations
+        if old in ptw:
+            print('WARNING: key "{}" in PTW {} is deprecated. Use "{}" instead.'.format(old, ptw['name'], new))
+            ptw[new] = ptw[old]
 
     # Remove caches that are inaccessible
     caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
@@ -238,30 +160,30 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     for c in cores:
         c.setdefault('branch_predictor', 'bimodal')
         c.setdefault('btb', 'basic_btb')
+    # All caches have a default prefetcher and replacement policy
+    for c in caches.values():
+        c.setdefault('prefetcher', 'no')
+        c.setdefault('replacement', 'lru')
 
-    # Mark queues that need to match full addresses on collision
-    caches = util.combine_named(caches.values(), ({'name': k, '_queue_check_full_addr': c.get('_first_level', False) or c.get('wq_check_full_addr', False)} for k,c in caches.items()))
-
-    # TLBs use page offsets, Caches use block offsets
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
     caches = util.combine_named(
-            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['page_size']) + ')', '_needs_translate': False} for c in tlb_path),
-            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['block_size']) + ')', '_needs_translate': c.get('_first_level', False) or c.get('virtual_prefetch', False)} for c in l1d_path),
-            caches.values()
-            )
+            # TLBs use page offsets, Caches use block offsets
+            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['page_size']) + ')'} for c in tlb_path),
+            ({'name': c['name'], '_offset_bits': 'champsim::lg2(' + str(config_file['block_size']) + ')'} for c in l1d_path),
 
-    # The end of the data path is the physical memory
-    caches = util.combine_named(
             caches.values(),
+
+            # Mark queues that need to match full addresses on collision
+            ({'name': k, '_queue_check_full_addr': c.get('_first_level', False) or c.get('wq_check_full_addr', False)} for k,c in caches.items()),
+
+            # The end of the data path is the physical memory
             ({'name': collections.deque(util.iter_system(caches, cpu['L1I']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'} for cpu in cores),
             ({'name': collections.deque(util.iter_system(caches, cpu['L1D']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'} for cpu in cores),
-            )
 
-    # Get module path names and unique module names
-    caches = util.combine_named(caches.values(),
-            ({'name': c['name'], '_replacement_data': [module_parse(m, replacement_context) for m in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
-            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': True} if c.get('_is_instruction_cache') else {}, module_parse(m, prefetcher_context)) for m in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
+            # Get module path names and unique module names
+            ({'name': c['name'], '_replacement_data': [replacement_context.find(f) for f in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
+            ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': c.get('_is_instruction_cache',False)}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
             )
 
     cores = list(util.combine_named(cores,

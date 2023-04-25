@@ -278,10 +278,8 @@ class HomogeneousCoreParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 instruction_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-
-                for cache in instruction_caches:
-                    for data in cache['_prefetcher_data']:
-                        self.assertTrue(data['_is_instruction_prefetcher'])
+                is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
+                self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
     def test_instruction_and_data_caches_need_translation(self):
         for c in self.configs:
@@ -291,9 +289,9 @@ class HomogeneousCoreParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-                for cache in filtered_caches:
-                    self.assertTrue(cache['_needs_translate'])
+                self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
     def test_tlbs_do_not_need_translation(self):
         for c in self.configs:
@@ -303,9 +301,9 @@ class HomogeneousCoreParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-                for cache in filtered_caches:
-                    self.assertFalse(cache['_needs_translate'])
+                self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
 
     def test_caches_inherit_core_frequency(self):
         for c in self.configs:
@@ -490,10 +488,8 @@ class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 instruction_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-
-                for cache in instruction_caches:
-                    for data in cache['_prefetcher_data']:
-                        self.assertTrue(data['_is_instruction_prefetcher'])
+                is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
+                self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
     def test_instruction_and_data_caches_need_translation(self):
         for c in self.configs:
@@ -503,9 +499,9 @@ class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-                for cache in filtered_caches:
-                    self.assertTrue(cache['_needs_translate'])
+                self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
     def test_tlbs_do_not_need_translation(self):
         for c in self.configs:
@@ -515,9 +511,9 @@ class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
                 caches = result[0]['caches']
 
                 filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-                for cache in filtered_caches:
-                    self.assertFalse(cache['_needs_translate'])
+                self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
 
 class EnvironmentParseTests(unittest.TestCase):
 

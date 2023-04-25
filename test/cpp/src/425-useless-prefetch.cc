@@ -58,7 +58,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < hit_latency+1; ++i)
+        for (uint64_t i = 0; i < hit_latency+2; ++i)
           for (auto elem : elements)
             elem->_operate();
 
@@ -73,7 +73,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(std::llabs(mock_ul_test.packets.front().return_time - (mock_ul_test.packets.front().issue_time + (miss_latency + hit_latency))) <= 1);
+          REQUIRE(std::llabs((long long)mock_ul_test.packets.front().return_time - ((long long)mock_ul_test.packets.front().issue_time + (long long)(miss_latency + hit_latency))) <= 1);
         }
 
         THEN("The number of useless prefetches is increased") {

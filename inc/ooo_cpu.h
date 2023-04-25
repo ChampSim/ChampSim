@@ -31,6 +31,7 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "instruction.h"
+#include "module_impl.h"
 #include "operable.h"
 #include "util.h"
 #include "util/detect.h"
@@ -48,6 +49,7 @@ class CacheBus
   uint32_t cpu;
 
   friend class O3_CPU;
+
 public:
   CacheBus(uint32_t cpu_idx, champsim::channel* ll) : lower_level(ll), cpu(cpu_idx) {}
   bool issue_read(request_type packet);
@@ -269,16 +271,24 @@ public:
   std::unique_ptr<btb_module_concept> btb_module_pimpl;
 
   void impl_initialize_branch_predictor() { branch_module_pimpl->impl_initialize_branch_predictor(); }
-  void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) { branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type); }
+  void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
+  {
+    branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
+  }
   [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
 
   void impl_initialize_btb() { btb_module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) { btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type); }
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
+  {
+    btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+  }
   [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
 
   template <typename... Ts>
   class builder_module_type_holder {};
-  class builder_conversion_tag {};
+  class builder_conversion_tag
+  {
+  };
   template <typename B = void, typename T = void>
   class Builder
   {
@@ -318,63 +328,185 @@ public:
     friend class O3_CPU;
 
     template <typename OTHER_B, typename OTHER_T>
-    Builder(builder_conversion_tag, const Builder<OTHER_B, OTHER_T>& other) :
-        m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window), m_ifetch_buffer_size(other.m_ifetch_buffer_size),
-        m_decode_buffer_size(other.m_decode_buffer_size), m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),
-        m_fetch_width(other.m_fetch_width), m_decode_width(other.m_decode_width), m_dispatch_width(other.m_dispatch_width), m_schedule_width(other.m_schedule_width), m_execute_width(other.m_execute_width),
-        m_lq_width(other.m_lq_width), m_sq_width(other.m_sq_width), m_retire_width(other.m_retire_width), m_mispredict_penalty(other.m_mispredict_penalty), m_decode_latency(other.m_decode_latency),
-        m_dispatch_latency(other.m_dispatch_latency), m_schedule_latency(other.m_schedule_latency), m_execute_latency(other.m_execute_latency), m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw),
-        m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
+    Builder(builder_conversion_tag, const Builder<OTHER_B, OTHER_T>& other)
+        : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
+          m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
+          m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),
+          m_fetch_width(other.m_fetch_width), m_decode_width(other.m_decode_width), m_dispatch_width(other.m_dispatch_width),
+          m_schedule_width(other.m_schedule_width), m_execute_width(other.m_execute_width), m_lq_width(other.m_lq_width), m_sq_width(other.m_sq_width),
+          m_retire_width(other.m_retire_width), m_mispredict_penalty(other.m_mispredict_penalty), m_decode_latency(other.m_decode_latency),
+          m_dispatch_latency(other.m_dispatch_latency), m_schedule_latency(other.m_schedule_latency), m_execute_latency(other.m_execute_latency),
+          m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw), m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
     {
     }
 
-    public:
-
+  public:
     Builder() = default;
 
-    self_type& index(uint32_t cpu_) { m_cpu = cpu_; return *this; }
-    self_type& frequency(double freq_scale_) { m_freq_scale = freq_scale_; return *this; }
-    self_type& dib_set(std::size_t dib_set_) { m_dib_set = dib_set_; return *this; }
-    self_type& dib_way(std::size_t dib_way_) { m_dib_way = dib_way_; return *this; }
-    self_type& dib_window(std::size_t dib_window_) { m_dib_window = dib_window_; return *this; }
-    self_type& ifetch_buffer_size(std::size_t ifetch_buffer_size_) { m_ifetch_buffer_size = ifetch_buffer_size_; return *this; }
-    self_type& decode_buffer_size(std::size_t decode_buffer_size_) { m_decode_buffer_size = decode_buffer_size_; return *this; }
-    self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_) { m_dispatch_buffer_size = dispatch_buffer_size_; return *this; }
-    self_type& rob_size(std::size_t rob_size_) { m_rob_size = rob_size_; return *this; }
-    self_type& lq_size(std::size_t lq_size_) { m_lq_size = lq_size_; return *this; }
-    self_type& sq_size(std::size_t sq_size_) { m_sq_size = sq_size_; return *this; }
-    self_type& fetch_width(unsigned fetch_width_) { m_fetch_width = fetch_width_; return *this; }
-    self_type& decode_width(unsigned decode_width_) { m_decode_width = decode_width_; return *this; }
-    self_type& dispatch_width(unsigned dispatch_width_) { m_dispatch_width = dispatch_width_; return *this; }
-    self_type& schedule_width(unsigned schedule_width_) { m_schedule_width = schedule_width_; return *this; }
-    self_type& execute_width(unsigned execute_width_) { m_execute_width = execute_width_; return *this; }
-    self_type& lq_width(unsigned lq_width_) { m_lq_width = lq_width_; return *this; }
-    self_type& sq_width(unsigned sq_width_) { m_sq_width = sq_width_; return *this; }
-    self_type& retire_width(unsigned retire_width_) { m_retire_width = retire_width_; return *this; }
-    self_type& mispredict_penalty(unsigned mispredict_penalty_) { m_mispredict_penalty = mispredict_penalty_; return *this; }
-    self_type& decode_latency(unsigned decode_latency_) { m_decode_latency = decode_latency_; return *this; }
-    self_type& dispatch_latency(unsigned dispatch_latency_) { m_dispatch_latency = dispatch_latency_; return *this; }
-    self_type& schedule_latency(unsigned schedule_latency_) { m_schedule_latency = schedule_latency_; return *this; }
-    self_type& execute_latency(unsigned execute_latency_) { m_execute_latency = execute_latency_; return *this; }
-    self_type& l1i(CACHE* l1i_) { m_l1i = l1i_; return *this; }
-    self_type& l1i_bandwidth(long int l1i_bw_) { m_l1i_bw = l1i_bw_; return *this; }
-    self_type& l1d_bandwidth(long int l1d_bw_) { m_l1d_bw = l1d_bw_; return *this; }
-    self_type& fetch_queues(champsim::channel* fetch_queues_) { m_fetch_queues = fetch_queues_; return *this; }
-    self_type& data_queues(champsim::channel* data_queues_) { m_data_queues = data_queues_; return *this; }
+    self_type& index(uint32_t cpu_)
+    {
+      m_cpu = cpu_;
+      return *this;
+    }
+    self_type& frequency(double freq_scale_)
+    {
+      m_freq_scale = freq_scale_;
+      return *this;
+    }
+    self_type& dib_set(std::size_t dib_set_)
+    {
+      m_dib_set = dib_set_;
+      return *this;
+    }
+    self_type& dib_way(std::size_t dib_way_)
+    {
+      m_dib_way = dib_way_;
+      return *this;
+    }
+    self_type& dib_window(std::size_t dib_window_)
+    {
+      m_dib_window = dib_window_;
+      return *this;
+    }
+    self_type& ifetch_buffer_size(std::size_t ifetch_buffer_size_)
+    {
+      m_ifetch_buffer_size = ifetch_buffer_size_;
+      return *this;
+    }
+    self_type& decode_buffer_size(std::size_t decode_buffer_size_)
+    {
+      m_decode_buffer_size = decode_buffer_size_;
+      return *this;
+    }
+    self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_)
+    {
+      m_dispatch_buffer_size = dispatch_buffer_size_;
+      return *this;
+    }
+    self_type& rob_size(std::size_t rob_size_)
+    {
+      m_rob_size = rob_size_;
+      return *this;
+    }
+    self_type& lq_size(std::size_t lq_size_)
+    {
+      m_lq_size = lq_size_;
+      return *this;
+    }
+    self_type& sq_size(std::size_t sq_size_)
+    {
+      m_sq_size = sq_size_;
+      return *this;
+    }
+    self_type& fetch_width(unsigned fetch_width_)
+    {
+      m_fetch_width = fetch_width_;
+      return *this;
+    }
+    self_type& decode_width(unsigned decode_width_)
+    {
+      m_decode_width = decode_width_;
+      return *this;
+    }
+    self_type& dispatch_width(unsigned dispatch_width_)
+    {
+      m_dispatch_width = dispatch_width_;
+      return *this;
+    }
+    self_type& schedule_width(unsigned schedule_width_)
+    {
+      m_schedule_width = schedule_width_;
+      return *this;
+    }
+    self_type& execute_width(unsigned execute_width_)
+    {
+      m_execute_width = execute_width_;
+      return *this;
+    }
+    self_type& lq_width(unsigned lq_width_)
+    {
+      m_lq_width = lq_width_;
+      return *this;
+    }
+    self_type& sq_width(unsigned sq_width_)
+    {
+      m_sq_width = sq_width_;
+      return *this;
+    }
+    self_type& retire_width(unsigned retire_width_)
+    {
+      m_retire_width = retire_width_;
+      return *this;
+    }
+    self_type& mispredict_penalty(unsigned mispredict_penalty_)
+    {
+      m_mispredict_penalty = mispredict_penalty_;
+      return *this;
+    }
+    self_type& decode_latency(unsigned decode_latency_)
+    {
+      m_decode_latency = decode_latency_;
+      return *this;
+    }
+    self_type& dispatch_latency(unsigned dispatch_latency_)
+    {
+      m_dispatch_latency = dispatch_latency_;
+      return *this;
+    }
+    self_type& schedule_latency(unsigned schedule_latency_)
+    {
+      m_schedule_latency = schedule_latency_;
+      return *this;
+    }
+    self_type& execute_latency(unsigned execute_latency_)
+    {
+      m_execute_latency = execute_latency_;
+      return *this;
+    }
+    self_type& l1i(CACHE* l1i_)
+    {
+      m_l1i = l1i_;
+      return *this;
+    }
+    self_type& l1i_bandwidth(long int l1i_bw_)
+    {
+      m_l1i_bw = l1i_bw_;
+      return *this;
+    }
+    self_type& l1d_bandwidth(long int l1d_bw_)
+    {
+      m_l1d_bw = l1d_bw_;
+      return *this;
+    }
+    self_type& fetch_queues(champsim::channel* fetch_queues_)
+    {
+      m_fetch_queues = fetch_queues_;
+      return *this;
+    }
+    self_type& data_queues(champsim::channel* data_queues_)
+    {
+      m_data_queues = data_queues_;
+      return *this;
+    }
 
     template <typename... Bs>
-    Builder<builder_module_type_holder<Bs...>, T> branch_predictor() { return {builder_conversion_tag{}, *this}; }
+    Builder<builder_module_type_holder<Bs...>, T> branch_predictor() {
+      return {builder_conversion_tag{}, *this};
+    }
     template <typename... Ts>
-    Builder<B, builder_module_type_holder<Ts...>> btb() { return {builder_conversion_tag{}, *this}; }
+    Builder<B, builder_module_type_holder<Ts...>> btb() {
+      return {builder_conversion_tag{}, *this};
+    }
   };
 
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(Builder<builder_module_type_holder<Bs...>, builder_module_type_holder<Ts...>> b)
-      : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}), LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size),
-        DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size), ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size),
-        FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width), SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width),
-        LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width), BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency),
-        DECODE_LATENCY(b.m_decode_latency), SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
+      : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
+        LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
+        ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
+        SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
+        BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
+        SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
         L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
         branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)), btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {

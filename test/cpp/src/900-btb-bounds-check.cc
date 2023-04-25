@@ -23,5 +23,7 @@ TEST_CASE("The basic_btb module does not overflow its bounds.") {
     // Access the table from the uut
     uut.initialize();
     (void)uut.impl_btb_prediction(0xdeadbeef);
+
+    SUCCEED();
 }
 

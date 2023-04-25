@@ -32,10 +32,11 @@ SCENARIO("The replacement policy can bypass") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
+      .offset_bits(0)
       .replacement<bypass_replacement<0xcafebabe>>()
     };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ul_seed, &mock_ul_test, &uut, &mock_ll}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
 
     for (auto elem : elements) {
       elem->initialize();
@@ -68,14 +69,13 @@ SCENARIO("The replacement policy can bypass") {
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < hit_latency+1; ++i)
+        for (uint64_t i = 0; i < 2*hit_latency; ++i)
           for (auto elem : elements)
             elem->_operate();
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK(mock_ll.packet_count() == 1);
-          CHECK(mock_ll.addresses.at(0) == test_b.address);
+          CHECK_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(test_b.address));
         }
 
         for (uint64_t i = 0; i < 2*(fill_latency+hit_latency); ++i)
@@ -83,7 +83,7 @@ SCENARIO("The replacement policy can bypass") {
             elem->_operate();
 
         THEN("No blocks are evicted") {
-          REQUIRE(mock_ll.packet_count() == 1);
+          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1));
         }
       }
     }

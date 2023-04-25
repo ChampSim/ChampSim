@@ -25,25 +25,14 @@ struct va_ampm_lite : champsim::modules::prefetcher
     explicit region_type(uint64_t allocate_vpn) : vpn(allocate_vpn), lru(region_lru++) {}
   };
 
+  using prefetcher::prefetcher;
+
   std::array<region_type, REGION_COUNT> regions;
 
-  bool check_cl_access(uint64_t v_addr)
-  {
-    uint64_t vpn = v_addr >> LOG2_PAGE_SIZE;
-    uint64_t page_offset = (v_addr >> LOG2_BLOCK_SIZE) & 63;
-    auto region = std::find_if(std::begin(regions), std::end(regions), [vpn](auto x) { return x.vpn == vpn; });
+  bool check_cl_access(uint64_t v_addr);
+  bool check_cl_prefetch(uint64_t v_addr);
 
-    return (region != std::end(regions)) && region->prefetch_map.test(page_offset);
-  }
-
-  bool check_cl_prefetch(uint64_t v_addr)
-  {
-    uint64_t vpn = v_addr >> LOG2_PAGE_SIZE;
-    uint64_t page_offset = (v_addr >> LOG2_BLOCK_SIZE) & 63;
-    auto region = std::find_if(std::begin(regions), std::end(regions), [vpn](auto x) { return x.vpn == vpn; });
-
-    return (region != std::end(regions)) && region->prefetch_map.test(page_offset);
-  }
+  static std::pair<uint64_t, uint64_t> page_and_offset(uint64_t addr);
 
   void prefetcher_initialize();
   uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);

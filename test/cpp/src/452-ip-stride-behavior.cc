@@ -1,10 +1,28 @@
 #include <catch.hpp>
+#include <numeric>
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
 #include "../../../prefetcher/ip_stride/ip_stride.h"
+
+struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
+  int64_t stride;
+
+  explicit StrideMatcher(int64_t s) : stride(s) {}
+
+    template<typename Range>
+    bool match(Range const& range) const {
+      std::vector<int64_t> diffs;
+      std::adjacent_difference(std::cbegin(range), std::cend(range), std::back_inserter(diffs), [](const auto& x, const auto& y){ return (x >> LOG2_BLOCK_SIZE) - (y >> LOG2_BLOCK_SIZE); });
+      return std::all_of(std::next(std::cbegin(diffs)), std::cend(diffs), [stride=stride](auto x){ return x == stride; });
+    }
+
+    std::string describe() const override {
+        return "has stride " + std::to_string(stride);
+    }
+};
 
 SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   auto stride = GENERATE(as<int64_t>{}, -4, -3, -2, -1, 1, 2, 3, 4);
@@ -47,7 +65,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
 
     WHEN("Two more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = static_cast<uint64_t>(static_cast<int64_t>(seed.address) + stride*BLOCK_SIZE);
       test_a.instr_id = id++;
 
       auto test_result_a = mock_ul.issue(test_a);
@@ -56,7 +74,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = static_cast<uint64_t>(static_cast<int64_t>(test_a.address) + stride*BLOCK_SIZE);
       test_b.instr_id = id++;
 
       auto test_result_b = mock_ul.issue(test_b);
@@ -68,16 +86,8 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 6 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 6);
-      }
-
-      THEN("All of the issued requests have the same stride") {
-        REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(2) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(2) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(3) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(3) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(4) >> LOG2_BLOCK_SIZE));
-        REQUIRE((mock_ll.addresses.at(4) >> LOG2_BLOCK_SIZE) + stride == (mock_ll.addresses.at(5) >> LOG2_BLOCK_SIZE));
+      THEN("A total of 6 requests were generated with the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(6) && StrideMatcher{stride});
       }
     }
   }

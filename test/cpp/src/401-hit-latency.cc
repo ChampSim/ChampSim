@@ -6,7 +6,7 @@
 
 SCENARIO("A cache returns a hit after the specified latency") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({
         std::pair{LOAD, "load"sv},
         std::pair{RFO, "RFO"sv},
         std::pair{PREFETCH, "prefetch"sv},

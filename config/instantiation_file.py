@@ -19,7 +19,7 @@ import os
 
 from . import util
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{{{_ulptr}}}}}}};'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
@@ -76,6 +76,13 @@ default_ptw_queue = {
                 '_queue_check_full_addr':False
         }
 
+# Avoids a warning on clang under -Wbraced-scalar-init if there is only one member
+def vector_string(iterable):
+    hoisted = list(iterable)
+    if len(hoisted) == 1:
+        return hoisted[0]
+    return '{'+', '.join(hoisted)+'}'
+
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_level_pairs = tuple(itertools.chain(
         ((elem['lower_level'], elem['name']) for elem in ptws),
@@ -109,6 +116,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             inc_files.update([os.path.join(base, f) for f in files if os.path.splitext(f)[1] == '.h'])
     yield from ('#include "../../../'+f+'"' for f in inc_files)
 
+    yield '#include "defaults.hpp"'
+    yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'
     yield 'struct generated_environment final : public champsim::environment {'
     yield ''
@@ -119,7 +128,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
 
     yield pmem_fmtstr.format(
-            _ulptr=', '.join('&{}_to_{}_queues'.format(ul, pmem['name']) for ul in upper_levels[pmem['name']]['uppers']),
+            _ulptr=vector_string('&{}_to_{}_queues'.format(ul, pmem['name']) for ul in upper_levels[pmem['name']]['uppers']),
             **pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
 
@@ -144,7 +153,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if "max_write" in ptw:
             yield '.fill_bandwidth({max_write})'.format(**ptw)
 
-        yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
+        yield '.upper_levels({{{}}})'.format(vector_string('&{}_to_{}_queues'.format(ul, ptw['name']) for ul in upper_levels[ptw['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(ptw['name'], ptw['lower_level']))
 
         yield '};'
@@ -177,7 +186,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         if elem.get('_prefetcher_data'):
             yield '.prefetcher<{}>()'.format(', '.join(k['class'] for k in elem['_prefetcher_data']))
 
-        yield '.upper_levels({{{}}})'.format(', '.join('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
+        yield '.upper_levels({{{}}})'.format(vector_string('&{}_to_{}_queues'.format(ul, elem['name']) for ul in upper_levels[elem['name']]['uppers']))
         yield '.lower_level({})'.format('&{}_to_{}_queues'.format(elem['name'], elem['lower_level']))
 
         if 'lower_translate' in elem:
@@ -212,7 +221,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
     yield 'std::vector<std::reference_wrapper<O3_CPU>> cpu_view() override {'
     yield '  return {'
-    yield '    ' + ', '.join('{name}'.format(**elem) for elem in cores)
+    yield '    ' + ', '.join('std::ref({name})'.format(**elem) for elem in cores)
     yield '  };'
     yield '}'
     yield ''
@@ -236,7 +245,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield 'std::vector<std::reference_wrapper<champsim::operable>> operable_view() override {'
     yield '  return {'
-    yield '    ' + ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, caches, ptws, (pmem,)))
+    yield '    ' + ', '.join('{name}'.format(**elem) for elem in itertools.chain(cores, ptws, caches, (pmem,)))
     yield '  };'
     yield '}'
     yield ''
