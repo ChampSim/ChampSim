@@ -47,11 +47,11 @@ $(test_main_name): LDLIBS   += -lCatch2Main -lCatch2
 
 # Link test executable
 $(test_main_name):
-	$(LINK.cc) $(LDFLAGS) -o $@ $(filter-out %/main.o, $^) $(LOADLIBES) $(LDLIBS)
+	$(CXX) $(LDFLAGS) -o $@ $(filter-out %/main.o, $^) $(LOADLIBES) $(LDLIBS)
 
 # Link main executables
 $(filter-out $(test_main_name), $(executable_name)):
-	$(LINK.cc) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
 test: $(test_main_name)
@@ -59,6 +59,4 @@ test: $(test_main_name)
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(shell pwd) python3 -m unittest discover -v --start-directory='test/python'
-
--include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 
