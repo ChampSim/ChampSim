@@ -608,6 +608,24 @@ void O3_CPU::retire_rob()
     throw champsim::deadlock{cpu};
 }
 
+void O3_CPU::impl_initialize_branch_predictor() { branch_module_pimpl->impl_initialize_branch_predictor(); }
+
+void O3_CPU::impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
+{
+  branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
+}
+
+uint8_t O3_CPU::impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
+
+void O3_CPU::impl_initialize_btb() { btb_module_pimpl->impl_initialize_btb(); }
+
+void O3_CPU::impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
+{
+  btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+}
+
+std::pair<uint64_t, uint8_t> O3_CPU::impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
+
 void O3_CPU::print_deadlock()
 {
   std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;

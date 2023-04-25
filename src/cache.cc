@@ -538,6 +538,43 @@ void CACHE::detect_misses()
   inflight_tag_check.erase(q_it, std::end(inflight_tag_check));
 }
 
+void CACHE::impl_prefetcher_initialize() { pref_module_pimpl->impl_prefetcher_initialize(); }
+
+uint32_t CACHE::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+  return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in);
+}
+
+uint32_t CACHE::impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
+  return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+}
+
+void CACHE::impl_prefetcher_cycle_operate() { pref_module_pimpl->impl_prefetcher_cycle_operate(); }
+
+void CACHE::impl_prefetcher_final_stats() { pref_module_pimpl->impl_prefetcher_final_stats(); }
+
+void CACHE::impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
+{
+  pref_module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target);
+}
+
+void CACHE::impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
+
+uint32_t CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                                 uint32_t type)
+{
+  return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+}
+
+void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
+                                          uint32_t type, uint8_t hit)
+{
+  repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+}
+
+void CACHE::impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
+
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
