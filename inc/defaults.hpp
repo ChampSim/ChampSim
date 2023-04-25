@@ -1,14 +1,14 @@
 #ifndef DEFAULTS_HPP
 #define DEFAULTS_HPP
 
-#include "cache.h"
-#include "champsim_constants.h"
-#include "ooo_cpu.h"
-#include "ptw.h"
 #include "../branch/bimodal/bimodal.h"
 #include "../btb/basic_btb/basic_btb.h"
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
+#include "cache.h"
+#include "champsim_constants.h"
+#include "ooo_cpu.h"
+#include "ptw.h"
 
 namespace champsim
 {

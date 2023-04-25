@@ -24,7 +24,6 @@
 #include <memory>
 #include <optional>
 #include <queue>
-#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -35,6 +34,7 @@
 #include "operable.h"
 #include "util.h"
 #include "util/detect.h"
+#include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -189,8 +189,7 @@ public:
 
 #include "ooo_cpu_module_decl.inc"
 
-  struct branch_module_concept
-  {
+  struct branch_module_concept {
     virtual ~branch_module_concept() = default;
 
     virtual void impl_initialize_branch_predictor() = 0;
@@ -198,8 +197,7 @@ public:
     virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
   };
 
-  struct btb_module_concept
-  {
+  struct btb_module_concept {
     virtual ~btb_module_concept() = default;
 
     virtual void impl_initialize_btb() = 0;
@@ -208,10 +206,9 @@ public:
   };
 
   template <typename... Bs>
-  struct branch_module_model final : branch_module_concept
-  {
+  struct branch_module_model final : branch_module_concept {
     template <typename T>
-    using has_initialize = decltype( std::declval<T>().initialize_branch_predictor() );
+    using has_initialize = decltype(std::declval<T>().initialize_branch_predictor());
 
     std::tuple<Bs...> intern_;
     explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
@@ -219,29 +216,28 @@ public:
     void impl_initialize_branch_predictor()
     {
       auto process_one = [&](auto& b) {
-            if constexpr (champsim::is_detected_v<has_initialize, decltype(b)>)
-              b.initialize_branch_predictor();
-          };
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(b)>)
+          b.initialize_branch_predictor();
+      };
 
-      std::apply([&](auto&... b){ (..., process_one(b)); }, intern_);
+      std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
     }
 
     void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
     {
-      std::apply([&](auto&... b){ (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
+      std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
     }
 
     [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip)
     {
-      return std::apply([&](auto&... b){ return (..., b.predict_branch(ip)); }, intern_);
+      return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
     }
   };
 
   template <typename... Ts>
-  struct btb_module_model final : btb_module_concept
-  {
+  struct btb_module_model final : btb_module_concept {
     template <typename T>
-    using has_initialize = decltype( std::declval<T>().initialize_btb() );
+    using has_initialize = decltype(std::declval<T>().initialize_btb());
 
     std::tuple<Ts...> intern_;
     explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
@@ -249,21 +245,21 @@ public:
     void impl_initialize_btb()
     {
       auto process_one = [&](auto& t) {
-            if constexpr (champsim::is_detected_v<has_initialize, decltype(t)>)
-              t.initialize_btb();
-          };
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(t)>)
+          t.initialize_btb();
+      };
 
-      std::apply([&](auto&... t){ (..., process_one(t)); }, intern_);
+      std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
     }
 
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
     {
-      std::apply([&](auto&... t){ (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
+      std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
     }
 
     [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)
     {
-      return std::apply([&](auto&... t){ return (..., t.btb_prediction(ip)); }, intern_);
+      return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
     }
   };
 
@@ -285,7 +281,9 @@ public:
   [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
 
   template <typename... Ts>
-  class builder_module_type_holder {};
+  class builder_module_type_holder
+  {
+  };
   class builder_conversion_tag
   {
   };
@@ -490,11 +488,13 @@ public:
     }
 
     template <typename... Bs>
-    Builder<builder_module_type_holder<Bs...>, T> branch_predictor() {
+    Builder<builder_module_type_holder<Bs...>, T> branch_predictor()
+    {
       return {builder_conversion_tag{}, *this};
     }
     template <typename... Ts>
-    Builder<B, builder_module_type_holder<Ts...>> btb() {
+    Builder<B, builder_module_type_holder<Ts...>> btb()
+    {
       return {builder_conversion_tag{}, *this};
     }
   };

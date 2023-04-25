@@ -22,7 +22,6 @@
 #include <deque>
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -31,6 +30,7 @@
 #include "modules.h"
 #include "operable.h"
 #include "util/detect.h"
+#include <type_traits>
 
 struct cache_stats {
   std::string name;
@@ -196,8 +196,7 @@ public:
 
 #include "cache_module_decl.inc"
 
-  struct prefetcher_module_concept
-  {
+  struct prefetcher_module_concept {
     virtual ~prefetcher_module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
@@ -208,8 +207,7 @@ public:
     virtual void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) = 0;
   };
 
-  struct replacement_module_concept
-  {
+  struct replacement_module_concept {
     virtual ~replacement_module_concept() = default;
 
     virtual void impl_initialize_replacement() = 0;
@@ -221,19 +219,18 @@ public:
   };
 
   template <typename... Ps>
-  struct prefetcher_module_model final : prefetcher_module_concept
-  {
+  struct prefetcher_module_model final : prefetcher_module_concept {
     template <typename T>
-    using has_initialize = decltype( std::declval<T>().prefetcher_initialize() );
+    using has_initialize = decltype(std::declval<T>().prefetcher_initialize());
 
     template <typename T>
-    using has_cycle_operate = decltype( std::declval<T>().prefetcher_cycle_operate() );
+    using has_cycle_operate = decltype(std::declval<T>().prefetcher_cycle_operate());
 
     template <typename T>
-    using has_final_stats = decltype( std::declval<T>().prefetcher_final_stats() );
+    using has_final_stats = decltype(std::declval<T>().prefetcher_final_stats());
 
     template <typename T>
-    using has_branch_operate = decltype( std::declval<T>().prefetcher_branch_operate(0, 0, 0) );
+    using has_branch_operate = decltype(std::declval<T>().prefetcher_branch_operate(0, 0, 0));
 
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
@@ -241,65 +238,64 @@ public:
     void impl_prefetcher_initialize()
     {
       auto process_one = [&](auto& p) {
-            if constexpr (champsim::is_detected_v<has_initialize, decltype(p)>)
-              p.prefetcher_initialize();
-          };
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(p)>)
+          p.prefetcher_initialize();
+      };
 
-      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
     }
 
     [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
     {
-      return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
+      return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
     }
 
     [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
     {
-      return std::apply([&](auto&... p){ return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
+      return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
     }
 
     void impl_prefetcher_cycle_operate()
     {
       auto process_one = [&](auto& p) {
-            if constexpr (champsim::is_detected_v<has_cycle_operate, decltype(p)>)
-              p.prefetcher_cycle_operate();
-          };
+        if constexpr (champsim::is_detected_v<has_cycle_operate, decltype(p)>)
+          p.prefetcher_cycle_operate();
+      };
 
-      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
     }
 
     void impl_prefetcher_final_stats()
     {
       auto process_one = [&](auto& p) {
-            if constexpr (champsim::is_detected_v<has_final_stats, decltype(p)>)
-              p.prefetcher_final_stats();
-          };
+        if constexpr (champsim::is_detected_v<has_final_stats, decltype(p)>)
+          p.prefetcher_final_stats();
+      };
 
-      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
     }
 
     void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
     {
       auto process_one = [&](auto& p) {
-            if constexpr (champsim::is_detected_v<has_branch_operate, decltype(p)>)
-              p.prefetcher_branch_operate(ip, branch_type, branch_target);
-          };
+        if constexpr (champsim::is_detected_v<has_branch_operate, decltype(p)>)
+          p.prefetcher_branch_operate(ip, branch_type, branch_target);
+      };
 
-      std::apply([&](auto&... p){ (..., process_one(p)); }, intern_);
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
     }
   };
 
   template <typename... Rs>
-  struct replacement_module_model final : replacement_module_concept
-  {
+  struct replacement_module_model final : replacement_module_concept {
     template <typename T>
-    using has_initialize = decltype( std::declval<T>().initialize_replacement() );
+    using has_initialize = decltype(std::declval<T>().initialize_replacement());
 
     template <typename T>
-    using has_update_state = decltype( std::declval<T>().update_replacement_state(0,0,0,0,0,0,0,0) );
+    using has_update_state = decltype(std::declval<T>().update_replacement_state(0, 0, 0, 0, 0, 0, 0, 0));
 
     template <typename T>
-    using has_final_stats = decltype( std::declval<T>().replacement_final_stats() );
+    using has_final_stats = decltype(std::declval<T>().replacement_final_stats());
 
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) {}
@@ -307,38 +303,40 @@ public:
     void impl_initialize_replacement()
     {
       auto process_one = [&](auto& r) {
-            if constexpr (champsim::is_detected_v<has_initialize, decltype(r)>)
-              r.initialize_replacement();
-            //else if (champsim::modules::warn_if_any_missing)
-              //champsim::modules::does_not_have<decltype(r)>();
-          };
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(r)>)
+          r.initialize_replacement();
+        // else if (champsim::modules::warn_if_any_missing)
+        // champsim::modules::does_not_have<decltype(r)>();
+      };
 
-      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
+      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
     }
 
-    [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+    [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                                            uint32_t type)
     {
-      return std::apply([&](auto&... r){ return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
+      return std::apply([&](auto&... r) { return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
     }
 
-    void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+    void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
+                                       uint32_t type, uint8_t hit)
     {
       auto process_one = [&](auto& r) {
-            if constexpr (champsim::is_detected_v<has_update_state, decltype(r)>)
-              r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
-          };
+        if constexpr (champsim::is_detected_v<has_update_state, decltype(r)>)
+          r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+      };
 
-      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
+      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
     }
 
     void impl_replacement_final_stats()
     {
       auto process_one = [&](auto& r) {
-            if constexpr (champsim::is_detected_v<has_final_stats, decltype(r)>)
-              r.replacement_final_stats();
-          };
+        if constexpr (champsim::is_detected_v<has_final_stats, decltype(r)>)
+          r.replacement_final_stats();
+      };
 
-      std::apply([&](auto&... r){ (..., process_one(r)); }, intern_);
+      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
     }
   };
 
@@ -362,7 +360,8 @@ public:
   }
 
   void impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
-  [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+  [[nodiscard]] uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                                          uint32_t type)
   {
     return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
   }
@@ -374,49 +373,51 @@ public:
   void impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
 
   template <typename... Ts>
-  class builder_module_type_holder {};
+  class builder_module_type_holder
+  {
+  };
   class builder_conversion_tag
   {
   };
   template <typename P = void, typename R = void>
   class Builder
   {
-      using self_type = Builder<P, R>;
+    using self_type = Builder<P, R>;
 
-      std::string_view m_name{};
-      double m_freq_scale{};
-      uint32_t m_sets{};
-      uint32_t m_ways{};
-      std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
-      uint32_t m_mshr_size{};
-      uint64_t m_hit_lat{};
-      uint64_t m_fill_lat{};
-      uint64_t m_latency{};
-      uint32_t m_max_tag{};
-      uint32_t m_max_fill{};
-      unsigned m_offset_bits{};
-      bool m_pref_load{};
-      bool m_wq_full_addr{};
-      bool m_va_pref{};
+    std::string_view m_name{};
+    double m_freq_scale{};
+    uint32_t m_sets{};
+    uint32_t m_ways{};
+    std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
+    uint32_t m_mshr_size{};
+    uint64_t m_hit_lat{};
+    uint64_t m_fill_lat{};
+    uint64_t m_latency{};
+    uint32_t m_max_tag{};
+    uint32_t m_max_fill{};
+    unsigned m_offset_bits{};
+    bool m_pref_load{};
+    bool m_wq_full_addr{};
+    bool m_va_pref{};
 
-      unsigned m_pref_act_mask{};
-      std::vector<CACHE::channel_type*> m_uls{};
-      CACHE::channel_type* m_ll{};
-      CACHE::channel_type* m_lt{nullptr};
+    unsigned m_pref_act_mask{};
+    std::vector<CACHE::channel_type*> m_uls{};
+    CACHE::channel_type* m_ll{};
+    CACHE::channel_type* m_lt{nullptr};
 
-      friend class CACHE;
+    friend class CACHE;
 
-      template <typename OTHER_P, typename OTHER_R>
-      Builder(builder_conversion_tag, const Builder<OTHER_P, OTHER_R>& other)
-          : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
-            m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
-            m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
-            m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
-      {
-      }
+    template <typename OTHER_P, typename OTHER_R>
+    Builder(builder_conversion_tag, const Builder<OTHER_P, OTHER_R>& other)
+        : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
+          m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
+          m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
+          m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
+    {
+    }
 
-      public:
-      Builder() = default;
+  public:
+    Builder() = default;
 
     self_type& name(std::string_view name_)
     {
@@ -535,10 +536,16 @@ public:
       m_lt = lt_;
       return *this;
     }
-      template <typename... Ps>
-      Builder<builder_module_type_holder<Ps...>, R> prefetcher() { return {builder_conversion_tag{}, *this}; }
-      template <typename... Rs>
-      Builder<P, builder_module_type_holder<Rs...>> replacement() { return {builder_conversion_tag{}, *this}; }
+    template <typename... Ps>
+    Builder<builder_module_type_holder<Ps...>, R> prefetcher()
+    {
+      return {builder_conversion_tag{}, *this};
+    }
+    template <typename... Rs>
+    Builder<P, builder_module_type_holder<Rs...>> replacement()
+    {
+      return {builder_conversion_tag{}, *this};
+    }
   };
 
   template <typename... Ps, typename... Rs>
