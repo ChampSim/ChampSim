@@ -16,10 +16,9 @@ all: all_execs
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
-#  - $(build_dirs), the list of all directories that hold executables
-#  - $(build_objs), the list of all object files corresponding to core sources
-#  - $(module_dirs), the list of all directories that hold module object files
-#  - $(module_objs), the list of all object files corresponding to modules
+#  - $(config_dirs), the list of all directories that hold generated configuration files
+#  - $(clean_dirs), the list of all directories that hold cleanable files
+#  - $(objs), the list of all object files
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
 
@@ -27,20 +26,20 @@ all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) $(test_main_name)
 
 # Remove all configuration files
 configclean: clean
-	@-$(RM) -r $(module_dirs) _configuration.mk
+	@-$(RM) -r $(config_dirs) _configuration.mk
 
 # Make directories that don't exist
 # exclude "test" to not conflict with the phony target
-$(filter-out test, $(sort $(build_dirs) $(module_dirs))): | $(dir $@)
+$(filter-out test, $(sort $(clean_dirs))): | $(dir $@)
 	-mkdir $@
 
 # All .o files should be made like .cc files
-$(build_objs) $(module_objs):
+$(objs):
 	$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
 # Add address sanitizers for tests

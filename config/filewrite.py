@@ -65,13 +65,13 @@ class FileWriter:
         self.objdir_name = objdir_name
 
     def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
-        local_bindir_name = bindir_name or self.bindir_name
-        local_srcdir_names = (*(srcdir_names or []), self.core_sources)
-        local_objdir_name = objdir_name or self.objdir_name
-
         build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
 
-        inc_dir = os.path.join(os.path.abspath(local_objdir_name), build_id, 'inc')
+        local_bindir_name = bindir_name or self.bindir_name
+        local_srcdir_names = (*(srcdir_names or []), self.core_sources)
+        local_objdir_name = os.path.abspath(os.path.join(objdir_name or self.objdir_name, build_id))
+
+        inc_dir = os.path.join(local_objdir_name, 'inc')
 
         executable, elements, modules_to_compile, module_info, config_file, env = parsed_config
 

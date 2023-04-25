@@ -287,7 +287,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             *(c['_btb_data'] for c in cores)
         ))]
 
-    env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
+    env_vars = ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
 
     return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
