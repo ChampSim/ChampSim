@@ -36,10 +36,7 @@ def append_variable(var, *val, targets=[]):
         retval = dependency(' '.join(targets), retval)
     return retval
 
-def each_in_dict_list(d):
-    yield from itertools.chain(*(zip(itertools.repeat(kv[0]), kv[1]) for kv in d.items()))
-
-def make_part(dest_dir, build_id, src_dirs, opts={}):
+def make_part(dest_dir, build_id, src_dirs):
     dir_varnames = []
     obj_varnames = []
 
@@ -72,12 +69,11 @@ def make_part(dest_dir, build_id, src_dirs, opts={}):
         dir_varnames.append(local_dir_varname)
         obj_varnames.append(local_obj_varname)
 
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(opts))
+    yield dependency(' '.join(map(dereference, obj_varnames)), os.path.join(dest_dir, 'config.options'))
     yield ''
-
     return dir_varnames, obj_varnames
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, global_opts):
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     executable_path = os.path.abspath(executable)
 
     yield '######'
@@ -88,7 +84,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, g
 
     part_iter = (
         (os.path.join(objdir, 'obj'), build_id, source_dirs),
-        *((os.path.join(objdir, k), build_id+'_'+k, (v['path'],), v['opts']) for k,v in module_info.items())
+        *((os.path.join(objdir, k), build_id+'_'+k, (v['path'],)) for k,v in module_info.items())
     )
     dir_varnames = []
     obj_varnames = []
@@ -98,13 +94,12 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, g
         obj_varnames.extend(module_obj_varnames)
 
     yield append_variable('executable_name', executable_path)
-    yield dependency(executable_path, *map(dereference, obj_varnames), order=os.path.split(executable_path)[0])
     yield append_variable('clean_dirs', *map(dereference, dir_varnames))
     yield append_variable('objs', *map(dereference, obj_varnames))
     yield append_variable('build_dirs', os.path.split(executable_path)[0])
     yield append_variable('config_dirs', objdir)
 
-    itervars = (('CPPFLAGS', '-I'+os.path.join(objdir, 'inc')), *each_in_dict_list(global_opts))
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in itervars)
+    yield dependency(executable_path, *map(dereference, obj_varnames), order=os.path.split(executable_path)[0])
+    yield dependency(' '.join(map(dereference, obj_varnames)), os.path.join(objdir, 'config.options'))
     yield ''
 

@@ -95,12 +95,12 @@ class FileWriter:
 
         self.fileparts.append((os.path.join(inc_dir, module_definition_file_name), ('}','#endif')))
 
+        self.fileparts.append((os.path.join(local_objdir_name, 'config.options'), ('-I'+inc_dir, *itertools.chain(*env.values()))))
+        self.fileparts.append((os.path.join(local_objdir_name, 'obj', 'config.options'), ('',))) # empty options file
+
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        for v in filter(lambda v: v.get('legacy'), joined_module_info.values()):
-            incfilename = v['name'] + '.inc'
-            self.fileparts.append((os.path.join(inc_dir, incfilename), get_map_lines(v['func_map'])))
-            v['opts']['CPPFLAGS'] = v['opts'].get('CPPFLAGS',[]) + ['-include '+incfilename]
-        self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)))
+        self.fileparts.extend((os.path.join(local_objdir_name, v['name'], 'config.options'), modules.get_module_opts_lines(v)) for v in joined_module_info.values())
+        self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info)))
 
     def finish(self):
         for fname, fcontents in itertools.groupby(sorted(self.fileparts, key=operator.itemgetter(0)), key=operator.itemgetter(0)):

@@ -15,6 +15,8 @@
 import os
 import itertools
 
+from . import util
+
 # Utility function to get a mangled module name from the path to its sources
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     fname_translation_table = str.maketrans('./-','_DH')
@@ -44,29 +46,21 @@ class ModuleSearchContext:
         files = itertools.starmap(os.path.join, itertools.chain(*(zip(itertools.repeat(b), d) for b,d,_ in base_dirs)))
         return [self.data_from_path(f) for f in files]
 
-# A unifying function for the four module types to return their information
-def data_getter(prefix, module_name, funcs):
-    return {
-        'name': module_name,
-        'opts': { 'CXXFLAGS': ['-Wno-unused-parameter'] },
-        'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
-    }
-
 branch_variant_data = [
     ('initialize_branch_predictor', tuple(), 'void'),
     ('last_branch_result', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type')), 'void'),
     ('predict_branch', (('uint64_t','ip'),), 'uint8_t')
 ]
-def get_branch_data(module_name):
-    return data_getter('bpred', module_name, (v[0] for v in branch_variant_data))
+def get_branch_data(module_data):
+    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('bpred', module_data['name'], v[0])) for v in branch_variant_data} }) # Resolve function names
 
 btb_variant_data = [
     ('initialize_btb', tuple(), 'void'),
     ('update_btb', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type')), 'void'),
     ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>')
 ]
-def get_btb_data(module_name):
-    return data_getter('btb', module_name, (v[0] for v in btb_variant_data))
+def get_btb_data(module_data):
+    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('btb', module_data['name'], v[0])) for v in btb_variant_data} }) # Resolve function names
 
 pref_nonbranch_variant_data = [
     ('prefetcher_initialize', tuple(), 'void'),
@@ -79,8 +73,9 @@ pref_nonbranch_variant_data = [
 pref_branch_variant_data = [
     ('prefetcher_branch_operate', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')), 'void')
 ]
-def get_pref_data(module_name, is_instruction_cache=False):
-    return data_getter('ipref' if is_instruction_cache else 'pref', module_name, (v[0] for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data)))
+def get_pref_data(module_data):
+    return util.chain(module_data,
+        { 'func_map': { v[0]: '_'.join((('ipref' if module_data.get('_is_instruction_prefetcher',False) else 'pref'), module_data['name'], v[0])) for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data)} }) # Resolve function names
 
 repl_variant_data = [
     ('initialize_replacement', tuple(), 'void'),
@@ -88,8 +83,13 @@ repl_variant_data = [
     ('update_replacement_state', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit')), 'void'),
     ('replacement_final_stats', tuple(), 'void')
 ]
-def get_repl_data(module_name):
-    return data_getter('repl', module_name, (v[0] for v in repl_variant_data))
+def get_repl_data(module_data):
+    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('repl', module_data['name'], v[0])) for v in repl_variant_data} }) # Resolve function names
+
+def get_module_opts_lines(module_data):
+    yield '-Wno-unused-parameter'
+    if module_data.get('legacy'):
+        yield from ('-D{}={}'.format(*x) for x in module_data['func_map'].items())
 
 # Generate C++ code giving the mangled module specialization functions
 def mangled_declaration(fname, args, rtype, module_data):

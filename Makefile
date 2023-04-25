@@ -1,8 +1,5 @@
 ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
-CPPFLAGS += -MMD -I$(ROOT_DIR)/inc
-CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
-
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 CPPFLAGS += -isystem $(TRIPLET_DIR)/include
@@ -39,8 +36,9 @@ $(filter-out test, $(sort $(clean_dirs))): | $(dir $@)
 	-mkdir $@
 
 # All .o files should be made like .cc files
+$(objs): global.options
 $(objs):
-	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+	$(CXX) $(addprefix @,$(filter %.options, $^)) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 # Add address sanitizers for tests
 #$(test_main_name): CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
