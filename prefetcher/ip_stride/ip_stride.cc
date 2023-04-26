@@ -53,7 +53,7 @@ void ip_stride::prefetcher_cycle_operate()
   }
 }
 
-uint32_t ip_stride::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t ip_stride::prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }

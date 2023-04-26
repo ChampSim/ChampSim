@@ -19,7 +19,7 @@ drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WA
   }
 }
 
-void drrip::update_bip(uint32_t set, uint32_t way)
+void drrip::update_bip(long set, long way)
 {
   rrpv[set * NUM_WAY + way] = maxRRPV;
 
@@ -30,13 +30,13 @@ void drrip::update_bip(uint32_t set, uint32_t way)
   }
 }
 
-void drrip::update_srrip(uint32_t set, uint32_t way)
+void drrip::update_srrip(long set, long way)
 {
   rrpv[set * NUM_WAY + way] = maxRRPV - 1;
 }
 
 // called on every cache hit and cache fill
-void drrip::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   // do not update replacement state for writebacks
@@ -73,7 +73,7 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
 }
 
 // find replacement victim
-uint32_t drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv), set * NUM_WAY);
@@ -85,5 +85,5 @@ uint32_t drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
 
   assert(begin <= victim);
   assert(victim < end);
-  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
+  return std::distance(begin, victim); // cast protected by assertions
 }

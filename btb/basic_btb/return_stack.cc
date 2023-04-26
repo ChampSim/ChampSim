@@ -1,6 +1,6 @@
 #include "return_stack.h"
 
-std::pair<uint64_t, uint8_t> return_stack::prediction(uint64_t ip)
+std::pair<uint64_t, bool> return_stack::prediction(uint64_t ip)
 {
   if (std::empty(stack))
     return {0, true};

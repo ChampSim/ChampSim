@@ -76,7 +76,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint
   return metadata_in;
 }
 
-uint32_t va_ampm_lite::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t va_ampm_lite::prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return metadata_in;
 }

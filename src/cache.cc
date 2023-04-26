@@ -56,7 +56,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                                                 fill_mshr.address, fill_mshr.type));
   assert(set_begin <= way);
   assert(way <= set_end);
-  const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
+  const auto way_idx = std::distance(set_begin, way);
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -159,7 +159,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     ++sim_stats.hits[handle_pkt.type][handle_pkt.cpu];
 
     // update replacement policy
-    const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
+    const auto way_idx = std::distance(set_begin, way);
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0, handle_pkt.type, true);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
@@ -545,7 +545,7 @@ uint32_t CACHE::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_
   return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in);
 }
 
-uint32_t CACHE::impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
 }
@@ -561,13 +561,13 @@ void CACHE::impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uin
 
 void CACHE::impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
 
-uint32_t CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
                                  uint32_t type)
 {
   return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
 }
 
-void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
+void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
                                           uint32_t type, uint8_t hit)
 {
   repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);

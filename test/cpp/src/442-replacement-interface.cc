@@ -18,12 +18,12 @@ struct update_state_collector : champsim::modules::replacement
 {
   using replacement::replacement;
 
-  uint32_t find_victim(uint32_t, uint64_t, uint32_t, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
+  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
   {
     return 0;
   }
 
-  void update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
   {
     auto usc_it = test::replacement_update_state_collector.try_emplace(intern_);
     usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit});

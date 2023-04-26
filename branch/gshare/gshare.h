@@ -20,8 +20,8 @@ struct gshare : champsim::modules::branch_predictor
 
   std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector);
   void initialize_branch_predictor();
-  uint8_t predict_branch(uint64_t ip);
-  void last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+  bool predict_branch(uint64_t ip);
+  void last_branch_result(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type);
 };
 
 #endif

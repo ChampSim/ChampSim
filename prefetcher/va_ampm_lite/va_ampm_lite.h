@@ -36,7 +36,7 @@ struct va_ampm_lite : champsim::modules::prefetcher
 
   void prefetcher_initialize();
   uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
-  uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+  uint32_t prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
 
   //void prefetcher_cycle_operate() {}
   //void prefetcher_final_stats() {}

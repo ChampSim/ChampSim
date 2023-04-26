@@ -23,7 +23,7 @@ ship::ship(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(
 }
 
 // find replacement victim
-uint32_t ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);
@@ -37,11 +37,11 @@ uint32_t ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t 
   }
 
   assert(begin <= victim);
-  return static_cast<uint32_t>(std::distance(begin, victim)); // cast pretected by prior assert
+  return std::distance(begin, victim); // cast pretected by prior assert
 }
 
 // called on every cache hit and cache fill
-void ship::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   // handle writeback access

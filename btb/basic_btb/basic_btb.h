@@ -17,8 +17,8 @@ struct basic_btb : champsim::modules::btb
   basic_btb() : btb(nullptr) {}
 
   void initialize_btb();
-  std::pair<uint64_t, uint8_t> btb_prediction(uint64_t ip);
-  void update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+  std::pair<uint64_t, bool> btb_prediction(uint64_t ip);
+  void update_btb(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type);
 };
 
 #endif

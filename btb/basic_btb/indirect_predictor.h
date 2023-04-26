@@ -14,7 +14,7 @@ struct indirect_predictor
   std::array<uint64_t, size> predictor = {};
   std::bitset<champsim::lg2(size)> conditional_history = {};
 
-  std::pair<uint64_t, uint8_t> prediction(uint64_t ip);
+  std::pair<uint64_t, bool> prediction(uint64_t ip);
   void update_target(uint64_t ip, uint64_t branch_target);
   void update_direction(bool taken);
 };

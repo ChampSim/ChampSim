@@ -40,7 +40,7 @@
 
 #include <cmath>
 
-uint8_t perceptron::predict_branch(uint64_t ip)
+bool perceptron::predict_branch(uint64_t ip)
 {
   // hash the address to get an index into the table of perceptrons
   auto index = ip % NUM_PERCEPTRONS;
@@ -59,7 +59,7 @@ uint8_t perceptron::predict_branch(uint64_t ip)
   return prediction;
 }
 
-void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type)
 {
   auto state = std::find_if(std::begin(perceptron_state_buf), std::end(perceptron_state_buf), [ip](auto x) { return x.ip == ip; });
   if (state == std::end(perceptron_state_buf))

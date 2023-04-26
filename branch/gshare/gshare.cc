@@ -12,14 +12,14 @@ std::size_t gshare::gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH
 
 void gshare::initialize_branch_predictor() { std::cout << "GSHARE branch predictor" << std::endl; }
 
-uint8_t gshare::predict_branch(uint64_t ip)
+bool gshare::predict_branch(uint64_t ip)
 {
   auto gs_hash = gs_table_hash(ip, branch_history_vector);
   auto value = gs_history_table[gs_hash];
   return value.value() >= (value.maximum / 2);
 }
 
-void gshare::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void gshare::last_branch_result(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type)
 {
   auto gs_hash = gs_table_hash(ip, branch_history_vector);
   gs_history_table[gs_hash] += taken ? 1 : -1;

@@ -24,7 +24,7 @@ struct return_stack
     std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4);
   }
 
-  std::pair<uint64_t, uint8_t> prediction(uint64_t ip);
+  std::pair<uint64_t, bool> prediction(uint64_t ip);
   void push(uint64_t ip);
   void calibrate_call_size(uint64_t branch_target);
 };

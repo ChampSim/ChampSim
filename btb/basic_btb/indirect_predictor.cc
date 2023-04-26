@@ -1,6 +1,6 @@
 #include "indirect_predictor.h"
 
-std::pair<uint64_t, uint8_t> indirect_predictor::prediction(uint64_t ip)
+std::pair<uint64_t, bool> indirect_predictor::prediction(uint64_t ip)
 {
   auto hash = (ip >> 2) ^ conditional_history.to_ullong();
   return {predictor[hash % std::size(predictor)], true};

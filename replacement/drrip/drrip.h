@@ -27,15 +27,15 @@ struct drrip : champsim::modules::replacement
   drrip(CACHE* cache);
 
   //void initialize_replacement()
-  uint32_t find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
-  void update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+  long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                      uint8_t hit);
 
   // use this function to print out your own stats at the end of simulation
   //void replacement_final_stats() {}
 
-  void update_bip(uint32_t set, uint32_t way);
-  void update_srrip(uint32_t set, uint32_t way);
+  void update_bip(long set, long way);
+  void update_srrip(long set, long way);
 };
 
 #endif

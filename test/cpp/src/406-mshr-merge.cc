@@ -22,7 +22,7 @@ struct address_collector : champsim::modules::prefetcher
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
   {
     return metadata_in;
   }

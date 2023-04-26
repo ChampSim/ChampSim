@@ -193,16 +193,16 @@ public:
     virtual ~branch_module_concept() = default;
 
     virtual void impl_initialize_branch_predictor() = 0;
-    virtual void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
+    virtual void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) = 0;
+    virtual bool impl_predict_branch(uint64_t ip) = 0;
   };
 
   struct btb_module_concept {
     virtual ~btb_module_concept() = default;
 
     virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) = 0;
+    virtual std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip) = 0;
   };
 
   template <typename... Bs>
@@ -223,12 +223,12 @@ public:
       std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
     }
 
-    void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
+    void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type)
     {
       std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
     }
 
-    [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip)
+    [[nodiscard]] bool impl_predict_branch(uint64_t ip)
     {
       return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
     }
@@ -252,12 +252,12 @@ public:
       std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
     }
 
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type)
     {
       std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
     }
 
-    [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip)
+    [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip)
     {
       return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
     }
@@ -267,12 +267,12 @@ public:
   std::unique_ptr<btb_module_concept> btb_module_pimpl;
 
   void impl_initialize_branch_predictor();
-  void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type);
-  [[nodiscard]] uint8_t impl_predict_branch(uint64_t ip);
+  void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type);
+  [[nodiscard]] bool impl_predict_branch(uint64_t ip);
 
   void impl_initialize_btb();
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-  [[nodiscard]] std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type);
+  [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip);
 
   template <typename... Ts>
   class builder_module_type_holder
