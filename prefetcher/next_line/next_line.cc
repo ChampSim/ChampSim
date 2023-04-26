@@ -6,7 +6,7 @@ uint32_t next_line::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t
 {
   // assert(addr == ip); // Invariant for instruction prefetchers
   uint64_t pf_addr = addr + (1 << LOG2_BLOCK_SIZE);
-  intern_->prefetch_line(pf_addr, true, metadata_in);
+  prefetch_line(pf_addr, true, metadata_in);
   return metadata_in;
 }
 

@@ -1,8 +1,8 @@
 #ifndef MODULES_H
 #define MODULES_H
 
-class CACHE;
-class O3_CPU;
+#include "cache.h"
+#include "ooo_cpu.h"
 
 namespace champsim::modules
 {
@@ -25,6 +25,10 @@ struct btb {
 struct prefetcher {
   CACHE* intern_;
   explicit prefetcher(CACHE* cache) : intern_(cache) {}
+  auto prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+  {
+    return intern_->prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
+  }
 };
 
 struct replacement {
@@ -32,8 +36,5 @@ struct replacement {
   explicit replacement(CACHE* cache) : intern_(cache) {}
 };
 } // namespace champsim::modules
-
-#include "cache.h"
-#include "ooo_cpu.h"
 
 #endif

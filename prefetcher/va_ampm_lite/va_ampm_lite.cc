@@ -54,7 +54,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint
       if (check_cl_access(neg_step_addr) && check_cl_access(neg_2step_addr) && !check_cl_access(pos_step_addr) && !check_cl_prefetch(pos_step_addr)) {
         // found something that we should prefetch
         if ((addr >> LOG2_BLOCK_SIZE) != (pos_step_addr >> LOG2_BLOCK_SIZE)) {
-          bool prefetch_success = intern_->prefetch_line(pos_step_addr, intern_->get_occupancy(0, pos_step_addr) < intern_->get_size(0, pos_step_addr) / 2, metadata_in);
+          bool prefetch_success = prefetch_line(pos_step_addr, intern_->get_occupancy(0, pos_step_addr) < intern_->get_size(0, pos_step_addr) / 2, metadata_in);
           if (prefetch_success) {
             auto [pf_vpn, pf_page_offset] = page_and_offset(pos_step_addr);
             auto pf_region = std::find_if(std::begin(regions), std::end(regions), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });

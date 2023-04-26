@@ -27,7 +27,6 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
-#include "modules.h"
 #include "operable.h"
 #include "util/detect.h"
 #include <type_traits>
