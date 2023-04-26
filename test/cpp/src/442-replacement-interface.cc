@@ -18,7 +18,7 @@ struct update_state_collector : champsim::modules::replacement
 {
   using replacement::replacement;
 
-  uint32_t find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+  uint32_t find_victim(uint32_t, uint64_t, uint32_t, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
   {
     return 0;
   }
