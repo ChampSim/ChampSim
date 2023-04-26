@@ -94,10 +94,8 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
         obj_varnames.extend(module_obj_varnames)
 
     yield append_variable('executable_name', executable_path)
-    yield append_variable('clean_dirs', *map(dereference, dir_varnames))
+    yield append_variable('clean_dirs', *map(dereference, dir_varnames), os.path.split(executable_path)[0], objdir)
     yield append_variable('objs', *map(dereference, obj_varnames))
-    yield append_variable('build_dirs', os.path.split(executable_path)[0])
-    yield append_variable('config_dirs', objdir)
 
     yield dependency(executable_path, *map(dereference, obj_varnames), order=os.path.split(executable_path)[0])
     yield dependency(' '.join(map(dereference, obj_varnames)), os.path.join(objdir, 'config.options'))
