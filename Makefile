@@ -24,7 +24,7 @@ all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) $(test_main_name)
 
 # Remove all configuration files
