@@ -27,8 +27,8 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
+#include "modules_detect.h"
 #include "operable.h"
-#include "util/detect.h"
 #include <type_traits>
 
 struct cache_stats {
@@ -219,127 +219,31 @@ public:
 
   template <typename... Ps>
   struct prefetcher_module_model final : prefetcher_module_concept {
-    template <typename T>
-    using has_initialize = decltype(std::declval<T>().prefetcher_initialize());
-
-    template <typename T>
-    using has_cycle_operate = decltype(std::declval<T>().prefetcher_cycle_operate());
-
-    template <typename T>
-    using has_final_stats = decltype(std::declval<T>().prefetcher_final_stats());
-
-    template <typename T>
-    using has_branch_operate = decltype( std::declval<T>().prefetcher_branch_operate(std::declval<uint64_t>(), std::declval<uint8_t>(), std::declval<uint64_t>()) );
-
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
 
-    void impl_prefetcher_initialize()
-    {
-      auto process_one = [&](auto& p) {
-        if constexpr (champsim::is_detected_v<has_initialize, decltype(p)>)
-          p.prefetcher_initialize();
-      };
-
-      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
-    }
-
-    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
-    {
-      return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
-    }
-
-    [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
-    {
-      return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
-    }
-
-    void impl_prefetcher_cycle_operate()
-    {
-      auto process_one = [&](auto& p) {
-        if constexpr (champsim::is_detected_v<has_cycle_operate, decltype(p)>)
-          p.prefetcher_cycle_operate();
-      };
-
-      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
-    }
-
-    void impl_prefetcher_final_stats()
-    {
-      auto process_one = [&](auto& p) {
-        if constexpr (champsim::is_detected_v<has_final_stats, decltype(p)>)
-          p.prefetcher_final_stats();
-      };
-
-      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
-    }
-
-    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
-    {
-      auto process_one = [&](auto& p) {
-        if constexpr (champsim::is_detected_v<has_branch_operate, decltype(p)>)
-          p.prefetcher_branch_operate(ip, branch_type, branch_target);
-      };
-
-      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
-    }
+    void impl_prefetcher_initialize();
+    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+    [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+    void impl_prefetcher_cycle_operate();
+    void impl_prefetcher_final_stats();
+    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
   };
 
   template <typename... Rs>
   struct replacement_module_model final : replacement_module_concept {
-    template <typename T>
-    using has_initialize = decltype(std::declval<T>().initialize_replacement());
-
-    template <typename T>
-    using has_update_state = decltype( std::declval<T>().update_replacement_state(std::declval<uint32_t>(), std::declval<long>(), std::declval<long>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>(), std::declval<uint8_t>()));
-
     // Assert that at least one has an update state
     //static_assert(std::disjunction<champsim::is_detected<has_update_state, Rs>...>::value, "At least one replacement policy must update its state");
-
-    template <typename T>
-    using has_final_stats = decltype(std::declval<T>().replacement_final_stats());
 
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) {}
 
-    void impl_initialize_replacement()
-    {
-      auto process_one = [&](auto& r) {
-        if constexpr (champsim::is_detected_v<has_initialize, decltype(r)>)
-          r.initialize_replacement();
-        // else if (champsim::modules::warn_if_any_missing)
-        // champsim::modules::does_not_have<decltype(r)>();
-      };
-
-      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
-    }
-
+    void impl_initialize_replacement();
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                                            uint32_t type)
-    {
-      return std::apply([&](auto&... r) { return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
-    }
-
+                                            uint32_t type);
     void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
-                                       uint32_t type, uint8_t hit)
-    {
-      auto process_one = [&](auto& r) {
-        if constexpr (champsim::is_detected_v<has_update_state, decltype(r)>)
-          r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
-      };
-
-      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
-    }
-
-    void impl_replacement_final_stats()
-    {
-      auto process_one = [&](auto& r) {
-        if constexpr (champsim::is_detected_v<has_final_stats, decltype(r)>)
-          r.replacement_final_stats();
-      };
-
-      std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
-    }
+                                       uint32_t type, uint8_t hit);
+    void impl_replacement_final_stats();
   };
 
   std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;
@@ -546,4 +450,103 @@ public:
   }
 };
 
+template <typename... Ps>
+void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_initialize()
+{
+  auto process_one = [&](auto& p) {
+    if constexpr (champsim::modules::detect::prefetcher::has_initialize<decltype(p)>())
+      p.prefetcher_initialize();
+  };
+
+  std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+template <typename... Ps>
+uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+  return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
+}
+
+template <typename... Ps>
+uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
+  return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
+}
+
+template <typename... Ps>
+void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cycle_operate()
+{
+  auto process_one = [&](auto& p) {
+    if constexpr (champsim::modules::detect::prefetcher::has_cycle_operate<decltype(p)>())
+      p.prefetcher_cycle_operate();
+  };
+
+  std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+template <typename... Ps>
+void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_final_stats()
+{
+  auto process_one = [&](auto& p) {
+    if constexpr (champsim::modules::detect::prefetcher::has_final_stats<decltype(p)>())
+      p.prefetcher_final_stats();
+  };
+
+  std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+template <typename... Ps>
+void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
+{
+  auto process_one = [&](auto& p) {
+    if constexpr (champsim::modules::detect::prefetcher::has_branch_operate<decltype(p)>())
+      p.prefetcher_branch_operate(ip, branch_type, branch_target);
+  };
+
+  std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+
+template <typename... Rs>
+void CACHE::replacement_module_model<Rs...>::impl_initialize_replacement()
+{
+  auto process_one = [&](auto& r) {
+    if constexpr (champsim::modules::detect::replacement::has_initialize<decltype(r)>())
+      r.initialize_replacement();
+    // else if (champsim::modules::warn_if_any_missing)
+    // champsim::modules::does_not_have<decltype(r)>();
+  };
+
+  std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
+}
+
+template <typename... Rs>
+long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                                            uint32_t type)
+{
+  return std::apply([&](auto&... r) { return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
+}
+
+template <typename... Rs>
+void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
+                                       uint32_t type, uint8_t hit)
+{
+  auto process_one = [&](auto& r) {
+    if constexpr (champsim::modules::detect::replacement::has_update_state<decltype(r)>())
+      r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+  };
+
+  std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
+}
+
+template <typename... Rs>
+void CACHE::replacement_module_model<Rs...>::impl_replacement_final_stats()
+{
+  auto process_one = [&](auto& r) {
+    if constexpr (champsim::modules::detect::replacement::has_final_stats<decltype(r)>())
+      r.replacement_final_stats();
+  };
+
+  std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
+}
 #endif

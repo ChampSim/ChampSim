@@ -30,10 +30,9 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "instruction.h"
-#include "module_impl.h"
+#include "modules_detect.h"
 #include "operable.h"
 #include "util.h"
-#include "util/detect.h"
 #include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
@@ -207,60 +206,22 @@ public:
 
   template <typename... Bs>
   struct branch_module_model final : branch_module_concept {
-    template <typename T>
-    using has_initialize = decltype(std::declval<T>().initialize_branch_predictor());
-
     std::tuple<Bs...> intern_;
     explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
 
-    void impl_initialize_branch_predictor()
-    {
-      auto process_one = [&](auto& b) {
-        if constexpr (champsim::is_detected_v<has_initialize, decltype(b)>)
-          b.initialize_branch_predictor();
-      };
-
-      std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
-    }
-
-    void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type)
-    {
-      std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
-    }
-
-    [[nodiscard]] bool impl_predict_branch(uint64_t ip)
-    {
-      return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
-    }
+    void impl_initialize_branch_predictor() override final;
+    void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) override final;
+    [[nodiscard]] bool impl_predict_branch(uint64_t ip) override final;
   };
 
   template <typename... Ts>
   struct btb_module_model final : btb_module_concept {
-    template <typename T>
-    using has_initialize = decltype(std::declval<T>().initialize_btb());
-
     std::tuple<Ts...> intern_;
     explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
 
-    void impl_initialize_btb()
-    {
-      auto process_one = [&](auto& t) {
-        if constexpr (champsim::is_detected_v<has_initialize, decltype(t)>)
-          t.initialize_btb();
-      };
-
-      std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
-    }
-
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type)
-    {
-      std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
-    }
-
-    [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip)
-    {
-      return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
-    }
+    void impl_initialize_btb() override final;
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) override final;
+    [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip) override final;
   };
 
   std::unique_ptr<branch_module_concept> branch_module_pimpl;
@@ -506,5 +467,51 @@ public:
   {
   }
 };
+
+template <typename... Bs>
+void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
+{
+  auto process_one = [&](auto& b) {
+    if constexpr (champsim::modules::detect::branch_predictor::has_initialize<decltype(b)>())
+      b.initialize_branch_predictor();
+  };
+
+  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
+}
+
+template <typename... Bs>
+void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type)
+{
+  std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
+}
+
+  template <typename... Bs>
+bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(uint64_t ip)
+{
+  return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
+}
+
+template <typename... Ts>
+void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
+{
+  auto process_one = [&](auto& t) {
+    if constexpr (champsim::modules::detect::btb::has_initialize<decltype(t)>())
+      t.initialize_btb();
+  };
+
+  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
+}
+
+template <typename... Ts>
+void O3_CPU::btb_module_model<Ts...>::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type)
+{
+  std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
+}
+
+template <typename... Ts>
+std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(uint64_t ip)
+{
+  return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
+}
 
 #endif
