@@ -39,7 +39,6 @@
 #include "perceptron.h"
 
 #include <cmath>
-#include <fenv.h>
 
 bool perceptron::predict_branch(champsim::address ip)
 {
@@ -81,8 +80,7 @@ void perceptron::last_branch_result(champsim::address ip, champsim::address bran
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  std::fesetround(FE_TOWARDZERO);
-  const auto THETA = std::lrint(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
+  const auto THETA = std::llround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
   if ((output <= THETA && output >= -THETA) || (prediction != taken)) {
     const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
     perceptrons[index].update(taken, history);

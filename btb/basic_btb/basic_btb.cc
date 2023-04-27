@@ -24,7 +24,7 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
     return {champsim::address{}, false};
 
   if (btb_entry->type == direct_predictor::branch_info::RETURN)
-    return ras.prediction(ip);
+    return ras.prediction();
 
   if (btb_entry->type == direct_predictor::branch_info::INDIRECT)
     return indirect.prediction(ip);

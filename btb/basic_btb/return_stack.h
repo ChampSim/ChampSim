@@ -27,7 +27,7 @@ struct return_stack
     std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4);
   }
 
-  std::pair<champsim::address, bool> prediction(champsim::address ip);
+  std::pair<champsim::address, bool> prediction();
   void push(champsim::address ip);
   void calibrate_call_size(champsim::address branch_target);
 };

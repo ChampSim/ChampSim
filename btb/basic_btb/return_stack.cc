@@ -1,6 +1,6 @@
 #include "return_stack.h"
 
-std::pair<champsim::address, bool> return_stack::prediction(champsim::address ip)
+std::pair<champsim::address, bool> return_stack::prediction()
 {
   if (std::empty(stack))
     return {champsim::address{}, true};
