@@ -7,6 +7,8 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
+#include "../../../prefetcher/ip_stride/ip_stride.h"
+
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
   champsim::block_number::difference_type stride;
 
@@ -32,7 +34,7 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
       .name("452-uut-["+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::pprefetcherDip_stride>()
+      .prefetcher<ip_stride>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

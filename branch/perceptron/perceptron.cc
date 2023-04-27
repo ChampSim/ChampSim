@@ -36,126 +36,55 @@
  * branch predictor.
  */
 
-#include <algorithm>
-#include <array>
-#include <bitset>
-#include <cfenv>
+#include "perceptron.h"
+
 #include <cmath>
-#include <deque>
-#include <map>
+#include <fenv.h>
 
-#include "msl/fwcounter.h"
-#include "ooo_cpu.h"
-
-namespace
-{
-template <std::size_t HISTLEN, std::size_t BITS>
-class perceptron
-{
-  champsim::msl::sfwcounter<BITS> bias{0};
-  std::array<champsim::msl::sfwcounter<BITS>, HISTLEN> weights = {};
-
-public:
-  auto predict(std::bitset<HISTLEN> history)
-  {
-    auto output = bias.value();
-
-    // find the (rest of the) dot product of the history register and the perceptron weights.
-    for (std::size_t i = 0; i < std::size(history); i++) {
-      if (history[i])
-        output += weights[i].value();
-      else
-        output -= weights[i].value();
-    }
-
-    return output;
-  }
-
-  void update(bool result, std::bitset<HISTLEN> history)
-  {
-    // if the branch was taken, increment the bias weight, else decrement it, with saturating arithmetic
-    bias += result ? 1 : -1;
-
-    // for each weight and corresponding bit in the history register...
-    auto upd_mask = result ? history : ~history; // if the i'th bit in the history positively
-                                                 // correlates with this branch outcome,
-    for (std::size_t i = 0; i < std::size(upd_mask); i++) {
-      // increment the corresponding weight, else decrement it, with saturating arithmetic
-      weights[i] += upd_mask[i] ? 1 : -1;
-    }
-  }
-};
-
-constexpr std::size_t PERCEPTRON_HISTORY = 24; // history length for the global history shift register
-constexpr std::size_t PERCEPTRON_BITS = 8;     // number of bits per weight
-constexpr std::size_t NUM_PERCEPTRONS = 163;
-
-constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'perceptron_state' for update
-
-/* 'perceptron_state' - stores the branch prediction and keeps information
- * such as output and history needed for updating the perceptron predictor
- */
-struct perceptron_state {
-  champsim::address ip{};
-  bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
-  long long int output = 0;                    // perceptron output
-  std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
-};
-
-std::map<O3_CPU*, std::array<perceptron<PERCEPTRON_HISTORY, PERCEPTRON_BITS>,
-                             NUM_PERCEPTRONS>> perceptrons;             // table of perceptrons
-std::map<O3_CPU*, std::deque<perceptron_state>> perceptron_state_buf;   // state for updating perceptron predictor
-std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> spec_global_history; // speculative global history - updated by predictor
-std::map<O3_CPU*, std::bitset<PERCEPTRON_HISTORY>> global_history;      // real global history - updated when the predictor is
-                                                                        // updated
-} // namespace
-
-void O3_CPU::initialize_branch_predictor() {}
-
-bool O3_CPU::predict_branch(champsim::address ip)
+bool perceptron::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
-  auto index = ip.to<uint64_t>() % ::NUM_PERCEPTRONS;
-  auto output = ::perceptrons[this][index].predict(::spec_global_history[this]);
+  const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
+  const auto output = perceptrons[index].predict(spec_global_history);
 
   bool prediction = (output >= 0);
 
   // record the various values needed to update the predictor
-  ::perceptron_state_buf[this].push_back({ip, prediction, output, ::spec_global_history[this]});
-  if (std::size(::perceptron_state_buf[this]) > ::NUM_UPDATE_ENTRIES)
-    ::perceptron_state_buf[this].pop_front();
+  perceptron_state_buf.push_back({ip, prediction, output, spec_global_history});
+  if (std::size(perceptron_state_buf) > NUM_UPDATE_ENTRIES)
+    perceptron_state_buf.pop_front();
 
   // update the speculative global history register
-  ::spec_global_history[this] <<= 1;
-  ::spec_global_history[this].set(0, prediction);
+  spec_global_history <<= 1;
+  spec_global_history.set(0, prediction);
   return prediction;
 }
 
-void O3_CPU::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
+void perceptron::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
-  auto state = std::find_if(std::begin(::perceptron_state_buf[this]), std::end(::perceptron_state_buf[this]), [ip](auto x) { return x.ip == ip; });
-  if (state == std::end(::perceptron_state_buf[this]))
+  auto state = std::find_if(std::begin(perceptron_state_buf), std::end(perceptron_state_buf), [ip](auto x) { return x.ip == ip; });
+  if (state == std::end(perceptron_state_buf))
     return; // Skip update because state was lost
 
   auto [_ip, prediction, output, history] = *state;
-  ::perceptron_state_buf[this].erase(state);
-
-  auto index = ip.slice_lower(64).to<uint64_t>() % ::NUM_PERCEPTRONS;
+  perceptron_state_buf.erase(state);
 
   // update the real global history shift register
-  ::global_history[this] <<= 1;
-  ::global_history[this].set(0, taken);
+  global_history <<= 1;
+  global_history.set(0, taken);
 
   // if this branch was mispredicted, restore the speculative history to the
   // last known real history
   if (prediction != taken)
-    ::spec_global_history[this] = ::global_history[this];
+    spec_global_history = global_history;
 
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
   std::fesetround(FE_TOWARDZERO);
   const auto THETA = std::lrint(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
-  if ((output <= THETA && output >= -THETA) || (prediction != taken))
-    ::perceptrons[this][index].update(taken, history);
+  if ((output <= THETA && output >= -THETA) || (prediction != taken)) {
+    const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
+    perceptrons[index].update(taken, history);
+  }
 }

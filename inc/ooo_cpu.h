@@ -24,7 +24,6 @@
 #include <memory>
 #include <optional>
 #include <queue>
-#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -34,6 +33,8 @@
 #include "module_impl.h"
 #include "operable.h"
 #include "util/lru_table.h"
+#include "util/detect.h"
+#include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
@@ -188,55 +189,102 @@ public:
 
 #include "ooo_cpu_module_decl.inc"
 
-  struct module_concept {
-    virtual ~module_concept() = default;
+  struct branch_module_concept {
+    virtual ~branch_module_concept() = default;
 
     virtual void impl_initialize_branch_predictor() = 0;
     virtual void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
     virtual bool impl_predict_branch(champsim::address ip) = 0;
+  };
+
+  struct btb_module_concept {
+    virtual ~btb_module_concept() = default;
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
     virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip) = 0;
   };
 
-  template <unsigned long long B_FLAG, unsigned long long T_FLAG>
-  struct module_model final : module_concept {
-    O3_CPU* intern_;
-    explicit module_model(O3_CPU* core) : intern_(core) {}
+  template <typename... Bs>
+  struct branch_module_model final : branch_module_concept {
+    template <typename T>
+    using has_initialize = decltype(std::declval<T>().initialize_branch_predictor());
 
-    void impl_initialize_branch_predictor();
-    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type);
-    bool impl_predict_branch(champsim::address ip);
+    std::tuple<Bs...> intern_;
+    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
 
-    void impl_initialize_btb();
-    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type);
-    std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip);
+    void impl_initialize_branch_predictor()
+    {
+      auto process_one = [&](auto& b) {
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(b)>)
+          b.initialize_branch_predictor();
+      };
+
+      std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
+    }
+
+    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type)
+    {
+      std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
+    }
+
+    [[nodiscard]] bool impl_predict_branch(champsim::address ip)
+    {
+      return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
+    }
   };
 
-  std::unique_ptr<module_concept> module_pimpl;
+  template <typename... Ts>
+  struct btb_module_model final : btb_module_concept {
+    template <typename T>
+    using has_initialize = decltype(std::declval<T>().initialize_btb());
 
-  void impl_initialize_branch_predictor() { module_pimpl->impl_initialize_branch_predictor(); }
-  void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type)
+    std::tuple<Ts...> intern_;
+    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
+
+    void impl_initialize_btb()
+    {
+      auto process_one = [&](auto& t) {
+        if constexpr (champsim::is_detected_v<has_initialize, decltype(t)>)
+          t.initialize_btb();
+      };
+
+      std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
+    }
+
+    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type)
+    {
+      std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
+    }
+
+    [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip)
+    {
+      return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
+    }
+  };
+
+  std::unique_ptr<branch_module_concept> branch_module_pimpl;
+  std::unique_ptr<btb_module_concept> btb_module_pimpl;
+
+  void impl_initialize_branch_predictor();
+  void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type);
+  [[nodiscard]] bool impl_predict_branch(champsim::address ip);
+
+  void impl_initialize_btb();
+  void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type);
+  [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip);
+
+  template <typename... Ts>
+  class builder_module_type_holder
   {
-    module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
-  }
-  bool impl_predict_branch(champsim::address ip) { return module_pimpl->impl_predict_branch(ip); }
-
-  void impl_initialize_btb() { module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type)
-  {
-    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
-  }
-  std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip) { return module_pimpl->impl_btb_prediction(ip); }
-
+  };
   class builder_conversion_tag
   {
   };
-  template <unsigned long long B_FLAG = 0, unsigned long long T_FLAG = 0>
+  template <typename B = void, typename T = void>
   class Builder
   {
-    using self_type = Builder<B_FLAG, T_FLAG>;
+    using self_type = Builder<B, T>;
 
     uint32_t m_cpu{};
     double m_freq_scale{};
@@ -271,7 +319,7 @@ public:
 
     friend class O3_CPU;
 
-    template <unsigned long long OTHER_B, unsigned long long OTHER_T>
+    template <typename OTHER_B, typename OTHER_T>
     Builder(builder_conversion_tag, const Builder<OTHER_B, OTHER_T>& other)
         : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
           m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
@@ -433,31 +481,30 @@ public:
       return *this;
     }
 
-    template <unsigned long long B>
-    Builder<B, T_FLAG> branch_predictor()
+    template <typename... Bs>
+    Builder<builder_module_type_holder<Bs...>, T> branch_predictor()
     {
-      return Builder<B, T_FLAG>{builder_conversion_tag{}, *this};
+      return {builder_conversion_tag{}, *this};
     }
-    template <unsigned long long T>
-    Builder<B_FLAG, T> btb()
+    template <typename... Ts>
+    Builder<B, builder_module_type_holder<Ts...>> btb()
     {
-      return Builder<B_FLAG, T>{builder_conversion_tag{}, *this};
+      return {builder_conversion_tag{}, *this};
     }
   };
 
-  template <unsigned long long B_FLAG, unsigned long long T_FLAG>
-  explicit O3_CPU(Builder<B_FLAG, T_FLAG> b)
+  template <typename... Bs, typename... Ts>
+  explicit O3_CPU(Builder<builder_module_type_holder<Bs...>, builder_module_type_holder<Ts...>> b)
       : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
+        branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)), btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {
   }
 };
-
-#include "ooo_cpu_module_def.inc"
 
 #endif

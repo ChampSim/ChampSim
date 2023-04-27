@@ -517,16 +517,6 @@ class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
 
 class EnvironmentParseTests(unittest.TestCase):
 
-    def test_cc_passes_through(self):
-        test_config = { 'CC': 'cc' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        self.assertEqual(test_config, result[4])
-
-    def test_cxx_passes_through(self):
-        test_config = { 'CXX': 'cxx' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        self.assertEqual(test_config, result[4])
-
     def test_cppflags_passes_through(self):
         test_config = { 'CPPFLAGS': 'cppflags' }
         result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)

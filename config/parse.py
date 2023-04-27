@@ -57,6 +57,11 @@ def duplicate_to_length(elements, n):
 def filter_inaccessible(system, roots, key='lower_level'):
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
 
+def module_parse(mod, context):
+    if isinstance(mod, dict):
+        return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
+    return context.find(mod)
+
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
@@ -157,7 +162,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
         c.setdefault('btb', 'basic_btb')
     # All caches have a default prefetcher and replacement policy
     for c in caches.values():
-        c.setdefault('prefetcher', 'no_instr' if c.get('_is_instruction_cache') else 'no')
+        c.setdefault('prefetcher', 'no')
         c.setdefault('replacement', 'lru')
 
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
@@ -182,16 +187,16 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             )
 
     cores = list(util.combine_named(cores,
-            ({'name': c['name'], '_branch_predictor_data': [branch_context.find(f) for f in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
-            ({'name': c['name'], '_btb_data': [btb_context.find(f) for f in util.wrap_list(c.get('btb',[]))]} for c in cores)
+            ({'name': c['name'], '_branch_predictor_data': [module_parse(m, branch_context) for m in util.wrap_list(c.get('branch_predictor',[]))]} for c in cores),
+            ({'name': c['name'], '_btb_data': [module_parse(m, btb_context) for m in util.wrap_list(c.get('btb',[]))]} for c in cores)
             ).values())
 
     elements = {'cores': cores, 'caches': tuple(caches.values()), 'ptws': tuple(ptws.values()), 'pmem': pmem, 'vmem': vmem}
     module_info = {
-            'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()),
-            'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()),
-            'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()),
-            'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
+            'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
+            'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
+            'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
+            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
             }
 
     if compile_all_modules:
@@ -204,7 +209,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             *(c['_btb_data'] for c in cores)
         ))]
 
-    env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
+    env_vars = ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
 
     return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
@@ -220,13 +225,6 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
         prefetcher_context = modules.ModuleSearchContext([*(os.path.join(m, 'prefetcher') for m in module_dir), *pref_dir, os.path.join(champsim_root, 'prefetcher')]),
         compile_all_modules = compile_all_modules
     )
-
-    module_info = {
-            'repl': {k: util.chain(v, modules.get_repl_data(v['name'])) for k,v in module_info['repl'].items()},
-            'pref': {k: util.chain(v, modules.get_pref_data(v['name'], v['_is_instruction_prefetcher'])) for k,v in module_info['pref'].items()},
-            'branch': {k: util.chain(v, modules.get_branch_data(v['name'])) for k,v in module_info['branch'].items()},
-            'btb': {k: util.chain(v, modules.get_btb_data(v['name'])) for k,v in module_info['btb'].items()},
-            }
 
     return name, elements, modules_to_compile, module_info, config_file, env
 

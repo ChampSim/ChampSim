@@ -25,6 +25,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "core_inst.inc"
+#include "defaults.hpp"
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"

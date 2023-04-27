@@ -31,8 +31,9 @@ void CACHE::prefetcher_initialize()
 
 void CACHE::prefetcher_cycle_operate() {}
 
-uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
+  champsim::address addr{raw_addr};
   champsim::page_number page{addr};
   champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE> page_offset{addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
@@ -137,13 +138,13 @@ uint32_t CACHE::prefetcher_cache_operate(champsim::address addr, champsim::addre
   return metadata_in;
 }
 
-uint32_t CACHE::prefetcher_cache_fill(champsim::address addr, uint32_t set, uint32_t match, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t match, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   if constexpr (spp::FILTER_ON) {
     if constexpr (spp::SPP_DEBUG_PRINT) {
       std::cout << std::endl;
     }
-    ::FILTER.check(evicted_addr, spp::L2C_EVICT);
+    ::FILTER.check(champsim::address{evicted_addr}, spp::L2C_EVICT);
   }
 
   return metadata_in;

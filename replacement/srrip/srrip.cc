@@ -1,43 +1,36 @@
+#include "srrip.h"
+
+#include <algorithm>
+
 #include "cache.h"
-#include <unordered_map>
 
-namespace
-{
-constexpr int maxRRPV = 3;
-std::unordered_map<CACHE*, std::vector<int>> rrpv_values;
-} // namespace
-
-// initialize replacement state
-void CACHE::initialize_replacement() { ::rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV); }
+srrip::srrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv_values(NUM_SET*NUM_WAY, maxRRPV) {}
 
 // find replacement victim
-uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
+long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
 {
   // look for the maxRRPV line
-  auto begin = std::next(std::begin(::rrpv_values[this]), set * NUM_WAY);
+  auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  auto victim = std::find(begin, end, ::maxRRPV); // hijack the lru field
+  auto victim = std::find(begin, end, maxRRPV);
   while (victim == end) {
     for (auto it = begin; it != end; ++it)
       ++(*it);
 
-    victim = std::find(begin, end, ::maxRRPV);
+    victim = std::find(begin, end, maxRRPV);
   }
 
   assert(begin <= victim);
   assert(victim < end);
-  return static_cast<uint32_t>(std::distance(begin, victim)); // cast protected by assertions
+  return std::distance(begin, victim); // cast protected by assertions
 }
 
 // called on every cache hit and cache fill
-void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type,
+void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type,
                                      uint8_t hit)
 {
   if (hit)
-    ::rrpv_values[this][set * NUM_WAY + way] = 0;
+    rrpv_values[set * NUM_WAY + way] = 0;
   else
-    ::rrpv_values[this][set * NUM_WAY + way] = ::maxRRPV - 1;
+    rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
 }
-
-// use this function to print out your own stats at the end of simulation
-void CACHE::replacement_final_stats() {}

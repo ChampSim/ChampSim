@@ -1,0 +1,8 @@
+-MMD
+-Iinc
+--std=c++17
+-O3
+-Wall
+-Wextra
+-Wshadow
+-Wpedantic

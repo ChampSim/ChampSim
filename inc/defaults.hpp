@@ -1,6 +1,10 @@
 #ifndef DEFAULTS_HPP
 #define DEFAULTS_HPP
 
+#include "../branch/bimodal/bimodal.h"
+#include "../btb/basic_btb/basic_btb.h"
+#include "../prefetcher/no/no.h"
+#include "../replacement/lru/lru.h"
 #include "cache.h"
 #include "champsim_constants.h"
 #include "ooo_cpu.h"
@@ -38,8 +42,8 @@ const auto default_core = O3_CPU::Builder{}
                               // Specifying default branch predictors and BTBs like this is probably dangerous
                               // since the names could change.
                               // We're doing it anyway, for now.
-                              .branch_predictor<O3_CPU::bbranchDbimodal>()
-                              .btb<O3_CPU::tbtbDbasic_btb>();
+                              .branch_predictor<bimodal>()
+                              .btb<basic_btb>();
 
 const auto default_l1i = CACHE::Builder{}
                              .sets(64)
@@ -58,8 +62,8 @@ const auto default_l1i = CACHE::Builder{}
                              // Specifying default prefetchers and replacement policies like this is probably dangerous
                              // since the names could change.
                              // We're doing it anyway, for now.
-                             .prefetcher<CACHE::pprefetcherDno_instr>()
-                             .replacement<CACHE::rreplacementDlru>();
+                             .prefetcher<no>()
+                             .replacement<lru>();
 
 const auto default_l1d = CACHE::Builder{}
                              .sets(64)
@@ -75,8 +79,8 @@ const auto default_l1d = CACHE::Builder{}
                              .reset_virtual_prefetch()
                              .set_wq_checks_full_addr()
                              .prefetch_activate(LOAD, PREFETCH)
-                             .prefetcher<CACHE::pprefetcherDno>()
-                             .replacement<CACHE::rreplacementDlru>();
+                             .prefetcher<no>()
+                             .replacement<lru>();
 
 const auto default_l2c = CACHE::Builder{}
                              .sets(1024)
@@ -92,8 +96,8 @@ const auto default_l2c = CACHE::Builder{}
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()
                              .prefetch_activate(LOAD, PREFETCH)
-                             .prefetcher<CACHE::pprefetcherDno>()
-                             .replacement<CACHE::rreplacementDlru>();
+                             .prefetcher<no>()
+                             .replacement<lru>();
 
 const auto default_itlb = CACHE::Builder{}
                               .sets(16)
@@ -109,8 +113,8 @@ const auto default_itlb = CACHE::Builder{}
                               .set_virtual_prefetch()
                               .set_wq_checks_full_addr()
                               .prefetch_activate(LOAD, PREFETCH)
-                              .prefetcher<CACHE::pprefetcherDno>()
-                              .replacement<CACHE::rreplacementDlru>();
+                              .prefetcher<no>()
+                              .replacement<lru>();
 
 const auto default_dtlb = CACHE::Builder{}
                               .sets(16)
@@ -126,8 +130,8 @@ const auto default_dtlb = CACHE::Builder{}
                               .reset_virtual_prefetch()
                               .set_wq_checks_full_addr()
                               .prefetch_activate(LOAD, PREFETCH)
-                              .prefetcher<CACHE::pprefetcherDno>()
-                              .replacement<CACHE::rreplacementDlru>();
+                              .prefetcher<no>()
+                              .replacement<lru>();
 
 const auto default_stlb = CACHE::Builder{}
                               .sets(128)
@@ -143,8 +147,8 @@ const auto default_stlb = CACHE::Builder{}
                               .reset_virtual_prefetch()
                               .reset_wq_checks_full_addr()
                               .prefetch_activate(LOAD, PREFETCH)
-                              .prefetcher<CACHE::pprefetcherDno>()
-                              .replacement<CACHE::rreplacementDlru>();
+                              .prefetcher<no>()
+                              .replacement<lru>();
 
 const auto default_llc = CACHE::Builder{}
                              .name("LLC")
@@ -161,8 +165,8 @@ const auto default_llc = CACHE::Builder{}
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()
                              .prefetch_activate(LOAD, PREFETCH)
-                             .prefetcher<CACHE::pprefetcherDno>()
-                             .replacement<CACHE::rreplacementDlru>();
+                             .prefetcher<no>()
+                             .replacement<lru>();
 
 const auto default_ptw =
     PageTableWalker::Builder{}.tag_bandwidth(2).fill_bandwidth(2).mshr_size(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8);

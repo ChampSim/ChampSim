@@ -57,7 +57,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                                                 fill_mshr.address, fill_mshr.type));
   assert(set_begin <= way);
   assert(way <= set_end);
-  const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
+  const auto way_idx = std::distance(set_begin, way);
 
   if constexpr (champsim::debug_print) {
     std::cout << "[" << NAME << "] " << __func__;
@@ -158,7 +158,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     ++sim_stats.hits[handle_pkt.type][handle_pkt.cpu];
 
     // update replacement policy
-    const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
+    const auto way_idx = std::distance(set_begin, way);
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, champsim::address{}, handle_pkt.type, true);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
@@ -543,6 +543,43 @@ void CACHE::detect_misses()
   translation_stash.insert(std::cend(translation_stash), q_it, std::end(inflight_tag_check));
   inflight_tag_check.erase(q_it, std::end(inflight_tag_check));
 }
+
+void CACHE::impl_prefetcher_initialize() { pref_module_pimpl->impl_prefetcher_initialize(); }
+
+uint32_t CACHE::impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+  return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in);
+}
+
+uint32_t CACHE::impl_prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
+{
+  return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+}
+
+void CACHE::impl_prefetcher_cycle_operate() { pref_module_pimpl->impl_prefetcher_cycle_operate(); }
+
+void CACHE::impl_prefetcher_final_stats() { pref_module_pimpl->impl_prefetcher_final_stats(); }
+
+void CACHE::impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target)
+{
+  pref_module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target);
+}
+
+void CACHE::impl_initialize_replacement() { repl_module_pimpl->impl_initialize_replacement(); }
+
+long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip, champsim::address full_addr,
+                                 uint32_t type)
+{
+  return repl_module_pimpl->impl_find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+}
+
+void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+                                          uint32_t type, uint8_t hit)
+{
+  repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+}
+
+void CACHE::impl_replacement_final_stats() { repl_module_pimpl->impl_replacement_final_stats(); }
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t addr) const
 {
