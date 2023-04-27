@@ -40,9 +40,18 @@ CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
 {
 }
 
-CACHE::BLOCK::BLOCK(mshr_type mshr, uint32_t metadata)
-    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data), pf_metadata(metadata)
+auto CACHE::fill_block(CACHE::mshr_type mshr, uint32_t metadata) -> CACHE::BLOCK
 {
+  CACHE::BLOCK to_fill;
+  to_fill.valid = true;
+  to_fill.prefetch = mshr.prefetch_from_this;
+  to_fill.dirty = (mshr.type == WRITE);
+  to_fill.address = mshr.address;
+  to_fill.v_address = mshr.v_address;
+  to_fill.data = mshr.data;
+  to_fill.pf_metadata = metadata;
+
+  return to_fill;
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
@@ -105,7 +114,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address, fill_mshr.type,
                                     false);
 
-      *way = BLOCK{fill_mshr, metadata_thru};
+      *way = fill_block(fill_mshr, metadata_thru);
     }
   } else {
     // Bypass

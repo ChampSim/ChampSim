@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "address.h"
+#include "block.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
@@ -84,6 +85,7 @@ class CACHE : public champsim::operable
     tag_lookup_type(request_type req, bool local_pref, bool skip);
   };
 
+public:
   struct mshr_type {
     champsim::address address;
     champsim::address v_address;
@@ -108,6 +110,7 @@ class CACHE : public champsim::operable
     mshr_type(tag_lookup_type req, uint64_t cycle);
   };
 
+private:
   bool try_hit(const tag_lookup_type& handle_pkt);
   bool handle_fill(const mshr_type& fill_mshr);
   bool handle_miss(const tag_lookup_type& handle_pkt);
@@ -119,22 +122,10 @@ class CACHE : public champsim::operable
   void detect_misses();
 
 public:
-  struct BLOCK {
-    bool valid = false;
-    bool prefetch = false;
-    bool dirty = false;
-
-    champsim::address address{};
-    champsim::address v_address{};
-    champsim::address data{};
-
-    uint32_t pf_metadata = 0;
-
-    BLOCK() = default;
-    explicit BLOCK(mshr_type mshr, uint32_t metadata);
-  };
+  using BLOCK = champsim::cache_block;
 
 private:
+  static BLOCK fill_block(mshr_type mshr, uint32_t metadata);
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(champsim::address address);
@@ -552,12 +543,12 @@ long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggerin
   auto process_one = [&](auto& r) {
     constexpr auto interface_version = champsim::modules::detect::replacement::has_find_victim<decltype(r)>();
     if constexpr (interface_version == 1)
-      r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), type);
+      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), type);
     if constexpr (interface_version == 2)
-      r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
   };
 
-  std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
+  return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
 }
 
 template <typename... Rs>

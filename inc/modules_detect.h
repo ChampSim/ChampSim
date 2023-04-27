@@ -2,6 +2,7 @@
 #define MODULES_DETECT_H
 
 #include "util/detect.h"
+#include "block.h"
 
 namespace champsim::modules::detect
 {
@@ -140,20 +141,20 @@ namespace champsim::modules::detect
     template <typename T>
     constexpr auto has_cache_operate()
     {
-      if (champsim::is_detected_v<detail::has_cache_operate_v1, T>)
-        return 1;
       if (champsim::is_detected_v<detail::has_cache_operate_v2, T>)
         return 2;
+      if (champsim::is_detected_v<detail::has_cache_operate_v1, T>)
+        return 1;
       return 0;
     }
 
     template <typename T>
     constexpr auto has_cache_fill()
     {
-      if (champsim::is_detected_v<detail::has_cache_fill_v1, T>)
-        return 1;
       if (champsim::is_detected_v<detail::has_cache_fill_v2, T>)
         return 2;
+      if (champsim::is_detected_v<detail::has_cache_fill_v1, T>)
+        return 1;
       return 0;
     }
 
@@ -188,10 +189,10 @@ namespace champsim::modules::detect
       using has_initialize = decltype(std::declval<T>().initialize_replacement());
 
       template <typename T>
-      using has_find_victim_v1 = decltype( std::declval<T>().find_victim(std::declval<uint32_t>(), std::declval<uint64_t>(), std::declval<long>(), std::declval<const BLOCK*>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>()));
+      using has_find_victim_v1 = decltype( std::declval<T>().find_victim(std::declval<uint32_t>(), std::declval<uint64_t>(), std::declval<long>(), std::declval<champsim::cache_block*>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>()));
 
       template <typename T>
-      using has_find_victim_v2 = decltype( std::declval<T>().find_victim(std::declval<uint32_t>(), std::declval<uint64_t>(), std::declval<long>(), std::declval<const BLOCK*>(), std::declval<champsim::address>(), std::declval<champsim::address>(), std::declval<uint32_t>()));
+      using has_find_victim_v2 = decltype( std::declval<T>().find_victim(std::declval<uint32_t>(), std::declval<uint64_t>(), std::declval<long>(), std::declval<champsim::cache_block*>(), std::declval<champsim::address>(), std::declval<champsim::address>(), std::declval<uint32_t>()));
 
       template <typename T>
       using has_update_state_v1 = decltype( std::declval<T>().update_replacement_state(std::declval<uint32_t>(), std::declval<long>(), std::declval<long>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>(), std::declval<uint8_t>()));
@@ -210,26 +211,26 @@ namespace champsim::modules::detect
         return true;
       // else if (champsim::modules::warn_if_any_missing)
       //   champsim::modules::does_not_have<decltype(r)>();
-      // return false;
+      return false;
     }
 
     template <typename T>
     constexpr auto has_find_victim()
     {
-      if (champsim::is_detected_v<detail::has_find_victim_v1, T>)
-        return 1;
       if (champsim::is_detected_v<detail::has_find_victim_v2, T>)
         return 2;
+      if (champsim::is_detected_v<detail::has_find_victim_v1, T>)
+        return 1;
       return 0;
     }
 
     template <typename T>
     constexpr auto has_update_state()
     {
-      if (champsim::is_detected_v<detail::has_update_state_v1, T>)
-        return 1;
       if (champsim::is_detected_v<detail::has_update_state_v2, T>)
         return 2;
+      if (champsim::is_detected_v<detail::has_update_state_v1, T>)
+        return 1;
       return 0;
     }
 
