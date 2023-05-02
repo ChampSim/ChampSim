@@ -82,11 +82,16 @@ void champsim::reorder_buffer::do_scheduling(value_type& instr)
   instr.event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
 }
 
+bool champsim::reorder_buffer::is_ready_to_execute(const value_type& instr) const
+{
+  return instr.event_cycle <= current_cycle && instr.scheduled && !instr.executed && instr.num_reg_dependent == 0;
+}
+
 void champsim::reorder_buffer::execute_instruction()
 {
   auto exec_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw > 0; ++rob_it) {
-    if (rob_it->event_cycle <= current_cycle && rob_it->scheduled && !rob_it->executed && rob_it->num_reg_dependent == 0) {
+    if (is_ready_to_execute(*rob_it)) {
       do_execution(*rob_it);
       --exec_bw;
     }
@@ -166,6 +171,10 @@ void champsim::reorder_buffer::operate_sq()
     return x.instr_id < complete_id && x.event_cycle <= cycle && this->do_complete_store(x);
   };
 
+  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
+  store_bw -= std::distance(complete_begin, complete_end);
+  SQ.erase(complete_begin, complete_end);
+
   auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x) { return x.fetch_issued; });
   auto [fetch_begin, fetch_end] = champsim::get_span_p(unfetched_begin, std::end(SQ), store_bw,
                                                        [cycle = current_cycle](const auto& x) { return !x.fetch_issued && x.event_cycle <= cycle; });
@@ -175,10 +184,6 @@ void champsim::reorder_buffer::operate_sq()
     sq_entry.fetch_issued = true;
     sq_entry.event_cycle = cycle;
   });
-
-  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
-  //store_bw -= std::distance(complete_begin, complete_end);
-  SQ.erase(complete_begin, complete_end);
 }
 
 void champsim::reorder_buffer::operate_lq()
@@ -261,12 +266,17 @@ void champsim::reorder_buffer::do_complete_execution(value_type& instr)
     stall_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 }
 
+bool champsim::reorder_buffer::is_ready_to_complete(const value_type& instr) const
+{
+  return instr.event_cycle <= current_cycle && instr.executed && !instr.completed && instr.completed_mem_ops == instr.num_mem_ops();
+}
+
 void champsim::reorder_buffer::complete_inflight_instruction()
 {
   // update ROB entries with completed executions
   auto complete_bw = EXEC_WIDTH;
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw > 0; ++rob_it) {
-    if (rob_it->event_cycle <= current_cycle && rob_it->executed && !rob_it->completed && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
+    if (is_ready_to_complete(*rob_it)) {
       do_complete_execution(*rob_it);
       --complete_bw;
     }
