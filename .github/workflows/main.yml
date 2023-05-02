@@ -16,7 +16,7 @@ jobs:
         with:
           source: 'src inc prefetcher branch replacement btb tracer'
           style: file
-          clangFormatVersion: 16
+          clangFormatVersion: 13.0.0
           inplace: True
       - uses: EndBug/add-and-commit@v9
         with:
