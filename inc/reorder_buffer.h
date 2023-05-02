@@ -56,6 +56,9 @@ struct reorder_buffer
   void retire_rob();
   void handle_memory_return();
 
+  bool is_ready_to_execute(const value_type& instr) const;
+  bool is_ready_to_complete(const value_type& instr) const;
+
   void do_scheduling(value_type& instr);
   void do_execution(value_type& rob_it);
   void do_complete_execution(value_type& instr);
