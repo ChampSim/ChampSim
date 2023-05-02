@@ -251,7 +251,7 @@ void champsim::reorder_buffer::do_complete_execution(value_type& instr)
     reg_producers[dreg].erase(elem);
   }
 
-  instr.completed = false;
+  instr.completed = true;
 
   for (auto dependent_id : instr.registers_instrs_depend_on_me) {
     auto dep_it = std::find_if(std::begin(ROB), std::end(ROB), [dependent_id](const auto& x) { return x.instr_id == dependent_id; });
