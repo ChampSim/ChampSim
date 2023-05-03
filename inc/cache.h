@@ -349,11 +349,6 @@ public:
       m_fill_lat = fill_lat_;
       return *this;
     }
-    self_type& latency(uint64_t lat_)
-    {
-      m_latency = lat_;
-      return *this;
-    }
     self_type& tag_bandwidth(uint32_t max_read_)
     {
       m_max_tag = max_read_;
