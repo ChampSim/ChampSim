@@ -333,10 +333,9 @@ public:
       m_mshr_size = mshr_size_;
       return *this;
     }
-    self_type& latency(uint32_t lat_)
+    self_type& latency(uint64_t lat_)
     {
-      m_fill_lat = lat_ / 2;
-      m_hit_lat = lat_ - m_fill_lat;
+      m_latency = lat_;
       return *this;
     }
     self_type& hit_latency(uint64_t hit_lat_)
