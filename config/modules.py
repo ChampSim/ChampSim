@@ -59,7 +59,31 @@ def get_btb_data(module_name):
     return data_getter('btb', module_name, ('initialize_btb', 'update_btb', 'btb_prediction'))
 
 def get_pref_data(module_name, is_instruction_cache=False):
-    return data_getter('ipref' if is_instruction_cache else 'pref', module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats'))
+    prefix = 'ipref' if is_instruction_cache else 'pref'
+    return util.chain(
+            data_getter(prefix, module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
+            { 'deprecated_func_map' : {
+                    'l1i_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
+                    'l1d_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
+                    'l2c_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
+                    'llc_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
+                    'l1i_prefetcher_cache_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
+                    'l1d_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
+                    'l2c_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
+                    'llc_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
+                    'l1i_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
+                    'l1d_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
+                    'l2c_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
+                    'llc_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
+                    'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_name, 'prefetcher_cycle_operate')),
+                    'l1i_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
+                    'l1d_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
+                    'l2c_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
+                    'llc_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
+                    'l1i_prefetcher_branch_operate': '_'.join((prefix, module_name, 'prefetcher_branch_operate'))
+                }
+            }
+        )
 
 def get_repl_data(module_name):
     return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
