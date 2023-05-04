@@ -77,7 +77,8 @@ sources for you to plagiarize.
 
 #define NGHIST_WORDS (MAXHIST / LOG_TABLE_SIZE + 1)
 
-namespace {
+namespace
+{
 // geometric global history lengths
 
 inline constexpr int history_lengths[NTABLES] = {0, 3, 4, 6, 8, 10, 14, 19, 26, 36, 49, 67, 91, 125, 170, MAXHIST};
@@ -102,7 +103,7 @@ int theta[NUM_CPUS],
 
     // perceptron sum
     yout[NUM_CPUS];
-}
+} // namespace
 
 void O3_CPU::initialize_branch_predictor()
 {
