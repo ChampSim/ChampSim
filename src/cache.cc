@@ -494,7 +494,7 @@ void CACHE::finish_translation(const response_type& packet)
 void CACHE::issue_translation()
 {
   std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& q_entry) {
-    if (!q_entry.translate_issued && !q_entry.is_translated && q_entry.address == q_entry.v_address) {
+    if (!q_entry.translate_issued && !q_entry.is_translated) {
       request_type fwd_pkt;
       fwd_pkt.asid[0] = q_entry.asid[0];
       fwd_pkt.asid[1] = q_entry.asid[1];
@@ -510,16 +510,13 @@ void CACHE::issue_translation()
       fwd_pkt.instr_depend_on_me = q_entry.instr_depend_on_me;
       fwd_pkt.is_translated = true;
 
-      auto success = this->lower_translate->add_rq(fwd_pkt);
-      if (success) {
-        if constexpr (champsim::debug_print) {
+      q_entry.translate_issued = this->lower_translate->add_rq(fwd_pkt);
+      if constexpr (champsim::debug_print) {
+        if (q_entry.translate_issued) {
           std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
           std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
           std::cout << " type: " << +q_entry.type << std::endl;
         }
-
-        q_entry.translate_issued = true;
-        q_entry.address = 0;
       }
     }
   });
