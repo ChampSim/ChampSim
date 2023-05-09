@@ -339,7 +339,9 @@ void CACHE::operate()
 
   // Initiate tag checks
   auto tag_bw = MAX_TAG;
-  auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) { return avail || entry.is_translated; };
+  auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
+    return avail || entry.is_translated;
+  };
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check(ul));
