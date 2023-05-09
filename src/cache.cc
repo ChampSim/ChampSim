@@ -291,6 +291,31 @@ long int operate_queue(R& queue, long int sz, F&& func)
   return retval;
 }
 
+template <typename R, typename Output, typename F, typename G>
+long int transform_if_n(R& queue, Output out, long int sz, F&& test_func, G&& transform_func)
+{
+  auto [begin, end] = champsim::get_span_p(std::begin(queue), std::end(queue), sz, std::forward<F>(test_func));
+  auto retval = std::distance(begin, end);
+  std::transform(begin, end, out, std::forward<G>(transform_func));
+  queue.erase(begin, end);
+  return retval;
+}
+
+auto CACHE::initiate_tag_check(champsim::channel* ul)
+{
+  return [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul](const auto& entry) {
+    CACHE::tag_lookup_type retval{entry};
+    retval.event_cycle = cycle;
+
+    if constexpr (std::is_same_v<std::decay_t<decltype(entry)>, champsim::channel::request_type>) {
+      if (entry.response_requested)
+        retval.to_return = {&ul->returned};
+    }
+
+    return retval;
+  };
+}
+
 void CACHE::operate()
 {
   for (auto ul : upper_levels)
@@ -314,32 +339,13 @@ void CACHE::operate()
 
   // Initiate tag checks
   auto tag_bw = MAX_TAG;
+  auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) { return avail || entry.is_translated; };
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      tag_bw -= operate_queue(q.get(), tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul, this](const auto& entry) {
-        // If there is no room for this translation to miss, stop trying
-        // Because the PTW lookups never need translation, this should not deadlock
-        if (std::size(this->translation_stash) >= static_cast<std::size_t>(this->MSHR_SIZE) && !entry.is_translated)
-          return false;
-        tag_lookup_type retval{entry};
-        retval.event_cycle = cycle;
-        if (entry.response_requested)
-          retval.to_return = {&ul->returned};
-        this->inflight_tag_check.push_back(retval);
-        return true;
-      });
+      tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check(ul));
     }
   }
-  tag_bw -= operate_queue(internal_PQ, tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), this](const auto& entry) {
-    // If there is no room for this translation to miss, stop trying
-    // Because the PTW lookups never need translation, this should not deadlock
-    if (std::size(this->translation_stash) >= static_cast<std::size_t>(this->MSHR_SIZE) && !entry.is_translated)
-      return false;
-    tag_lookup_type retval{entry};
-    retval.event_cycle = cycle;
-    this->inflight_tag_check.push_back(retval);
-    return true;
-  });
+  tag_bw -= transform_if_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check());
 
   // Issue translations
   issue_translation();
@@ -465,6 +471,14 @@ void CACHE::finish_packet(const response_type& packet)
 
 void CACHE::finish_translation(const response_type& packet)
 {
+  // Restart stashed translations
+  auto stash_it =
+      std::stable_partition(std::begin(translation_stash), std::end(translation_stash),
+                            [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
+  std::for_each(stash_it, std::end(translation_stash), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry) { entry.event_cycle = cycle; });
+  inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
+  translation_stash.erase(stash_it, std::end(translation_stash));
+
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
@@ -479,24 +493,6 @@ void CACHE::finish_translation(const response_type& packet)
       }
     }
   }
-
-  auto stash_it =
-      std::stable_partition(std::begin(translation_stash), std::end(translation_stash),
-                            [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
-  auto tag_check_it = inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
-  translation_stash.erase(stash_it, std::end(translation_stash));
-  std::for_each(tag_check_it, std::end(inflight_tag_check), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), addr = packet.data, this](auto& entry) {
-    entry.address = champsim::splice_bits(addr, entry.v_address, LOG2_PAGE_SIZE); // translated address
-    entry.event_cycle = cycle;
-    entry.is_translated = true; // This entry is now translated
-
-    if constexpr (champsim::debug_print) {
-      std::cout << "[" << this->NAME << "_TRANSLATE] " << __func__;
-      std::cout << " paddr: " << std::hex << entry.address;
-      std::cout << " vaddr: " << entry.v_address << std::dec;
-      std::cout << " cycle: " << this->current_cycle << std::endl;
-    }
-  });
 }
 
 void CACHE::issue_translation()
