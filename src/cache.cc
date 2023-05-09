@@ -317,6 +317,10 @@ void CACHE::operate()
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       tag_bw -= operate_queue(q.get(), tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul, this](const auto& entry) {
+        // If there is no room for this translation to miss, stop trying
+        // Because the PTW lookups never need translation, this should not deadlock
+        if (std::size(this->translation_stash) >= static_cast<std::size_t>(this->MSHR_SIZE) && !entry.is_translated)
+          return false;
         tag_lookup_type retval{entry};
         retval.event_cycle = cycle;
         if (entry.response_requested)
@@ -327,6 +331,10 @@ void CACHE::operate()
     }
   }
   tag_bw -= operate_queue(internal_PQ, tag_bw, [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), this](const auto& entry) {
+    // If there is no room for this translation to miss, stop trying
+    // Because the PTW lookups never need translation, this should not deadlock
+    if (std::size(this->translation_stash) >= static_cast<std::size_t>(this->MSHR_SIZE) && !entry.is_translated)
+      return false;
     tag_lookup_type retval{entry};
     retval.event_cycle = cycle;
     this->inflight_tag_check.push_back(retval);
