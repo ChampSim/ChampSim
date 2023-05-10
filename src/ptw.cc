@@ -104,7 +104,7 @@ auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional
   packet.asid[0] = source.asid[0];
   packet.asid[1] = source.asid[1];
   packet.is_translated = true;
-  packet.type = TRANSLATION;
+  packet.type = access_type::TRANSLATION;
 
   bool success = lower_level->add_rq(packet);
 

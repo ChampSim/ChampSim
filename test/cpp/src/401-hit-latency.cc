@@ -7,11 +7,11 @@
 SCENARIO("A cache returns a hit after the specified latency") {
   using namespace std::literals;
   auto [type, str] = GENERATE(table<access_type, std::string_view>({
-        std::pair{LOAD, "load"sv},
-        std::pair{RFO, "RFO"sv},
-        std::pair{PREFETCH, "prefetch"sv},
-        std::pair{WRITE, "write"sv},
-        std::pair{TRANSLATION, "translation"sv}
+        std::pair{access_type::LOAD, "load"sv},
+        std::pair{access_type::RFO, "RFO"sv},
+        std::pair{access_type::PREFETCH, "prefetch"sv},
+        std::pair{access_type::WRITE, "write"sv},
+        std::pair{access_type::TRANSLATION, "translation"sv}
       }));
 
   GIVEN("An empty cache") {
@@ -23,7 +23,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
-      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION)
+      .prefetch_activate(access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION)
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
@@ -36,7 +36,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
     }
 
     THEN("The number of hits starts at zero") {
-      REQUIRE(uut.sim_stats.hits.at(type).at(0) == 0);
+      REQUIRE(uut.sim_stats.hits.at(static_cast<std::size_t>(type)).at(0) == 0);
     }
 
     WHEN("A " + std::string{str} + " packet is issued") {
@@ -79,7 +79,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
         }
 
         THEN("The number of hits increases") {
-          REQUIRE(uut.sim_stats.hits.at(type).at(0) == 1);
+          REQUIRE(uut.sim_stats.hits.at(static_cast<std::size_t>(type)).at(0) == 1);
         }
       }
     }

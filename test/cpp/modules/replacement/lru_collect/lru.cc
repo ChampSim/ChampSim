@@ -32,10 +32,10 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
                                      uint8_t hit)
 {
   auto usc_it = test::replacement_update_state_collector.try_emplace(this);
-  usc_it.first->second.push_back({cpu, set, way, full_addr, ip, victim_addr, type, hit});
+  usc_it.first->second.push_back({cpu, set, way, full_addr, ip, victim_addr, access_type{type}, hit});
 
   // Mark the way as being used on the current cycle
-  if (!hit || type != WRITE) { // Skip this for writeback hits
+  if (!hit || access_type{type} != access_type::WRITE) { // Skip this for writeback hits
     auto luc_it = ::last_used_cycles.try_emplace(this, NUM_SET * NUM_WAY);
     luc_it.first->second.at(set * NUM_WAY + way) = current_cycle;
   }

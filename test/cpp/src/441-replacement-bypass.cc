@@ -43,7 +43,7 @@ SCENARIO("The replacement policy can bypass") {
       decltype(mock_ul_seed)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
-      test.type = WRITE;
+      test.type = access_type::WRITE;
       auto test_result = mock_ul_seed.issue(test);
 
       THEN("The issue is received") {
@@ -61,7 +61,7 @@ SCENARIO("The replacement policy can bypass") {
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = 0xcafebabe;
         test_b.cpu = 0;
-        test_b.type = LOAD;
+        test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 
         auto test_b_result = mock_ul_test.issue(test_b);

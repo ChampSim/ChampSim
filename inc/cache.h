@@ -40,8 +40,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
-  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, static_cast<std::size_t>(access_type::NUM_TYPES)> hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, static_cast<std::size_t>(access_type::NUM_TYPES)> misses = {};
 
   uint64_t total_miss_latency = 0;
 };
@@ -163,7 +163,7 @@ public:
   const bool match_offset_bits;
   const bool virtual_prefetch;
   bool ever_seen_data = false;
-  const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
+  const unsigned pref_activate_mask = (1 << static_cast<int>(access_type::LOAD)) | (1 << static_cast<int>(access_type::PREFETCH));
 
   using stats_type = cache_stats;
 
@@ -398,7 +398,7 @@ public:
     template <typename... Elems>
     self_type& prefetch_activate(Elems... pref_act_elems)
     {
-      m_pref_act_mask = ((1u << pref_act_elems) | ... | 0);
+      m_pref_act_mask = ((1u << static_cast<unsigned>(pref_act_elems)) | ... | 0);
       return *this;
     }
     self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_)

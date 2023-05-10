@@ -54,7 +54,7 @@ SCENARIO("A prefetch does not trigger itself") {
 
 SCENARIO("The prefetcher is triggered if the packet matches the activate field") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
@@ -106,11 +106,11 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
 SCENARIO("The prefetcher is not triggered if the packet does not match the activate field") {
   using namespace std::literals;
   auto [type, mask, str] = GENERATE(table< access_type, std::array<access_type, 4>, std::string_view >({
-        std::tuple{LOAD, std::array{RFO, PREFETCH, WRITE, TRANSLATION}, "load"sv},
-        std::tuple{RFO, std::array{LOAD, PREFETCH, WRITE, TRANSLATION}, "RFO"sv},
-        std::tuple{PREFETCH, std::array{LOAD, RFO, WRITE, TRANSLATION}, "prefetch"sv},
-        std::tuple{WRITE, std::array{LOAD, RFO, PREFETCH, TRANSLATION}, "write"sv},
-        std::tuple{TRANSLATION, std::array{LOAD, RFO, PREFETCH, WRITE}, "translation"sv}
+        std::tuple{access_type::LOAD, std::array{access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}, "load"sv},
+        std::tuple{access_type::RFO, std::array{access_type::LOAD, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}, "RFO"sv},
+        std::tuple{access_type::PREFETCH, std::array{access_type::LOAD, access_type::RFO, access_type::WRITE, access_type::TRANSLATION}, "prefetch"sv},
+        std::tuple{access_type::WRITE, std::array{access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::TRANSLATION}, "write"sv},
+        std::tuple{access_type::TRANSLATION, std::array{access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE}, "translation"sv}
       }));
 
   GIVEN("A single cache") {

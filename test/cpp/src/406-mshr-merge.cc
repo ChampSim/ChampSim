@@ -45,7 +45,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       decltype(mock_ul_seed)::request_type test_a;
       test_a.address = 0xdeadbeef;
       test_a.cpu = 0;
-      test_a.type = LOAD;
+      test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
 
       auto test_a_result = mock_ul_seed.issue(test_a);

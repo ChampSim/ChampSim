@@ -167,9 +167,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
 
         # Create prefetch activation masks
-        if elem.get('prefetch_activate'):
-            type_list = ('LOAD', 'RFO', 'PREFETCH', 'WRITEBACK', 'TRANSLATION')
-            yield '.prefetch_activate({})'.format(', '.join(t for t in type_list if t in elem.get('prefetch_activate', tuple())))
+        if 'prefetch_activate' in elem:
+            yield '.prefetch_activate({})'.format(', '.join('access_type::'+t for t in elem['prefetch_activate']))
 
         if elem.get('_replacement_data'):
             yield '.replacement<{}>()'.format(' | '.join('CACHE::r{}'.format(k['name']) for k in elem['_replacement_data']))
