@@ -356,13 +356,16 @@ void CACHE::operate()
   detect_misses();
 
   // Perform tag checks
-  operate_queue(inflight_tag_check, MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && pkt.is_translated
-           && (this->try_hit(pkt)
-               || ((pkt.type == WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
-                                                                   : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
-                   ));
-  });
+  auto [finish_tag_check_begin, finish_tag_check_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
+      [cycle = current_cycle, this](const auto& pkt) {
+        return pkt.event_cycle <= cycle && pkt.is_translated
+               && (this->try_hit(pkt)
+                   || ((pkt.type == WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
+                                                                       : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
+                       ));
+      }
+  );
+  inflight_tag_check.erase(finish_tag_check_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
 }
