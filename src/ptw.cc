@@ -159,13 +159,7 @@ void PageTableWalker::operate()
 
 void PageTableWalker::finish_packet(const response_type& packet)
 {
-  auto last_finished =
-      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
-  auto inserted_finished = finished.insert(std::cend(finished), std::begin(MSHR), last_finished);
-  MSHR.erase(std::begin(MSHR), last_finished);
-
-  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x) { return x.translation_level > 0; });
-  std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
+  auto finish_step = [this](auto& mshr_entry) {
     uint64_t penalty;
     std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
@@ -177,9 +171,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
       std::cout << " data: " << mshr_entry.data << std::dec;
       std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
     }
-  });
+  };
 
-  std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
+  auto finish_last_step = [this](auto& mshr_entry) {
     uint64_t penalty;
     std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
@@ -191,10 +185,20 @@ void PageTableWalker::finish_packet(const response_type& packet)
       std::cout << " data: " << mshr_entry.data << std::dec;
       std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
     }
+  };
+
+  auto last_finished =
+      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
+
+  std::for_each(std::begin(MSHR), last_finished, [finish_step, finish_last_step](auto& mshr_entry) {
+      if (mshr_entry.translation_level > 0)
+        finish_step(mshr_entry);
+      else
+        finish_last_step(mshr_entry);
   });
 
-  completed.insert(std::cend(completed), last_unfinished, std::end(finished));
-  finished.erase(last_unfinished, std::end(finished));
+  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(finished), std::back_inserter(completed), [](auto x) { return x.translation_level > 0; });
+  MSHR.erase(std::begin(MSHR), last_finished);
 }
 
 void PageTableWalker::begin_phase()
