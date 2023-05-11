@@ -134,7 +134,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, eq_addr<BLOCK>(handle_pkt.address, OFFSET_BITS));
+  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
   const auto hit = (way != set_end);
 
   if constexpr (champsim::debug_print) {
@@ -338,7 +338,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = MAX_TAG;
+  auto tag_bw = std::min(static_cast<unsigned long>(MAX_TAG), MAX_TAG*HIT_LATENCY - std::size(inflight_tag_check));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
@@ -395,13 +395,13 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
+  return std::distance(begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
 }
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(begin, end, eq_addr<BLOCK>(inval_addr, OFFSET_BITS));
+  auto inv_way = std::find_if(begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
 
   if (inv_way != end)
     inv_way->valid = 0;
