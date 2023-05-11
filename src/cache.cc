@@ -134,7 +134,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
+  auto way = std::find_if(set_begin, set_end,
+                          [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
   const auto hit = (way != set_end);
 
   if constexpr (champsim::debug_print) {
@@ -338,7 +339,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = std::min(static_cast<unsigned long>(MAX_TAG), MAX_TAG*HIT_LATENCY - std::size(inflight_tag_check));
+  auto tag_bw = std::min(static_cast<unsigned long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
@@ -353,20 +354,20 @@ void CACHE::operate()
   issue_translation();
 
   // Find entries that would be ready except that they have not finished translation, move them to the stash
-  auto [last_not_missed, stash_end] = champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
-    [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+  auto [last_not_missed, stash_end] =
+      champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
+                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
-  auto [finish_tag_check_begin, finish_tag_check_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
-      [cycle = current_cycle, this](const auto& pkt) {
+  auto [finish_tag_check_begin, finish_tag_check_end] =
+      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
         return pkt.event_cycle <= cycle && pkt.is_translated
                && (this->try_hit(pkt)
                    || ((pkt.type == WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
                                                                        : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
                        ));
-      }
-  );
+      });
   inflight_tag_check.erase(finish_tag_check_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
@@ -400,13 +401,15 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
+  return std::distance(
+      begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
 }
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
+  auto inv_way =
+      std::find_if(begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
 
   if (inv_way != end)
     inv_way->valid = 0;
