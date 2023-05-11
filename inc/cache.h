@@ -115,7 +115,6 @@ class CACHE : public champsim::operable
   void finish_translation(const response_type& packet);
 
   void issue_translation();
-  void detect_misses();
 
   struct BLOCK {
     bool valid = false;

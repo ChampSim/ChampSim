@@ -352,8 +352,10 @@ void CACHE::operate()
   // Issue translations
   issue_translation();
 
-  // Detect translations that have missed
-  detect_misses();
+  // Find entries that would be ready except that they have not finished translation, move them to the stash
+  auto [last_not_missed, stash_end] = champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
+    [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+  inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
   auto [finish_tag_check_begin, finish_tag_check_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
@@ -529,19 +531,6 @@ void CACHE::issue_translation()
       }
     }
   });
-}
-
-void CACHE::detect_misses()
-{
-  // Find entries that would be ready except that they have not finished translation
-  auto missed = [cycle = current_cycle](auto x) {
-    return x.event_cycle < cycle && !x.is_translated && x.translate_issued;
-  };
-  auto q_it = std::stable_partition(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::not_fn(missed));
-
-  // Move them to the stash
-  translation_stash.insert(std::cend(translation_stash), q_it, std::end(inflight_tag_check));
-  inflight_tag_check.erase(q_it, std::end(inflight_tag_check));
 }
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
