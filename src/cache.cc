@@ -17,6 +17,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 
 #include "champsim.h"
@@ -536,32 +537,33 @@ void CACHE::issue_translation()
   });
 }
 
+std::size_t CACHE::get_mshr_occupancy() const
+{
+  return std::size(MSHR);
+}
+
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return std::size(MSHR);
-  // else if (queue_type == 1)
-  // return std::size(upper_levels->RQ);
-  // else if (queue_type == 2)
-  // return std::size(upper_levels->WQ);
-  // else if (queue_type == 3)
-  // return std::size(upper_levels->PQ);
-
+    return get_mshr_occupancy();
   return 0;
+}
+
+std::size_t CACHE::get_mshr_size() const
+{
+  return MSHR_SIZE;
 }
 
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return MSHR_SIZE;
-  // else if (queue_type == 1)
-  // return upper_levels->RQ_SIZE;
-  // else if (queue_type == 2)
-  // return upper_levels->WQ_SIZE;
-  // else if (queue_type == 3)
-  // return upper_levels->PQ_SIZE;
-
+    return get_mshr_size();
   return 0;
+}
+
+double CACHE::get_mshr_occupancy_ratio() const
+{
+  return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size());
 }
 
 void CACHE::initialize()
