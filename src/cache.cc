@@ -340,7 +340,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = std::min<unsigned long long>(static_cast<unsigned long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
+  auto tag_bw = std::min<long long>(static_cast<long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
@@ -374,7 +374,9 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 }
 
+// LCOV_EXCL_START exclude deprecated function
 uint64_t CACHE::get_set(uint64_t address) const { return get_set_index(address); }
+// LCOV_EXCL_STOP
 
 std::size_t CACHE::get_set_index(uint64_t address) const { return (address >> OFFSET_BITS) & champsim::bitmask(champsim::lg2(NUM_SET)); }
 
@@ -399,12 +401,14 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
   return get_span(std::cbegin(block), static_cast<std::vector<BLOCK>::difference_type>(set_idx), NUM_WAY); // safe cast because of prior assert
 }
 
+// LCOV_EXCL_START exclude deprecated function
 uint64_t CACHE::get_way(uint64_t address, uint64_t) const
 {
   auto [begin, end] = get_set_span(address);
   return std::distance(
       begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
 }
+// LCOV_EXCL_STOP
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
@@ -439,10 +443,12 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   return true;
 }
 
+// LCOV_EXCL_START exclude deprecated function
 int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
   return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
 }
+// LCOV_EXCL_STOP
 
 void CACHE::finish_packet(const response_type& packet)
 {
@@ -542,24 +548,28 @@ std::size_t CACHE::get_mshr_occupancy() const
   return std::size(MSHR);
 }
 
+// LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return get_mshr_occupancy();
   return 0;
 }
+// LCOV_EXCL_STOP
 
 std::size_t CACHE::get_mshr_size() const
 {
   return MSHR_SIZE;
 }
 
+// LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
     return get_mshr_size();
   return 0;
 }
+// LCOV_EXCL_STOP
 
 double CACHE::get_mshr_occupancy_ratio() const
 {
