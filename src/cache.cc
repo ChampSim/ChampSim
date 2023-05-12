@@ -537,10 +537,7 @@ void CACHE::issue_translation()
   });
 }
 
-std::size_t CACHE::get_mshr_occupancy() const
-{
-  return std::size(MSHR);
-}
+std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
@@ -549,10 +546,7 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-std::size_t CACHE::get_mshr_size() const
-{
-  return MSHR_SIZE;
-}
+std::size_t CACHE::get_mshr_size() const { return MSHR_SIZE; }
 
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
@@ -561,10 +555,7 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
   return 0;
 }
 
-double CACHE::get_mshr_occupancy_ratio() const
-{
-  return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size());
-}
+double CACHE::get_mshr_occupancy_ratio() const { return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size()); }
 
 void CACHE::initialize()
 {
