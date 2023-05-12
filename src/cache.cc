@@ -339,7 +339,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = std::min(static_cast<unsigned long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
+  auto tag_bw = std::min<unsigned long long>(static_cast<unsigned long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
