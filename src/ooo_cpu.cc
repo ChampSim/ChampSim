@@ -274,9 +274,10 @@ void O3_CPU::promote_to_decode()
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::decode_instruction()
@@ -308,9 +309,10 @@ void O3_CPU::decode_instruction()
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
@@ -331,9 +333,10 @@ void O3_CPU::dispatch_instruction()
     available_dispatch_bandwidth--;
   }
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::schedule_instruction()
@@ -603,11 +606,13 @@ void O3_CPU::retire_rob()
   num_retired += std::distance(retire_begin, retire_end);
   ROB.erase(retire_begin, retire_end);
 
-  // Check for deadlock
+  // LCOV_EXCL_START Check for deadlock
   if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
 {
   std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
@@ -664,6 +669,7 @@ void O3_CPU::print_deadlock()
     std::cout << std::endl;
   }
 }
+// LCOV_EXCL_STOP
 
 LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)

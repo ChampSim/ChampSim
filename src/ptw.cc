@@ -211,6 +211,7 @@ void PageTableWalker::begin_phase()
   }
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {
@@ -225,3 +226,4 @@ void PageTableWalker::print_deadlock()
     std::cout << NAME << " MSHR empty" << std::endl;
   }
 }
+// LCOV_EXCL_STOP

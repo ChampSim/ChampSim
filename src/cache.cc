@@ -629,6 +629,7 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
   return ((1 << pkt.type) & pref_activate_mask) && !pkt.prefetch_from_this;
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void CACHE::print_deadlock()
 {
   if (!std::empty(MSHR)) {
@@ -678,3 +679,4 @@ void CACHE::print_deadlock()
     }
   }
 }
+// LCOV_EXCL_STOP
