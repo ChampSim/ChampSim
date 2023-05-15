@@ -284,15 +284,6 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   return true;
 }
 
-template <typename R, typename F>
-long int operate_queue(R& queue, long int sz, F&& func)
-{
-  auto [begin, end] = champsim::get_span_p(std::cbegin(queue), std::cend(queue), sz, std::forward<F>(func));
-  auto retval = std::distance(begin, end);
-  queue.erase(begin, end);
-  return retval;
-}
-
 template <typename R, typename Output, typename F, typename G>
 long int transform_if_n(R& queue, Output out, long int sz, F&& test_func, G&& transform_func)
 {
@@ -336,7 +327,10 @@ void CACHE::operate()
   // Perform fills
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    fill_bw -= operate_queue(q.get(), fill_bw, [cycle = current_cycle, this](const auto& x) { return x.event_cycle <= cycle && this->handle_fill(x); });
+    auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
+    auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
+    fill_bw -= std::distance(fill_begin, complete_end);
+    q.get().erase(fill_begin, complete_end);
   }
 
   // Initiate tag checks
@@ -361,15 +355,17 @@ void CACHE::operate()
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
-  auto [finish_tag_check_begin, finish_tag_check_end] =
-      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
-        return pkt.event_cycle <= cycle && pkt.is_translated
-               && (this->try_hit(pkt)
-                   || ((pkt.type == WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
-                                                                       : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
-                       ));
-      });
-  inflight_tag_check.erase(finish_tag_check_begin, finish_tag_check_end);
+  auto do_tag_check = [this](const auto& pkt) {
+    if (this->try_hit(pkt))
+      return true;
+    if (pkt.type == WRITE && !this->match_offset_bits)
+      return this->handle_write(pkt); // Treat writes (that is, writebacks) like fills
+    else
+      return this->handle_miss(pkt);  // Treat writes (that is, stores) like reads
+  };
+  auto [tag_check_ready_begin, tag_check_ready_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
+  auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
+  inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
 }
