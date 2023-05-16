@@ -32,7 +32,7 @@ ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_inst
   return branch;
 }
 
-template <template<class, class> typename R, typename T>
+template <template <class, class> typename R, typename T>
 champsim::tracereader get_tracereader_for_type(std::string fname, uint8_t cpu)
 {
   bool is_gzip_compressed = (fname.substr(std::size(fname) - 2) == "gz");

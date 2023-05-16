@@ -46,7 +46,8 @@ class tracereader
     using has_eof = decltype(std::declval<U>().eof());
 
     ooo_model_instr operator()() override { return intern_(); }
-    bool eof() const override {
+    bool eof() const override
+    {
       if constexpr (champsim::is_detected_v<has_eof, T>)
         return intern_.eof();
       return false; // If an eof() member function is not provided, assume the trace never ends.
