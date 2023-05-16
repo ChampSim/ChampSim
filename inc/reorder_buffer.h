@@ -74,17 +74,17 @@ struct reorder_buffer
 
   void operate();
 
-  std::size_t occupancy() const { return std::size(ROB); }
-  std::size_t size() const { return ROB_SIZE; }
-  bool empty() const { return std::empty(ROB); }
-  bool full() const { return occupancy() == size(); }
+  std::size_t occupancy() const;
+  std::size_t size() const;
+  bool empty() const;
+  bool full() const;
   bool would_accept(const value_type& inst) const;
   bool is_deadlocked() const;
 
-  std::size_t lq_occupancy() const { return std::count_if(std::begin(LQ), std::end(LQ), [](const auto& x) { return x.has_value(); }); }
-  std::size_t lq_size() const { return std::size(LQ); }
-  std::size_t sq_occupancy() const { return std::size(SQ); }
-  std::size_t sq_size() const { return SQ_SIZE; }
+  std::size_t lq_occupancy() const;
+  std::size_t lq_size() const;
+  std::size_t sq_occupancy() const;
+  std::size_t sq_size() const;
 
   void push_back(const value_type& v);
   void push_back(value_type&& v);
