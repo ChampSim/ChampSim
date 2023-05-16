@@ -307,6 +307,15 @@ void champsim::reorder_buffer::retire_rob()
   ROB.erase(retire_begin, retire_end);
 }
 
+std::size_t champsim::reorder_buffer::occupancy() const { return std::size(ROB); }
+std::size_t champsim::reorder_buffer::size() const { return ROB_SIZE; }
+bool champsim::reorder_buffer::empty() const { return std::empty(ROB); }
+bool champsim::reorder_buffer::full() const { return occupancy() == size(); }
+
+std::size_t champsim::reorder_buffer::lq_occupancy() const { return std::count_if(std::begin(LQ), std::end(LQ), [](const auto& x) { return x.has_value(); }); }
+std::size_t champsim::reorder_buffer::lq_size() const { return std::size(LQ); }
+std::size_t champsim::reorder_buffer::sq_occupancy() const { return std::size(SQ); }
+std::size_t champsim::reorder_buffer::sq_size() const { return SQ_SIZE; }
 
 bool champsim::reorder_buffer::is_deadlocked() const
 {
