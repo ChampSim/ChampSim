@@ -195,11 +195,11 @@ SCENARIO("ROB scheduling does not forward an instruction to itself") {
 
     auto candidate_instr = champsim::test::instruction_with_memory({0xdeadbeef}, {0xdeadbeef});
 
-    THEN("The ROB would accept an instruction with one memory destination") {
+    THEN("The ROB would accept an instruction with one memory source and one destination") {
       REQUIRE(uut.would_accept(candidate_instr));
     }
 
-    WHEN("An instruction with one memory destination is inserted") {
+    WHEN("An instruction with one memory source and one destination is inserted") {
       uut.push_back(candidate_instr);
 
       THEN("The occupancy changes, but the size stays the same") {
