@@ -26,34 +26,6 @@
 #include "msl/bits.h"
 #include "msl/lru_table.h"
 
-template <typename T>
-struct is_valid {
-  using argument_type = T;
-  is_valid() {}
-  bool operator()(const argument_type& test) { return test.valid; }
-};
-
-template <typename T>
-struct is_valid<std::optional<T>> {
-  bool operator()(const std::optional<T>& test) { return test.has_value(); }
-};
-
-template <typename T>
-struct eq_addr {
-  using argument_type = T;
-  const decltype(argument_type::address) match_val;
-  const std::size_t shamt = 0;
-
-  explicit eq_addr(decltype(argument_type::address) val) : match_val(val) {}
-  eq_addr(decltype(argument_type::address) val, std::size_t shift_bits) : match_val(val), shamt(shift_bits) {}
-
-  bool operator()(const argument_type& test)
-  {
-    is_valid<argument_type> validtest;
-    return validtest(test) && (test.address >> shamt) == (match_val >> shamt);
-  }
-};
-
 namespace champsim
 {
 using msl::bitmask;
@@ -81,6 +53,19 @@ template <typename It, typename F>
 std::pair<It, It> get_span_p(It begin, It end, F&& func)
 {
   return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
+}
+
+template <typename InputIt, typename OutputIt, typename F>
+auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
+{
+  begin = std::find_if(begin, end, func);
+  for (auto i = begin; i != end; ++i) {
+    if (func(*i))
+      *d_begin++ = std::move(*i);
+    else
+      *begin++ = std::move(*i);
+  }
+  return std::pair{begin, d_begin};
 }
 
 } // namespace champsim

@@ -17,6 +17,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 
 #include "champsim.h"
@@ -131,7 +132,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, eq_addr<BLOCK>(handle_pkt.address, OFFSET_BITS));
+  auto way = std::find_if(set_begin, set_end,
+                          [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
   const auto hit = (way != set_end);
 
   if constexpr (champsim::debug_print) {
@@ -335,7 +337,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = MAX_TAG;
+  auto tag_bw = std::min<unsigned long long>(static_cast<unsigned long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
@@ -349,17 +351,22 @@ void CACHE::operate()
   // Issue translations
   issue_translation();
 
-  // Detect translations that have missed
-  detect_misses();
+  // Find entries that would be ready except that they have not finished translation, move them to the stash
+  auto [last_not_missed, stash_end] =
+      champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
+                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+  inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
-  operate_queue(inflight_tag_check, MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
-    return pkt.event_cycle <= cycle && pkt.is_translated
-           && (this->try_hit(pkt)
-               || ((pkt.type == access_type::WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
-                                                                   : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
-                   ));
-  });
+  auto [finish_tag_check_begin, finish_tag_check_end] =
+      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle, this](const auto& pkt) {
+        return pkt.event_cycle <= cycle && pkt.is_translated
+               && (this->try_hit(pkt)
+                   || ((pkt.type == access_type::WRITE && !this->match_offset_bits) ? this->handle_write(pkt) // Treat writes (that is, writebacks) like fills
+                                                                       : this->handle_miss(pkt)  // Treat writes (that is, stores) like reads
+                       ));
+      });
+  inflight_tag_check.erase(finish_tag_check_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
 }
@@ -392,13 +399,15 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(address, OFFSET_BITS)));
+  return std::distance(
+      begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
 }
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(begin, end, eq_addr<BLOCK>(inval_addr, OFFSET_BITS));
+  auto inv_way =
+      std::find_if(begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
 
   if (inv_way != end)
     inv_way->valid = 0;
@@ -525,46 +534,25 @@ void CACHE::issue_translation()
   });
 }
 
-void CACHE::detect_misses()
-{
-  // Find entries that would be ready except that they have not finished translation
-  auto missed = [cycle = current_cycle](auto x) {
-    return x.event_cycle < cycle && !x.is_translated && x.translate_issued;
-  };
-  auto q_it = std::stable_partition(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::not_fn(missed));
-
-  // Move them to the stash
-  translation_stash.insert(std::cend(translation_stash), q_it, std::end(inflight_tag_check));
-  inflight_tag_check.erase(q_it, std::end(inflight_tag_check));
-}
+std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
 
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return std::size(MSHR);
-  // else if (queue_type == 1)
-  // return std::size(upper_levels->RQ);
-  // else if (queue_type == 2)
-  // return std::size(upper_levels->WQ);
-  // else if (queue_type == 3)
-  // return std::size(upper_levels->PQ);
-
+    return get_mshr_occupancy();
   return 0;
 }
+
+std::size_t CACHE::get_mshr_size() const { return MSHR_SIZE; }
 
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
   if (queue_type == 0)
-    return MSHR_SIZE;
-  // else if (queue_type == 1)
-  // return upper_levels->RQ_SIZE;
-  // else if (queue_type == 2)
-  // return upper_levels->WQ_SIZE;
-  // else if (queue_type == 3)
-  // return upper_levels->PQ_SIZE;
-
+    return get_mshr_size();
   return 0;
 }
+
+double CACHE::get_mshr_occupancy_ratio() const { return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size()); }
 
 void CACHE::initialize()
 {
@@ -629,6 +617,7 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
   return ((1 << static_cast<unsigned>(pkt.type)) & pref_activate_mask) && !pkt.prefetch_from_this;
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void CACHE::print_deadlock()
 {
   if (!std::empty(MSHR)) {
@@ -678,3 +667,4 @@ void CACHE::print_deadlock()
     }
   }
 }
+// LCOV_EXCL_STOP
