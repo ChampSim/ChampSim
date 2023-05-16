@@ -81,6 +81,11 @@ struct reorder_buffer
   bool would_accept(const value_type& inst) const;
   bool is_deadlocked() const;
 
+  std::size_t lq_occupancy() const { std::count_if(std::begin(LQ), std::end(LQ), [](const auto& x) { return x.has_value(); }); }
+  std::size_t lq_size() const { return std::size(LQ); }
+  std::size_t sq_occupancy() const { return std::size(SQ); }
+  std::size_t sq_size() const { return SQ_SIZE; }
+
   void push_back(const value_type& v);
   void push_back(value_type&& v);
 

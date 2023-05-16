@@ -32,8 +32,8 @@ void champsim::reorder_buffer::operate()
 bool champsim::reorder_buffer::would_accept(const value_type& inst) const
 {
   return !full()
-    && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), std::not_fn(is_valid<decltype(LQ)::value_type>{})) >= std::size(inst.source_memory))
-    && ((std::size(inst.destination_memory) + std::size(SQ)) <= SQ_SIZE);
+    && ((lq_size() - lq_occupancy()) >= std::size(inst.source_memory))
+    && ((sq_size() - sq_occupancy()) >= std::size(inst.destination_memory));
 }
 
 void champsim::reorder_buffer::push_back(const value_type& v) {
