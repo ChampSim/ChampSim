@@ -17,6 +17,7 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include <array>
 #include <cstdint>
 #include <deque>
 #include <functional>
