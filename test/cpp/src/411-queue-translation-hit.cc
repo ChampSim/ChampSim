@@ -86,10 +86,9 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = 0x11111eef;
       test.v_address = test.address;
       test.is_translated = false;
-      test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
 
       auto test_result = mock_ul.issue(test);
@@ -112,7 +111,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
 
       THEN("The packet is translated") {
         REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == test.address);
+        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
       }
     }
   }
