@@ -273,9 +273,10 @@ void O3_CPU::promote_to_decode()
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::decode_instruction()
@@ -301,9 +302,10 @@ void O3_CPU::decode_instruction()
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
@@ -320,9 +322,10 @@ void O3_CPU::dispatch_instruction()
     available_dispatch_bandwidth--;
   }
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + champsim::DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::handle_memory_return()
@@ -350,6 +353,7 @@ void O3_CPU::handle_memory_return()
   }
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
 {
   std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
@@ -370,4 +374,5 @@ void O3_CPU::print_deadlock()
 
   ROB.print_deadlock();
 }
+// LCOV_EXCL_STOP
 

@@ -122,7 +122,7 @@ void champsim::reorder_buffer::do_memory_scheduling(value_type& instr)
 {
   // load
   for (auto& smem : instr.source_memory) {
-    auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<decltype(LQ)::value_type>{});
+    auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& x) { return x.has_value(); });
     assert(q_entry != std::end(LQ));
     q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid); // add it to the load queue
     do_forwarding_for_lq(*q_entry);
@@ -317,6 +317,7 @@ std::size_t champsim::reorder_buffer::lq_size() const { return std::size(LQ); }
 std::size_t champsim::reorder_buffer::sq_occupancy() const { return std::size(SQ); }
 std::size_t champsim::reorder_buffer::sq_size() const { return SQ_SIZE; }
 
+// LCOV_EXCL_START
 bool champsim::reorder_buffer::is_deadlocked() const
 {
   return !empty() && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle;
@@ -363,6 +364,7 @@ void champsim::reorder_buffer::print_deadlock() const
     std::cout << std::endl;
   }
 }
+// LCOV_EXCL_STOP
 
 template <typename It>
 void champsim::LSQ_ENTRY::finish(It begin, It end) const
