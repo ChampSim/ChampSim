@@ -17,6 +17,7 @@
 #ifndef MSL_BITS_H
 #define MSL_BITS_H
 
+#include <cstdint>
 #include <limits>
 
 namespace champsim::msl
