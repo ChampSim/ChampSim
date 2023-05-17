@@ -32,7 +32,7 @@
 #include "instruction.h"
 #include "module_impl.h"
 #include "operable.h"
-#include "util.h"
+#include "util/lru_table.h"
 #include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };

@@ -1,4 +1,6 @@
 #include "cache.h"
+
+#include <cassert>
 #include <unordered_map>
 
 namespace

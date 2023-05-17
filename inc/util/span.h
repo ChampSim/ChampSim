@@ -18,6 +18,7 @@
 #define UTIL_SPAN_H
 
 #include <algorithm>
+#include <cassert>
 #include <iterator>
 #include <limits>
 

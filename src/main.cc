@@ -28,7 +28,6 @@
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-#include "util.h"
 #include "vmem.h"
 
 namespace champsim

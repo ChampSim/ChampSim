@@ -17,12 +17,6 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <algorithm>
-#include <cstdint>
-#include <limits>
-#include <optional>
-#include <vector>
-
 #include "msl/lru_table.h"
 
 namespace champsim {

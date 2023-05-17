@@ -17,6 +17,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <iomanip>
 
