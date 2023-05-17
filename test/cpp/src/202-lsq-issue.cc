@@ -72,7 +72,7 @@ SCENARIO("The LQ and SQ can issue simulataneous requests") {
         mock_L1D.operate();
       }
 
-      THEN("One request is issued") {
+      THEN("Two requests are issued") {
         REQUIRE_THAT(mock_L1D.addresses, Catch::Matchers::SizeIs(2) && Catch::Matchers::Contains(0xdeadbeef) && Catch::Matchers::Contains(0xcafebabe));
       }
     }
