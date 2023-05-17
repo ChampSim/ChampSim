@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
@@ -461,3 +466,9 @@ public:
 #include "ooo_cpu_module_def.inc"
 
 #endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
+#endif
+

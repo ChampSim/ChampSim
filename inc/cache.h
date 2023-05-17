@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef CACHE_H
 #define CACHE_H
 
@@ -446,4 +451,9 @@ public:
 
 #include "cache_module_def.inc"
 
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif
