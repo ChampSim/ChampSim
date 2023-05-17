@@ -33,28 +33,6 @@ using msl::lg2;
 using msl::lru_table;
 using msl::splice_bits;
 
-template <typename It>
-std::pair<It, It> get_span(It begin, It end, typename std::iterator_traits<It>::difference_type sz)
-{
-  assert(std::distance(begin, end) >= 0);
-  assert(sz >= 0);
-  auto distance = std::min(std::distance(begin, end), sz);
-  return {begin, std::next(begin, distance)};
-}
-
-template <typename It, typename F>
-std::pair<It, It> get_span_p(It begin, It end, typename std::iterator_traits<It>::difference_type sz, F&& func)
-{
-  auto [span_begin, span_end] = get_span(begin, end, sz);
-  return {span_begin, std::find_if_not(span_begin, span_end, std::forward<F>(func))};
-}
-
-template <typename It, typename F>
-std::pair<It, It> get_span_p(It begin, It end, F&& func)
-{
-  return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
-}
-
 template <typename InputIt, typename OutputIt, typename F>
 auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
 {

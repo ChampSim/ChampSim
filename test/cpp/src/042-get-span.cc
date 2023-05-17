@@ -1,5 +1,5 @@
 #include <catch.hpp>
-#include "util.h"
+#include "util/span.h"
 
 #include <vector>
 

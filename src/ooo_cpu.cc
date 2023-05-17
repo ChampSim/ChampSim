@@ -23,6 +23,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "util/span.h"
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
