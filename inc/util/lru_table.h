@@ -23,7 +23,8 @@
 
 #include "msl/lru_table.h"
 
-namespace champsim {
+namespace champsim
+{
 using msl::lru_table;
 } // namespace champsim
 

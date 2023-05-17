@@ -33,6 +33,6 @@ auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
   }
   return std::pair{begin, d_begin};
 }
-}
+} // namespace champsim
 
 #endif

@@ -45,6 +45,6 @@ std::pair<It, It> get_span_p(It begin, It end, F&& func)
 {
   return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
 }
-}
+} // namespace champsim
 
 #endif

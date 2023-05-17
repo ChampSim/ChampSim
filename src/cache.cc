@@ -329,7 +329,8 @@ void CACHE::operate()
   // Perform fills
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
+    auto [fill_begin, fill_end] =
+        champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
     auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
     fill_bw -= std::distance(fill_begin, complete_end);
     q.get().erase(fill_begin, complete_end);
@@ -363,9 +364,11 @@ void CACHE::operate()
     if (pkt.type == WRITE && !this->match_offset_bits)
       return this->handle_write(pkt); // Treat writes (that is, writebacks) like fills
     else
-      return this->handle_miss(pkt);  // Treat writes (that is, stores) like reads
+      return this->handle_miss(pkt); // Treat writes (that is, stores) like reads
   };
-  auto [tag_check_ready_begin, tag_check_ready_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
+  auto [tag_check_ready_begin, tag_check_ready_end] =
+      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
+                           [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
   auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
 

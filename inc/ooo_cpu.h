@@ -471,4 +471,3 @@ public:
 #undef SET_ASIDE_CHAMPSIM_MODULE
 #define CHAMPSIM_MODULE
 #endif
-
