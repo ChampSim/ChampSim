@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef UTIL_BITS_H
+#define UTIL_BITS_H
 
-#include <algorithm>
-#include <cstdint>
-#include <limits>
-#include <optional>
-#include <vector>
+#include "../msl/bits.h"
 
-#include "msl/lru_table.h"
-
-namespace champsim {
-using msl::lru_table;
-} // namespace champsim
+namespace champsim
+{
+using msl::bitmask;
+using msl::lg2;
+using msl::splice_bits;
+}
 
 #endif
