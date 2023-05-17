@@ -144,6 +144,7 @@ class CACHE : public champsim::operable
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
 
+  template <bool>
   auto initiate_tag_check(champsim::channel* ul = nullptr);
 
   std::deque<tag_lookup_type> internal_PQ{};
