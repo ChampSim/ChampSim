@@ -351,7 +351,8 @@ void CACHE::operate()
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
-  tag_bw -= transform_if_n(translation_stash, std::back_inserter(inflight_tag_check), tag_bw, [](const auto& entry) { return entry.is_translated; }, initiate_tag_check<false>());
+  tag_bw -= transform_if_n(
+      translation_stash, std::back_inserter(inflight_tag_check), tag_bw, [](const auto& entry) { return entry.is_translated; }, initiate_tag_check<false>());
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
@@ -500,10 +501,12 @@ void CACHE::finish_packet(const response_type& packet)
 
 void CACHE::finish_translation(const response_type& packet)
 {
-  auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) == page_num; };
-  auto mark_translated = [p_page = packet.data](auto &entry) {
+  auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) {
+    return (entry.v_address >> LOG2_PAGE_SIZE) == page_num;
+  };
+  auto mark_translated = [p_page = packet.data](auto& entry) {
     entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
-    entry.is_translated = true;                                                          // This entry is now translated
+    entry.is_translated = true;                                                     // This entry is now translated
   };
 
   if constexpr (champsim::debug_print) {
