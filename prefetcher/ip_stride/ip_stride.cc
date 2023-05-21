@@ -39,7 +39,7 @@ void ip_stride::prefetcher_cycle_operate()
     // If the next step would exceed the degree or run off the page, stop
     if (intern_->virtual_prefetch || (pf_address >> LOG2_PAGE_SIZE) == (old_pf_address >> LOG2_PAGE_SIZE)) {
       // check the MSHR occupancy to decide if we're going to prefetch to this level or not
-      bool success = prefetch_line(pf_address, (intern_->get_occupancy(0, pf_address) < (intern_->get_size(0, pf_address) / 2)), 0);
+      bool success = prefetch_line(pf_address, (intern_->get_mshr_occupancy_ratio() < 0.5), 0);
       if (success)
         active_lookahead = {pf_address, stride, degree - 1};
       // If we fail, try again next cycle

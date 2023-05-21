@@ -47,11 +47,11 @@ public:
     ++current_cycle;
   }
 
-  virtual void initialize(){};
+  virtual void initialize() {} // LCOV_EXCL_LINE
   virtual void operate() = 0;
-  virtual void begin_phase(){};
-  virtual void end_phase(unsigned){};
-  virtual void print_deadlock() {}
+  virtual void begin_phase() {}       // LCOV_EXCL_LINE
+  virtual void end_phase(unsigned) {} // LCOV_EXCL_LINE
+  virtual void print_deadlock() {}    // LCOV_EXCL_LINE
 };
 
 } // namespace champsim

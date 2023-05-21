@@ -74,8 +74,31 @@ pref_branch_variant_data = [
     ('prefetcher_branch_operate', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')), 'void')
 ]
 def get_pref_data(module_data):
+    prefix = 'ipref' if module_data.get('_is_instruction_prefetcher', False) else 'pref'
     return util.chain(module_data,
-        { 'func_map': { v[0]: '_'.join((('ipref' if module_data.get('_is_instruction_prefetcher',False) else 'pref'), module_data['name'], v[0])) for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data)} }) # Resolve function names
+        { 'func_map': { v[0]: '_'.join((prefix, module_data['name'], v[0])) for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data)} }, # Resolve function names
+        { 'deprecated_func_map' : {
+                'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l2c_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'llc_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l1i_prefetcher_cache_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l1d_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l2c_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'llc_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l1i_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l1d_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l2c_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'llc_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cycle_operate')),
+                'l1i_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l1d_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l2c_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'llc_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l1i_prefetcher_branch_operate': '_'.join((prefix, module_data['name'], 'prefetcher_branch_operate'))
+            }
+        }
+    )
 
 repl_variant_data = [
     ('initialize_replacement', tuple(), 'void'),
@@ -88,8 +111,10 @@ def get_repl_data(module_data):
 
 def get_module_opts_lines(module_data):
     yield '-Wno-unused-parameter'
+    yield '-DCHAMPSIM_MODULE'
     if module_data.get('legacy'):
         yield from ('-D{}={}'.format(*x) for x in module_data['func_map'].items())
+        yield from ('-D{}={}'.format(*x) for x in module_data.get('deprecated_func_map',{}).items())
 
 # Generate C++ code giving the mangled module specialization functions
 def mangled_declaration(fname, args, rtype, module_data):

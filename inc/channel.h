@@ -23,8 +23,6 @@
 #include <limits>
 #include <vector>
 
-#include "util.h"
-
 struct ooo_model_instr;
 
 enum access_type {

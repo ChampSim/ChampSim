@@ -1,5 +1,5 @@
 #include <catch.hpp>
-#include "util.h"
+#include "util/lru_table.h"
 
 #include <type_traits>
 

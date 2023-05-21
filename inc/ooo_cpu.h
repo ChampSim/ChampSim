@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef OOO_CPU_H
 #define OOO_CPU_H
 
@@ -32,7 +37,7 @@
 #include "instruction.h"
 #include "modules_detect.h"
 #include "operable.h"
-#include "util.h"
+#include "util/lru_table.h"
 #include <type_traits>
 
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
@@ -514,4 +519,9 @@ std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(u
   return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
 }
 
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif
