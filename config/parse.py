@@ -16,10 +16,12 @@ import itertools
 import collections
 import os
 import math
+import sys
 
 from . import defaults
 from . import modules
 from . import util
+from . import validate
 
 default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1 }
 default_core = { 'frequency' : 4000 }
@@ -199,6 +201,12 @@ def apply_defaults_in_context(merged_configs, cores, caches, ptws, pmem, vmem, b
 
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     normalized_config = normalize(merged_configs)
+
+    error_responses = validate.validate(*normalized_config)
+    if len(error_responses) > 0:
+        for e in error_responses:
+            print(e)
+        sys.exit()
 
     ## DEPRECATION
     # The listed keys are deprecated. For now, permit them but print a warning
