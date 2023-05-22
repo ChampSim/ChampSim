@@ -57,54 +57,65 @@ def duplicate_to_length(elements, n):
 def filter_inaccessible(system, roots, key='lower_level'):
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
 
-def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
-    config_file = util.chain(merged_configs, default_root)
-
-    pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
-    vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
+def normalize(config):
+    pmem = config.get('physical_memory', {})
+    vmem = config.get('virtual_memory', {})
 
     # Copy or trim cores as necessary to fill out the specified number of cores
-    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file['num_cores'])
+    cores = duplicate_to_length(config.get('ooo_cpu', [{}]), config.get('num_cores', 1))
 
-    # Default core elements
     core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
-    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'DIB': dict(), 'name': 'cpu'+str(i), '_index': i}, default_core) for i,cpu in enumerate(cores)]
+    cores = [util.chain(cpu, {'name': 'cpu'+str(i)}, util.subdict(config, core_keys_to_copy)) for i, cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
-            config_file.get('caches', []),
+            config.get('caches', []),
 
             # Copy values from the core specification, if these are dicts
             ({'name': util.read_element_name(core,name), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': util.read_element_name(core,name), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
-            ({'name': 'LLC', **config_file.get('LLC', {})},),
+            ({'name': util.read_element_name(core,name), **config[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config.get(name), dict)),
+            ({'name': 'LLC', **config.get('LLC', {})},)
+        )
 
-            # Apply defaults named after the cores
+    ptws = util.combine_named(
+            config.get('ptws',[]),
+
+            # Copy values from the core specification, if these are dicts
+            ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+
+            # Copy values from the config root, if these are dicts
+            ({'name': util.read_element_name(c,'PTW'), **config['PTW']} for c in cores if isinstance(config.get('PTW'), dict)),
+        )
+
+    # Convert all core values to labels
+    cores = [util.chain({n: util.read_element_name(cpu, n) for n in (*pinned_cache_names, 'PTW')}, cpu) for cpu in cores]
+
+    return cores, caches, ptws, pmem, vmem
+
+def apply_defaults_in_context(merged_configs, cores, caches, ptws, pmem, vmem, branch_context, btb_context, prefetcher_context, replacement_context):
+    config_file = util.chain(merged_configs, default_root)
+
+    pmem = util.chain(pmem, default_pmem)
+    vmem = util.chain(vmem, default_vmem)
+
+    # Default core elements
+    cores = [util.chain(cpu, {'DIB': dict(), '_index': i}, default_core) for i,cpu in enumerate(cores)]
+
+    # Default lower levels
+    # Apply defaults named after the cores
+    caches = util.combine_named(caches.values(),
             (defaults.core_defaults(cpu, 'L1I', ll_name='L2C', lt_name='ITLB') for cpu in cores),
             (defaults.core_defaults(cpu, 'L1D', ll_name='L2C', lt_name='DTLB') for cpu in cores),
             (defaults.core_defaults(cpu, 'ITLB', ll_name='STLB') for cpu in cores),
             (defaults.core_defaults(cpu, 'DTLB', ll_name='STLB') for cpu in cores),
             ({**defaults.core_defaults(cpu, 'L2C', lt_name='STLB'), 'lower_level': 'LLC'} for cpu in cores),
             (defaults.core_defaults(cpu, 'STLB', ll_name='PTW') for cpu in cores)
-            )
+        )
 
-    ptws = util.combine_named(
-            config_file.get('ptws',[]),
-
-            # Copy values from the core specification, if these are dicts
-            ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
-
-            # Copy values from the config root, if these are dicts
-            ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
-
-            # Apply defaults named after the cores
-            (defaults.core_defaults(cpu, 'PTW', ll_name='L1D') for cpu in cores)
-            )
-
-    # Convert all core values to labels
-    cores = [util.chain({n: util.read_element_name(cpu, n) for n in (*pinned_cache_names, 'PTW')}, cpu) for cpu in cores]
+    # Apply defaults named after the cores
+    ptws = util.combine_named(ptws.values(), (defaults.core_defaults(cpu, 'PTW', ll_name='L1D') for cpu in cores))
 
     # The name 'DRAM' is reserved for the physical memory
     caches = {k:v for k,v in caches.items() if k != 'DRAM'}
@@ -130,19 +141,6 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
                 'cpu': cpu['_index']
             } for cpu in cores)
             )
-
-    ## DEPRECATION
-    # The listed keys are deprecated. For now, permit them but print a warning
-    for cache, deprecations in itertools.product(caches.values(), cache_deprecation_keys.items()):
-        old, new = deprecations
-        if old in cache:
-            print('WARNING: key "{}" in cache {} is deprecated. Use "{}" instead.'.format(old, cache['name'], new))
-            cache[new] = cache[old]
-    for ptw, deprecations in itertools.product(ptws.values(), ptw_deprecation_keys.items()):
-        old, new = deprecations
-        if old in ptw:
-            print('WARNING: key "{}" in PTW {} is deprecated. Use "{}" instead.'.format(old, ptw['name'], new))
-            ptw[new] = ptw[old]
 
     # Remove caches that are inaccessible
     caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
@@ -194,20 +192,40 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
             'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
             }
 
+    env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
+    extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
+
+    return elements, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+
+def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+    normalized_config = normalize(merged_configs)
+
+    ## DEPRECATION
+    # The listed keys are deprecated. For now, permit them but print a warning
+    for cache, deprecations in itertools.product(normalized_config[1].values(), cache_deprecation_keys.items()):
+        old, new = deprecations
+        if old in cache:
+            print('WARNING: key "{}" in cache {} is deprecated. Use "{}" instead.'.format(old, cache['name'], new))
+            cache[new] = cache[old]
+    for ptw, deprecations in itertools.product(normalized_config[2].values(), ptw_deprecation_keys.items()):
+        old, new = deprecations
+        if old in ptw:
+            print('WARNING: key "{}" in PTW {} is deprecated. Use "{}" instead.'.format(old, ptw['name'], new))
+            ptw[new] = ptw[old]
+
+    elements, module_info, extern_config, env = apply_defaults_in_context(merged_configs, *normalized_config, branch_context, btb_context, prefetcher_context, replacement_context)
+
     if compile_all_modules:
         modules_to_compile = [*set(itertools.chain(*(d.keys() for d in module_info.values())))]
     else:
         modules_to_compile = [*set(d['name'] for d in itertools.chain(
-            *(c['_replacement_data'] for c in caches.values()),
-            *(c['_prefetcher_data'] for c in caches.values()),
-            *(c['_branch_predictor_data'] for c in cores),
-            *(c['_btb_data'] for c in cores)
+            *(c['_replacement_data'] for c in elements['caches']),
+            *(c['_prefetcher_data'] for c in elements['caches']),
+            *(c['_branch_predictor_data'] for c in elements['cores']),
+            *(c['_btb_data'] for c in elements['cores'])
         ))]
 
-    env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
-    extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
-
-    return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+    return elements, modules_to_compile, module_info, extern_config, env
 
 def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
