@@ -1,4 +1,5 @@
 import itertools
+import math
 
 class is_nonnegative:
     def __call__(self, val):
@@ -14,75 +15,154 @@ class is_integral:
     def __str__(self):
         return 'is integral'
 
+class is_power_of_two:
+    def __call__(self, val):
+        return val.bit_count() == 1
+
+    def __str__(self):
+        return 'is power of two'
+
+class matches_type:
+    def __init__(self, t):
+        self.type = t
+
+    def __call__(self, val):
+        return isinstance(val, self.type)
+
+    def __str__(self):
+        return 'has type '+str(self.type)
+
+class key_validator:
+    def __init__(self, key, validator):
+        self.key = key
+        self.validator = validator
+
+    def __call__(self, elem):
+        return (self.key not in elem) or (self.validator(elem.get(self.key)))
+
+    def __str__(self):
+        return str(self.validator) + ' for key \'' + str(self.key) + '\''
+
 core_error_validators = [
-    ('ifetch_buffer_size', (is_nonnegative(), is_integral())),
-    ('decode_buffer_size', (is_nonnegative(), is_integral())),
-    ('dispatch_buffer_size', (is_nonnegative(), is_integral())),
-    ('rob_size', (is_nonnegative(), is_integral())),
-    ('lq_size', (is_nonnegative(), is_integral())),
-    ('sq_size', (is_nonnegative(), is_integral())),
-    ('fetch_width', (is_nonnegative(), is_integral())),
-    ('decode_width', (is_nonnegative(), is_integral())),
-    ('dispatch_width', (is_nonnegative(), is_integral())),
-    ('schedule_size', (is_nonnegative(), is_integral())),
-    ('execute_width', (is_nonnegative(), is_integral())),
-    ('lq_width', (is_nonnegative(), is_integral())),
-    ('sq_width', (is_nonnegative(), is_integral())),
-    ('retire_width', (is_nonnegative(), is_integral())),
-    ('mispredict_penalty', (is_nonnegative(), is_integral())),
-    ('decode_latency', (is_nonnegative(), is_integral())),
-    ('dispatch_latency', (is_nonnegative(), is_integral())),
-    ('schedule_latency', (is_nonnegative(), is_integral())),
-    ('execute_latency', (is_nonnegative(), is_integral())),
-    ('dib_set', (is_nonnegative(), is_integral())),
-    ('dib_way', (is_nonnegative(), is_integral())),
-    ('dib_window', (is_nonnegative(), is_integral()))
+    key_validator('ifetch_buffer_size', is_nonnegative()),
+    key_validator('ifetch_buffer_size', is_integral()),
+    key_validator('decode_buffer_size', is_nonnegative()),
+    key_validator('decode_buffer_size', is_integral()),
+    key_validator('dispatch_buffer_size', is_nonnegative()),
+    key_validator('dispatch_buffer_size', is_integral()),
+    key_validator('rob_size', is_nonnegative()),
+    key_validator('rob_size', is_integral()),
+    key_validator('lq_size', is_nonnegative()),
+    key_validator('lq_size', is_integral()),
+    key_validator('sq_size', is_nonnegative()),
+    key_validator('sq_size', is_integral()),
+    key_validator('fetch_width', is_nonnegative()),
+    key_validator('fetch_width', is_integral()),
+    key_validator('decode_width', is_nonnegative()),
+    key_validator('decode_width', is_integral()),
+    key_validator('dispatch_width', is_nonnegative()),
+    key_validator('dispatch_width', is_integral()),
+    key_validator('schedule_size', is_nonnegative()),
+    key_validator('schedule_size', is_integral()),
+    key_validator('execute_width', is_nonnegative()),
+    key_validator('execute_width', is_integral()),
+    key_validator('lq_width', is_nonnegative()),
+    key_validator('lq_width', is_integral()),
+    key_validator('sq_width', is_nonnegative()),
+    key_validator('sq_width', is_integral()),
+    key_validator('retire_width', is_nonnegative()),
+    key_validator('retire_width', is_integral()),
+    key_validator('mispredict_penalty', is_nonnegative()),
+    key_validator('mispredict_penalty', is_integral()),
+    key_validator('decode_latency', is_nonnegative()),
+    key_validator('decode_latency', is_integral()),
+    key_validator('dispatch_latency', is_nonnegative()),
+    key_validator('dispatch_latency', is_integral()),
+    key_validator('schedule_latency', is_nonnegative()),
+    key_validator('schedule_latency', is_integral()),
+    key_validator('execute_latency', is_nonnegative()),
+    key_validator('execute_latency', is_integral()),
+    key_validator('dib_set', is_nonnegative()),
+    key_validator('dib_set', is_integral()),
+    key_validator('dib_set', is_power_of_two()),
+    key_validator('dib_way', is_nonnegative()),
+    key_validator('dib_way', is_integral()),
+    key_validator('dib_window', is_nonnegative()),
+    key_validator('dib_window', is_integral()),
+    key_validator('dib_window', is_power_of_two()),
+    key_validator('branch_predictor', matches_type((str, list))),
+    key_validator('btb', matches_type((str, list)))
 ]
 
 cache_error_validators = [
-    ('frequency', (is_nonnegative(), is_integral())),
-    ('sets', (is_nonnegative(), is_integral())),
-    ('ways', (is_nonnegative(), is_integral())),
-    ('rq_size', (is_nonnegative(), is_integral())),
-    ('wq_size', (is_nonnegative(), is_integral())),
-    ('pq_size', (is_nonnegative(), is_integral())),
-    ('mshr_size', (is_nonnegative(), is_integral())),
-    ('latency', (is_nonnegative(), is_integral())),
-    ('hit_latency', (is_nonnegative(), is_integral())),
-    ('fill_latency', (is_nonnegative(), is_integral())),
-    ('max_tag_check', (is_nonnegative(), is_integral())),
-    ('max_fill', (is_nonnegative(), is_integral()))
+    key_validator('frequency', is_nonnegative()),
+    key_validator('frequency', is_integral()),
+    key_validator('sets', is_nonnegative()),
+    key_validator('sets', is_integral()),
+    key_validator('sets', is_power_of_two()),
+    key_validator('ways', is_nonnegative()),
+    key_validator('ways', is_integral()),
+    key_validator('rq_size', is_nonnegative()),
+    key_validator('rq_size', is_integral()),
+    key_validator('wq_size', is_nonnegative()),
+    key_validator('wq_size', is_integral()),
+    key_validator('pq_size', is_nonnegative()),
+    key_validator('pq_size', is_integral()),
+    key_validator('mshr_size', is_nonnegative()),
+    key_validator('mshr_size', is_integral()),
+    key_validator('latency', is_nonnegative()),
+    key_validator('latency', is_integral()),
+    key_validator('hit_latency', is_nonnegative()),
+    key_validator('hit_latency', is_integral()),
+    key_validator('fill_latency', is_nonnegative()),
+    key_validator('fill_latency', is_integral()),
+    key_validator('max_tag_check', is_nonnegative()),
+    key_validator('max_tag_check', is_integral()),
+    key_validator('max_fill', is_nonnegative()),
+    key_validator('max_fill', is_integral()),
+    key_validator('prefetcher', matches_type((str, list))),
+    key_validator('replacement', matches_type((str, list)))
 ]
 
 ptw_error_validators = [
-    ("pscl5_set", (is_nonnegative(), is_integral())),
-    ("pscl5_way", (is_nonnegative(), is_integral())),
-    ("pscl4_set", (is_nonnegative(), is_integral())),
-    ("pscl4_way", (is_nonnegative(), is_integral())),
-    ("pscl3_set", (is_nonnegative(), is_integral())),
-    ("pscl3_way", (is_nonnegative(), is_integral())),
-    ("pscl2_set", (is_nonnegative(), is_integral())),
-    ("pscl2_way", (is_nonnegative(), is_integral())),
-    ("mshr_size", (is_nonnegative(), is_integral())),
-    ("max_read", (is_nonnegative(), is_integral())),
-    ("max_write", (is_nonnegative(), is_integral()))
+    key_validator("pscl5_set", is_nonnegative()),
+    key_validator("pscl5_set", is_integral()),
+    key_validator('pscl5_set', is_power_of_two()),
+    key_validator("pscl5_way", is_nonnegative()),
+    key_validator("pscl5_way", is_integral()),
+    key_validator("pscl4_set", is_nonnegative()),
+    key_validator("pscl4_set", is_integral()),
+    key_validator('pscl4_set', is_power_of_two()),
+    key_validator("pscl4_way", is_nonnegative()),
+    key_validator("pscl4_way", is_integral()),
+    key_validator("pscl3_set", is_nonnegative()),
+    key_validator("pscl3_set", is_integral()),
+    key_validator('pscl3_set', is_power_of_two()),
+    key_validator("pscl3_way", is_nonnegative()),
+    key_validator("pscl3_way", is_integral()),
+    key_validator("pscl2_set", is_nonnegative()),
+    key_validator("pscl2_set", is_integral()),
+    key_validator('pscl2_set', is_power_of_two()),
+    key_validator("pscl2_way", is_nonnegative()),
+    key_validator("pscl2_way", is_integral()),
+    key_validator("mshr_size", is_nonnegative()),
+    key_validator("mshr_size", is_integral()),
+    key_validator("max_read", is_nonnegative()),
+    key_validator("max_read", is_integral()),
+    key_validator("max_write", is_nonnegative()),
+    key_validator("max_write", is_integral())
 ]
 
-error_fmtstr = 'Error: key {} in {} {} failed validation "{}" with value {}'
+error_fmtstr = 'Error: {} {} failed validation "{}"'
 
 def validate(cores, caches, ptws, pmem, vmem):
-    error_responses = []
-    for elem, validator in itertools.product(cores, core_error_validators):
-        key, val = validator
-        error_responses.extend((error_fmtstr.format(key, 'core', elem.get('name'), v, elem.get(key)) for v in val if key in elem and not v(elem.get(key))))
+    validators = itertools.chain(
+        itertools.product(('core',), cores, core_error_validators),
+        itertools.product(('cache',), caches.values(), cache_error_validators),
+        itertools.product(('PTW',), ptws.values(), ptw_error_validators)
+    )
 
-    for elem, validator in itertools.product(caches.values(), cache_error_validators):
-        key, val = validator
-        error_responses.extend((error_fmtstr.format(key, 'cache', elem.get('name'), v, elem.get(key)) for v in val if key in elem and not v(elem.get(key))))
-
-    for elem, validator in itertools.product(ptws.values(), ptw_error_validators):
-        key, val = validator
-        error_responses.extend((error_fmtstr.format(key, 'PTW', elem.get('name'), v, elem.get(key)) for v in val if key in elem and not v(elem.get(key))))
+    error_responses = [error_fmtstr.format(label, elem.get('name'), validator) for label, elem, validator in validators if not validator(elem)]
 
     return error_responses
 
