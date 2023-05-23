@@ -21,7 +21,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/span.h"
 #include "vmem.h"
 
 PageTableWalker::PageTableWalker(Builder b)

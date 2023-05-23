@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef UTIL_SPAN_H
+#define UTIL_SPAN_H
 
 #include <algorithm>
-#include <cstdint>
+#include <cassert>
+#include <iterator>
 #include <limits>
-#include <optional>
-#include <vector>
-
-#include "msl/bits.h"
-#include "msl/lru_table.h"
 
 namespace champsim
 {
-using msl::bitmask;
-using msl::lg2;
-using msl::lru_table;
-using msl::splice_bits;
-
 template <typename It>
 std::pair<It, It> get_span(It begin, It end, typename std::iterator_traits<It>::difference_type sz)
 {
@@ -54,20 +45,6 @@ std::pair<It, It> get_span_p(It begin, It end, F&& func)
 {
   return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
 }
-
-template <typename InputIt, typename OutputIt, typename F>
-auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
-{
-  begin = std::find_if(begin, end, func);
-  for (auto i = begin; i != end; ++i) {
-    if (func(*i))
-      *d_begin++ = std::move(*i);
-    else
-      *begin++ = std::move(*i);
-  }
-  return std::pair{begin, d_begin};
-}
-
 } // namespace champsim
 
 #endif

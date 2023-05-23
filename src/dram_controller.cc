@@ -22,7 +22,7 @@
 
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/span.h"
 
 uint64_t cycles(double time, int io_freq)
 {

@@ -16,10 +16,11 @@
 
 #include "channel.h"
 
+#include <cassert>
+
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "util.h"
 
 champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)

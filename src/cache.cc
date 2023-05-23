@@ -17,13 +17,15 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <iomanip>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/algorithm.h"
+#include "util/span.h"
 
 using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"};
@@ -294,15 +296,25 @@ long int transform_if_n(R& queue, Output out, long int sz, F&& test_func, G&& tr
   return retval;
 }
 
+template <bool UpdateRequest>
 auto CACHE::initiate_tag_check(champsim::channel* ul)
 {
   return [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul](const auto& entry) {
     CACHE::tag_lookup_type retval{entry};
     retval.event_cycle = cycle;
 
-    if constexpr (std::is_same_v<std::decay_t<decltype(entry)>, champsim::channel::request_type>) {
+    if constexpr (UpdateRequest) {
       if (entry.response_requested)
         retval.to_return = {&ul->returned};
+    }
+
+    if constexpr (champsim::debug_print) {
+      std::cout << "[TAG] initiate_tag_check";
+      std::cout << " instr_id: " << retval.instr_id;
+      std::cout << " full_addr: " << std::hex << retval.address;
+      std::cout << " full_v_addr: " << retval.v_address << std::dec;
+      std::cout << " type: " << access_type_names.at(retval.type);
+      std::cout << " event: " << retval.event_cycle << std::endl;
     }
 
     return retval;
@@ -327,23 +339,26 @@ void CACHE::operate()
   // Perform fills
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
+    auto [fill_begin, fill_end] =
+        champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
     auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
     fill_bw -= std::distance(fill_begin, complete_end);
     q.get().erase(fill_begin, complete_end);
   }
 
   // Initiate tag checks
-  auto tag_bw = std::min<long long>(static_cast<long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check));
+  auto tag_bw = std::max(0ll, std::min<long long>(static_cast<long long>(MAX_TAG), MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check)));
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
+  tag_bw -= transform_if_n(
+      translation_stash, std::back_inserter(inflight_tag_check), tag_bw, [](const auto& entry) { return entry.is_translated; }, initiate_tag_check<false>());
   for (auto ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check(ul));
+      tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
     }
   }
-  tag_bw -= transform_if_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check());
+  tag_bw -= transform_if_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
 
   // Issue translations
   issue_translation();
@@ -361,9 +376,11 @@ void CACHE::operate()
     if (pkt.type == WRITE && !this->match_offset_bits)
       return this->handle_write(pkt); // Treat writes (that is, writebacks) like fills
     else
-      return this->handle_miss(pkt);  // Treat writes (that is, stores) like reads
+      return this->handle_miss(pkt); // Treat writes (that is, stores) like reads
   };
-  auto [tag_check_ready_begin, tag_check_ready_end] = champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG, [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
+  auto [tag_check_ready_begin, tag_check_ready_end] =
+      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
+                           [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
   auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
 
@@ -484,26 +501,30 @@ void CACHE::finish_packet(const response_type& packet)
 
 void CACHE::finish_translation(const response_type& packet)
 {
+  auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) {
+    return (entry.v_address >> LOG2_PAGE_SIZE) == page_num;
+  };
+  auto mark_translated = [p_page = packet.data](auto& entry) {
+    entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
+    entry.is_translated = true;                                                     // This entry is now translated
+  };
+
+  if constexpr (champsim::debug_print) {
+    std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
+    std::cout << " paddr: " << std::hex << packet.data;
+    std::cout << " vaddr: " << packet.v_address << std::dec;
+    std::cout << " cycle: " << current_cycle << std::endl;
+  }
+
   // Restart stashed translations
-  auto stash_it =
-      std::stable_partition(std::begin(translation_stash), std::end(translation_stash),
-                            [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) { return (entry.v_address >> LOG2_PAGE_SIZE) != page_num; });
-  std::for_each(stash_it, std::end(translation_stash), [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY)](auto& entry) { entry.event_cycle = cycle; });
-  inflight_tag_check.insert(std::cend(inflight_tag_check), stash_it, std::end(translation_stash));
-  translation_stash.erase(stash_it, std::end(translation_stash));
+  auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
+  auto finish_end = std::stable_partition(finish_begin, std::end(translation_stash), matches_vpage);
+  std::for_each(finish_begin, finish_end, mark_translated);
 
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
     if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
-      entry.address = champsim::splice_bits(packet.data, entry.v_address, LOG2_PAGE_SIZE); // translated address
-      entry.is_translated = true;                                                          // This entry is now translated
-
-      if constexpr (champsim::debug_print) {
-        std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
-        std::cout << " paddr: " << std::hex << entry.address;
-        std::cout << " vaddr: " << entry.v_address << std::dec;
-        std::cout << " cycle: " << current_cycle << std::endl;
-      }
+      mark_translated(entry);
     }
   }
 }
@@ -532,17 +553,14 @@ void CACHE::issue_translation()
         if (q_entry.translate_issued) {
           std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
           std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
-          std::cout << " type: " << +q_entry.type << std::endl;
+          std::cout << " type: " << +q_entry.type << " cycle: " << this->current_cycle << std::endl;
         }
       }
     }
   });
 }
 
-std::size_t CACHE::get_mshr_occupancy() const
-{
-  return std::size(MSHR);
-}
+std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
 
 // LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
@@ -553,10 +571,7 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 }
 // LCOV_EXCL_STOP
 
-std::size_t CACHE::get_mshr_size() const
-{
-  return MSHR_SIZE;
-}
+std::size_t CACHE::get_mshr_size() const { return MSHR_SIZE; }
 
 // LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
@@ -567,10 +582,7 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 }
 // LCOV_EXCL_STOP
 
-double CACHE::get_mshr_occupancy_ratio() const
-{
-  return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size());
-}
+double CACHE::get_mshr_occupancy_ratio() const { return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size()); }
 
 void CACHE::initialize()
 {

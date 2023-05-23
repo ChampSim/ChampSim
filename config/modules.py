@@ -48,7 +48,7 @@ class ModuleSearchContext:
 def data_getter(prefix, module_name, funcs):
     return {
         'name': module_name,
-        'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',) },
+        'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',), 'CPPFLAGS': ('-DCHAMPSIM_MODULE',) },
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
 

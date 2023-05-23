@@ -14,22 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef MSL_BITS_H
-#define MSL_BITS_H
+#ifndef UTIL_ALGORITHM_H
+#define UTIL_ALGORITHM_H
 
-#include <cstdint>
-#include <limits>
+#include <algorithm>
 
-namespace champsim::msl
+namespace champsim
 {
-constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
-
-constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
+template <typename InputIt, typename OutputIt, typename F>
+auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
 {
-  return (begin - end < 64) ? ((1ull << (begin - end)) - 1) << end : std::numeric_limits<uint64_t>::max();
+  begin = std::find_if(begin, end, func);
+  for (auto i = begin; i != end; ++i) {
+    if (func(*i))
+      *d_begin++ = std::move(*i);
+    else
+      *begin++ = std::move(*i);
+  }
+  return std::pair{begin, d_begin};
 }
-
-constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits) { return (upper & ~bitmask(bits)) | (lower & bitmask(bits)); }
-} // namespace champsim::msl
+} // namespace champsim
 
 #endif

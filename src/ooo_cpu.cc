@@ -23,6 +23,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "util/span.h"
 
 std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time();
 

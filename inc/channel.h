@@ -23,8 +23,6 @@
 #include <limits>
 #include <vector>
 
-#include "util.h"
-
 enum access_type {
   LOAD = 0,
   RFO,

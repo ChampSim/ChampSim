@@ -28,7 +28,6 @@
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-#include "util.h"
 #include "vmem.h"
 
 namespace champsim
@@ -42,7 +41,7 @@ int main(int argc, char** argv)
 
   // initialize knobs
   uint8_t knob_cloudsuite = 0;
-  uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
+  uint64_t warmup_instructions = 0, simulation_instructions = std::numeric_limits<uint64_t>::max();
   bool knob_json_out = false;
   std::ofstream json_file;
 
@@ -87,7 +86,9 @@ int main(int argc, char** argv)
 
   std::vector<champsim::tracereader> traces;
   std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite); });
+                 [knob_cloudsuite, repeat = (simulation_instructions != std::numeric_limits<uint64_t>::max()), i = uint8_t(0)](auto name) mutable {
+                   return get_tracereader(name, i++, knob_cloudsuite, repeat);
+                 });
 
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},

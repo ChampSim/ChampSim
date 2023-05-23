@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef CACHE_H
 #define CACHE_H
 
@@ -139,6 +144,7 @@ class CACHE : public champsim::operable
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
 
+  template <bool>
   auto initiate_tag_check(champsim::channel* ul = nullptr);
 
   std::deque<tag_lookup_type> internal_PQ{};
@@ -177,8 +183,10 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t get_occupancy(uint8_t queue_type, uint64_t address);
-  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type, uint64_t address);
+  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t get_occupancy(uint8_t queue_type,
+                                                                                                                                           uint64_t address);
+  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type,
+                                                                                                                            uint64_t address);
 
   std::size_t get_mshr_occupancy() const;
   std::size_t get_mshr_size() const;
@@ -444,4 +452,9 @@ public:
 
 #include "cache_module_def.inc"
 
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif

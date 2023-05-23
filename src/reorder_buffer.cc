@@ -1,9 +1,11 @@
 #include "reorder_buffer.h"
 
+#include <cassert>
 #include <iostream>
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "util/span.h"
 
 champsim::reorder_buffer::reorder_buffer(uint32_t cpu, std::size_t size, std::size_t lq_size, std::size_t sq_size, long sched_width, long exec_width, long lq_width, long sq_width,
     long l1d_bw, long retire_width, uint64_t mispredict_lat, uint64_t sched_lat, uint64_t exec_lat, champsim::channel* data_queues)
