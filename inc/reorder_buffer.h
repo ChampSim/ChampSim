@@ -45,6 +45,8 @@ struct reorder_buffer
   std::vector<lq_value_type> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
+  std::vector<uint64_t> ready_to_execute;
+
   champsim::CacheBus L1D_bus;
 
   void operate_sq();

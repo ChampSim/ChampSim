@@ -82,11 +82,15 @@ void champsim::reorder_buffer::do_scheduling(value_type& instr)
 
   instr.scheduled = true;
   instr.event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
+
+  if (instr.num_reg_dependent == 0)
+    ready_to_execute.push_back(instr.instr_id);
 }
 
 bool champsim::reorder_buffer::is_ready_to_execute(const value_type& instr) const
 {
-  return instr.event_cycle <= current_cycle && instr.scheduled && !instr.executed && instr.num_reg_dependent == 0;
+  //return instr.event_cycle <= current_cycle && instr.scheduled && !instr.executed && instr.num_reg_dependent == 0;
+  return instr.event_cycle <= current_cycle && (std::find(std::begin(ready_to_execute), std::end(ready_to_execute), instr.instr_id) != std::end(ready_to_execute));
 }
 
 void champsim::reorder_buffer::execute_instruction()
@@ -118,6 +122,9 @@ void champsim::reorder_buffer::do_execution(value_type& rob_entry)
   if constexpr (champsim::debug_print) {
     std::cout << "[ROB] " << __func__ << " instr_id: " << rob_entry.instr_id << " event_cycle: " << rob_entry.event_cycle << std::endl;
   }
+
+  auto rte_remove_begin = std::remove(std::begin(ready_to_execute), std::end(ready_to_execute), rob_entry.instr_id);
+  ready_to_execute.erase(rte_remove_begin, std::end(ready_to_execute));
 }
 
 void champsim::reorder_buffer::do_memory_scheduling(value_type& instr)
@@ -262,6 +269,8 @@ void champsim::reorder_buffer::do_complete_execution(value_type& instr)
     auto dep_it = find_in_rob(dependent_id);
     dep_it->num_reg_dependent--;
     assert(dep_it->num_reg_dependent >= 0);
+    if (dep_it->num_reg_dependent == 0)
+      ready_to_execute.push_back(dep_it->instr_id);
   }
 
   if (instr.branch_mispredicted)
