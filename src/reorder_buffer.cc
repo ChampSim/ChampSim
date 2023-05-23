@@ -87,17 +87,14 @@ void champsim::reorder_buffer::do_scheduling(value_type& instr)
     ready_to_execute.push_back(instr.instr_id);
 }
 
-bool champsim::reorder_buffer::is_ready_to_execute(const value_type& instr) const
-{
-  //return instr.event_cycle <= current_cycle && instr.scheduled && !instr.executed && instr.num_reg_dependent == 0;
-  return instr.event_cycle <= current_cycle && (std::find(std::begin(ready_to_execute), std::end(ready_to_execute), instr.instr_id) != std::end(ready_to_execute));
-}
-
 void champsim::reorder_buffer::execute_instruction()
 {
   auto exec_bw = EXEC_WIDTH;
-  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw > 0; ++rob_it) {
-    if (is_ready_to_execute(*rob_it)) {
+  for (auto exec_id_it = std::find_first_of(std::begin(ROB_instr_ids), std::end(ROB_instr_ids), std::begin(ready_to_execute), std::end(ready_to_execute));
+      exec_bw > 0 && exec_id_it != std::end(ROB_instr_ids);
+      exec_id_it = std::find_first_of(exec_id_it, std::end(ROB_instr_ids), std::begin(ready_to_execute), std::end(ready_to_execute)))
+  {
+    if (auto rob_it = find_in_rob(*exec_id_it); rob_it->event_cycle <= current_cycle) {
       do_execution(*rob_it);
       --exec_bw;
     }
