@@ -38,11 +38,13 @@ bool champsim::reorder_buffer::would_accept(const value_type& inst) const
 
 void champsim::reorder_buffer::push_back(const value_type& v) {
   ROB.push_back(v);
+  ROB_instr_ids.push_back(ROB.back().instr_id);
   do_memory_scheduling(ROB.back());
 }
 
 void champsim::reorder_buffer::push_back(value_type&& v) {
   ROB.push_back(std::move(v));
+  ROB_instr_ids.push_back(ROB.back().instr_id);
   do_memory_scheduling(ROB.back());
 }
 
@@ -146,7 +148,7 @@ void champsim::reorder_buffer::do_forwarding_for_lq(lq_value_type& q_entry)
   });
   if (sq_it != std::end(SQ) && sq_it->virtual_address == q_entry->virtual_address) {
     if (sq_it->fetch_issued) { // Store already executed
-      q_entry->finish(std::begin(ROB), std::end(ROB));
+      finish(*q_entry);
       q_entry.reset();
 
       if constexpr (champsim::debug_print)
@@ -166,7 +168,7 @@ void champsim::reorder_buffer::operate_sq()
 {
   auto store_bw = SQ_WIDTH;
 
-  const auto complete_id = std::empty(ROB) ? std::numeric_limits<uint64_t>::max() : ROB.front().instr_id;
+  const auto complete_id = std::empty(ROB_instr_ids) ? std::numeric_limits<uint64_t>::max() : ROB_instr_ids.front();
   auto do_complete = [cycle = current_cycle, complete_id, this](const auto& x) {
     return x.instr_id < complete_id && x.event_cycle <= cycle && this->do_complete_store(x);
   };
@@ -204,14 +206,14 @@ void champsim::reorder_buffer::operate_lq()
 
 void champsim::reorder_buffer::do_finish_store(const LSQ_ENTRY& sq_entry)
 {
-  sq_entry.finish(std::begin(ROB), std::end(ROB));
+  finish(sq_entry);
 
   // Release dependent loads
   for (std::optional<LSQ_ENTRY>& dependent : sq_entry.lq_depend_on_me) {
     assert(dependent.has_value()); // LQ entry is still allocated
     assert(dependent->producer_id == sq_entry.instr_id);
 
-    dependent->finish(std::begin(ROB), std::end(ROB));
+    finish(*dependent);
     dependent.reset();
   }
 }
@@ -257,7 +259,7 @@ void champsim::reorder_buffer::do_complete_execution(value_type& instr)
   instr.completed = true;
 
   for (auto dependent_id : instr.registers_instrs_depend_on_me) {
-    auto dep_it = std::find_if(std::begin(ROB), std::end(ROB), [dependent_id](const auto& x) { return x.instr_id == dependent_id; });
+    auto dep_it = find_in_rob(dependent_id);
     dep_it->num_reg_dependent--;
     assert(dep_it->num_reg_dependent >= 0);
   }
@@ -289,7 +291,7 @@ void champsim::reorder_buffer::handle_memory_return()
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.lower_level->returned); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
-        lq_entry->finish(std::begin(ROB), std::end(ROB));
+        finish(*lq_entry);
         lq_entry.reset();
       }
     }
@@ -303,8 +305,16 @@ void champsim::reorder_buffer::retire_rob()
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [](const auto& x) { std::cout << "[ROB] retire_rob instr_id: " << x.instr_id << " is retired" << std::endl; });
   }
-  num_retired += std::distance(retire_begin, retire_end);
+  auto retire_count = std::distance(retire_begin, retire_end);
+  num_retired += retire_count;
   ROB.erase(retire_begin, retire_end);
+  ROB_instr_ids.erase(std::begin(ROB_instr_ids), std::next(std::begin(ROB_instr_ids), retire_count));
+}
+
+auto champsim::reorder_buffer::find_in_rob(uint64_t id) -> std::deque<value_type>::iterator
+{
+  auto id_it = std::find(std::begin(ROB_instr_ids), std::end(ROB_instr_ids), id);
+  return std::next(std::begin(ROB), std::distance(std::begin(ROB_instr_ids), id_it));
 }
 
 std::size_t champsim::reorder_buffer::occupancy() const { return std::size(ROB); }
@@ -366,20 +376,19 @@ void champsim::reorder_buffer::print_deadlock() const
 }
 // LCOV_EXCL_STOP
 
-template <typename It>
-void champsim::LSQ_ENTRY::finish(It begin, It end) const
+void champsim::reorder_buffer::finish(const LSQ_ENTRY& entry)
 {
-  auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
-  assert(rob_entry != end);
-  assert(rob_entry->instr_id == this->instr_id);
+  auto rob_entry = find_in_rob(entry.instr_id);
+  assert(rob_entry != std::end(ROB));
+  assert(rob_entry->instr_id == entry.instr_id);
 
   ++rob_entry->completed_mem_ops;
   assert(rob_entry->completed_mem_ops <= rob_entry->num_mem_ops());
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[LSQ] " << __func__ << " instr_id: " << instr_id << std::hex;
-    std::cout << " full_address: " << virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops() - rob_entry->completed_mem_ops;
-    std::cout << " event_cycle: " << event_cycle << std::endl;
+    std::cout << "[LSQ] " << __func__ << " instr_id: " << entry.instr_id << std::hex;
+    std::cout << " full_address: " << entry.virtual_address << std::dec << " remain_mem_ops: " << rob_entry->num_mem_ops() - rob_entry->completed_mem_ops;
+    std::cout << " event_cycle: " << entry.event_cycle << std::endl;
   }
 }
 

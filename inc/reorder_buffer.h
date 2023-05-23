@@ -22,8 +22,6 @@ struct LSQ_ENTRY {
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
   LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid);
-  template <typename It>
-  void finish(It begin, It end) const;
 };
 
 struct reorder_buffer
@@ -43,6 +41,7 @@ struct reorder_buffer
   uint64_t stall_resume_cycle = 0;
 
   std::deque<value_type> ROB;
+  std::deque<uint64_t> ROB_instr_ids;
   std::vector<lq_value_type> LQ;
   std::deque<LSQ_ENTRY> SQ;
 
@@ -68,6 +67,9 @@ struct reorder_buffer
   void do_finish_store(const LSQ_ENTRY& sq_entry);
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
+
+  std::deque<value_type>::iterator find_in_rob(uint64_t id);
+  void finish(const LSQ_ENTRY& entry);
 
   explicit reorder_buffer(uint32_t cpu, std::size_t size, std::size_t lq_size, std::size_t sq_size, long sched_width, long exec_width, long lq_width, long sq_width,
       long l1d_bw, long retire_width, uint64_t mispredict_lat, uint64_t sched_lat, uint64_t exec_lat, champsim::channel* data_queues);
