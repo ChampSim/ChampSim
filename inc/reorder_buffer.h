@@ -41,7 +41,7 @@ struct reorder_buffer
   uint64_t stall_resume_cycle = 0;
 
   std::deque<value_type> ROB;
-  std::deque<uint64_t> ROB_instr_ids;
+  std::vector<uint64_t> ROB_instr_ids;
   std::vector<lq_value_type> LQ;
   std::deque<LSQ_ENTRY> SQ;
 

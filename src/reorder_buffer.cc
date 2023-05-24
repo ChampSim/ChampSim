@@ -12,7 +12,10 @@ champsim::reorder_buffer::reorder_buffer(uint32_t cpu, std::size_t size, std::si
 : ROB_SIZE(size), SQ_SIZE(sq_size), SCHEDULER_SIZE(sched_width), EXEC_WIDTH(exec_width), RETIRE_WIDTH(retire_width),
   LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), L1D_BANDWIDTH(l1d_bw),
   BRANCH_MISPREDICT_PENALTY(mispredict_lat), SCHEDULING_LATENCY(sched_lat), EXEC_LATENCY(exec_lat), LQ(lq_size), L1D_bus(cpu, data_queues)
-{}
+{
+  ROB_instr_ids.reserve(ROB_SIZE);
+  ready_to_execute.reserve(ROB_SIZE);
+}
 
 champsim::LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
