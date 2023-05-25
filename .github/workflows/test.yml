@@ -217,7 +217,6 @@ jobs:
       run: python3 -m json.tool test.json
 
     - name: Capture LCOV
-      if: ${{ matrix.config.coverage }}
       run: |
         lcov --capture --no-external \
         --directory . \
@@ -225,7 +224,6 @@ jobs:
         --output-file lcov_json.info
 
     - uses: actions/upload-artifact@v3.1.2
-      if: ${{ matrix.config.coverage }}
       with:
         name: lcov-json
         path: lcov_json.info
