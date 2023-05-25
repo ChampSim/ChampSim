@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <iomanip>
-#include <iostream>
 #include <numeric>
 #include <sstream>
 #include <utility>
 #include <vector>
 
 #include "stats_printer.h"
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
@@ -35,21 +35,20 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
-  stream << std::endl;
-  stream << stats.name << " cumulative IPC: " << std::ceil(stats.instrs()) / std::ceil(stats.cycles()) << " instructions: " << stats.instrs()
-         << " cycles: " << stats.cycles() << std::endl;
-  stream << stats.name << " Branch Prediction Accuracy: " << (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch
-         << "% MPKI: " << (1000.0 * total_mispredictions) / std::ceil(stats.instrs());
-  stream << " Average ROB Occupancy at Mispredict: " << std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions << std::endl;
+  fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
+             stats.instrs(), stats.cycles());
+  fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
+             (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
+             std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
 
-  stream << "Branch type MPKI" << std::endl;
+  fmt::print(stream, "Branch type MPKI\n");
   for (auto [str, idx] : types)
-    stream << str << ": " << mpkis[idx] << std::endl;
-  stream << std::endl;
+    fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
+  fmt::print(stream, "\n");
 }
 
 void champsim::plain_printer::print(CACHE::stats_type stats)
@@ -64,59 +63,40 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
       TOTAL_MISS += stats.misses.at(type.second).at(cpu);
     }
 
-    stream << stats.name << " TOTAL       ";
-    stream << "ACCESS: " << std::setw(10) << TOTAL_HIT + TOTAL_MISS << "  ";
-    stream << "HIT: " << std::setw(10) << TOTAL_HIT << "  ";
-    stream << "MISS: " << std::setw(10) << TOTAL_MISS << std::endl;
-
+    fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
     for (const auto& type : types) {
-      std::ostringstream name;
-      name << std::left << std::setw(12) << type.first;
-      stream << stats.name << " " << name.str() << " ";
-      stream << "ACCESS: " << std::setw(10) << stats.hits[type.second][cpu] + stats.misses[type.second][cpu] << "  ";
-      stream << "HIT: " << std::setw(10) << stats.hits[type.second][cpu] << "  ";
-      stream << "MISS: " << std::setw(10) << stats.misses[type.second][cpu] << std::endl;
+      fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, type.first,
+                 stats.hits[type.second][cpu] + stats.misses[type.second][cpu], stats.hits[type.second][cpu], stats.misses[type.second][cpu]);
     }
 
-    stream << stats.name << " PREFETCH  ";
-    stream << "REQUESTED: " << std::setw(10) << stats.pf_requested << "  ";
-    stream << "ISSUED: " << std::setw(10) << stats.pf_issued << "  ";
-    stream << "USEFUL: " << std::setw(10) << stats.pf_useful << "  ";
-    stream << "USELESS: " << std::setw(10) << stats.pf_useless << std::endl;
+    fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
+               stats.pf_useful, stats.pf_useless);
 
-    stream << stats.name << " AVERAGE MISS LATENCY: " << std::ceil(stats.total_miss_latency) / std::ceil(TOTAL_MISS) << " cycles" << std::endl;
-    // stream << " AVERAGE MISS LATENCY: " << (stats.total_miss_latency)/TOTAL_MISS << " cycles " << stats.total_miss_latency << "/" << TOTAL_MISS<< std::endl;
+    fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, std::ceil(stats.total_miss_latency) / std::ceil(TOTAL_MISS));
   }
 }
 
 void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 {
-  stream << stats.name << std::endl;
-  stream << " RQ ROW_BUFFER_HIT: " << std::setw(10) << stats.RQ_ROW_BUFFER_HIT << std::endl;
-  stream << "  ROW_BUFFER_MISS: " << std::setw(10) << stats.RQ_ROW_BUFFER_MISS << std::endl;
-  stream << " AVG DBUS CONGESTED CYCLE: ";
+  fmt::print(stream, "\n{} RQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
   if (stats.dbus_count_congested > 0)
-    stream << std::setw(10) << std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested);
+    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
   else
-    stream << "-";
-  stream << std::endl;
-  stream << " WQ ROW_BUFFER_HIT: " << std::setw(10) << stats.WQ_ROW_BUFFER_HIT << std::endl;
-  stream << "  ROW_BUFFER_MISS: " << std::setw(10) << stats.WQ_ROW_BUFFER_MISS;
-  stream << "  FULL: " << std::setw(10) << stats.WQ_FULL << std::endl;
-  stream << std::endl;
+    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
+  fmt::print(stream, "WQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n  FULL: {:10}\n", stats.name, stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS,
+             stats.WQ_FULL);
 }
 
 void champsim::plain_printer::print(champsim::phase_stats& stats)
 {
-  stream << "=== " << stats.name << " ===" << std::endl;
+  fmt::print(stream, "=== {} ===\n", stats.name);
 
   int i = 0;
   for (auto tn : stats.trace_names)
-    stream << "CPU " << i++ << " runs " << tn << std::endl;
+    fmt::print(stream, "CPU {} runs {}", i++, tn);
 
   if (NUM_CPUS > 1) {
-    stream << std::endl;
-    stream << "Total Simulation Statistics (not including warmup)" << std::endl;
+    fmt::print(stream, "\nTotal Simulation Statistics (not including warmup)\n");
 
     for (const auto& stat : stats.sim_cpu_stats)
       print(stat);
@@ -125,8 +105,7 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
       print(stat);
   }
 
-  stream << std::endl;
-  stream << "Region of Interest Statistics" << std::endl;
+  fmt::print(stream, "\nRegion of Interest Statistics\n");
 
   for (const auto& stat : stats.roi_cpu_stats)
     print(stat);
@@ -134,8 +113,7 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
   for (const auto& stat : stats.roi_cache_stats)
     print(stat);
 
-  stream << std::endl;
-  stream << "DRAM Statistics" << std::endl;
+  fmt::print(stream, "\nDRAM Statistics\n");
   for (const auto& stat : stats.roi_dram_stats)
     print(stat);
 }

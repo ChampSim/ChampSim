@@ -27,6 +27,7 @@
 #include "instruction.h"
 #include "util/algorithm.h"
 #include "util/span.h"
+#include <fmt/core.h>
 
 using namespace std::literals::string_view_literals;
 constexpr std::array<std::string_view, NUM_TYPES> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"};
@@ -63,16 +64,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " instr_id: " << fill_mshr.instr_id << " address: " << std::hex << (fill_mshr.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << fill_mshr.address;
-    std::cout << " full_v_addr: " << fill_mshr.v_address << std::dec;
-    std::cout << " set: " << get_set_index(fill_mshr.address);
-    std::cout << " way: " << way_idx;
-    std::cout << " type: " << access_type_names.at(fill_mshr.type);
-    std::cout << " prefetch_metadata: " << fill_mshr.pf_metadata;
-    std::cout << " cycle_enqueued: " << fill_mshr.cycle_enqueued;
-    std::cout << " cycle: " << current_cycle << std::endl;
+    fmt::print(
+        "[{}] {} instr_id: {} address: {:x} full_addr: {:x} full_v_addr: {:x} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n",
+        NAME, __func__, fill_mshr.instr_id, fill_mshr.address >> OFFSET_BITS, fill_mshr.address, fill_mshr.v_address, get_set_index(fill_mshr.address), way_idx,
+        access_type_names.at(fill_mshr.type), fill_mshr.pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
   }
 
   bool success = true;
@@ -143,14 +138,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   const auto hit = (way != set_end);
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << handle_pkt.address;
-    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-    std::cout << " set: " << get_set_index(handle_pkt.address);
-    std::cout << " way: " << std::distance(set_begin, way) << " (" << (hit ? "HIT" : "MISS") << ")";
-    std::cout << " type: " << access_type_names.at(handle_pkt.type);
-    std::cout << " cycle: " << current_cycle << std::endl;
+    fmt::print("[{}] {} instr_id: {} address: {:x} full_addr: {:x} full_v_addr: {:x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__,
+               handle_pkt.instr_id, handle_pkt.address >> OFFSET_BITS, handle_pkt.address, handle_pkt.v_address, get_set_index(handle_pkt.address),
+               std::distance(set_begin, way), hit ? "HIT" : "MISS", access_type_names.at(handle_pkt.type), current_cycle);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
@@ -188,14 +178,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
-    std::cout << " full_addr: " << handle_pkt.address;
-    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-    std::cout << " type: " << access_type_names.at(handle_pkt.type);
-    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this;
-    std::cout << " create mshr?: " << !handle_pkt.skip_fill << std::noboolalpha;
-    std::cout << " cycle: " << current_cycle << std::endl;
+    fmt::print("[{}] {} instr_id: {} address: {:x} full_addr: {:x} full_v_addr: {:x} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__,
+               handle_pkt.instr_id, handle_pkt.address >> OFFSET_BITS, handle_pkt.address, handle_pkt.v_address, access_type_names.at(handle_pkt.type),
+               handle_pkt.prefetch_from_this, current_cycle);
   }
 
   cpu = handle_pkt.cpu;
@@ -272,13 +257,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " instr_id: " << handle_pkt.instr_id;
-    std::cout << " full_addr: " << std::hex << handle_pkt.address;
-    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
-    std::cout << " type: " << access_type_names.at(handle_pkt.type);
-    std::cout << " local_prefetch: " << std::boolalpha << handle_pkt.prefetch_from_this << std::noboolalpha;
-    std::cout << " cycle: " << current_cycle << std::endl;
+    fmt::print("[{}] {} instr_id: {} full_addr: {:x} full_v_addr: {:x} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
+               handle_pkt.address, handle_pkt.v_address, access_type_names.at(handle_pkt.type), handle_pkt.prefetch_from_this, current_cycle);
   }
 
   inflight_writes.emplace_back(handle_pkt, current_cycle);
@@ -310,12 +290,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[TAG] initiate_tag_check";
-      std::cout << " instr_id: " << retval.instr_id;
-      std::cout << " full_addr: " << std::hex << retval.address;
-      std::cout << " full_v_addr: " << retval.v_address << std::dec;
-      std::cout << " type: " << access_type_names.at(retval.type);
-      std::cout << " event: " << retval.event_cycle << std::endl;
+      fmt::print("[TAG] initiate_tag_check instr_id: {} full_addr: {:x} full_v_addr: {:x} type: {} event: {}\n", retval.instr_id, retval.address,
+                 retval.v_address, access_type_names.at(retval.type), retval.event_cycle);
     }
 
     return retval;
@@ -473,10 +449,7 @@ void CACHE::finish_packet(const response_type& packet)
 
   // sanity check
   if (mshr_entry == MSHR.end()) {
-    std::cerr << "[" << NAME << "_MSHR] " << __func__ << " cannot find a matching entry!";
-    std::cerr << " address: " << std::hex << packet.address;
-    std::cerr << " address: " << (packet.address >> OFFSET_BITS) << std::dec;
-    std::cerr << " cycle: " << current_cycle << std::endl;
+    fmt::print(stderr, "[{}_MSHR] {} cannot find a matching entry! address: {:x} v_address: {:x}\n", NAME, __func__, packet.address, packet.v_address);
     assert(0);
   }
 
@@ -486,13 +459,9 @@ void CACHE::finish_packet(const response_type& packet)
   mshr_entry->event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_MSHR] " << __func__;
-    std::cout << " instr_id: " << mshr_entry->instr_id << " address: " << std::hex << mshr_entry->address;
-    std::cout << " full_v_addr: " << mshr_entry->v_address;
-    std::cout << " data: " << mshr_entry->data << std::dec;
-    std::cout << " type: " << access_type_names.at(mshr_entry->type);
-    std::cout << " to_finish: " << std::size(lower_level->returned);
-    std::cout << " event: " << mshr_entry->event_cycle << " current: " << current_cycle << std::endl;
+    fmt::print("[{}_MSHR] {} instr_id: {} address: {:x} data: {:x} type: {} to_finish: {} event: {} current: {}\n", NAME, __func__, mshr_entry->instr_id,
+               mshr_entry->address, mshr_entry->data, access_type_names.at(mshr_entry->type), std::size(lower_level->returned), mshr_entry->event_cycle,
+               current_cycle);
   }
 
   // Order this entry after previously-returned entries, but before non-returned
@@ -511,10 +480,7 @@ void CACHE::finish_translation(const response_type& packet)
   };
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "_TRANSLATE] " << __func__;
-    std::cout << " paddr: " << std::hex << packet.data;
-    std::cout << " vaddr: " << packet.v_address << std::dec;
-    std::cout << " cycle: " << current_cycle << std::endl;
+    fmt::print("[{}_TRANSLATE] {} paddr: {:x} vaddr: {:x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address, current_cycle);
   }
 
   // Restart stashed translations
@@ -552,9 +518,8 @@ void CACHE::issue_translation()
       q_entry.translate_issued = this->lower_translate->add_rq(fwd_pkt);
       if constexpr (champsim::debug_print) {
         if (q_entry.translate_issued) {
-          std::cout << "[TRANSLATE] do_issue_translation instr_id: " << q_entry.instr_id;
-          std::cout << " address: " << std::hex << q_entry.address << " v_address: " << q_entry.v_address << std::dec;
-          std::cout << " type: " << +q_entry.type << " cycle: " << this->current_cycle << std::endl;
+          fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {:x} vaddr: {:x} cycle: {}\n", q_entry.instr_id, q_entry.address, q_entry.v_address,
+                     access_type_names.at(q_entry.type));
         }
       }
     }
@@ -656,49 +621,41 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
 void CACHE::print_deadlock()
 {
   if (!std::empty(MSHR)) {
-    std::cout << NAME << " MSHR Entry" << std::endl;
     std::size_t j = 0;
-    for (mshr_type entry : MSHR) {
-      std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type);
-      std::cout << " event_cycle: " << entry.event_cycle << std::endl;
+    for (auto entry : MSHR) {
+      fmt::print("[{}_MSHR] entry: {} instr_id: {} address: {:x} v_addr: {:x} type: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
+                 entry.v_address, access_type_names.at(entry.type), entry.event_cycle);
     }
   } else {
-    std::cout << NAME << " MSHR empty" << std::endl;
+    fmt::print("{} MSHR empty\n", NAME);
   }
 
   for (auto ul : upper_levels) {
     if (!std::empty(ul->RQ)) {
       for (const auto& entry : ul->RQ) {
-        std::cout << "[" << NAME << " RQ] "
-                  << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
-                  << std::endl;
+        fmt::print("[{}_RQ] instr_id: {} address: {:x} v_addr: {:x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(entry.type));
       }
     } else {
-      std::cout << NAME << " RQ empty" << std::endl;
+      fmt::print("{} RQ empty\n", NAME);
     }
 
     if (!std::empty(ul->WQ)) {
       for (const auto& entry : ul->WQ) {
-        std::cout << "[" << NAME << " WQ] "
-                  << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
-                  << std::endl;
+        fmt::print("[{}_WQ] instr_id: {} address: {:x} v_addr: {:x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(entry.type));
       }
     } else {
-      std::cout << NAME << " WQ empty" << std::endl;
+      fmt::print("{} WQ empty\n", NAME);
     }
 
     if (!std::empty(ul->PQ)) {
       for (const auto& entry : ul->PQ) {
-        std::cout << "[" << NAME << " PQ] "
-                  << " instr_id: " << entry.instr_id;
-        std::cout << " address: " << std::hex << entry.address << " v_addr: " << entry.v_address << std::dec << " type: " << access_type_names.at(entry.type)
-                  << std::endl;
+        fmt::print("[{}_PQ] instr_id: {} address: {:x} v_addr: {:x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(entry.type));
       }
     } else {
-      std::cout << NAME << " PQ empty" << std::endl;
+      fmt::print("{} PQ empty\n", NAME);
     }
   }
 }
