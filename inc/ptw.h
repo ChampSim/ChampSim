@@ -23,7 +23,7 @@
 
 #include "channel.h"
 #include "operable.h"
-#include "util.h"
+#include "util/lru_table.h"
 
 class VirtualMemory;
 class PageTableWalker : public champsim::operable

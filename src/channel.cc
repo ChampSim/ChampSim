@@ -16,10 +16,12 @@
 
 #include "channel.h"
 
+#include <cassert>
+
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "util.h"
+#include <fmt/core.h>
 
 champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
@@ -129,11 +131,7 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 bool champsim::channel::add_rq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_rq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << access_type_names.at(static_cast<std::size_t>(packet.type)) << std::endl;
+    fmt::print("[channel_rq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(static_cast<std::size_t>(packet.type)));
   }
 
   sim_stats.RQ_ACCESS++;
@@ -151,11 +149,7 @@ bool champsim::channel::add_rq(const request_type& packet)
 bool champsim::channel::add_wq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_wq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << access_type_names.at(static_cast<std::size_t>(packet.type)) << std::endl;
+    fmt::print("[channel_wq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(static_cast<std::size_t>(packet.type)));
   }
 
   sim_stats.WQ_ACCESS++;
@@ -173,11 +167,7 @@ bool champsim::channel::add_wq(const request_type& packet)
 bool champsim::channel::add_pq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_pq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << access_type_names.at(static_cast<std::size_t>(packet.type)) << std::endl;
+    fmt::print("[channel_pq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(static_cast<std::size_t>(packet.type)));
   }
 
   sim_stats.PQ_ACCESS++;

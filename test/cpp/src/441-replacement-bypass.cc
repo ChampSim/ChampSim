@@ -72,7 +72,7 @@ SCENARIO("The replacement policy can bypass") {
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(test_b.address));
+          CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{test_b.address}));
         }
 
         for (uint64_t i = 0; i < 2*(fill_latency+hit_latency); ++i)

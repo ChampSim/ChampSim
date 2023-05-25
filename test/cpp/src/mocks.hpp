@@ -113,6 +113,7 @@ class release_MRC : public champsim::operable
 {
   std::deque<champsim::channel::request_type> packets;
   std::size_t mpacket_count = 0;
+  uint64_t ret_data = 0x11111111;
 
   public:
     champsim::channel queues{};
@@ -122,6 +123,7 @@ class release_MRC : public champsim::operable
       auto add_pkt = [&](auto pkt) {
         packets.push_back(pkt);
         ++mpacket_count;
+        packets.back().data = ++ret_data;
       };
 
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);

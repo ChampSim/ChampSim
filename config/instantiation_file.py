@@ -188,7 +188,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     for cpu in cores:
         yield 'O3_CPU {}{{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
-        yield '.index({index})'.format(**cpu)
+        yield '.index({_index})'.format(**cpu)
         yield '.frequency({frequency})'.format(**cpu)
         yield '.l1i(&{L1I})'.format(**cpu)
         yield '.l1i_bandwidth({L1I}.MAX_TAG)'.format(**cpu)

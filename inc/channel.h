@@ -25,8 +25,6 @@
 #include <string_view>
 #include <vector>
 
-#include "util.h"
-
 struct ooo_model_instr;
 
 enum class access_type : unsigned {

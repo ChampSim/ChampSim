@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef CACHE_H
 #define CACHE_H
 
@@ -21,6 +26,7 @@
 #include <bitset>
 #include <deque>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -43,6 +49,7 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, static_cast<std::size_t>(access_type::NUM_TYPES)> hits = {};
   std::array<std::array<uint64_t, NUM_CPUS>, static_cast<std::size_t>(access_type::NUM_TYPES)> misses = {};
 
+  double avg_miss_latency = 0;
   uint64_t total_miss_latency = 0;
 };
 
@@ -139,6 +146,7 @@ class CACHE : public champsim::operable
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
 
+  template <bool>
   auto initiate_tag_check(champsim::channel* ul = nullptr);
 
   std::deque<tag_lookup_type> internal_PQ{};
@@ -446,4 +454,9 @@ public:
 
 #include "cache_module_def.inc"
 
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif

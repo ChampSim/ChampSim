@@ -24,6 +24,7 @@
 #include <string>
 
 #include "instruction.h"
+#include "util/detect.h"
 
 namespace champsim
 {
@@ -33,6 +34,7 @@ class tracereader
   struct reader_concept {
     virtual ~reader_concept() = default;
     virtual ooo_model_instr operator()() = 0;
+    virtual bool eof() const = 0;
   };
 
   template <typename T>
@@ -40,7 +42,16 @@ class tracereader
     T intern_;
     reader_model(T&& val) : intern_(std::move(val)) {}
 
+    template <typename U>
+    using has_eof = decltype(std::declval<U>().eof());
+
     ooo_model_instr operator()() override { return intern_(); }
+    bool eof() const override
+    {
+      if constexpr (champsim::is_detected_v<has_eof, T>)
+        return intern_.eof();
+      return false; // If an eof() member function is not provided, assume the trace never ends.
+    }
   };
 
   std::unique_ptr<reader_concept> pimpl_;
@@ -57,6 +68,8 @@ public:
     retval.instr_id = instr_unique_id++;
     return retval;
   }
+
+  auto eof() const { return pimpl_->eof(); }
 };
 
 template <typename T, typename F>
@@ -125,6 +138,6 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
 std::string get_fptr_cmd(std::string_view fname);
 } // namespace champsim
 
-champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite);
+champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
 
 #endif

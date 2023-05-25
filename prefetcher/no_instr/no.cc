@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "cache.h"
 
 void CACHE::prefetcher_initialize() {}
