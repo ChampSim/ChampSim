@@ -143,7 +143,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
           elem->_operate();
 
       THEN("The upper level sees the metadata in prefetcher_cache_fill()") {
-        REQUIRE_THAT(test::metadata_fill_collector.at(&upper), Catch::Matchers::SizeIs(1) && Catch::Matchers::Contains(seed_metadata));
+        REQUIRE_THAT(test::metadata_fill_collector.at(&upper), Catch::Matchers::RangeEquals(std::vector{seed_metadata}));
       }
     }
   }

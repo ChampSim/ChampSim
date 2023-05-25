@@ -1,10 +1,8 @@
 #include "va_ampm_lite.h"
 
-#include <iostream>
-
 uint64_t va_ampm_lite::region_type::region_lru = 0;
 
-void va_ampm_lite::prefetcher_initialize() { std::cout << "Virtual Address Space AMPM-Lite Prefetcher" << std::endl; }
+void va_ampm_lite::prefetcher_initialize() {}
 
 auto va_ampm_lite::page_and_offset(uint64_t addr) -> std::pair<uint64_t, uint64_t>
 {

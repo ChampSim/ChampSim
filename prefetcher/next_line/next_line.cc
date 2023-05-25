@@ -1,7 +1,6 @@
 #include "next_line.h"
-#include <iostream>
 
-void next_line::prefetcher_initialize() { std::cout << intern_->NAME << " next line prefetcher" << std::endl; }
+void next_line::prefetcher_initialize() {}
 uint32_t next_line::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
 {
   // assert(addr == ip); // Invariant for instruction prefetchers

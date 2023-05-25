@@ -21,6 +21,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <string>
 
 #include "champsim_constants.h"
 #include "channel.h"

@@ -10,8 +10,6 @@
 
 void basic_btb::initialize_btb()
 {
-  std::cout << "Basic BTB sets: " << direct.sets << " ways: " << direct.ways << " indirect buffer size: " << indirect.size
-    << " RAS size: " << ras.max_size << std::endl;
 }
 
 std::pair<uint64_t, bool> basic_btb::btb_prediction(uint64_t ip)
