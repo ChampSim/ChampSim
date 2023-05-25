@@ -15,7 +15,6 @@
  */
 
 #include <algorithm>
-#include <CLI/CLI.hpp>
 #include <fstream>
 #include <numeric>
 #include <string>
@@ -28,6 +27,7 @@
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
+#include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
 namespace champsim
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
   std::string json_file_name;
   std::vector<std::string> trace_names;
 
-  auto set_heartbeat_callback = [&](auto){
+  auto set_heartbeat_callback = [&](auto) {
     for (O3_CPU& cpu : gen_environment.cpu_view())
       cpu.show_heartbeat = false;
   };
@@ -55,15 +55,13 @@ int main(int argc, char** argv)
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
   app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
-  auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions, "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
+  auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions,
+                                         "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
 
-  auto json_option = app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")
-    ->expected(0,1);
+  auto json_option =
+      app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
 
-  app.add_option("traces", trace_names, "The paths to the traces")
-    ->required()
-    ->expected(NUM_CPUS)
-    ->check(CLI::ExistingFile);
+  app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
 
