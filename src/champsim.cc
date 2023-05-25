@@ -91,7 +91,6 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
       next_phase_complete[cpu.cpu] = next_phase_complete[cpu.cpu] || (cpu.sim_instr() >= length);
     }
 
-    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
         for (champsim::operable& op : operables)

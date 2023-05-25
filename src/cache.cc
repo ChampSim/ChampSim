@@ -289,12 +289,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[TAG] initiate_tag_check";
-      std::cout << " instr_id: " << retval.instr_id;
-      std::cout << " full_addr: " << std::hex << retval.address;
-      std::cout << " full_v_addr: " << retval.v_address << std::dec;
-      std::cout << " type: " << access_type_names.at(retval.type);
-      std::cout << " event: " << retval.event_cycle << std::endl;
+      fmt::print("[TAG] initiate_tag_check instr_id: {} full_addr: {:x} full_v_addr: {:x} type: {} event: {}\n",
+        retval.instr_id, retval.address, retval.v_address, access_type_names.at(retval.type), retval.event_cycle);
     }
 
     return retval;
@@ -481,7 +477,7 @@ void CACHE::finish_translation(const response_type& packet)
   };
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}_TRANSLATE] {} paddr: {:x} vaddr: {:x} cycle: {}\n", NAME, __func__, entry.address, entry.v_address, current_cycle);
+    fmt::print("[{}_TRANSLATE] {} paddr: {:x} vaddr: {:x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address, current_cycle);
   }
 
   // Restart stashed translations
