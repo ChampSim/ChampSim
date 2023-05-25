@@ -20,9 +20,8 @@
 #include <memory>
 #include <string>
 
-#include <fmt/ranges.h>
-
 #include "instruction.h"
+#include <fmt/ranges.h>
 
 namespace champsim
 {

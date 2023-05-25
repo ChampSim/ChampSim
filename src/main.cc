@@ -21,8 +21,6 @@
 #include <string>
 #include <vector>
 
-#include <fmt/core.h>
-
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "core_inst.inc"
@@ -30,6 +28,7 @@
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
+#include <fmt/core.h>
 
 namespace champsim
 {
@@ -99,7 +98,7 @@ int main(int argc, char** argv)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
 
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
-      phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
+             phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
 
   auto phase_stats = champsim::main(gen_environment, phases, traces);
 

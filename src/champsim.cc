@@ -21,21 +21,17 @@
 #include <numeric>
 #include <vector>
 
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-
 #include "environment.h"
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "phase_info.h"
 #include "tracereader.h"
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 
 auto start_time = std::chrono::steady_clock::now();
 
-std::chrono::seconds elapsed_time()
-{
-  return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
-}
+std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time); }
 
 namespace champsim
 {
@@ -96,8 +92,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         for (champsim::operable& op : operables)
           op.end_phase(cpu.cpu);
 
-        fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
-            phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
+        fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name, cpu.cpu,
+                   cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
       }
     }
 
@@ -105,8 +101,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   }
 
   for (O3_CPU& cpu : env.cpu_view()) {
-    fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
-        phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
+    fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name, cpu.cpu,
+               cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
   }
 
   phase_stats stats;

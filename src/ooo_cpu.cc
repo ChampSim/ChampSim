@@ -21,14 +21,13 @@
 #include <cmath>
 #include <numeric>
 
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
 #include "util/span.h"
+#include <fmt/chrono.h>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
@@ -59,8 +58,8 @@ void O3_CPU::operate()
     auto phase_instr{std::ceil(num_retired - begin_phase_instr)};
     auto phase_cycle{std::ceil(current_cycle - begin_phase_cycle)};
 
-    fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
-      cpu, num_retired, current_cycle, heartbeat_instr/heartbeat_cycle, phase_instr/phase_cycle, elapsed_time());
+    fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
+               num_retired, current_cycle, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
     next_print_instruction += STAT_PRINTING_PERIOD;
 
     last_heartbeat_instr = num_retired;
@@ -257,7 +256,8 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_depend_on_me = {begin, end};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip, std::size(fetch_packet.instr_depend_on_me), begin->event_cycle);
+    fmt::print("[IFETCH] {} instr_id: {} ip: {:x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
+               std::size(fetch_packet.instr_depend_on_me), begin->event_cycle);
   }
 
   return L1I_bus.issue_read(fetch_packet);
@@ -440,7 +440,8 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     SQ.emplace_back(instr.instr_id, dmem, instr.ip, instr.asid); // add it to the store queue
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {}\n", __func__, instr.instr_id, std::size(instr.source_memory), std::size(instr.destination_memory));
+    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
+               std::size(instr.destination_memory));
   }
 }
 
@@ -617,16 +618,17 @@ void O3_CPU::print_deadlock()
 
   if (!std::empty(IFETCH_BUFFER)) {
     fmt::print("IFETCH_BUFFER head instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}\n",
-        IFETCH_BUFFER.front().instr_id, +IFETCH_BUFFER.front().fetched, +IFETCH_BUFFER.front().scheduled, +IFETCH_BUFFER.front().executed,
-        +IFETCH_BUFFER.front().num_reg_dependent, IFETCH_BUFFER.front().num_mem_ops() - IFETCH_BUFFER.front().completed_mem_ops, IFETCH_BUFFER.front().event_cycle);
+               IFETCH_BUFFER.front().instr_id, +IFETCH_BUFFER.front().fetched, +IFETCH_BUFFER.front().scheduled, +IFETCH_BUFFER.front().executed,
+               +IFETCH_BUFFER.front().num_reg_dependent, IFETCH_BUFFER.front().num_mem_ops() - IFETCH_BUFFER.front().completed_mem_ops,
+               IFETCH_BUFFER.front().event_cycle);
   } else {
     fmt::print("IFETCH_BUFFER empty\n");
   }
 
   if (!std::empty(ROB)) {
-    fmt::print("ROB head instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}\n",
-        ROB.front().instr_id, +ROB.front().fetched, +ROB.front().scheduled, +ROB.front().executed,
-        +ROB.front().num_reg_dependent, ROB.front().num_mem_ops() - ROB.front().completed_mem_ops, ROB.front().event_cycle);
+    fmt::print("ROB head instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}\n", ROB.front().instr_id,
+               +ROB.front().fetched, +ROB.front().scheduled, +ROB.front().executed, +ROB.front().num_reg_dependent,
+               ROB.front().num_mem_ops() - ROB.front().completed_mem_ops, ROB.front().event_cycle);
   } else {
     fmt::print("ROB empty\n");
   }
@@ -635,8 +637,8 @@ void O3_CPU::print_deadlock()
   fmt::print("Load Queue Entry\n");
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (lq_it->has_value()) {
-      fmt::print("[LQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {}",
-          std::distance(std::begin(LQ), lq_it), (*lq_it)->instr_id, (*lq_it)->virtual_address, (*lq_it)->fetch_issued, (*lq_it)->event_cycle);
+      fmt::print("[LQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {}", std::distance(std::begin(LQ), lq_it), (*lq_it)->instr_id,
+                 (*lq_it)->virtual_address, (*lq_it)->fetch_issued, (*lq_it)->event_cycle);
       if ((*lq_it)->producer_id != std::numeric_limits<uint64_t>::max())
         fmt::print(" waits on {}", (*lq_it)->producer_id);
       fmt::print("\n");
@@ -646,8 +648,8 @@ void O3_CPU::print_deadlock()
   // print SQ entry
   fmt::print("\nStore Queue Entry\n");
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
-    fmt::print("[SQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {} LQ waiting:",
-        std::distance(std::begin(SQ), sq_it), sq_it->instr_id, sq_it->virtual_address, sq_it->fetch_issued, sq_it->event_cycle);
+    fmt::print("[SQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {} LQ waiting:", std::distance(std::begin(SQ), sq_it),
+               sq_it->instr_id, sq_it->virtual_address, sq_it->fetch_issued, sq_it->event_cycle);
     for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
       fmt::print("{} ", lq_entry->producer_id);
     fmt::print("\n");
@@ -670,8 +672,8 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
   assert(rob_entry->completed_mem_ops <= rob_entry->num_mem_ops());
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LSQ] {} instr_id: {} full_address: {:x} remain_mem_ops: {} event_cycle: {}\n",
-        __func__, instr_id, virtual_address, rob_entry->num_mem_ops() - rob_entry->completed_mem_ops, event_cycle);
+    fmt::print("[LSQ] {} instr_id: {} full_address: {:x} remain_mem_ops: {} event_cycle: {}\n", __func__, instr_id, virtual_address,
+               rob_entry->num_mem_ops() - rob_entry->completed_mem_ops, event_cycle);
   }
 }
 

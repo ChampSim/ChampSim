@@ -19,10 +19,9 @@
 #include <utility>
 #include <vector>
 
+#include "stats_printer.h"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
-
-#include "stats_printer.h"
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
@@ -36,13 +35,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
-  fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n",
-      stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()), stats.instrs(), stats.cycles());
-  fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n",
-      stats.name,
-      (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch,
-      (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
-      std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
+  fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
+             stats.instrs(), stats.cycles());
+  fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
+             (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
+             std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
@@ -66,14 +63,14 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
       TOTAL_MISS += stats.misses.at(type.second).at(cpu);
     }
 
-    fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT+TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
+    fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
     for (const auto& type : types) {
-      fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n",
-          stats.name, type.first, stats.hits[type.second][cpu]+stats.misses[type.second][cpu], stats.hits[type.second][cpu], stats.misses[type.second][cpu]);
+      fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, type.first,
+                 stats.hits[type.second][cpu] + stats.misses[type.second][cpu], stats.hits[type.second][cpu], stats.misses[type.second][cpu]);
     }
 
-    fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n",
-        stats.name, stats.pf_requested, stats.pf_issued, stats.pf_useful, stats.pf_useless);
+    fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
+               stats.pf_useful, stats.pf_useless);
 
     fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, std::ceil(stats.total_miss_latency) / std::ceil(TOTAL_MISS));
   }
@@ -86,7 +83,8 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
   else
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
-  fmt::print(stream, "WQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n  FULL: {:10}\n", stats.name, stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS, stats.WQ_FULL);
+  fmt::print(stream, "WQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n  FULL: {:10}\n", stats.name, stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS,
+             stats.WQ_FULL);
 }
 
 void champsim::plain_printer::print(champsim::phase_stats& stats)

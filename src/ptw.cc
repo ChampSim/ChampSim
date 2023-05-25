@@ -18,13 +18,12 @@
 
 #include <numeric>
 
-#include <fmt/core.h>
-
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/span.h"
 #include "vmem.h"
+#include <fmt/core.h>
 
 PageTableWalker::PageTableWalker(Builder b)
     : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
@@ -63,8 +62,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
     fwd_mshr.to_return = {&ul->returned};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:x} v_address: {:x} pt_page_offset: {} translation_level: {}\n",
-        NAME, __func__, walk_init.vaddr, handle_pkt.v_address, walk_offset / PTE_BYTES, walk_init.level);
+    fmt::print("[{}] {} address: {:x} v_address: {:x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
+               walk_offset / PTE_BYTES, walk_init.level);
   }
 
   return step_translation(fwd_mshr);
@@ -73,9 +72,9 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:x} v_address: {:x} data: {:x} pt_page_offset: {} translation_level: {} event: {} current: {}\n",
-        NAME, __func__, fill_mshr.address, fill_mshr.v_address, fill_mshr.data,
-        (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES), fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
+    fmt::print("[{}] {} address: {:x} v_address: {:x} data: {:x} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
+               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
+               fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
@@ -160,8 +159,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] {} address: {:x} v_address: {:x} data: {:x} translation_level: {}\n",
-          NAME, __func__, mshr_entry.address, mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] {} address: {:x} v_address: {:x} data: {:x} translation_level: {}\n", NAME, __func__, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
   };
 
@@ -171,8 +170,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:x} v_address: {:x} data: {:x} translation_level: {}\n",
-          this->NAME, mshr_entry.address, mshr_entry.v_address, mshr_entry.data, +mshr_entry.translation_level);
+      fmt::print("[{}] complete_packet address: {:x} v_address: {:x} data: {:x} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, +mshr_entry.translation_level);
     }
   };
 
@@ -207,8 +206,8 @@ void PageTableWalker::print_deadlock()
     fmt::print("{} MSHR Entry\n", NAME);
     std::size_t j = 0;
     for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] {} address: {:x} v_address: {:x} translation_level: {} event_cycle: {}\n",
-          NAME, j++, entry.address, entry.v_address, +entry.translation_level, entry.event_cycle);
+      fmt::print("[{}_MSHR] {} address: {:x} v_address: {:x} translation_level: {} event_cycle: {}\n", NAME, j++, entry.address, entry.v_address,
+                 +entry.translation_level, entry.event_cycle);
     }
   } else {
     fmt::print("{} MSHR empty\n", NAME);

@@ -20,11 +20,10 @@
 #include <cfenv>
 #include <cmath>
 
-#include <fmt/core.h>
-
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/span.h"
+#include <fmt/core.h>
 
 uint64_t cycles(double time, int io_freq)
 {
@@ -177,7 +176,7 @@ void MEMORY_CONTROLLER::initialize()
     fmt::print("{} GiB", dram_size / 1024);
   else
     fmt::print("{} MiB", dram_size);
-  fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8*DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
+  fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
 }
 
 void MEMORY_CONTROLLER::begin_phase()

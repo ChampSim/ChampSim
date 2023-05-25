@@ -20,8 +20,8 @@
 #include <array>
 #include <cmath>
 #include <limits>
-#include <string>
 #include <optional>
+#include <string>
 
 #include "champsim_constants.h"
 #include "channel.h"
