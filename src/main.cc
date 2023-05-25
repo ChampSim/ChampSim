@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 
   std::vector<champsim::tracereader> traces;
   std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, repeat = (sim_instr_option->count > 0), i = uint8_t(0)](auto name) mutable {
+                 [knob_cloudsuite, repeat = (sim_instr_option->count() > 0), i = uint8_t(0)](auto name) mutable {
                    return get_tracereader(name, i++, knob_cloudsuite, repeat);
                  });
 
