@@ -1,5 +1,7 @@
 #include "spp_dev.h"
 
+#include <cassert>
+
 #include "cache.h"
 
 #include <iostream>

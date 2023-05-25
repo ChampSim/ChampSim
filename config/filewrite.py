@@ -96,7 +96,7 @@ class FileWriter:
         ))
 
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        self.fileparts.extend((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(m['func_map'])) for m in joined_module_info.values())
+        self.fileparts.extend((os.path.join(inc_dir, m['name'] + '.inc'), get_map_lines(util.chain(m['func_map'], m.get('deprecated_func_map', {})))) for m in joined_module_info.values())
         self.fileparts.append((makefile_file_name, makefile.get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)))
 
     def finish(self):

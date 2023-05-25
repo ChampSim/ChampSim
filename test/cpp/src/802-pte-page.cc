@@ -5,7 +5,6 @@
 
 #include "champsim_constants.h"
 #include "dram_controller.h"
-#include "util.h"
 
 struct AdjDiffMatcher : Catch::Matchers::MatcherGenericBase {
   uint64_t stride;

@@ -68,7 +68,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
     # Default core elements
     core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
-    cores = [util.chain(cpu, {'name': 'cpu'+str(i), 'index': i}, util.subdict(config_file, core_keys_to_copy), {'DIB': dict()}, default_core) for i,cpu in enumerate(cores)]
+    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'DIB': dict(), 'name': 'cpu'+str(i), '_index': i}, default_core) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
@@ -127,7 +127,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
                 'name': cpu['PTW'],
                 **defaults.ul_dependent_defaults(*util.upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2),
                 'frequency': cpu['frequency'],
-                'cpu': cpu['index']
+                'cpu': cpu['_index']
             } for cpu in cores)
             )
 

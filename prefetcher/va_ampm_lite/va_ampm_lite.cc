@@ -81,7 +81,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cac
           && !::check_cl_prefetch(this, pos_step_addr)) {
         // found something that we should prefetch
         if ((addr >> LOG2_BLOCK_SIZE) != (pos_step_addr >> LOG2_BLOCK_SIZE)) {
-          bool prefetch_success = prefetch_line(pos_step_addr, get_occupancy(0, pos_step_addr) < get_size(0, pos_step_addr) / 2, metadata_in);
+          bool prefetch_success = prefetch_line(pos_step_addr, (get_mshr_occupancy_ratio() < 0.5), metadata_in);
           if (prefetch_success) {
             auto [pf_vpn, pf_page_offset] = ::page_and_offset(pos_step_addr);
             auto pf_region = std::find_if(std::begin(::regions.at(this)), std::end(::regions.at(this)), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });

@@ -14,27 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef ENVIRONMENT_H
-#define ENVIRONMENT_H
+#ifndef UTIL_ALGORITHM_H
+#define UTIL_ALGORITHM_H
 
-#include <functional>
-#include <vector>
-
-#include "cache.h"
-#include "dram_controller.h"
-#include "ooo_cpu.h"
-#include "operable.h"
-#include "ptw.h"
+#include <algorithm>
 
 namespace champsim
 {
-struct environment {
-  virtual std::vector<std::reference_wrapper<O3_CPU>> cpu_view() = 0;
-  virtual std::vector<std::reference_wrapper<CACHE>> cache_view() = 0;
-  virtual std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() = 0;
-  virtual MEMORY_CONTROLLER& dram_view() = 0;
-  virtual std::vector<std::reference_wrapper<operable>> operable_view() = 0;
-};
+template <typename InputIt, typename OutputIt, typename F>
+auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
+{
+  begin = std::find_if(begin, end, func);
+  for (auto i = begin; i != end; ++i) {
+    if (func(*i))
+      *d_begin++ = std::move(*i);
+    else
+      *begin++ = std::move(*i);
+  }
+  return std::pair{begin, d_begin};
+}
 } // namespace champsim
 
 #endif

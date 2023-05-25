@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "cache.h"
 #include <unordered_map>
 
