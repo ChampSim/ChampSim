@@ -2,13 +2,12 @@ ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
 CPPFLAGS += -MMD -I$(ROOT_DIR)/inc
 CXXFLAGS += --std=c++17 -O3 -Wall -Wextra -Wshadow -Wpedantic
-LDLIBS   += -lfmt
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 CPPFLAGS += -isystem $(TRIPLET_DIR)/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2
+LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 .phony: all all_execs clean configclean test makedirs
 
