@@ -187,7 +187,7 @@ jobs:
         name: lcov-python
         path: lcov_python.info
 
-  output:
+  json_output:
     runs-on: ubuntu-latest
 
     steps:
@@ -199,12 +199,16 @@ jobs:
       run: |
         vcpkg/bootstrap-vcpkg.sh
         vcpkg/vcpkg install
+        sudo apt-get install lcov
 
     - name: Configure
       run: ./config.sh
 
     - name: Make
       run: make
+      env:
+        CXXFLAGS: "--coverage"
+        LDFLAGS: "--coverage"
 
     - name: Produce JSON
       run: ./bin/champsim -w5000 -i5000 --json=test.json -- <(curl -s https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz | xz -dc)
@@ -212,9 +216,23 @@ jobs:
     - name: Validate JSON
       run: python3 -m json.tool test.json
 
+    - name: Capture LCOV
+      if: ${{ matrix.config.coverage }}
+      run: |
+        lcov --capture --no-external \
+        --directory . \
+        --include $(pwd)/src/json_printer.cc \
+        --output-file lcov_json.info
+
+    - uses: actions/upload-artifact@v3.1.2
+      if: ${{ matrix.config.coverage }}
+      with:
+        name: lcov-json
+        path: lcov_json.info
+
   upload_coveralls:
     runs-on: ubuntu-latest
-    needs: [cpp, python]
+    needs: [cpp, python, json_output]
     steps:
     - uses: actions/checkout@v3
 
@@ -229,8 +247,12 @@ jobs:
       with:
         name: lcov-python
 
+    - uses: actions/download-artifact@v3
+      with:
+        name: lcov-json
+
     - name: Merge coverage
-      run: lcov --add-tracefile lcov_cpp.info --add-tracefile lcov_python.info --output-file lcov.info
+      run: lcov --add-tracefile lcov_cpp.info --add-tracefile lcov_python.info --add-tracefile lcov_json.info --output-file lcov.info
 
     - name: Coveralls
       uses: coverallsapp/github-action@master
