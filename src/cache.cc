@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cmath>
 #include <iomanip>
+#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -585,7 +586,11 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
 
-  roi_stats.total_miss_latency = sim_stats.total_miss_latency;
+  auto total_miss = 0ull;
+  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
+    total_miss = std::accumulate(std::begin(roi_stats.hits.at(type)), std::end(roi_stats.hits.at(type)), total_miss);
+  }
+  roi_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(total_miss);
 
   for (auto ul : upper_levels) {
     ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;
