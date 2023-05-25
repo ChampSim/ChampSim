@@ -3,6 +3,7 @@
   "version-string": "1.0",
   "dependencies": [
     "cli11",
+    "nlohmann-json",
     "fmt",
     "bzip2",
     "liblzma",

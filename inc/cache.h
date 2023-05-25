@@ -49,6 +49,7 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
   std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
+  double avg_miss_latency = 0;
   uint64_t total_miss_latency = 0;
 };
 
