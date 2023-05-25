@@ -3,6 +3,7 @@
   "version-string": "1.0",
   "dependencies": [
     "cli11",
+    "fmt",
     "bzip2",
     "liblzma",
     "zlib",

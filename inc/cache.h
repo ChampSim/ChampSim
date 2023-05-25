@@ -26,6 +26,7 @@
 #include <bitset>
 #include <deque>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 

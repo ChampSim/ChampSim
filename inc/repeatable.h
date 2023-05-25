@@ -17,11 +17,11 @@
 #ifndef REPEATABLE_H
 #define REPEATABLE_H
 
-#include <iostream>
 #include <memory>
 #include <string>
 
 #include "instruction.h"
+#include <fmt/ranges.h>
 
 namespace champsim
 {
@@ -37,9 +37,7 @@ struct repeatable {
   {
     // Reopen trace if we've reached the end of the file
     if (intern_.eof()) {
-      std::cout << "*** Reached end of trace: { ";
-      std::apply([&](auto... x) { (..., (std::cout << x << ", ")); }, args_);
-      std::cout << "\b\b }" << std::endl;
+      fmt::print("*** Reached end of trace: {}\n", args_);
       intern_ = T{std::apply([](auto... x) { return T{x...}; }, args_)};
     }
 
