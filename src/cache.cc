@@ -562,6 +562,28 @@ void CACHE::issue_translation()
 
 std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
 
+std::vector<std::size_t> CACHE::get_rq_occupancy() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->rq_occupancy(); });
+  return retval;
+}
+
+std::vector<std::size_t> CACHE::get_wq_occupancy() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->wq_occupancy(); });
+  return retval;
+}
+
+std::vector<std::size_t> CACHE::get_pq_occupancy() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->pq_occupancy(); });
+  retval.push_back(std::size(internal_PQ));
+  return retval;
+}
+
 // LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 {
@@ -573,6 +595,28 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t)
 
 std::size_t CACHE::get_mshr_size() const { return MSHR_SIZE; }
 
+std::vector<std::size_t> CACHE::get_rq_size() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->rq_size(); });
+  return retval;
+}
+
+std::vector<std::size_t> CACHE::get_wq_size() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->wq_size(); });
+  return retval;
+}
+
+std::vector<std::size_t> CACHE::get_pq_size() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->pq_size(); });
+  retval.push_back(PQ_SIZE);
+  return retval;
+}
+
 // LCOV_EXCL_START exclude deprecated function
 std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 {
@@ -582,7 +626,25 @@ std::size_t CACHE::get_size(uint8_t queue_type, uint64_t)
 }
 // LCOV_EXCL_STOP
 
-double CACHE::get_mshr_occupancy_ratio() const { return 1.0 * std::ceil(get_mshr_occupancy()) / std::ceil(get_mshr_size()); }
+namespace
+{
+double occupancy_ratio(std::size_t occ, std::size_t sz) { return std::ceil(occ) / std::ceil(sz); }
+
+std::vector<double> occupancy_ratio_vec(std::vector<std::size_t> occ, std::vector<std::size_t> sz)
+{
+  std::vector<double> retval;
+  std::transform(std::begin(occ), std::end(occ), std::begin(sz), std::back_inserter(retval), occupancy_ratio);
+  return retval;
+}
+} // namespace
+
+double CACHE::get_mshr_occupancy_ratio() const { return ::occupancy_ratio(get_mshr_occupancy(), get_mshr_size()); }
+
+std::vector<double> CACHE::get_rq_occupancy_ratio() const { return ::occupancy_ratio_vec(get_rq_occupancy(), get_rq_size()); }
+
+std::vector<double> CACHE::get_wq_occupancy_ratio() const { return ::occupancy_ratio_vec(get_wq_occupancy(), get_wq_size()); }
+
+std::vector<double> CACHE::get_pq_occupancy_ratio() const { return ::occupancy_ratio_vec(get_pq_occupancy(), get_pq_size()); }
 
 void CACHE::initialize()
 {

@@ -32,12 +32,20 @@ SCENARIO("A prefetch can be issued") {
       REQUIRE(uut.sim_stats.pf_fill == 0);
     }
 
+    THEN("The initial internal prefetch queue occupancy is zero") {
+      REQUIRE(uut.get_pq_occupancy().back() == 0);
+    }
+
     WHEN("A prefetch is issued") {
       constexpr uint64_t seed_addr = 0xdeadbeef;
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
         REQUIRE(seed_result);
+      }
+
+      THEN("The initial internal prefetch queue occupancy increases") {
+        REQUIRE(uut.get_pq_occupancy().back() == 1);
       }
 
       // Run the uut for a bunch of cycles to clear it out of the PQ and fill the cache
@@ -47,6 +55,10 @@ SCENARIO("A prefetch can be issued") {
 
       THEN("The number of prefetch fills is incremented") {
         REQUIRE(uut.sim_stats.pf_fill == 1);
+      }
+
+      THEN("The initial internal prefetch queue occupancy returns to zero") {
+        REQUIRE(uut.get_pq_occupancy().back() == 0);
       }
 
       AND_WHEN("A packet with the same address is sent") {

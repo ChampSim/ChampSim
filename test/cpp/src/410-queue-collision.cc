@@ -96,7 +96,7 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
 
         uut.check_collision();
         THEN("The two packets are merged") {
-          REQUIRE(std::size(uut.WQ) == 1);
+          REQUIRE(uut.wq_occupancy() == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.WQ_MERGED == 1);
@@ -142,7 +142,7 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
 
         uut.check_collision();
         THEN("The two packets are merged") {
-          CHECK(std::size(uut.RQ) == 1);
+          CHECK(uut.rq_occupancy() == 1);
 
           AND_THEN("The statistics reflect the merge") {
             REQUIRE(uut.sim_stats.RQ_MERGED == 1);
@@ -188,7 +188,7 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
 
         uut.check_collision();
         THEN("The two packets are merged") {
-          CHECK(std::size(uut.PQ) == 1);
+          CHECK(uut.pq_occupancy() == 1);
           CHECK(uut.PQ.front().response_requested == true);
 
           AND_THEN("The statistics reflect the merge") {
@@ -221,8 +221,8 @@ SCENARIO("Cache queues forward WQ to RQ") {
         uut.check_collision();
 
         THEN("The two packets are merged") {
-          CHECK(std::size(uut.WQ) == 1);
-          CHECK(std::size(uut.RQ) == 0);
+          CHECK(uut.wq_occupancy() == 1);
+          CHECK(uut.rq_occupancy() == 0);
           CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
@@ -255,8 +255,8 @@ SCENARIO("Cache queues forward WQ to PQ") {
         uut.check_collision();
 
         THEN("The two packets are merged") {
-          CHECK(std::size(uut.WQ) == 1);
-          CHECK(std::size(uut.PQ) == 0);
+          CHECK(uut.wq_occupancy() == 1);
+          CHECK(uut.pq_occupancy() == 0);
           CHECK(std::size(uut.returned) == 1);
 
           AND_THEN("The statistics reflect the merge") {
@@ -281,7 +281,7 @@ SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
 
       uut.check_collision();
       THEN("The two packets are not merged") {
-        REQUIRE(std::size(uut.RQ) == 2);
+        REQUIRE(uut.rq_occupancy() == 2);
       }
     }
   }

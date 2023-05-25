@@ -192,3 +192,15 @@ bool champsim::channel::add_pq(const request_type& packet)
 
   return result;
 }
+
+std::size_t champsim::channel::rq_occupancy() const { return std::size(RQ); }
+
+std::size_t champsim::channel::wq_occupancy() const { return std::size(WQ); }
+
+std::size_t champsim::channel::pq_occupancy() const { return std::size(PQ); }
+
+std::size_t champsim::channel::rq_size() const { return RQ_SIZE; }
+
+std::size_t champsim::channel::wq_size() const { return WQ_SIZE; }
+
+std::size_t champsim::channel::pq_size() const { return PQ_SIZE; }
