@@ -288,7 +288,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (champsim::debug_print) {
       fmt::print("[TAG] initiate_tag_check instr_id: {} full_addr: {:x} full_v_addr: {:x} type: {} event: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(retval.type), retval.event_cycle);
+                 retval.v_address, access_type_names.at(static_cast<std::size_t>(retval.type)), retval.event_cycle);
     }
 
     return retval;
@@ -584,8 +584,8 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_fill = sim_stats.pf_fill;
 
   auto total_miss = 0ull;
-  for (auto type : {LOAD, RFO, PREFETCH, WRITE, TRANSLATION}) {
-    total_miss = std::accumulate(std::begin(roi_stats.hits.at(type)), std::end(roi_stats.hits.at(type)), total_miss);
+  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+    total_miss = std::accumulate(std::begin(roi_stats.hits.at(static_cast<std::size_t>(type))), std::end(roi_stats.hits.at(static_cast<std::size_t>(type))), total_miss);
   }
   roi_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(total_miss);
 
