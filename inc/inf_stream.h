@@ -1,3 +1,19 @@
+/*
+ *    Copyright 2023 The ChampSim Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef INF_STREAM_H
 #define INF_STREAM_H
 
@@ -14,12 +30,24 @@ namespace decomp_tags
 {
 enum class status_t { CAN_CONTINUE, END, ERROR };
 
+namespace detail
+{
+template <typename State, typename R, R (*Del)(State*)>
+struct end_deleter {
+  void operator()(State* s)
+  {
+    Del(s);
+    delete s;
+  }
+};
+} // namespace detail
+
 struct bzip2_tag_t {
   using state_type = bz_stream;
   using in_char_type = std::remove_pointer_t<decltype(state_type::next_in)>;
   using out_char_type = std::remove_pointer_t<decltype(state_type::next_out)>;
-  using deflate_state_type = std::unique_ptr<state_type, decltype(&::BZ2_bzCompressEnd)>;
-  using inflate_state_type = std::unique_ptr<state_type, decltype(&::BZ2_bzDecompressEnd)>;
+  using deflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, int, ::BZ2_bzCompressEnd>>;
+  using inflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, int, ::BZ2_bzDecompressEnd>>;
   using status_type = status_t;
 
   static status_type deflate(deflate_state_type& x, bool flush)
@@ -40,14 +68,16 @@ struct bzip2_tag_t {
 
   static deflate_state_type new_deflate_state()
   {
-    deflate_state_type state{new state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL}, &::BZ2_bzCompressEnd};
+    deflate_state_type state{new state_type};
+    *state = state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL};
     ::BZ2_bzCompressInit(state.get(), 9, 0, 0);
     return state;
   }
 
   static inflate_state_type new_inflate_state()
   {
-    inflate_state_type state{new state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL}, &::BZ2_bzDecompressEnd};
+    inflate_state_type state{new state_type};
+    *state = state_type{NULL, 0u, 0u, 0u, NULL, 0u, 0u, 0u, NULL, NULL, NULL, NULL};
     ::BZ2_bzDecompressInit(state.get(), 0, 0);
     return state;
   }
@@ -58,8 +88,8 @@ struct gzip_tag_t {
   using state_type = z_stream;
   using in_char_type = std::remove_pointer_t<decltype(state_type::next_in)>;
   using out_char_type = std::remove_pointer_t<decltype(state_type::next_out)>;
-  using deflate_state_type = std::unique_ptr<state_type, decltype(&::deflateEnd)>;
-  using inflate_state_type = std::unique_ptr<state_type, decltype(&::inflateEnd)>;
+  using deflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, int, ::deflateEnd>>;
+  using inflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, int, ::inflateEnd>>;
   using status_type = status_t;
 
   static status_type deflate(deflate_state_type& x, bool flush)
@@ -80,14 +110,16 @@ struct gzip_tag_t {
 
   static deflate_state_type new_deflate_state()
   {
-    deflate_state_type state{new state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul}, &::deflateEnd};
+    deflate_state_type state{new state_type};
+    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul};
     ::deflateInit(state.get(), compression);
     return state;
   }
 
   static inflate_state_type new_inflate_state()
   {
-    inflate_state_type state{new state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul}, &::inflateEnd};
+    inflate_state_type state{new state_type};
+    *state = state_type{Z_NULL, 0, 0, Z_NULL, 0, 0, NULL, NULL, Z_NULL, Z_NULL, Z_NULL, 0, 0ul, 0ul};
     ::inflateInit2(state.get(), window);
     return state;
   }
@@ -98,8 +130,8 @@ struct lzma_tag_t {
   using state_type = lzma_stream;
   using in_char_type = std::remove_const_t<std::remove_pointer_t<decltype(state_type::next_in)>>;
   using out_char_type = std::remove_pointer_t<decltype(state_type::next_out)>;
-  using deflate_state_type = std::unique_ptr<state_type, decltype(&::lzma_end)>;
-  using inflate_state_type = std::unique_ptr<state_type, decltype(&::lzma_end)>;
+  using deflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, void, ::lzma_end>>;
+  using inflate_state_type = std::unique_ptr<state_type, detail::end_deleter<state_type, void, ::lzma_end>>;
   using status_type = status_t;
 
   static status_type deflate(deflate_state_type& x, bool flush)
@@ -126,7 +158,7 @@ struct lzma_tag_t {
 
   static deflate_state_type new_deflate_state()
   {
-    deflate_state_type state{new state_type, &::lzma_end};
+    deflate_state_type state{new state_type};
     *state = LZMA_STREAM_INIT;
     auto ret = ::lzma_easy_encoder(state.get(), LZMA_PRESET_DEFAULT, LZMA_CHECK_CRC64);
     assert(ret == LZMA_OK);
@@ -135,7 +167,7 @@ struct lzma_tag_t {
 
   static inflate_state_type new_inflate_state()
   {
-    inflate_state_type state{new state_type, &::lzma_end};
+    inflate_state_type state{new state_type};
     *state = LZMA_STREAM_INIT;
     auto ret = ::lzma_stream_decoder(state.get(), std::numeric_limits<uint64_t>::max(), flags);
     assert(ret == LZMA_OK);
@@ -214,7 +246,9 @@ auto inf_istream<T, S>::inf_streambuf<I>::underflow() -> int_type
       // Read data from the stream and convert to zlib-appropriate format
       std::array<char_type, std::tuple_size<decltype(in_buf)>::value> sig_in_buf;
       src->read(sig_in_buf.data(), sig_in_buf.size());
-      std::memcpy(in_buf.data(), sig_in_buf.data(), src->gcount());
+      auto bytes_read = src->gcount();
+      assert(bytes_read >= 0);
+      std::memcpy(in_buf.data(), sig_in_buf.data(), static_cast<std::size_t>(src->gcount()));
 
       // Record that bytes are available in in_buf
       strm->avail_in = static_cast<unsigned>(src->gcount());
@@ -237,7 +271,10 @@ auto inf_istream<T, S>::inf_streambuf<I>::underflow() -> int_type
   // Copy into a format appropriate for the stream
   std::memcpy(this->out_buf.data(), uns_out_buf.data(), uns_out_buf.size() - strm->avail_out);
 
-  this->setg(this->out_buf.data(), this->out_buf.data(), std::next(this->out_buf.data(), uns_out_buf.size() - strm->avail_out));
+  auto bytes_remaining = std::size(uns_out_buf) - strm->avail_out;
+  assert(bytes_remaining <= std::numeric_limits<std::make_signed_t<decltype(bytes_remaining)>>::max());
+  this->setg(this->out_buf.data(), this->out_buf.data(),
+             std::next(this->out_buf.data(), static_cast<std::make_signed_t<decltype(bytes_remaining)>>(bytes_remaining)));
   return base_type::traits_type::to_int_type(this->out_buf.front());
 }
 } // namespace champsim

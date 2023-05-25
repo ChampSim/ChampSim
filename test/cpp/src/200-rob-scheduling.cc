@@ -1,6 +1,8 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "ooo_cpu.h"
+#include "instr.h"
 
 SCENARIO("The scheduler can detect RAW hazards") {
   GIVEN("A ROB with a single instruction") {
@@ -8,9 +10,14 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+      .schedule_width(schedule_width)
+      .schedule_latency(schedule_latency)
+      .fetch_queues(&mock_L1I.queues)
+      .data_queues(&mock_L1D.queues)
+    };
 
-    uut.ROB.push_back(ooo_model_instr{0, input_instr{}});
+    uut.ROB.push_back(champsim::test::instruction_with_ip(1));
     for (auto &instr : uut.ROB)
       instr.event_cycle = uut.current_cycle;
 
@@ -34,12 +41,14 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+      .schedule_width(schedule_width)
+      .schedule_latency(schedule_latency)
+      .fetch_queues(&mock_L1I.queues)
+      .data_queues(&mock_L1D.queues)
+    };
 
-    input_instr dependent_instr;
-    dependent_instr.source_registers[0] = 42;
-    dependent_instr.destination_registers[0] = 42;
-    std::vector test_instructions( 2, ooo_model_instr{0,dependent_instr} );
+    std::vector test_instructions( 2, champsim::test::instruction_with_registers(42) );
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     for (auto &instr : uut.ROB)
@@ -70,12 +79,14 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{0, 1.0, {32, 8, {2}, {2}}, 64, 32, 32, 352, 128, 72, 2, 2, 2, schedule_width, 1, 2, 2, 1, 1, 1, 1, schedule_latency, 0, &mock_L1I, 1, &mock_L1D, 1, O3_CPU::bbranchDbimodal, O3_CPU::tbtbDbasic_btb};
+    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+      .schedule_width(schedule_width)
+      .schedule_latency(schedule_latency)
+      .fetch_queues(&mock_L1I.queues)
+      .data_queues(&mock_L1D.queues)
+    };
 
-    input_instr dependent_instr;
-    dependent_instr.source_registers[0] = 42;
-    dependent_instr.destination_registers[0] = 42;
-    std::vector test_instructions( schedule_width + 1, ooo_model_instr{0,dependent_instr} );
+    std::vector test_instructions( schedule_width + 1, champsim::test::instruction_with_registers(42) );
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     uint64_t id = 0;

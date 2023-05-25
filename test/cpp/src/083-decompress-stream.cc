@@ -87,7 +87,7 @@ TEST_CASE("An inf_stream can inflate a gzip-compressed text") {
   STATIC_REQUIRE(std::is_swappable<decltype(comp_stream)>::value);
 
   char inflated[1000] = {};
-  comp_stream.read(inflated, std::size(plaintext));
+  comp_stream.read(inflated, static_cast<std::streamsize>(std::size(plaintext)));
   REQUIRE_THAT(std::string{inflated}, Catch::Matchers::Equals(plaintext));
 }
 
@@ -100,7 +100,7 @@ TEST_CASE("An inf_stream can inflate a xz-compressed text") {
   STATIC_REQUIRE(std::is_swappable<decltype(comp_stream)>::value);
 
   char inflated[1000] = {};
-  comp_stream.read(inflated, std::size(plaintext));
+  comp_stream.read(inflated, static_cast<std::streamsize>(std::size(plaintext)));
   REQUIRE_THAT(std::string{inflated}, Catch::Matchers::Equals(plaintext));
 }
 
@@ -113,6 +113,6 @@ TEST_CASE("An inf_stream can inflate a bz2-compressed text") {
   STATIC_REQUIRE(std::is_swappable<decltype(comp_stream)>::value);
 
   char inflated[1000] = {};
-  comp_stream.read(inflated, std::size(plaintext));
+  comp_stream.read(inflated, static_cast<std::streamsize>(std::size(plaintext)));
   REQUIRE_THAT(std::string{inflated}, Catch::Matchers::Equals(plaintext));
 }

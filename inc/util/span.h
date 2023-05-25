@@ -14,52 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef UTIL_SPAN_H
+#define UTIL_SPAN_H
 
 #include <algorithm>
-#include <cstdint>
-#include <optional>
-#include <vector>
-
-#include "msl/bits.h"
-#include "msl/lru_table.h"
-
-template <typename T>
-struct is_valid {
-  using argument_type = T;
-  is_valid() {}
-  bool operator()(const argument_type& test) { return test.valid; }
-};
-
-template <typename T>
-struct is_valid<std::optional<T>> {
-  bool operator()(const std::optional<T>& test) { return test.has_value(); }
-};
-
-template <typename T>
-struct eq_addr {
-  using argument_type = T;
-  const decltype(argument_type::address) match_val;
-  const std::size_t shamt = 0;
-
-  explicit eq_addr(decltype(argument_type::address) val) : match_val(val) {}
-  eq_addr(decltype(argument_type::address) val, std::size_t shift_bits) : match_val(val), shamt(shift_bits) {}
-
-  bool operator()(const argument_type& test)
-  {
-    is_valid<argument_type> validtest;
-    return validtest(test) && (test.address >> shamt) == (match_val >> shamt);
-  }
-};
+#include <cassert>
+#include <iterator>
+#include <limits>
 
 namespace champsim
 {
-using msl::bitmask;
-using msl::lg2;
-using msl::lru_table;
-using msl::splice_bits;
-
 template <typename It>
 std::pair<It, It> get_span(It begin, It end, typename std::iterator_traits<It>::difference_type sz)
 {
@@ -76,6 +40,11 @@ std::pair<It, It> get_span_p(It begin, It end, typename std::iterator_traits<It>
   return {span_begin, std::find_if_not(span_begin, span_end, std::forward<F>(func))};
 }
 
+template <typename It, typename F>
+std::pair<It, It> get_span_p(It begin, It end, F&& func)
+{
+  return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
+}
 } // namespace champsim
 
 #endif

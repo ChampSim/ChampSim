@@ -28,7 +28,6 @@
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-#include "util.h"
 #include "vmem.h"
 
 namespace champsim
@@ -43,8 +42,8 @@ int main(int argc, char** argv)
   CLI::App app{"A microarchitecture simulator for research and education"};
 
   bool knob_cloudsuite{false};
-  uint64_t warmup_instructions = 1000000;
-  uint64_t simulation_instructions = 10000000;
+  uint64_t warmup_instructions = 0;
+  uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
   std::string json_file_name;
   std::vector<std::string> trace_names;
 
@@ -56,7 +55,7 @@ int main(int argc, char** argv)
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
   app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
-  app.add_option("-i,--simulation-instructions", simulation_instructions, "The number of instructions in the detailed phase");
+  auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions, "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
 
   auto json_option = app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")
     ->expected(0,1);
@@ -70,7 +69,9 @@ int main(int argc, char** argv)
 
   std::vector<champsim::tracereader> traces;
   std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite); });
+                 [knob_cloudsuite, repeat = (sim_instr_option->count > 0), i = uint8_t(0)](auto name) mutable {
+                   return get_tracereader(name, i++, knob_cloudsuite, repeat);
+                 });
 
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},

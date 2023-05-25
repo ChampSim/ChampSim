@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
@@ -8,20 +9,22 @@ SCENARIO("A prefetch can be issued") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"420-uut", 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("420-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     THEN("The number of prefetches is zero") {
       REQUIRE(uut.sim_stats.pf_issued == 0);
@@ -48,7 +51,7 @@ SCENARIO("A prefetch can be issued") {
 
       AND_WHEN("A packet with the same address is sent") {
         // Create a test packet
-        PACKET test;
+        decltype(mock_ul)::request_type test;
         test.address = 0xdeadbeef;
         test.cpu = 0;
 
@@ -62,7 +65,7 @@ SCENARIO("A prefetch can be issued") {
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + 1);
         }
 
         THEN("The number of useful prefetches is incremented") {

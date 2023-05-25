@@ -69,7 +69,7 @@ public:
       // If the next step would exceed the degree or run off the page, stop
       if (cache->virtual_prefetch || (pf_address >> LOG2_PAGE_SIZE) == (old_pf_address >> LOG2_PAGE_SIZE)) {
         // check the MSHR occupancy to decide if we're going to prefetch to this level or not
-        bool success = cache->prefetch_line(pf_address, (cache->get_occupancy(0, pf_address) < (cache->get_size(0, pf_address) / 2)), 0);
+        bool success = cache->prefetch_line(pf_address, (cache->get_mshr_occupancy_ratio() < 0.5), 0);
         if (success)
           active_lookahead = {pf_address, stride, degree - 1};
         // If we fail, try again next cycle

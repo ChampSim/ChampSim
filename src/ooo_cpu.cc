@@ -23,6 +23,7 @@
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "util/span.h"
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 
@@ -159,7 +160,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
 
     // call code prefetcher every time the branch predictor is used
-    static_cast<CACHE*>(L1I_bus.lower_level)->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
     if (predicted_branch_target != arch_instr.branch_target
         || (arch_instr.branch_type == BRANCH_CONDITIONAL
@@ -249,7 +250,7 @@ void O3_CPU::fetch_instruction()
 
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
-  PACKET fetch_packet;
+  CacheBus::request_type fetch_packet;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
@@ -274,9 +275,10 @@ void O3_CPU::promote_to_decode()
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
   IFETCH_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::decode_instruction()
@@ -308,9 +310,10 @@ void O3_CPU::decode_instruction()
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
   DECODE_BUFFER.erase(window_begin, window_end);
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DECODE_BUFFER) && (DECODE_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
@@ -321,7 +324,7 @@ void O3_CPU::dispatch_instruction()
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
-         && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), std::not_fn(is_valid<decltype(LQ)::value_type>{}))
+         && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
@@ -331,9 +334,10 @@ void O3_CPU::dispatch_instruction()
     available_dispatch_bandwidth--;
   }
 
-  // check for deadlock
+  // LCOV_EXCL_START check for deadlock
   if (!std::empty(DISPATCH_BUFFER) && (DISPATCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
 void O3_CPU::schedule_instruction()
@@ -407,7 +411,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 {
   // load
   for (auto& smem : instr.source_memory) {
-    auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), is_valid<decltype(LQ)::value_type>{});
+    auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
     q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid); // add it to the load queue
 
@@ -496,7 +500,7 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 
 bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 {
-  PACKET data_packet;
+  CacheBus::request_type data_packet;
   data_packet.v_address = sq_entry.virtual_address;
   data_packet.instr_id = sq_entry.instr_id;
   data_packet.ip = sq_entry.ip;
@@ -510,7 +514,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
 
 bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 {
-  PACKET data_packet;
+  CacheBus::request_type data_packet;
   data_packet.v_address = lq_entry.virtual_address;
   data_packet.instr_id = lq_entry.instr_id;
   data_packet.ip = lq_entry.ip;
@@ -560,8 +564,8 @@ void O3_CPU::complete_inflight_instruction()
 
 void O3_CPU::handle_memory_return()
 {
-  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty(); --to_read) {
-    PACKET& l1i_entry = L1I_bus.PROCESSED.front();
+  for (auto l1i_bw = FETCH_WIDTH, to_read = L1I_BANDWIDTH; l1i_bw > 0 && to_read > 0 && !L1I_bus.lower_level->returned.empty(); --to_read) {
+    auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
@@ -579,11 +583,11 @@ void O3_CPU::handle_memory_return()
 
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty())
-      L1I_bus.PROCESSED.pop_front();
+      L1I_bus.lower_level->returned.pop_front();
   }
 
-  auto l1d_it = std::begin(L1D_bus.PROCESSED);
-  for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.PROCESSED); --l1d_bw, ++l1d_it) {
+  auto l1d_it = std::begin(L1D_bus.lower_level->returned);
+  for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.lower_level->returned); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
       if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
         lq_entry->finish(std::begin(ROB), std::end(ROB));
@@ -591,7 +595,7 @@ void O3_CPU::handle_memory_return()
       }
     }
   }
-  L1D_bus.PROCESSED.erase(std::begin(L1D_bus.PROCESSED), l1d_it);
+  L1D_bus.lower_level->returned.erase(std::begin(L1D_bus.lower_level->returned), l1d_it);
 }
 
 void O3_CPU::retire_rob()
@@ -603,13 +607,13 @@ void O3_CPU::retire_rob()
   num_retired += std::distance(retire_begin, retire_end);
   ROB.erase(retire_begin, retire_end);
 
-  // Check for deadlock
+  // LCOV_EXCL_START Check for deadlock
   if (!std::empty(ROB) && (ROB.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
     throw champsim::deadlock{cpu};
+  // LCOV_EXCL_STOP
 }
 
-void CacheBus::return_data(const PACKET& packet) { PROCESSED.push_back(packet); }
-
+// LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
 {
   std::cout << "DEADLOCK! CPU " << cpu << " cycle " << current_cycle << std::endl;
@@ -666,6 +670,7 @@ void O3_CPU::print_deadlock()
     std::cout << std::endl;
   }
 }
+// LCOV_EXCL_STOP
 
 LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
@@ -688,21 +693,23 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
   }
 }
 
-bool CacheBus::issue_read(PACKET data_packet)
+bool CacheBus::issue_read(request_type data_packet)
 {
   data_packet.address = data_packet.v_address;
+  data_packet.is_translated = false;
   data_packet.cpu = cpu;
   data_packet.type = LOAD;
-  data_packet.to_return = {this};
 
   return lower_level->add_rq(data_packet);
 }
 
-bool CacheBus::issue_write(PACKET data_packet)
+bool CacheBus::issue_write(request_type data_packet)
 {
   data_packet.address = data_packet.v_address;
+  data_packet.is_translated = false;
   data_packet.cpu = cpu;
   data_packet.type = WRITE;
+  data_packet.response_requested = false;
 
   return lower_level->add_wq(data_packet);
 }

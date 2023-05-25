@@ -3,6 +3,7 @@
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
 
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
   int64_t stride;
@@ -22,35 +23,36 @@ struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
 };
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the positive direction") {
-  auto stride = GENERATE(as<int64_t>{}, 1, 2, 3, 4);
+  auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"453-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("453-uut-["+std::to_string(stride)+"]")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
+      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Create a test packet
     static uint64_t id = 1;
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeef0020;
     seed.v_address = seed.address;
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul};
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);
@@ -103,42 +105,43 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       THEN("A total of 5 requests were generated with the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{stride});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{static_cast<int64_t>(stride)});
       }
     }
   }
 }
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the negative direction") {
-  auto stride = GENERATE(as<int64_t>{}, -1, -2, -3, -4);
+  auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"453-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    do_nothing_MRC mock_lt;
+    to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("453-uut-[-"+std::to_string(stride)+"]")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
+      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &mock_lt, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     // Create a test packet
     static uint64_t id = 1;
-    PACKET seed;
+    decltype(mock_ul)::request_type seed;
     seed.address = 0xdeadbeefffe0;
     seed.v_address = seed.address;
     seed.ip = 0xcafecafe;
     seed.instr_id = id++;
     seed.cpu = 0;
-    seed.to_return = {&mock_ul};
+    seed.is_translated = false;
 
     // Issue it to the uut
     auto seed_result = mock_ul.issue(seed);
@@ -153,7 +156,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
 
     WHEN("Three more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = static_cast<uint64_t>(seed.address - stride*BLOCK_SIZE);
       test_a.v_address = test_a.address;
       test_a.instr_id = id++;
 
@@ -163,7 +166,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = static_cast<uint64_t>(test_a.address - stride*BLOCK_SIZE);
       test_b.v_address = test_b.address;
       test_b.instr_id = id++;
 
@@ -177,7 +180,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       auto test_c = test_b;
-      test_c.address = static_cast<uint64_t>(test_b.address + stride*BLOCK_SIZE);
+      test_c.address = static_cast<uint64_t>(test_b.address - stride*BLOCK_SIZE);
       test_c.v_address = test_c.address;
       test_c.instr_id = id++;
 
@@ -191,7 +194,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       THEN("A total of 5 requests were generated with the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{stride});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{static_cast<int64_t>(-stride)});
       }
     }
   }

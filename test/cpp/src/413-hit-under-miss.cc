@@ -1,264 +1,96 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 
 #include "cache.h"
 #include "champsim_constants.h"
 
-struct miss_testbed
-{
-  constexpr static uint64_t hit_latency = 5;
-  constexpr static uint64_t address_that_will_hit = 0xcafebabe;
-  filter_MRC mock_ll{address_that_will_hit};
-  CACHE::TranslatingQueues uut{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
+TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being issued", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
+  GIVEN("An empty cache") {
+    constexpr static uint64_t hit_latency = 5;
+    constexpr static uint64_t address_that_will_hit = 0xcafebabe;
+    filter_MRC mock_translator{address_that_will_hit};
+    do_nothing_MRC mock_ll;
+    TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("413-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_translator.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(3)
+    };
 
-  miss_testbed()
-  {
-    uut.lower_level = &mock_ll;
-  }
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_translator, &mock_ul}};
 
-  virtual void issue(PACKET pkt) = 0;
-
-  void setup()
-  {
-    // Turn off warmup
-    uut.warmup = false;
-    uut.begin_phase();
-
-    // Create a test packet
-    PACKET seed;
-    seed.address = 0xdeadbeef;
-    seed.v_address = 0xdeadbeef;
-    seed.cpu = 0;
-
-    issue(seed);
-
-    // Operate enough cycles to realize we've missed
-    for (uint64_t i = 0; i < (hit_latency+1); ++i) {
-      operate();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
     }
-  }
 
-  void operate()
-  {
-    mock_ll._operate();
-    uut._operate();
-  }
-};
+    WHEN("A packet is issued that will miss the translator") {
+      // Create a test packet
+      typename TestType::request_type seed;
+      seed.address = 0xdeadbeef;
+      seed.v_address = 0xdeadbeef;
+      seed.is_translated = false;
+      seed.cpu = 0;
 
-struct miss_wq_testbed : public miss_testbed
-{
-  using miss_testbed::miss_testbed;
-  void issue(PACKET pkt) override
-  {
-    auto result = uut.add_wq(pkt);
-    REQUIRE(result);
-  }
-};
+      mock_ul.issue(seed);
 
-struct miss_rq_testbed : public miss_testbed
-{
-  using miss_testbed::miss_testbed;
-  void issue(PACKET pkt) override
-  {
-    auto result = uut.add_rq(pkt);
-    REQUIRE(result);
-  }
-};
+      // Operate enough cycles to realize we've missed
+      for (uint64_t i = 0; i < (hit_latency+1); ++i) {
+        for (auto elem : elements)
+          elem->_operate();
+      }
 
-struct miss_pq_testbed : public miss_testbed
-{
-  using miss_testbed::miss_testbed;
-  void issue(PACKET pkt) override
-  {
-    auto result = uut.add_pq(pkt);
-    REQUIRE(result);
-  }
-};
+      THEN("The packet has missed the translator") {
+        REQUIRE(std::size(mock_ul.packets) == 1);
+        REQUIRE(mock_ul.packets.front().return_time == 0);
+      }
 
-SCENARIO("Translation misses in the WQ do not inhibit other translations from being issued") {
-  GIVEN("A write queue with one item that has missed") {
-    miss_wq_testbed testbed;
-    testbed.setup();
+      AND_WHEN("An untranslated packet that will hit the translator is sent") {
+        typename TestType::request_type test;
+        test.address = address_that_will_hit;
+        test.v_address = address_that_will_hit;
+        seed.is_translated = false;
+        test.cpu = 0;
 
-    REQUIRE_FALSE(testbed.uut.wq_has_ready());
+        mock_ul.issue(test);
 
-    WHEN("A packet is sent") {
-      PACKET test;
-      test.address = testbed.address_that_will_hit;
-      test.v_address = testbed.address_that_will_hit;
-      test.cpu = 0;
+        // Operate long enough for the return to happen
+        for (uint64_t i = 0; i < 100; ++i) {
+          for (auto elem : elements)
+            elem->_operate();
+        }
 
-      testbed.issue(test);
+        THEN("The second packet is issued") {
+          REQUIRE(std::size(mock_ll.addresses) == 1);
+          REQUIRE(mock_ll.addresses.front() == test.address);
+        }
+      }
 
-      auto old_event_cycle = testbed.uut.current_cycle;
+      AND_WHEN("A translated packet is sent") {
+        typename TestType::request_type test;
+        test.address = 0xfeedcafe;
+        test.v_address = 0xdeadbeef;
+        test.is_translated = true;
+        test.cpu = 0;
 
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i)
-        testbed.operate();
+        mock_ul.issue(test);
 
-      THEN("The packet is translated") {
-        REQUIRE(std::size(testbed.uut.WQ) == 2);
-        REQUIRE(testbed.uut.WQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.WQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.wq_has_ready());
+        // Operate long enough for the return to happen
+        for (uint64_t i = 0; i < 100; ++i) {
+          for (auto elem : elements)
+            elem->_operate();
+        }
+
+        THEN("The packet is translated") {
+          REQUIRE(std::size(mock_ll.addresses) == 1);
+          REQUIRE(mock_ll.addresses.front() == test.address);
+        }
       }
     }
   }
 }
-
-SCENARIO("Translation misses in the WQ do not inhibit packets that do not need translation") {
-  GIVEN("A write queue with one item that has missed") {
-    miss_wq_testbed testbed;
-    testbed.setup();
-
-    REQUIRE_FALSE(testbed.uut.wq_has_ready());
-
-    WHEN("A translated packet is sent") {
-      PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
-      test.cpu = 0;
-
-      testbed.issue(test);
-
-      auto old_event_cycle = testbed.uut.current_cycle;
-
-      // Operate long enough the hit to occur
-      for (uint64_t i = 0; i < (testbed.hit_latency+1); ++i)
-        testbed.operate();
-
-      THEN("The packet is ready") {
-        REQUIRE(std::size(testbed.uut.WQ) == 2);
-        REQUIRE(testbed.uut.WQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.WQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.wq_has_ready());
-      }
-    }
-  }
-}
-
-
-SCENARIO("Translation misses in the RQ do not inhibit other translations from being issued") {
-  GIVEN("A read queue with one item that has missed") {
-    miss_rq_testbed testbed;
-    testbed.setup();
-
-    REQUIRE_FALSE(testbed.uut.rq_has_ready());
-
-    WHEN("A packet is sent") {
-      PACKET test;
-      test.address = testbed.address_that_will_hit;
-      test.v_address = testbed.address_that_will_hit;
-      test.cpu = 0;
-
-      testbed.issue(test);
-
-      auto old_event_cycle = testbed.uut.current_cycle;
-
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i)
-        testbed.operate();
-
-      THEN("The packet is translated") {
-        REQUIRE(std::size(testbed.uut.RQ) == 2);
-        REQUIRE(testbed.uut.RQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.RQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.rq_has_ready());
-      }
-    }
-  }
-}
-
-SCENARIO("Translation misses in the RQ do not inhibit packets that do not need translation") {
-  GIVEN("A read queue with one item that has missed") {
-    miss_rq_testbed testbed;
-    testbed.setup();
-
-    REQUIRE_FALSE(testbed.uut.rq_has_ready());
-
-    WHEN("A translated packet is sent") {
-      PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
-      test.cpu = 0;
-
-      testbed.issue(test);
-
-      auto old_event_cycle = testbed.uut.current_cycle;
-
-      // Operate long enough the hit to occur
-      for (uint64_t i = 0; i < (testbed.hit_latency+1); ++i)
-        testbed.operate();
-
-      THEN("The packet is ready") {
-        REQUIRE(std::size(testbed.uut.RQ) == 2);
-        REQUIRE(testbed.uut.RQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.RQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.rq_has_ready());
-      }
-    }
-  }
-}
-
-SCENARIO("Translation misses in the PQ do not inhibit other translations from being issued") {
-  GIVEN("A prefetch queue with one item that has missed") {
-    miss_pq_testbed testbed;
-    testbed.setup();
-
-    REQUIRE_FALSE(testbed.uut.pq_has_ready());
-
-    WHEN("A packet is sent") {
-      PACKET test;
-      test.address = testbed.address_that_will_hit;
-      test.v_address = testbed.address_that_will_hit;
-      test.cpu = 0;
-
-      testbed.issue(test);
-
-      auto old_event_cycle = testbed.uut.current_cycle;
-
-      // Operate long enough for the return to happen
-      for (uint64_t i = 0; i < 100; ++i)
-        testbed.operate();
-
-      THEN("The packet is translated") {
-        REQUIRE(std::size(testbed.uut.PQ) == 2);
-        REQUIRE(testbed.uut.PQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.PQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.pq_has_ready());
-      }
-    }
-  }
-}
-
-SCENARIO("Translation misses in the PQ do not inhibit packets that do not need translation") {
-  GIVEN("A prefetch queue with one item that has missed") {
-    miss_pq_testbed testbed;
-    testbed.setup();
-
-    REQUIRE_FALSE(testbed.uut.pq_has_ready());
-
-    WHEN("A translated packet is sent") {
-      PACKET test;
-      test.address = 0xfeedcafe;
-      test.v_address = 0xdeadbeef;
-      test.cpu = 0;
-
-      testbed.issue(test);
-
-      auto old_event_cycle = testbed.uut.current_cycle;
-
-      // Operate long enough the hit to occur
-      for (uint64_t i = 0; i < (testbed.hit_latency+1); ++i)
-        testbed.operate();
-
-      THEN("The packet is ready") {
-        REQUIRE(std::size(testbed.uut.PQ) == 2);
-        REQUIRE(testbed.uut.PQ.front().v_address == test.v_address);
-        REQUIRE(testbed.uut.PQ.front().event_cycle == old_event_cycle + testbed.hit_latency);
-        REQUIRE(testbed.uut.pq_has_ready());
-      }
-    }
-  }
-}
-

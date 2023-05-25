@@ -17,7 +17,7 @@ def get_constants_file(env, pmem):
         '#ifndef CHAMPSIM_CONSTANTS_H',
         '#define CHAMPSIM_CONSTANTS_H',
         '#include <cstdlib>',
-        '#include "util.h"',
+        '#include "util/bits.h"',
         'constexpr unsigned BLOCK_SIZE = {block_size};'.format(**env),
         'constexpr unsigned PAGE_SIZE = {page_size};'.format(**env),
         'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};'.format(**env),

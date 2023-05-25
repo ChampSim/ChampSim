@@ -1,36 +1,35 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"451-uut", 1, 1, 8, 32, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDnext_line, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("451-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .prefetcher<CACHE::pprefetcherDnext_line>()
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = 0xffff'003f;
       seed.instr_id = id++;
       seed.cpu = 0;
-      seed.to_return = {&mock_ul};
 
       // Issue it to the uut
       auto seed_result = mock_ul.issue(seed);
@@ -57,31 +56,29 @@ SCENARIO("The next line prefetcher issues prefetches") {
 SCENARIO("The next line instruction prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, 1, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"451-uut", 1, 1, 8, 32, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), uut_queues, &mock_ll, CACHE::pprefetcherDnext_line_instr, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("451-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .prefetcher<CACHE::pprefetcherDnext_line_instr>()
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &uut_queues, &uut}};
+    std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-
-    // Initialize stats
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     WHEN("A packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET seed;
+      decltype(mock_ul)::request_type seed;
       seed.address = 0xffff'003f;
       seed.instr_id = id++;
       seed.cpu = 0;
-      seed.to_return = {&mock_ul};
 
       // Issue it to the uut
       auto seed_result = mock_ul.issue(seed);

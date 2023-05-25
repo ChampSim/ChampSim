@@ -1,15 +1,15 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
 
 SCENARIO("A cache returns a miss after the specified latency") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<uint8_t, std::string_view>({
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({
         std::pair{LOAD, "load"sv},
         std::pair{RFO, "RFO"sv},
         std::pair{PREFETCH, "prefetch"sv},
-        std::pair{WRITE, "write"sv},
         std::pair{TRANSLATION, "translation"sv}
       }));
 
@@ -17,22 +17,24 @@ SCENARIO("A cache returns a miss after the specified latency") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     constexpr uint64_t fill_latency = 2;
-    constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, fill_latency, 1, 1, 0, false, false, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_rq_MRP mock_ul{&uut};
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402-uut-"+std::string(str))
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION)
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut_queues, &uut, &mock_ul}};
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
-
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     THEN("The number of misses starts at zero") {
       REQUIRE(uut.sim_stats.misses.at(type).at(0) == 0);
@@ -41,7 +43,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.instr_id = id++;
@@ -59,7 +61,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
-        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency));
+        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
@@ -82,22 +84,30 @@ SCENARIO("A cache completes a fill after the specified latency") {
     constexpr uint64_t hit_latency = 4;
     constexpr uint64_t miss_latency = 3;
     constexpr uint64_t fill_latency = 2;
-    constexpr auto mask = ((1u<<LOAD) | (1u<<RFO) | (1u<<PREFETCH) | (1u<<WRITE) | (1u<<TRANSLATION)); // trigger prefetch on all types
     do_nothing_MRC mock_ll{miss_latency};
-    CACHE::NonTranslatingQueues uut_queues{1, 32, 32, 32, 0, hit_latency, LOG2_BLOCK_SIZE, false};
-    CACHE uut{"402-uut-"+std::string(str), 1, 1, 8, 32, fill_latency, 1, 1, 0, false, match_offset, false, mask, uut_queues, &mock_ll, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
-    to_wq_MRP mock_ul{&uut};
+    to_wq_MRP mock_ul;
+    auto builder = CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402-uut-"+std::string(str))
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
+      .prefetch_activate(LOAD, RFO, PREFETCH, WRITE, TRANSLATION);
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut_queues, &uut, &mock_ul}};
+    if (match_offset)
+      builder = builder.set_wq_checks_full_addr();
+    else
+      builder = builder.reset_wq_checks_full_addr();
 
-    // Initialize the prefetching and replacement
-    uut.initialize();
+    CACHE uut{builder};
 
-    // Turn off warmup
-    uut.warmup = false;
-    uut_queues.warmup = false;
-    uut.begin_phase();
-    uut_queues.begin_phase();
+    std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
 
     THEN("The number of misses starts at zero") {
       REQUIRE(uut.sim_stats.misses.at(type).at(0) == 0);
@@ -106,7 +116,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
-      PACKET test;
+      decltype(mock_ul)::request_type test;
       test.address = 0xdeadbeef;
       test.cpu = 0;
       test.instr_id = id++;
@@ -125,9 +135,9 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       THEN("It takes exactly the specified cycles to return") {
         if (match_offset)
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency));
+          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
         else
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + hit_latency - 1)); // -1 due to ordering of elements
+          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + hit_latency));
       }
 
       THEN("The number of misses increases") {
