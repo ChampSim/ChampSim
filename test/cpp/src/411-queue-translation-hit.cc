@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "defaults.hpp"
 #include "channel.h"
 #include "champsim_constants.h"
 
@@ -9,7 +10,14 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
     do_nothing_MRC mock_translator;
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("411a-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_translator.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(3)
+    };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
@@ -58,7 +66,14 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     release_MRC mock_translator; // release_MRC used because it does not manipulate the data field
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{"411a-uut", 1, 1, 8, 32, hit_latency, 3, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_translator.queues, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("411b-uut")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_translator.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(3)
+    };
 
     std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul, &mock_translator}};
 
@@ -71,10 +86,9 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = 0x11111eef;
       test.v_address = test.address;
       test.is_translated = false;
-      test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
 
       auto test_result = mock_ul.issue(test);
@@ -97,7 +111,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
 
       THEN("The packet is translated") {
         REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == test.address);
+        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
       }
     }
   }

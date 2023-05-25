@@ -54,6 +54,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   // Perform phase
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
+    auto next_phase_complete = phase_complete;
+
     // Operate
     for (champsim::operable& op : operables) {
       try {
@@ -70,18 +72,29 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         abort();
       }
     }
-    std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
+    std::sort(std::begin(operables), std::end(operables),
+              [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
 
     // Read from trace
-    for (O3_CPU& cpu : env.cpu_view())
-      std::generate_n(std::back_inserter(cpu.input_queue), cpu.IN_QUEUE_SIZE - std::size(cpu.input_queue), std::ref(traces.at(trace_index.at(cpu.cpu))));
+    for (O3_CPU& cpu : env.cpu_view()) {
+      auto& trace = traces.at(trace_index.at(cpu.cpu));
+      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count)
+        cpu.input_queue.push_back(trace());
+
+      // If any trace reaches EOF, terminate all phases
+      if (trace.eof())
+        std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
+    }
 
     // Check for phase finish
-    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
     for (O3_CPU& cpu : env.cpu_view()) {
       // Phase complete
-      if (!phase_complete[cpu.cpu] && (cpu.sim_instr() >= length)) {
-        phase_complete[cpu.cpu] = true;
+      next_phase_complete[cpu.cpu] = next_phase_complete[cpu.cpu] || (cpu.sim_instr() >= length);
+    }
+
+    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
+    for (O3_CPU& cpu : env.cpu_view()) {
+      if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
         for (champsim::operable& op : operables)
           op.end_phase(cpu.cpu);
 
@@ -91,6 +104,8 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
       }
     }
+
+    phase_complete = next_phase_complete;
   }
 
   auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();

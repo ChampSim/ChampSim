@@ -21,20 +21,19 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util.h"
+#include "util/span.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(std::string v1, uint32_t cpu, double freq_scale, std::vector<std::pair<std::size_t, std::size_t>> pscl_dims, uint32_t v10,
-                                 uint32_t v11, uint32_t v12, uint32_t v13, uint64_t latency, std::vector<champsim::channel*>&& ul, champsim::channel* ll,
-                                 VirtualMemory& _vmem)
-    : champsim::operable(freq_scale), upper_levels(std::move(ul)), lower_level(ll), NAME(v1), RQ_SIZE(v10), MSHR_SIZE(v11), MAX_READ(v12), MAX_FILL(v13),
-      HIT_LATENCY(latency), vmem(_vmem), CR3_addr(_vmem.get_pte_pa(cpu, 0, std::size(pscl_dims) + 1).first)
+PageTableWalker::PageTableWalker(Builder b)
+    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
+      MAX_FILL(b.m_max_fill), HIT_LATENCY(b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
-  auto level = std::size(pscl_dims) + 1;
-  for (auto x : pscl_dims) {
-    auto shamt = _vmem.shamt(level--);
-    pscl.emplace_back(x.first, x.second, pscl_indexer{shamt}, pscl_indexer{shamt});
-  }
+  std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
+  std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
+  std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
+
+  for (auto [level, sets, ways] : local_pscl_dims)
+    pscl.emplace_back(sets, ways, pscl_indexer{b.m_vmem->shamt(level)}, pscl_indexer{b.m_vmem->shamt(level)});
 }
 
 PageTableWalker::mshr_type::mshr_type(request_type req, std::size_t level)
@@ -53,7 +52,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-  auto walk_offset = vmem.get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
+  auto walk_offset = vmem->get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
 
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
   fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
@@ -90,6 +89,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
   mshr_type fwd_mshr = fill_mshr;
   fwd_mshr.address = fill_mshr.data;
   fwd_mshr.translation_level = fill_mshr.translation_level - 1;
+  fwd_mshr.event_cycle = std::numeric_limits<uint64_t>::max();
 
   return step_translation(fwd_mshr);
 }
@@ -159,15 +159,9 @@ void PageTableWalker::operate()
 
 void PageTableWalker::finish_packet(const response_type& packet)
 {
-  auto last_finished =
-      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
-  auto inserted_finished = finished.insert(std::cend(finished), std::begin(MSHR), last_finished);
-  MSHR.erase(std::begin(MSHR), last_finished);
-
-  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x) { return x.translation_level > 0; });
-  std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
+  auto finish_step = [this](auto& mshr_entry) {
     uint64_t penalty;
-    std::tie(mshr_entry.data, penalty) = this->vmem.get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+    std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
@@ -177,11 +171,11 @@ void PageTableWalker::finish_packet(const response_type& packet)
       std::cout << " data: " << mshr_entry.data << std::dec;
       std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
     }
-  });
+  };
 
-  std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
+  auto finish_last_step = [this](auto& mshr_entry) {
     uint64_t penalty;
-    std::tie(mshr_entry.data, penalty) = this->vmem.va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+    std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
@@ -191,10 +185,21 @@ void PageTableWalker::finish_packet(const response_type& packet)
       std::cout << " data: " << mshr_entry.data << std::dec;
       std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
     }
+  };
+
+  auto last_finished =
+      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
+
+  std::for_each(std::begin(MSHR), last_finished, [finish_step, finish_last_step](auto& mshr_entry) {
+    if (mshr_entry.translation_level > 0)
+      finish_step(mshr_entry);
+    else
+      finish_last_step(mshr_entry);
   });
 
-  completed.insert(std::cend(completed), last_unfinished, std::end(finished));
-  finished.erase(last_unfinished, std::end(finished));
+  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(finished), std::back_inserter(completed),
+                      [](auto x) { return x.translation_level > 0; });
+  MSHR.erase(std::begin(MSHR), last_finished);
 }
 
 void PageTableWalker::begin_phase()
@@ -206,6 +211,7 @@ void PageTableWalker::begin_phase()
   }
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {
@@ -220,3 +226,4 @@ void PageTableWalker::print_deadlock()
     std::cout << NAME << " MSHR empty" << std::endl;
   }
 }
+// LCOV_EXCL_STOP

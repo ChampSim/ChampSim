@@ -25,7 +25,6 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
-#include "util.h"
 
 struct dram_stats {
   std::string name{};

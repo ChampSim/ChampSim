@@ -3,6 +3,7 @@
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
 
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
   int64_t stride;
@@ -27,7 +28,13 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     do_nothing_MRC mock_ll;
     do_nothing_MRC mock_lt;
     to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{"453-uut-["+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_lt.queues, &mock_ll.queues, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("453-uut-["+std::to_string(stride)+"]")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
+      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+    };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
 
@@ -110,9 +117,15 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     do_nothing_MRC mock_ll;
     do_nothing_MRC mock_lt;
     to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{"453-uut-[-"+std::to_string(stride)+"]", 1, 1, 8, 32, 1, 3, 1, 1, 0, false, false, true, (1<<LOAD)|(1<<PREFETCH), {&mock_ul.queues}, &mock_lt.queues, &mock_ll.queues, CACHE::pprefetcherDva_ampm_lite, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("453-uut-[-"+std::to_string(stride)+"]")
+      .upper_levels({&mock_ul.queues})
+      .lower_level(&mock_ll.queues)
+      .lower_translate(&mock_lt.queues)
+      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+    };
 
-    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &mock_lt, &uut}};
 
     for (auto elem : elements) {
       elem->initialize();

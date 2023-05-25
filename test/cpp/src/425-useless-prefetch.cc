@@ -2,6 +2,9 @@
 #include "mocks.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "defaults.hpp"
+
+#include <cstdlib>
 
 SCENARIO("A cache increments the useless prefetch count when it evicts an unhit prefetch") {
   GIVEN("An empty cache") {
@@ -10,9 +13,17 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{"405-uut", 1, 1, 1, 32, hit_latency, miss_latency, 1, 1, 0, false, false, false, (1<<LOAD)|(1<<PREFETCH), {{&mock_ul_seed.queues, &mock_ul_test.queues}}, nullptr, &mock_ll.queues, CACHE::pprefetcherDno, CACHE::rreplacementDlru};
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+      .name("405-uut")
+      .sets(1)
+      .ways(1)
+      .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+      .lower_level(&mock_ll.queues)
+      .hit_latency(hit_latency)
+      .fill_latency(miss_latency)
+    };
 
-    std::array<champsim::operable*, 3> elements{{&mock_ll, &uut, &mock_ul_test}};
+    std::array<champsim::operable*, 4> elements{{&uut, &mock_ll, &mock_ul_seed, &mock_ul_test}};
 
     for (auto elem : elements) {
       elem->initialize();
@@ -62,7 +73,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(std::llabs((long long)mock_ul_test.packets.front().return_time - ((long long)mock_ul_test.packets.front().issue_time + (miss_latency + hit_latency))) <= 1);
+          REQUIRE(std::llabs((long long)mock_ul_test.packets.front().return_time - ((long long)mock_ul_test.packets.front().issue_time + (long long)(miss_latency + hit_latency))) <= 1);
         }
 
         THEN("The number of useless prefetches is increased") {
