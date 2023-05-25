@@ -15,8 +15,8 @@
  */
 
 #include <algorithm>
+#include <CLI/CLI.hpp>
 #include <fstream>
-#include <getopt.h>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -39,54 +39,37 @@ int main(int argc, char** argv)
 {
   champsim::configured::generated_environment gen_environment{};
 
-  // initialize knobs
-  uint8_t knob_cloudsuite = 0;
-  uint64_t warmup_instructions = 0, simulation_instructions = std::numeric_limits<uint64_t>::max();
-  bool knob_json_out = false;
-  std::ofstream json_file;
+  CLI::App app{"A microarchitecture simulator for research and education"};
 
-  // check to see if knobs changed using getopt_long()
-  int traces_encountered = 0;
-  static struct option long_options[] = {{"warmup_instructions", required_argument, 0, 'w'},
-                                         {"simulation_instructions", required_argument, 0, 'i'},
-                                         {"hide_heartbeat", no_argument, 0, 'h'},
-                                         {"cloudsuite", no_argument, 0, 'c'},
-                                         {"json", optional_argument, 0, 'j'},
-                                         {"traces", no_argument, &traces_encountered, 1},
-                                         {0, 0, 0, 0}};
+  bool knob_cloudsuite{false};
+  uint64_t warmup_instructions = 0;
+  uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
+  std::string json_file_name;
+  std::vector<std::string> trace_names;
 
-  int c;
-  while ((c = getopt_long_only(argc, argv, "w:i:hc", long_options, NULL)) != -1 && !traces_encountered) {
-    switch (c) {
-    case 'w':
-      warmup_instructions = atol(optarg);
-      break;
-    case 'i':
-      simulation_instructions = atol(optarg);
-      break;
-    case 'h':
-      for (O3_CPU& cpu : gen_environment.cpu_view())
-        cpu.show_heartbeat = false;
-      break;
-    case 'c':
-      knob_cloudsuite = 1;
-      break;
-    case 'j':
-      knob_json_out = true;
-      if (optarg)
-        json_file.open(optarg);
-    case 0:
-      break;
-    default:
-      abort();
-    }
-  }
+  auto set_heartbeat_callback = [&](auto){
+    for (O3_CPU& cpu : gen_environment.cpu_view())
+      cpu.show_heartbeat = false;
+  };
 
-  std::vector<std::string> trace_names{std::next(argv, optind), std::next(argv, argc)};
+  app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
+  app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
+  app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
+  auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions, "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
+
+  auto json_option = app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")
+    ->expected(0,1);
+
+  app.add_option("traces", trace_names, "The paths to the traces")
+    ->required()
+    ->expected(NUM_CPUS)
+    ->check(CLI::ExistingFile);
+
+  CLI11_PARSE(app, argc, argv);
 
   std::vector<champsim::tracereader> traces;
   std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, repeat = (simulation_instructions != std::numeric_limits<uint64_t>::max()), i = uint8_t(0)](auto name) mutable {
+                 [knob_cloudsuite, repeat = (sim_instr_option->count() > 0), i = uint8_t(0)](auto name) mutable {
                    return get_tracereader(name, i++, knob_cloudsuite, repeat);
                  });
 
@@ -112,11 +95,13 @@ int main(int argc, char** argv)
   for (CACHE& cache : gen_environment.cache_view())
     cache.impl_replacement_final_stats();
 
-  if (knob_json_out) {
-    if (json_file.is_open())
-      champsim::json_printer{json_file}.print(phase_stats);
-    else
+  if (json_option->count() > 0) {
+    if (json_file_name.empty()) {
       champsim::json_printer{std::cout}.print(phase_stats);
+    } else {
+      std::ofstream json_file{json_file_name};
+      champsim::json_printer{json_file}.print(phase_stats);
+    }
   }
 
   return 0;
