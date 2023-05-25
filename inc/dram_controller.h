@@ -20,6 +20,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <string>
 #include <optional>
 
 #include "champsim_constants.h"

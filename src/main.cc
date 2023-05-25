@@ -17,10 +17,11 @@
 #include <algorithm>
 #include <fstream>
 #include <getopt.h>
-#include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
+
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -97,20 +98,12 @@ int main(int argc, char** argv)
   for (auto& p : phases)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
 
-  std::cout << std::endl;
-  std::cout << "*** ChampSim Multicore Out-of-Order Simulator ***" << std::endl;
-  std::cout << std::endl;
-  std::cout << "Warmup Instructions: " << phases[0].length << std::endl;
-  std::cout << "Simulation Instructions: " << phases[1].length << std::endl;
-  std::cout << "Number of CPUs: " << std::size(gen_environment.cpu_view()) << std::endl;
-  std::cout << "Page size: " << PAGE_SIZE << std::endl;
-  std::cout << std::endl;
+  fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
+      phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
 
   auto phase_stats = champsim::main(gen_environment, phases, traces);
 
-  std::cout << std::endl;
-  std::cout << "ChampSim completed all CPUs" << std::endl;
-  std::cout << std::endl;
+  fmt::print("\nChampSim completed all CPUs\n\n");
 
   champsim::plain_printer default_print{std::cout};
   default_print.print(phase_stats);

@@ -29,6 +29,8 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "champsim.h"

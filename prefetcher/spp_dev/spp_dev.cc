@@ -4,6 +4,8 @@
 
 #include "cache.h"
 
+#include <iostream>
+
 namespace
 {
 spp::SIGNATURE_TABLE ST;

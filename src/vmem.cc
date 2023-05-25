@@ -18,6 +18,8 @@
 
 #include <cassert>
 
+#include <fmt/core.h>
+
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
@@ -32,9 +34,9 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
 
   auto required_bits = champsim::lg2(last_ppage);
   if (required_bits > 64)
-    std::cout << "WARNING: virtual memory configuration would require " << required_bits << " bits of addressing." << std::endl; // LCOV_EXCL_LINE
+    fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   if (required_bits > champsim::lg2(dram.size()))
-    std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl; // LCOV_EXCL_LINE
+    fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
 }
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
@@ -87,14 +89,7 @@ std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64
   auto offset = get_offset(vaddr, level);
   auto paddr = champsim::splice_bits(ppage->second, offset * PTE_BYTES, champsim::lg2(pte_page_size));
   if constexpr (champsim::debug_print) {
-    std::cout << "[VMEM] " << __func__;
-    std::cout << " paddr: " << std::hex << paddr;
-    std::cout << " vaddr: " << vaddr << std::dec;
-    std::cout << " pt_page offset: " << offset;
-    std::cout << " translation_level: " << level;
-    if (fault)
-      std::cout << " PAGE FAULT";
-    std::cout << std::endl;
+    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} pt_page_offset: {} translation_level: {}\n", __func__, paddr, vaddr, offset, level);
   }
 
   return {paddr, fault ? minor_fault_penalty : 0};

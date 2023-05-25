@@ -52,8 +52,6 @@ bool check_cl_prefetch(CACHE* cache, uint64_t v_addr)
 
 void CACHE::prefetcher_initialize()
 {
-  std::cout << "CPU " << cpu << " Virtual Address Space AMPM-Lite Prefetcher" << std::endl;
-
   regions.insert_or_assign(this, decltype(regions)::mapped_type{});
 }
 

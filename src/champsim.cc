@@ -21,6 +21,9 @@
 #include <numeric>
 #include <vector>
 
+#include <fmt/chrono.h>
+#include <fmt/core.h>
+
 #include "environment.h"
 #include "ooo_cpu.h"
 #include "operable.h"
@@ -29,13 +32,9 @@
 
 auto start_time = std::chrono::steady_clock::now();
 
-std::tuple<uint64_t, uint64_t, uint64_t> elapsed_time()
+std::chrono::seconds elapsed_time()
 {
-  auto diff = std::chrono::steady_clock::now() - start_time;
-  auto elapsed_hour = std::chrono::duration_cast<std::chrono::hours>(diff);
-  auto elapsed_minute = std::chrono::duration_cast<std::chrono::minutes>(diff) - elapsed_hour;
-  auto elapsed_second = std::chrono::duration_cast<std::chrono::seconds>(diff) - elapsed_hour - elapsed_minute;
-  return {elapsed_hour.count(), elapsed_minute.count(), elapsed_second.count()};
+  return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time);
 }
 
 namespace champsim
@@ -66,7 +65,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         // for (auto c : caches)
         for (champsim::operable& c : operables) {
           c.print_deadlock();
-          std::cout << std::endl;
+          fmt::print("\n");
         }
 
         abort();
@@ -92,28 +91,22 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
       next_phase_complete[cpu.cpu] = next_phase_complete[cpu.cpu] || (cpu.sim_instr() >= length);
     }
 
-    auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
         for (champsim::operable& op : operables)
           op.end_phase(cpu.cpu);
 
-        std::cout << phase_name << " finished CPU " << cpu.cpu;
-        std::cout << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle()
-                  << " cumulative IPC: " << std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle());
-        std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
+        fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
+            phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
       }
     }
 
     phase_complete = next_phase_complete;
   }
 
-  auto [elapsed_hour, elapsed_minute, elapsed_second] = elapsed_time();
   for (O3_CPU& cpu : env.cpu_view()) {
-    std::cout << std::endl;
-    std::cout << phase_name << " complete CPU " << cpu.cpu << " instructions: " << cpu.sim_instr() << " cycles: " << cpu.sim_cycle();
-    std::cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << std::endl;
-    std::cout << std::endl;
+    fmt::print("{} complete CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n",
+        phase_name, cpu.cpu, cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
   }
 
   phase_stats stats;

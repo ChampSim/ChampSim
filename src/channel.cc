@@ -17,6 +17,7 @@
 #include "channel.h"
 
 #include <cassert>
+#include <fmt/core.h>
 
 #include "cache.h"
 #include "champsim.h"
@@ -130,11 +131,7 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 bool champsim::channel::add_rq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_rq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << packet.type << std::endl;
+    fmt::print("[channel_rq] {} instr_id: {} address: {:x} v_address: {:x}\n", __func__, packet.address, packet.v_address);
   }
 
   sim_stats.RQ_ACCESS++;
@@ -152,11 +149,7 @@ bool champsim::channel::add_rq(const request_type& packet)
 bool champsim::channel::add_wq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_wq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << packet.type << std::endl;
+    fmt::print("[channel_wq] {} instr_id: {} address: {:x} v_address: {:x}\n", __func__, packet.address, packet.v_address);
   }
 
   sim_stats.WQ_ACCESS++;
@@ -174,11 +167,7 @@ bool champsim::channel::add_wq(const request_type& packet)
 bool champsim::channel::add_pq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[channel_pq] " << __func__;
-    std::cout << " instr_id: " << packet.instr_id;
-    std::cout << " address: " << std::hex << packet.address;
-    std::cout << " v_addr: " << packet.v_address << std::dec;
-    std::cout << " type: " << packet.type << std::endl;
+    fmt::print("[channel_pq] {} instr_id: {} address: {:x} v_address: {:x}\n", __func__, packet.address, packet.v_address);
   }
 
   sim_stats.PQ_ACCESS++;
