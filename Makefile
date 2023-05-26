@@ -1,5 +1,7 @@
 ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
+LDLIBS += -lfmt
+
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 CPPFLAGS += -isystem $(TRIPLET_DIR)/include
@@ -25,6 +27,10 @@ all_execs: $(filter-out $(test_main_name), $(executable_name))
 # Remove all intermediate files
 clean:
 	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-$(RM) inc/champsim_constants.h
+	@-$(RM) inc/cache_modules.h
+	@-$(RM) inc/ooo_cpu_modules.h
+	@-$(RM) src/core_inst.cc
 	@-$(RM) $(test_main_name)
 
 # Remove all configuration files

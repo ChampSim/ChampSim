@@ -48,7 +48,7 @@ TEST_CASE("A tracereader can read the byte representation of an input_instr") {
   auto inst0 = uut();
   REQUIRE(inst0.ip == champsim::address{0x4c00133a});
   REQUIRE(inst0.is_branch == false);
-  REQUIRE_THAT(inst0.destination_registers, Catch::Matchers::Contains(59) && Catch::Matchers::SizeIs(1));
+  REQUIRE_THAT(inst0.destination_registers, Catch::Matchers::RangeEquals(std::vector{59}));
   REQUIRE_THAT(inst0.source_registers, Catch::Matchers::IsEmpty());
   REQUIRE_THAT(inst0.destination_memory, Catch::Matchers::IsEmpty());
   REQUIRE_THAT(inst0.source_memory, Catch::Matchers::IsEmpty());
@@ -56,7 +56,7 @@ TEST_CASE("A tracereader can read the byte representation of an input_instr") {
   auto inst1 = uut();
   REQUIRE(inst1.ip == champsim::address{0x4c00163a});
   REQUIRE(inst1.is_branch == false);
-  REQUIRE_THAT(inst1.destination_registers, Catch::Matchers::Contains(73) && Catch::Matchers::SizeIs(1));
+  REQUIRE_THAT(inst1.destination_registers, Catch::Matchers::RangeEquals(std::vector{73}));
   REQUIRE_THAT(inst1.source_registers, Catch::Matchers::IsEmpty());
   REQUIRE_THAT(inst1.destination_memory, Catch::Matchers::IsEmpty());
   REQUIRE_THAT(inst1.source_memory, Catch::Matchers::IsEmpty());

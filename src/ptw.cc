@@ -24,6 +24,7 @@
 #include "util/bits.h"
 #include "util/span.h"
 #include "vmem.h"
+#include <fmt/core.h>
 
 PageTableWalker::PageTableWalker(Builder b)
     : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
@@ -62,11 +63,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
     fwd_mshr.to_return = {&ul->returned};
 
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " address: " << fwd_mshr.address;
-    std::cout << " v_address: " << handle_pkt.v_address;
-    std::cout << " pt_page offset: " << walk_offset.to<int>();
-    std::cout << " translation_level: " << walk_init.level << std::endl;
+    fmt::print("[{}] {} address: {} v_address: {} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
+               walk_offset.to<int>(), walk_init.level);
   }
 
   return step_translation(fwd_mshr);
@@ -75,13 +73,9 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
-    std::cout << "[" << NAME << "] " << __func__;
-    std::cout << " address: " << fill_mshr.address;
-    std::cout << " v_address: " << fill_mshr.v_address;
-    std::cout << " data: " << fill_mshr.data;
-    std::cout << " pt_page offset: " << fill_mshr.data.slice<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>();
-    std::cout << " translation_level: " << +fill_mshr.translation_level;
-    std::cout << " event: " << fill_mshr.event_cycle << " current: " << current_cycle << std::endl;
+    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
+               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.data.slice<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>(),
+               fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
@@ -159,43 +153,41 @@ void PageTableWalker::operate()
 
 void PageTableWalker::finish_packet(const response_type& packet)
 {
-  assert(packet.address != champsim::address{});
-
-  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), [match = champsim::page_number{packet.address}](const auto& x) { return champsim::page_number{x.address} == match; });
-  auto inserted_finished = finished.insert(std::cend(finished), std::begin(MSHR), last_finished);
-  MSHR.erase(std::begin(MSHR), last_finished);
-
-  auto last_unfinished = std::partition(inserted_finished, std::end(finished), [](auto x) { return x.translation_level > 0; });
-  std::for_each(inserted_finished, last_unfinished, [this](auto& mshr_entry) {
+  auto finish_step = [this](auto& mshr_entry) {
     uint64_t penalty;
     std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[" << this->NAME << "_MSHR] finish_packet";
-      std::cout << " address: " << mshr_entry.address;
-      std::cout << " v_address: " << mshr_entry.v_address;
-      std::cout << " data: " << mshr_entry.data;
-      std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
+      fmt::print("[{}] {} address: {} v_address: {} data: {} translation_level: {}\n", NAME, __func__, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
-  });
+  };
 
-  std::for_each(last_unfinished, std::end(finished), [this](auto& mshr_entry) {
+  auto finish_last_step = [this](auto& mshr_entry) {
     uint64_t penalty;
     std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      std::cout << "[" << this->NAME << "_MSHR] complete_packet";
-      std::cout << " address: " << std::hex << mshr_entry.address;
-      std::cout << " v_address: " << mshr_entry.v_address;
-      std::cout << " data: " << mshr_entry.data << std::dec;
-      std::cout << " translation_level: " << +mshr_entry.translation_level << std::endl;
+      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, +mshr_entry.translation_level);
     }
+  };
+
+  auto last_finished =
+      std::partition(std::begin(MSHR), std::end(MSHR), [match = champsim::block_number{packet.address}](auto x) { return champsim::block_number{x.address} == match; });
+
+  std::for_each(std::begin(MSHR), last_finished, [finish_step, finish_last_step](auto& mshr_entry) {
+    if (mshr_entry.translation_level > 0)
+      finish_step(mshr_entry);
+    else
+      finish_last_step(mshr_entry);
   });
 
-  completed.insert(std::cend(completed), last_unfinished, std::end(finished));
-  finished.erase(last_unfinished, std::end(finished));
+  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(finished), std::back_inserter(completed),
+                      [](auto x) { return x.translation_level > 0; });
+  MSHR.erase(std::begin(MSHR), last_finished);
 }
 
 void PageTableWalker::begin_phase()
@@ -207,17 +199,18 @@ void PageTableWalker::begin_phase()
   }
 }
 
+// LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {
-    std::cout << NAME << " MSHR Entry" << std::endl;
+    fmt::print("{} MSHR Entry\n", NAME);
     std::size_t j = 0;
     for (auto entry : MSHR) {
-      std::cout << "[" << NAME << " MSHR] entry: " << j++;
-      std::cout << " address: " << entry.address << " v_address: " << entry.v_address;
-      std::cout << " translation_level: " << +entry.translation_level << " event_cycle: " << entry.event_cycle << std::endl;
+      fmt::print("[{}_MSHR] {} address: {} v_address: {} translation_level: {} event_cycle: {}\n", NAME, j++, entry.address, entry.v_address,
+                 +entry.translation_level, entry.event_cycle);
     }
   } else {
-    std::cout << NAME << " MSHR empty" << std::endl;
+    fmt::print("{} MSHR empty\n", NAME);
   }
 }
+// LCOV_EXCL_STOP

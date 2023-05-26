@@ -1,6 +1,7 @@
 #include "lru.h"
 
 #include <algorithm>
+#include <cassert>
 
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
 {

@@ -1,8 +1,6 @@
 #include "bimodal.h"
 #include <iostream>
 
-void bimodal::initialize_branch_predictor() { std::cout << "CPU " << intern_->cpu << " Bimodal branch predictor" << std::endl; }
-
 bool bimodal::predict_branch(champsim::address ip)
 {
   auto value = bimodal_table[hash(ip)];

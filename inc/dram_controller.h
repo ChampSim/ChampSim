@@ -21,6 +21,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <string>
 
 #include "address.h"
 #include "champsim_constants.h"

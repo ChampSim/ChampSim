@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef CACHE_H
 #define CACHE_H
 
@@ -21,6 +26,7 @@
 #include <bitset>
 #include <deque>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -45,6 +51,7 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
   std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
 
+  double avg_miss_latency = 0;
   uint64_t total_miss_latency = 0;
 };
 
@@ -119,7 +126,6 @@ private:
   void finish_translation(const response_type& packet);
 
   void issue_translation();
-  void detect_misses();
 
 public:
   using BLOCK = champsim::cache_block;
@@ -134,6 +140,9 @@ private:
 
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
+
+  template <bool>
+  auto initiate_tag_check(champsim::channel* ul = nullptr);
 
   std::deque<tag_lookup_type> internal_PQ{};
   std::deque<tag_lookup_type> inflight_tag_check{};
@@ -171,11 +180,17 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  [[deprecated]] std::size_t get_occupancy(uint8_t queue_type, uint64_t address) const;
-  [[deprecated]] std::size_t get_size(uint8_t queue_type, uint64_t address) const;
+  [[deprecated]] std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const;
+  [[deprecated]] std::size_t get_size(uint8_t queue_type, champsim::address address) const;
 
-  std::size_t get_occupancy(uint8_t queue_type, champsim::address address) const;
-  std::size_t get_size(uint8_t queue_type, champsim::address address) const;
+  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t get_occupancy(uint8_t queue_type,
+                                                                                                                                           uint64_t address);
+  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type,
+                                                                                                                            uint64_t address);
+
+  std::size_t get_mshr_occupancy() const;
+  std::size_t get_mshr_size() const;
+  double get_mshr_occupancy_ratio() const;
 
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
@@ -337,10 +352,9 @@ public:
       m_mshr_size = mshr_size_;
       return *this;
     }
-    self_type& latency(uint32_t lat_)
+    self_type& latency(uint64_t lat_)
     {
-      m_fill_lat = lat_ / 2;
-      m_hit_lat = lat_ - m_fill_lat;
+      m_latency = lat_;
       return *this;
     }
     self_type& hit_latency(uint64_t hit_lat_)
@@ -351,11 +365,6 @@ public:
     self_type& fill_latency(uint64_t fill_lat_)
     {
       m_fill_lat = fill_lat_;
-      return *this;
-    }
-    self_type& latency(uint64_t lat_)
-    {
-      m_latency = lat_;
       return *this;
     }
     self_type& tag_bandwidth(uint32_t max_read_)
@@ -576,4 +585,9 @@ void CACHE::replacement_module_model<Rs...>::impl_replacement_final_stats()
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
 }
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif

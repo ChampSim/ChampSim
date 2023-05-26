@@ -1,5 +1,7 @@
 #include "drrip.h"
 #include <algorithm>
+#include <cassert>
+#include <utility>
 
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(NUM_SET * NUM_WAY)
 {

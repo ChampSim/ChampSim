@@ -10,8 +10,6 @@ std::size_t gshare::gs_table_hash(champsim::address ip, std::bitset<GLOBAL_HISTO
   return hash % GS_HISTORY_TABLE_SIZE;
 }
 
-void gshare::initialize_branch_predictor() { std::cout << "GSHARE branch predictor" << std::endl; }
-
 bool gshare::predict_branch(champsim::address ip)
 {
   auto gs_hash = gs_table_hash(ip, branch_history_vector);

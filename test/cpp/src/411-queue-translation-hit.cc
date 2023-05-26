@@ -54,8 +54,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
       }
 
       THEN("The packet is translated") {
-        REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == champsim::address{0x11111eef});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{champsim::address{0x11111eef}}));
       }
     }
   }
@@ -87,10 +86,9 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = champsim::address{0xdeadbeef};
+      test.address = champsim::address{0x11111eef};
       test.v_address = test.address;
       test.is_translated = false;
-      test.data = test.address; // smuggle our own translation through the mock
       test.cpu = 0;
 
       auto test_result = mock_ul.issue(test);
@@ -112,8 +110,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
       }
 
       THEN("The packet is translated") {
-        REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == test.address);
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{champsim::address{0x11111eef}}));
       }
     }
   }

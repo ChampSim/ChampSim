@@ -1,11 +1,33 @@
+/*
+ *    Copyright 2023 The ChampSim Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifdef CHAMPSIM_MODULE
+#define SET_ASIDE_CHAMPSIM_MODULE
+#undef CHAMPSIM_MODULE
+#endif
+
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
 #include <ios>
 #include <iomanip>
-#include <iostream>
+#include <fmt/core.h>
 
 #include "util/bits.h"
 
@@ -41,21 +63,8 @@ class address_slice_impl
 
     constexpr static int bits = std::numeric_limits<underlying_type>::digits;
 
-    friend std::ostream& operator<<(std::ostream& stream, const self_type &addr)
-    {
-      auto addr_flags = std::ios_base::hex | std::ios_base::showbase | std::ios_base::internal;
-      auto addr_mask  = std::ios_base::basefield | std::ios_base::showbase | std::ios_base::adjustfield;
-
-      auto oldflags = stream.setf(addr_flags, addr_mask);
-      auto oldfill = stream.fill('0');
-
-      stream << addr.template to<underlying_type>();
-
-      stream.setf(oldflags, addr_mask);
-      stream.fill(oldfill);
-
-      return stream;
-    }
+    template <typename Ostr, typename ST>
+    friend Ostr& operator<<(Ostr& stream, const address_slice_impl<ST>& addr);
 
     template <typename T>
     [[nodiscard]] constexpr T to() const
@@ -308,6 +317,51 @@ constexpr auto splice(address_slice<UP_A, LOW_A> lhs, address_slice<UP_B, LOW_B>
     return rettype{upper_extent, lower_extent, splice_bits(rettype{upper_extent, lower_extent, lhs}.value, rettype{upper_extent, lower_extent, rhs}.value, rhs.upper - lower_extent, rhs.lower - lower_extent)};
   }
 }
+
+namespace detail {
+template <typename Ostr, typename self_type>
+Ostr& operator<<(Ostr& stream, const champsim::detail::address_slice_impl<self_type> &addr)
+{
+  auto addr_flags = std::ios_base::hex | std::ios_base::showbase | std::ios_base::internal;
+  auto addr_mask  = std::ios_base::basefield | std::ios_base::showbase | std::ios_base::adjustfield;
+
+  auto oldflags = stream.setf(addr_flags, addr_mask);
+  auto oldfill = stream.fill('0');
+
+  stream << addr.template to<typename champsim::detail::address_slice_impl<self_type>::underlying_type>();
+
+  stream.setf(oldflags, addr_mask);
+  stream.fill(oldfill);
+
+  return stream;
+}
+}
 }
 
+template <std::size_t UP, std::size_t LOW>
+struct fmt::formatter<champsim::address_slice<UP, LOW>> {
+  using addr_type = champsim::address_slice<UP, LOW>;
+  std::size_t len = std::numeric_limits<std::size_t>::max();
+
+  constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator
+  {
+    auto [ret_ptr, ec] = std::from_chars(ctx.begin(), ctx.end(), len);
+    // Check if reached the end of the range:
+    if (ec == std::errc::result_out_of_range || (ret_ptr != ctx.end() && *ret_ptr != '}')) ctx.on_error("invalid format");
+    return ret_ptr;
+  }
+
+  auto format(const addr_type& addr, format_context& ctx) const -> format_context::iterator
+  {
+    if (len == std::numeric_limits<std::size_t>::max())
+      return fmt::format_to(ctx.out(), "0x{:0x}", addr.template to<typename addr_type::underlying_type>());
+    return fmt::format_to(ctx.out(), "0x{:0{}x}", addr.template to<typename addr_type::underlying_type>(), len);
+  }
+};
+
+#endif
+
+#ifdef SET_ASIDE_CHAMPSIM_MODULE
+#undef SET_ASIDE_CHAMPSIM_MODULE
+#define CHAMPSIM_MODULE
 #endif

@@ -5,6 +5,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <fmt/core.h>
 
 #include "util/detect.h"
 #include "champsim_constants.h"
@@ -241,4 +242,16 @@ TEST_CASE("std::setw affects the width of the printed address") {
   champsim::address addr{0xffff'ffff};
   strstr << std::setw(18) << addr;
   REQUIRE(strstr.str() == "0x00000000ffffffff");
+}
+
+TEST_CASE("An address prints something to libfmt") {
+  champsim::address addr{0xffff'ffff};
+  auto result = fmt::format("{}", addr);
+  REQUIRE_THAT(result, Catch::Matchers::Matches("0xffffffff"));
+}
+
+TEST_CASE("The libfmt specifiers affect the width of the address") {
+  champsim::address addr{0xffff'ffff};
+  auto result = fmt::format("{:16}", addr);
+  REQUIRE_THAT(result, Catch::Matchers::Matches( "0x00000000ffffffff"));
 }

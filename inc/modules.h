@@ -1,8 +1,13 @@
 #ifndef MODULES_H
 #define MODULES_H
 
+#include <cstdint>
+
+#include "address.h"
+#include "champsim.h"
 #include "cache.h"
-#include "ooo_cpu.h"
+
+class O3_CPU;
 
 namespace champsim::modules
 {
@@ -26,15 +31,8 @@ struct prefetcher {
   CACHE* intern_;
   explicit prefetcher(CACHE* cache) : intern_(cache) {}
 
-  auto prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
-  {
-    return intern_->prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
-  }
-
-  [[deprecated]] auto prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
-  {
-    return prefetch_line(champsim::address{pf_addr}, fill_this_level, prefetch_metadata);
-  }
+  uint32_t prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  [[deprecated]] uint32_t prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 };
 
 struct replacement {

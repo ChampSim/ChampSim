@@ -3,6 +3,7 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <algorithm>
 
+#include "instruction.h"
 #include "../../../btb/basic_btb/basic_btb.h"
 
 TEST_CASE("The basic_btb does not fill not-taken branches") {

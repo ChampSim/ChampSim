@@ -8,10 +8,10 @@
 
 #include "basic_btb.h"
 
+#include "instruction.h"
+
 void basic_btb::initialize_btb()
 {
-  std::cout << "Basic BTB sets: " << direct.sets << " ways: " << direct.ways << " indirect buffer size: " << indirect.size
-    << " RAS size: " << ras.max_size << std::endl;
 }
 
 std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)

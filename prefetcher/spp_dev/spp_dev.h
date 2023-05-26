@@ -2,7 +2,6 @@
 #define SPP_H
 
 #include <cstdint>
-#include <iostream>
 #include <vector>
 
 #include "champsim.h"

@@ -1,10 +1,10 @@
 #include "va_ampm_lite.h"
 
-#include <iostream>
+#include "cache.h"
 
 uint64_t va_ampm_lite::region_type::region_lru = 0;
 
-void va_ampm_lite::prefetcher_initialize() { std::cout << "Virtual Address Space AMPM-Lite Prefetcher" << std::endl; }
+void va_ampm_lite::prefetcher_initialize() {}
 
 bool va_ampm_lite::check_cl_access(champsim::block_number v_addr)
 {
@@ -49,8 +49,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim
         // found something that we should prefetch
         if (block_addr != champsim::block_number{pos_step_addr}) {
           champsim::address pf_addr{pos_step_addr};
-          bool prefetch_success = prefetch_line(pf_addr, intern_->get_occupancy(0, pf_addr) < intern_->get_size(0, pf_addr) / 2, metadata_in);
-          if (prefetch_success) {
+          if (bool prefetch_success = prefetch_line(pf_addr, (intern_->get_mshr_occupancy_ratio() < 0.5), metadata_in); prefetch_success) {
             auto [pf_vpn, pf_page_offset] = page_and_offset(pf_addr);
             auto pf_region = std::find_if(std::begin(regions), std::end(regions), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });
 

@@ -1,6 +1,7 @@
 #include "srrip.h"
 
 #include <algorithm>
+#include <cassert>
 
 #include "cache.h"
 

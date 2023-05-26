@@ -8,13 +8,13 @@
 
 #include "champsim.h"
 #include "address.h"
-#include "util/bits.h"
+#include "msl/bits.h"
 
 struct indirect_predictor
 {
   static constexpr std::size_t size = 4096;
   std::array<champsim::address, size> predictor = {};
-  std::bitset<champsim::lg2(size)> conditional_history = {};
+  std::bitset<champsim::msl::lg2(size)> conditional_history = {};
 
   std::pair<champsim::address, bool> prediction(champsim::address ip);
   void update_target(champsim::address ip, champsim::address branch_target);

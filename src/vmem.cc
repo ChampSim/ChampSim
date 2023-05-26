@@ -22,6 +22,7 @@
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "util/bits.h"
+#include <fmt/core.h>
 
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : next_pte_page(LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size), 0), last_ppage(1ull << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
@@ -33,9 +34,9 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
 
   auto required_bits = LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>());
   if (required_bits > champsim::address::bits)
-    std::cout << "WARNING: virtual memory configuration would require " << required_bits << " bits of addressing." << std::endl;
+    fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   if (required_bits > champsim::lg2(dram.size()))
-    std::cout << "WARNING: physical memory size is smaller than virtual memory size" << std::endl;
+    fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
 }
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
@@ -86,14 +87,7 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
   auto offset = get_offset(vaddr, level);
   champsim::address paddr{champsim::splice(ppage->second, champsim::address_slice{champsim::lg2(pte_page_size), champsim::lg2(PTE_BYTES), offset})};
   if constexpr (champsim::debug_print) {
-    std::cout << "[VMEM] " << __func__;
-    std::cout << " paddr: " << paddr;
-    std::cout << " vaddr: " << vaddr;
-    std::cout << " pt_page offset: " << offset;
-    std::cout << " translation_level: " << level;
-    if (fault)
-      std::cout << " PAGE FAULT";
-    std::cout << std::endl;
+    fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {}\n", __func__, paddr, vaddr, offset, level);
   }
 
   return {paddr, fault ? minor_fault_penalty : 0};
