@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
-  app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
+  auto warmup_instr_option = app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
   auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions,
                                          "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
 
@@ -64,6 +64,9 @@ int main(int argc, char** argv)
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
+
+  if (sim_instr_option->count() > 0 && warmup_instr_option->count() == 0)
+    warmup_instructions = simulation_instructions * 2 / 10;
 
   std::vector<champsim::tracereader> traces;
   std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
