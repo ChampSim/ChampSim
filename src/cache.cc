@@ -136,6 +136,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   auto way = std::find_if(set_begin, set_end,
                           [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
   const auto hit = (way != set_end);
+  const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {:x} full_addr: {:x} full_v_addr: {:x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__,
@@ -147,7 +148,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit, handle_pkt.type, metadata_thru);
+    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit, useful_prefetch, handle_pkt.type, metadata_thru);
   }
 
   if (hit) {
@@ -164,7 +165,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     way->dirty = (handle_pkt.type == WRITE);
 
     // update prefetch stats and reset prefetch bit
-    if (way->prefetch && !handle_pkt.prefetch_from_this) {
+    if (useful_prefetch) {
       ++sim_stats.pf_useful;
       way->prefetch = false;
     }
