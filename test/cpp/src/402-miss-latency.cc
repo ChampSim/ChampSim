@@ -40,6 +40,11 @@ SCENARIO("A cache returns a miss after the specified latency") {
       REQUIRE(uut.sim_stats.misses.at(static_cast<std::size_t>(type)).at(0) == 0);
     }
 
+    THEN("The MSHR occupancy starts at zero") {
+      CHECK(uut.get_mshr_occupancy() == 0);
+      CHECK(uut.get_mshr_occupancy_ratio() == 0);
+    }
+
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
@@ -55,8 +60,19 @@ SCENARIO("A cache returns a miss after the specified latency") {
         REQUIRE(test_result);
       }
 
-      // Run the uut for a bunch of cycles to clear it out of the RQ and fill the cache
-      for (uint64_t i = 0; i < 2*(miss_latency+hit_latency+fill_latency); ++i)
+      // Run the uut for long enough to miss
+      for (uint64_t i = 0; i < hit_latency+1; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("The MSHR occupancy increases") {
+        CHECK(uut.get_mshr_occupancy() == 1);
+        CHECK(uut.get_mshr_occupancy_ratio() > 0);
+        CHECK(uut.get_mshr_occupancy_ratio() == (std::ceil(uut.get_mshr_occupancy()) / std::ceil(uut.get_mshr_size())));
+      }
+
+      // Run the uut for long enough to fill the cache
+      for (uint64_t i = 0; i < 2*(miss_latency+fill_latency); ++i)
         for (auto elem : elements)
           elem->_operate();
 

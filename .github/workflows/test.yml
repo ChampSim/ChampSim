@@ -221,6 +221,7 @@ jobs:
         lcov --capture --no-external \
         --directory . \
         --include $(pwd)/src/json_printer.cc \
+        --include $(pwd)/inc/stats_printer.h \
         --output-file lcov_json.info
 
     - uses: actions/upload-artifact@v3.1.2
