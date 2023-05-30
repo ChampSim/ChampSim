@@ -22,8 +22,9 @@
 #include <deque>
 #include <functional>
 #include <limits>
-#include <string_view>
 #include <vector>
+
+#include <string_view>
 
 struct ooo_model_instr;
 
@@ -37,7 +38,8 @@ enum class access_type : unsigned {
 };
 
 using namespace std::literals::string_view_literals;
-inline constexpr std::array<std::string_view, static_cast<std::size_t>(access_type::NUM_TYPES)> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"};
+inline constexpr std::array<std::string_view, static_cast<std::size_t>(access_type::NUM_TYPES)> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv,
+                                                                                                                  "TRANSLATION"};
 
 namespace champsim
 {

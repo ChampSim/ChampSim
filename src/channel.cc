@@ -131,7 +131,8 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 bool champsim::channel::add_rq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[channel_rq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(champsim::to_underlying(packet.type)));
+    fmt::print("[channel_rq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   sim_stats.RQ_ACCESS++;
@@ -149,7 +150,8 @@ bool champsim::channel::add_rq(const request_type& packet)
 bool champsim::channel::add_wq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[channel_wq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(champsim::to_underlying(packet.type)));
+    fmt::print("[channel_wq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   sim_stats.WQ_ACCESS++;
@@ -167,7 +169,8 @@ bool champsim::channel::add_wq(const request_type& packet)
 bool champsim::channel::add_pq(const request_type& packet)
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[channel_pq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address, access_type_names.at(champsim::to_underlying(packet.type)));
+    fmt::print("[channel_pq] {} instr_id: {} address: {:x} v_address: {:x} type: {}\n", __func__, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   sim_stats.PQ_ACCESS++;

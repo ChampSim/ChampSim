@@ -21,9 +21,9 @@
 #ifndef UTIL_BITS_H
 #define UTIL_BITS_H
 
-#include "../msl/bits.h"
-
 #include <utility>
+
+#include "../msl/bits.h"
 
 namespace champsim
 {
