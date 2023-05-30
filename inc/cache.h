@@ -283,7 +283,7 @@ public:
   {
     using self_type = Builder<P_FLAG, R_FLAG>;
 
-    std::string_view m_name{};
+    std::string m_name{};
     double m_freq_scale{};
     uint32_t m_sets{};
     uint32_t m_ways{};
@@ -318,7 +318,7 @@ public:
   public:
     Builder() = default;
 
-    self_type& name(std::string_view name_)
+    self_type& name(std::string name_)
     {
       m_name = name_;
       return *this;
