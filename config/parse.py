@@ -59,7 +59,8 @@ def filter_inaccessible(system, roots, key='lower_level'):
 
 def split_string_or_list(val, delim=','):
     if isinstance(val, str):
-        return [t.strip() for t in val.split(delim)]
+        retval = (t.strip() for t in val.split(delim))
+        return [v for v in retval if v]
     return val
 
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):

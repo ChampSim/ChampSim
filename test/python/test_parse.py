@@ -59,6 +59,23 @@ class DuplicateToLengthTests(unittest.TestCase):
         c = { 'name': 'c' }
         self.assertEqual(config.parse.duplicate_to_length([a,b,c], 2), [a,b])
 
+class SplitStringOrListTests(unittest.TestCase):
+
+    def test_empty_string(self):
+        self.assertEqual(config.parse.split_string_or_list(''), [])
+
+    def test_empty_list(self):
+        self.assertEqual(config.parse.split_string_or_list([]), [])
+
+    def test_list_passthrough(self):
+        self.assertEqual(config.parse.split_string_or_list(['a','b']), ['a','b'])
+
+    def test_string_split(self):
+        self.assertEqual(config.parse.split_string_or_list('a,b'), ['a','b'])
+
+    def test_string_strip(self):
+        self.assertEqual(config.parse.split_string_or_list('a, b'), ['a','b'])
+
 class FilterInaccessibleTests(unittest.TestCase):
 
     def test_empty_system(self):
