@@ -54,11 +54,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 void champsim::plain_printer::print(CACHE::stats_type stats)
 {
   constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{{
-    std::pair{"LOAD", static_cast<std::size_t>(access_type::LOAD)},
-    std::pair{"RFO", static_cast<std::size_t>(access_type::RFO)},
-    std::pair{"PREFETCH", static_cast<std::size_t>(access_type::PREFETCH)},
-    std::pair{"WRITE", static_cast<std::size_t>(access_type::WRITE)},
-    std::pair{"TRANSLATION", static_cast<std::size_t>(access_type::TRANSLATION)}
+    std::pair{"LOAD", champsim::to_underlying(access_type::LOAD)},
+    std::pair{"RFO", champsim::to_underlying(access_type::RFO)},
+    std::pair{"PREFETCH", champsim::to_underlying(access_type::PREFETCH)},
+    std::pair{"WRITE", champsim::to_underlying(access_type::WRITE)},
+    std::pair{"TRANSLATION", champsim::to_underlying(access_type::TRANSLATION)}
   }};
 
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {

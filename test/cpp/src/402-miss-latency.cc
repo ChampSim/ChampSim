@@ -37,7 +37,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     }
 
     THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.misses.at(static_cast<std::size_t>(type)).at(0) == 0);
+      REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 0);
     }
 
     THEN("The MSHR occupancy starts at zero") {
@@ -81,7 +81,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(static_cast<std::size_t>(type)).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 1);
       }
 
       THEN("The average miss latency increases") {
@@ -126,7 +126,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     }
 
     THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.misses.at(static_cast<std::size_t>(type)).at(0) == 0);
+      REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 0);
     }
 
     WHEN("A " + std::string{str} + " packet is issued") {
@@ -157,7 +157,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(static_cast<std::size_t>(type)).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 1);
       }
 
       THEN("The average miss latency increases") {
