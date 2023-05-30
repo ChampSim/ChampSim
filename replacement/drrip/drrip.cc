@@ -46,7 +46,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
                                      uint8_t hit)
 {
   // do not update replacement state for writebacks
-  if (type == WRITE) {
+  if (access_type{type} == access_type::WRITE) {
     ::rrpv[this][set * NUM_WAY + way] = ::maxRRPV - 1;
     return;
   }

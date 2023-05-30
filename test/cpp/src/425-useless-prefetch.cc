@@ -53,7 +53,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = 0xcafebabe;
         test_b.cpu = 0;
-        test_b.type = LOAD;
+        test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 
         auto test_b_result = mock_ul_test.issue(test_b);

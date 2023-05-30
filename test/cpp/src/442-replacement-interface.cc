@@ -15,7 +15,7 @@ namespace test
 
 SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
@@ -29,7 +29,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetch_activate(1u<<type)
+      .prefetch_activate(type)
       .offset_bits(0)
       .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
     };
@@ -92,7 +92,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
 
 SCENARIO("The replacement policy is triggered on a hit") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A cache with one element") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
@@ -106,7 +106,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetch_activate(1u<<type)
+      .prefetch_activate(type)
       .offset_bits(0)
       .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
     };
@@ -178,7 +178,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetch_activate(1u<<LOAD)
+      .prefetch_activate(access_type::LOAD)
       .offset_bits(0)
       .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
     };
@@ -198,7 +198,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       seed.v_address = 0xdeadbeef;
       seed.cpu = 0;
       seed.instr_id = id++;
-      seed.type = WRITE;
+      seed.type = access_type::WRITE;
       auto seed_result = mock_ul_seed.issue(seed);
 
       THEN("The issue is received") {
@@ -215,7 +215,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
         decltype(mock_ul_test)::request_type test = seed;
         test.address = 0xcafebabe;
         test.instr_id = id++;
-        test.type = LOAD;
+        test.type = access_type::LOAD;
         auto test_result = mock_ul_test.issue(test);
 
         // Process the miss
@@ -244,7 +244,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
           CHECK(test::replacement_update_state_collector[&uut].back().set == 0);
           CHECK(test::replacement_update_state_collector[&uut].back().way == 0);
           CHECK(test::replacement_update_state_collector[&uut].back().full_addr == test.address);
-          CHECK(test::replacement_update_state_collector[&uut].back().type == LOAD);
+          CHECK(test::replacement_update_state_collector[&uut].back().type == access_type::LOAD);
           CHECK(test::replacement_update_state_collector[&uut].back().victim_addr == seed.address);
           CHECK(test::replacement_update_state_collector[&uut].back().hit == false);
         }

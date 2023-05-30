@@ -68,7 +68,7 @@ const auto default_l1i = CACHE::Builder{}
                              .reset_prefetch_as_load()
                              .set_virtual_prefetch()
                              .set_wq_checks_full_addr()
-                             .prefetch_activate(LOAD, PREFETCH)
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                              // Specifying default prefetchers and replacement policies like this is probably dangerous
                              // since the names could change.
                              // We're doing it anyway, for now.
@@ -88,7 +88,7 @@ const auto default_l1d = CACHE::Builder{}
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .set_wq_checks_full_addr()
-                             .prefetch_activate(LOAD, PREFETCH)
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
@@ -105,7 +105,7 @@ const auto default_l2c = CACHE::Builder{}
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()
-                             .prefetch_activate(LOAD, PREFETCH)
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
@@ -122,7 +122,7 @@ const auto default_itlb = CACHE::Builder{}
                               .reset_prefetch_as_load()
                               .set_virtual_prefetch()
                               .set_wq_checks_full_addr()
-                              .prefetch_activate(LOAD, PREFETCH)
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
@@ -139,7 +139,7 @@ const auto default_dtlb = CACHE::Builder{}
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
                               .set_wq_checks_full_addr()
-                              .prefetch_activate(LOAD, PREFETCH)
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
@@ -156,7 +156,7 @@ const auto default_stlb = CACHE::Builder{}
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
                               .reset_wq_checks_full_addr()
-                              .prefetch_activate(LOAD, PREFETCH)
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
@@ -174,7 +174,7 @@ const auto default_llc = CACHE::Builder{}
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()
-                             .prefetch_activate(LOAD, PREFETCH)
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 

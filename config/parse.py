@@ -57,6 +57,12 @@ def duplicate_to_length(elements, n):
 def filter_inaccessible(system, roots, key='lower_level'):
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
 
+def split_string_or_list(val, delim=','):
+    if isinstance(val, str):
+        retval = (t.strip() for t in val.split(delim))
+        return [v for v in retval if v]
+    return val
+
 def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
@@ -159,6 +165,11 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     for c in caches.values():
         c.setdefault('prefetcher', 'no_instr' if c.get('_is_instruction_cache') else 'no')
         c.setdefault('replacement', 'lru')
+
+    # Set prefetcher_activate
+    for c in caches.values():
+        if 'prefetch_activate' in c:
+            c['prefetch_activate'] = split_string_or_list(c['prefetch_activate'])
 
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
