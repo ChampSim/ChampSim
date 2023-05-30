@@ -194,6 +194,18 @@ public:
   std::size_t get_mshr_size() const;
   double get_mshr_occupancy_ratio() const;
 
+  std::vector<std::size_t> get_rq_occupancy() const;
+  std::vector<std::size_t> get_rq_size() const;
+  std::vector<double> get_rq_occupancy_ratio() const;
+
+  std::vector<std::size_t> get_wq_occupancy() const;
+  std::vector<std::size_t> get_wq_size() const;
+  std::vector<double> get_wq_occupancy_ratio() const;
+
+  std::vector<std::size_t> get_pq_occupancy() const;
+  std::vector<std::size_t> get_pq_size() const;
+  std::vector<double> get_pq_occupancy_ratio() const;
+
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
@@ -211,7 +223,7 @@ public:
     virtual ~module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
-    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) = 0;
+    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) = 0;
     virtual uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
@@ -231,7 +243,7 @@ public:
     explicit module_model(CACHE* cache) : intern_(cache) {}
 
     void impl_prefetcher_initialize();
-    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
     uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
     void impl_prefetcher_cycle_operate();
     void impl_prefetcher_final_stats();
@@ -248,9 +260,9 @@ public:
   std::unique_ptr<module_concept> module_pimpl;
 
   void impl_prefetcher_initialize() { module_pimpl->impl_prefetcher_initialize(); }
-  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
   {
-    return module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in);
+    return module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
   }
   uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
   {
