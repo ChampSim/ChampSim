@@ -3,6 +3,12 @@
 #include "defaults.hpp"
 #include "cache.h"
 #include "champsim_constants.h"
+#include "pref_interface.h"
+
+namespace test
+{
+  extern std::map<CACHE*, std::vector<pref_cache_operate_interface>> prefetch_hit_collector;
+}
 
 SCENARIO("A prefetch can be issued") {
   GIVEN("An empty cache") {
@@ -16,6 +22,7 @@ SCENARIO("A prefetch can be issued") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
+      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDprefetch_hit_collector>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -62,6 +69,8 @@ SCENARIO("A prefetch can be issued") {
       }
 
       AND_WHEN("A packet with the same address is sent") {
+        test::prefetch_hit_collector.insert_or_assign(&uut, std::vector<test::pref_cache_operate_interface>{});
+
         // Create a test packet
         decltype(mock_ul)::request_type test;
         test.address = 0xdeadbeef;
@@ -83,6 +92,15 @@ SCENARIO("A prefetch can be issued") {
         THEN("The number of useful prefetches is incremented") {
           REQUIRE(uut.sim_stats.pf_issued == 1);
           REQUIRE(uut.sim_stats.pf_useful == 1);
+        }
+
+        THEN("The packet is shown to be a prefetch hit") {
+          REQUIRE_THAT(test::prefetch_hit_collector.at(&uut), Catch::Matchers::SizeIs(1) && Catch::Matchers::AllMatch(
+                Catch::Matchers::Predicate<test::pref_cache_operate_interface>(
+                  [](test::pref_cache_operate_interface x){ return x.useful_prefetch; },
+                  "is prefetch hit"
+                )
+              ));
         }
       }
     }
