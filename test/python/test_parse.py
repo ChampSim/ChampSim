@@ -118,137 +118,7 @@ class PassthroughContext:
     def find_all(self):
         return [] # FIXME
 
-class HomogeneousCoreParseTests(unittest.TestCase):
-
-    def generate_config(num_cores, core_in_root, l1i_in_root, l1d_in_root, itlb_in_root, dtlb_in_root, core, l1i, l1d, itlb, dtlb):
-        generated = { 'num_cores': num_cores }
-        if not all((core_in_root, l1i_in_root, l1d_in_root, itlb_in_root, dtlb_in_root)):
-            generated['ooo_cpu'] = [{}]
-
-        if core_in_root:
-            generated.update(**core)
-        else:
-            generated['ooo_cpu'][0].update(**core)
-
-        if l1i_in_root:
-            generated['L1I'] = l1i
-        else:
-            generated['ooo_cpu'][0]['L1I'] = l1i
-
-        if l1d_in_root:
-            generated['L1D'] = l1d
-        else:
-            generated['ooo_cpu'][0]['L1D'] = l1d
-
-        if itlb_in_root:
-            generated['ITLB'] = itlb
-        else:
-            generated['ooo_cpu'][0]['ITLB'] = itlb
-
-        if dtlb_in_root:
-            generated['DTLB'] = dtlb
-        else:
-            generated['ooo_cpu'][0]['DTLB'] = dtlb
-
-        return generated
-
-    def setUp(self):
-        cores = (
-            {
-                'frequency': 2,
-                'ifetch_buffer_size': 2,
-                'decode_buffer_size': 2,
-                'dispatch_buffer_size': 2,
-                'rob_size': 2,
-                'lq_size': 2,
-                'sq_size': 2,
-                'fetch_width': 2,
-                'decode_width': 2,
-                'dispatch_width': 2,
-                'execute_width': 2,
-                'lq_width': 2,
-                'sq_width': 2,
-                'retire_width': 2,
-                'mispredict_penalty': 2,
-                'scheduler_size': 2,
-                'decode_latency': 2,
-                'dispatch_latency': 2,
-                'schedule_latency': 2,
-                'execute_latency': 2
-            },)
-
-        cache_shapes = (
-            {
-                'sets': 2,
-                'ways': 1,
-                'rq_size': 7,
-                'wq_size': 7,
-                'pq_size': 7,
-                'ptwq_size': 7,
-                'mshr_size': 7,
-                'fill_latency': 7,
-                'hit_latency': 7,
-                'max_tag_check': 7,
-                'max_fill': 7,
-                'prefetch_activate': 'WRITE',
-                'prefetch_as_load': True,
-                'virtual_prefetch': False,
-                'prefetcher': 'test_instr'
-            },
-            {
-                'sets': 3,
-                'ways': 2,
-                'rq_size': 8,
-                'wq_size': 8,
-                'pq_size': 8,
-                'ptwq_size': 8,
-                'mshr_size': 8,
-                'fill_latency': 8,
-                'hit_latency': 8,
-                'max_tag_check': 8,
-                'max_fill': 8,
-                'prefetch_activate': 'LOAD',
-                'prefetch_as_load': False,
-                'virtual_prefetch': True,
-                'prefetcher': 'test' # PassthroughContext identifies this as not an instruction prefetcher
-            })
-            # TODO add more
-
-        self.configs = itertools.starmap(HomogeneousCoreParseTests.generate_config, itertools.product(
-            (1,2,4), # num_cores
-            (True, False), # core in root
-            (True, False), # l1i in root
-            (True, False), # l1d in root
-            (True, False), # itlb in root
-            (True, False), # dtlb in root
-            cores,
-            cache_shapes,
-            cache_shapes,
-            cache_shapes,
-            cache_shapes
-            ))
-
-        self.core_keys_to_check = ( 'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency')
-        self.cache_keys_to_check = ( 'sets', 'ways', 'rq_size', 'wq_size', 'pq_size', 'ptwq_size', 'mshr_size', 'hit_latency', 'fill_latency', 'max_tag_check', 'max_fill', 'prefetch_as_load', 'virtual_prefetch', 'wq_check_full_addr', 'prefetch_activate')
-
-        self.branch_context = PassthroughContext()
-        self.btb_context = PassthroughContext()
-        self.prefetcher_context = PassthroughContext()
-        self.replacement_context = PassthroughContext()
-
-    def test_instruction_and_data_caches_need_translation(self):
-        for c in self.configs:
-            with self.subTest(config=c):
-                result = config.parse.parse_config_in_context(c, self.branch_context, self.btb_context, self.prefetcher_context, self.replacement_context, False)
-                cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
-                caches = result[0]['caches']
-
-                filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
-
-                self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
-
-class NormalizedConfigTests(unittest.TestCase):
+class ParseNormalizedTests(unittest.TestCase):
 
     def test_instruction_caches_have_instruction_prefetchers(self):
         config_cores = [{
@@ -307,30 +177,64 @@ class NormalizedConfigTests(unittest.TestCase):
         is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
         self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
-    #def test_instruction_and_data_caches_need_translation(self):
-        #config_cores = [{
-                #'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                #'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                #'_index': 0
-            #}]
-        #config_caches = {
-                #'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                #'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                #'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                #'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
-            #}
-        #config_ptws = {
-                #'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
-            #}
+    def test_instruction_and_data_caches_have_translators(self):
+        config_cores = [{
+                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
+                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
+                '_index': 0
+            }]
+        config_caches = {
+                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
+                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
+                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
+                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
+            }
+        config_ptws = {
+                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
+            }
+#
+        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
+        caches = result[0]['caches']
 
-        #result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        #cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
-        #caches = result[0]['caches']
+        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-        #filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        #tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
+        self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
-        #self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
+    def test_instruction_and_data_caches_have_translators_multi(self):
+        config_cores = [{
+                'name': 'test_cpu0', 'L1I': 'test_L1I0', 'L1D': 'test_L1D0',
+                'ITLB': 'test_ITLB0', 'DTLB': 'test_DTLB0', 'PTW': 'test_PTW0',
+                '_index': 0
+            },{
+                'name': 'test_cpu1', 'L1I': 'test_L1I1', 'L1D': 'test_L1D1',
+                'ITLB': 'test_ITLB1', 'DTLB': 'test_DTLB1', 'PTW': 'test_PTW1',
+                '_index': 1
+            }]
+        config_caches = {
+                'test_L1I0': { 'name': 'test_L1I0', 'lower_level': 'DRAM' },
+                'test_L1D0': { 'name': 'test_L1D0', 'lower_level': 'DRAM' },
+                'test_ITLB0': { 'name': 'test_ITLB0', 'lower_level': 'test_PTW0' },
+                'test_DTLB0': { 'name': 'test_DTLB0', 'lower_level': 'test_PTW0' },
+                'test_L1I1': { 'name': 'test_L1I1', 'lower_level': 'DRAM' },
+                'test_L1D1': { 'name': 'test_L1D1', 'lower_level': 'DRAM' },
+                'test_ITLB1': { 'name': 'test_ITLB1', 'lower_level': 'test_PTW1' },
+                'test_DTLB1': { 'name': 'test_DTLB1', 'lower_level': 'test_PTW1' }
+            }
+        config_ptws = {
+                'test_PTW0': { 'name': 'test_PTW0', 'lower_level': 'test_L1D0' },
+                'test_PTW1': { 'name': 'test_PTW1', 'lower_level': 'test_L1D1' }
+            }
+
+        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
+        caches = result[0]['caches']
+
+        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
+
+        self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
     def test_tlbs_do_not_need_translation(self):
         config_cores = [{
@@ -545,201 +449,95 @@ class NormalizeConfigTest(unittest.TestCase):
         cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
         self.assertEqual(vmem.get('__test__'), True)
 
-class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
-
-    def generate_config(num_cores, base, caches):
-        generated = { 'num_cores': num_cores, **base }
-        generated['ooo_cpu'] = list(config.util.chain(b, c) for b,c in zip(generated['ooo_cpu'], caches))
-        return generated
+class EnvironmentParseTests(unittest.TestCase):
 
     def setUp(self):
-        base_config = {
-                    'ooo_cpu': [
-                        {
-                            'L1D': {
-                                'sets': 2,
-                                'ways': 1,
-                                'rq_size': 7,
-                                'wq_size': 7,
-                                'pq_size': 7,
-                                'ptwq_size': 7,
-                                'mshr_size': 7,
-                                'fill_latency': 7,
-                                'hit_latency': 7,
-                                'max_tag_check': 7,
-                                'max_fill': 7,
-                                'prefetch_as_load': True,
-                                'prefetch_activate': 'WRITE'
-                            }
-                        },
-                        {
-                            'L1D': {
-                                'sets': 3,
-                                'ways': 2,
-                                'rq_size': 8,
-                                'wq_size': 8,
-                                'pq_size': 8,
-                                'ptwq_size': 8,
-                                'mshr_size': 8,
-                                'fill_latency': 8,
-                                'hit_latency': 8,
-                                'max_tag_check': 8,
-                                'max_fill': 8,
-                                'prefetch_as_load': True,
-                                'prefetch_activate': 'LOAD'
-                            }
-                        }
-                    ],
-
-                    'caches': [
-                        {
-                            'name': 'test_a',
-                            'sets': 2,
-                            'ways': 1,
-                            'rq_size': 7,
-                            'wq_size': 7,
-                            'pq_size': 7,
-                            'ptwq_size': 7,
-                            'mshr_size': 7,
-                            'fill_latency': 7,
-                            'hit_latency': 7,
-                            'max_tag_check': 7,
-                            'max_fill': 7,
-                            'prefetch_as_load': True,
-                            'prefetch_activate': 'WRITE'
-                        },
-                        {
-                            'name': 'test_b',
-                            'sets': 3,
-                            'ways': 2,
-                            'rq_size': 8,
-                            'wq_size': 8,
-                            'pq_size': 8,
-                            'ptwq_size': 8,
-                            'mshr_size': 8,
-                            'fill_latency': 8,
-                            'hit_latency': 8,
-                            'max_tag_check': 8,
-                            'max_fill': 8,
-                            'prefetch_as_load': True,
-                            'prefetch_activate': 'LOAD'
-                        }
-                    ]
-                }
-        cache_mods = (
-                    [
-                        {
-                            'L1I': 'test_a'
-                        },
-                        {
-                            'L1I': 'test_b'
-                        }
-                    ],
-                    [
-                        {
-                            'sets': 2,
-                            'ways': 1,
-                            'rq_size': 7,
-                            'wq_size': 7,
-                            'pq_size': 7,
-                            'ptwq_size': 7,
-                            'mshr_size': 7,
-                            'fill_latency': 7,
-                            'hit_latency': 7,
-                            'max_tag_check': 7,
-                            'max_fill': 7,
-                            'prefetch_as_load': True,
-                            'prefetch_activate': 'WRITE'
-                        },
-                        {
-                            'sets': 3,
-                            'ways': 2,
-                            'rq_size': 8,
-                            'wq_size': 8,
-                            'pq_size': 8,
-                            'ptwq_size': 8,
-                            'mshr_size': 8,
-                            'fill_latency': 8,
-                            'hit_latency': 8,
-                            'max_tag_check': 8,
-                            'max_fill': 8,
-                            'prefetch_as_load': True,
-                            'prefetch_activate': 'LOAD'
-                        }
-                    ]
-            )
-
-        self.configs = itertools.starmap(HeterogeneousCoreDuplicationParseTests.generate_config, itertools.product((2,3,4,8), (base_config,), cache_mods))
-
-        self.core_keys_to_check = ( 'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency')
-        self.cache_keys_to_check = ( 'sets', 'ways', 'rq_size', 'wq_size', 'pq_size', 'ptwq_size', 'mshr_size', 'hit_latency', 'fill_latency', 'max_tag_check', 'max_fill', 'prefetch_as_load', 'virtual_prefetch', 'wq_check_full_addr', 'prefetch_activate')
-
-        self.branch_context = PassthroughContext()
-        self.btb_context = PassthroughContext()
-        self.prefetcher_context = PassthroughContext()
-        self.replacement_context = PassthroughContext()
-
-    def test_instruction_and_data_caches_need_translation(self):
-        for c in self.configs:
-            with self.subTest(config=c):
-                result = config.parse.parse_config_in_context(c, self.branch_context, self.btb_context, self.prefetcher_context, self.replacement_context, False)
-                cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
-                caches = result[0]['caches']
-
-                filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
-
-                self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
-
-class EnvironmentParseTests(unittest.TestCase):
+        self.base_config = (
+            [{
+                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
+                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
+                '_index': 0
+            }],
+            {
+                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
+                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
+                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
+                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
+            },
+            {
+                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
+            },
+            {},
+            {}
+        )
 
     def test_cc_passes_through(self):
         test_config = { 'CC': 'cc' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
     def test_cxx_passes_through(self):
         test_config = { 'CXX': 'cxx' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
     def test_cppflags_passes_through(self):
         test_config = { 'CPPFLAGS': 'cppflags' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
     def test_cxxflags_passes_through(self):
         test_config = { 'CXXFLAGS': 'cxxflags' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
     def test_ldflags_passes_through(self):
         test_config = { 'LDFLAGS': 'ldflags' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
     def test_ldlibs_passes_through(self):
         test_config = { 'LDLIBS': 'ldlibs' }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertEqual(test_config, result[4])
 
 class ConfigRootPassthroughParseTests(unittest.TestCase):
 
+    def setUp(self):
+        self.base_config = (
+            [{
+                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
+                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
+                '_index': 0
+            }],
+            {
+                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
+                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
+                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
+                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
+            },
+            {
+                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
+            },
+            {},
+            {}
+        )
+
     def test_block_size_passes_through(self):
         test_config = { 'block_size': 27 }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertIn('block_size', result[3])
         self.assertEqual(test_config.get('block_size'), result[3].get('block_size'))
 
     def test_page_size_passes_through(self):
         test_config = { 'page_size': 27 }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertIn('page_size', result[3])
         self.assertEqual(test_config.get('page_size'), result[3].get('page_size'))
 
     def test_heartbeat_frequency_passes_through(self):
         test_config = { 'heartbeat_frequency': 27 }
-        result = config.parse.parse_config_in_context(test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, test_config, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertIn('heartbeat_frequency', result[3])
         self.assertEqual(test_config.get('heartbeat_frequency'), result[3].get('heartbeat_frequency'))
 
@@ -752,59 +550,87 @@ class FoundMoreContext:
 
 class CompileAllModulesTests(unittest.TestCase):
 
+    def setUp(self):
+        self.base_config = (
+            [{
+                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
+                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
+                '_index': 0
+            }],
+            {
+                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
+                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
+                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
+                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
+            },
+            {
+                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
+            },
+            {},
+            {}
+        )
+
     def test_no_compile_all_finds_given_branch(self):
-        result = config.parse.parse_config_in_context({ 'branch_predictor': 'test_branch' }, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        local_config = self.base_config
+        local_config[0][0]['branch_predictor'] = 'test_branch'
+        result = config.parse.parse_normalized(*local_config, {}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertIn('test_branch', result[1])
 
-        result_all = config.parse.parse_config_in_context({ 'branch_predictor': 'test_branch' }, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*local_config, {}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
         self.assertIn('test_branch', result_all[1])
 
     def test_no_compile_all_finds_given_btb(self):
-        result = config.parse.parse_config_in_context({ 'btb': 'test_btb' }, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
+        local_config = self.base_config
+        local_config[0][0]['btb'] = 'test_btb'
+        result = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertIn('test_btb', result[1])
 
-        result_all = config.parse.parse_config_in_context({ 'btb': 'test_btb' }, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
         self.assertIn('test_btb', result_all[1])
 
     def test_no_compile_all_finds_given_pref(self):
-        result = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_pref' } }, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
+        local_config = self.base_config
+        local_config[1]['test_L1D']['prefetcher'] = 'test_pref'
+        result = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
         self.assertIn('test_pref', result[1])
 
-        result_all = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_pref' } }, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
         self.assertIn('test_pref', result_all[1])
 
     def test_no_compile_all_finds_given_repl(self):
-        result = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_repl' } }, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
+        local_config = self.base_config
+        local_config[1]['test_L1D']['replacement'] = 'test_repl'
+        result = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
         self.assertIn('test_repl', result[1])
 
-        result_all = config.parse.parse_config_in_context({ 'L1D': { 'prefetcher': 'test_repl' } }, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
+        result_all = config.parse.parse_normalized(*local_config, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
         self.assertIn('test_repl', result_all[1])
 
     def test_compile_all_finds_extra_branch(self):
-        result = config.parse.parse_config_in_context({}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, {}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertNotIn('extra', result[1])
 
-        result_all = config.parse.parse_config_in_context({}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*self.base_config, {}, FoundMoreContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), True)
         self.assertIn('extra', result_all[1])
 
     def test_compile_all_finds_extra_btb(self):
-        result = config.parse.parse_config_in_context({}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), False)
         self.assertNotIn('extra', result[1])
 
-        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), FoundMoreContext(), PassthroughContext(), PassthroughContext(), True)
         self.assertIn('extra', result_all[1])
 
     def test_compile_all_finds_extra_pref(self):
-        result = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), False)
         self.assertNotIn('extra', result[1])
 
-        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
+        result_all = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), PassthroughContext(), FoundMoreContext(), PassthroughContext(), True)
         self.assertIn('extra', result_all[1])
 
     def test_compile_all_finds_extra_repl(self):
-        result = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
+        result = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), False)
         self.assertNotIn('extra', result[1])
 
-        result_all = config.parse.parse_config_in_context({}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
+        result_all = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
         self.assertIn('extra', result_all[1])
 

@@ -83,11 +83,11 @@ def normalize_config(config_file):
             ({'name': 'LLC', **config_file.get('LLC', {})},),
 
             # Apply defaults named after the cores
-            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C', lt_name='ITLB') for cpu in cores),
-            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C', lt_name='DTLB') for cpu in cores),
+            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C') for cpu in cores),
+            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C') for cpu in cores),
             (defaults.core_defaults(cpu, 'ITLB', ll_name='STLB') for cpu in cores),
             (defaults.core_defaults(cpu, 'DTLB', ll_name='STLB') for cpu in cores),
-            ({**defaults.core_defaults(cpu, 'L2C', lt_name='STLB'), 'lower_level': 'LLC'} for cpu in cores),
+            ({**defaults.core_defaults(cpu, 'L2C'), 'lower_level': 'LLC'} for cpu in cores),
             (defaults.core_defaults(cpu, 'STLB', ll_name='PTW') for cpu in cores)
             )
 
@@ -227,14 +227,12 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
 
     return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
 
-def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
-    return parse_normalized(*normalize_config(merged_configs), merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules)
-
 def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     name = executable_name(*configs)
-    elements, modules_to_compile, module_info, config_file, env = parse_config_in_context(util.chain(*configs),
+    elements, modules_to_compile, module_info, config_file, env = parse_normalized(*normalize_config(merged_configs),
+        merged_configs,
         branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]),
         btb_context = modules.ModuleSearchContext([*(os.path.join(m, 'btb') for m in module_dir), *btb_dir, os.path.join(champsim_root, 'btb')]),
         replacement_context = modules.ModuleSearchContext([*(os.path.join(m, 'replacement') for m in module_dir), *repl_dir, os.path.join(champsim_root, 'replacement')]),
