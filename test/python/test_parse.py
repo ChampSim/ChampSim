@@ -334,6 +334,101 @@ class HomogeneousCoreParseTests(unittest.TestCase):
                         cache_freq = caches[[cache['name'] for cache in caches].index(cache_name)].get('frequency')
                         self.assertEqual(frequency, cache_freq)
 
+class NormalizeConfigTest(unittest.TestCase):
+
+    def test_empty_config_creates_defaults(self):
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config({})
+        self.assertEqual(len(cores), 1)
+        self.assertIn(cores[0]['PTW'], ptws)
+        self.assertEqual(pmem, {})
+        self.assertEqual(vmem, {})
+        for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
+            self.assertIn(cores[0][name], caches)
+
+    def test_caches_in_root_are_moved_to_cache_array(self):
+        for name in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB'):
+            with self.subTest(cache_name=name):
+                test_config = {
+                        name: {
+                            '__test__': True
+                        }
+                    }
+                cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+                self.assertIn(cores[0][name], caches)
+                self.assertEqual(caches[cores[0][name]].get('__test__'), True)
+
+    def test_ptws_in_cores_are_moved_to_cache_array(self):
+        test_config = {
+                'PTW': {
+                    '__test__': True
+                }
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertIn(cores[0]['PTW'], ptws)
+        self.assertEqual(ptws[cores[0]['PTW']].get('__test__'), True)
+
+    def test_caches_in_cores_are_moved_to_cache_array(self):
+        for name in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB'):
+            with self.subTest(cache_name=name):
+                test_config = {
+                        'ooo_cpu': [{name: {
+                            '__test__': True
+                        }}]
+                    }
+                cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+                self.assertIn(cores[0][name], caches)
+                self.assertEqual(caches[cores[0][name]].get('__test__'), True)
+
+    def test_ptws_in_cores_are_moved_to_cache_array(self):
+        test_config = {
+                'ooo_cpu': [{'PTW': {
+                    '__test__': True
+                }}]
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertIn(cores[0]['PTW'], ptws)
+        self.assertEqual(ptws[cores[0]['PTW']].get('__test__'), True)
+
+    def test_cache_array_is_forwarded(self):
+        test_config = {
+                'caches': [{
+                    'name': 'testcache',
+                    '__test__': True
+                }]
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertIn('testcache', caches)
+        self.assertEqual(caches['testcache'].get('__test__'), True)
+
+    def test_ptw_array_is_forwarded(self):
+        test_config = {
+                'ptws': [{
+                    'name': 'testcache',
+                    '__test__': True
+                }]
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertIn('testcache', ptws)
+        self.assertEqual(ptws['testcache'].get('__test__'), True)
+
+    def test_physical_memory_is_forwarded(self):
+        test_config = {
+                'physical_memory': {
+                    '__test__': True
+                }
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertEqual(pmem.get('__test__'), True)
+
+    def test_virtual_memory_is_forwarded(self):
+        test_config = {
+                'virtual_memory': {
+                    '__test__': True
+                }
+            }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertEqual(vmem.get('__test__'), True)
+
 class HeterogeneousCoreDuplicationParseTests(unittest.TestCase):
 
     def generate_config(num_cores, base, caches):
