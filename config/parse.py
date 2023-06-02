@@ -112,8 +112,7 @@ def normalize_config(config_file):
 
     return cores, caches, ptws, config_file.get('physical_memory', {}), config_file.get('virtual_memory', {})
 
-def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
-    cores, caches, ptws, pmem, vmem = normalize_config(merged_configs)
+def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
     pmem = util.chain(pmem, default_pmem)
@@ -227,6 +226,9 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
 
     return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+
+def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+    return parse_normalized(*normalize_config(merged_configs), merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules)
 
 def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
