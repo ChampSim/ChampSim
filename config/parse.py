@@ -63,18 +63,12 @@ def split_string_or_list(val, delim=','):
         return [v for v in retval if v]
     return val
 
-def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
-    config_file = util.chain(merged_configs, default_root)
-
-    pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
-    vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
-
+def normalize_config(config_file):
     # Copy or trim cores as necessary to fill out the specified number of cores
-    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file['num_cores'])
+    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file.get('num_cores', 1))
 
-    # Default core elements
-    core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
-    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'DIB': dict(), 'name': 'cpu'+str(i), '_index': i}, default_core) for i,cpu in enumerate(cores)]
+    # Give cores numeric indices
+    cores = [util.chain(cpu, {'name': 'cpu'+str(i), '_index': i}) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
@@ -85,6 +79,7 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
             # Copy values from the config root, if these are dicts
             ({'name': util.read_element_name(core,name), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
+
             ({'name': 'LLC', **config_file.get('LLC', {})},),
 
             # Apply defaults named after the cores
@@ -114,6 +109,19 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
     # The name 'DRAM' is reserved for the physical memory
     caches = {k:v for k,v in caches.items() if k != 'DRAM'}
+
+    return cores, caches, ptws, config_file.get('physical_memory', {}), config_file.get('virtual_memory', {})
+
+def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+    cores, caches, ptws, pmem, vmem = normalize_config(merged_configs)
+    config_file = util.chain(merged_configs, default_root)
+
+    pmem = util.chain(pmem, default_pmem)
+    vmem = util.chain(vmem, default_vmem)
+
+    # Default core elements
+    core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
+    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'DIB': dict()}, default_core) for cpu in cores]
 
     # Frequencies are the maximum of the upper levels, unless specified
     for cpu,name in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')):
