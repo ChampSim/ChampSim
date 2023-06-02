@@ -12,5 +12,5 @@ updates:
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
-      interval: "yearly"
+      interval: "monthly"
     target-branch: "develop"
