@@ -166,7 +166,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     # TODO can these be removed in favor of the defaults in inc/defaults.hpp?
     # All cores have a default branch predictor and BTB
     for c in cores:
-        c.setdefault('branch_predictor', 'bimodal')
+        c.setdefault('branch_predictor', 'hashed_perceptron')
         c.setdefault('btb', 'basic_btb')
     # All caches have a default prefetcher and replacement policy
     for c in caches.values():
