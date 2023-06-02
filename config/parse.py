@@ -231,6 +231,7 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     name = executable_name(*configs)
+    merged_configs = util.chain(*configs)
     elements, modules_to_compile, module_info, config_file, env = parse_normalized(*normalize_config(merged_configs),
         merged_configs,
         branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]),
