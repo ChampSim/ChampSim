@@ -55,8 +55,12 @@ int main(int argc, char** argv)
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
   auto warmup_instr_option = app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
+  auto deprec_warmup_instr_option =
+      app.add_option("--warmup_instructions", warmup_instructions, "[deprecated] use --warmup-instructions instead")->excludes(warmup_instr_option);
   auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions,
                                          "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
+  auto deprec_sim_instr_option =
+      app.add_option("--simulation_instructions", simulation_instructions, "[deprecated] use --simulation-instructions instead")->excludes(sim_instr_option);
 
   auto json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
@@ -65,14 +69,22 @@ int main(int argc, char** argv)
 
   CLI11_PARSE(app, argc, argv);
 
-  if (sim_instr_option->count() > 0 && warmup_instr_option->count() == 0)
+  const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
+  const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);
+
+  if (deprec_warmup_instr_option->count() > 0)
+    fmt::print("WARNING: option --warmup_instructions is deprecated. Use --warmup-instructions instead.\n");
+
+  if (deprec_sim_instr_option->count() > 0)
+    fmt::print("WARNING: option --simulation_instructions is deprecated. Use --simulation-instructions instead.\n");
+
+  if (simulation_given && !warmup_given)
     warmup_instructions = simulation_instructions * 2 / 10;
 
   std::vector<champsim::tracereader> traces;
-  std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, repeat = (sim_instr_option->count() > 0), i = uint8_t(0)](auto name) mutable {
-                   return get_tracereader(name, i++, knob_cloudsuite, repeat);
-                 });
+  std::transform(
+      std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
+      [knob_cloudsuite, repeat = simulation_given, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
 
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
