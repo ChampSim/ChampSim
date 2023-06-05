@@ -120,23 +120,30 @@ class PassthroughContext:
 
 class ParseNormalizedTests(unittest.TestCase):
 
-    def test_instruction_caches_have_instruction_prefetchers(self):
-        config_cores = [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
-            }]
-        config_caches = {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
-            }
-        config_ptws = {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
-            }
+    def test_generates_default_caches(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        for key in ('L1I', 'L1D', 'ITLB', 'DTLB'):
+            with self.subTest(cache=key):
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_name = result[0]['cores'][0][key]
+                caches = result[0]['caches']
+
+                self.assertIn(cache_name, [c['name'] for c in caches])
+
+    def test_generates_default_ptws(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        ptw_name = result[0]['cores'][0]['PTW']
+        ptws = result[0]['ptws']
+
+        self.assertIn(ptw_name, [c['name'] for c in ptws])
+
+    def test_instruction_caches_have_instruction_prefetchers(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['L1I'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -145,31 +152,9 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
     def test_instruction_caches_have_instruction_prefetchers_multi(self):
-        config_cores = [{
-                'name': 'test_cpu0', 'L1I': 'test_L1I0', 'L1D': 'test_L1D0',
-                'ITLB': 'test_ITLB0', 'DTLB': 'test_DTLB0', 'PTW': 'test_PTW0',
-                '_index': 0
-            },{
-                'name': 'test_cpu1', 'L1I': 'test_L1I1', 'L1D': 'test_L1D1',
-                'ITLB': 'test_ITLB1', 'DTLB': 'test_DTLB1', 'PTW': 'test_PTW1',
-                '_index': 1
-            }]
-        config_caches = {
-                'test_L1I0': { 'name': 'test_L1I0', 'lower_level': 'DRAM' },
-                'test_L1D0': { 'name': 'test_L1D0', 'lower_level': 'DRAM' },
-                'test_ITLB0': { 'name': 'test_ITLB0', 'lower_level': 'test_PTW0' },
-                'test_DTLB0': { 'name': 'test_DTLB0', 'lower_level': 'test_PTW0' },
-                'test_L1I1': { 'name': 'test_L1I1', 'lower_level': 'DRAM' },
-                'test_L1D1': { 'name': 'test_L1D1', 'lower_level': 'DRAM' },
-                'test_ITLB1': { 'name': 'test_ITLB1', 'lower_level': 'test_PTW1' },
-                'test_DTLB1': { 'name': 'test_DTLB1', 'lower_level': 'test_PTW1' }
-            }
-        config_ptws = {
-                'test_PTW0': { 'name': 'test_PTW0', 'lower_level': 'test_L1D0' },
-                'test_PTW1': { 'name': 'test_PTW1', 'lower_level': 'test_L1D1' }
-            }
+        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['L1I'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -178,22 +163,10 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
     def test_instruction_and_data_caches_have_translators(self):
-        config_cores = [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
-            }]
-        config_caches = {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
-            }
-        config_ptws = {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
-            }
-#
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -203,31 +176,9 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
     def test_instruction_and_data_caches_have_translators_multi(self):
-        config_cores = [{
-                'name': 'test_cpu0', 'L1I': 'test_L1I0', 'L1D': 'test_L1D0',
-                'ITLB': 'test_ITLB0', 'DTLB': 'test_DTLB0', 'PTW': 'test_PTW0',
-                '_index': 0
-            },{
-                'name': 'test_cpu1', 'L1I': 'test_L1I1', 'L1D': 'test_L1D1',
-                'ITLB': 'test_ITLB1', 'DTLB': 'test_DTLB1', 'PTW': 'test_PTW1',
-                '_index': 1
-            }]
-        config_caches = {
-                'test_L1I0': { 'name': 'test_L1I0', 'lower_level': 'DRAM' },
-                'test_L1D0': { 'name': 'test_L1D0', 'lower_level': 'DRAM' },
-                'test_ITLB0': { 'name': 'test_ITLB0', 'lower_level': 'test_PTW0' },
-                'test_DTLB0': { 'name': 'test_DTLB0', 'lower_level': 'test_PTW0' },
-                'test_L1I1': { 'name': 'test_L1I1', 'lower_level': 'DRAM' },
-                'test_L1D1': { 'name': 'test_L1D1', 'lower_level': 'DRAM' },
-                'test_ITLB1': { 'name': 'test_ITLB1', 'lower_level': 'test_PTW1' },
-                'test_DTLB1': { 'name': 'test_DTLB1', 'lower_level': 'test_PTW1' }
-            }
-        config_ptws = {
-                'test_PTW0': { 'name': 'test_PTW0', 'lower_level': 'test_L1D0' },
-                'test_PTW1': { 'name': 'test_PTW1', 'lower_level': 'test_L1D1' }
-            }
+        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -236,23 +187,76 @@ class ParseNormalizedTests(unittest.TestCase):
 
         self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
-    def test_tlbs_do_not_need_translation(self):
-        config_cores = [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
-            }]
-        config_caches = {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
-            }
-        config_ptws = {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
-            }
+    def test_the_end_of_the_instruction_path_is_dram(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [c['name'] for c in result[0]['caches']]
+        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+
+        for cpu in result[0]['cores']:
+            active_name = cpu['L1I']
+            path = [active_name]
+            while active_name in cache_names:
+                active_name = ll_names[cache_names.index(active_name)]
+                path.append(active_name)
+
+            self.assertEqual(path[-1], 'DRAM')
+
+    def test_the_end_of_the_data_path_is_dram(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [c['name'] for c in result[0]['caches']]
+        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+
+        for cpu in result[0]['cores']:
+            active_name = cpu['L1D']
+            path = [active_name]
+            while active_name in cache_names:
+                active_name = ll_names[cache_names.index(active_name)]
+                path.append(active_name)
+
+            self.assertEqual(path[-1], 'DRAM')
+
+    def test_the_end_of_the_itlb_path_is_a_ptw(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [c['name'] for c in result[0]['caches']]
+        ptw_names = [c['name'] for c in result[0]['ptws']]
+        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+
+        for cpu in result[0]['cores']:
+            active_name = cpu['ITLB']
+            path = [active_name]
+            while active_name in cache_names:
+                active_name = ll_names[cache_names.index(active_name)]
+                path.append(active_name)
+
+            self.assertIn(path[-1], ptw_names)
+
+    def test_the_end_of_the_dtlb_path_is_a_ptw(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        cache_names = [c['name'] for c in result[0]['caches']]
+        ptw_names = [c['name'] for c in result[0]['ptws']]
+        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+
+        for cpu in result[0]['cores']:
+            active_name = cpu['DTLB']
+            path = [active_name]
+            while active_name in cache_names:
+                active_name = ll_names[cache_names.index(active_name)]
+                path.append(active_name)
+
+            self.assertIn(path[-1], ptw_names)
+
+    def test_tlbs_do_not_need_translation(self):
+        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['ITLB'] for core in result[0]['cores']] + [core['DTLB'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -262,31 +266,9 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
 
     def test_tlbs_do_not_need_translation_multi(self):
-        config_cores = [{
-                'name': 'test_cpu0', 'L1I': 'test_L1I0', 'L1D': 'test_L1D0',
-                'ITLB': 'test_ITLB0', 'DTLB': 'test_DTLB0', 'PTW': 'test_PTW0',
-                '_index': 0
-            },{
-                'name': 'test_cpu1', 'L1I': 'test_L1I1', 'L1D': 'test_L1D1',
-                'ITLB': 'test_ITLB1', 'DTLB': 'test_DTLB1', 'PTW': 'test_PTW1',
-                '_index': 1
-            }]
-        config_caches = {
-                'test_L1I0': { 'name': 'test_L1I0', 'lower_level': 'DRAM' },
-                'test_L1D0': { 'name': 'test_L1D0', 'lower_level': 'DRAM' },
-                'test_ITLB0': { 'name': 'test_ITLB0', 'lower_level': 'test_PTW0' },
-                'test_DTLB0': { 'name': 'test_DTLB0', 'lower_level': 'test_PTW0' },
-                'test_L1I1': { 'name': 'test_L1I1', 'lower_level': 'DRAM' },
-                'test_L1D1': { 'name': 'test_L1D1', 'lower_level': 'DRAM' },
-                'test_ITLB1': { 'name': 'test_ITLB1', 'lower_level': 'test_PTW1' },
-                'test_DTLB1': { 'name': 'test_DTLB1', 'lower_level': 'test_PTW1' }
-            }
-        config_ptws = {
-                'test_PTW0': { 'name': 'test_PTW0', 'lower_level': 'test_L1D0' },
-                'test_PTW1': { 'name': 'test_PTW1', 'lower_level': 'test_L1D1' }
-            }
+        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         cache_names = [core['ITLB'] for core in result[0]['cores']] + [core['DTLB'] for core in result[0]['cores']]
         caches = result[0]['caches']
 
@@ -296,22 +278,9 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
 
     def test_caches_inherit_core_frequency(self):
-        config_cores = [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                'frequency': 2016, '_index': 0
-            }]
-        config_caches = {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
-            }
-        config_ptws = {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
-            }
+        config_cores = [{ 'name': 'test_cpu', '_index': 0, 'frequency': 2016 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
             cache_names_and_frequencies = [(core[name], core['frequency']) for core in result[0]['cores']]
             caches = result[0]['caches']
@@ -321,31 +290,9 @@ class ParseNormalizedTests(unittest.TestCase):
                 self.assertEqual(frequency, cache_freq)
 
     def test_caches_inherit_core_frequency_multi(self):
-        config_cores = [{
-                'name': 'test_cpu0', 'L1I': 'test_L1I0', 'L1D': 'test_L1D0',
-                'ITLB': 'test_ITLB0', 'DTLB': 'test_DTLB0', 'PTW': 'test_PTW0',
-                '_index': 0, 'frequency': 2023
-            },{
-                'name': 'test_cpu1', 'L1I': 'test_L1I1', 'L1D': 'test_L1D1',
-                'ITLB': 'test_ITLB1', 'DTLB': 'test_DTLB1', 'PTW': 'test_PTW1',
-                '_index': 1, 'frequency': 5096
-            }]
-        config_caches = {
-                'test_L1I0': { 'name': 'test_L1I0', 'lower_level': 'DRAM' },
-                'test_L1D0': { 'name': 'test_L1D0', 'lower_level': 'DRAM' },
-                'test_ITLB0': { 'name': 'test_ITLB0', 'lower_level': 'test_PTW0' },
-                'test_DTLB0': { 'name': 'test_DTLB0', 'lower_level': 'test_PTW0' },
-                'test_L1I1': { 'name': 'test_L1I1', 'lower_level': 'DRAM' },
-                'test_L1D1': { 'name': 'test_L1D1', 'lower_level': 'DRAM' },
-                'test_ITLB1': { 'name': 'test_ITLB1', 'lower_level': 'test_PTW1' },
-                'test_DTLB1': { 'name': 'test_DTLB1', 'lower_level': 'test_PTW1' }
-            }
-        config_ptws = {
-                'test_PTW0': { 'name': 'test_PTW0', 'lower_level': 'test_L1D0' },
-                'test_PTW1': { 'name': 'test_PTW1', 'lower_level': 'test_L1D1' }
-            }
+        config_cores = [{ 'name': 'test_cpu0', '_index': 0, 'frequency': 2023 }, { 'name': 'test_cpu1', '_index': 1, 'frequency': 5096 }]
 
-        result = config.parse.parse_normalized(config_cores, config_caches, config_ptws, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
             cache_names_and_frequencies = [(core[name], core['frequency']) for core in result[0]['cores']]
             caches = result[0]['caches']
@@ -359,23 +306,23 @@ class NormalizeConfigTest(unittest.TestCase):
     def test_empty_config_creates_defaults(self):
         cores, caches, ptws, pmem, vmem = config.parse.normalize_config({})
         self.assertEqual(len(cores), 1)
-        self.assertIn(cores[0]['PTW'], ptws)
+        self.assertEqual(caches, {})
+        self.assertEqual(ptws, {})
         self.assertEqual(pmem, {})
         self.assertEqual(vmem, {})
-        for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
-            self.assertIn(cores[0][name], caches)
 
     def test_caches_in_root_are_moved_to_cache_array(self):
         for name in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB'):
             with self.subTest(cache_name=name):
                 test_config = {
                         name: {
+                            'name': 'testcache',
                             '__test__': True
                         }
                     }
                 cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
-                self.assertIn(cores[0][name], caches)
-                self.assertEqual(caches[cores[0][name]].get('__test__'), True)
+                self.assertIn('testcache', caches)
+                self.assertEqual(caches['testcache'].get('__test__'), True)
 
     def test_ptws_in_cores_are_moved_to_cache_array(self):
         test_config = {
@@ -455,6 +402,33 @@ class NormalizeConfigTest(unittest.TestCase):
             with self.subTest(key=k):
                 cores, caches, ptws, pmem, vmem = config.parse.normalize_config({ k: '__test__' })
                 self.assertEqual(cores[0].get(k), '__test__')
+
+    def test_core_array_params_are_preferred(self):
+        test_config = {
+            'ooo_cpu': [ { 'rob_size': 2016 } ],
+            'rob_size': 1028
+        }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertEqual(cores[0].get('rob_size'), 2016)
+
+    def test_core_array_params_are_preferred_multi(self):
+        test_config = {
+            'num_cores': 2,
+            'ooo_cpu': [ { 'rob_size': 2016 } ],
+            'rob_size': 1028
+        }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertEqual(cores[0].get('rob_size'), 2016)
+        self.assertEqual(cores[1].get('rob_size'), 2016)
+
+    def test_cache_array_params_are_preferred(self):
+        test_config = {
+            'caches': [ { 'name': 'testcache', '__var__': '__fromarray__' } ],
+            'ooo_cpu': [ { 'L1D': { 'name': 'testcache', '__var__': '__fromcore__' } } ],
+            'L1D': { 'name': 'testcache', '__var__': '__fromroot__' }
+        }
+        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        self.assertEqual(caches['testcache'].get('__var__'), '__fromarray__')
 
 class EnvironmentParseTests(unittest.TestCase):
 
