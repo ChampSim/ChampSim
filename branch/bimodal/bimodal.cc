@@ -1,7 +1,4 @@
 #include "bimodal.h"
-#include <iostream>
-
-void bimodal::initialize_branch_predictor() { std::cout << "CPU " << intern_->cpu << " Bimodal branch predictor" << std::endl; }
 
 bool bimodal::predict_branch(uint64_t ip)
 {

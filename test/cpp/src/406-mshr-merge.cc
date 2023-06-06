@@ -16,7 +16,7 @@ struct address_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, uint8_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, bool, uint8_t, uint32_t metadata_in)
   {
     ::address_operate_collector[intern_].push_back(addr);
     return metadata_in;
@@ -62,7 +62,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       decltype(mock_ul_seed)::request_type test_a;
       test_a.address = 0xdeadbeef;
       test_a.cpu = 0;
-      test_a.type = LOAD;
+      test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
 
       auto test_a_result = mock_ul_seed.issue(test_a);

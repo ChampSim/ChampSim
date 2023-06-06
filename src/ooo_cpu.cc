@@ -148,8 +148,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
-  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, arch_instr.branch_type, always_taken) || always_taken;
   if (arch_instr.branch_prediction == 0)
     predicted_branch_target = 0;
 
@@ -618,7 +618,10 @@ void O3_CPU::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, u
   branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
 }
 
-bool O3_CPU::impl_predict_branch(uint64_t ip) { return branch_module_pimpl->impl_predict_branch(ip); }
+bool O3_CPU::impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+{
+  return branch_module_pimpl->impl_predict_branch(ip, predicted_target, always_taken, branch_type);
+}
 
 void O3_CPU::impl_initialize_btb() { btb_module_pimpl->impl_initialize_btb(); }
 
@@ -627,7 +630,7 @@ void O3_CPU::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken,
   btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
 }
 
-std::pair<uint64_t, bool> O3_CPU::impl_btb_prediction(uint64_t ip) { return btb_module_pimpl->impl_btb_prediction(ip); }
+std::pair<uint64_t, bool> O3_CPU::impl_btb_prediction(uint64_t ip, uint8_t branch_type) { return btb_module_pimpl->impl_btb_prediction(ip, branch_type); }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
@@ -700,7 +703,7 @@ bool CacheBus::issue_read(request_type data_packet)
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;
   data_packet.cpu = cpu;
-  data_packet.type = LOAD;
+  data_packet.type = access_type::LOAD;
 
   return lower_level->add_rq(data_packet);
 }
@@ -710,7 +713,7 @@ bool CacheBus::issue_write(request_type data_packet)
   data_packet.address = data_packet.v_address;
   data_packet.is_translated = false;
   data_packet.cpu = cpu;
-  data_packet.type = WRITE;
+  data_packet.type = access_type::WRITE;
   data_packet.response_requested = false;
 
   return lower_level->add_wq(data_packet);

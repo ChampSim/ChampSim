@@ -199,7 +199,7 @@ public:
 
     virtual void impl_initialize_branch_predictor() = 0;
     virtual void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) = 0;
-    virtual bool impl_predict_branch(uint64_t ip) = 0;
+    virtual bool impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type) = 0;
   };
 
   struct btb_module_concept {
@@ -207,7 +207,7 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) = 0;
-    virtual std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip) = 0;
+    virtual std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip, uint8_t branch_type) = 0;
   };
 
   template <typename... Bs>
@@ -217,7 +217,7 @@ public:
 
     void impl_initialize_branch_predictor() override final;
     void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) override final;
-    [[nodiscard]] bool impl_predict_branch(uint64_t ip) override final;
+    [[nodiscard]] bool impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type) override final;
   };
 
   template <typename... Ts>
@@ -227,7 +227,7 @@ public:
 
     void impl_initialize_btb() override final;
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) override final;
-    [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip) override final;
+    [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip, uint8_t branch_type) override final;
   };
 
   std::unique_ptr<branch_module_concept> branch_module_pimpl;
@@ -235,11 +235,11 @@ public:
 
   void impl_initialize_branch_predictor();
   void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type);
-  [[nodiscard]] bool impl_predict_branch(uint64_t ip);
+  [[nodiscard]] bool impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
 
   void impl_initialize_btb();
   void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type);
-  [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip);
+  [[nodiscard]] std::pair<uint64_t, bool> impl_btb_prediction(uint64_t ip, uint8_t branch_type);
 
   template <typename... Ts>
   class builder_module_type_holder
@@ -488,13 +488,28 @@ void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type)
 {
-  std::apply([&](auto&... b) { (..., b.last_branch_result(ip, target, taken, branch_type)); }, intern_);
+  auto process_one = [&](auto& b) {
+    if constexpr (champsim::modules::detect::branch_predictor::has_last_branch_result<decltype(b)>())
+      b.last_branch_result(ip, target, taken, branch_type);
+  };
+
+  std::apply([&](auto&... b) { (..., process_one(b)); }, intern_);
 }
 
   template <typename... Bs>
-bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(uint64_t ip)
+bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
 {
-  return std::apply([&](auto&... b) { return (..., b.predict_branch(ip)); }, intern_);
+  auto process_one = [&](auto& b) {
+    constexpr auto version = champsim::modules::detect::branch_predictor::has_predict_branch<decltype(b)>();
+    if constexpr (version == 2)
+      return b.predict_branch(ip);
+    else if constexpr (version == 1)
+      return b.predict_branch(ip, predicted_target, always_taken, branch_type);
+    else
+      return false;
+  };
+
+  return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
 }
 
 template <typename... Ts>
@@ -511,13 +526,28 @@ void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
 template <typename... Ts>
 void O3_CPU::btb_module_model<Ts...>::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type)
 {
-  std::apply([&](auto&... t) { (..., t.update_btb(ip, predicted_target, taken, branch_type)); }, intern_);
+  auto process_one = [&](auto& t) {
+    if constexpr (champsim::modules::detect::btb::has_update_btb<decltype(t)>())
+      t.update_btb(ip, predicted_target, taken, branch_type);
+  };
+
+  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
 }
 
 template <typename... Ts>
-std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(uint64_t ip)
+std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(uint64_t ip, uint8_t branch_type)
 {
-  return std::apply([&](auto&... t) { return (..., t.btb_prediction(ip)); }, intern_);
+  auto process_one = [&](auto& b) {
+    constexpr auto version = champsim::modules::detect::btb::has_btb_prediction<decltype(b)>();
+    if constexpr (version == 2)
+      return b.btb_prediction(ip);
+    else if constexpr (version == 1)
+      return b.btb_prediction(ip, branch_type);
+    else
+      return std::pair{0ul, false};
+  };
+
+  return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
 }
 
 #endif

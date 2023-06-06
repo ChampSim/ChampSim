@@ -45,7 +45,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
                                      uint8_t hit)
 {
   // handle writeback access
-  if (type == WRITE) {
+  if (access_type{type} == access_type::WRITE) {
     if (!hit)
       rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
 

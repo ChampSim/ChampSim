@@ -2,6 +2,7 @@
 #define MODULES_DETECT_H
 
 #include "util/detect.h"
+#include "block.h"
 
 namespace champsim::modules::detect
 {
@@ -11,12 +12,37 @@ namespace champsim::modules::detect
     {
       template <typename T>
       using has_initialize = decltype(std::declval<T>().initialize_branch_predictor());
+
+      template <typename T>
+      using has_last_branch_result = decltype(std::declval<T>().last_branch_result(std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<bool>(), std::declval<uint8_t>()));
+
+      template <typename T>
+      using has_predict_branch_v1 = decltype(std::declval<T>().predict_branch(std::declval<uint64_t>(), std::declval<uint64_t>(),std::declval<uint64_t>(), std::declval<uint8_t>(), std::declval<uint8_t>()));
+
+      template <typename T>
+      using has_predict_branch_v2 = decltype(std::declval<T>().predict_branch(std::declval<uint64_t>()));
     }
 
     template <typename T>
-    constexpr bool has_initialize()
+    constexpr auto has_initialize()
     {
       return champsim::is_detected_v<detail::has_initialize, T>;
+    }
+
+    template <typename T>
+    constexpr auto has_last_branch_result()
+    {
+      return champsim::is_detected_v<detail::has_last_branch_result, T>;
+    }
+
+    template <typename T>
+    constexpr auto has_predict_branch()
+    {
+      if (champsim::is_detected_v<detail::has_predict_branch_v1, T>)
+        return 1;
+      if (champsim::is_detected_v<detail::has_predict_branch_v2, T>)
+        return 2;
+      return 0;
     }
   }
 
@@ -26,12 +52,37 @@ namespace champsim::modules::detect
     {
       template <typename T>
       using has_initialize = decltype(std::declval<T>().initialize_btb());
+
+      template <typename T>
+      using has_update_btb = decltype(std::declval<T>().update_btb(std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<bool>(), std::declval<uint8_t>()));
+
+      template <typename T>
+      using has_btb_prediction_v1 = decltype(std::declval<T>().btb_prediction(std::declval<uint64_t>(), std::declval<uint8_t>()));
+
+      template <typename T>
+      using has_btb_prediction_v2 = decltype(std::declval<T>().btb_prediction(std::declval<uint64_t>()));
     }
 
     template <typename T>
-    constexpr bool has_initialize()
+    constexpr auto has_initialize()
     {
       return champsim::is_detected_v<detail::has_initialize, T>;
+    }
+
+    template <typename T>
+    constexpr auto has_update_btb()
+    {
+      return champsim::is_detected_v<detail::has_update_btb, T>;
+    }
+
+    template <typename T>
+    constexpr auto has_btb_prediction()
+    {
+      if (champsim::is_detected_v<detail::has_btb_prediction_v1, T>)
+        return 1;
+      if (champsim::is_detected_v<detail::has_btb_prediction_v2, T>)
+        return 2;
+      return 0;
     }
   }
 
@@ -41,6 +92,15 @@ namespace champsim::modules::detect
     {
       template <typename T>
       using has_initialize = decltype(std::declval<T>().prefetcher_initialize());
+
+      template <typename T>
+      using has_cache_operate_v1 = decltype( std::declval<T>().prefetcher_cache_operate(std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint8_t>(), std::declval<uint8_t>(), std::declval<uint32_t>() ) );
+
+      template <typename T>
+      using has_cache_operate_v2 = decltype( std::declval<T>().prefetcher_cache_operate(std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint8_t>(), std::declval<bool>(), std::declval<uint8_t>(), std::declval<uint32_t>() ) );
+
+      template <typename T>
+      using has_cache_fill = decltype( std::declval<T>().prefetcher_cache_fill(std::declval<uint64_t>(), std::declval<long>(), std::declval<long>(), std::declval<uint8_t>(), std::declval<uint64_t>(), std::declval<uint32_t>() ) );
 
       template <typename T>
       using has_cycle_operate = decltype(std::declval<T>().prefetcher_cycle_operate());
@@ -56,6 +116,22 @@ namespace champsim::modules::detect
     constexpr bool has_initialize()
     {
       return champsim::is_detected_v<detail::has_initialize, T>;
+    }
+
+    template <typename T>
+    constexpr auto has_cache_operate()
+    {
+      if (champsim::is_detected_v<detail::has_cache_operate_v2, T>)
+        return 2;
+      if (champsim::is_detected_v<detail::has_cache_operate_v1, T>)
+        return 1;
+      return 0;
+    }
+
+    template <typename T>
+    constexpr auto has_cache_fill()
+    {
+      return champsim::is_detected_v<detail::has_cache_fill, T>;
     }
 
     template <typename T>
@@ -85,6 +161,9 @@ namespace champsim::modules::detect
       using has_initialize = decltype(std::declval<T>().initialize_replacement());
 
       template <typename T>
+      using has_find_victim = decltype( std::declval<T>().find_victim(std::declval<uint32_t>(), std::declval<uint64_t>(), std::declval<long>(), std::declval<champsim::cache_block*>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>()));
+
+      template <typename T>
       using has_update_state = decltype( std::declval<T>().update_replacement_state(std::declval<uint32_t>(), std::declval<long>(), std::declval<long>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint64_t>(), std::declval<uint32_t>(), std::declval<uint8_t>()));
 
       template <typename T>
@@ -95,6 +174,12 @@ namespace champsim::modules::detect
     constexpr bool has_initialize()
     {
       return champsim::is_detected_v<detail::has_initialize, T>;
+    }
+
+    template <typename T>
+    constexpr bool has_find_victim()
+    {
+      return champsim::is_detected_v<detail::has_find_victim, T>;
     }
 
     template <typename T>

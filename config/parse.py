@@ -62,18 +62,20 @@ def module_parse(mod, context):
         return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
     return context.find(mod)
 
-def parse_config_in_context(merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
-    config_file = util.chain(merged_configs, default_root)
+def split_string_or_list(val, delim=','):
+    if isinstance(val, str):
+        retval = (t.strip() for t in val.split(delim))
+        return [v for v in retval if v]
+    return val
 
-    pmem = util.chain(config_file.get('physical_memory', {}), default_pmem)
-    vmem = util.chain(config_file.get('virtual_memory', {}), default_vmem)
-
+def normalize_config(config_file):
     # Copy or trim cores as necessary to fill out the specified number of cores
-    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file['num_cores'])
+    cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file.get('num_cores', 1))
 
     # Default core elements
+    # Give cores numeric indices
     core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
-    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'DIB': dict(), 'name': 'cpu'+str(i), '_index': i}, default_core) for i,cpu in enumerate(cores)]
+    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'name': 'cpu'+str(i), '_index': i}) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
@@ -84,14 +86,15 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
             # Copy values from the config root, if these are dicts
             ({'name': util.read_element_name(core,name), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
+
             ({'name': 'LLC', **config_file.get('LLC', {})},),
 
             # Apply defaults named after the cores
-            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C', lt_name='ITLB') for cpu in cores),
-            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C', lt_name='DTLB') for cpu in cores),
+            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C') for cpu in cores),
+            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C') for cpu in cores),
             (defaults.core_defaults(cpu, 'ITLB', ll_name='STLB') for cpu in cores),
             (defaults.core_defaults(cpu, 'DTLB', ll_name='STLB') for cpu in cores),
-            ({**defaults.core_defaults(cpu, 'L2C', lt_name='STLB'), 'lower_level': 'LLC'} for cpu in cores),
+            ({**defaults.core_defaults(cpu, 'L2C'), 'lower_level': 'LLC'} for cpu in cores),
             (defaults.core_defaults(cpu, 'STLB', ll_name='PTW') for cpu in cores)
             )
 
@@ -113,6 +116,16 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
 
     # The name 'DRAM' is reserved for the physical memory
     caches = {k:v for k,v in caches.items() if k != 'DRAM'}
+
+    return cores, caches, ptws, config_file.get('physical_memory', {}), config_file.get('virtual_memory', {})
+
+def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
+    config_file = util.chain(merged_configs, default_root)
+
+    pmem = util.chain(pmem, default_pmem)
+    vmem = util.chain(vmem, default_vmem)
+
+    cores = [util.chain(cpu, {'DIB': dict()}, default_core) for cpu in cores]
 
     # Frequencies are the maximum of the upper levels, unless specified
     for cpu,name in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')):
@@ -158,12 +171,17 @@ def parse_config_in_context(merged_configs, branch_context, btb_context, prefetc
     # TODO can these be removed in favor of the defaults in inc/defaults.hpp?
     # All cores have a default branch predictor and BTB
     for c in cores:
-        c.setdefault('branch_predictor', 'bimodal')
+        c.setdefault('branch_predictor', 'hashed_perceptron')
         c.setdefault('btb', 'basic_btb')
     # All caches have a default prefetcher and replacement policy
     for c in caches.values():
         c.setdefault('prefetcher', 'no')
         c.setdefault('replacement', 'lru')
+
+    # Set prefetcher_activate
+    for c in caches.values():
+        if 'prefetch_activate' in c:
+            c['prefetch_activate'] = split_string_or_list(c['prefetch_activate'])
 
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
@@ -218,7 +236,9 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     name = executable_name(*configs)
-    elements, modules_to_compile, module_info, config_file, env = parse_config_in_context(util.chain(*configs),
+    merged_configs = util.chain(*configs)
+    elements, modules_to_compile, module_info, config_file, env = parse_normalized(*normalize_config(merged_configs),
+        merged_configs,
         branch_context = modules.ModuleSearchContext([*(os.path.join(m, 'branch') for m in module_dir), *branch_dir, os.path.join(champsim_root, 'branch')]),
         btb_context = modules.ModuleSearchContext([*(os.path.join(m, 'btb') for m in module_dir), *btb_dir, os.path.join(champsim_root, 'btb')]),
         replacement_context = modules.ModuleSearchContext([*(os.path.join(m, 'replacement') for m in module_dir), *repl_dir, os.path.join(champsim_root, 'replacement')]),

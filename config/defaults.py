@@ -17,14 +17,12 @@ import math
 
 from . import util
 
-def core_defaults(cpu, name, ll_name=None, lt_name=None):
+def core_defaults(cpu, name, ll_name=None):
     retval = {
         'name': util.read_element_name(cpu, name)
     }
     if ll_name is not None:
         retval.update(lower_level=util.read_element_name(cpu, ll_name))
-    if lt_name is not None:
-        retval.update(lower_translate=util.read_element_name(cpu, lt_name))
     return retval;
 
 def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32, bandwidth_factor=0.5):
@@ -108,3 +106,11 @@ def list_defaults(cores, caches):
     yield from itlb_path(cores, caches)
     yield from dtlb_path(cores, caches)
 
+    for cpu in cores:
+        icache_path = util.iter_system(caches, cpu['L1I'])
+        dcache_path = util.iter_system(caches, cpu['L1D'])
+        itransl_path = util.iter_system(caches, cpu['ITLB'])
+        dtransl_path = util.iter_system(caches, cpu['DTLB'])
+
+        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(icache_path, itransl_path))
+        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(dcache_path, dtransl_path))

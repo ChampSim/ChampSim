@@ -17,15 +17,18 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include <array>
 #include <cstdint>
 #include <deque>
 #include <functional>
 #include <limits>
 #include <vector>
 
+#include <string_view>
+
 struct ooo_model_instr;
 
-enum access_type {
+enum class access_type : unsigned {
   LOAD = 0,
   RFO,
   PREFETCH,
@@ -33,6 +36,10 @@ enum access_type {
   TRANSLATION,
   NUM_TYPES,
 };
+
+using namespace std::literals::string_view_literals;
+inline constexpr std::array<std::string_view, static_cast<std::size_t>(access_type::NUM_TYPES)> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv,
+                                                                                                                  "TRANSLATION"};
 
 namespace champsim
 {
@@ -61,7 +68,7 @@ class channel
     bool response_requested = true;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
-    access_type type{LOAD};
+    access_type type{access_type::LOAD};
 
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
@@ -114,6 +121,14 @@ public:
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);
   bool add_pq(const request_type& packet);
+
+  std::size_t rq_occupancy() const;
+  std::size_t wq_occupancy() const;
+  std::size_t pq_occupancy() const;
+
+  std::size_t rq_size() const;
+  std::size_t wq_size() const;
+  std::size_t pq_size() const;
 
   void check_collision();
 };

@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 
+#include "block.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
@@ -46,8 +47,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> hits = {};
-  std::array<std::array<uint64_t, NUM_CPUS>, NUM_TYPES> misses = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> misses = {};
 
   double avg_miss_latency = 0;
   uint64_t total_miss_latency = 0;
@@ -124,22 +125,10 @@ class CACHE : public champsim::operable
   void issue_translation();
 
 public:
-  struct BLOCK {
-    bool valid = false;
-    bool prefetch = false;
-    bool dirty = false;
-
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
-
-    uint32_t pf_metadata = 0;
-
-    BLOCK() = default;
-    explicit BLOCK(mshr_type mshr);
-  };
+  using BLOCK = champsim::cache_block;
 
 private:
+  static BLOCK fill_block(mshr_type mshr, uint32_t metadata);
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
@@ -173,7 +162,7 @@ public:
   const bool match_offset_bits;
   const bool virtual_prefetch;
   bool ever_seen_data = false;
-  const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
+  const unsigned pref_activate_mask = (1 << champsim::to_underlying(access_type::LOAD)) | (1 << champsim::to_underlying(access_type::PREFETCH));
 
   using stats_type = cache_stats;
 
@@ -197,6 +186,18 @@ public:
   std::size_t get_mshr_size() const;
   double get_mshr_occupancy_ratio() const;
 
+  std::vector<std::size_t> get_rq_occupancy() const;
+  std::vector<std::size_t> get_rq_size() const;
+  std::vector<double> get_rq_occupancy_ratio() const;
+
+  std::vector<std::size_t> get_wq_occupancy() const;
+  std::vector<std::size_t> get_wq_size() const;
+  std::vector<double> get_wq_occupancy_ratio() const;
+
+  std::vector<std::size_t> get_pq_occupancy() const;
+  std::vector<std::size_t> get_pq_size() const;
+  std::vector<double> get_pq_occupancy_ratio() const;
+
   [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
@@ -214,7 +215,7 @@ public:
     virtual ~prefetcher_module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
-    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in) = 0;
+    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) = 0;
     virtual uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
@@ -238,7 +239,7 @@ public:
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
 
     void impl_prefetcher_initialize();
-    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
     [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
     void impl_prefetcher_cycle_operate();
     void impl_prefetcher_final_stats();
@@ -265,7 +266,7 @@ public:
   std::unique_ptr<replacement_module_concept> repl_module_pimpl;
 
   void impl_prefetcher_initialize();
-  [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in);
+  [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
   [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
   void impl_prefetcher_cycle_operate();
   void impl_prefetcher_final_stats();
@@ -290,7 +291,7 @@ public:
   {
     using self_type = Builder<P, R>;
 
-    std::string_view m_name{};
+    std::string m_name{};
     double m_freq_scale{};
     uint32_t m_sets{};
     uint32_t m_ways{};
@@ -325,7 +326,7 @@ public:
   public:
     Builder() = default;
 
-    self_type& name(std::string_view name_)
+    self_type& name(std::string name_)
     {
       m_name = name_;
       return *this;
@@ -418,7 +419,7 @@ public:
     template <typename... Elems>
     self_type& prefetch_activate(Elems... pref_act_elems)
     {
-      m_pref_act_mask = ((1u << pref_act_elems) | ... | 0);
+      m_pref_act_mask = ((1u << champsim::to_underlying(pref_act_elems)) | ... | 0);
       return *this;
     }
     self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_)
@@ -471,15 +472,31 @@ void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_initialize()
 }
 
 template <typename... Ps>
-uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
 {
-  return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in)); }, intern_);
+  auto process_one = [&](auto& p) {
+    constexpr auto version = champsim::modules::detect::prefetcher::has_cache_operate<decltype(p)>();
+    if constexpr (version == 2)
+      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
+    else if constexpr (version == 1)
+      return p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); // absent useful_prefetch
+    else
+      return 0u;
+  };
+
+  return std::apply([&](auto&... p) { return (0 ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
 uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
-  return std::apply([&](auto&... p) { return (0 ^ ... ^ p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)); }, intern_);
+  auto process_one = [&](auto& p) {
+    if constexpr (champsim::modules::detect::prefetcher::has_cache_fill<decltype(p)>())
+      return p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+    return 0u;
+  };
+
+  return std::apply([&](auto&... p) { return (0 ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
@@ -533,7 +550,12 @@ template <typename... Rs>
 long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
                                             uint32_t type)
 {
-  return std::apply([&](auto&... r) { return (..., r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)); }, intern_);
+  auto process_one = [&](auto& r) {
+    if constexpr (champsim::modules::detect::replacement::has_find_victim<decltype(r)>())
+      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+  };
+
+  return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
 }
 
 template <typename... Rs>
