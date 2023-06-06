@@ -1,5 +1,6 @@
 import unittest
 import itertools
+import random
 
 import config.parse
 
@@ -121,7 +122,7 @@ class PassthroughContext:
 class ParseNormalizedTests(unittest.TestCase):
 
     def test_generates_default_caches(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        config_cores = [{ 'name': 'test_cpu' }]
 
         for key in ('L1I', 'L1D', 'ITLB', 'DTLB'):
             with self.subTest(cache=key):
@@ -132,7 +133,7 @@ class ParseNormalizedTests(unittest.TestCase):
                 self.assertIn(cache_name, [c['name'] for c in caches])
 
     def test_generates_default_ptws(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        config_cores = [{ 'name': 'test_cpu' }]
 
         result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
         ptw_name = result[0]['cores'][0]['PTW']
@@ -141,165 +142,96 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertIn(ptw_name, [c['name'] for c in ptws])
 
     def test_instruction_caches_have_instruction_prefetchers(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        for num_cores in (1,2,4,8):
+            with self.subTest(num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['L1I'] for core in result[0]['cores']]
-        caches = result[0]['caches']
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_names = [core['L1I'] for core in result[0]['cores']]
+                caches = result[0]['caches']
 
-        instruction_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
-        self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
-
-    def test_instruction_caches_have_instruction_prefetchers_multi(self):
-        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['L1I'] for core in result[0]['cores']]
-        caches = result[0]['caches']
-
-        instruction_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
-        self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
+                instruction_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                is_inst_data = {c['name']:[d['_is_instruction_prefetcher'] for d in c['_prefetcher_data']] for c in caches if c['name'] in cache_names}
+                self.assertEqual(is_inst_data, {n:[True] for n in cache_names})
 
     def test_instruction_and_data_caches_have_translators(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        for num_cores in (1,2,4,8):
+            with self.subTest(num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
 
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
+                caches = result[0]['caches']
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
-        caches = result[0]['caches']
+                filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
-
-        self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
-
-    def test_instruction_and_data_caches_have_translators_multi(self):
-        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['L1I'] for core in result[0]['cores']] + [core['L1D'] for core in result[0]['cores']]
-        caches = result[0]['caches']
-
-        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
-
-        self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
-
-    def test_the_end_of_the_instruction_path_is_dram(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [c['name'] for c in result[0]['caches']]
-        ll_names = [c.get('lower_level') for c in result[0]['caches']]
-
-        for cpu in result[0]['cores']:
-            active_name = cpu['L1I']
-            path = [active_name]
-            while active_name in cache_names:
-                active_name = ll_names[cache_names.index(active_name)]
-                path.append(active_name)
-
-            self.assertEqual(path[-1], 'DRAM')
+                self.assertEqual(tlb_names, {c:True for c in tlb_names.keys()})
 
     def test_the_end_of_the_data_path_is_dram(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        for num_cores, name in itertools.product((1,2,4,8), ('L1I', 'L1D')):
+            with self.subTest(ptw=name, num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [c['name'] for c in result[0]['caches']]
-        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_names = [c['name'] for c in result[0]['caches']]
+                ll_names = [c.get('lower_level') for c in result[0]['caches']]
 
-        for cpu in result[0]['cores']:
-            active_name = cpu['L1D']
-            path = [active_name]
-            while active_name in cache_names:
-                active_name = ll_names[cache_names.index(active_name)]
-                path.append(active_name)
+                for cpu in result[0]['cores']:
+                    active_name = cpu[name]
+                    path = [active_name]
+                    while active_name in cache_names:
+                        active_name = ll_names[cache_names.index(active_name)]
+                        path.append(active_name)
 
-            self.assertEqual(path[-1], 'DRAM')
+                    self.assertEqual(path[-1], 'DRAM')
 
-    def test_the_end_of_the_itlb_path_is_a_ptw(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+    def test_the_end_of_the_tlb_path_is_a_ptw(self):
+        for num_cores, name in itertools.product((1,2,4,8), ('ITLB', 'DTLB')):
+            with self.subTest(ptw=name, num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [c['name'] for c in result[0]['caches']]
-        ptw_names = [c['name'] for c in result[0]['ptws']]
-        ll_names = [c.get('lower_level') for c in result[0]['caches']]
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_names = [c['name'] for c in result[0]['caches']]
+                ptw_names = [c['name'] for c in result[0]['ptws']]
+                ll_names = [c.get('lower_level') for c in result[0]['caches']]
 
-        for cpu in result[0]['cores']:
-            active_name = cpu['ITLB']
-            path = [active_name]
-            while active_name in cache_names:
-                active_name = ll_names[cache_names.index(active_name)]
-                path.append(active_name)
+                for cpu in result[0]['cores']:
+                    active_name = cpu[name]
+                    path = [active_name]
+                    while active_name in cache_names:
+                        active_name = ll_names[cache_names.index(active_name)]
+                        path.append(active_name)
 
-            self.assertIn(path[-1], ptw_names)
-
-    def test_the_end_of_the_dtlb_path_is_a_ptw(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [c['name'] for c in result[0]['caches']]
-        ptw_names = [c['name'] for c in result[0]['ptws']]
-        ll_names = [c.get('lower_level') for c in result[0]['caches']]
-
-        for cpu in result[0]['cores']:
-            active_name = cpu['DTLB']
-            path = [active_name]
-            while active_name in cache_names:
-                active_name = ll_names[cache_names.index(active_name)]
-                path.append(active_name)
-
-            self.assertIn(path[-1], ptw_names)
+                    self.assertIn(path[-1], ptw_names)
 
     def test_tlbs_do_not_need_translation(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0 }]
+        for num_cores in (1,2,4,8):
+            with self.subTest(num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['ITLB'] for core in result[0]['cores']] + [core['DTLB'] for core in result[0]['cores']]
-        caches = result[0]['caches']
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cache_names = [core['ITLB'] for core in result[0]['cores']] + [core['DTLB'] for core in result[0]['cores']]
+                caches = result[0]['caches']
 
-        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
+                filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
+                tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
 
-        self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
-
-    def test_tlbs_do_not_need_translation_multi(self):
-        config_cores = [{ 'name': 'test_cpu0', '_index': 0 }, { 'name': 'test_cpu1', '_index': 1 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        cache_names = [core['ITLB'] for core in result[0]['cores']] + [core['DTLB'] for core in result[0]['cores']]
-        caches = result[0]['caches']
-
-        filtered_caches = [caches[[cache['name'] for cache in caches].index(name)] for name in cache_names]
-        tlb_names = {c['name']: ('lower_translate' in c) for c in filtered_caches}
-
-        self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
+                self.assertEqual(tlb_names, {c:False for c in tlb_names.keys()})
 
     def test_caches_inherit_core_frequency(self):
-        config_cores = [{ 'name': 'test_cpu', '_index': 0, 'frequency': 2016 }]
+        for num_cores in (1,2,4,8):
+            with self.subTest(num_cores=num_cores):
+                config_cores = [{ 'name': 'test_cpu'+str(i), 'frequency': random.randrange(20162016) } for i in range(num_cores)]
 
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
-            cache_names_and_frequencies = [(core[name], core['frequency']) for core in result[0]['cores']]
-            caches = result[0]['caches']
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
+                    cache_names_and_frequencies = [(core[name], core['frequency']) for core in result[0]['cores']]
+                    caches = result[0]['caches']
 
-            for cache_name, frequency in cache_names_and_frequencies:
-                cache_freq = caches[[cache['name'] for cache in caches].index(cache_name)].get('frequency')
-                self.assertEqual(frequency, cache_freq)
-
-    def test_caches_inherit_core_frequency_multi(self):
-        config_cores = [{ 'name': 'test_cpu0', '_index': 0, 'frequency': 2023 }, { 'name': 'test_cpu1', '_index': 1, 'frequency': 5096 }]
-
-        result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
-        for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
-            cache_names_and_frequencies = [(core[name], core['frequency']) for core in result[0]['cores']]
-            caches = result[0]['caches']
-
-            for cache_name, frequency in cache_names_and_frequencies:
-                cache_freq = caches[[cache['name'] for cache in caches].index(cache_name)].get('frequency')
-                self.assertEqual(frequency, cache_freq)
+                    for cache_name, frequency in cache_names_and_frequencies:
+                        cache_freq = caches[[cache['name'] for cache in caches].index(cache_name)].get('frequency')
+                        self.assertEqual(frequency, cache_freq)
 
 class NormalizeConfigTest(unittest.TestCase):
 
@@ -435,18 +367,11 @@ class EnvironmentParseTests(unittest.TestCase):
     def setUp(self):
         self.base_config = (
             [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
+                'name': 'test_cpu'
             }],
             {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
             },
             {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
             },
             {},
             {}
@@ -487,18 +412,11 @@ class ConfigRootPassthroughParseTests(unittest.TestCase):
     def setUp(self):
         self.base_config = (
             [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
+                'name': 'test_cpu'
             }],
             {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
             },
             {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
             },
             {},
             {}
@@ -534,18 +452,12 @@ class CompileAllModulesTests(unittest.TestCase):
     def setUp(self):
         self.base_config = (
             [{
-                'name': 'test_cpu', 'L1I': 'test_L1I', 'L1D': 'test_L1D',
-                'ITLB': 'test_ITLB', 'DTLB': 'test_DTLB', 'PTW': 'test_PTW',
-                '_index': 0
+                'name': 'test_cpu', 'L1D': 'test_L1D'
             }],
             {
-                'test_L1I': { 'name': 'test_L1I', 'lower_level': 'DRAM' },
-                'test_L1D': { 'name': 'test_L1D', 'lower_level': 'DRAM' },
-                'test_ITLB': { 'name': 'test_ITLB', 'lower_level': 'test_PTW' },
-                'test_DTLB': { 'name': 'test_DTLB', 'lower_level': 'test_PTW' }
+                'test_L1D': { 'name': 'test_L1D' }
             },
             {
-                'test_PTW': { 'name': 'test_PTW', 'lower_level': 'test_L1D' }
             },
             {},
             {}
