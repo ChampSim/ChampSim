@@ -17,13 +17,16 @@ import math
 
 from . import util
 
-def core_defaults(cpu, name, ll_name=None):
-    retval = {
-        'name': util.read_element_name(cpu, name)
-    }
-    if ll_name is not None:
-        retval.update(lower_level=util.read_element_name(cpu, ll_name))
-    return retval;
+def cache_core_defaults(cpu):
+    yield { 'name': cpu.get('L1I'), 'lower_level': cpu.get('L2C') }
+    yield { 'name': cpu.get('L1D'), 'lower_level': cpu.get('L2C') }
+    yield { 'name': cpu.get('ITLB'), 'lower_level': cpu.get('STLB') }
+    yield { 'name': cpu.get('DTLB'), 'lower_level': cpu.get('STLB') }
+    yield { 'name': cpu.get('L2C'), 'lower_level': 'LLC' }
+    yield { 'name': cpu.get('STLB'), 'lower_level': cpu.get('PTW') }
+
+def ptw_core_defaults(cpu):
+    yield { 'name': cpu.get('PTW'), 'lower_level': cpu.get('L1D') }
 
 def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32, bandwidth_factor=0.5):
     return {
@@ -99,9 +102,7 @@ def dtlb_path(cores, caches):
     yield from default_path(cores, caches, dtlb_factors, dtlb_members, 'DTLB')
 
 def list_defaults(cores, caches):
-    l1i = list(l1i_path(cores, caches))
-    #print(l1i)
-    yield from l1i
+    yield from l1i_path(cores, caches)
     yield from l1d_path(cores, caches)
     yield from itlb_path(cores, caches)
     yield from dtlb_path(cores, caches)

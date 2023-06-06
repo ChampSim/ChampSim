@@ -16,9 +16,6 @@ import itertools
 import functools
 import operator
 
-def read_element_name(cpu, elem):
-    return cpu.get(elem) if isinstance(cpu.get(elem), str) else cpu.get(elem,{}).get('name', cpu['name']+'_'+elem)
-
 def iter_system(system, name, key='lower_level'):
     hoisted = dict(**system)
     while name in hoisted:

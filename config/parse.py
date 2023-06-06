@@ -68,51 +68,44 @@ def split_string_or_list(val, delim=','):
         return [v for v in retval if v]
     return val
 
+def default_element_name(cpu, elem):
+    return cpu['name'] + '_' + elem
+
 def normalize_config(config_file):
     # Copy or trim cores as necessary to fill out the specified number of cores
     cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file.get('num_cores', 1))
 
     # Default core elements
-    # Give cores numeric indices
     core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
-    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'name': 'cpu'+str(i), '_index': i}) for i,cpu in enumerate(cores)]
+    cores = [util.chain(cpu, util.subdict(config_file, core_keys_to_copy), {'name': 'cpu'+str(i)}) for i,cpu in enumerate(cores)]
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
             config_file.get('caches', []),
 
             # Copy values from the core specification, if these are dicts
-            ({'name': util.read_element_name(core,name), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
+            ({'name': core[name].get('name', default_element_name(core,name)), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': util.read_element_name(core,name), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
-
-            ({'name': 'LLC', **config_file.get('LLC', {})},),
-
-            # Apply defaults named after the cores
-            (defaults.core_defaults(cpu, 'L1I', ll_name='L2C') for cpu in cores),
-            (defaults.core_defaults(cpu, 'L1D', ll_name='L2C') for cpu in cores),
-            (defaults.core_defaults(cpu, 'ITLB', ll_name='STLB') for cpu in cores),
-            (defaults.core_defaults(cpu, 'DTLB', ll_name='STLB') for cpu in cores),
-            ({**defaults.core_defaults(cpu, 'L2C'), 'lower_level': 'LLC'} for cpu in cores),
-            (defaults.core_defaults(cpu, 'STLB', ll_name='PTW') for cpu in cores)
+            ({'name': core.get(name, {}).get('name', default_element_name(core,name)), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
             )
+
+    # Read LLC from the configuration file
+    if 'LLC' in config_file:
+        caches.update(LLC={'name': 'LLC', **config_file['LLC']})
 
     ptws = util.combine_named(
             config_file.get('ptws',[]),
 
             # Copy values from the core specification, if these are dicts
-            ({'name': util.read_element_name(c,'PTW'), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+            ({'name': c['PTW'].get('name', default_element_name(c,'PTW')), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': util.read_element_name(c,'PTW'), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict)),
-
-            # Apply defaults named after the cores
-            (defaults.core_defaults(cpu, 'PTW', ll_name='L1D') for cpu in cores)
+            ({'name': core.get('PTW', {}).get('name', default_element_name(core,'PTW')), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict))
             )
 
     # Convert all core values to labels
-    cores = [util.chain({n: util.read_element_name(cpu, n) for n in (*pinned_cache_names, 'PTW')}, cpu) for cpu in cores]
+    cores = [util.chain({n: cpu[n].get('name', default_element_name(cpu, n)) for n in (*pinned_cache_names, 'PTW') if isinstance(cpu.get(n), dict)}, cpu) for cpu in cores]
 
     # The name 'DRAM' is reserved for the physical memory
     caches = {k:v for k,v in caches.items() if k != 'DRAM'}
@@ -125,7 +118,15 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     pmem = util.chain(pmem, default_pmem)
     vmem = util.chain(vmem, default_vmem)
 
-    cores = [util.chain(cpu, {'DIB': dict()}, default_core) for cpu in cores]
+    # Give cores numeric indices and default cache names
+    cores = [util.chain(cpu, {'DIB': dict(), '_index': i}, {n: default_element_name(cpu,n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB', 'PTW')}, default_core) for i,cpu in enumerate(cores)]
+
+    # Instantiate any missing default caches
+    caches = util.combine_named(caches.values(), ({ 'name': 'LLC' },), *map(defaults.cache_core_defaults, cores))
+    ptws = util.combine_named(ptws.values(), *map(defaults.ptw_core_defaults, cores))
+
+    # Follow paths and apply default sizings
+    caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches));
 
     # Frequencies are the maximum of the upper levels, unless specified
     for cpu,name in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')):
@@ -136,18 +137,8 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
             ), 1, None)
         )
 
-    caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches));
-
     # Apply defaults to PTW
-    ptws = util.combine_named(
-            ptws.values(),
-            ({
-                'name': cpu['PTW'],
-                **defaults.ul_dependent_defaults(*util.upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2),
-                'frequency': cpu['frequency'],
-                'cpu': cpu['_index']
-            } for cpu in cores)
-            )
+    ptws = util.combine_named(ptws.values(), ({ 'name': cpu['PTW'], 'frequency': cpu['frequency'], 'cpu': cpu['_index'] } for cpu in cores))
 
     ## DEPRECATION
     # The listed keys are deprecated. For now, permit them but print a warning
@@ -198,10 +189,17 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
             # The end of the data path is the physical memory
             ({'name': collections.deque(util.iter_system(caches, cpu['L1I']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'} for cpu in cores),
             ({'name': collections.deque(util.iter_system(caches, cpu['L1D']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'} for cpu in cores),
+            ({'name': collections.deque(util.iter_system(caches, cpu['ITLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']} for cpu in cores),
+            ({'name': collections.deque(util.iter_system(caches, cpu['DTLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']} for cpu in cores),
 
             # Get module path names and unique module names
             ({'name': c['name'], '_replacement_data': [replacement_context.find(f) for f in util.wrap_list(c.get('replacement',[]))]} for c in caches.values()),
             ({'name': c['name'], '_prefetcher_data': [util.chain({'_is_instruction_prefetcher': c.get('_is_instruction_cache',False)}, prefetcher_context.find(f)) for f in util.wrap_list(c.get('prefetcher',[]))]} for c in caches.values())
+            )
+
+    ptws = util.combine_named(
+            ptws.values(),
+            ({ 'name': cpu['PTW'], **defaults.ul_dependent_defaults(*util.upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2) } for cpu in cores)
             )
 
     cores = list(util.combine_named(cores,
