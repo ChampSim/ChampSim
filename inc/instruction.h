@@ -100,7 +100,7 @@ private:
       is_branch = true;
       branch_taken = true;
       branch_type = BRANCH_INDIRECT;
-    } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
+    } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && (reads_flags || reads_other)) {
       // conditional branch
       is_branch = true;
       branch_taken = instr.branch_taken; // don't change this

@@ -100,7 +100,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
   }
 
-  if (branch_type == BRANCH_CONDITIONAL) {
+  if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER)) {
     ::CONDITIONAL_HISTORY[this] <<= 1;
     ::CONDITIONAL_HISTORY[this].set(0, taken);
   }
@@ -122,7 +122,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::INDIRECT;
   else if (branch_type == BRANCH_RETURN)
     type = ::branch_info::RETURN;
-  else if (branch_type == BRANCH_CONDITIONAL)
+  else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
 
   auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
