@@ -169,9 +169,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       ++sim_stats.pf_useful;
       way->prefetch = false;
     }
-  } else {
-    ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
-  }
+  } 
 
   return hit;
 }
@@ -252,6 +250,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
   }
 
+  ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+
   return true;
 }
 
@@ -265,6 +265,8 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 
   inflight_writes.emplace_back(handle_pkt, current_cycle);
   inflight_writes.back().event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
+    
+  ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
 
   return true;
 }
