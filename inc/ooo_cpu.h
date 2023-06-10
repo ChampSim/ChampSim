@@ -30,6 +30,7 @@
 #include <optional>
 #include <queue>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -39,7 +40,6 @@
 #include "module_impl.h"
 #include "operable.h"
 #include "util/lru_table.h"
-#include <type_traits>
 
 class CACHE;
 class CacheBus

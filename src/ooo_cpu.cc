@@ -20,14 +20,14 @@
 #include <chrono>
 #include <cmath>
 #include <numeric>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
 #include "util/span.h"
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
 

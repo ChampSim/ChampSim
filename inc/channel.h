@@ -22,9 +22,8 @@
 #include <deque>
 #include <functional>
 #include <limits>
-#include <vector>
-
 #include <string_view>
+#include <vector>
 
 struct ooo_model_instr;
 

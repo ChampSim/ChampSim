@@ -28,6 +28,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -35,7 +36,6 @@
 #include "channel.h"
 #include "module_impl.h"
 #include "operable.h"
-#include <type_traits>
 
 struct cache_stats {
   std::string name;

@@ -21,13 +21,13 @@
 #include <cmath>
 #include <iomanip>
 #include <numeric>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/algorithm.h"
 #include "util/span.h"
-#include <fmt/core.h>
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),

@@ -20,14 +20,14 @@
 #include <chrono>
 #include <numeric>
 #include <vector>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 
 #include "environment.h"
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "phase_info.h"
 #include "tracereader.h"
-#include <fmt/chrono.h>
-#include <fmt/core.h>
 
 auto start_time = std::chrono::steady_clock::now();
 

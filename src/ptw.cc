@@ -17,13 +17,13 @@
 #include "ptw.h"
 
 #include <numeric>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/span.h"
 #include "vmem.h"
-#include <fmt/core.h>
 
 PageTableWalker::PageTableWalker(Builder b)
     : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),

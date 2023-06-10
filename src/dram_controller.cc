@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
+#include <fmt/core.h>
 
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/span.h"
-#include <fmt/core.h>
 
 uint64_t cycles(double time, int io_freq)
 {

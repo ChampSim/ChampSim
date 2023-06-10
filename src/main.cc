@@ -19,6 +19,8 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <CLI/CLI.hpp>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -27,8 +29,6 @@
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
-#include <CLI/CLI.hpp>
-#include <fmt/core.h>
 
 namespace champsim
 {

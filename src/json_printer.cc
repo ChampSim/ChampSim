@@ -16,9 +16,9 @@
 
 #include <algorithm>
 #include <utility>
+#include <nlohmann/json.hpp>
 
 #include "stats_printer.h"
-#include <nlohmann/json.hpp>
 
 void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 {

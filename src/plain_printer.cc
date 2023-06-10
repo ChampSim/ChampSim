@@ -18,10 +18,10 @@
 #include <sstream>
 #include <utility>
 #include <vector>
-
-#include "stats_printer.h"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
+
+#include "stats_printer.h"
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
