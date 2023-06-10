@@ -162,10 +162,10 @@ public:
 
   explicit PageTableWalker(Builder builder);
 
-  void operate() override final;
+  void operate() final;
 
-  void begin_phase() override final;
-  void print_deadlock() override final;
+  void begin_phase() final;
+  void print_deadlock() final;
 };
 
 #endif

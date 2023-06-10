@@ -68,8 +68,8 @@ struct cpu_stats {
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
 
-  uint64_t instrs() const { return end_instrs - begin_instrs; }
-  uint64_t cycles() const { return end_cycles - begin_cycles; }
+  [[nodiscard]] uint64_t instrs() const { return end_instrs - begin_instrs; }
+  [[nodiscard]] uint64_t cycles() const { return end_cycles - begin_cycles; }
 };
 
 struct LSQ_ENTRY {
@@ -148,10 +148,10 @@ public:
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
 
-  void initialize() override final;
-  void operate() override final;
-  void begin_phase() override final;
-  void end_phase(unsigned cpu) override final;
+  void initialize() final;
+  void operate() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
 
   void initialize_instruction();
   void check_dib();
@@ -183,12 +183,12 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  uint64_t roi_instr() const { return roi_stats.instrs(); }
-  uint64_t roi_cycle() const { return roi_stats.cycles(); }
-  uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
-  uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
+  [[nodiscard]] uint64_t roi_instr() const { return roi_stats.instrs(); }
+  [[nodiscard]] uint64_t roi_cycle() const { return roi_stats.cycles(); }
+  [[nodiscard]] uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
+  [[nodiscard]] uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
-  void print_deadlock() override final;
+  void print_deadlock() final;
 
 #include "ooo_cpu_module_decl.inc"
 
@@ -209,13 +209,13 @@ public:
     O3_CPU* intern_;
     explicit module_model(O3_CPU* core) : intern_(core) {}
 
-    void impl_initialize_branch_predictor();
-    void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type);
-    uint8_t impl_predict_branch(uint64_t ip);
+    void impl_initialize_branch_predictor() final;
+    void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type) final;
+    uint8_t impl_predict_branch(uint64_t ip) final;
 
-    void impl_initialize_btb();
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    void impl_initialize_btb() final;
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) final;
+    std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) final;
   };
 
   std::unique_ptr<module_concept> module_pimpl;

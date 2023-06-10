@@ -22,19 +22,32 @@
 #include <memory>
 #include <numeric>
 #include <string>
+#include <type_traits>
 
 #include "instruction.h"
 #include "util/detect.h"
 
 namespace champsim
 {
+class tracereader;
+
+namespace detail
+{
+template <typename>
+struct is_not_tracereader : std::true_type {
+};
+
+template <>
+struct is_not_tracereader<tracereader> : std::false_type {
+};
+} // namespace detail
 class tracereader
 {
-  static uint64_t instr_unique_id;
+  static uint64_t instr_unique_id; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   struct reader_concept {
     virtual ~reader_concept() = default;
     virtual ooo_model_instr operator()() = 0;
-    virtual bool eof() const = 0;
+    [[nodiscard]] virtual bool eof() const = 0;
   };
 
   template <typename T>
@@ -46,7 +59,7 @@ class tracereader
     using has_eof = decltype(std::declval<U>().eof());
 
     ooo_model_instr operator()() override { return intern_(); }
-    bool eof() const override
+    [[nodiscard]] bool eof() const override
     {
       if constexpr (champsim::is_detected_v<has_eof, T>) {
         return intern_.eof();
@@ -58,8 +71,8 @@ class tracereader
   std::unique_ptr<reader_concept> pimpl_;
 
 public:
-  template <typename T>
-  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val)))
+  template <typename T, std::enable_if_t<detail::is_not_tracereader<T>::value, bool> = true>
+  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::forward<T>(val)))
   {
   }
 
@@ -70,7 +83,7 @@ public:
     return retval;
   }
 
-  auto eof() const { return pimpl_->eof(); }
+  [[nodiscard]] auto eof() const { return pimpl_->eof(); }
 };
 
 template <typename T, typename F>
@@ -93,7 +106,7 @@ public:
   bulk_tracereader(uint8_t cpu_idx, std::string tf) : cpu(cpu_idx), trace_file(tf) {}
   bulk_tracereader(uint8_t cpu_idx, F&& file) : cpu(cpu_idx), trace_file(std::move(file)) {}
 
-  bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
+  [[nodiscard]] bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
 };
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);

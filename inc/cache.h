@@ -140,8 +140,8 @@ class CACHE : public champsim::operable
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
-  std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
-  std::size_t get_set_index(uint64_t address) const;
+  [[nodiscard]] std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
+  [[nodiscard]] std::size_t get_set_index(uint64_t address) const;
 
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
@@ -164,7 +164,7 @@ public:
   const std::size_t PQ_SIZE;
   const uint64_t HIT_LATENCY, FILL_LATENCY;
   const unsigned OFFSET_BITS;
-  set_type block{NUM_SET * NUM_WAY};
+  set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   const long int MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
@@ -179,35 +179,35 @@ public:
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> inflight_writes;
 
-  void operate() override final;
+  void operate() final;
 
-  void initialize() override final;
-  void begin_phase() override final;
-  void end_phase(unsigned cpu) override final;
+  void initialize() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
 
-  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t
+  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] [[nodiscard]] std::size_t
   get_occupancy(uint8_t queue_type, uint64_t address) const;
-  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type,
-                                                                                                                            uint64_t address) const;
+  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] [[nodiscard]] std::size_t
+  get_size(uint8_t queue_type, uint64_t address) const;
 
-  std::size_t get_mshr_occupancy() const;
-  std::size_t get_mshr_size() const;
-  double get_mshr_occupancy_ratio() const;
+  [[nodiscard]] std::size_t get_mshr_occupancy() const;
+  [[nodiscard]] std::size_t get_mshr_size() const;
+  [[nodiscard]] double get_mshr_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_rq_occupancy() const;
-  std::vector<std::size_t> get_rq_size() const;
-  std::vector<double> get_rq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_rq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_rq_size() const;
+  [[nodiscard]] std::vector<double> get_rq_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_wq_occupancy() const;
-  std::vector<std::size_t> get_wq_size() const;
-  std::vector<double> get_wq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_wq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_wq_size() const;
+  [[nodiscard]] std::vector<double> get_wq_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_pq_occupancy() const;
-  std::vector<std::size_t> get_pq_size() const;
-  std::vector<double> get_pq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_pq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_pq_size() const;
+  [[nodiscard]] std::vector<double> get_pq_occupancy_ratio() const;
 
-  [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
-  [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
+  [[deprecated("Use get_set_index() instead.")]] [[nodiscard]] uint64_t get_set(uint64_t address) const;
+  [[deprecated("This function should not be used to access the blocks directly.")]] [[nodiscard]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   uint64_t invalidate_entry(uint64_t inval_addr);
   bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
@@ -215,7 +215,7 @@ public:
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] bool
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
-  void print_deadlock() override;
+  void print_deadlock() final;
 
 #include "cache_module_decl.inc"
 
@@ -242,19 +242,19 @@ public:
     CACHE* intern_;
     explicit module_model(CACHE* cache) : intern_(cache) {}
 
-    void impl_prefetcher_initialize();
-    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
-    uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    void impl_prefetcher_cycle_operate();
-    void impl_prefetcher_final_stats();
-    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+    void impl_prefetcher_initialize() final;
+    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) final;
+    uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) final;
+    void impl_prefetcher_cycle_operate() final;
+    void impl_prefetcher_final_stats() final;
+    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) final;
 
-    void impl_initialize_replacement();
+    void impl_initialize_replacement() final;
     uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                              uint32_t type);
+                              uint32_t type) final;
     void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
-                                       uint32_t type, uint8_t hit);
-    void impl_replacement_final_stats();
+                                       uint32_t type, uint8_t hit) final;
+    void impl_replacement_final_stats() final;
   };
 
   std::unique_ptr<module_concept> module_pimpl;

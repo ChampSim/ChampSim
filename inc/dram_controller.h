@@ -106,12 +106,12 @@ public:
 
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
-  void initialize() override final;
-  void operate() override final;
-  void begin_phase() override final;
-  void end_phase(unsigned cpu) override final;
+  void initialize() final;
+  void operate() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
 
-  std::size_t size() const;
+  [[nodiscard]] std::size_t size() const;
 
   uint32_t dram_get_channel(uint64_t address);
   uint32_t dram_get_rank(uint64_t address);

@@ -106,6 +106,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             }
         )
 
+    yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
@@ -242,3 +243,4 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield '};'
     yield '}'
+    yield '// NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)'

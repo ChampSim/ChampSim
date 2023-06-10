@@ -205,7 +205,7 @@ struct inf_istream {
     explicit inf_streambuf(IStrm* in) : src(in) {}
     explicit inf_streambuf(Tag /*tag*/, IStrm* in) : inf_streambuf(in) {}
 
-    std::size_t bytes_read() const { return strm->total_out - (this->egptr() - this->gptr()); }
+    [[nodiscard]] std::size_t bytes_read() const { return strm->total_out - (this->egptr() - this->gptr()); }
 
   protected:
     int_type underflow() override;
@@ -225,8 +225,8 @@ struct inf_istream {
     return *this;
   }
 
-  bool eof() const { return eof_; }
-  std::streamsize gcount() const { return gcount_; }
+  [[nodiscard]] bool eof() const { return eof_; }
+  [[nodiscard]] std::streamsize gcount() const { return gcount_; }
 
   explicit inf_istream(std::string s) : underlying(std::make_unique<StreamType>(s)) {}
   explicit inf_istream(StreamType&& str) : underlying(std::make_unique<StreamType>(std::move(str))) {}
