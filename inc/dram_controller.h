@@ -52,11 +52,12 @@ struct DRAM_CHANNEL {
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    explicit request_type(typename champsim::channel::request_type);
+    explicit request_type(const typename champsim::channel::request_type& req);
   };
   using value_type = request_type;
   using queue_type = std::vector<std::optional<value_type>>;
-  queue_type WQ{DRAM_WQ_SIZE}, RQ{DRAM_RQ_SIZE};
+  queue_type WQ{DRAM_WQ_SIZE};
+  queue_type RQ{DRAM_RQ_SIZE};
 
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
@@ -97,8 +98,8 @@ class MEMORY_CONTROLLER : public champsim::operable
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   void initiate_requests();
-  bool add_rq(const request_type& pkt, champsim::channel* ul);
-  bool add_wq(const request_type& pkt);
+  bool add_rq(const request_type& packet, champsim::channel* ul);
+  bool add_wq(const request_type& packet);
 
 public:
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;

@@ -24,7 +24,7 @@ namespace detail
 {
 template <typename T>
 struct take_last {
-  T operator()(T, T last) const { return last; }
+  T operator()(T /*first*/, T last) const { return last; }
 };
 } // namespace detail
 

@@ -42,8 +42,8 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
 
-    WHEN("The instruction is not executed") {
-      uut.ROB.front().executed = 0;
+    WHEN("The instruction is not completed") {
+      uut.ROB.front().completed = false;
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
@@ -53,8 +53,8 @@ SCENARIO("Completed instructions are retired") {
       }
     }
 
-    WHEN("The instruction has been executed") {
-      uut.ROB.front().executed = COMPLETED;
+    WHEN("The instruction has been completed") {
+      uut.ROB.front().completed = true;
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
 
@@ -81,9 +81,9 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
 
-    WHEN("The second instruction is executed") {
-      uut.ROB[0].executed = 0;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("The second instruction is completed") {
+      uut.ROB[0].completed = false;
+      uut.ROB[1].completed = true;
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
@@ -94,9 +94,9 @@ SCENARIO("Completed instructions are retired") {
       }
     }
 
-    WHEN("Both instructions are executed") {
-      uut.ROB[0].executed = COMPLETED;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("Both instructions are completed") {
+      uut.ROB[0].completed = true;
+      uut.ROB[1].completed = true;
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
@@ -124,9 +124,9 @@ SCENARIO("Completed instructions are retired") {
     auto old_rob_occupancy = std::size(uut.ROB);
     auto old_num_retired = uut.num_retired;
 
-    WHEN("All instructions are executed") {
-      uut.ROB[0].executed = COMPLETED;
-      uut.ROB[1].executed = COMPLETED;
+    WHEN("All instructions are completed") {
+      uut.ROB[0].completed = true;
+      uut.ROB[1].completed = true;
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();

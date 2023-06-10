@@ -104,8 +104,8 @@ def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *ta
     local_attrs = ('noreturn',)
     attrstring = ', '.join(itertools.chain(attrs, local_attrs))
 
-    argstring = ', '.join(a[0] for a in args)
-    yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }}'.format(attrstring, rtype, name, argstring) for name in names)
+    argstring = ', '.join(a[0]+' /*unused*/' for a in args)
+    yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }} // NOLINT(readability-convert-member-functions-to-static)'.format(attrstring, rtype, name, argstring) for name in names)
 
 # Generate C++ code giving the declaration for a discriminator function. If the class name is given, the declaration is assumed to be outside the class declaration
 def discriminator_function_declaration(fname, rtype, args, varname, secondary_varname, classname):
@@ -116,7 +116,7 @@ def discriminator_function_declaration(fname, rtype, args, varname, secondary_va
 # Generate C++ code for the body of a discriminator function that returns void
 def discriminator_function_definition_void(fname, args, varname, zipped_keys_and_funcs, classname):
     # Discriminate between the module variants
-    yield from ('  if constexpr (({} & {}::{}) != 0) intern_->{}({});'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
+    yield from ('  if constexpr (({} & {}::{}) != 0) {{ intern_->{}({}); }}'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
 # Generate C++ code for the body of a discriminator function that returns nonvoid
 def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varname, zipped_keys_and_funcs, classname):
@@ -125,7 +125,7 @@ def discriminator_function_definition_nonvoid(fname, rtype, join_op, args, varna
     yield '  ' + join_op + '<decltype(result)> joiner{};'
 
     # Discriminate between the module variants
-    yield from ('  if constexpr (({} & {}::{}) != 0) result = joiner(result, intern_->{}({}));'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
+    yield from ('  if constexpr (({} & {}::{}) != 0) {{ result = joiner(result, intern_->{}({})); }}'.format(varname, classname, k, n, ', '.join(a[1] for a in args)) for k,n in zipped_keys_and_funcs)
 
     # Return result
     yield '  return result;'
@@ -154,7 +154,7 @@ def get_discriminator(fname, varname, secondary_varname, zipped_keys_and_funcs, 
 
 # For a set of module data, generate C++ code defining the constants that distinguish the modules
 def constants_for_modules(prefix, mod_data):
-    yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ull << {1};'.format(prefix, n, data['name'], prec=max(len(k['name']) for k in mod_data)) for n,data in enumerate(mod_data))
+    yield from ('constexpr static unsigned long long {0}{2:{prec}} = 1ULL << {1};'.format(prefix, n, data['name'], prec=max(len(k['name']) for k in mod_data)) for n,data in enumerate(mod_data))
 
 # Return a pair containing two generators: The first generates C++ code declaring all functions for the O3_CPU modules, and the second generates C++ code defining the functions
 def get_ooo_cpu_module_lines(branch_data, btb_data):

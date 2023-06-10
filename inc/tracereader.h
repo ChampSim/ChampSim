@@ -48,8 +48,9 @@ class tracereader
     ooo_model_instr operator()() override { return intern_(); }
     bool eof() const override
     {
-      if constexpr (champsim::is_detected_v<has_eof, T>)
+      if constexpr (champsim::is_detected_v<has_eof, T>) {
         return intern_.eof();
+      }
       return false; // If an eof() member function is not provided, assume the trace never ends.
     }
   };
@@ -100,7 +101,8 @@ ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_inst
 template <typename It>
 void set_branch_targets(It begin, It end)
 {
-  std::reverse_iterator rbegin{end}, rend{begin};
+  std::reverse_iterator rbegin{end};
+  std::reverse_iterator rend{begin};
   std::adjacent_difference(rbegin, rend, rbegin, apply_branch_target);
 }
 
@@ -138,6 +140,6 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
 std::string get_fptr_cmd(std::string_view fname);
 } // namespace champsim
 
-champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
+champsim::tracereader get_tracereader(const std::string& fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
 
 #endif

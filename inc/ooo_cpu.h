@@ -41,8 +41,6 @@
 #include "util/lru_table.h"
 #include <type_traits>
 
-enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
-
 class CACHE;
 class CacheBus
 {
@@ -176,7 +174,7 @@ public:
   bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
-  void do_execution(ooo_model_instr& rob_it);
+  void do_execution(ooo_model_instr& instr);
   void do_memory_scheduling(ooo_model_instr& instr);
   void do_complete_execution(ooo_model_instr& instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
@@ -222,6 +220,7 @@ public:
 
   std::unique_ptr<module_concept> module_pimpl;
 
+  // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
   void impl_initialize_branch_predictor() { module_pimpl->impl_initialize_branch_predictor(); }
   void impl_last_branch_result(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)
   {
@@ -235,6 +234,7 @@ public:
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
   std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  // NOLINTEND(readability-make-member-function-const)
 
   class builder_conversion_tag
   {
@@ -278,7 +278,7 @@ public:
     friend class O3_CPU;
 
     template <unsigned long long OTHER_B, unsigned long long OTHER_T>
-    Builder(builder_conversion_tag, const Builder<OTHER_B, OTHER_T>& other)
+    Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_B, OTHER_T>& other)
         : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
           m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
           m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),

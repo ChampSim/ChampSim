@@ -87,7 +87,7 @@ class CACHE : public champsim::operable
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
-    tag_lookup_type(request_type req, bool local_pref, bool skip);
+    tag_lookup_type(const request_type& req, bool local_pref, bool skip);
   };
 
   struct mshr_type {
@@ -111,7 +111,7 @@ class CACHE : public champsim::operable
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    mshr_type(tag_lookup_type req, uint64_t cycle);
+    mshr_type(const tag_lookup_type& req, uint64_t cycle);
   };
 
   bool try_hit(const tag_lookup_type& handle_pkt);
@@ -135,7 +135,7 @@ class CACHE : public champsim::operable
     uint32_t pf_metadata = 0;
 
     BLOCK() = default;
-    explicit BLOCK(mshr_type mshr);
+    explicit BLOCK(const mshr_type& mshr);
   };
   using set_type = std::vector<BLOCK>;
 
@@ -185,10 +185,10 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t get_occupancy(uint8_t queue_type,
-                                                                                                                                           uint64_t address);
+  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t
+  get_occupancy(uint8_t queue_type, uint64_t address) const;
   [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type,
-                                                                                                                            uint64_t address);
+                                                                                                                            uint64_t address) const;
 
   std::size_t get_mshr_occupancy() const;
   std::size_t get_mshr_size() const;
@@ -210,9 +210,9 @@ public:
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   uint64_t invalidate_entry(uint64_t inval_addr);
-  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
-  [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
+  [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] bool
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   void print_deadlock() override;
@@ -259,6 +259,7 @@ public:
 
   std::unique_ptr<module_concept> module_pimpl;
 
+  // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
   void impl_prefetcher_initialize() { module_pimpl->impl_prefetcher_initialize(); }
   uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
   {
@@ -286,6 +287,7 @@ public:
     module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
   }
   void impl_replacement_final_stats() { module_pimpl->impl_replacement_final_stats(); }
+  // NOLINTEND(readability-make-member-function-const)
 
   class builder_conversion_tag
   {
@@ -319,7 +321,7 @@ public:
     friend class CACHE;
 
     template <unsigned long long OTHER_P, unsigned long long OTHER_R>
-    Builder(builder_conversion_tag, const Builder<OTHER_P, OTHER_R>& other)
+    Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_P, OTHER_R>& other)
         : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
           m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
           m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
@@ -423,7 +425,7 @@ public:
     template <typename... Elems>
     self_type& prefetch_activate(Elems... pref_act_elems)
     {
-      m_pref_act_mask = ((1u << champsim::to_underlying(pref_act_elems)) | ... | 0);
+      m_pref_act_mask = ((1U << champsim::to_underlying(pref_act_elems)) | ... | 0);
       return *this;
     }
     self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_)
@@ -464,7 +466,9 @@ public:
   }
 };
 
+// NOLINTBEGIN(readability-convert-member-functions-to-static): legacy module hooks are never static
 #include "cache_module_def.inc"
+// NOLINTEND(readability-convert-member-functions-to-static)
 
 #endif
 

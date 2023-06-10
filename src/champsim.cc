@@ -35,7 +35,7 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader>& traces)
+phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces)
 {
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
   auto operables = env.operable_view();
@@ -73,12 +73,14 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     // Read from trace
     for (O3_CPU& cpu : env.cpu_view()) {
       auto& trace = traces.at(trace_index.at(cpu.cpu));
-      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count)
+      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
         cpu.input_queue.push_back(trace());
+      }
 
       // If any trace reaches EOF, terminate all phases
-      if (trace.eof())
+      if (trace.eof()) {
         std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
+      }
     }
 
     // Check for phase finish
@@ -89,8 +91,9 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
-        for (champsim::operable& op : operables)
+        for (champsim::operable& op : operables) {
           op.end_phase(cpu.cpu);
+        }
 
         fmt::print("{} finished CPU {} instructions: {} cycles: {} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", phase_name, cpu.cpu,
                    cpu.sim_instr(), cpu.sim_cycle(), std::ceil(cpu.sim_instr()) / std::ceil(cpu.sim_cycle()), elapsed_time());
@@ -108,8 +111,9 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   phase_stats stats;
   stats.name = phase.name;
 
-  for (std::size_t i = 0; i < std::size(trace_index); ++i)
+  for (std::size_t i = 0; i < std::size(trace_index); ++i) {
     stats.trace_names.push_back(trace_names.at(trace_index.at(i)));
+  }
 
   auto cpus = env.cpu_view();
   std::transform(std::begin(cpus), std::end(cpus), std::back_inserter(stats.sim_cpu_stats), [](const O3_CPU& cpu) { return cpu.sim_stats; });
@@ -131,14 +135,16 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 // simulation entry point
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces)
 {
-  for (champsim::operable& op : env.operable_view())
+  for (champsim::operable& op : env.operable_view()) {
     op.initialize();
+  }
 
   std::vector<phase_stats> results;
   for (auto phase : phases) {
     auto stats = do_phase(phase, env, traces);
-    if (!phase.is_warmup)
+    if (!phase.is_warmup) {
       results.push_back(stats);
+    }
   }
 
   return results;

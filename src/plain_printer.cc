@@ -31,9 +31,9 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
   auto total_branch = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
+      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(next.second); }));
   auto total_mispredictions = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
+      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(next.second); }));
 
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
@@ -46,8 +46,9 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
 
   fmt::print(stream, "Branch type MPKI\n");
-  for (auto [str, idx] : types)
-    fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
+  for (auto [str, idx] : types) {
+    fmt::print(stream, "{}: {:.3}\n", str, mpkis.at(idx));
+  }
   fmt::print(stream, "\n");
 }
 
@@ -59,7 +60,8 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
        std::pair{"TRANSLATION", champsim::to_underlying(access_type::TRANSLATION)}}};
 
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
-    uint64_t TOTAL_HIT = 0, TOTAL_MISS = 0;
+    uint64_t TOTAL_HIT = 0;
+    uint64_t TOTAL_MISS = 0;
     for (const auto& type : types) {
       TOTAL_HIT += stats.hits.at(type.second).at(cpu);
       TOTAL_MISS += stats.misses.at(type.second).at(cpu);
@@ -68,7 +70,8 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
     for (const auto& type : types) {
       fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, type.first,
-                 stats.hits[type.second][cpu] + stats.misses[type.second][cpu], stats.hits[type.second][cpu], stats.misses[type.second][cpu]);
+                 stats.hits.at(type.second).at(cpu) + stats.misses.at(type.second).at(cpu), stats.hits.at(type.second).at(cpu),
+                 stats.misses.at(type.second).at(cpu));
     }
 
     fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
@@ -81,10 +84,11 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
 void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 {
   fmt::print(stream, "\n{} RQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
-  if (stats.dbus_count_congested > 0)
+  if (stats.dbus_count_congested > 0) {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
-  else
+  } else {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
+  }
   fmt::print(stream, "WQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n  FULL: {:10}\n", stats.name, stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS,
              stats.WQ_FULL);
 }
@@ -94,34 +98,41 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
   fmt::print(stream, "=== {} ===\n", stats.name);
 
   int i = 0;
-  for (auto tn : stats.trace_names)
+  for (auto tn : stats.trace_names) {
     fmt::print(stream, "CPU {} runs {}", i++, tn);
+  }
 
   if (NUM_CPUS > 1) {
     fmt::print(stream, "\nTotal Simulation Statistics (not including warmup)\n");
 
-    for (const auto& stat : stats.sim_cpu_stats)
+    for (const auto& stat : stats.sim_cpu_stats) {
       print(stat);
+    }
 
-    for (const auto& stat : stats.sim_cache_stats)
+    for (const auto& stat : stats.sim_cache_stats) {
       print(stat);
+    }
   }
 
   fmt::print(stream, "\nRegion of Interest Statistics\n");
 
-  for (const auto& stat : stats.roi_cpu_stats)
+  for (const auto& stat : stats.roi_cpu_stats) {
     print(stat);
+  }
 
-  for (const auto& stat : stats.roi_cache_stats)
+  for (const auto& stat : stats.roi_cache_stats) {
     print(stat);
+  }
 
   fmt::print(stream, "\nDRAM Statistics\n");
-  for (const auto& stat : stats.roi_dram_stats)
+  for (const auto& stat : stats.roi_dram_stats) {
     print(stat);
+  }
 }
 
 void champsim::plain_printer::print(std::vector<phase_stats>& stats)
 {
-  for (auto p : stats)
+  for (auto p : stats) {
     print(p);
+  }
 }
