@@ -14,7 +14,7 @@ SCENARIO("The issued steps incur appropriate latencies") {
     constexpr std::size_t vmem_levels = 5;
     constexpr uint64_t access_address = 0xdeadbeef;
     constexpr uint64_t penalty = 200;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, vmem_levels, penalty, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;

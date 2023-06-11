@@ -38,13 +38,6 @@ ptw_deprecation_keys = {
     'ptw_rq_size': 'rq_size'
 }
 
-# Scale frequencies
-def scale_frequencies(it):
-    it_a, it_b = itertools.tee(it, 2)
-    max_freq = max(x['frequency'] for x in it_a)
-    for x in it_b:
-        x['frequency'] = max_freq / x['frequency']
-
 def executable_name(*config_list):
     name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
     name_specifications = reversed(list(filter(None, (c.get('executable_name') for c in config_list))))
@@ -197,8 +190,8 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
             print(f'WARNING: key "{old}" in PTW {ptw["name"]} is deprecated. Use "{new}" instead.')
             ptw[new] = ptw[old]
 
-    pmem['io_freq'] = pmem['frequency'] # Save value
-    scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
+    # Get fastest clock period in picoseconds
+    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches.values(), ptws.values(), (pmem,))))
 
     caches = util.combine_named(
             # Set prefetcher_activate
@@ -264,8 +257,9 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
 
     env_vars = ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')
     extern_config_file_keys = ('block_size', 'page_size', 'heartbeat_frequency', 'num_cores')
+    extern_config = { '_clock_period': global_clock_period, **util.subdict(config_file, extern_config_file_keys)}
 
-    return elements, modules_to_compile, module_info, util.subdict(config_file, extern_config_file_keys), util.subdict(config_file, env_vars)
+    return elements, modules_to_compile, module_info, extern_config, util.subdict(config_file, env_vars)
 
 def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[], repl_dir=[], compile_all_modules=False):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

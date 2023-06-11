@@ -18,7 +18,7 @@ import operator
 
 from . import util
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
@@ -55,7 +55,6 @@ dib_builder_parts = {
 }
 
 cache_builder_parts = {
-    'frequency': '.frequency({frequency})',
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
     'pq_size': '.pq_size({pq_size})',
@@ -120,6 +119,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield ''
 
     yield pmem_fmtstr.format(
+            clock_period=int(1000000/pmem['frequency']),
+            _tRP=int(1000*pmem['tRP']),
+            _tRCD=int(1000*pmem['tRCD']),
+            _tCAS=int(1000*pmem['tCAS']),
+            _turn_around_time=int(1000*pmem['turn_around_time']),
             _ulptr=vector_string('&{}_to_{}_queues'.format(ul, pmem['name']) for ul in upper_levels[pmem['name']]['uppers']),
             **pmem)
     yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
@@ -127,6 +131,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     for ptw in ptws:
         yield 'PageTableWalker {name}{{PageTableWalker::Builder{{champsim::defaults::default_ptw}}'.format(**ptw)
         yield '.name("{name}")'.format(**ptw)
+        yield '.clock_period(champsim::chrono::picoseconds{{{}}})'.format(int(1000000/ptw['frequency']))
         yield '.cpu({cpu})'.format(**ptw)
         yield '.virtual_memory(&vmem)'
 
@@ -154,6 +159,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     for elem in caches:
         yield 'CACHE {}{{CACHE::Builder{{ {} }}'.format(elem['name'], elem.get('_defaults', ''))
         yield '.name("{name}")'.format(**elem)
+        yield '.clock_period(champsim::chrono::picoseconds{{{}}})'.format(int(1000000/elem['frequency']))
 
         local_cache_builder_parts = {
             ('prefetch_as_load', True): '.set_prefetch_as_load()',
@@ -190,7 +196,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield 'O3_CPU {}{{O3_CPU::Builder{{ champsim::defaults::default_core }}'.format(cpu['name'])
 
         yield '.index({_index})'.format(**cpu)
-        yield '.frequency({frequency})'.format(**cpu)
+        yield '.clock_period(champsim::chrono::picoseconds{{{}}})'.format(int(1000000/cpu['frequency']))
         yield '.l1i(&{L1I})'.format(**cpu)
         yield '.l1i_bandwidth({L1I}.MAX_TAG)'.format(**cpu)
         yield '.l1d_bandwidth({L1D}.MAX_TAG)'.format(**cpu)

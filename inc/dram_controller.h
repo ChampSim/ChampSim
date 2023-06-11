@@ -105,7 +105,8 @@ class MEMORY_CONTROLLER : public champsim::operable
 public:
   std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
 
-  MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
+  MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                    champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() final;
   void operate() final;

@@ -17,9 +17,10 @@
 #ifndef OPERABLE_H
 #define OPERABLE_H
 
+#include "chrono.h"
+
 namespace champsim
 {
-
 class operable
 {
 public:
@@ -29,7 +30,12 @@ public:
   uint64_t current_cycle = 0;
   bool warmup = true;
 
-  explicit operable(double scale) : CLOCK_SCALE(scale - 1) {}
+  operable() : operable(global_clock_period::value) {}
+  explicit operable(champsim::chrono::picoseconds clock_period) : operable(clock_period, global_clock_period::value) {}
+  operable(champsim::chrono::picoseconds clock_period, champsim::chrono::picoseconds global)
+      : CLOCK_SCALE(std::ceil(clock_period.count()) / std::ceil(global.count()) - 1)
+  {
+  }
 
   void _operate()
   {

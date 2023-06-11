@@ -12,7 +12,7 @@
 SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
@@ -52,7 +52,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 SCENARIO("Issuing a PTW fills the PSCLs") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
@@ -98,7 +98,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 SCENARIO("PSCLs can reduce the number of issued translation requests") {
   GIVEN("A 5-level virtual memory and one issued packet") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;

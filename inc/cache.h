@@ -297,7 +297,7 @@ public:
     using self_type = Builder<P_FLAG, R_FLAG>;
 
     std::string m_name{};
-    double m_freq_scale{};
+    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
     uint32_t m_sets{};
     uint32_t m_ways{};
     std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
@@ -321,7 +321,7 @@ public:
 
     template <unsigned long long OTHER_P, unsigned long long OTHER_R>
     Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_P, OTHER_R>& other)
-        : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
+        : m_name(other.m_name), m_clock_period(other.m_clock_period), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
           m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
           m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
           m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
@@ -336,9 +336,9 @@ public:
       m_name = name_;
       return *this;
     }
-    self_type& frequency(double freq_scale_)
+    self_type& clock_period(champsim::chrono::picoseconds clock_period_)
     {
-      m_freq_scale = freq_scale_;
+      m_clock_period = clock_period_;
       return *this;
     }
     self_type& sets(uint32_t sets_)
@@ -456,7 +456,7 @@ public:
 
   template <unsigned long long P_FLAG, unsigned long long R_FLAG>
   explicit CACHE(Builder<P_FLAG, R_FLAG> b)
-      : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets),
+      : champsim::operable(b.m_clock_period), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets),
         NUM_WAY(b.m_ways), MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY((b.m_hit_lat > 0) ? b.m_hit_lat : b.m_latency - b.m_fill_lat),
         FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag), MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),

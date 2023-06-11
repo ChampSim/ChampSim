@@ -9,9 +9,9 @@ struct mock_operable : champsim::operable {
 }
 
 TEST_CASE("An operable with a scale of 1 operates every cycle") {
-  constexpr double scale = 1;
+  champsim::chrono::picoseconds period{1};
   constexpr int num_cycles = 100;
-  mock_operable uut{scale};
+  mock_operable uut{period, champsim::chrono::picoseconds{1}};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();
@@ -20,9 +20,9 @@ TEST_CASE("An operable with a scale of 1 operates every cycle") {
 }
 
 TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
-  constexpr double scale = 1.25;
+  champsim::chrono::picoseconds period{125};
   constexpr int num_cycles = 100;
-  mock_operable uut{scale};
+  mock_operable uut{period, champsim::chrono::picoseconds{100}};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();
@@ -31,9 +31,9 @@ TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
 }
 
 TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
-  constexpr double scale = 4;
+  champsim::chrono::picoseconds period{4};
   constexpr int num_cycles = 100;
-  mock_operable uut{scale};
+  mock_operable uut{period, champsim::chrono::picoseconds{1}};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();

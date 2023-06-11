@@ -246,7 +246,7 @@ public:
     using self_type = Builder<B_FLAG, T_FLAG>;
 
     uint32_t m_cpu{};
-    double m_freq_scale{};
+    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
     std::size_t m_dib_set{};
     std::size_t m_dib_way{};
     std::size_t m_dib_window{};
@@ -280,7 +280,7 @@ public:
 
     template <unsigned long long OTHER_B, unsigned long long OTHER_T>
     Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_B, OTHER_T>& other)
-        : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
+        : m_cpu(other.m_cpu), m_clock_period(other.m_clock_period), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
           m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
           m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),
           m_fetch_width(other.m_fetch_width), m_decode_width(other.m_decode_width), m_dispatch_width(other.m_dispatch_width),
@@ -299,9 +299,9 @@ public:
       m_cpu = cpu_;
       return *this;
     }
-    self_type& frequency(double freq_scale_)
+    self_type& clock_period(champsim::chrono::picoseconds clock_period_)
     {
-      m_freq_scale = freq_scale_;
+      m_clock_period = clock_period_;
       return *this;
     }
     self_type& dib_set(std::size_t dib_set_)
@@ -454,7 +454,7 @@ public:
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
   explicit O3_CPU(Builder<B_FLAG, T_FLAG> b)
-      : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
+      : champsim::operable(b.m_clock_period), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),

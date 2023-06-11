@@ -89,7 +89,7 @@ public:
   class Builder
   {
     std::string_view m_name{};
-    double m_freq_scale{};
+    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
     uint32_t m_cpu{};
     std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
     uint32_t m_mshr_size{};
@@ -108,9 +108,9 @@ public:
       m_name = name_;
       return *this;
     }
-    Builder& frequency(double freq_scale_)
+    Builder& clock_period(champsim::chrono::picoseconds clock_period_)
     {
-      m_freq_scale = freq_scale_;
+      m_clock_period = clock_period_;
       return *this;
     }
     Builder& cpu(uint32_t cpu_)

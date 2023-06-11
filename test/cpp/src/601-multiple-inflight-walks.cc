@@ -12,7 +12,7 @@
 SCENARIO("A page table walker can handle multiple concurrent walks") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
@@ -69,7 +69,7 @@ SCENARIO("Concurrent page table walks can be merged") {
     constexpr uint64_t base_address = seed_address;
     constexpr uint64_t nearby_address = 0xffff'ffff'ffff'efff;
 
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{1<<12, levels, 10, dram};
     release_MRC mock_ll;
     to_rq_MRP mock_ul{[](auto x, auto y){ return (x.address >> LOG2_BLOCK_SIZE) == (y.address >> LOG2_BLOCK_SIZE); }};
