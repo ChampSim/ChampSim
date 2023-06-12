@@ -29,56 +29,63 @@
 #include "phase_info.h"
 #include "tracereader.h"
 
-auto start_time = std::chrono::steady_clock::now();
+const auto start_time = std::chrono::steady_clock::now();
 
 std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time); }
 
 namespace champsim
 {
+void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index) {
+  auto operables = env.operable_view();
+  std::sort(std::begin(operables), std::end(operables),
+            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
+
+  // Operate
+  for (champsim::operable& op : operables) {
+    try {
+      op._operate();
+    } catch (champsim::deadlock& dl) {
+      // env.cpu_view()[dl.which].print_deadlock();
+      // std::cout << std::endl;
+      // for (auto c : caches)
+      for (champsim::operable& c : operables) {
+        c.print_deadlock();
+        fmt::print("\n");
+      }
+
+      abort();
+    }
+  }
+
+  // Read from trace
+  for (O3_CPU& cpu : env.cpu_view()) {
+    auto& trace = traces.at(trace_index.at(cpu.cpu));
+    for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
+      cpu.input_queue.push_back(trace());
+    }
+  }
+}
+
 phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces)
 {
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
-  auto operables = env.operable_view();
 
   // Initialize phase
-  for (champsim::operable& op : operables) {
+  for (champsim::operable& op : env.operable_view()) {
     op.warmup = is_warmup;
     op.begin_phase();
   }
 
-  // Perform phase
+  // Perform cycles
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
+    do_cycle(env, traces, trace_index);
+
     auto next_phase_complete = phase_complete;
 
-    // Operate
-    for (champsim::operable& op : operables) {
-      try {
-        op._operate();
-      } catch (champsim::deadlock& dl) {
-        // env.cpu_view()[dl.which].print_deadlock();
-        // std::cout << std::endl;
-        // for (auto c : caches)
-        for (champsim::operable& c : operables) {
-          c.print_deadlock();
-          fmt::print("\n");
-        }
-
-        abort();
-      }
-    }
-    std::sort(std::begin(operables), std::end(operables),
-              [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
-
-    // Read from trace
-    for (O3_CPU& cpu : env.cpu_view()) {
-      auto& trace = traces.at(trace_index.at(cpu.cpu));
-      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count) {
-        cpu.input_queue.push_back(trace());
-      }
-
-      // If any trace reaches EOF, terminate all phases
-      if (trace.eof()) {
+    // If any trace reaches EOF, terminate all phases
+    for (const auto &tr : traces) {
+      if (tr.eof()) {
         std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
       }
     }
@@ -91,7 +98,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
 
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
-        for (champsim::operable& op : operables) {
+        for (champsim::operable& op : env.operable_view()) {
           op.end_phase(cpu.cpu);
         }
 

@@ -63,7 +63,8 @@ void MEMORY_CONTROLLER::operate()
     }
 
     // Check for forwarding
-    channel.check_collision();
+    channel.check_write_collision();
+    channel.check_read_collision();
 
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
@@ -213,7 +214,7 @@ void MEMORY_CONTROLLER::end_phase(unsigned /*cpu*/)
   }
 }
 
-void DRAM_CHANNEL::check_collision()
+void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
@@ -233,7 +234,10 @@ void DRAM_CHANNEL::check_collision()
       }
     }
   }
+}
 
+void DRAM_CHANNEL::check_read_collision()
+{
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
       auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt) {

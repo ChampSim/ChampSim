@@ -169,7 +169,6 @@ public:
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
-  bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << champsim::to_underlying(access_type::LOAD)) | (1 << champsim::to_underlying(access_type::PREFETCH));
 
   using stats_type = cache_stats;

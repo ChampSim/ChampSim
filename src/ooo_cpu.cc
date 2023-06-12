@@ -434,12 +434,8 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     });
     if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
       if (sq_it->fetch_issued) { // Store already executed
+        (*q_entry)->finish(instr);
         q_entry->reset();
-        ++instr.completed_mem_ops;
-
-        if constexpr (champsim::debug_print) {
-          fmt::print("[DISPATCH] {} instr_id: {} forwards_from: {}\n", __func__, instr.instr_id, sq_it->event_cycle);
-        }
       } else {
         assert(sq_it->instr_id < instr.instr_id);      // The found SQ entry is a prior store
         sq_it->lq_depend_on_me.emplace_back(*q_entry); // Forward the load when the store finishes
@@ -691,14 +687,19 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
 {
   auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
   assert(rob_entry != end);
-  assert(rob_entry->instr_id == this->instr_id);
+  finish(*rob_entry);
+}
 
-  ++rob_entry->completed_mem_ops;
-  assert(rob_entry->completed_mem_ops <= rob_entry->num_mem_ops());
+void LSQ_ENTRY::finish(ooo_model_instr &rob_entry) const
+{
+  assert(rob_entry.instr_id == this->instr_id);
+
+  ++rob_entry.completed_mem_ops;
+  assert(rob_entry.completed_mem_ops <= rob_entry.num_mem_ops());
 
   if constexpr (champsim::debug_print) {
     fmt::print("[LSQ] {} instr_id: {} full_address: {:x} remain_mem_ops: {} event_cycle: {}\n", __func__, instr_id, virtual_address,
-               rob_entry->num_mem_ops() - rob_entry->completed_mem_ops, event_cycle);
+               rob_entry.num_mem_ops() - rob_entry.completed_mem_ops, event_cycle);
   }
 }
 

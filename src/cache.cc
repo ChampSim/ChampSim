@@ -55,10 +55,11 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   auto way = std::find_if_not(set_begin, set_end, [](auto x) { return x.valid; });
   if (way == set_end) {
     way = std::next(set_begin, impl_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
-                                                fill_mshr.address, champsim::to_underlying(fill_mshr.type)));
+          fill_mshr.address, champsim::to_underlying(fill_mshr.type)));
   }
   assert(set_begin <= way);
   assert(way <= set_end);
+  assert(way != set_end || fill_mshr.type != access_type::WRITE); // Writes may not bypass
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
   if constexpr (champsim::debug_print) {
@@ -68,66 +69,59 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
         access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
   }
 
-  bool success = true;
-  auto metadata_thru = fill_mshr.pf_metadata;
-  auto pkt_address = (virtual_prefetch ? fill_mshr.v_address : fill_mshr.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  if (way != set_end && way->valid && way->dirty) {
+    request_type writeback_packet;
+
+    writeback_packet.cpu = fill_mshr.cpu;
+    writeback_packet.address = way->address;
+    writeback_packet.data = way->data;
+    writeback_packet.instr_id = fill_mshr.instr_id;
+    writeback_packet.ip = 0;
+    writeback_packet.type = access_type::WRITE;
+    writeback_packet.pf_metadata = way->pf_metadata;
+    writeback_packet.response_requested = false;
+
+    auto success = lower_level->add_wq(writeback_packet);
+    if (!success) {
+      return false;
+    }
+  }
+
+  auto address_bitmask = ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+
+  uint64_t evicting_address = 0;
+  if (way != set_end && way->valid) {
+    evicting_address = virtual_prefetch ? way->address : way->v_address;
+  }
+
+  auto pkt_address = virtual_prefetch ? fill_mshr.v_address : fill_mshr.address;
+  auto metadata_thru = impl_prefetcher_cache_fill(pkt_address & address_bitmask, get_set_index(fill_mshr.address), way_idx,
+      (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address & address_bitmask, fill_mshr.pf_metadata);
+  impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
+      champsim::to_underlying(fill_mshr.type), 0U);
+
   if (way != set_end) {
-    if (way->valid && way->dirty) {
-      request_type writeback_packet;
-
-      writeback_packet.cpu = fill_mshr.cpu;
-      writeback_packet.address = way->address;
-      writeback_packet.data = way->data;
-      writeback_packet.instr_id = fill_mshr.instr_id;
-      writeback_packet.ip = 0;
-      writeback_packet.type = access_type::WRITE;
-      writeback_packet.pf_metadata = way->pf_metadata;
-      writeback_packet.response_requested = false;
-
-      success = lower_level->add_wq(writeback_packet);
+    if (way->valid && way->prefetch) {
+      ++sim_stats.pf_useless;
     }
 
-    if (success) {
-      auto evicting_address = (ever_seen_data ? way->address : way->v_address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-
-      if (way->prefetch) {
-        ++sim_stats.pf_useless;
-      }
-
-      if (fill_mshr.type == access_type::PREFETCH) {
-        ++sim_stats.pf_fill;
-      }
-
-      *way = BLOCK{fill_mshr};
-
-      metadata_thru = impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, (fill_mshr.type == access_type::PREFETCH) ? 1 : 0,
-                                                 evicting_address, metadata_thru);
-      impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
-                                    champsim::to_underlying(fill_mshr.type), 0U);
-
-      way->pf_metadata = metadata_thru;
+    if (fill_mshr.type == access_type::PREFETCH) {
+      ++sim_stats.pf_fill;
     }
-  } else {
-    // Bypass
-    assert(fill_mshr.type != access_type::WRITE);
 
-    metadata_thru =
-        impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, 0, metadata_thru);
-    impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, 0,
-                                  champsim::to_underlying(fill_mshr.type), 0U);
+    *way = BLOCK{fill_mshr};
+    way->pf_metadata = metadata_thru;
   }
 
-  if (success) {
-    // COLLECT STATS
-    sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
+  // COLLECT STATS
+  sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
-    response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
-    for (auto* ret : fill_mshr.to_return) {
-      ret->push_back(response);
-    }
+  response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
+  for (auto* ret : fill_mshr.to_return) {
+    ret->push_back(response);
   }
 
-  return success;
+  return true;
 }
 
 bool CACHE::try_hit(const tag_lookup_type& handle_pkt)

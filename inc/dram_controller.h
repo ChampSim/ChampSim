@@ -79,7 +79,8 @@ struct DRAM_CHANNEL {
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
-  void check_collision();
+  void check_write_collision();
+  void check_read_collision();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
