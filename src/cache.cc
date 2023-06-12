@@ -55,11 +55,11 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   auto way = std::find_if_not(set_begin, set_end, [](auto x) { return x.valid; });
   if (way == set_end) {
     way = std::next(set_begin, impl_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
-          fill_mshr.address, champsim::to_underlying(fill_mshr.type)));
+                                                fill_mshr.address, champsim::to_underlying(fill_mshr.type)));
   }
   assert(set_begin <= way);
   assert(way <= set_end);
-  assert(way != set_end || fill_mshr.type != access_type::WRITE); // Writes may not bypass
+  assert(way != set_end || fill_mshr.type != access_type::WRITE);               // Writes may not bypass
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
   if constexpr (champsim::debug_print) {
@@ -96,9 +96,9 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   auto pkt_address = virtual_prefetch ? fill_mshr.v_address : fill_mshr.address;
   auto metadata_thru = impl_prefetcher_cache_fill(pkt_address & address_bitmask, get_set_index(fill_mshr.address), way_idx,
-      (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address & address_bitmask, fill_mshr.pf_metadata);
+                                                  (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address & address_bitmask, fill_mshr.pf_metadata);
   impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
-      champsim::to_underlying(fill_mshr.type), 0U);
+                                champsim::to_underlying(fill_mshr.type), 0U);
 
   if (way != set_end) {
     if (way->valid && way->prefetch) {

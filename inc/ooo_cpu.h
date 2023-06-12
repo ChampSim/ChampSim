@@ -85,7 +85,7 @@ struct LSQ_ENTRY {
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
   LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid);
-  void finish(ooo_model_instr &rob_entry) const;
+  void finish(ooo_model_instr& rob_entry) const;
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
 

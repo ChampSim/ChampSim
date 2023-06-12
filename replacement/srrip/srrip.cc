@@ -1,7 +1,7 @@
 #include <cassert>
+#include <unordered_map>
 
 #include "cache.h"
-#include <unordered_map>
 
 namespace
 {

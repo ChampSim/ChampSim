@@ -690,7 +690,7 @@ void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<o
   finish(*rob_entry);
 }
 
-void LSQ_ENTRY::finish(ooo_model_instr &rob_entry) const
+void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
 {
   assert(rob_entry.instr_id == this->instr_id);
 

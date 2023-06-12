@@ -35,7 +35,8 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index) {
+void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index)
+{
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
             [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
@@ -84,7 +85,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     auto next_phase_complete = phase_complete;
 
     // If any trace reaches EOF, terminate all phases
-    for (const auto &tr : traces) {
+    for (const auto& tr : traces) {
       if (tr.eof()) {
         std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
       }
