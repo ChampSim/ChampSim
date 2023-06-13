@@ -17,41 +17,88 @@ import functools
 import operator
 
 def iter_system(system, name, key='lower_level'):
-    hoisted = dict(**system)
+    '''
+    Iterate through a dictionary system.
+
+    The system is organized as a dictionary of { c['name']: c } for all c.
+    Starting at the given name, generate a path through the system, traversing by the given key.
+    Loops are not allowed, each element may be visited at most once.
+
+    :param system: the system to be iterated through
+    :param name: the key to start at
+    :param key: the key that points to the next element
+    '''
+    hoisted = {**system}
     while name in hoisted:
         val = hoisted.pop(name)
         yield val
         name = val.get(key)
 
 def wrap_list(attr):
+    ''' Wrap the given element in a list, if it is not already a list '''
     if not isinstance(attr, list):
         attr = [attr]
     return attr
 
 def chain(*dicts):
-    def merge_dicts(x,y):
-        dict_merges = {k:merge_dicts(v, y[k]) for k,v in x.items() if isinstance(v, dict) and isinstance(y.get(k), dict)}
-        list_merges = {k:(v + y[k]) for k,v in x.items() if isinstance(v, list) and isinstance(y.get(k), list)}
-        return dict(itertools.chain(y.items(), x.items(), dict_merges.items(), list_merges.items()))
+    '''
+    Combine two or more dictionaries.
+    Values that are dictionaries are merged recursively.
+    Values that are lists are joined.
+
+    Dictionaries given earlier in the parameter list have priority.
+    :param dicts: the sequence to be chained
+    '''
+    def merge_dicts(lhs,rhs):
+        dict_merges = {k:merge_dicts(v, rhs[k]) for k,v in lhs.items() if isinstance(v, dict) and isinstance(rhs.get(k), dict)}
+        list_merges = {k:(v + rhs[k]) for k,v in lhs.items() if isinstance(v, list) and isinstance(rhs.get(k), list)}
+        return dict(itertools.chain(rhs.items(), lhs.items(), dict_merges.items(), list_merges.items()))
 
     return functools.reduce(merge_dicts, dicts)
 
-def extend_each(x,y):
-    merges = {k: (*x[k],*y[k]) for k in x if k in y}
-    return {**x, **y, **merges}
+def extend_each(lhs,rhs):
+    ''' For two dictionaries whose values are lists, join the values that have the same key. '''
+    merges = {k: (*lhs[k],*rhs[k]) for k in lhs if k in rhs}
+    return {**lhs, **rhs, **merges}
 
-def subdict(d, keys):
-    return {k:v for k,v in d.items() if k in keys}
+def subdict(whole_dict, keys):
+    ''' Extract only the given keys from a dictionary. If they keys are not present, they are not defaulted. '''
+    return {k:v for k,v in whole_dict.items() if k in keys}
 
 def combine_named(*iterables):
+    '''
+    Collect a sequence of sequences of dictionaries by their 'name' parameter.
+    Earlier parameters have priority over later parameters.
+    '''
     iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
     iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
-    return {kv[0]: chain(*kv[1]) for kv in iterable}
+    return {name: chain(*dict_list) for name, dict_list in iterable}
 
-# Assign defaults that are unique per core
 def upper_levels_for(system, name, key='lower_level'):
-    finder = lambda x: x.get(key, '')
-    upper_levels = sorted(system, key=finder)
-    upper_levels = itertools.groupby(upper_levels, key=finder)
+    '''
+    List all elements of the system who have the given element name under the given key.
+
+    :param system: the system to be iterated through
+    :param name: the key to start at
+    :param key: the key that points to the next element
+    '''
+    default_itemgetter = operator.methodcaller('get', key, '')
+    upper_levels = sorted(system, key=default_itemgetter)
+    upper_levels = itertools.groupby(upper_levels, key=default_itemgetter)
     return next(filter(lambda kv: kv[0] == name, upper_levels))[1]
 
+def propogate_down(path, key):
+    '''
+    Propogate the value of a key down a path of dictionaries.
+    Later elements inherit the value from earlier elements, unless they have one themselves.
+
+    :param path: an iterable of dictionary values
+    :param key: they dictionary key to propogate
+    '''
+    value = None
+    for new_value,chunk in itertools.groupby(path, key=operator.methodcaller('get', key)):
+        if new_value is not None:
+            yield from chunk
+            value = new_value
+        else:
+            yield from ({ **element, key: value } for element in chunk)

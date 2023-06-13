@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import functools
 import math
 
 from . import util
@@ -40,11 +41,11 @@ def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32,
     }
 
 def defaulter(cores, cache_list, factor_list, key):
-    head = lambda n: util.upper_levels_for(cores, n, key=key)
-    tail = lambda n: util.upper_levels_for(cache_list, n)
+    head = functools.partial(util.upper_levels_for, cores, key=key)
+    tail = functools.partial(util.upper_levels_for, cache_list)
 
-    for ulf, fac in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
-        yield lambda name: { 'name': name, **ul_dependent_defaults(*ulf(name), **fac) }
+    for upper_level_function, factor in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
+        yield lambda name: { 'name': name, **ul_dependent_defaults(*upper_level_function(name), **factor) }
 
 def default_path(cores, caches, factor_list, member_list, name):
     for p in (util.iter_system(caches, cpu[name]) for cpu in cores):

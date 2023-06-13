@@ -106,3 +106,15 @@ class UpperLevelsForTests(unittest.TestCase):
                 }
         self.assertEqual( list(map(operator.itemgetter('id'), config.util.upper_levels_for(system.values(), 'c', key='next'))), [1,2])
 
+class PropogateDownTests(unittest.TestCase):
+    def test_empty_path(self):
+        self.assertEqual(list(config.util.propogate_down([], 'test')), [])
+
+    def test_full_path_is_unaffected(self):
+        path = [{ 'test': i } for i in range(8)]
+        self.assertEqual(list(config.util.propogate_down(path, 'test')), path)
+
+    def test_gaps_are_filled(self):
+        path = [{ 'test': 1 }, {}, { 'test': 2 }, {}, {}]
+        expected_result = [{ 'test': 1 }, { 'test': 1 }, { 'test': 2 }, { 'test': 2 }, { 'test': 2 }]
+        self.assertEqual(list(config.util.propogate_down(path, 'test')), expected_result)

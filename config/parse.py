@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import operator
 import collections
 import os
 import math
@@ -22,7 +23,6 @@ from . import modules
 from . import util
 
 default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1 }
-default_core = { 'frequency' : 4000 }
 default_pmem = { 'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128, 'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5, 'turn_around_time': 7.5 }
 default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
 
@@ -46,12 +46,12 @@ def scale_frequencies(it):
         x['frequency'] = max_freq / x['frequency']
 
 def executable_name(*config_list):
-    name_by_parts = '_'.join(('champsim', *(c.get('name') for c in config_list if c.get('name') is not None)))
-    name_by_specification = next(reversed(list(c.get('executable_name') for c in config_list if c.get('executable_name') is not None)), name_by_parts)
-    return name_by_specification
+    name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
+    name_specifications = reversed(list(filter(None, (c.get('executable_name') for c in config_list))))
+    return next(name_specifications, '_'.join(name_parts))
 
 def duplicate_to_length(elements, n):
-    repeat_factor = math.ceil(n / len(elements));
+    repeat_factor = math.ceil(n / len(elements))
     return list(itertools.islice(itertools.chain(*(itertools.repeat(e, repeat_factor) for e in elements)), n))
 
 def filter_inaccessible(system, roots, key='lower_level'):
@@ -79,10 +79,10 @@ def normalize_config(config_file):
             config_file.get('caches', []),
 
             # Copy values from the core specification, if these are dicts
-            ({'name': core[name].get('name', default_element_name(core,name)), **core[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
+            (util.chain(core[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': core.get(name, {}).get('name', default_element_name(core,name)), **config_file[name]} for core,name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict)),
+            (util.chain(config_file[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict))
             )
 
     # Read LLC from the configuration file
@@ -93,10 +93,10 @@ def normalize_config(config_file):
             config_file.get('ptws',[]),
 
             # Copy values from the core specification, if these are dicts
-            ({'name': c['PTW'].get('name', default_element_name(c,'PTW')), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
+            (util.chain(c['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(c.get('PTW'), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': c.get('PTW', {}).get('name', default_element_name(c,'PTW')), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict))
+            (util.chain(config_file['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(config_file.get('PTW'), dict))
             )
 
     # Convert all core values to labels
@@ -107,6 +107,57 @@ def normalize_config(config_file):
 
     return cores, caches, ptws, config_file.get('physical_memory', {}), config_file.get('virtual_memory', {})
 
+def core_default_names(cpu):
+    """ Apply defaults to a cpu with the given index """
+    default_element_names = {n: default_element_name(cpu,n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB', 'PTW')}
+    default_core = {
+        'frequency' : 4000,
+        'DIB': {},
+
+        # TODO can these be removed in favor of the defaults in inc/defaults.hpp?
+        # All cores have a default branch predictor and BTB
+        'branch_predictor': 'hashed_perceptron',
+        'btb': 'basic_btb'
+    }
+    return util.chain(cpu, default_element_names, default_core)
+
+def default_frequencies(cores, caches):
+    '''
+    Get frequencies as the maximum of the upper levels.
+
+    :param cores: the list of cpu cores
+    :param caches: the dictionary of caches
+    '''
+    def make_path(cpu, name):
+        '''
+        Make a path down 'caches' that has at least one frequency (from the cpu)
+
+        :param cpu: a cpu core dictionary
+        :param name: the cache key name
+        '''
+        base_path = util.iter_system(caches, cpu[name])
+        freq_top = ({ 'frequency': cpu['frequency'] },)
+
+        # put the cpu frequency as the default for the highest level (this does not override a provided value)
+        path = itertools.starmap(util.chain, itertools.zip_longest(base_path, freq_top, fillvalue={}))
+
+        # prune out everything but the name and frequency (if present)
+        return (util.subdict(element, ('name', 'frequency')) for element in path)
+
+    # Create a list of paths from the cores
+    paths = itertools.starmap(make_path, itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')))
+
+    # Propogate the frequencies down the path
+    paths = (util.propogate_down(p, 'frequency') for p in paths)
+
+    # Collect caches in multiple paths together
+    aggregate = sorted(itertools.chain(*paths), key=operator.itemgetter('name'))
+    aggregate = itertools.groupby(aggregate, key=operator.itemgetter('name'))
+
+    # The frequency is the maximum of the frequencies seen
+    # Note if the frequency was provided, it was never overwritten
+    yield from [{ 'name': name, 'frequency': max(x['frequency'] for x in chunk) } for name, chunk in aggregate]
+
 def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_context, btb_context, prefetcher_context, replacement_context, compile_all_modules):
     config_file = util.chain(merged_configs, default_root)
 
@@ -114,22 +165,20 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     vmem = util.chain(vmem, default_vmem)
 
     # Give cores numeric indices and default cache names
-    cores = [util.chain(cpu, {'DIB': dict(), '_index': i}, {n: default_element_name(cpu,n) for n in ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB', 'PTW')}, default_core) for i,cpu in enumerate(cores)]
+    cores = [{'_index': i, **core_default_names(cpu)} for i,cpu in enumerate(cores)]
 
     # Instantiate any missing default caches
     caches = util.combine_named(caches.values(), ({ 'name': 'LLC' },), *map(defaults.cache_core_defaults, cores))
     ptws = util.combine_named(ptws.values(), *map(defaults.ptw_core_defaults, cores))
 
-    # Follow paths and apply default sizings
-    caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches));
+    # Remove caches that are inaccessible
+    caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
 
-    # Frequencies are the maximum of the upper levels, unless specified
-    for cpu,name in itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')):
-        caches = util.combine_named(caches.values(),
-            itertools.islice(itertools.accumulate(
-                itertools.chain((cpu,), util.iter_system(caches, cpu[name])),
-                lambda u,l: {'name': l['name'], 'frequency': max(u.get('frequency', 0), l.get('frequency', 0))}
-            ), 1, None)
+    # Follow paths and apply default sizings
+    caches = util.combine_named(
+            caches.values(),
+            defaults.list_defaults(cores, caches),
+            default_frequencies(cores, caches)
         )
 
     # Apply defaults to PTW
@@ -140,34 +189,27 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     for cache, deprecations in itertools.product(caches.values(), cache_deprecation_keys.items()):
         old, new = deprecations
         if old in cache:
-            print('WARNING: key "{}" in cache {} is deprecated. Use "{}" instead.'.format(old, cache['name'], new))
+            print(f'WARNING: key "{old}" in cache {cache["name"]} is deprecated. Use "{new}" instead.')
             cache[new] = cache[old]
     for ptw, deprecations in itertools.product(ptws.values(), ptw_deprecation_keys.items()):
         old, new = deprecations
         if old in ptw:
-            print('WARNING: key "{}" in PTW {} is deprecated. Use "{}" instead.'.format(old, ptw['name'], new))
+            print(f'WARNING: key "{old}" in PTW {ptw["name"]} is deprecated. Use "{new}" instead.')
             ptw[new] = ptw[old]
-
-    # Remove caches that are inaccessible
-    caches = filter_inaccessible(caches, [cpu[name] for cpu,name in itertools.product(cores, ('ITLB', 'DTLB', 'L1I', 'L1D'))])
 
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
-    # TODO can these be removed in favor of the defaults in inc/defaults.hpp?
-    # All cores have a default branch predictor and BTB
-    for c in cores:
-        c.setdefault('branch_predictor', 'hashed_perceptron')
-        c.setdefault('btb', 'basic_btb')
-    # All caches have a default prefetcher and replacement policy
-    for c in caches.values():
-        c.setdefault('prefetcher', 'no_instr' if c.get('_is_instruction_cache') else 'no')
-        c.setdefault('replacement', 'lru')
+    caches.util.combine_named(
+            # Set prefetcher_activate
+            ({ 'name': cache['name'], 'prefetch_activate': split_string_or_list(c['prefetch_activate']) } for cache in caches.values if 'prefetch_activate' in cache),
 
-    # Set prefetcher_activate
-    for c in caches.values():
-        if 'prefetch_activate' in c:
-            c['prefetch_activate'] = split_string_or_list(c['prefetch_activate'])
+            caches.values(),
+
+            # All caches have a default prefetcher and replacement policy
+            ({ 'name': cache['name'], 'prefetcher': 'no_instr' if cache.get('_is_instruction_cache') else 'no' } for cache in caches.values()),
+            ({ 'name': cache['name'], 'replacement': 'lru' } for cache in caches.values())
+        )
 
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     l1d_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
@@ -247,4 +289,3 @@ def parse_config(*configs, module_dir=[], branch_dir=[], btb_dir=[], pref_dir=[]
             }
 
     return name, elements, modules_to_compile, module_info, config_file, env
-

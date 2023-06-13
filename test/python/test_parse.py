@@ -362,6 +362,119 @@ class NormalizeConfigTest(unittest.TestCase):
         cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
         self.assertEqual(caches['testcache'].get('__var__'), '__fromarray__')
 
+class DefaultFrequenciesTest(unittest.TestCase):
+
+    def test_first_level_caches_inherit_core_frequency(self):
+        config_cores = [{
+            'name': 'test_cpu',
+            'frequency': random.randrange(20162016),
+            'L1I': 'test_l1i',
+            'L1D': 'test_l1d',
+            'ITLB': 'test_itlb',
+            'DTLB': 'test_dtlb'
+        }]
+
+        config_caches = {
+            'test_l1i': { 'name': 'test_l1i' },
+            'test_l1d': { 'name': 'test_l1d' },
+            'test_itlb': { 'name': 'test_itlb' },
+            'test_dtlb': { 'name': 'test_dtlb' }
+        }
+
+        caches = { c['name']: c for c in config.parse.default_frequencies(config_cores, config_caches) }
+        for name in ('L1I', 'L1D', 'ITLB', 'DTLB'):
+            self.assertEqual(config_cores[0]['frequency'], caches[config_cores[0][name]].get('frequency'))
+
+    def test_frequencies_propogate_downward(self):
+        config_cores = [{
+            'name': 'test_cpu',
+            'frequency': random.randrange(20162016),
+            'L1I': 'test_l1i',
+            'L1D': 'test_l1d',
+            'ITLB': 'test_itlb',
+            'DTLB': 'test_dtlb'
+        }]
+
+        config_caches = {
+            'test_l1i': { 'name': 'test_l1i', 'lower_level': 'test_l2c' },
+            'test_l1d': { 'name': 'test_l1d', 'lower_level': 'test_l2c' },
+            'test_itlb': { 'name': 'test_itlb', 'lower_level': 'test_stlb' },
+            'test_dtlb': { 'name': 'test_dtlb', 'lower_level': 'test_stlb' },
+            'test_l2c': { 'name': 'test_l2c' },
+            'test_stlb': { 'name': 'test_stlb' }
+        }
+
+        caches = { c['name']: c for c in config.parse.default_frequencies(config_cores, config_caches) }
+        for name in ('test_l2c', 'test_stlb'):
+            self.assertEqual(config_cores[0]['frequency'], caches[name].get('frequency'))
+
+    def test_frequencies_are_not_overwritten(self):
+        config_cores = [{
+            'name': 'test_cpu',
+            'frequency': random.randrange(20162016),
+            'L1I': 'test_l1i',
+            'L1D': 'test_l1d',
+            'ITLB': 'test_itlb',
+            'DTLB': 'test_dtlb'
+        }]
+
+        config_caches = {
+            'test_l1i': { 'name': 'test_l1i', 'lower_level': 'test_l2c' },
+            'test_l1d': { 'name': 'test_l1d', 'lower_level': 'test_l2c' },
+            'test_itlb': { 'name': 'test_itlb', 'lower_level': 'test_stlb' },
+            'test_dtlb': { 'name': 'test_dtlb', 'lower_level': 'test_stlb' },
+            'test_l2c': { 'name': 'test_l2c', 'frequency': 55555555 },
+            'test_stlb': { 'name': 'test_stlb', 'frequency': 66666666 }
+        }
+
+        caches = { c['name']: c for c in config.parse.default_frequencies(config_cores, config_caches) }
+        for name in ('test_l2c', 'test_stlb'):
+            self.assertEqual(config_caches[name]['frequency'], caches[name].get('frequency'))
+
+    def test_frequencies_take_the_maximum_of_upper_levels(self):
+        config_cores = [{
+            'name': 'test_cpu',
+            'frequency': 1,
+            'L1I': 'test_l1i',
+            'L1D': 'test_l1d',
+            'ITLB': 'test_itlb',
+            'DTLB': 'test_dtlb'
+        }]
+
+        config_caches = {
+            'test_l1i': { 'name': 'test_l1i', 'lower_level': 'test_l2c', 'frequency': 2 },
+            'test_l1d': { 'name': 'test_l1d', 'lower_level': 'test_l2c', 'frequency': 3 },
+            'test_itlb': { 'name': 'test_itlb' },
+            'test_dtlb': { 'name': 'test_dtlb' },
+            'test_l2c': { 'name': 'test_l2c' }
+        }
+
+        caches = { c['name']: c for c in config.parse.default_frequencies(config_cores, config_caches) }
+        self.assertEqual(caches['test_l2c'].get('frequency'), 3)
+
+class CoreDefaultNamesTests(unittest.TestCase):
+
+    def test_core_with_only_name_gets_default_names(self):
+        testval = {'name': 'testcpu'}
+        result = config.parse.core_default_names(testval)
+        self.assertEqual(result.get('name'), testval.get('name'))
+        self.assertIn('L1I', result)
+        self.assertIn('L1D', result)
+        self.assertIn('ITLB', result)
+        self.assertIn('DTLB', result)
+        self.assertIn('PTW', result)
+        self.assertIn('branch_predictor', result)
+        self.assertIn('btb', result)
+        self.assertIn('frequency', result)
+        self.assertIn('DIB', result)
+
+    def test_given_names_are_not_overwritten(self):
+        for name in ('L1I', 'L1D', 'ITLB', 'DTLB', 'PTW', 'branch_predictor', 'btb', 'frequency', 'DIB'):
+            with self.subTest(name=name):
+                testval = {'name': 'testcpu', name: 'testname'}
+                result = config.parse.core_default_names(testval)
+                self.assertEqual(result.get(name), testval.get(name))
+
 class EnvironmentParseTests(unittest.TestCase):
 
     def setUp(self):
