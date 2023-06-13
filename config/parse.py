@@ -200,9 +200,9 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     pmem['io_freq'] = pmem['frequency'] # Save value
     scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
-    caches.util.combine_named(
+    caches = util.combine_named(
             # Set prefetcher_activate
-            ({ 'name': cache['name'], 'prefetch_activate': split_string_or_list(c['prefetch_activate']) } for cache in caches.values if 'prefetch_activate' in cache),
+            ({ 'name': cache['name'], 'prefetch_activate': split_string_or_list(c['prefetch_activate']) } for cache in caches.values() if 'prefetch_activate' in cache),
 
             caches.values(),
 
