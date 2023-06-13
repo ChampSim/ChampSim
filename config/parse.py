@@ -96,7 +96,7 @@ def normalize_config(config_file):
             ({'name': c['PTW'].get('name', default_element_name(c,'PTW')), **c['PTW']} for c in cores if isinstance(c.get('PTW'), dict)),
 
             # Copy values from the config root, if these are dicts
-            ({'name': core.get('PTW', {}).get('name', default_element_name(core,'PTW')), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict))
+            ({'name': c.get('PTW', {}).get('name', default_element_name(c,'PTW')), **config_file['PTW']} for c in cores if isinstance(config_file.get('PTW'), dict))
             )
 
     # Convert all core values to labels
