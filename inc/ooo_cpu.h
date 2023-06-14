@@ -246,7 +246,7 @@ public:
     using self_type = Builder<B_FLAG, T_FLAG>;
 
     uint32_t m_cpu{};
-    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
+    champsim::chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
     std::size_t m_dib_set{};
     std::size_t m_dib_way{};
     std::size_t m_dib_window{};

@@ -1,5 +1,6 @@
 #include <catch.hpp>
 #include "operable.h"
+#include "champsim_constants.h"
 
 namespace {
 struct mock_operable : champsim::operable {
@@ -9,9 +10,9 @@ struct mock_operable : champsim::operable {
 }
 
 TEST_CASE("An operable with a scale of 1 operates every cycle") {
-  champsim::chrono::picoseconds period{1};
+  champsim::chrono::global_clock_period period{1};
   constexpr int num_cycles = 100;
-  mock_operable uut{period, champsim::chrono::picoseconds{1}};
+  mock_operable uut{period};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();
@@ -20,20 +21,27 @@ TEST_CASE("An operable with a scale of 1 operates every cycle") {
 }
 
 TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
-  champsim::chrono::picoseconds period{125};
+  std::chrono::duration<
+    std::intmax_t,
+    std::ratio_multiply<
+      champsim::chrono::global_clock_period::period,
+      std::ratio<150, 100>
+    >
+  > period{1};
   constexpr int num_cycles = 100;
-  mock_operable uut{period, champsim::chrono::picoseconds{100}};
+  mock_operable uut{champsim::chrono::picoseconds{period}};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();
 
-  REQUIRE(uut.current_cycle == (4*num_cycles)/5);
+  REQUIRE(uut.current_cycle <= (2*num_cycles)/3 + 1);
+  REQUIRE(uut.current_cycle >= (2*num_cycles)/3 - 1);
 }
 
 TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
-  champsim::chrono::picoseconds period{4};
+  champsim::chrono::global_clock_period period{4};
   constexpr int num_cycles = 100;
-  mock_operable uut{period, champsim::chrono::picoseconds{1}};
+  mock_operable uut{period};
 
   for (int i = 0; i < num_cycles; ++i)
     uut._operate();

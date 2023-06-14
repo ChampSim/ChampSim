@@ -297,7 +297,7 @@ public:
     using self_type = Builder<P_FLAG, R_FLAG>;
 
     std::string m_name{};
-    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
+    champsim::chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
     uint32_t m_sets{};
     uint32_t m_ways{};
     std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};

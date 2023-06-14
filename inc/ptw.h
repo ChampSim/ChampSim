@@ -23,6 +23,7 @@
 
 #include "channel.h"
 #include "operable.h"
+#include "champsim_constants.h"
 #include "util/lru_table.h"
 
 class VirtualMemory;
@@ -89,7 +90,7 @@ public:
   class Builder
   {
     std::string_view m_name{};
-    champsim::chrono::picoseconds m_clock_period{champsim::global_clock_period::value};
+    champsim::chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
     uint32_t m_cpu{};
     std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
     uint32_t m_mshr_size{};

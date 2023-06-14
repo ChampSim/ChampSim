@@ -26,20 +26,7 @@ namespace champsim
 namespace chrono
 {
 using picoseconds = std::chrono::duration<std::intmax_t, std::pico>;
-uint64_t cycles(picoseconds ns);
-
-template <typename T, typename U>
-uint64_t cycles(T ns, U period)
-{
-  std::fesetround(FE_UPWARD);
-  auto result = std::lrint(ns / period);
-  return result < 0 ? 0 : static_cast<uint64_t>(result);
-}
 } // namespace chrono
-
-struct global_clock_period {
-  static chrono::picoseconds value;
-};
 } // namespace champsim
 
 #endif

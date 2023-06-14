@@ -24,32 +24,15 @@ namespace champsim
 class operable
 {
 public:
-  const double CLOCK_SCALE;
-
-  double leap_operation = 0;
+  champsim::chrono::picoseconds clock_period{};
+  champsim::chrono::picoseconds leap_operation{};
   uint64_t current_cycle = 0;
   bool warmup = true;
 
-  operable() : operable(global_clock_period::value) {}
-  explicit operable(champsim::chrono::picoseconds clock_period) : operable(clock_period, global_clock_period::value) {}
-  operable(champsim::chrono::picoseconds clock_period, champsim::chrono::picoseconds global)
-      : CLOCK_SCALE(std::ceil(clock_period.count()) / std::ceil(global.count()) - 1)
-  {
-  }
+  operable();
+  explicit operable(champsim::chrono::picoseconds clock_period);
 
-  void _operate()
-  {
-    // skip periodically
-    if (leap_operation >= 1) {
-      leap_operation -= 1;
-      return;
-    }
-
-    operate();
-
-    leap_operation += CLOCK_SCALE;
-    ++current_cycle;
-  }
+  void _operate();
 
   virtual void initialize() {} // LCOV_EXCL_LINE
   virtual void operate() = 0;
