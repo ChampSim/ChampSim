@@ -290,6 +290,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
       if (entry.response_requested) {
         retval.to_return = {&ul->returned};
       }
+    } else {
+      (void)ul; // supress warning about ul being unused
     }
 
     if constexpr (champsim::debug_print) {
@@ -328,7 +330,7 @@ void CACHE::operate()
   }
 
   // Initiate tag checks
-  auto tag_bw = std::clamp<unsigned long long>(MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check), 0ULL, MAX_TAG);
+  auto tag_bw = std::clamp<long long>(MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check), 0LL, MAX_TAG);
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };

@@ -209,7 +209,7 @@ struct queue_issue_MRP : public champsim::operable
 /*
  * A MemoryRequestProducer that sends its packets to the write queue and notes when packets are returned
  */
-struct to_wq_MRP : public queue_issue_MRP
+struct to_wq_MRP final : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
@@ -222,7 +222,7 @@ struct to_wq_MRP : public queue_issue_MRP
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-struct to_rq_MRP : public queue_issue_MRP
+struct to_rq_MRP final : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
@@ -235,7 +235,7 @@ struct to_rq_MRP : public queue_issue_MRP
 /*
  * A MemoryRequestProducer that sends its packets to the read queue and notes when packets are returned
  */
-struct to_pq_MRP : public queue_issue_MRP
+struct to_pq_MRP final : public queue_issue_MRP
 {
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
