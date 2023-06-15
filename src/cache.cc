@@ -130,8 +130,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end,
-                          [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
+  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
+    return entry.valid && (entry.address >> shamt) == match;
+  });
   const auto hit = (way != set_end);
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
@@ -147,6 +148,14 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     metadata_thru =
         impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit ? 1 : 0, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+  }
+
+  if (handle_pkt.type == access_type::RFO) {
+    for (auto* ul : upper_levels) {
+      if (std::count(std::cbegin(handle_pkt.to_return), std::cend(handle_pkt.to_return), &ul->returned) == 0) {
+        ul->invalidation_queue.push_back(champsim::channel::invalidation_request_type{handle_pkt.address});
+      }
+    }
   }
 
   if (hit) {
@@ -319,6 +328,10 @@ void CACHE::operate()
     lower_translate->returned.clear();
   }
 
+  std::for_each(std::cbegin(lower_level->invalidation_queue), std::cend(lower_level->invalidation_queue),
+                [this](const auto& inv) { this->invalidate_entry(inv.address); });
+  lower_level->invalidation_queue.clear();
+
   // Perform fills
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
@@ -402,16 +415,22 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(
-      begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; }));
+  return std::distance(begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
+                         return entry.valid && (entry.address >> shamt) == match;
+                       }));
 }
 // LCOV_EXCL_STOP
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way =
-      std::find_if(begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
+  auto inv_way = std::find_if(
+      begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return entry.valid && (entry.address >> shamt) == match; });
+
+  if constexpr (champsim::debug_print) {
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} set: {} way: {} cycle: {}\n", NAME, __func__, inv_way->address, inv_way->v_address,
+               get_set_index(inv_way->address), std::distance(begin, inv_way), current_cycle);
+  }
 
   if (inv_way != end) {
     inv_way->valid = false;
