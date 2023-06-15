@@ -158,14 +158,14 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
-      fmt::print("[BRANCH] instr_id: {} ip: {:x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
+      fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
 
     // call code prefetcher every time the branch predictor is used
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
 
     if (predicted_branch_target != arch_instr.branch_target
-        || (arch_instr.branch_type == BRANCH_CONDITIONAL
+        || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       sim_stats.branch_type_misses.at(arch_instr.branch_type)++;
@@ -262,7 +262,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_depend_on_me = {begin, end};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
+    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
                std::size(fetch_packet.instr_depend_on_me), begin->event_cycle);
   }
 
@@ -300,7 +300,7 @@ void O3_CPU::decode_instruction()
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
       if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
-          || (db_entry.branch_type == BRANCH_CONDITIONAL && db_entry.branch_taken == db_entry.branch_prediction)) {
+          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER)) && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
@@ -656,7 +656,7 @@ void O3_CPU::print_deadlock()
   fmt::print("Load Queue Entry\n");
   for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
     if (lq_it->has_value()) {
-      fmt::print("[LQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {}", std::distance(std::begin(LQ), lq_it), (*lq_it)->instr_id,
+      fmt::print("[LQ] entry: {} instr_id: {} address: {:#x} fetched_issued: {} event_cycle: {}", std::distance(std::begin(LQ), lq_it), (*lq_it)->instr_id,
                  (*lq_it)->virtual_address, (*lq_it)->fetch_issued, (*lq_it)->event_cycle);
       if ((*lq_it)->producer_id != std::numeric_limits<uint64_t>::max()) {
         fmt::print(" waits on {}", (*lq_it)->producer_id);
@@ -668,7 +668,7 @@ void O3_CPU::print_deadlock()
   // print SQ entry
   fmt::print("\nStore Queue Entry\n");
   for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
-    fmt::print("[SQ] entry: {} instr_id: {} address: {:x} fetched_issued: {} event_cycle: {} LQ waiting:", std::distance(std::begin(SQ), sq_it),
+    fmt::print("[SQ] entry: {} instr_id: {} address: {:#x} fetched_issued: {} event_cycle: {} LQ waiting:", std::distance(std::begin(SQ), sq_it),
                sq_it->instr_id, sq_it->virtual_address, sq_it->fetch_issued, sq_it->event_cycle);
     for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me) {
       fmt::print("{} ", lq_entry->producer_id);
@@ -698,7 +698,7 @@ void LSQ_ENTRY::finish(ooo_model_instr& rob_entry) const
   assert(rob_entry.completed_mem_ops <= rob_entry.num_mem_ops());
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LSQ] {} instr_id: {} full_address: {:x} remain_mem_ops: {} event_cycle: {}\n", __func__, instr_id, virtual_address,
+    fmt::print("[LSQ] {} instr_id: {} full_address: {:#x} remain_mem_ops: {} event_cycle: {}\n", __func__, instr_id, virtual_address,
                rob_entry.num_mem_ops() - rob_entry.completed_mem_ops, event_cycle);
   }
 }
