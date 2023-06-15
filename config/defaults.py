@@ -44,14 +44,17 @@ def defaulter(cores, cache_list, factor_list, key):
     head = functools.partial(util.upper_levels_for, cores, key=key)
     tail = functools.partial(util.upper_levels_for, cache_list)
 
+    def produce(name, ulf=None, factor=None):
+        return { 'name': name, **ul_dependent_defaults(*ulf(name), **factor) }
+
     for upper_level_function, factor in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
-        yield lambda name: { 'name': name, **ul_dependent_defaults(*upper_level_function(name), **factor) }
+        yield functools.partial(produce, ulf=upper_level_function, factor=factor)
 
 def default_path(cores, caches, factor_list, member_list, name):
-    for p in (util.iter_system(caches, cpu[name]) for cpu in cores):
+    for element in (util.iter_system(caches, cpu[name]) for cpu in cores):
         fixed_defaults = itertools.starmap(util.chain, itertools.zip_longest(({'_first_level': True},), member_list, fillvalue={}))
         defaults = defaulter(cores, list(caches.values()), factor_list, name)
-        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, p, fixed_defaults))
+        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, element, fixed_defaults))
 
 def l1i_path(cores, caches):
     l1i_factors = (
@@ -64,8 +67,7 @@ def l1i_path(cores, caches):
         { '_defaults': 'champsim::defaults::default_l2c' },
         { '_defaults': 'champsim::defaults::default_llc' }
     )
-    p = list(default_path(cores, caches, l1i_factors, l1i_members, 'L1I'))
-    yield from p
+    yield from default_path(cores, caches, l1i_factors, l1i_members, 'L1I')
 
 def l1d_path(cores, caches):
     l1d_factors = (

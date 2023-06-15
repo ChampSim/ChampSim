@@ -233,6 +233,28 @@ class ParseNormalizedTests(unittest.TestCase):
                         cache_freq = caches[[cache['name'] for cache in caches].index(cache_name)].get('frequency')
                         self.assertEqual(frequency, cache_freq)
 
+    def test_cores_have_branch_predictors_and_btbs(self):
+        for num_cores, module_key in itertools.product((1,2,4,8), ('_branch_predictor_data', '_btb_data')):
+            with self.subTest(num_cores=num_cores, module_key=module_key):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
+
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                cores = result[0]['cores']
+
+                module_names = [c.get(module_key) for c in cores]
+                self.assertNotIn(None, module_names)
+
+    def test_caches_have_prefetchers_and_replacement(self):
+        for num_cores, module_key in itertools.product((1,2,4,8), ('_prefetcher_data', '_replacement_data')):
+            with self.subTest(num_cores=num_cores, module_key=module_key):
+                config_cores = [{ 'name': 'test_cpu'+str(i) } for i in range(num_cores)]
+
+                result = config.parse.parse_normalized(config_cores, {}, {}, {}, {}, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext(), False)
+                caches = result[0]['caches']
+
+                module_names = [c.get(module_key) for c in caches]
+                self.assertNotIn(None, module_names)
+
 class NormalizeConfigTest(unittest.TestCase):
 
     def test_empty_config_creates_defaults(self):
@@ -463,8 +485,6 @@ class CoreDefaultNamesTests(unittest.TestCase):
         self.assertIn('ITLB', result)
         self.assertIn('DTLB', result)
         self.assertIn('PTW', result)
-        self.assertIn('branch_predictor', result)
-        self.assertIn('btb', result)
         self.assertIn('frequency', result)
         self.assertIn('DIB', result)
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import functools
 import operator
 
 from . import util

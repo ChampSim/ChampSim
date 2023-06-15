@@ -89,20 +89,20 @@ def get_repl_data(module_name):
     return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
 
 # Generate C++ code giving the mangled module specialization functions
-def mangled_declarations(rtype, names, args, attrs=[]):
+def mangled_declarations(rtype, names, args, attrs=None):
     if rtype != 'void':
         local_attrs = ('nodiscard',)
     else:
         local_attrs = tuple()
-    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+    attrstring = ', '.join(itertools.chain(attrs or [], local_attrs))
 
     argstring = ', '.join(a[0] for a in args)
     yield from ('[[{}]] {} {}({});'.format(attrstring, rtype, name, argstring) for name in names)
 
 # Generate C++ code giving the mangled module specialization functions that are not implemented
-def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=[]):
+def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=None):
     local_attrs = ('noreturn',)
-    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+    attrstring = ', '.join(itertools.chain(attrs or [], local_attrs))
 
     argstring = ', '.join(a[0]+' /*unused*/' for a in args)
     yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }} // NOLINT(readability-convert-member-functions-to-static)'.format(attrstring, rtype, name, argstring) for name in names)
@@ -142,7 +142,7 @@ def discriminator_function_definition(fname, rtype, join_op, args, varname, zipp
     yield '}'
 
 # For a given module function, generate C++ code declaring its mangled specialization declarations and a discriminator function
-def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void', *tail, attrs=[]):
+def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void', *tail, attrs=None):
     yield from mangled_declarations(rtype, fnamelist, args, attrs=attrs)
     yield ''
 

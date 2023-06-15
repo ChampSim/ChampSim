@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools, operator
+import itertools
 import os
 
 from . import util
@@ -21,61 +21,67 @@ def dereference(var):
     return '$(' + var + ')'
 
 def dependency(target, *dependent, order=None):
+    dep_string = ' '.join(dependent)
     if order is None:
-        return '{}: {}'.format(target, ' '.join(dependent))
-    else:
-        return '{}: {} | {}'.format(target, ' '.join(dependent), order)
+        return f'{target}: {dep_string}'
+    return f'{target}: {dep_string} | {order}'
 
 def assign_variable(var, val, target=None):
-    retval = '{} = {}'.format(var, val)
+    retval = f'{var} = {val}'
     if target is not None:
         retval = dependency(target, retval)
     return retval
 
-def append_variable(var, *val, targets=[]):
-    retval = '{} += {}'.format(var, ' '.join(val))
-    if targets:
+def append_variable(var, *val, targets=None):
+    joined_vals = ' '.join(val)
+    retval = f'{var} += {joined_vals}'
+    if targets is not None:
         retval = dependency(' '.join(targets), retval)
     return retval
 
-def each_in_dict_list(d):
-    yield from itertools.chain(*(zip(itertools.repeat(kv[0]), kv[1]) for kv in d.items()))
+def each_in_dict_list(dict_of_lists):
+    yield from itertools.chain(*(zip(itertools.repeat(kv[0]), kv[1]) for kv in dict_of_lists.items()))
+
+def make_subpart(i, src_dir, base, dest_dir, build_id):
+    local_dir_varname = f'{build_id}_dirs_{i}'
+    local_obj_varname = f'{build_id}_objs_{i}'
+
+    rel_dest_dir = os.path.abspath(os.path.join(dest_dir, os.path.relpath(base, src_dir)))
+    rel_src_dir = os.path.abspath(src_dir)
+
+    local_opts = {'CPPFLAGS': ('-I'+rel_src_dir,) }
+
+    yield '###'
+    yield '# Build ID: ' + build_id
+    yield '# Source: ' + rel_src_dir
+    yield '# Destination: ' + rel_dest_dir
+    yield '###'
+    yield ''
+
+    # Define variables
+    yield assign_variable(local_dir_varname, dest_dir)
+
+    map_source_to_obj = f'$(patsubst {rel_src_dir}/%.cc, {rel_dest_dir}/%.o, $(wildcard {rel_src_dir}/*.cc))'
+    yield assign_variable(local_obj_varname, map_source_to_obj)
+
+    # Set flags
+    yield from (append_variable(*kv, targets=[dereference(local_obj_varname)]) for kv in each_in_dict_list(local_opts))
+
+    # Assign dependencies
+    yield dependency(dereference(local_obj_varname), dependency(os.path.join(rel_dest_dir, '%.o'), os.path.join(rel_src_dir, '%.cc')), order=rel_dest_dir)
+
+    wildcard_dest_dir = os.path.join(rel_dest_dir, '*.d')
+    yield f'-include $(wildcard {wildcard_dest_dir})'
+    yield ''
+
+    return local_dir_varname, local_obj_varname
 
 def make_part(src_dirs, dest_dir, build_id):
     dir_varnames = []
     obj_varnames = []
 
     for i, base_source in enumerate(itertools.chain(*([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs))):
-        local_dir_varname = '{}_dirs_{}'.format(build_id, i)
-        local_obj_varname = '{}_objs_{}'.format(build_id, i)
-
-        src_dir, base = base_source
-        reldir = os.path.relpath(base, src_dir)
-
-        rel_dest_dir = os.path.abspath(os.path.join(dest_dir, reldir))
-        rel_src_dir = os.path.abspath(src_dir)
-
-        local_opts = {'CPPFLAGS': ('-I'+rel_src_dir,) }
-
-        yield '###'
-        yield '# Build ID: ' + build_id
-        yield '# Source: ' + rel_src_dir
-        yield '# Destination: ' + rel_dest_dir
-        yield '###'
-        yield ''
-
-        # Definee variables
-        yield assign_variable(local_dir_varname, dest_dir)
-        yield assign_variable(local_obj_varname, '$(patsubst {src_dir}/%.cc, {dest_dir}/%.o, $(wildcard {src_dir}/*.cc))'.format(dest_dir=rel_dest_dir, src_dir=rel_src_dir))
-
-        # Set flags
-        yield from (append_variable(*kv, targets=[dereference(local_obj_varname)]) for kv in each_in_dict_list(local_opts))
-
-        # Assign dependencies
-        yield dependency(dereference(local_obj_varname), dependency(os.path.join(rel_dest_dir, '%.o'), os.path.join(rel_src_dir, '%.cc')), order=rel_dest_dir)
-        yield '-include $(wildcard {})'.format(os.path.join(rel_dest_dir, '*.d'))
-        yield ''
-
+        local_dir_varname, local_obj_varname = yield from make_subpart(i, *base_source, dest_dir, build_id)
         dir_varnames.append(local_dir_varname)
         obj_varnames.append(local_obj_varname)
 
@@ -108,7 +114,7 @@ def module_opts(obj_dir, build_id, module_name, source_dirs, opts):
     build_dir = os.path.join(obj_dir, build_id)
     dest_dir = os.path.join(build_dir, module_name)
 
-    local_opts = {'CPPFLAGS': ('-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(module_name))}
+    local_opts = {'CPPFLAGS': ('-I'+os.path.join(build_dir, 'inc'), f'-include {module_name}.inc')}
 
     dir_varnames, obj_varnames = yield from make_part(source_dirs, dest_dir, build_id+'_'+module_name)
     yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(opts))
@@ -135,4 +141,3 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, c
     global_opts = util.subdict(config_file, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
     yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(global_opts))
     yield ''
-
