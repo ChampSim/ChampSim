@@ -148,5 +148,5 @@ class FileWriter:
                 write_if_different(fname, '\n'.join(*fcontents)) # no header
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
+        if exc_type is None:
             self.finish()
