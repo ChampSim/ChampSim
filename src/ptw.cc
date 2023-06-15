@@ -177,8 +177,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address,
+                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level);
     }
   };
 
