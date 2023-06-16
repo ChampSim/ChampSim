@@ -46,6 +46,12 @@ CACHE::BLOCK::BLOCK(const mshr_type& mshr)
 {
 }
 
+auto CACHE::in_set_finder(uint64_t addr, unsigned offset) {
+  return [match = addr >> offset, shamt = offset](const auto& entry) {
+    return entry.valid && (entry.address >> shamt) == match;
+  };
+}
+
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
 {
   cpu = fill_mshr.cpu;
@@ -117,9 +123,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
-  for (auto* ret : fill_mshr.to_return) {
-    ret->returned.push_back(response);
-  }
+  std::for_each(std::begin(fill_mshr.to_return), std::end(fill_mshr.to_return), channel_type::returner_for(std::move(response)));
 
   return true;
 }
@@ -130,9 +134,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
-    return entry.valid && (entry.address >> shamt) == match;
-  });
+  auto way = std::find_if(set_begin, set_end, in_set_finder(handle_pkt.address, OFFSET_BITS));
   const auto hit = (way != set_end);
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
@@ -157,12 +159,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       return std::any_of(begin, end, [ul](const auto* x) { return x == ul; });
     };
 
-    auto send_invalidation = [req = channel_type::invalidation_request_type{handle_pkt.address}](auto* ul) {
-      ul->invalidation_queue.push_back(req);
-    };
-
     std::remove_copy_if(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(to_invalidate), in_return);
-    std::for_each(std::begin(to_invalidate), std::end(to_invalidate), send_invalidation);
+    std::for_each(std::begin(to_invalidate), std::end(to_invalidate), channel_type::invalidator_for(handle_pkt.address));
   }
 
   if (hit) {
@@ -174,9 +172,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
                                   champsim::to_underlying(handle_pkt.type), 1U);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
-    for (auto* ret : handle_pkt.to_return) {
-      ret->returned.push_back(response);
-    }
+    std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
 
     way->dirty = (handle_pkt.type == access_type::WRITE);
 
@@ -422,17 +418,14 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
-                         return entry.valid && (entry.address >> shamt) == match;
-                       }));
+  return std::distance(begin, std::find_if(begin, end, in_set_finder(address, OFFSET_BITS)));
 }
 // LCOV_EXCL_STOP
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(
-      begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return entry.valid && (entry.address >> shamt) == match; });
+  auto inv_way = std::find_if(begin, end, in_set_finder(inval_addr, OFFSET_BITS));
 
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {:#x} v_address: {:#x} set: {} way: {} cycle: {}\n", NAME, __func__, inv_way->address, inv_way->v_address,
@@ -442,6 +435,8 @@ uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
   if (inv_way != end) {
     inv_way->valid = false;
   }
+
+  std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_addr));
 
   return std::distance(begin, inv_way);
 }

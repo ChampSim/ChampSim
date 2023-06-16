@@ -121,6 +121,8 @@ class CACHE : public champsim::operable
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
+  static auto in_set_finder(uint64_t address, unsigned offset);
+
   void issue_translation();
 
   struct BLOCK {
