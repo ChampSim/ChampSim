@@ -50,7 +50,7 @@ struct DRAM_CHANNEL {
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
-    std::vector<std::deque<response_type>*> to_return{};
+    std::vector<champsim::channel*> to_return{};
 
     explicit request_type(const typename champsim::channel::request_type& req);
   };

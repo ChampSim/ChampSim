@@ -50,7 +50,7 @@ void MEMORY_CONTROLLER::operate()
         if (entry.has_value()) {
           response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->instr_depend_on_me};
           for (auto* ret : entry.value().to_return) {
-            ret->push_back(response);
+            ret->returned.push_back(response);
           }
 
           entry.reset();
@@ -72,7 +72,7 @@ void MEMORY_CONTROLLER::operate()
                              channel.active_request->pkt->value().data, channel.active_request->pkt->value().pf_metadata,
                              channel.active_request->pkt->value().instr_depend_on_me};
       for (auto* ret : channel.active_request->pkt->value().to_return) {
-        ret->push_back(response);
+        ret->returned.push_back(response);
       }
 
       channel.active_request->valid = false;
@@ -248,7 +248,7 @@ void DRAM_CHANNEL::check_read_collision()
                                rq_it->value().instr_depend_on_me};
         response.data = wq_it->value().data;
         for (auto* ret : rq_it->value().to_return) {
-          ret->push_back(response);
+          ret->returned.push_back(response);
         }
 
         rq_it->reset();
@@ -312,7 +312,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
     if (packet.response_requested) {
-      rq_it->value().to_return = {&ul->returned};
+      rq_it->value().to_return = {ul};
     }
 
     return true;

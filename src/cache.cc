@@ -118,7 +118,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
-    ret->push_back(response);
+    ret->returned.push_back(response);
   }
 
   return true;
@@ -151,11 +151,18 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
 
   if (handle_pkt.type == access_type::RFO) {
-    for (auto* ul : upper_levels) {
-      if (std::count(std::cbegin(handle_pkt.to_return), std::cend(handle_pkt.to_return), &ul->returned) == 0) {
-        ul->invalidation_queue.push_back(champsim::channel::invalidation_request_type{handle_pkt.address});
-      }
-    }
+    std::vector<channel_type*> to_invalidate{};
+
+    auto in_return = [begin = std::begin(handle_pkt.to_return), end = std::end(handle_pkt.to_return)](auto* ul) {
+      return std::any_of(begin, end, [ul](const auto* x) { return x == ul; });
+    };
+
+    auto send_invalidation = [req = channel_type::invalidation_request_type{handle_pkt.address}](auto* ul) {
+      ul->invalidation_queue.push_back(req);
+    };
+
+    std::remove_copy_if(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(to_invalidate), in_return);
+    std::for_each(std::begin(to_invalidate), std::end(to_invalidate), send_invalidation);
   }
 
   if (hit) {
@@ -168,7 +175,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
     for (auto* ret : handle_pkt.to_return) {
-      ret->push_back(response);
+      ret->returned.push_back(response);
     }
 
     way->dirty = (handle_pkt.type == access_type::WRITE);
@@ -297,7 +304,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
-        retval.to_return = {&ul->returned};
+        retval.to_return = {ul};
       }
     } else {
       (void)ul; // supress warning about ul being unused
