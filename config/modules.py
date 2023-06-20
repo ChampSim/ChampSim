@@ -48,7 +48,6 @@ class ModuleSearchContext:
 def data_getter(prefix, module_name, funcs):
     return {
         'name': module_name,
-        'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',), 'CPPFLAGS': ('-DCHAMPSIM_MODULE',) },
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
 
@@ -87,6 +86,15 @@ def get_pref_data(module_name, is_instruction_cache=False):
 
 def get_repl_data(module_name):
     return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
+
+def get_module_opts_lines(module_data):
+    '''
+    Generate an iterable of the compiler options for a particular module
+    '''
+    yield '-Wno-unused-parameter'
+    yield '-DCHAMPSIM_MODULE'
+    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
+    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
 # Generate C++ code giving the mangled module specialization functions
 def mangled_declarations(rtype, names, args, attrs=None):

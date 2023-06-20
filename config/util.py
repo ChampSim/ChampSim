@@ -102,3 +102,27 @@ def propogate_down(path, key):
             value = new_value
         else:
             yield from ({ **element, key: value } for element in chunk)
+
+def append_except_last(iterable, suffix):
+    ''' Append a string to each element of the iterable except the last one. '''
+    retval = None
+    first = True
+    for element in iterable:
+        if not first:
+            yield retval + suffix
+        retval = element
+        first = False
+
+    if retval is not None:
+        yield retval
+
+def do_for_first(func, iterable):
+    '''
+    Evaluate the function for the first element in the iterable and yield it.
+    Then yield the rest of the iterable.
+    '''
+    iterator = iter(iterable)
+    first = next(iterator, None)
+    if first is not None:
+        yield func(first)
+        yield from iterator
