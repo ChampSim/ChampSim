@@ -26,10 +26,11 @@ auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
 {
   begin = std::find_if(begin, end, func);
   for (auto i = begin; i != end; ++i) {
-    if (func(*i))
+    if (func(*i)) {
       *d_begin++ = std::move(*i);
-    else
+    } else {
       *begin++ = std::move(*i);
+    }
   }
   return std::pair{begin, d_begin};
 }

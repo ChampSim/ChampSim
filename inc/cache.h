@@ -28,6 +28,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "block.h"
@@ -36,7 +37,6 @@
 #include "channel.h"
 #include "modules_detect.h"
 #include "operable.h"
-#include <type_traits>
 
 struct cache_stats {
   std::string name;
@@ -88,7 +88,7 @@ class CACHE : public champsim::operable
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
-    tag_lookup_type(request_type req, bool local_pref, bool skip);
+    tag_lookup_type(const request_type& req, bool local_pref, bool skip);
   };
 
   struct mshr_type {
@@ -112,7 +112,7 @@ class CACHE : public champsim::operable
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    mshr_type(tag_lookup_type req, uint64_t cycle);
+    mshr_type(const tag_lookup_type& req, uint64_t cycle);
   };
 
   bool try_hit(const tag_lookup_type& handle_pkt);
@@ -132,8 +132,8 @@ private:
   using set_type = std::vector<BLOCK>;
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(uint64_t address);
-  std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
-  std::size_t get_set_index(uint64_t address) const;
+  [[nodiscard]] std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(uint64_t address) const;
+  [[nodiscard]] long get_set_index(uint64_t address) const;
 
   template <typename T>
   bool should_activate_prefetcher(const T& pkt) const;
@@ -156,13 +156,12 @@ public:
   const std::size_t PQ_SIZE;
   const uint64_t HIT_LATENCY, FILL_LATENCY;
   const unsigned OFFSET_BITS;
-  set_type block{NUM_SET * NUM_WAY};
+  set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   const long int MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
-  bool ever_seen_data = false;
-  const unsigned pref_activate_mask = (1 << champsim::to_underlying(access_type::LOAD)) | (1 << champsim::to_underlying(access_type::PREFETCH));
+  const std::vector<access_type> pref_activate_mask;
 
   using stats_type = cache_stats;
 
@@ -171,43 +170,43 @@ public:
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> inflight_writes;
 
-  void operate() override final;
+  void operate() final;
 
-  void initialize() override final;
-  void begin_phase() override final;
-  void end_phase(unsigned cpu) override final;
+  void initialize() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
 
-  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] std::size_t get_occupancy(uint8_t queue_type,
-                                                                                                                                           uint64_t address);
-  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] std::size_t get_size(uint8_t queue_type,
-                                                                                                                            uint64_t address);
+  [[deprecated("get_occupancy() returns 0 for every input except 0 (MSHR). Use get_mshr_occupancy() instead.")]] [[nodiscard]] std::size_t
+  get_occupancy(uint8_t queue_type, uint64_t address) const;
+  [[deprecated("get_size() returns 0 for every input except 0 (MSHR). Use get_mshr_size() instead.")]] [[nodiscard]] std::size_t
+  get_size(uint8_t queue_type, uint64_t address) const;
 
-  std::size_t get_mshr_occupancy() const;
-  std::size_t get_mshr_size() const;
-  double get_mshr_occupancy_ratio() const;
+  [[nodiscard]] std::size_t get_mshr_occupancy() const;
+  [[nodiscard]] std::size_t get_mshr_size() const;
+  [[nodiscard]] double get_mshr_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_rq_occupancy() const;
-  std::vector<std::size_t> get_rq_size() const;
-  std::vector<double> get_rq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_rq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_rq_size() const;
+  [[nodiscard]] std::vector<double> get_rq_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_wq_occupancy() const;
-  std::vector<std::size_t> get_wq_size() const;
-  std::vector<double> get_wq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_wq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_wq_size() const;
+  [[nodiscard]] std::vector<double> get_wq_occupancy_ratio() const;
 
-  std::vector<std::size_t> get_pq_occupancy() const;
-  std::vector<std::size_t> get_pq_size() const;
-  std::vector<double> get_pq_occupancy_ratio() const;
+  [[nodiscard]] std::vector<std::size_t> get_pq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_pq_size() const;
+  [[nodiscard]] std::vector<double> get_pq_occupancy_ratio() const;
 
-  [[deprecated("Use get_set_index() instead.")]] uint64_t get_set(uint64_t address) const;
-  [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
+  [[deprecated("Use get_set_index() instead.")]] [[nodiscard]] uint64_t get_set(uint64_t address) const;
+  [[deprecated("This function should not be used to access the blocks directly.")]] [[nodiscard]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
-  uint64_t invalidate_entry(uint64_t inval_addr);
-  int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  long invalidate_entry(uint64_t inval_addr);
+  bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
-  [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
+  [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] bool
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
-  void print_deadlock() override;
+  void print_deadlock() final;
 
 #include "cache_module_decl.inc"
 
@@ -215,7 +214,8 @@ public:
     virtual ~prefetcher_module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
-    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) = 0;
+    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                                   uint32_t metadata_in) = 0;
     virtual uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
@@ -227,9 +227,9 @@ public:
 
     virtual void impl_initialize_replacement() = 0;
     virtual long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                                      uint32_t type) = 0;
+                                  access_type type) = 0;
     virtual void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
-                                               uint32_t type, uint8_t hit) = 0;
+                                               access_type type, uint8_t hit) = 0;
     virtual void impl_replacement_final_stats() = 0;
   };
 
@@ -238,46 +238,50 @@ public:
     std::tuple<Ps...> intern_;
     explicit prefetcher_module_model(CACHE* cache) : intern_(Ps{cache}...) {}
 
-    void impl_prefetcher_initialize();
-    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
-    [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-    void impl_prefetcher_cycle_operate();
-    void impl_prefetcher_final_stats();
-    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+    void impl_prefetcher_initialize() final;
+    [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                                         uint32_t metadata_in) final;
+    [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) final;
+    void impl_prefetcher_cycle_operate() final;
+    void impl_prefetcher_final_stats() final;
+    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) final;
   };
 
   template <typename... Rs>
   struct replacement_module_model final : replacement_module_concept {
     // Assert that at least one has an update state
-    //static_assert(std::disjunction<champsim::is_detected<has_update_state, Rs>...>::value, "At least one replacement policy must update its state");
+    // static_assert(std::disjunction<champsim::is_detected<has_update_state, Rs>...>::value, "At least one replacement policy must update its state");
 
     std::tuple<Rs...> intern_;
     explicit replacement_module_model(CACHE* cache) : intern_(Rs{cache}...) {}
 
-    void impl_initialize_replacement();
+    void impl_initialize_replacement() final;
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                                            uint32_t type);
-    void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
-                                       uint32_t type, uint8_t hit);
-    void impl_replacement_final_stats();
+                                        access_type type) final;
+    void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
+                                       uint8_t hit) final;
+    void impl_replacement_final_stats() final;
   };
 
   std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;
   std::unique_ptr<replacement_module_concept> repl_module_pimpl;
 
-  void impl_prefetcher_initialize();
-  [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
-  [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
-  void impl_prefetcher_cycle_operate();
-  void impl_prefetcher_final_stats();
-  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+  // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
+  void impl_prefetcher_initialize() const;
+  [[nodiscard]] uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                                       uint32_t metadata_in) const;
+  [[nodiscard]] uint32_t impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) const;
+  void impl_prefetcher_cycle_operate() const;
+  void impl_prefetcher_final_stats() const;
+  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) const;
 
-  void impl_initialize_replacement();
+  void impl_initialize_replacement() const;
   [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                                          uint32_t type);
-  void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
-                                     uint8_t hit);
-  void impl_replacement_final_stats();
+                                      access_type type) const;
+  void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
+                                     uint8_t hit) const;
+  void impl_replacement_final_stats() const;
+  // NOLINTEND(readability-make-member-function-const)
 
   template <typename... Ts>
   class builder_module_type_holder
@@ -307,7 +311,7 @@ public:
     bool m_wq_full_addr{};
     bool m_va_pref{};
 
-    unsigned m_pref_act_mask{};
+    std::vector<access_type> m_pref_act_mask{access_type::LOAD, access_type::PREFETCH};
     std::vector<CACHE::channel_type*> m_uls{};
     CACHE::channel_type* m_ll{};
     CACHE::channel_type* m_lt{nullptr};
@@ -315,7 +319,7 @@ public:
     friend class CACHE;
 
     template <typename OTHER_P, typename OTHER_R>
-    Builder(builder_conversion_tag, const Builder<OTHER_P, OTHER_R>& other)
+    Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_P, OTHER_R>& other)
         : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
           m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
           m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
@@ -419,7 +423,7 @@ public:
     template <typename... Elems>
     self_type& prefetch_activate(Elems... pref_act_elems)
     {
-      m_pref_act_mask = ((1u << champsim::to_underlying(pref_act_elems)) | ... | 0);
+      m_pref_act_mask = {pref_act_elems...};
       return *this;
     }
     self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_)
@@ -472,14 +476,17 @@ void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_initialize()
 }
 
 template <typename... Ps>
-uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch,
+                                                                              access_type type, uint32_t metadata_in)
 {
   auto process_one = [&](auto& p) {
     constexpr auto version = champsim::modules::detect::prefetcher::has_cache_operate<decltype(p)>();
-    if constexpr (version == 2)
+    if constexpr (version == 3)
       return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
+    if constexpr (version == 2)
+      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in);
     else if constexpr (version == 1)
-      return p.prefetcher_cache_operate(addr, ip, cache_hit, type, metadata_in); // absent useful_prefetch
+      return p.prefetcher_cache_operate(addr, ip, cache_hit, champsim::to_underlying(type), metadata_in); // absent useful_prefetch
     else
       return 0u;
   };
@@ -488,7 +495,8 @@ uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(ui
 }
 
 template <typename... Ps>
-uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr,
+                                                                           uint32_t metadata_in)
 {
   auto process_one = [&](auto& p) {
     if constexpr (champsim::modules::detect::prefetcher::has_cache_fill<decltype(p)>())
@@ -532,7 +540,6 @@ void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_branch_operate(uint6
   std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
 }
 
-
 template <typename... Rs>
 void CACHE::replacement_module_model<Rs...>::impl_initialize_replacement()
 {
@@ -547,24 +554,32 @@ void CACHE::replacement_module_model<Rs...>::impl_initialize_replacement()
 }
 
 template <typename... Rs>
-long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                                            uint32_t type)
+long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, uint64_t ip,
+                                                              uint64_t full_addr, access_type type)
 {
   auto process_one = [&](auto& r) {
-    if constexpr (champsim::modules::detect::replacement::has_find_victim<decltype(r)>())
+    constexpr auto version = champsim::modules::detect::replacement::has_find_victim<decltype(r)>();
+    if constexpr (version == 2)
       return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+    else if constexpr (version == 1)
+      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type));
+    else
+      return 0u;
   };
 
   return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
 }
 
 template <typename... Rs>
-void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
-                                       uint32_t type, uint8_t hit)
+void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip,
+                                                                           uint64_t victim_addr, access_type type, uint8_t hit)
 {
   auto process_one = [&](auto& r) {
-    if constexpr (champsim::modules::detect::replacement::has_update_state<decltype(r)>())
+    constexpr auto version = champsim::modules::detect::replacement::has_update_state<decltype(r)>();
+    if constexpr (version == 2)
       r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
+    else if constexpr (version == 1)
+      r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, champsim::to_underlying(type), hit);
   };
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);

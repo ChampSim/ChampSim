@@ -18,7 +18,7 @@ struct metadata_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t metadata_in) {
+  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, bool, access_type, uint32_t metadata_in) {
     auto it = test::metadata_operate_collector.try_emplace(intern_);
     it.first->second.push_back(metadata_in);
     return metadata_in;
@@ -37,7 +37,7 @@ struct metadata_fill_emitter : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, uint8_t, uint32_t metadata_in) { return metadata_in; }
+  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, access_type, uint32_t metadata_in) { return metadata_in; }
   uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t) { return to_emit; }
 };
 
@@ -53,6 +53,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
+      .prefetch_activate(access_type::PREFETCH)
       .prefetcher<metadata_collector>()
     };
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
@@ -71,7 +72,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     }
 
     WHEN("The upper level issues a prefetch with metadata") {
-      test::metadata_operate_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
+      test::metadata_operate_collector.insert_or_assign(&lower, std::vector<uint32_t>{});
 
       // Request a prefetch
       constexpr uint64_t seed_addr = 0xdeadbeef;

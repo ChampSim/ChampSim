@@ -27,7 +27,7 @@ bool va_ampm_lite::check_cl_prefetch(uint64_t v_addr)
   return (region != std::end(regions)) && region->prefetch_map.test(page_offset);
 }
 
-uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
 {
   auto [current_vpn, page_offset] = page_and_offset(addr);
   auto demand_region = std::find_if(std::begin(regions), std::end(regions), [vpn = current_vpn](auto x) { return x.vpn == vpn; });

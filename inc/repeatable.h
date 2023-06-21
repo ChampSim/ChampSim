@@ -19,9 +19,9 @@
 
 #include <memory>
 #include <string>
+#include <fmt/ranges.h>
 
 #include "instruction.h"
-#include <fmt/ranges.h>
 
 namespace champsim
 {
@@ -44,7 +44,7 @@ struct repeatable {
     return intern_();
   }
 
-  bool eof() const { return false; }
+  [[nodiscard]] bool eof() const { return false; }
 };
 } // namespace champsim
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import functools
 import math
 
 from . import util
@@ -40,17 +41,20 @@ def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32,
     }
 
 def defaulter(cores, cache_list, factor_list, key):
-    head = lambda n: util.upper_levels_for(cores, n, key=key)
-    tail = lambda n: util.upper_levels_for(cache_list, n)
+    head = functools.partial(util.upper_levels_for, cores, key=key)
+    tail = functools.partial(util.upper_levels_for, cache_list)
 
-    for ulf, fac in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
-        yield lambda name: { 'name': name, **ul_dependent_defaults(*ulf(name), **fac) }
+    def produce(name, ulf=None, factor=None):
+        return { 'name': name, **ul_dependent_defaults(*ulf(name), **factor) }
+
+    for upper_level_function, factor in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
+        yield functools.partial(produce, ulf=upper_level_function, factor=factor)
 
 def default_path(cores, caches, factor_list, member_list, name):
-    for p in (util.iter_system(caches, cpu[name]) for cpu in cores):
+    for element in (util.iter_system(caches, cpu[name]) for cpu in cores):
         fixed_defaults = itertools.starmap(util.chain, itertools.zip_longest(({'_first_level': True},), member_list, fillvalue={}))
         defaults = defaulter(cores, list(caches.values()), factor_list, name)
-        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, p, fixed_defaults))
+        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, element, fixed_defaults))
 
 def l1i_path(cores, caches):
     l1i_factors = (
@@ -63,8 +67,7 @@ def l1i_path(cores, caches):
         { '_defaults': 'champsim::defaults::default_l2c' },
         { '_defaults': 'champsim::defaults::default_llc' }
     )
-    p = list(default_path(cores, caches, l1i_factors, l1i_members, 'L1I'))
-    yield from p
+    yield from default_path(cores, caches, l1i_factors, l1i_members, 'L1I')
 
 def l1d_path(cores, caches):
     l1d_factors = (

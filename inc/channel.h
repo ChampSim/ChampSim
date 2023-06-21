@@ -22,9 +22,8 @@
 #include <deque>
 #include <functional>
 #include <limits>
-#include <vector>
-
 #include <string_view>
+#include <vector>
 
 struct ooo_model_instr;
 
@@ -122,13 +121,13 @@ public:
   bool add_wq(const request_type& packet);
   bool add_pq(const request_type& packet);
 
-  std::size_t rq_occupancy() const;
-  std::size_t wq_occupancy() const;
-  std::size_t pq_occupancy() const;
+  [[nodiscard]] std::size_t rq_occupancy() const;
+  [[nodiscard]] std::size_t wq_occupancy() const;
+  [[nodiscard]] std::size_t pq_occupancy() const;
 
-  std::size_t rq_size() const;
-  std::size_t wq_size() const;
-  std::size_t pq_size() const;
+  [[nodiscard]] std::size_t rq_size() const;
+  [[nodiscard]] std::size_t wq_size() const;
+  [[nodiscard]] std::size_t pq_size() const;
 
   void check_collision();
 };

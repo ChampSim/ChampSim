@@ -17,18 +17,19 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-namespace champsim {
-  struct cache_block {
-    bool valid = false;
-    bool prefetch = false;
-    bool dirty = false;
+namespace champsim
+{
+struct cache_block {
+  bool valid = false;
+  bool prefetch = false;
+  bool dirty = false;
 
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+  uint64_t address = 0;
+  uint64_t v_address = 0;
+  uint64_t data = 0;
 
-    uint32_t pf_metadata = 0;
-  };
-}
+  uint32_t pf_metadata = 0;
+};
+} // namespace champsim
 
 #endif

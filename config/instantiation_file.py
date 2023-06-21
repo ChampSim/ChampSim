@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import functools
 import operator
 import os
 
@@ -107,6 +106,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             }
         )
 
+    yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
     yield '#include "module_def.inc"'
 
@@ -251,3 +251,4 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield '};'
     yield '}'
+    yield '// NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)'

@@ -20,12 +20,12 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "cache.h"
 #include "dram_controller.h"
 #include "ooo_cpu.h"
-#include <string_view>
 
 namespace champsim
 {

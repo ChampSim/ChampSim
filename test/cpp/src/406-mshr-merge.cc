@@ -16,7 +16,7 @@ struct address_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, bool, uint8_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, bool, access_type, uint32_t metadata_in)
   {
     ::address_operate_collector[intern_].push_back(addr);
     return metadata_in;

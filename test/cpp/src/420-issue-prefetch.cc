@@ -16,7 +16,7 @@ struct hit_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
   {
     ::prefetch_hit_collector[intern_].push_back({addr, ip, cache_hit, useful_prefetch, type, metadata_in});
     return metadata_in;
