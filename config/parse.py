@@ -284,7 +284,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     cores = list(util.combine_named(cores,
             ({
                 'name': c['name'],
-                '_branch_predictor_data': list(map(branch_parse, util.wrap_list(c.get('branch_predictor', 'hashed_perception')))),
+                '_branch_predictor_data': list(map(branch_parse, util.wrap_list(c.get('branch_predictor', 'hashed_perceptron')))),
                 '_btb_data': list(map(btb_parse, util.wrap_list(c.get('btb', 'basic_btb'))))
             } for c in cores)
             ).values()

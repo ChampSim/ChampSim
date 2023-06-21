@@ -31,7 +31,7 @@ clean:
 
 # Remove all configuration files
 configclean: clean
-	@-$(RM) -r $(config_dirs) _configuration.mk
+	@-$(RM) -r $(dirs) _configuration.mk
 
 # Make directories that don't exist
 # exclude "test" to not conflict with the phony target
