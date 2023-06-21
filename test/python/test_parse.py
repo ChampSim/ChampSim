@@ -114,7 +114,7 @@ class FilterInaccessibleTests(unittest.TestCase):
 
 class PassthroughContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
         return [] # FIXME
@@ -565,10 +565,10 @@ class ConfigRootPassthroughParseTests(unittest.TestCase):
 
 class FoundMoreContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
-        return [{'name': 'extra', 'fname': 'aaaabbbb/extra', '_is_instruction_prefetcher': False}]
+        return [{'name': 'extra', 'fname': 'aaaabbbb/extra'}]
 
 class CompileAllModulesTests(unittest.TestCase):
 

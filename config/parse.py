@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import itertools
+import functools
 import operator
-import collections
 import os
 import math
+from collections import deque
 
 from . import defaults
 from . import modules
@@ -105,28 +106,28 @@ def normalize_config(config_file):
 
     pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
     caches = util.combine_named(
-            config_file.get('caches', []),
+        config_file.get('caches', []),
 
-            # Copy values from the core specification, if these are dicts
-            (util.chain(core[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
+        # Copy values from the core specification, if these are dicts
+        (util.chain(core[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(core.get(name), dict)),
 
-            # Copy values from the config root, if these are dicts
-            (util.chain(config_file[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict))
-            )
+        # Copy values from the config root, if these are dicts
+        (util.chain(config_file[name], { 'name': default_element_name(core,name) }) for core, name in itertools.product(cores, pinned_cache_names) if isinstance(config_file.get(name), dict))
+    )
 
     # Read LLC from the configuration file
     if 'LLC' in config_file:
         caches.update(LLC={'name': 'LLC', **config_file['LLC']})
 
     ptws = util.combine_named(
-            config_file.get('ptws',[]),
+        config_file.get('ptws',[]),
 
-            # Copy values from the core specification, if these are dicts
-            (util.chain(c['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(c.get('PTW'), dict)),
+        # Copy values from the core specification, if these are dicts
+        (util.chain(c['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(c.get('PTW'), dict)),
 
-            # Copy values from the config root, if these are dicts
-            (util.chain(config_file['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(config_file.get('PTW'), dict))
-            )
+        # Copy values from the config root, if these are dicts
+        (util.chain(config_file['PTW'], { 'name': default_element_name(c, 'PTW') }) for c in cores if isinstance(config_file.get('PTW'), dict))
+    )
 
     # Convert all core values to labels
     cores = [util.chain({n: cpu[n].get('name', default_element_name(cpu, n)) for n in (*pinned_cache_names, 'PTW') if isinstance(cpu.get(n), dict)}, cpu) for cpu in cores]
@@ -226,6 +227,12 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
         default_frequencies(cores, caches)
     )
 
+    branch_parse = functools.partial(module_parse, context=branch_context)
+    btb_parse = functools.partial(module_parse, context=btb_context)
+    replacement_parse = functools.partial(module_parse, context=replacement_context)
+    def prefetcher_parse(mod_name, cache):
+        return { '_is_instruction_prefetcher': cache.get('_is_instruction_cache', False), **module_parse(mod_name, prefetcher_context) }
+
     tlb_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('ITLB', 'DTLB')))
     data_path = itertools.chain.from_iterable(util.iter_system(caches, cpu[name]) for cpu,name in itertools.product(cores, ('L1I', 'L1D')))
     caches = util.combine_named(
@@ -246,10 +253,10 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
 
         # The end of the data path is the physical memory
         *((
-            {'name': collections.deque(util.iter_system(caches, cpu['L1I']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'},
-            {'name': collections.deque(util.iter_system(caches, cpu['L1D']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'},
-            {'name': collections.deque(util.iter_system(caches, cpu['ITLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']},
-            {'name': collections.deque(util.iter_system(caches, cpu['DTLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']}
+            {'name': deque(util.iter_system(caches, cpu['L1I']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'},
+            {'name': deque(util.iter_system(caches, cpu['L1D']), maxlen=1)[0]['name'], 'lower_level': 'DRAM'},
+            {'name': deque(util.iter_system(caches, cpu['ITLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']},
+            {'name': deque(util.iter_system(caches, cpu['DTLB']), maxlen=1)[0]['name'], 'lower_level': cpu['PTW']}
          ) for cpu in cores),
 
         ({ 'name': k,
@@ -257,11 +264,8 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
            '_queue_check_full_addr': cache.get('_first_level', False) or cache.get('wq_check_full_addr', False),
 
             # Get module path names and unique module names
-           '_replacement_data': [module_parse(m, replacement_context) for m in  util.wrap_list(cache.get('replacement', 'lru'))],
-           '_prefetcher_data': [{
-               '_is_instruction_prefetcher': cache.get('_is_instruction_cache',False),
-               **module_parse(f, prefetcher_context)
-           } for f in util.wrap_list(cache.get('prefetcher', 'no'))]
+           '_replacement_data': list(map(replacement_parse, util.wrap_list(cache.get('replacement', 'lru')))),
+           '_prefetcher_data': list(map(functools.partial(prefetcher_parse, cache=cache), util.wrap_list(cache.get('prefetcher', 'no'))))
         } for k,cache in caches.items())
     )
 
@@ -280,8 +284,8 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     cores = list(util.combine_named(cores,
             ({
                 'name': c['name'],
-                '_branch_predictor_data': [module_parse(m, branch_context) for m in util.wrap_list(c.get('branch_predictor', 'hashed_perceptron'))],
-                '_btb_data': [module_parse(m, btb_context) for m in util.wrap_list(c.get('btb', 'basic_btb'))]
+                '_branch_predictor_data': list(map(branch_parse, util.wrap_list(c.get('branch_predictor', 'hashed_perception')))),
+                '_btb_data': list(map(btb_parse, util.wrap_list(c.get('btb', 'basic_btb'))))
             } for c in cores)
             ).values()
      )
