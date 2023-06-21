@@ -17,7 +17,7 @@
 #ifndef DEFAULTS_HPP
 #define DEFAULTS_HPP
 
-#include "../branch/bimodal/bimodal.h"
+#include "../branch/hashed_perceptron/hashed_perceptron.h"
 #include "../btb/basic_btb/basic_btb.h"
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
@@ -56,7 +56,7 @@ const auto default_core = O3_CPU::Builder{}
                               // Specifying default branch predictors and BTBs like this is probably dangerous
                               // since the names could change.
                               // We're doing it anyway, for now.
-                              .branch_predictor<bimodal>()
+                              .branch_predictor<hashed_perceptron>()
                               .btb<basic_btb>();
 
 const auto default_l1i = CACHE::Builder{}
