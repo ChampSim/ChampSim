@@ -20,7 +20,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul;
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
-      .name("402-uut-"+std::string(str))
+      .name("402a-uut-"+std::string(str))
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
@@ -103,7 +103,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
     auto builder = CACHE::Builder{champsim::defaults::default_l1d}
-      .name("402-uut-"+std::string(str))
+      .name("402b-uut-"+std::string(str))
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
@@ -165,6 +165,121 @@ SCENARIO("A cache completes a fill after the specified latency") {
           REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
         else
           REQUIRE(uut.sim_stats.total_miss_latency == fill_latency-1); // -1 due to ordering of elements
+      }
+    }
+  }
+}
+
+SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
+  GIVEN("An cache with full MSHRs") {
+    release_MRC mock_ll;
+    to_rq_MRP mock_ul_seed;
+    to_rq_MRP mock_ul_test;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402c-uut")
+        .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
+        .lower_level(&mock_ll.queues)
+        .mshr_size(1)
+    };
+
+    std::array<champsim::operable*, 4> elements{{&mock_ll, &uut, &mock_ul_seed, &mock_ul_test}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
+
+    uint64_t id = 1;
+    decltype(mock_ul_seed)::request_type test_a;
+    test_a.address = 0xdeadbeef;
+    test_a.cpu = 0;
+    test_a.type = access_type::LOAD;
+    test_a.instr_id = id++;
+
+    auto test_a_result = mock_ul_seed.issue(test_a);
+
+    for (uint64_t i = 0; i < 100; ++i)
+      for (auto elem : elements)
+        elem->_operate();
+
+    THEN("The issue is received") {
+      CHECK(test_a_result);
+      CHECK(mock_ll.packet_count() == 1);
+    }
+
+    WHEN("A packet with a different address is sent before the fill has completed") {
+      decltype(mock_ul_test)::request_type test_b;
+      test_b.address = 0xcafebabe;
+      test_b.cpu = 0;
+      test_b.type = access_type::LOAD;
+      test_b.instr_id = id++;
+
+      auto test_b_result = mock_ul_test.issue(test_b);
+
+      THEN("The issue is received") {
+        REQUIRE(test_b_result);
+      }
+
+      uint64_t first_packet_delay = 10;
+      for (uint64_t i = 0; i < first_packet_delay; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("The test packet was not forwarded to the lower level") {
+        REQUIRE(mock_ll.packet_count() == 1);
+      }
+
+      THEN("The number of misses did not increase") {
+        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(access_type::LOAD)).at(0) == 1);
+      }
+    }
+  }
+}
+
+SCENARIO("A lower-level queue refusal limits the number of outstanding misses") {
+  GIVEN("An empty cache") {
+    champsim::channel refusal_channel{0,0,0,0,0}; // Refuses all packets
+    to_rq_MRP mock_ul;
+    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+      .name("402c-uut")
+      .upper_levels({{&mock_ul.queues}})
+      .lower_level(&refusal_channel)
+    };
+
+    std::array<champsim::operable*, 2> elements{{&uut, &mock_ul}};
+
+    for (auto elem : elements) {
+      elem->initialize();
+      elem->warmup = false;
+      elem->begin_phase();
+    }
+
+    WHEN("A packet is sent") {
+      uint64_t id = 1;
+      decltype(mock_ul)::request_type test_a;
+      test_a.address = 0xdeadbeef;
+      test_a.cpu = 0;
+      test_a.type = access_type::LOAD;
+      test_a.instr_id = id++;
+
+      auto test_a_result = mock_ul.issue(test_a);
+
+      for (uint64_t i = 0; i < 100; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("The issue is received") {
+        CHECK(test_a_result);
+      }
+
+      uint64_t first_packet_delay = 10;
+      for (uint64_t i = 0; i < first_packet_delay; ++i)
+        for (auto elem : elements)
+          elem->_operate();
+
+      THEN("The number of misses did not increase") {
+        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(access_type::LOAD)).at(0) == 0);
       }
     }
   }
