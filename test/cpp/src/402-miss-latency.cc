@@ -255,7 +255,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
       elem->begin_phase();
     }
 
-    WHEN("A packet with a different address is sent before the fill has completed") {
+    WHEN("A packet is sent") {
       uint64_t id = 1;
       decltype(mock_ul)::request_type test_a;
       test_a.address = 0xdeadbeef;
