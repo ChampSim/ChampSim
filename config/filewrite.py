@@ -83,8 +83,9 @@ def generate_module_information(containing_dir, module_info):
         fname = os.path.join(containing_dir, k, 'config.options')
         yield fname, modules.get_module_opts_lines(v)
 
-def generate_build_information(inc_dir):
+def generate_build_information(inc_dir, config_flags):
     ''' Generates all of the build-level include-files module '''
+    fname = os.path.join(inc_dir, 'config.options')
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     global_inc_dir = os.path.join(champsim_root, 'inc')
@@ -93,8 +94,7 @@ def generate_build_information(inc_dir):
     vcpkg_triplet = next(filter(lambda triplet: triplet != 'vcpkg', os.listdir(vcpkg_dir)), None)
     vcpkg_inc_dir = os.path.join(vcpkg_dir, vcpkg_triplet, 'include')
 
-    config_parts = (f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}')
-    yield os.path.join(inc_dir, 'config.options'), config_parts
+    yield fname, itertools.chain((f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}'), config_flags)
 
 class FileWriter:
     def __init__(self, bindir_name=None, objdir_name=None):
@@ -129,19 +129,25 @@ class FileWriter:
 
         executable, elements, modules_to_compile, module_info, config_file, env = parsed_config
 
-        # Instantiation file
-        self.fileparts.append((os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)))
-
-        # Constants header
-        self.fileparts.append((os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])))
-
-        # Module name mangling
-        self.fileparts.extend(generate_module_information(inc_dir, module_info))
-        self.fileparts.extend(generate_build_information(inc_dir))
-
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        makefile_lines = get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)
-        self.fileparts.append((makefile_file_name, makefile_lines))
+        makefile_lines = get_makefile_lines(local_objdir_name, build_id, os.path.join(local_bindir_name, executable), local_srcdir_names, joined_module_info)
+
+        self.fileparts.extend((
+            # Instantiation file
+            (os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)),
+
+            # Constants header
+            (os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])),
+
+            # Module name mangling
+            *generate_module_information(inc_dir, module_info),
+
+            # Build-level compile flags
+            *generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values()),
+
+            # Makefile generation
+            (makefile_file_name, makefile_lines)
+        ))
 
     def finish(self):
         ''' Write out all prepared files '''
