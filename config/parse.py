@@ -267,9 +267,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
         # The listed keys are deprecated. For now, permit them but print a warning
         (do_deprecation(ptw, ptw_deprecation_keys) for ptw in ptws.values()),
 
-        ({ 'name': cpu['PTW'], 'frequency': cpu.get('frequency'), 'cpu': cpu.get('_index'),
-           **defaults.ul_dependent_defaults(*util.upper_levels_for(caches.values(), cpu['PTW']), queue_factor=16, mshr_factor=5, bandwidth_factor=2)
-         } for cpu in cores)
+        ({ 'name': cpu['PTW'], 'frequency': cpu.get('frequency'), 'cpu': cpu.get('_index'), '_queue_factor': 32 } for cpu in cores)
     )
 
     cores = list(util.combine_named(cores,

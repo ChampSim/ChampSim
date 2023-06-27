@@ -11,6 +11,10 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     do_nothing_MRC mock_ll;
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
       .name("421a-uut")
+      .sets(64)
+      .mshr_size(1)
+      .tag_bandwidth(1)
+      .fill_bandwidth(1)
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
@@ -34,7 +38,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
       }
 
       THEN("The packet is forwarded and an MSHR is created") {
-        REQUIRE(std::size(uut.MSHR) == 1);
+        REQUIRE(uut.get_mshr_occupancy() == 1);
         REQUIRE(mock_ll.packet_count() == 1);
       }
     }
@@ -49,6 +53,10 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     do_nothing_MRC mock_ll;
     CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
       .name("421b-uut")
+      .sets(64)
+      .mshr_size(1)
+      .tag_bandwidth(1)
+      .fill_bandwidth(1)
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)

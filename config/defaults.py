@@ -29,80 +29,35 @@ def cache_core_defaults(cpu):
 def ptw_core_defaults(cpu):
     yield { 'name': cpu.get('PTW'), 'lower_level': cpu.get('L1D') }
 
-def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32, bandwidth_factor=0.5):
-    return {
-        'sets': set_factor*len(uls),
-        'rq_size': math.ceil(bandwidth_factor*queue_factor*len(uls)),
-        'wq_size': math.ceil(bandwidth_factor*queue_factor*len(uls)),
-        'pq_size': math.ceil(bandwidth_factor*queue_factor*len(uls)),
-        'mshr_size': mshr_factor*len(uls),
-        'max_tag_check': math.ceil(bandwidth_factor*len(uls)),
-        'max_fill': math.ceil(bandwidth_factor*len(uls))
-    }
-
-def defaulter(cores, cache_list, factor_list, key):
-    head = functools.partial(util.upper_levels_for, cores, key=key)
-    tail = functools.partial(util.upper_levels_for, cache_list)
-
-    def produce(name, ulf=None, factor=None):
-        return { 'name': name, **ul_dependent_defaults(*ulf(name), **factor) }
-
-    for upper_level_function, factor in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
-        yield functools.partial(produce, ulf=upper_level_function, factor=factor)
-
-def default_path(cores, caches, factor_list, member_list, name):
-    for element in (util.iter_system(caches, cpu[name]) for cpu in cores):
-        fixed_defaults = itertools.starmap(util.chain, itertools.zip_longest(({'_first_level': True},), member_list, fillvalue={}))
-        defaults = defaulter(cores, list(caches.values()), factor_list, name)
-        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, element, fixed_defaults))
-
 def l1i_path(cores, caches):
-    l1i_factors = (
-        { 'set_factor': 64, 'mshr_factor': 32, 'bandwidth_factor': 1 },
-        { 'set_factor': 512, 'mshr_factor': 32, 'bandwidth_factor': 0.5 },
-        { 'set_factor': 2048, 'mshr_factor': 64, 'bandwidth_factor': 1 }
-    )
     l1i_members = (
-        { '_is_instruction_cache': True, '_defaults': 'champsim::defaults::default_l1i' },
-        { '_defaults': 'champsim::defaults::default_l2c' },
-        { '_defaults': 'champsim::defaults::default_llc' }
+        { '_first_level': True, '_is_instruction_cache': True, '_defaults': 'champsim::defaults::default_l1i', '_queue_factor': 32 },
+        { '_defaults': 'champsim::defaults::default_l2c', '_queue_factor': 16 },
+        { '_defaults': 'champsim::defaults::default_llc', '_queue_factor': 32 }
     )
-    yield from default_path(cores, caches, l1i_factors, l1i_members, 'L1I')
+    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['L1I']), l1i_members) for cpu in cores))
 
 def l1d_path(cores, caches):
-    l1d_factors = (
-        { 'set_factor': 64, 'mshr_factor': 32, 'bandwidth_factor': 1 },
-        { 'set_factor': 512, 'mshr_factor': 32, 'bandwidth_factor': 0.5 },
-        { 'set_factor': 2048, 'mshr_factor': 64, 'bandwidth_factor': 1 }
-    )
     l1d_members = (
-        { '_defaults': 'champsim::defaults::default_l1d' },
-        { '_defaults': 'champsim::defaults::default_l2c' },
-        { '_defaults': 'champsim::defaults::default_llc' }
+        { '_first_level': True, '_defaults': 'champsim::defaults::default_l1d', '_queue_factor': 32 },
+        { '_defaults': 'champsim::defaults::default_l2c', '_queue_factor': 16 },
+        { '_defaults': 'champsim::defaults::default_llc', '_queue_factor': 32 }
     )
-    yield from default_path(cores, caches, l1d_factors, l1d_members, 'L1D')
+    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['L1D']), l1d_members) for cpu in cores))
 
 def itlb_path(cores, caches):
-    itlb_factors = (
-        { 'set_factor': 16, 'queue_factor': 16, 'mshr_factor': 8, 'bandwidth_factor': 1 },
-        { 'set_factor': 64, 'mshr_factor': 8, 'bandwidth_factor': 0.5 }
-    )
     itlb_members = (
-        { '_defaults': 'champsim::defaults::default_itlb' },
-        { '_defaults': 'champsim::defaults::default_stlb' }
+        { '_first_level': True, '_defaults': 'champsim::defaults::default_itlb', '_queue_factor': 16 },
+        { '_defaults': 'champsim::defaults::default_stlb', '_queue_factor': 16 }
     )
-    yield from default_path(cores, caches, itlb_factors, itlb_members, 'ITLB')
+    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['ITLB']), itlb_members) for cpu in cores))
 
 def dtlb_path(cores, caches):
-    dtlb_factors = (
-        { 'set_factor': 16, 'queue_factor': 16, 'mshr_factor': 8, 'bandwidth_factor': 1 },
-        { 'set_factor': 64, 'mshr_factor': 8, 'bandwidth_factor': 0.5 }
-    )
     dtlb_members = (
-        { '_defaults': 'champsim::defaults::default_dtlb' },
-        { '_defaults': 'champsim::defaults::default_stlb' }
+        { '_first_level': True, '_defaults': 'champsim::defaults::default_dtlb', '_queue_factor': 16 },
+        { '_defaults': 'champsim::defaults::default_stlb', '_queue_factor': 16 }
     )
-    yield from default_path(cores, caches, dtlb_factors, dtlb_members, 'DTLB')
+    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['DTLB']), dtlb_members) for cpu in cores))
 
 def list_defaults(cores, caches):
     yield from l1i_path(cores, caches)

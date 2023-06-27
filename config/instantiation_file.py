@@ -74,13 +74,6 @@ cache_builder_parts = {
     'lower_translate': '.lower_translate(&{name}_to_{lower_translate}_channel)'
 }
 
-default_ptw_queue = {
-                'wq_size':0,
-                'pq_size':0,
-                '_offset_bits':'champsim::lg2(PAGE_SIZE)',
-                '_queue_check_full_addr':False
-        }
-
 def vector_string(iterable):
     ''' Produce a string that avoids a warning on clang under -Wbraced-scalar-init if there is only one member '''
     hoisted = list(iterable)
@@ -179,6 +172,24 @@ def get_ref_vector_function(rtype, func_name, elements):
     yield '}'
     yield ''
 
+def cache_queue_defaults(cache):
+    return {
+        'rq_size': cache.get('rq_size', cache['_queue_factor']),
+        'wq_size': cache.get('wq_size', cache['_queue_factor']),
+        'pq_size': cache.get('pq_size', cache['_queue_factor']),
+        '_offset_bits': cache['_offset_bits'],
+        '_queue_check_full_addr': cache['_queue_check_full_addr']
+    }
+
+def ptw_queue_defaults(ptw):
+    return {
+        'rq_size': ptw.get('rq_size', ptw['_queue_factor']),
+        'wq_size': 0,
+        'pq_size': 0,
+        '_offset_bits': 'champsim::lg2(PAGE_SIZE)',
+        '_queue_check_full_addr': False
+    }
+
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_level_pairs = tuple(itertools.chain(
         ((elem['lower_level'], elem['name']) for elem in ptws),
@@ -193,8 +204,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     subdict_keys = ('rq_size', 'pq_size', 'wq_size', '_offset_bits', '_queue_check_full_addr')
     upper_levels = util.chain(upper_levels,
-            *({c['name']: util.subdict(c, subdict_keys)} for c in caches),
-            *({p['name']: util.chain(default_ptw_queue, util.subdict(p, subdict_keys))} for p in ptws),
+            *({c['name']: cache_queue_defaults(c)} for c in caches),
+            *({p['name']: ptw_queue_defaults(p)} for p in ptws),
             {pmem['name']: {
                     'rq_size':'std::numeric_limits<std::size_t>::max()',
                     'wq_size':'std::numeric_limits<std::size_t>::max()',

@@ -30,6 +30,10 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     };
     CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
       .name("432a-upper")
+      .sets(64)
+      .mshr_size(1)
+      .tag_bandwidth(1)
+      .fill_bandwidth(1)
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
