@@ -9,7 +9,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("421a-uut")
       .sets(64)
       .mshr_size(1)
@@ -51,7 +51,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     constexpr uint64_t hit_latency = 1;
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("421b-uut")
       .sets(64)
       .mshr_size(1)
@@ -93,7 +93,7 @@ SCENARIO("A prefetch fill the first level") {
     constexpr uint64_t fill_latency = 10;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ut;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("421c-uut")
       .upper_levels({&mock_ut.queues})
       .lower_level(&mock_ll.queues)
@@ -152,14 +152,14 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     to_rq_MRP mock_ul;
     to_rq_MRP mock_ut;
 
-    CACHE uul{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uul{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("421d-uul")
       .upper_levels({{&mock_ul.queues, &uul_queues}})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
     };
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("421d-uut")
       .upper_levels({&mock_ut.queues})
       .lower_level(&uul_queues)

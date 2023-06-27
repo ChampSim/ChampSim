@@ -23,7 +23,7 @@
 
 namespace champsim::defaults
 {
-const auto default_core = O3_CPU::Builder{}
+const auto default_core = champsim::core_builder{}
                               .dib_set(32)
                               .dib_way(8)
                               .dib_window(16)
@@ -54,7 +54,7 @@ const auto default_core = O3_CPU::Builder{}
                               .branch_predictor<O3_CPU::bbranchDbimodal>()
                               .btb<O3_CPU::tbtbDbasic_btb>();
 
-const auto default_l1i = CACHE::Builder{}
+const auto default_l1i = champsim::cache_builder{}
                              .sets_factor(64)
                              .ways(8)
                              .pq_size(32)
@@ -73,7 +73,7 @@ const auto default_l1i = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno_instr>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_l1d = CACHE::Builder{}
+const auto default_l1d = champsim::cache_builder{}
                              .sets_factor(64)
                              .ways(12)
                              .pq_size(8)
@@ -89,7 +89,7 @@ const auto default_l1d = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_l2c = CACHE::Builder{}
+const auto default_l2c = champsim::cache_builder{}
                              .sets_factor(512)
                              .ways(8)
                              .pq_size(16)
@@ -105,7 +105,7 @@ const auto default_l2c = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_itlb = CACHE::Builder{}
+const auto default_itlb = champsim::cache_builder{}
                               .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
@@ -121,7 +121,7 @@ const auto default_itlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_dtlb = CACHE::Builder{}
+const auto default_dtlb = champsim::cache_builder{}
                               .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
@@ -137,7 +137,7 @@ const auto default_dtlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_stlb = CACHE::Builder{}
+const auto default_stlb = champsim::cache_builder{}
                               .sets_factor(64)
                               .ways(12)
                               .pq_size(0)
@@ -153,7 +153,7 @@ const auto default_stlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_llc = CACHE::Builder{}
+const auto default_llc = champsim::cache_builder{}
                              .name("LLC")
                              .sets_factor(2048)
                              .ways(16)
@@ -170,7 +170,7 @@ const auto default_llc = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_ptw = PageTableWalker::Builder{}.bandwidth_factor(2).mshr_factor(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8);
+const auto default_ptw = champsim::ptw_builder{}.bandwidth_factor(2).mshr_factor(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8);
 } // namespace champsim::defaults
 
 #endif

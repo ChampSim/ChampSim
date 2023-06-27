@@ -217,7 +217,7 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     # Follow paths and apply default sizings
     caches = util.combine_named(
         caches.values(),
-        defaults.list_defaults(cores, caches),
+        *(defaults.list_defaults(cpu, caches) for cpu in cores),
         default_frequencies(cores, caches)
     )
 

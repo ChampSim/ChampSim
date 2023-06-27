@@ -8,7 +8,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -57,7 +57,7 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

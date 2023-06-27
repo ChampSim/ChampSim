@@ -239,10 +239,12 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
-  using Builder = champsim::core_builder<B_FLAG, T_FLAG>;
+  struct Builder : public champsim::core_builder<B_FLAG, T_FLAG> {
+    using champsim::core_builder<B_FLAG, T_FLAG>::core_builder;
+  };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
-  explicit O3_CPU(Builder<B_FLAG, T_FLAG> b)
+  explicit O3_CPU(champsim::core_builder<B_FLAG, T_FLAG> b)
       : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),

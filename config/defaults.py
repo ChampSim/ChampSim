@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
-import functools
-import math
-
 from . import util
 
 def cache_core_defaults(cpu):
+    ''' Generate the lower levels that a default core would expect for each of its caches '''
     yield { 'name': cpu.get('L1I'), 'lower_level': cpu.get('L2C') }
     yield { 'name': cpu.get('L1D'), 'lower_level': cpu.get('L2C') }
     yield { 'name': cpu.get('ITLB'), 'lower_level': cpu.get('STLB') }
@@ -27,49 +24,42 @@ def cache_core_defaults(cpu):
     yield { 'name': cpu.get('STLB'), 'lower_level': cpu.get('PTW') }
 
 def ptw_core_defaults(cpu):
+    ''' Generate the lower levels that a default core would expect for each of its PTWs '''
     yield { 'name': cpu.get('PTW'), 'lower_level': cpu.get('L1D') }
 
-def l1i_path(cores, caches):
+def list_defaults(cpu, caches):
+    ''' Generate the down-path defaults that a default core would expect '''
     l1i_members = (
-        { '_first_level': True, '_is_instruction_cache': True, '_defaults': 'champsim::defaults::default_l1i', '_queue_factor': 32 },
+        { '_first_level': True, '_is_instruction_cache': True,
+         '_defaults': 'champsim::defaults::default_l1i', '_queue_factor': 32 },
         { '_defaults': 'champsim::defaults::default_l2c', '_queue_factor': 16 },
         { '_defaults': 'champsim::defaults::default_llc', '_queue_factor': 32 }
     )
-    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['L1I']), l1i_members) for cpu in cores))
+    yield from map(util.chain, util.iter_system(caches, cpu['L1I']), l1i_members)
 
-def l1d_path(cores, caches):
     l1d_members = (
         { '_first_level': True, '_defaults': 'champsim::defaults::default_l1d', '_queue_factor': 32 },
         { '_defaults': 'champsim::defaults::default_l2c', '_queue_factor': 16 },
         { '_defaults': 'champsim::defaults::default_llc', '_queue_factor': 32 }
     )
-    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['L1D']), l1d_members) for cpu in cores))
+    yield from map(util.chain, util.iter_system(caches, cpu['L1D']), l1d_members)
 
-def itlb_path(cores, caches):
     itlb_members = (
         { '_first_level': True, '_defaults': 'champsim::defaults::default_itlb', '_queue_factor': 16 },
         { '_defaults': 'champsim::defaults::default_stlb', '_queue_factor': 16 }
     )
-    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['ITLB']), itlb_members) for cpu in cores))
+    yield from map(util.chain, util.iter_system(caches, cpu['ITLB']), itlb_members)
 
-def dtlb_path(cores, caches):
     dtlb_members = (
         { '_first_level': True, '_defaults': 'champsim::defaults::default_dtlb', '_queue_factor': 16 },
         { '_defaults': 'champsim::defaults::default_stlb', '_queue_factor': 16 }
     )
-    yield from itertools.chain(*(map(util.chain, util.iter_system(caches, cpu['DTLB']), dtlb_members) for cpu in cores))
+    yield from map(util.chain, util.iter_system(caches, cpu['DTLB']), dtlb_members)
 
-def list_defaults(cores, caches):
-    yield from l1i_path(cores, caches)
-    yield from l1d_path(cores, caches)
-    yield from itlb_path(cores, caches)
-    yield from dtlb_path(cores, caches)
+    icache_path = util.iter_system(caches, cpu['L1I'])
+    dcache_path = util.iter_system(caches, cpu['L1D'])
+    itransl_path = util.iter_system(caches, cpu['ITLB'])
+    dtransl_path = util.iter_system(caches, cpu['DTLB'])
 
-    for cpu in cores:
-        icache_path = util.iter_system(caches, cpu['L1I'])
-        dcache_path = util.iter_system(caches, cpu['L1D'])
-        itransl_path = util.iter_system(caches, cpu['ITLB'])
-        dtransl_path = util.iter_system(caches, cpu['DTLB'])
-
-        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(icache_path, itransl_path))
-        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(dcache_path, dtransl_path))
+    yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(icache_path, itransl_path))
+    yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(dcache_path, dtransl_path))

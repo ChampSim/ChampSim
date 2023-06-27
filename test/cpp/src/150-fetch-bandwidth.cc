@@ -12,7 +12,7 @@ SCENARIO("The fetch bandwidth limits the number of packets issued each cycle") {
 
     do_nothing_MRC mock_L1I;
     do_nothing_MRC mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
       .l1i_bandwidth(bandwidth)

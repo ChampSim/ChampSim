@@ -8,8 +8,8 @@
 
 TEST_CASE("The sets factor uses the number of upper levels to determine the cache's default number of sets") {
   auto num_uls = GENERATE(1u,2u,4u,6u);
-  constexpr int sets_factor = 2;
-  CACHE::Builder buildA{};
+  auto sets_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -23,9 +23,9 @@ TEST_CASE("The sets factor uses the number of upper levels to determine the cach
 }
 
 TEST_CASE("The sets factor can control the cache's default number of sets") {
-  std::size_t num_uls = 2;
-  auto sets_factor = GENERATE(1,2,4,6);
-  CACHE::Builder buildA{};
+  auto num_uls = 2u;
+  auto sets_factor = GENERATE(1u,2u,4u,6u);
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -39,9 +39,9 @@ TEST_CASE("The sets factor can control the cache's default number of sets") {
 }
 
 TEST_CASE("Specifying the sets overrides the cache's sets factor") {
-  std::size_t num_uls = 2;
-  auto sets_factor = 2;
-  CACHE::Builder buildA{};
+  auto num_uls = 2u;
+  auto sets_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -58,8 +58,8 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
 
 TEST_CASE("The MSHR factor uses the number of upper levels to determine the cache's default number of MSHRs") {
   auto num_uls = GENERATE(1u,2u,4u,6u);
-  constexpr int mshr_factor = 2;
-  CACHE::Builder buildA{};
+  auto mshr_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -73,9 +73,9 @@ TEST_CASE("The MSHR factor uses the number of upper levels to determine the cach
 }
 
 TEST_CASE("The MSHR factor can control the cache's default number of MSHRs") {
-  std::size_t num_uls = 2;
-  auto mshr_factor = GENERATE(1,2,4,6);
-  CACHE::Builder buildA{};
+  auto num_uls = 2u;
+  auto mshr_factor = GENERATE(1u,2u,4u,6u);
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -89,9 +89,9 @@ TEST_CASE("The MSHR factor can control the cache's default number of MSHRs") {
 }
 
 TEST_CASE("Specifying the MSHR size overrides the MSHR factor") {
-  std::size_t num_uls = 2;
-  auto mshr_factor = 2;
-  CACHE::Builder buildA{};
+  auto num_uls = 2u;
+  auto mshr_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -108,8 +108,8 @@ TEST_CASE("Specifying the MSHR size overrides the MSHR factor") {
 
 TEST_CASE("The bandwidth factor uses the number of upper levels to determine the cache's default tag and fill bandwidth") {
   auto num_uls = GENERATE(1u,2u,4u,6u);
-  auto bandwidth_factor = 2;
-  CACHE::Builder buildA{};
+  auto bandwidth_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -125,8 +125,8 @@ TEST_CASE("The bandwidth factor uses the number of upper levels to determine the
 
 TEST_CASE("The bandwidth factor can control the cache's default tag bandwidth") {
   auto num_uls = 2u;
-  auto bandwidth_factor = GENERATE(1,2,4,6);
-  CACHE::Builder buildA{};
+  auto bandwidth_factor = GENERATE(1u,2u,4u,6u);
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -142,8 +142,8 @@ TEST_CASE("The bandwidth factor can control the cache's default tag bandwidth") 
 
 TEST_CASE("Specifying the tag bandwidth overrides the bandwidth factor") {
   auto num_uls = 2u;
-  auto bandwidth_factor = 2;
-  CACHE::Builder buildA{};
+  auto bandwidth_factor = 2u;
+  champsim::cache_builder buildA{};
   std::vector<champsim::channel> channels{num_uls};
   std::vector<champsim::channel*> channel_pointers{};
   for (auto& elem: channels)
@@ -162,7 +162,7 @@ TEST_CASE("Specifying the tag bandwidth overrides the bandwidth factor") {
 
 TEST_CASE("If the hit latency is not specified, it is derived from the total latency") {
   auto latency = GENERATE(2u,4u,6u,10u);
-  CACHE::Builder buildA{};
+  champsim::cache_builder buildA{};
   buildA.latency(latency);
 
   CACHE uut{buildA};
@@ -171,7 +171,7 @@ TEST_CASE("If the hit latency is not specified, it is derived from the total lat
 }
 
 TEST_CASE("The hit latency overrides the cache's total latency") {
-  CACHE::Builder buildA{};
+  champsim::cache_builder buildA{};
   buildA.hit_latency(2);
   buildA.fill_latency(2);
   buildA.latency(10);

@@ -291,10 +291,7 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-  using Builder = champsim::cache_builder<P_FLAG, R_FLAG>;
-
-  template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-  explicit CACHE(Builder<P_FLAG, R_FLAG> b)
+  explicit CACHE(champsim::cache_builder<P_FLAG, R_FLAG> b)
       : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
         NUM_SET(b.m_sets.value_or(std::lround(b.m_sets_factor * std::floor(std::size(upper_levels))))), NUM_WAY(b.m_ways),
         MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))), PQ_SIZE(b.m_pq_size),

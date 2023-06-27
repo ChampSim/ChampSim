@@ -26,11 +26,11 @@
 #include "util/span.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(Builder b)
+PageTableWalker::PageTableWalker(champsim::ptw_builder b)
     : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name),
-      MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::size(upper_levels)))),
-      MAX_READ(b.m_max_tag_check.value_or(b.m_bandwidth_factor * std::size(upper_levels))),
-      MAX_FILL(b.m_max_fill.value_or(b.m_bandwidth_factor * std::size(upper_levels))), HIT_LATENCY(b.m_latency), vmem(b.m_vmem),
+      MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
+      MAX_READ(b.m_max_tag_check.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))),
+      MAX_FILL(b.m_max_fill.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))), HIT_LATENCY(b.m_latency), vmem(b.m_vmem),
       CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
   std::vector<std::array<uint32_t, 3>> local_pscl_dims{};

@@ -130,21 +130,21 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
 
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    dir_varnames, obj_varnames = yield from make_all_parts(
+    ragged_dir_varnames, ragged_obj_varnames = yield from make_all_parts(
         (source_dirs, os.path.join(objdir, 'obj'), build_id),
         *(((mod_info['fname'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
     )
 
-    for var, name in zip(obj_varnames[1:], module_info.keys()):
-        yield from dependency(' '.join(map(dereference, var)), os.path.join(objdir, 'inc', name, 'config.options'))
-
     # Flatten varnames
-    dir_varnames, obj_varnames = list(itertools.chain(*dir_varnames)), list(itertools.chain(*obj_varnames))
+    dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
 
     options_fname = os.path.join(objdir, 'inc', 'config.options')
     global_options_fname = os.path.join(champsim_root, 'global.options')
 
-    yield from dependency(' '.join(map(dereference, obj_varnames)), global_options_fname, options_fname)
+    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
+    for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
+        yield from dependency(' '.join(map(dereference, var)), os.path.join(objdir, 'inc', name, 'config.options'))
+
     yield from dependency(os.path.abspath(executable), *map(dereference, obj_varnames))
     yield from order_dependency(os.path.abspath(executable), os.path.abspath(os.path.dirname(executable)))
     yield from append_variable('executable_name', os.path.abspath(executable))

@@ -87,9 +87,7 @@ public:
 
   const uint64_t CR3_addr;
 
-  using Builder = champsim::ptw_builder;
-
-  explicit PageTableWalker(Builder builder);
+  explicit PageTableWalker(champsim::ptw_builder builder);
 
   void operate() final;
 

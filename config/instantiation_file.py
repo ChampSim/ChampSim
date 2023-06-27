@@ -82,7 +82,7 @@ def vector_string(iterable):
     return '{'+', '.join(hoisted)+'}'
 
 def get_cpu_builder(cpu):
-    yield f'O3_CPU {cpu["name"]}{{O3_CPU::Builder{{ champsim::defaults::default_core }}'
+    yield f'O3_CPU {cpu["name"]}{{champsim::core_builder{{ champsim::defaults::default_core }}'
 
     required_parts = [
         '.index({_index})',
@@ -110,7 +110,7 @@ def get_cpu_builder(cpu):
     yield ''
 
 def get_cache_builder(elem, upper_levels):
-    yield f'CACHE {elem["name"]}{{CACHE::Builder{{ {elem.get("_defaults", "")} }}'
+    yield f'CACHE {elem["name"]}{{champsim::cache_builder{{ {elem.get("_defaults", "")} }}'
     yield f'.name("{elem["name"]}")'
 
     local_cache_builder_parts = {
@@ -138,7 +138,7 @@ def get_cache_builder(elem, upper_levels):
     yield ''
 
 def get_ptw_builder(ptw, upper_levels):
-    yield f'PageTableWalker {ptw["name"]}{{PageTableWalker::Builder{{champsim::defaults::default_ptw}}'
+    yield f'PageTableWalker {ptw["name"]}{{champsim::ptw_builder{{champsim::defaults::default_ptw}}'
     yield f'.name("{ptw["name"]}")'
     yield f'.cpu({ptw["cpu"]})'
     yield '.virtual_memory(&vmem)'
@@ -202,7 +202,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_level_pairs = itertools.groupby(upper_level_pairs, key=operator.itemgetter(0))
     upper_levels = {k: {'upper_channels': tuple(f'{x[1]}_to_{k}_channel' for x in v)} for k,v in upper_level_pairs}
 
-    subdict_keys = ('rq_size', 'pq_size', 'wq_size', '_offset_bits', '_queue_check_full_addr')
     upper_levels = util.chain(upper_levels,
             *({c['name']: cache_queue_defaults(c)} for c in caches),
             *({p['name']: ptw_queue_defaults(p)} for p in ptws),
