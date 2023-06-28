@@ -214,13 +214,6 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
     # Remove caches that are inaccessible
     caches = filter_inaccessible(caches, (*l1i_path_names, *l1d_path_names, *itlb_path_names, *dtlb_path_names))
 
-    # Follow paths and apply default sizings
-    caches = util.combine_named(
-        caches.values(),
-        *(defaults.list_defaults(cpu, caches) for cpu in cores),
-        default_frequencies(cores, caches)
-    )
-
     tlb_path = itertools.chain(*(util.iter_system(caches, name) for name in (*itlb_path_names, *dtlb_path_names)))
     data_path = itertools.chain(*(util.iter_system(caches, name) for name in (*l1i_path_names, *l1d_path_names)))
     caches = util.combine_named(
@@ -238,6 +231,12 @@ def parse_normalized(cores, caches, ptws, pmem, vmem, merged_configs, branch_con
         ## DEPRECATION
         # The listed keys are deprecated. For now, permit them but print a warning
         (do_deprecation(cache, cache_deprecation_keys) for cache in caches.values()),
+
+        # Follow paths and apply default sizings
+        defaults.list_defaults(cores, caches),
+
+        # Pass frequencies on to lower levels
+        default_frequencies(cores, caches)
 
         # The end of the data path is the physical memory
         *((

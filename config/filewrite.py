@@ -96,7 +96,41 @@ def generate_build_information(inc_dir, config_flags):
 
     yield fname, itertools.chain((f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}'), config_flags)
 
+def get_file_lines(parsed_config, bindir_name, srcdir_names, objdir_name):
+    '''
+    Examines the given config and prepares to write the needed files.
+
+    :param parsed_config: the result of parsing a configuration file
+    :param bindir_name: the directory in which to place the binaries
+    :param srcdir_name: the directory to search for source files
+    :param objdir_name: the directory to place object files
+    '''
+    build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
+
+    executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
+
+    unique_obj_dir = os.path.join(objdir_name, build_id)
+    inc_dir = os.path.join(unique_obj_dir, 'inc')
+
+    # Instantiation file
+    yield os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)
+
+    # Constants header
+    yield os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])
+
+    # Module name mangling
+    yield from generate_module_information(inc_dir, module_info)
+
+    # Build-level compile flags
+    yield from generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values())
+
+    # Makefile generation
+    joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
+    executable = os.path.join(bindir_name, executable_basename)
+    yield makefile_file_name, get_makefile_lines(unique_obj_dir, build_id, executable, srcdir_names, joined_module_info)
+
 class FileWriter:
+    ''' This class maintains the state of one or more configurations to be written '''
     def __init__(self, bindir_name=None, objdir_name=None):
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
@@ -111,43 +145,12 @@ class FileWriter:
         return self
 
     def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
-        '''
-        Examines the given config and prepares to write the needed files.
-
-        :param parsed_config: the result of parsing a configuration file
-        :param bindir_name: the directory in which to place the binaries
-        :param srcdir_name: the directory to search for source files
-        :param objdir_name: the directory to place object files
-        '''
-        build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
-
+        ''' Apply defaults to get_file_lines() '''
         local_bindir_name = bindir_name or self.bindir_name
         local_srcdir_names = (*(srcdir_names or []), self.core_sources)
-        local_objdir_name = os.path.abspath(os.path.join(objdir_name or self.objdir_name, build_id))
+        local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        inc_dir = os.path.join(local_objdir_name, 'inc')
-
-        executable, elements, modules_to_compile, module_info, config_file, env = parsed_config
-
-        joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        makefile_lines = get_makefile_lines(local_objdir_name, build_id, os.path.join(local_bindir_name, executable), local_srcdir_names, joined_module_info)
-
-        self.fileparts.extend((
-            # Instantiation file
-            (os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)),
-
-            # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])),
-
-            # Module name mangling
-            *generate_module_information(inc_dir, module_info),
-
-            # Build-level compile flags
-            *generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values()),
-
-            # Makefile generation
-            (makefile_file_name, makefile_lines)
-        ))
+        self.fileparts.extend(get_file_lines(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name))
 
     def finish(self):
         ''' Write out all prepared files '''
