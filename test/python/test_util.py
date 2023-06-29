@@ -118,3 +118,36 @@ class PropogateDownTests(unittest.TestCase):
         path = [{ 'test': 1 }, {}, { 'test': 2 }, {}, {}]
         expected_result = [{ 'test': 1 }, { 'test': 1 }, { 'test': 2 }, { 'test': 2 }, { 'test': 2 }]
         self.assertEqual(list(config.util.propogate_down(path, 'test')), expected_result)
+
+class AppendExceptLastTests(unittest.TestCase):
+    def test_empty_does_not_append(self):
+        testval = []
+        result = list(config.util.append_except_last(testval, 'a'))
+        self.assertEqual(result, testval)
+
+    def test_length_one_does_not_append(self):
+        testval = ['teststring']
+        result = list(config.util.append_except_last(testval, 'a'))
+        self.assertEqual(result, testval)
+
+    def test_longer_length_appends(self):
+        for length in (2,4,8,16):
+            with self.subTest(length=length):
+                testval = ['teststring'] * length
+                result = list(config.util.append_except_last(testval, 'a'))
+                expected = ['teststringa'] * (length-1) + ['teststring']
+                self.assertEqual(result, expected)
+
+class DoForFirstTests(unittest.TestCase):
+    def test_empty_does_not_transform(self):
+        testval = []
+        result = list(config.util.do_for_first(lambda x: 'ABC', testval))
+        self.assertEqual(result, [])
+
+    def test_first_transforms(self):
+        for length in (1,2,4,8,16):
+            with self.subTest(length=length):
+                testval = ['teststring'] * length
+                result = list(config.util.do_for_first(lambda x: 'ABC', testval))
+                expected = ['ABC'] + ['teststring'] * (length-1)
+                self.assertEqual(result, expected)

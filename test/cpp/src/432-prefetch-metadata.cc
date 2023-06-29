@@ -20,7 +20,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     champsim::channel lower_queues{};
-    CACHE lower{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE lower{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432a-lower")
       .upper_levels({&lower_queues})
       .lower_level(&mock_ll.queues)
@@ -28,8 +28,12 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       .fill_latency(fill_latency)
       .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_collector>()
     };
-    CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE upper{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432a-upper")
+      .sets(64)
+      .mshr_size(1)
+      .tag_bandwidth(1)
+      .fill_bandwidth(1)
       .lower_level(&lower_queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
@@ -72,7 +76,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     champsim::channel lower_queues{};
     to_rq_MRP mock_ul;
 
-    CACHE lower{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE lower{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432b-lower")
       .upper_levels({&lower_queues})
       .lower_level(&mock_ll.queues)
@@ -81,7 +85,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
       .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDmetadata_emitter>()
     };
 
-    CACHE upper{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE upper{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("432b-upper")
       .upper_levels({&mock_ul.queues})
       .lower_level(&lower_queues)

@@ -15,7 +15,7 @@ namespace test
 SCENARIO("A prefetch does not trigger itself") {
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("423a-uut")
       .lower_level(&mock_ll.queues)
       .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDaddress_collector>()
@@ -58,7 +58,7 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("423b-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -117,7 +117,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
 
-    CACHE::Builder builder = CACHE::Builder{champsim::defaults::default_l1d}
+    auto builder = champsim::cache_builder{champsim::defaults::default_l1d}
       .name("423c-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

@@ -13,7 +13,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
   GIVEN("An empty cache") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("404-uut-m")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -83,7 +83,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll{20};
     to_wq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("404-uut-w")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

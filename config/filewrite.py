@@ -65,11 +65,6 @@ def write_if_different(fname, new_file_string):
         with open(fname, 'wt') as wfp:
             wfp.write(new_file_string)
 
-def generate_module_funcmap(mod):
-    ''' Produce the preprocessor name mangling for a particular module '''
-    full_funcmap = util.chain(mod['func_map'], mod.get('deprecated_func_map', {}))
-    return mod['name'] + '.inc', (f'#define {k} {v}' for k,v in full_funcmap.items())
-
 def generate_module_information(containing_dir, module_info):
     ''' Generates all of the include-files with module information '''
     # Core modules file
@@ -83,10 +78,59 @@ def generate_module_information(containing_dir, module_info):
     yield os.path.join(containing_dir, 'cache_module_decl.inc'), cache_declarations
     yield os.path.join(containing_dir, 'cache_module_def.inc'), cache_definitions
 
-    inc_files = map(generate_module_funcmap, util.chain(*module_info.values()).values())
-    yield from ((os.path.join(containing_dir, name), lines) for name, lines in inc_files)
+    joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
+    for k,v in joined_info_items:
+        fname = os.path.join(containing_dir, k, 'config.options')
+        yield fname, modules.get_module_opts_lines(v)
+
+def generate_build_information(inc_dir, config_flags):
+    ''' Generates all of the build-level include-files module '''
+    fname = os.path.join(inc_dir, 'config.options')
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    global_inc_dir = os.path.join(champsim_root, 'inc')
+
+    vcpkg_dir = os.path.join(champsim_root, 'vcpkg_installed')
+    vcpkg_triplet = next(filter(lambda triplet: triplet != 'vcpkg', os.listdir(vcpkg_dir)), None)
+    vcpkg_inc_dir = os.path.join(vcpkg_dir, vcpkg_triplet, 'include')
+
+    yield fname, itertools.chain((f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}'), config_flags)
+
+def get_file_lines(parsed_config, bindir_name, srcdir_names, objdir_name):
+    '''
+    Examines the given config and prepares to write the needed files.
+
+    :param parsed_config: the result of parsing a configuration file
+    :param bindir_name: the directory in which to place the binaries
+    :param srcdir_name: the directory to search for source files
+    :param objdir_name: the directory to place object files
+    '''
+    build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
+
+    executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
+
+    unique_obj_dir = os.path.join(objdir_name, build_id)
+    inc_dir = os.path.join(unique_obj_dir, 'inc')
+
+    # Instantiation file
+    yield os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)
+
+    # Constants header
+    yield os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])
+
+    # Module name mangling
+    yield from generate_module_information(inc_dir, module_info)
+
+    # Build-level compile flags
+    yield from generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values())
+
+    # Makefile generation
+    joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
+    executable = os.path.join(bindir_name, executable_basename)
+    yield makefile_file_name, get_makefile_lines(unique_obj_dir, build_id, executable, srcdir_names, joined_module_info)
 
 class FileWriter:
+    ''' This class maintains the state of one or more configurations to be written '''
     def __init__(self, bindir_name=None, objdir_name=None):
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
@@ -101,36 +145,12 @@ class FileWriter:
         return self
 
     def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
-        '''
-        Examines the given config and prepares to write the needed files.
-
-        :param parsed_config: the result of parsing a configuration file
-        :param bindir_name: the directory in which to place the binaries
-        :param srcdir_name: the directory to search for source files
-        :param objdir_name: the directory to place object files
-        '''
+        ''' Apply defaults to get_file_lines() '''
         local_bindir_name = bindir_name or self.bindir_name
         local_srcdir_names = (*(srcdir_names or []), self.core_sources)
-        local_objdir_name = objdir_name or self.objdir_name
+        local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        build_id = hashlib.shake_128(json.dumps(parsed_config).encode('utf-8')).hexdigest(4)
-
-        inc_dir = os.path.join(os.path.abspath(local_objdir_name), build_id, 'inc')
-
-        executable, elements, modules_to_compile, module_info, config_file, env = parsed_config
-
-        # Instantiation file
-        self.fileparts.append((os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)))
-
-        # Constants header
-        self.fileparts.append((os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])))
-
-        # Module name mangling
-        self.fileparts.extend(generate_module_information(inc_dir, module_info))
-
-        joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
-        makefile_lines = get_makefile_lines(local_objdir_name, build_id, os.path.normpath(os.path.join(local_bindir_name, executable)), local_srcdir_names, joined_module_info, env)
-        self.fileparts.append((makefile_file_name, makefile_lines))
+        self.fileparts.extend(get_file_lines(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name))
 
     def finish(self):
         ''' Write out all prepared files '''
@@ -145,7 +165,7 @@ class FileWriter:
             elif os.path.splitext(fname)[1] in ('.mk',):
                 write_if_different(fname, '\n'.join((*make_generated_warning, *fcontents)))
             else:
-                write_if_different(fname, '\n'.join(*fcontents)) # no header
+                write_if_different(fname, '\n'.join(tuple(fcontents))) # no header
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:

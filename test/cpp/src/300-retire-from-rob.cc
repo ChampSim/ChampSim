@@ -8,7 +8,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -31,7 +31,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -68,7 +68,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 2;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -111,7 +111,7 @@ SCENARIO("Completed instructions are retired") {
   GIVEN("A ROB with twice as many instructions as retire bandwidth") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)

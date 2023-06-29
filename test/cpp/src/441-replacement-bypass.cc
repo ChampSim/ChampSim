@@ -19,7 +19,7 @@ SCENARIO("The replacement policy can bypass") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("441-uut")
       .sets(1)
       .ways(1)

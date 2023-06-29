@@ -12,7 +12,7 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
     filter_MRC mock_translator{address_that_will_hit};
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("413-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

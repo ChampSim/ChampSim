@@ -16,6 +16,7 @@
 
 #include "ptw.h"
 
+#include <cmath>
 #include <numeric>
 #include <fmt/core.h>
 
@@ -25,9 +26,12 @@
 #include "util/span.h"
 #include "vmem.h"
 
-PageTableWalker::PageTableWalker(Builder b)
-    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
-      MAX_FILL(b.m_max_fill), HIT_LATENCY(b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
+PageTableWalker::PageTableWalker(champsim::ptw_builder b)
+    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name),
+      MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
+      MAX_READ(b.m_max_tag_check.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))),
+      MAX_FILL(b.m_max_fill.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))), HIT_LATENCY(b.m_latency), vmem(b.m_vmem),
+      CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
   std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
@@ -176,8 +180,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address,
+                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level);
     }
   };
 
