@@ -95,6 +95,10 @@ class channel
     explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.instr_depend_on_me) {}
   };
 
+  struct invalidation_request {
+    uint64_t address;
+  };
+
   template <typename R>
   bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
 
@@ -107,10 +111,12 @@ class channel
 public:
   using response_type = response;
   using request_type = request;
+  using invalidation_request_type = invalidation_request;
   using stats_type = cache_queue_stats;
 
   std::deque<request_type> RQ{}, PQ{}, WQ{};
   std::deque<response_type> returned{};
+  std::deque<invalidation_request_type> invalidation_queue{};
 
   stats_type sim_stats{}, roi_stats{};
 

@@ -54,6 +54,11 @@ class do_nothing_MRC : public champsim::operable
     }
 
     std::size_t packet_count() const { return std::size(addresses); }
+
+    void invalidate(uint64_t inval_addr)
+    {
+      queues.invalidation_queue.push_back(champsim::channel::invalidation_request_type{inval_addr});
+    }
 };
 
 /*
