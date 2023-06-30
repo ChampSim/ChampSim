@@ -138,6 +138,22 @@ public:
   [[nodiscard]] std::size_t pq_size() const;
 
   void check_collision();
+
+  template <typename T>
+  static auto invalidator_for(T&& request)
+  {
+    return [req = invalidation_request_type{request}](channel* ul) {
+      ul->invalidation_queue.push_back(req);
+    };
+  }
+
+  template <typename T>
+  static auto returner_for(T&& request)
+  {
+    return [req = response_type{request}](channel* ul) {
+      ul->returned.push_back(req);
+    };
+  }
 };
 } // namespace champsim
 

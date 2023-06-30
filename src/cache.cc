@@ -31,14 +31,15 @@
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), clusivity(req.clusivity), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
+      type(req.type), clusivity(req.clusivity), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated),
+      instr_depend_on_me(req.instr_depend_on_me)
 {
 }
 
 CACHE::mshr_type::mshr_type(const tag_lookup_type& req, uint64_t cycle)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), clusivity(req.clusivity), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return),
-      inclusive_evict(req.inclusive_evict)
+      type(req.type), clusivity(req.clusivity), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me),
+      to_return(req.to_return), inclusive_evict(req.inclusive_evict)
 {
 }
 
@@ -46,6 +47,13 @@ CACHE::BLOCK::BLOCK(const mshr_type& mshr)
     : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data),
       inclusive_evict(mshr.inclusive_evict)
 {
+}
+
+auto CACHE::in_set_finder(uint64_t addr, unsigned offset)
+{
+  return [match = addr >> offset, shamt = offset](const auto& entry) {
+    return entry.valid && (entry.address >> shamt) == match;
+  };
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
@@ -59,9 +67,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     way = std::next(set_begin, impl_find_victim(fill_mshr.cpu, fill_mshr.instr_id, get_set_index(fill_mshr.address), &*set_begin, fill_mshr.ip,
                                                 fill_mshr.address, champsim::to_underlying(fill_mshr.type)));
   }
-  assert(set_begin <= way);
-  assert(way <= set_end);
-  assert(way != set_end || fill_mshr.type != access_type::WRITE);               // Writes may not bypass
+  assert(set_begin <= way && way <= set_end);
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
   if constexpr (champsim::debug_print) {
@@ -71,6 +77,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   const bool bypass = (way == set_end || fill_mshr.clusivity == champsim::inclusivity::exclusive);
+  assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
 
   if (!bypass && way->valid && way->dirty) {
     request_type writeback_packet;
@@ -88,17 +95,13 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     if (!success) {
       return false;
     }
-
-    for (auto* ret : way->inclusive_evict) {
-      ret->invalidation_queue.push_back(channel_type::invalidation_request_type{way->address});
-    }
   }
 
   auto address_bitmask = ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
   uint64_t evicting_address = 0;
   if (!bypass && way->valid) {
-    evicting_address = virtual_prefetch ? way->address : way->v_address;
+    evicting_address = virtual_prefetch ? way->v_address : way->address;
   }
 
   auto pkt_address = virtual_prefetch ? fill_mshr.v_address : fill_mshr.address;
@@ -116,6 +119,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       ++sim_stats.pf_fill;
     }
 
+    if (way->valid) {
+      std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(way->address));
+    }
+
     *way = BLOCK{fill_mshr};
     way->pf_metadata = metadata_thru;
   }
@@ -124,9 +131,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
-  for (auto* ret : fill_mshr.to_return) {
-    ret->returned.push_back(response);
-  }
+  std::for_each(std::begin(fill_mshr.to_return), std::end(fill_mshr.to_return), channel_type::returner_for(std::move(response)));
 
   return true;
 }
@@ -137,9 +142,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
-    return entry.valid && (entry.address >> shamt) == match;
-  });
+  auto way = std::find_if(set_begin, set_end, in_set_finder(handle_pkt.address, OFFSET_BITS));
   const auto hit = (way != set_end);
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
@@ -166,9 +169,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
                                   champsim::to_underlying(handle_pkt.type), 1U);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
-    for (auto* ret : handle_pkt.to_return) {
-      ret->returned.push_back(response);
-    }
+    std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
 
     way->dirty = (handle_pkt.type == access_type::WRITE);
 
@@ -427,17 +428,14 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
-                         return entry.valid && (entry.address >> shamt) == match;
-                       }));
+  return std::distance(begin, std::find_if(begin, end, in_set_finder(address, OFFSET_BITS)));
 }
 // LCOV_EXCL_STOP
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(
-      begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return entry.valid && (entry.address >> shamt) == match; });
+  auto inv_way = std::find_if(begin, end, in_set_finder(inval_addr, OFFSET_BITS));
 
   if (inv_way != end) {
     invalidate_entry(*inv_way);
@@ -453,8 +451,7 @@ void CACHE::invalidate_entry(BLOCK& inval_block)
                get_set_index(inval_block.address), current_cycle);
   }
 
-  for (auto* ul : upper_levels)
-    ul->invalidation_queue.push_back(champsim::channel::invalidation_request_type{inval_block.address});
+  std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_block.address));
 
   inval_block.valid = false;
 }
