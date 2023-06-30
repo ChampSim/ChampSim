@@ -31,18 +31,20 @@
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
+      type(req.type), clusivity(req.clusivity), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
 {
 }
 
 CACHE::mshr_type::mshr_type(const tag_lookup_type& req, uint64_t cycle)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+      type(req.type), clusivity(req.clusivity), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return),
+      inclusive_evict(req.inclusive_evict)
 {
 }
 
 CACHE::BLOCK::BLOCK(const mshr_type& mshr)
-    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
+    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data),
+      inclusive_evict(mshr.inclusive_evict)
 {
 }
 
@@ -68,7 +70,9 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
   }
 
-  if (way != set_end && way->valid && way->dirty) {
+  const bool bypass = (way == set_end || fill_mshr.clusivity == champsim::inclusivity::exclusive);
+
+  if (!bypass && way->valid && way->dirty) {
     request_type writeback_packet;
 
     writeback_packet.cpu = fill_mshr.cpu;
@@ -84,12 +88,16 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     if (!success) {
       return false;
     }
+
+    for (auto* ret : way->inclusive_evict) {
+      ret->invalidation_queue.push_back(channel_type::invalidation_request_type{way->address});
+    }
   }
 
   auto address_bitmask = ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
   uint64_t evicting_address = 0;
-  if (way != set_end && way->valid) {
+  if (!bypass && way->valid) {
     evicting_address = virtual_prefetch ? way->address : way->v_address;
   }
 
@@ -99,7 +107,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
                                 champsim::to_underlying(fill_mshr.type), 0U);
 
-  if (way != set_end) {
+  if (!bypass) {
     if (way->valid && way->prefetch) {
       ++sim_stats.pf_useless;
     }
@@ -169,6 +177,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       ++sim_stats.pf_useful;
       way->prefetch = false;
     }
+
+    invalidate_entry(*way);
   }
 
   return hit;
@@ -194,11 +204,14 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   {
     auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
     auto ret_copy = std::move(mshr_entry->to_return);
+    auto inc_copy = std::move(mshr_entry->inclusive_evict);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
                    std::back_inserter(mshr_entry->instr_depend_on_me), ooo_model_instr::program_order);
     std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
                    std::back_inserter(mshr_entry->to_return));
+    std::set_union(std::begin(inc_copy), std::end(inc_copy), std::begin(handle_pkt.inclusive_evict), std::end(handle_pkt.inclusive_evict),
+                   std::back_inserter(mshr_entry->inclusive_evict));
 
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
@@ -208,11 +221,13 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 
       uint64_t prior_event_cycle = mshr_entry->event_cycle;
       auto to_return = std::move(mshr_entry->to_return);
+      auto inclusive_evict = std::move(mshr_entry->inclusive_evict);
       *mshr_entry = mshr_type{handle_pkt, current_cycle};
 
       // in case request is already returned, we should keep event_cycle
       mshr_entry->event_cycle = prior_event_cycle;
       mshr_entry->to_return = std::move(to_return);
+      mshr_entry->inclusive_evict = std::move(inclusive_evict);
     }
   } else {
     if (mshr_full) { // not enough MSHR resource
@@ -291,6 +306,10 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
         retval.to_return = {ul};
+      }
+
+      if (entry.clusivity == champsim::inclusivity::inclusive) {
+        retval.inclusive_evict = {ul};
       }
     } else {
       (void)ul; // supress warning about ul being unused
@@ -420,19 +439,24 @@ uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
   auto inv_way = std::find_if(
       begin, end, [match = inval_addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return entry.valid && (entry.address >> shamt) == match; });
 
-  if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} set: {} way: {} cycle: {}\n", NAME, __func__, inv_way->address, inv_way->v_address,
-               get_set_index(inv_way->address), std::distance(begin, inv_way), current_cycle);
-  }
-
-  for (auto* ul : upper_levels)
-    ul->invalidation_queue.push_back(champsim::channel::invalidation_request_type{inval_addr});
-
   if (inv_way != end) {
-    inv_way->valid = false;
+    invalidate_entry(*inv_way);
   }
 
   return std::distance(begin, inv_way);
+}
+
+void CACHE::invalidate_entry(BLOCK& inval_block)
+{
+  if constexpr (champsim::debug_print) {
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} set: {} cycle: {}\n", NAME, __func__, inval_block.address, inval_block.v_address,
+               get_set_index(inval_block.address), current_cycle);
+  }
+
+  for (auto* ul : upper_levels)
+    ul->invalidation_queue.push_back(champsim::channel::invalidation_request_type{inval_block.address});
+
+  inval_block.valid = false;
 }
 
 bool CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)

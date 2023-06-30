@@ -76,6 +76,7 @@ class CACHE : public champsim::operable
     uint32_t cpu;
 
     access_type type;
+    champsim::inclusivity clusivity{champsim::inclusivity::weak};
     bool prefetch_from_this;
     bool skip_fill;
     bool is_translated;
@@ -87,6 +88,7 @@ class CACHE : public champsim::operable
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<channel_type*> to_return{};
+    std::vector<channel_type*> inclusive_evict{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
     tag_lookup_type(const request_type& req, bool local_pref, bool skip);
@@ -103,6 +105,7 @@ class CACHE : public champsim::operable
     uint32_t cpu;
 
     access_type type;
+    champsim::inclusivity clusivity{champsim::inclusivity::weak};
     bool prefetch_from_this;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -112,6 +115,7 @@ class CACHE : public champsim::operable
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<channel_type*> to_return{};
+    std::vector<channel_type*> inclusive_evict{};
 
     mshr_type(const tag_lookup_type& req, uint64_t cycle);
   };
@@ -135,6 +139,7 @@ class CACHE : public champsim::operable
     uint64_t data = 0;
 
     uint32_t pf_metadata = 0;
+    std::vector<channel_type*> inclusive_evict{};
 
     BLOCK() = default;
     explicit BLOCK(const mshr_type& mshr);
@@ -211,6 +216,7 @@ public:
   [[deprecated("This function should not be used to access the blocks directly.")]] [[nodiscard]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   uint64_t invalidate_entry(uint64_t inval_addr);
+  void invalidate_entry(BLOCK& inval_block);
   bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] bool
