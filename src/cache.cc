@@ -117,7 +117,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
-    ret->push_back(response);
+    ret->returned.push_back(response);
   }
 
   return true;
@@ -159,7 +159,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
     for (auto* ret : handle_pkt.to_return) {
-      ret->push_back(response);
+      ret->returned.push_back(response);
     }
 
     way->dirty = (handle_pkt.type == access_type::WRITE);
@@ -290,7 +290,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
-        retval.to_return = {&ul->returned};
+        retval.to_return = {ul};
       }
     } else {
       (void)ul; // supress warning about ul being unused

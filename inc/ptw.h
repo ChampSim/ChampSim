@@ -51,7 +51,7 @@ class PageTableWalker : public champsim::operable
     uint64_t data = 0;
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
-    std::vector<std::deque<response_type>*> to_return{};
+    std::vector<channel_type*> to_return{};
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint32_t pf_metadata = 0;
