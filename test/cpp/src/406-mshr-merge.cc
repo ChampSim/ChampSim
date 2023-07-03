@@ -34,7 +34,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("406-uut")
       .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
       .lower_level(&mock_ll.queues)

@@ -18,7 +18,7 @@ SCENARIO("The issued steps incur appropriate latencies") {
     VirtualMemory vmem{1<<12, vmem_levels, penalty, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("602-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

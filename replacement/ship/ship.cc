@@ -1,6 +1,7 @@
 #include "ship.h"
 
 #include <algorithm>
+#include <cassert>
 
 // initialize replacement state
 ship::ship(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * NUM_WAY), rrpv_values(NUM_SET * NUM_WAY, maxRRPV)

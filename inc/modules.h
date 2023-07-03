@@ -2,8 +2,9 @@
 #define MODULES_H
 
 #include "cache.h"
-#include "ooo_cpu.h"
+//#include "ooo_cpu.h"
 
+class O3_CPU;
 namespace champsim::modules
 {
 inline constexpr bool warn_if_any_missing = true;

@@ -8,7 +8,7 @@ TEST_CASE("Tag checks do not break when translation misses back up") {
   release_MRC mock_translator;
   do_nothing_MRC mock_ll;
   to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-  CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+  CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
     .name("414-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

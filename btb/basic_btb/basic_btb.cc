@@ -7,6 +7,7 @@
  */
 
 #include "basic_btb.h"
+#include "instruction.h"
 
 void basic_btb::initialize_btb()
 {

@@ -22,10 +22,9 @@
 
 void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 {
-  std::array<std::pair<std::string, std::size_t>, 6> types{
-      {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
-       std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
-       std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
+  std::array types{std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP},     std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT},
+                   std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},     std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL},
+                   std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL}, std::pair{"BRANCH_RETURN", BRANCH_RETURN}};
 
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(next.second); }));

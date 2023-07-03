@@ -49,9 +49,12 @@ def chain(*dicts):
     Dictionaries given earlier in the parameter list have priority.
     :param dicts: the sequence to be chained
     '''
+    def merge(merger, tname, lhs, rhs):
+        return {k:merger(v, rhs[k]) for k,v in lhs.items() if isinstance(v, tname) and isinstance(rhs.get(k), tname)}
+
     def merge_dicts(lhs,rhs):
-        dict_merges = {k:merge_dicts(v, rhs[k]) for k,v in lhs.items() if isinstance(v, dict) and isinstance(rhs.get(k), dict)}
-        list_merges = {k:(v + rhs[k]) for k,v in lhs.items() if isinstance(v, list) and isinstance(rhs.get(k), list)}
+        dict_merges = merge(merge_dicts, dict, lhs, rhs)
+        list_merges = merge(operator.concat, list, lhs, rhs)
         return dict(itertools.chain(rhs.items(), lhs.items(), dict_merges.items(), list_merges.items()))
 
     return functools.reduce(merge_dicts, dicts)
