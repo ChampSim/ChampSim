@@ -1,6 +1,8 @@
 #ifndef TEST_REPL_INTERFACE_H
 #define TEST_REPL_INTERFACE_H
 
+#include "channel.h"
+
 namespace test
 {
   struct repl_update_interface
@@ -11,7 +13,7 @@ namespace test
     champsim::address full_addr;
     champsim::address ip;
     champsim::address victim_addr;
-    uint32_t type;
+    access_type type;
     uint8_t hit;
   };
 }

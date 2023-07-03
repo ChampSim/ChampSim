@@ -1,4 +1,1 @@
-contact_links:
-  - name: ChampSim Mailing List
-    url: https://groups.google.com/g/champsim
-    about: Please direct questions here, so that they can be answered more easily.
+blank_issues_enabled: true

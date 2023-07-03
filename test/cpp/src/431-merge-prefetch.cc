@@ -58,7 +58,7 @@ struct merge_testbed
 
 SCENARIO("A prefetch that hits an MSHR is dropped") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a " + std::string{str} + " miss") {
     merge_testbed testbed{type};
 
@@ -69,7 +69,7 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
     }
 
     WHEN("A prefetch is issued") {
-      testbed.issue_type(PREFETCH);
+      testbed.issue_type(access_type::PREFETCH);
 
       THEN("The " + std::string{str} + " is in the MSHR") {
         REQUIRE(std::size(testbed.uut.MSHR) == 1);
@@ -82,9 +82,9 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
 
 SCENARIO("A prefetch MSHR that gets hit is promoted") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A cache with a prefetch miss") {
-    merge_testbed testbed{PREFETCH};
+    merge_testbed testbed{access_type::PREFETCH};
 
     THEN("An MSHR is created") {
       REQUIRE(std::size(testbed.uut.MSHR) == 1);

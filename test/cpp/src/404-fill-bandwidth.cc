@@ -111,7 +111,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       decltype(mock_ul)::request_type seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
-      seed.type = WRITE;
+      seed.type = access_type::WRITE;
       seed.cpu = 0;
 
       seeds.push_back(seed);

@@ -14,11 +14,12 @@
 
 import os
 import itertools
+import functools
 
 from . import util
 
-# Utility function to get a mangled module name from the path to its sources
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
+    ''' Create a mangled module name from the path to its sources '''
     fname_translation_table = str.maketrans('./-','_DH')
     return os.path.relpath(path, start=start).translate(fname_translation_table)
 
@@ -29,7 +30,12 @@ class ModuleSearchContext:
     def data_from_path(self, path):
         name = get_module_name(path)
         is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
-        return {'name': name, 'path': path, 'legacy': is_legacy, 'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)}
+        return {
+            'name': name,
+            'path': path,
+            'legacy': is_legacy,
+            'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)
+        }
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
@@ -52,7 +58,8 @@ branch_variant_data = [
     ('predict_branch', (('uint64_t','ip'),), 'uint8_t')
 ]
 def get_branch_data(module_data):
-    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('bpred', module_data['name'], v[0])) for v in branch_variant_data} }) # Resolve function names
+    func_map = { v[0]: f'b_{module_data["name"]}_{v[0]}' for v in branch_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
 
 btb_variant_data = [
     ('initialize_btb', tuple(), 'void'),
@@ -60,11 +67,12 @@ btb_variant_data = [
     ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>')
 ]
 def get_btb_data(module_data):
-    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('btb', module_data['name'], v[0])) for v in btb_variant_data} }) # Resolve function names
+    func_map = { v[0]: f't_{module_data["name"]}_{v[0]}' for v in btb_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
 
 pref_nonbranch_variant_data = [
     ('prefetcher_initialize', tuple(), 'void'),
-    ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t'),
+    ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t'),
     ('prefetcher_cache_fill', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in')), 'uint32_t'),
     ('prefetcher_cycle_operate', tuple(), 'void'),
     ('prefetcher_final_stats', tuple(), 'void')
@@ -75,8 +83,11 @@ pref_branch_variant_data = [
 ]
 def get_pref_data(module_data):
     prefix = 'ipref' if module_data.get('_is_instruction_prefetcher', False) else 'pref'
+    func_map = { v[0]: f'{prefix}_{module_data["name"]}_{v[0]}'
+        for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data) }
+
     return util.chain(module_data,
-        { 'func_map': { v[0]: '_'.join((prefix, module_data['name'], v[0])) for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data)} }, # Resolve function names
+        { 'func_map': func_map },
         { 'deprecated_func_map' : {
                 'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
                 'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
@@ -107,38 +118,58 @@ repl_variant_data = [
     ('replacement_final_stats', tuple(), 'void')
 ]
 def get_repl_data(module_data):
-    return util.chain(module_data, { 'func_map': { v[0]: '_'.join(('repl', module_data['name'], v[0])) for v in repl_variant_data} }) # Resolve function names
+    func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
 
 def get_module_opts_lines(module_data):
+    '''
+    Generate an iterable of the compiler options for a particular module
+    '''
     yield '-Wno-unused-parameter'
     yield '-DCHAMPSIM_MODULE'
     if module_data.get('legacy'):
-        yield from ('-D{}={}'.format(*x) for x in module_data['func_map'].items())
-        yield from ('-D{}={}'.format(*x) for x in module_data.get('deprecated_func_map',{}).items())
+        full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
+        yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
-# Generate C++ code giving the mangled module specialization functions
 def mangled_declaration(fname, args, rtype, module_data):
-    return '{} {}({});'.format(rtype, module_data['func_map'][fname], ', '.join(a[0] for a in args))
+    ''' Generate C++ code giving the mangled module specialization functions. '''
+    argstring = ', '.join(a[0] for a in args)
+    return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
-# For a given module function, generate C++ code defining the discriminator function
 def get_discriminator(variant_data, module_data, classname):
-    yield 'struct {} : {}'.format(module_data['class'].split('::')[-1], classname)
+    ''' For a given module function, generate C++ code defining the discriminator struct. '''
+    discriminator_classname = module_data['class'].split('::')[-1]
+    yield f'struct {discriminator_classname} : {classname}'
     yield '{'
-    yield '  using {0}::{0};'.format(classname)
+    yield f'  using {classname}::{classname};'
 
     for fname, args, _ in variant_data:
         argstring = ', '.join((a[0]+' '+a[1]) for a in args)
-        yield '  auto {}({})'.format(fname, argstring)
+        argnamestring = ', '.join(a[1] for a in args)
+        yield f'  auto {fname}({argstring})'
         yield '  {'
-        yield '    return intern_->{}({});'.format(module_data['func_map'][fname], ', '.join(a[1] for a in args))
+        yield f'    return intern_->{module_data["func_map"][fname]}({argnamestring});'
         yield '  }'
         yield ''
 
     yield '};'
     yield ''
 
-# Return a pair containing three generators: The first and second generate C++ code declaring all functions for the O3_CPU and CACHE modules, and the third generates C++ code defining the functions
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
+    '''
+    Create three generators:
+      - The first generates C++ code declaring all functions for the O3_CPU modules,
+      - The second generates C++ code declaring all functions for the CACHE modules,
+      - The third generates C++ code defining the functions.
+    '''
+    branch_discriminator = functools.partial(get_discriminator, branch_variant_data, classname='branch_predictor')
+    btb_discriminator = functools.partial(get_discriminator, btb_variant_data, classname='btb')
+    repl_discriminator = functools.partial(get_discriminator, repl_variant_data, classname='replacement')
+
+    def pref_discriminator(v):
+        local_branch_variant_data = pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
+        return get_discriminator([*pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
+
     return (
         (mangled_declaration(*var, data) for var,data in itertools.chain(
             itertools.product(branch_variant_data, branch_data),
@@ -151,9 +182,9 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
         )),
 
         itertools.chain(
-            *(get_discriminator(branch_variant_data, v, 'branch_predictor') for v in branch_data),
-            *(get_discriminator(btb_variant_data, v, 'btb') for v in btb_data),
-            *(get_discriminator(pref_nonbranch_variant_data + (pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []), v, 'prefetcher') for v in pref_data),
-            *(get_discriminator(repl_variant_data, v, 'replacement') for v in repl_data)
+            *map(branch_discriminator, branch_data),
+            *map(btb_discriminator, btb_data),
+            *map(pref_discriminator, pref_data),
+            *map(repl_discriminator, repl_data)
         )
        )

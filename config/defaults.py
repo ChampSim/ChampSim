@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import itertools
+import functools
 import math
 
 from . import util
 
-def core_defaults(cpu, name, ll_name=None, lt_name=None):
-    retval = {
-        'name': util.read_element_name(cpu, name)
-    }
-    if ll_name is not None:
-        retval.update(lower_level=util.read_element_name(cpu, ll_name))
-    if lt_name is not None:
-        retval.update(lower_translate=util.read_element_name(cpu, lt_name))
-    return retval;
+def cache_core_defaults(cpu):
+    yield { 'name': cpu.get('L1I'), 'lower_level': cpu.get('L2C') }
+    yield { 'name': cpu.get('L1D'), 'lower_level': cpu.get('L2C') }
+    yield { 'name': cpu.get('ITLB'), 'lower_level': cpu.get('STLB') }
+    yield { 'name': cpu.get('DTLB'), 'lower_level': cpu.get('STLB') }
+    yield { 'name': cpu.get('L2C'), 'lower_level': 'LLC' }
+    yield { 'name': cpu.get('STLB'), 'lower_level': cpu.get('PTW') }
+
+def ptw_core_defaults(cpu):
+    yield { 'name': cpu.get('PTW'), 'lower_level': cpu.get('L1D') }
 
 def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32, bandwidth_factor=0.5):
     return {
@@ -39,17 +41,20 @@ def ul_dependent_defaults(*uls, set_factor=512, queue_factor=32, mshr_factor=32,
     }
 
 def defaulter(cores, cache_list, factor_list, key):
-    head = lambda n: util.upper_levels_for(cores, n, key=key)
-    tail = lambda n: util.upper_levels_for(cache_list, n)
+    head = functools.partial(util.upper_levels_for, cores, key=key)
+    tail = functools.partial(util.upper_levels_for, cache_list)
 
-    for ulf, fac in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
-        yield lambda name: { 'name': name, **ul_dependent_defaults(*ulf(name), **fac) }
+    def produce(name, ulf=None, factor=None):
+        return { 'name': name, **ul_dependent_defaults(*ulf(name), **factor) }
+
+    for upper_level_function, factor in zip(itertools.chain((head,), itertools.repeat(tail)), factor_list):
+        yield functools.partial(produce, ulf=upper_level_function, factor=factor)
 
 def default_path(cores, caches, factor_list, member_list, name):
-    for p in (util.iter_system(caches, cpu[name]) for cpu in cores):
+    for element in (util.iter_system(caches, cpu[name]) for cpu in cores):
         fixed_defaults = itertools.starmap(util.chain, itertools.zip_longest(({'_first_level': True},), member_list, fillvalue={}))
         defaults = defaulter(cores, list(caches.values()), factor_list, name)
-        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, p, fixed_defaults))
+        yield from (util.chain(f(c['name']), x) for f,c,x in zip(defaults, element, fixed_defaults))
 
 def l1i_path(cores, caches):
     l1i_factors = (
@@ -62,8 +67,7 @@ def l1i_path(cores, caches):
         { '_defaults': 'champsim::defaults::default_l2c' },
         { '_defaults': 'champsim::defaults::default_llc' }
     )
-    p = list(default_path(cores, caches, l1i_factors, l1i_members, 'L1I'))
-    yield from p
+    yield from default_path(cores, caches, l1i_factors, l1i_members, 'L1I')
 
 def l1d_path(cores, caches):
     l1d_factors = (
@@ -101,10 +105,16 @@ def dtlb_path(cores, caches):
     yield from default_path(cores, caches, dtlb_factors, dtlb_members, 'DTLB')
 
 def list_defaults(cores, caches):
-    l1i = list(l1i_path(cores, caches))
-    #print(l1i)
-    yield from l1i
+    yield from l1i_path(cores, caches)
     yield from l1d_path(cores, caches)
     yield from itlb_path(cores, caches)
     yield from dtlb_path(cores, caches)
 
+    for cpu in cores:
+        icache_path = util.iter_system(caches, cpu['L1I'])
+        dcache_path = util.iter_system(caches, cpu['L1D'])
+        itransl_path = util.iter_system(caches, cpu['ITLB'])
+        dtransl_path = util.iter_system(caches, cpu['DTLB'])
+
+        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(icache_path, itransl_path))
+        yield from ({'name': c['name'], 'lower_translate': tlb['name']} for c,tlb in zip(dcache_path, dtransl_path))

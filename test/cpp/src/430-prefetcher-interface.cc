@@ -21,9 +21,15 @@ namespace
       return metadata_in;
     }
 
-    uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, uint8_t, uint32_t metadata_in)
+    uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, uint8_t, uint32_t metadata_in)
     {
       ::operate_interface_discerner[intern_] = 2;
+      return metadata_in;
+    }
+
+    uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in)
+    {
+      ::operate_interface_discerner[intern_] = 3;
       return metadata_in;
     }
 
@@ -80,7 +86,7 @@ SCENARIO("The prefetcher interface prefers one that uses champsim::address") {
           elem->_operate();
 
       THEN("The prefetcher operate hook is called") {
-        REQUIRE(::operate_interface_discerner.at(&uut) == 2);
+        REQUIRE(::operate_interface_discerner.at(&uut) == 3);
       }
 
       THEN("The prefetcher fill hook is called") {

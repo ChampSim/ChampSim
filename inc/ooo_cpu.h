@@ -30,6 +30,7 @@
 #include <optional>
 #include <queue>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "champsim.h"
@@ -39,9 +40,6 @@
 #include "modules_detect.h"
 #include "operable.h"
 #include "util/lru_table.h"
-#include <type_traits>
-
-enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;
 class CacheBus
@@ -63,15 +61,17 @@ public:
 
 struct cpu_stats {
   std::string name;
-  uint64_t begin_instrs = 0, begin_cycles = 0;
-  uint64_t end_instrs = 0, end_cycles = 0;
+  long long begin_instrs = 0;
+  uint64_t begin_cycles = 0;
+  long long end_instrs = 0;
+  uint64_t end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
 
-  uint64_t instrs() const { return end_instrs - begin_instrs; }
-  uint64_t cycles() const { return end_cycles - begin_cycles; }
+  [[nodiscard]] long long instrs() const { return end_instrs - begin_instrs; }
+  [[nodiscard]] uint64_t cycles() const { return end_cycles - begin_cycles; }
 };
 
 struct LSQ_ENTRY {
@@ -87,6 +87,7 @@ struct LSQ_ENTRY {
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
   LSQ_ENTRY(uint64_t id, champsim::address addr, champsim::address ip, std::array<uint8_t, 2> asid);
+  void finish(ooo_model_instr& rob_entry) const;
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
 
@@ -98,15 +99,15 @@ public:
 
   // cycle
   uint64_t begin_phase_cycle = 0;
-  uint64_t begin_phase_instr = 0;
+  long long begin_phase_instr = 0;
   uint64_t finish_phase_cycle = 0;
-  uint64_t finish_phase_instr = 0;
+  long long finish_phase_instr = 0;
   uint64_t last_heartbeat_cycle = 0;
-  uint64_t last_heartbeat_instr = 0;
-  uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
+  long long last_heartbeat_instr = 0;
+  long long next_print_instruction = STAT_PRINTING_PERIOD;
 
   // instruction
-  uint64_t num_retired = 0;
+  long long num_retired = 0;
 
   bool show_heartbeat = true;
 
@@ -150,10 +151,10 @@ public:
   CacheBus L1I_bus, L1D_bus;
   CACHE* l1i;
 
-  void initialize() override final;
-  void operate() override final;
-  void begin_phase() override final;
-  void end_phase(unsigned cpu) override final;
+  void initialize() final;
+  void operate() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
 
   void initialize_instruction();
   void check_dib();
@@ -176,7 +177,7 @@ public:
   bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
-  void do_execution(ooo_model_instr& rob_it);
+  void do_execution(ooo_model_instr& instr);
   void do_memory_scheduling(ooo_model_instr& instr);
   void do_complete_execution(ooo_model_instr& instr);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
@@ -185,12 +186,12 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  uint64_t roi_instr() const { return roi_stats.instrs(); }
-  uint64_t roi_cycle() const { return roi_stats.cycles(); }
-  uint64_t sim_instr() const { return num_retired - begin_phase_instr; }
-  uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
+  [[nodiscard]] long long roi_instr() const { return roi_stats.instrs(); }
+  [[nodiscard]] uint64_t roi_cycle() const { return roi_stats.cycles(); }
+  [[nodiscard]] long long sim_instr() const { return num_retired - begin_phase_instr; }
+  [[nodiscard]] uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
-  void print_deadlock() override final;
+  void print_deadlock() final;
 
 #include "ooo_cpu_module_decl.inc"
 
@@ -199,7 +200,7 @@ public:
 
     virtual void impl_initialize_branch_predictor() = 0;
     virtual void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
-    virtual bool impl_predict_branch(champsim::address ip) = 0;
+    virtual bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
   };
 
   struct btb_module_concept {
@@ -207,7 +208,7 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
-    virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip) = 0;
+    virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
   };
 
   template <typename... Bs>
@@ -215,9 +216,9 @@ public:
     std::tuple<Bs...> intern_;
     explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
 
-    void impl_initialize_branch_predictor() override final;
-    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) override final;
-    [[nodiscard]] bool impl_predict_branch(champsim::address ip) override final;
+    void impl_initialize_branch_predictor() final;
+    void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
+    [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) final;
   };
 
   template <typename... Ts>
@@ -225,26 +226,29 @@ public:
     std::tuple<Ts...> intern_;
     explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
 
-    void impl_initialize_btb() override final;
-    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) override final;
-    [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip) override final;
+    void impl_initialize_btb() final;
+    void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
+    [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) final;
   };
 
   std::unique_ptr<branch_module_concept> branch_module_pimpl;
   std::unique_ptr<btb_module_concept> btb_module_pimpl;
 
-  void impl_initialize_branch_predictor();
-  void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type);
-  [[nodiscard]] bool impl_predict_branch(champsim::address ip);
+  // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
+  void impl_initialize_branch_predictor() const;
+  void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) const;
+  [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) const;
 
-  void impl_initialize_btb();
-  void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type);
-  [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip);
+  void impl_initialize_btb() const;
+  void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) const;
+  [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) const;
+  // NOLINTEND(readability-make-member-function-const)
 
   template <typename... Ts>
   class builder_module_type_holder
   {
   };
+
   class builder_conversion_tag
   {
   };
@@ -287,7 +291,7 @@ public:
     friend class O3_CPU;
 
     template <typename OTHER_B, typename OTHER_T>
-    Builder(builder_conversion_tag, const Builder<OTHER_B, OTHER_T>& other)
+    Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_B, OTHER_T>& other)
         : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
           m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
           m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),
@@ -500,7 +504,7 @@ void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::addre
 }
 
 template <typename... Bs>
-bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip)
+bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
 {
   auto process_one = [&](auto& b) {
     constexpr auto interface_version = champsim::modules::detect::branch_predictor::has_predict_branch<decltype(b)>();
@@ -508,6 +512,12 @@ bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address i
       return b.predict_branch(ip.to<uint64_t>());
     if constexpr (interface_version == 2)
       return b.predict_branch(ip);
+    if constexpr (interface_version == 3)
+      return b.predict_branch(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), always_taken, branch_type);
+    if constexpr (interface_version == 4)
+      return b.predict_branch(ip, predicted_target, always_taken, branch_type);
+    else
+      return false;
   };
 
   return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
@@ -539,14 +549,19 @@ void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, cham
 }
 
 template <typename... Ts>
-std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip)
+std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip, uint8_t branch_type)
 {
   auto process_one = [&](auto& t) {
     constexpr auto interface_version = champsim::modules::detect::btb::has_btb_prediction<decltype(t)>();
-    if constexpr (interface_version == 1)
-      return t.btb_prediction(ip.to<uint64_t>());
+    if constexpr (interface_version == 4)
+      return t.btb_prediction(ip, branch_type);
+    if constexpr (interface_version == 3)
+      return t.btb_prediction(ip.to<uint64_t>(), branch_type);
     if constexpr (interface_version == 2)
       return t.btb_prediction(ip);
+    if constexpr (interface_version == 1)
+      return t.btb_prediction(ip.to<uint64_t>());
+    return std::pair{champsim::address{}, false};
   };
 
   return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);

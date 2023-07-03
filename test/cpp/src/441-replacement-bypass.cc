@@ -8,7 +8,7 @@ template <uint64_t bypass_addr>
 struct bypass_replacement : champsim::modules::replacement
 {
   using replacement::replacement;
-  auto find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address addr, uint32_t)
+  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address addr, uint32_t)
   {
     if (addr == champsim::address{bypass_addr})
       return 1;
@@ -48,7 +48,7 @@ SCENARIO("The replacement policy can bypass") {
       decltype(mock_ul_seed)::request_type test;
       test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
-      test.type = WRITE;
+      test.type = access_type::WRITE;
       auto test_result = mock_ul_seed.issue(test);
 
       THEN("The issue is received") {
@@ -64,7 +64,7 @@ SCENARIO("The replacement policy can bypass") {
         decltype(mock_ul_test)::request_type test_b;
         test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
-        test_b.type = LOAD;
+        test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 
         auto test_b_result = mock_ul_test.issue(test_b);

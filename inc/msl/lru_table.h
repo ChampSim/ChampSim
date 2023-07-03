@@ -124,8 +124,9 @@ public:
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
-    if (hit == set_end)
+    if (hit == set_end) {
       return std::nullopt;
+    }
 
     hit->last_used = ++access_count;
     return hit->data;
@@ -138,10 +139,11 @@ public:
     if (set_begin != set_end) {
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-      if (tag_projection(hit->data) == tag)
+      if (tag_projection(hit->data) == tag) {
         *hit = {++access_count, elem};
-      else
+      } else {
         *miss = {++access_count, elem};
+      }
     }
   }
 
@@ -150,8 +152,9 @@ public:
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
-    if (hit == set_end)
+    if (hit == set_end) {
       return std::nullopt;
+    }
 
     return std::exchange(*hit, {}).data;
   }

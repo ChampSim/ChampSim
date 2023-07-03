@@ -38,11 +38,11 @@ void drrip::update_srrip(long set, long way)
 }
 
 // called on every cache hit and cache fill
-void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type,
+void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type,
                                      uint8_t hit)
 {
   // do not update replacement state for writebacks
-  if (type == WRITE) {
+  if (access_type{type} == access_type::WRITE) {
     rrpv[set * NUM_WAY + way] = maxRRPV - 1;
     return;
   }
@@ -75,7 +75,7 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
 }
 
 // find replacement victim
-long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
+long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv), set * NUM_WAY);

@@ -23,7 +23,7 @@ ship::ship(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(
 }
 
 // find replacement victim
-long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, uint32_t type)
+long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);
@@ -41,11 +41,11 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 }
 
 // called on every cache hit and cache fill
-void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type,
+void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type,
                                      uint8_t hit)
 {
   // handle writeback access
-  if (type == WRITE) {
+  if (access_type{type} == access_type::WRITE) {
     if (!hit)
       rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
 

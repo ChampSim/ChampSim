@@ -17,12 +17,12 @@
 #include "vmem.h"
 
 #include <cassert>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
 #include "util/bits.h"
-#include <fmt/core.h>
 
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : next_pte_page(LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size), 0), last_ppage(1ull << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
@@ -33,10 +33,12 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
   assert(last_ppage > next_ppage);
 
   auto required_bits = LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>());
-  if (required_bits > champsim::address::bits)
+  if (required_bits > champsim::address::bits) {
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
-  if (required_bits > champsim::lg2(dram.size()))
+  }
+  if (required_bits > champsim::lg2(dram.size())) {
     fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
+  }
 }
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
@@ -65,8 +67,9 @@ std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num,
   auto [ppage, fault] = vpage_to_ppage_map.try_emplace({cpu_num, champsim::page_number{vaddr}}, ppage_front());
 
   // this vpage doesn't yet have a ppage mapping
-  if (fault)
+  if (fault) {
     ppage_pop();
+  }
 
   return {champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr}), fault ? minor_fault_penalty : 0};
 }

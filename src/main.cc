@@ -19,6 +19,8 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <CLI/CLI.hpp>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -28,8 +30,6 @@
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
-#include <CLI/CLI.hpp>
-#include <fmt/core.h>
 
 namespace champsim
 {
@@ -43,41 +43,61 @@ int main(int argc, char** argv)
   CLI::App app{"A microarchitecture simulator for research and education"};
 
   bool knob_cloudsuite{false};
-  uint64_t warmup_instructions = 0;
-  uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
+  long long warmup_instructions = 0;
+  long long simulation_instructions = std::numeric_limits<long long>::max();
   std::string json_file_name;
   std::vector<std::string> trace_names;
 
   auto set_heartbeat_callback = [&](auto) {
-    for (O3_CPU& cpu : gen_environment.cpu_view())
+    for (O3_CPU& cpu : gen_environment.cpu_view()) {
       cpu.show_heartbeat = false;
+    }
   };
 
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
-  app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
-  auto sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions,
-                                         "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
+  auto* warmup_instr_option = app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
+  auto* deprec_warmup_instr_option =
+      app.add_option("--warmup_instructions", warmup_instructions, "[deprecated] use --warmup-instructions instead")->excludes(warmup_instr_option);
+  auto* sim_instr_option = app.add_option("-i,--simulation-instructions", simulation_instructions,
+                                          "The number of instructions in the detailed phase. If not specified, run to the end of the trace.");
+  auto* deprec_sim_instr_option =
+      app.add_option("--simulation_instructions", simulation_instructions, "[deprecated] use --simulation-instructions instead")->excludes(sim_instr_option);
 
-  auto json_option =
+  auto* json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
 
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
 
+  const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
+  const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);
+
+  if (deprec_warmup_instr_option->count() > 0) {
+    fmt::print("WARNING: option --warmup_instructions is deprecated. Use --warmup-instructions instead.\n");
+  }
+
+  if (deprec_sim_instr_option->count() > 0) {
+    fmt::print("WARNING: option --simulation_instructions is deprecated. Use --simulation-instructions instead.\n");
+  }
+
+  if (simulation_given && !warmup_given) {
+    warmup_instructions = simulation_instructions / 5;
+  }
+
   std::vector<champsim::tracereader> traces;
-  std::transform(std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-                 [knob_cloudsuite, repeat = (sim_instr_option->count() > 0), i = uint8_t(0)](auto name) mutable {
-                   return get_tracereader(name, i++, knob_cloudsuite, repeat);
-                 });
+  std::transform(
+      std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
+      [knob_cloudsuite, repeat = simulation_given, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
 
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
        champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
 
-  for (auto& p : phases)
+  for (auto& p : phases) {
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
+  }
 
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
              phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
@@ -88,11 +108,13 @@ int main(int argc, char** argv)
 
   champsim::plain_printer{std::cout}.print(phase_stats);
 
-  for (CACHE& cache : gen_environment.cache_view())
+  for (CACHE& cache : gen_environment.cache_view()) {
     cache.impl_prefetcher_final_stats();
+  }
 
-  for (CACHE& cache : gen_environment.cache_view())
+  for (CACHE& cache : gen_environment.cache_view()) {
     cache.impl_replacement_final_stats();
+  }
 
   if (json_option->count() > 0) {
     if (json_file_name.empty()) {

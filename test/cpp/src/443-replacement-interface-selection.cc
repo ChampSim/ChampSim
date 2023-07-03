@@ -114,7 +114,7 @@ SCENARIO("The simulator selects the address-based victim finder in replacement p
 
 SCENARIO("The simulator selects the address-based update function in replacement policies") {
   using namespace std::literals;
-  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{LOAD, "load"sv}, std::pair{RFO, "RFO"sv}, std::pair{PREFETCH, "prefetch"sv}, std::pair{WRITE, "write"sv}, std::pair{TRANSLATION, "translation"sv}}));
+  auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A cache with one element") {
     constexpr uint64_t hit_latency = 2;
     constexpr uint64_t fill_latency = 2;
@@ -128,7 +128,7 @@ SCENARIO("The simulator selects the address-based update function in replacement
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetch_activate(1u<<type)
+      .prefetch_activate(type)
       .offset_bits(0)
       .replacement<::dual_interface, lru>()
     };

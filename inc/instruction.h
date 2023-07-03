@@ -45,21 +45,23 @@ struct ooo_model_instr {
   champsim::address ip{};
   uint64_t event_cycle = 0;
 
-  bool is_branch = 0;
-  bool branch_taken = 0;
-  bool branch_prediction = 0;
-  bool branch_mispredicted = 0; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
+  bool is_branch = false;
+  bool branch_taken = false;
+  bool branch_prediction = false;
+  bool branch_mispredicted = false; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
   uint8_t branch_type = NOT_BRANCH;
   champsim::address branch_target{};
 
-  uint8_t dib_checked = 0;
-  uint8_t fetched = 0;
-  uint8_t decoded = 0;
-  uint8_t scheduled = 0;
-  uint8_t executed = 0;
+  bool dib_checked = false;
+  bool fetch_issued = false;
+  bool fetch_completed = false;
+  bool decoded = false;
+  bool scheduled = false;
+  bool executed = false;
+  bool completed = false;
 
   unsigned completed_mem_ops = 0;
   int num_reg_dependent = 0;
@@ -138,9 +140,9 @@ private:
 
 public:
   ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr, {cpu, cpu}) {}
-  ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
+  ooo_model_instr(uint8_t /*cpu*/, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
 
-  std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
+  [[nodiscard]] std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 
   static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
 };

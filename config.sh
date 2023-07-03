@@ -74,9 +74,9 @@ if __name__ == '__main__':
             config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules)
         for c in config_files)
 
-    with config.filewrite.writer(bindir_name, objdir_name) as wr:
+    with config.filewrite.FileWriter(bindir_name, objdir_name) as wr:
         for c in parsed_configs:
             wr.write_files(c)
-        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
+        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'), omit_main=True)
 
 # vim: set filetype=python:

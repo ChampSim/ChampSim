@@ -1,5 +1,4 @@
 #include "bimodal.h"
-#include <iostream>
 
 bool bimodal::predict_branch(champsim::address ip)
 {

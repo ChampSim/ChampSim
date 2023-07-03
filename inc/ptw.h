@@ -60,7 +60,7 @@ class PageTableWalker : public champsim::operable
 
     std::size_t translation_level = 0;
 
-    mshr_type(request_type req, std::size_t level);
+    mshr_type(const request_type& req, std::size_t level);
   };
 
   std::deque<mshr_type> MSHR;
@@ -71,7 +71,7 @@ class PageTableWalker : public champsim::operable
   channel_type* lower_level;
 
   std::optional<mshr_type> handle_read(const request_type& pkt, channel_type* ul);
-  std::optional<mshr_type> handle_fill(const mshr_type& pkt);
+  std::optional<mshr_type> handle_fill(const mshr_type& fill_mshr);
   std::optional<mshr_type> step_translation(const mshr_type& source);
 
   void finish_packet(const response_type& packet);
@@ -163,9 +163,10 @@ public:
 
   explicit PageTableWalker(Builder builder);
 
-  void operate() override final;
-  void begin_phase() override final;
-  void print_deadlock() override final;
+  void operate() final;
+
+  void begin_phase() final;
+  void print_deadlock() final;
 };
 
 #endif
