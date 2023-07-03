@@ -11,7 +11,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("412a-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

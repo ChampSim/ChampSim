@@ -52,7 +52,7 @@ SCENARIO("The prefetcher interface prefers one that uses champsim::address") {
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("430-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

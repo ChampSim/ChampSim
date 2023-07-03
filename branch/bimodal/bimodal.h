@@ -3,6 +3,8 @@
 
 #include "modules.h"
 
+#include <array>
+
 #include "address.h"
 #include "msl/fwcounter.h"
 

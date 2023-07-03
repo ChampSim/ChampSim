@@ -75,7 +75,7 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
 }
 
 // find replacement victim
-long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, champsim::address ip, champsim::address full_addr, access_type type)
+long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv), set * NUM_WAY);

@@ -17,7 +17,7 @@ SCENARIO("The page table steps have correct offsets") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("603-uut-"+std::to_string(level))
       //.rq_size(16)
       //.tag_bandwidth(2)

@@ -9,7 +9,7 @@ SCENARIO("Duplicate prefetches do not count each other as useful") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("424-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

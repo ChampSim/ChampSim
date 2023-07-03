@@ -7,6 +7,7 @@
  */
 
 #include "basic_btb.h"
+#include "instruction.h"
 
 #include "instruction.h"
 

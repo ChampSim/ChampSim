@@ -29,7 +29,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     do_nothing_MRC mock_ll;
     do_nothing_MRC mock_lt;
     to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("453-uut-["+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -119,7 +119,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     do_nothing_MRC mock_ll;
     do_nothing_MRC mock_lt;
     to_rq_MRP mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("453-uut-[-"+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

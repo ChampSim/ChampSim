@@ -5,6 +5,7 @@
 
 #include "instruction.h"
 #include "../../../btb/basic_btb/basic_btb.h"
+#include "instruction.h"
 
 TEST_CASE("The basic_btb does not fill not-taken branches") {
     basic_btb uut;

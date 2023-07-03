@@ -4,11 +4,12 @@
 #include <cstdint>
 
 #include "address.h"
+#include "block.h"
 #include "champsim.h"
-#include "cache.h"
+#include "channel.h"
 
+class CACHE;
 class O3_CPU;
-
 namespace champsim::modules
 {
 inline constexpr bool warn_if_any_missing = true;

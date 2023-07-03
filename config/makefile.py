@@ -66,9 +66,6 @@ def append_variable(var, head_val, *tail_val, targets=None):
     else:
         yield from util.do_for_first(lambda first: f'{targets}: {first}', variable_append)
 
-def each_in_dict_list(dict_of_lists):
-    yield from itertools.chain(*(zip(itertools.repeat(kv[0]), kv[1]) for kv in dict_of_lists.items()))
-
 def make_subpart(i, src_dir, base, dest_dir, build_id):
     local_dir_varname = f'{build_id}_dirs_{i}'
     local_obj_varname = f'{build_id}_objs_{i}'
@@ -89,7 +86,6 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
     wildcard_dep = next(dependency(os.path.join(rel_dest_dir, '%.o'), os.path.join(rel_src_dir, '%.cc')), None)
     yield from dependency(dereference(local_obj_varname), wildcard_dep)
     yield from order_dependency(dereference(local_obj_varname), rel_dest_dir)
-    yield from dependency(dereference(local_obj_varname), os.path.join(dest_dir, 'config.options'))
 
     wildcard_dest_dir = os.path.join(rel_dest_dir, '*.d')
     yield f'-include $(wildcard {wildcard_dest_dir})'
@@ -97,7 +93,7 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
 
     return local_dir_varname, local_obj_varname
 
-def make_part(dest_dir, build_id, src_dirs):
+def make_part(src_dirs, dest_dir, build_id):
     '''
     Given a list of source directories and a destination directory, generate the makefile linkages to make
     object files across the directories.
@@ -118,20 +114,37 @@ def make_part(dest_dir, build_id, src_dirs):
     yield ''
     return dir_varnames, obj_varnames
 
+def make_all_parts(*part_parameters):
+    ''' Generate each part for a tuple of parameters to make_part(), returning a list of lists of the variable names. '''
+    dir_varnames, obj_varnames = [], []
+    for params in part_parameters:
+        part_dir_varnames, part_obj_varnames = yield from make_part(*params)
+        dir_varnames.append(part_dir_varnames)
+        obj_varnames.append(part_obj_varnames)
+
+    return dir_varnames, obj_varnames
+
 def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
+    ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({'Build ID': build_id, 'Executable': executable})
     yield ''
 
-    part_iter = (
-        (os.path.join(objdir, 'obj'), build_id, source_dirs),
-        *((os.path.join(objdir, k), build_id+'_'+k, (v['path'],)) for k,v in module_info.items())
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    ragged_dir_varnames, ragged_obj_varnames = yield from make_all_parts(
+        (source_dirs, os.path.join(objdir, 'obj'), build_id),
+        *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
     )
-    dir_varnames = []
-    obj_varnames = []
-    for part in part_iter:
-        module_dir_varnames, module_obj_varnames = yield from make_part(*part)
-        dir_varnames.extend(module_dir_varnames)
-        obj_varnames.extend(module_obj_varnames)
+
+    # Flatten varnames
+    dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
+
+    options_fname = os.path.join(objdir, 'inc', 'config.options')
+    global_options_fname = os.path.join(champsim_root, 'global.options')
+
+    for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
+        yield from dependency(' '.join(map(dereference, var)), os.path.join(objdir, 'inc', name, 'config.options'))
+    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
 
     objs = map(dereference, obj_varnames)
     if omit_main:
@@ -143,9 +156,4 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield from append_variable('executable_name', os.path.abspath(executable))
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.abspath(os.path.dirname(executable)))
     yield from append_variable('objs', *map(dereference, obj_varnames))
-
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    options_fname = os.path.join(objdir, 'inc', 'config.options')
-    global_options_fname = os.path.join(champsim_root, 'global.options')
-    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
     yield ''

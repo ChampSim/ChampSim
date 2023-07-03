@@ -2,6 +2,7 @@
 
 #include "instruction.h"
 #include "../../../btb/basic_btb/basic_btb.h"
+#include "instruction.h"
 
 TEST_CASE("The basic_btb correctly marks conditional branches as not always taken after they are not taken once") {
     basic_btb uut;
