@@ -142,9 +142,9 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     options_fname = os.path.join(objdir, 'inc', 'config.options')
     global_options_fname = os.path.join(champsim_root, 'global.options')
 
-    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
     for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
         yield from dependency(' '.join(map(dereference, var)), os.path.join(objdir, 'inc', name, 'config.options'))
+    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
 
     objs = map(dereference, obj_varnames)
     if omit_main:

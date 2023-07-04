@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 #include "ooo_cpu.h"
 #include "instr.h"
 
@@ -8,7 +7,7 @@ SCENARIO("An empty ROB does not retire any instructions") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -33,7 +32,7 @@ SCENARIO("A completed instruction can be retired") {
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -72,7 +71,7 @@ SCENARIO("Completed instructions are retired in order") {
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 2;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -118,7 +117,7 @@ SCENARIO("The retire bandwidth limits the number of retirements per cycle") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
     constexpr long num_instrs = 2 * retire_bandwidth;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .retire_width(retire_bandwidth)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)

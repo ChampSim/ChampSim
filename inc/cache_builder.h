@@ -21,7 +21,6 @@
 #include <optional>
 
 #include "channel.h"
-#include "util/bits.h"
 
 class CACHE;
 namespace champsim
