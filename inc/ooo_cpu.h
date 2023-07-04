@@ -215,7 +215,7 @@ public:
   template <typename... Bs>
   struct branch_module_model final : branch_module_concept {
     std::tuple<Bs...> intern_;
-    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
+    explicit branch_module_model([[maybe_unused]] O3_CPU* cpu) : intern_(Bs{cpu}...) {}
 
     void impl_initialize_branch_predictor() final;
     void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
@@ -225,7 +225,7 @@ public:
   template <typename... Ts>
   struct btb_module_model final : btb_module_concept {
     std::tuple<Ts...> intern_;
-    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
+    explicit btb_module_model([[maybe_unused]] O3_CPU* cpu) : intern_(Ts{cpu}...) {}
 
     void impl_initialize_btb() final;
     void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
@@ -306,7 +306,10 @@ bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address i
       return false;
   };
 
-  return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
+  if constexpr (sizeof...(Bs)) {
+    return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
+  }
+  return false;
 }
 
 template <typename... Ts>
@@ -350,7 +353,10 @@ std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_pre
     return std::pair{champsim::address{}, false};
   };
 
-  return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
+  if constexpr (sizeof...(Ts) > 0) {
+    return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
+  }
+  return {0ul, false};
 }
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE

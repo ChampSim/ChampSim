@@ -412,8 +412,9 @@ long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggerin
     return 0L;
   };
 
-  if constexpr (sizeof...(Rs) > 0)
+  if constexpr (sizeof...(Rs) > 0) {
     return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
+  }
   return 0;
 }
 

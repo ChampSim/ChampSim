@@ -38,23 +38,23 @@ class core_builder
 
   uint32_t m_cpu{};
   double m_freq_scale{1};
-  std::size_t m_dib_set{};
-  std::size_t m_dib_way{};
-  std::size_t m_dib_window{};
-  std::size_t m_ifetch_buffer_size{};
-  std::size_t m_decode_buffer_size{};
-  std::size_t m_dispatch_buffer_size{};
-  std::size_t m_rob_size{};
-  std::size_t m_lq_size{};
-  std::size_t m_sq_size{};
-  unsigned m_fetch_width{};
-  unsigned m_decode_width{};
-  unsigned m_dispatch_width{};
-  unsigned m_schedule_width{};
-  unsigned m_execute_width{};
-  unsigned m_lq_width{};
-  unsigned m_sq_width{};
-  unsigned m_retire_width{};
+  std::size_t m_dib_set{1};
+  std::size_t m_dib_way{1};
+  std::size_t m_dib_window{1};
+  std::size_t m_ifetch_buffer_size{1};
+  std::size_t m_decode_buffer_size{1};
+  std::size_t m_dispatch_buffer_size{1};
+  std::size_t m_rob_size{1};
+  std::size_t m_lq_size{1};
+  std::size_t m_sq_size{1};
+  unsigned m_fetch_width{1};
+  unsigned m_decode_width{1};
+  unsigned m_dispatch_width{1};
+  unsigned m_schedule_width{1};
+  unsigned m_execute_width{1};
+  unsigned m_lq_width{1};
+  unsigned m_sq_width{1};
+  unsigned m_retire_width{1};
   unsigned m_mispredict_penalty{};
   unsigned m_decode_latency{};
   unsigned m_dispatch_latency{};
@@ -62,8 +62,8 @@ class core_builder
   unsigned m_execute_latency{};
 
   CACHE* m_l1i{};
-  long int m_l1i_bw{};
-  long int m_l1d_bw{};
+  long int m_l1i_bw{1};
+  long int m_l1d_bw{1};
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
 
