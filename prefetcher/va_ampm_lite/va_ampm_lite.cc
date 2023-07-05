@@ -1,5 +1,9 @@
 #include "va_ampm_lite.h"
 
+#include <algorithm>
+
+#include "cache.h"
+
 uint64_t va_ampm_lite::region_type::region_lru = 0;
 
 void va_ampm_lite::prefetcher_initialize() {}

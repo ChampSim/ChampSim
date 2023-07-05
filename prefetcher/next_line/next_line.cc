@@ -1,5 +1,7 @@
 #include "next_line.h"
 
+#include "champsim_constants.h"
+
 void next_line::prefetcher_initialize() {}
 uint32_t next_line::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
 {

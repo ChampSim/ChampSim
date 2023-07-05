@@ -25,20 +25,9 @@
 #include <string_view>
 #include <vector>
 
+#include "access_type.h"
+
 struct ooo_model_instr;
-
-enum class access_type : unsigned {
-  LOAD = 0,
-  RFO,
-  PREFETCH,
-  WRITE,
-  TRANSLATION,
-  NUM_TYPES,
-};
-
-using namespace std::literals::string_view_literals;
-inline constexpr std::array<std::string_view, static_cast<std::size_t>(access_type::NUM_TYPES)> access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv,
-                                                                                                                  "TRANSLATION"};
 
 namespace champsim
 {

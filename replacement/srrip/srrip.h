@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "modules.h"
+#include "cache.h"
 
 struct srrip : champsim::modules::replacement
 {

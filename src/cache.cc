@@ -634,12 +634,12 @@ std::vector<double> CACHE::get_pq_occupancy_ratio() const { return ::occupancy_r
 
 void CACHE::impl_prefetcher_initialize() const { pref_module_pimpl->impl_prefetcher_initialize(); }
 
-uint32_t CACHE::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in) const
+uint32_t CACHE::impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in) const
 {
   return pref_module_pimpl->impl_prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
 }
 
-uint32_t CACHE::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) const
+uint32_t CACHE::impl_prefetcher_cache_fill(uint64_t addr, long set, long way, bool prefetch, uint64_t evicted_addr, uint32_t metadata_in) const
 {
   return pref_module_pimpl->impl_prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
 }
@@ -662,7 +662,7 @@ long CACHE::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long se
 }
 
 void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                          uint8_t hit) const
+                                          bool hit) const
 {
   repl_module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
 }

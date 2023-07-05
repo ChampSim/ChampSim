@@ -7,6 +7,8 @@
 
 #include "modules.h"
 
+#include "champsim_constants.h"
+
 struct va_ampm_lite : champsim::modules::prefetcher
 {
   static constexpr std::size_t REGION_COUNT = 128;
