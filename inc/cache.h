@@ -303,7 +303,8 @@ template <typename... Ps>
 void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_initialize()
 {
   auto process_one = [&](auto& p) {
-    if constexpr (champsim::modules::detect::prefetcher::has_initialize<decltype(p)>())
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_initialize<decltype(p)>)
       p.prefetcher_initialize();
   };
 
@@ -315,15 +316,14 @@ uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(ui
                                                                               access_type type, uint32_t metadata_in)
 {
   auto process_one = [&](auto& p) {
-    constexpr auto version = champsim::modules::detect::prefetcher::has_cache_operate<decltype(p)>();
-    if constexpr (version == 3)
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_cache_operate<decltype(p), uint64_t, uint64_t, uint8_t, bool, access_type, uint32_t>)
       return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
-    if constexpr (version == 2)
+    if constexpr (prefetcher::has_cache_operate<decltype(p), uint64_t, uint64_t, uint8_t, bool, std::underlying_type_t<access_type>, uint32_t>)
       return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in);
-    else if constexpr (version == 1)
+    if constexpr (prefetcher::has_cache_operate<decltype(p), uint64_t, uint64_t, uint8_t, std::underlying_type_t<access_type>, uint32_t>)
       return p.prefetcher_cache_operate(addr, ip, cache_hit, champsim::to_underlying(type), metadata_in); // absent useful_prefetch
-    else
-      return 0u;
+    return 0u;
   };
 
   return std::apply([&](auto&... p) { return (0u ^ ... ^ process_one(p)); }, intern_);
@@ -334,7 +334,8 @@ uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(uint6
                                                                            uint32_t metadata_in)
 {
   auto process_one = [&](auto& p) {
-    if constexpr (champsim::modules::detect::prefetcher::has_cache_fill<decltype(p)>())
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_cache_fill<decltype(p), uint64_t, long, long, uint8_t, uint64_t, uint32_t>)
       return p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
     return 0u;
   };
@@ -346,7 +347,8 @@ template <typename... Ps>
 void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cycle_operate()
 {
   auto process_one = [&](auto& p) {
-    if constexpr (champsim::modules::detect::prefetcher::has_cycle_operate<decltype(p)>())
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_cycle_operate<decltype(p)>)
       p.prefetcher_cycle_operate();
   };
 
@@ -357,7 +359,8 @@ template <typename... Ps>
 void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_final_stats()
 {
   auto process_one = [&](auto& p) {
-    if constexpr (champsim::modules::detect::prefetcher::has_final_stats<decltype(p)>())
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_final_stats<decltype(p)>)
       p.prefetcher_final_stats();
   };
 
@@ -368,7 +371,8 @@ template <typename... Ps>
 void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
 {
   auto process_one = [&](auto& p) {
-    if constexpr (champsim::modules::detect::prefetcher::has_branch_operate<decltype(p)>())
+    using namespace champsim::modules::detect;
+    if constexpr (prefetcher::has_branch_operate<decltype(p)>)
       p.prefetcher_branch_operate(ip, branch_type, branch_target);
   };
 
@@ -379,10 +383,9 @@ template <typename... Rs>
 void CACHE::replacement_module_model<Rs...>::impl_initialize_replacement()
 {
   auto process_one = [&](auto& r) {
-    if constexpr (champsim::modules::detect::replacement::has_initialize<decltype(r)>())
+    using namespace champsim::modules::detect;
+    if constexpr (replacement::has_initialize<decltype(r)>)
       r.initialize_replacement();
-    // else if (champsim::modules::warn_if_any_missing)
-    // champsim::modules::does_not_have<decltype(r)>();
   };
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
@@ -393,13 +396,12 @@ long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggerin
                                                               uint64_t full_addr, access_type type)
 {
   auto process_one = [&](auto& r) {
-    constexpr auto version = champsim::modules::detect::replacement::has_find_victim<decltype(r)>();
-    if constexpr (version == 2)
+    using namespace champsim::modules::detect;
+    if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, uint64_t, uint64_t, access_type>)
       return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
-    else if constexpr (version == 1)
+    if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, uint64_t, uint64_t, std::underlying_type_t<access_type>>)
       return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type));
-    else
-      return 0u;
+    return 0L;
   };
 
   if constexpr (sizeof...(Rs) > 0) {
@@ -413,10 +415,10 @@ void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint3
                                                                            uint64_t victim_addr, access_type type, uint8_t hit)
 {
   auto process_one = [&](auto& r) {
-    constexpr auto version = champsim::modules::detect::replacement::has_update_state<decltype(r)>();
-    if constexpr (version == 2)
+    using namespace champsim::modules::detect;
+    if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, access_type, uint8_t>)
       r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
-    else if constexpr (version == 1)
+    if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>, uint8_t>)
       r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, champsim::to_underlying(type), hit);
   };
 
@@ -427,7 +429,8 @@ template <typename... Rs>
 void CACHE::replacement_module_model<Rs...>::impl_replacement_final_stats()
 {
   auto process_one = [&](auto& r) {
-    if constexpr (champsim::modules::detect::replacement::has_final_stats<decltype(r)>())
+    using namespace champsim::modules::detect;
+    if constexpr (replacement::has_final_stats<decltype(r)>)
       r.replacement_final_stats();
   };
 

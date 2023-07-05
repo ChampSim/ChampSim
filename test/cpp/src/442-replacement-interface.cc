@@ -90,11 +90,8 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The replacement policy is called once") {
-          REQUIRE(std::size(test::replacement_update_state_collector[&uut]) == 1);
-        }
-
         THEN("The replacement policy is called with information from the issued packet") {
+          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
           CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
           CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
           CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
@@ -164,11 +161,8 @@ SCENARIO("The replacement policy is triggered on a hit") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The replacement policy is called once") {
-        REQUIRE(std::size(test::replacement_update_state_collector[&uut]) == 1);
-      }
-
       THEN("The replacement policy is called with information from the issued packet") {
+        REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
         CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
         CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
@@ -228,6 +222,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
           elem->_operate();
 
       AND_WHEN("A packet with a different address is issued") {
+        test::replacement_update_state_collector[&uut].clear();
 
         decltype(mock_ul_test)::request_type test = seed;
         test.address = 0xcafebabe;
@@ -251,12 +246,12 @@ SCENARIO("The replacement policy notes the correct eviction information") {
             elem->_operate();
 
         THEN("An eviction occurred") {
-          REQUIRE(mock_ll.packet_count() == 2);
+          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
           REQUIRE(mock_ll.addresses.at(1) == seed.address);
         }
 
         THEN("The replacement policy is called with information from the evicted packet") {
-          REQUIRE(std::size(test::replacement_update_state_collector[&uut]) >= 1);
+          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
           CHECK(test::replacement_update_state_collector[&uut].back().cpu == test.cpu);
           CHECK(test::replacement_update_state_collector[&uut].back().set == 0);
           CHECK(test::replacement_update_state_collector[&uut].back().way == 0);

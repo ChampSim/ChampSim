@@ -11,8 +11,8 @@ struct bypass_replacement : champsim::modules::replacement
   auto find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t addr, uint32_t)
   {
     if (addr == bypass_addr)
-      return 1;
-    return 0;
+      return 1L;
+    return 0L;
   }
 };
 

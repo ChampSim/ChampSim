@@ -44,11 +44,8 @@ SCENARIO("The next line prefetcher issues prefetches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 2 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 2);
-      }
-
       THEN("All of the issued requests have the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
         REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + 1 == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
       }
     }
@@ -93,11 +90,8 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 2 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 2);
-      }
-
       THEN("All of the issued requests have the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
         REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + 1 == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
       }
     }

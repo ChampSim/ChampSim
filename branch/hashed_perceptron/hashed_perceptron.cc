@@ -49,7 +49,7 @@ sources for you to plagiarize.
 
 #include <numeric>
 
-uint8_t hashed_perceptron::predict_branch(uint64_t pc)
+bool hashed_perceptron::predict_branch(uint64_t pc)
 {
   perceptron_result result;
   std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(result.indices), [pc, ghist_words=ghist_words](auto hist_len) { // for each table...
