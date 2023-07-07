@@ -21,6 +21,8 @@
 #include <cmath>
 #include <iomanip>
 #include <numeric>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -214,8 +216,13 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       mshr_entry->to_return = std::move(to_return);
     }
   } else {
-    if (mshr_full)  // not enough MSHR resource
-      return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
+    if (mshr_full) { // not enough MSHR resource
+      if constexpr (champsim::debug_print) {
+        fmt::print("[{}] {} MSHR full\n", NAME, __func__);
+      }
+
+      return false;  // TODO should we allow prefetches anyway if they will not be filled to this level?
+    }
 
     request_type fwd_pkt;
 
@@ -240,7 +247,11 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     else
       success = lower_level->add_pq(fwd_pkt);
 
-    if (!success)
+    if (!success) {
+      if constexpr (champsim::debug_print) {
+        fmt::print("[{}] {} could not send to lower\n", NAME, __func__);
+      }
+
       return false;
 
     // Allocate an MSHR
@@ -697,11 +708,31 @@ void CACHE::print_deadlock()
     fmt::print("{} MSHR empty\n", NAME);
   }
 
-  for (auto ul : upper_levels) {
+  if (!std::empty(inflight_tag_check)) {
+    std::size_t j = 0;
+    for (auto entry : inflight_tag_check) {
+      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
+                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+    }
+  } else {
+    fmt::print("{} inflight_tag_check empty\n", NAME);
+  }
+
+  if (!std::empty(translation_stash)) {
+    std::size_t j = 0;
+    for (auto entry : translation_stash) {
+      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
+                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+    }
+  } else {
+    fmt::print("{} translation_stash empty\n", NAME);
+  }
+
+  for (auto* ul : upper_levels) {
     if (!std::empty(ul->RQ)) {
       for (const auto& entry : ul->RQ) {
-        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} RQ empty\n", NAME);
@@ -709,8 +740,8 @@ void CACHE::print_deadlock()
 
     if (!std::empty(ul->WQ)) {
       for (const auto& entry : ul->WQ) {
-        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} WQ empty\n", NAME);
@@ -718,8 +749,8 @@ void CACHE::print_deadlock()
 
     if (!std::empty(ul->PQ)) {
       for (const auto& entry : ul->PQ) {
-        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} PQ empty\n", NAME);
