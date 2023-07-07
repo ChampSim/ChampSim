@@ -253,6 +253,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       }
 
       return false;
+    }
 
     // Allocate an MSHR
     if (fwd_pkt.response_requested) {

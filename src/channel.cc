@@ -123,6 +123,7 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
           access_type_names.at(champsim::to_underlying(packet.type)));
     }
     return false; // cannot handle this request
+  }
 
   if constexpr (champsim::debug_print) {
     fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
