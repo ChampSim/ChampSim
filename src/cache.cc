@@ -353,7 +353,7 @@ void CACHE::operate()
   // Find entries that would be ready except that they have not finished translation, move them to the stash
   auto [last_not_missed, stash_end] =
       champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
-                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated; });
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
@@ -516,7 +516,7 @@ void CACHE::finish_translation(const response_type& packet)
 
 void CACHE::issue_translation()
 {
-  std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& q_entry) {
+  auto issue = [this](auto& q_entry) {
     if (!q_entry.translate_issued && !q_entry.is_translated) {
       request_type fwd_pkt;
       fwd_pkt.asid[0] = q_entry.asid[0];
@@ -541,7 +541,10 @@ void CACHE::issue_translation()
         }
       }
     }
-  });
+  };
+
+  std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), issue);
+  std::for_each(std::begin(translation_stash), std::end(translation_stash), issue);
 }
 
 std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
