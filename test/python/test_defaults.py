@@ -60,7 +60,7 @@ class JoiningL1IPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_same_level(self):
         path = config.defaults.list_defaults(self.cores, self.same_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_l1i',
             'l2_0': 'champsim::defaults::default_l2c',
@@ -71,12 +71,72 @@ class JoiningL1IPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_different_level(self):
         path = config.defaults.list_defaults(self.cores, self.different_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_l1i',
             'l2_0': 'champsim::defaults::default_l2c',
             'l3_0': 'champsim::defaults::default_llc',
             'l1_1': 'champsim::defaults::default_l1i'
+        }
+        self.assertDictEqual(defs, expected)
+
+class L1IHasITLBTests(unittest.TestCase):
+    def test_two_level(self):
+        cpu = {'L1I': 'l1', 'ITLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[4]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2'
+        }
+        self.assertDictEqual(defs, expected)
+
+    def test_three_level(self):
+        cpu = {'L1I': 'l1', 'ITLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2', 'lower_level': 'tlb3'},
+            'tlb3': {'name': 'tlb3'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[4]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2',
+            'l3': 'tlb3'
+        }
+        self.assertDictEqual(defs, expected)
+
+    def test_four_level(self):
+        cpu = {'L1I': 'l1', 'ITLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2', 'lower_level': 'tlb3'},
+            'tlb3': {'name': 'tlb3', 'lower_level': 'tlb4'},
+            'tlb4': {'name': 'tlb4'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[4]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2',
+            'l3': 'tlb3'
         }
         self.assertDictEqual(defs, expected)
 
@@ -134,7 +194,7 @@ class JoiningL1DPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_same_level(self):
         path = config.defaults.list_defaults(self.cores, self.same_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_l1d',
             'l2_0': 'champsim::defaults::default_l2c',
@@ -145,12 +205,72 @@ class JoiningL1DPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_different_level(self):
         path = config.defaults.list_defaults(self.cores, self.different_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_l1d',
             'l2_0': 'champsim::defaults::default_l2c',
             'l3_0': 'champsim::defaults::default_llc',
             'l1_1': 'champsim::defaults::default_l1d'
+        }
+        self.assertDictEqual(defs, expected)
+
+class L1DHasDTLBTests(unittest.TestCase):
+    def test_two_level(self):
+        cpu = {'L1D': 'l1', 'DTLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[5]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2'
+        }
+        self.assertDictEqual(defs, expected)
+
+    def test_three_level(self):
+        cpu = {'L1D': 'l1', 'DTLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2', 'lower_level': 'tlb3'},
+            'tlb3': {'name': 'tlb3'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[5]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2',
+            'l3': 'tlb3'
+        }
+        self.assertDictEqual(defs, expected)
+
+    def test_four_level(self):
+        cpu = {'L1D': 'l1', 'DTLB': 'tlb1'}
+        caches = {
+            'l1': {'name': 'l1', 'lower_level': 'l2'},
+            'l2': {'name': 'l2', 'lower_level': 'l3'},
+            'l3': {'name': 'l3'},
+            'tlb1': {'name': 'tlb1', 'lower_level': 'tlb2'},
+            'tlb2': {'name': 'tlb2', 'lower_level': 'tlb3'},
+            'tlb3': {'name': 'tlb3', 'lower_level': 'tlb4'},
+            'tlb4': {'name': 'tlb4'}
+        }
+
+        path = config.defaults.list_defaults_for_core(cpu, caches)[5]
+        defs = {v['name']:v.get('lower_translate') for v in path}
+        expected = {
+            'l1': 'tlb1',
+            'l2': 'tlb2',
+            'l3': 'tlb3'
         }
         self.assertDictEqual(defs, expected)
 
@@ -196,7 +316,7 @@ class JoiningITLBPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_same_level(self):
         path = config.defaults.list_defaults(self.cores, self.same_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_itlb',
             'l2_0': 'champsim::defaults::default_stlb',
@@ -246,7 +366,7 @@ class JoiningDTLBPathDefaultsTests(unittest.TestCase):
 
     def test_cpp_defaults_joins_at_same_level(self):
         path = config.defaults.list_defaults(self.cores, self.same_level_join_caches)
-        defs = {v['name']:v.get('_defaults') for v in path}
+        defs = {v['name']:v.get('_defaults') for v in config.util.combine_named(path).values()}
         expected = {
             'l1_0': 'champsim::defaults::default_dtlb',
             'l2_0': 'champsim::defaults::default_stlb',
