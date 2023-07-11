@@ -258,7 +258,7 @@ class ParseNormalizedTests(unittest.TestCase):
 class NormalizeConfigTest(unittest.TestCase):
 
     def test_empty_config_creates_defaults(self):
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config({})
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config({})
         self.assertEqual(len(cores), 1)
         self.assertEqual(caches, {})
         self.assertEqual(ptws, {})
@@ -274,7 +274,7 @@ class NormalizeConfigTest(unittest.TestCase):
                             '__test__': True
                         }
                     }
-                cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+                cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
                 self.assertIn('testcache', caches)
                 self.assertEqual(caches['testcache'].get('__test__'), True)
 
@@ -284,7 +284,7 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertIn(cores[0]['PTW'], ptws)
         self.assertEqual(ptws[cores[0]['PTW']].get('__test__'), True)
 
@@ -296,7 +296,7 @@ class NormalizeConfigTest(unittest.TestCase):
                             '__test__': True
                         }}]
                     }
-                cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+                cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
                 self.assertIn(cores[0][name], caches)
                 self.assertEqual(caches[cores[0][name]].get('__test__'), True)
 
@@ -306,7 +306,7 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }}]
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertIn(cores[0]['PTW'], ptws)
         self.assertEqual(ptws[cores[0]['PTW']].get('__test__'), True)
 
@@ -317,7 +317,7 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }]
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertIn('testcache', caches)
         self.assertEqual(caches['testcache'].get('__test__'), True)
 
@@ -328,7 +328,7 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }]
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertIn('testcache', ptws)
         self.assertEqual(ptws['testcache'].get('__test__'), True)
 
@@ -338,7 +338,7 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertEqual(pmem.get('__test__'), True)
 
     def test_virtual_memory_is_forwarded(self):
@@ -347,14 +347,14 @@ class NormalizeConfigTest(unittest.TestCase):
                     '__test__': True
                 }
             }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertEqual(vmem.get('__test__'), True)
 
     def test_core_params_are_moved_to_core_array(self):
         core_keys_to_copy = ('frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'rob_size', 'lq_size', 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width', 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency', 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB')
         for k in core_keys_to_copy:
             with self.subTest(key=k):
-                cores, caches, ptws, pmem, vmem = config.parse.normalize_config({ k: '__test__' })
+                cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config({ k: '__test__' })
                 self.assertEqual(cores[0].get(k), '__test__')
 
     def test_core_array_params_are_preferred(self):
@@ -362,7 +362,7 @@ class NormalizeConfigTest(unittest.TestCase):
             'ooo_cpu': [ { 'rob_size': 2016 } ],
             'rob_size': 1028
         }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertEqual(cores[0].get('rob_size'), 2016)
 
     def test_core_array_params_are_preferred_multi(self):
@@ -371,7 +371,7 @@ class NormalizeConfigTest(unittest.TestCase):
             'ooo_cpu': [ { 'rob_size': 2016 } ],
             'rob_size': 1028
         }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertEqual(cores[0].get('rob_size'), 2016)
         self.assertEqual(cores[1].get('rob_size'), 2016)
 
@@ -381,8 +381,84 @@ class NormalizeConfigTest(unittest.TestCase):
             'ooo_cpu': [ { 'L1D': { 'name': 'testcache', '__var__': '__fromcore__' } } ],
             'L1D': { 'name': 'testcache', '__var__': '__fromroot__' }
         }
-        cores, caches, ptws, pmem, vmem = config.parse.normalize_config(test_config)
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
         self.assertEqual(caches['testcache'].get('__var__'), '__fromarray__')
+
+    def test_cores_in_core_array_can_be_named(self):
+        test_config = {
+            'ooo_cpu': [ { 'name': 'testcore' } ]
+        }
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
+        self.assertEqual(cores[0].get('name'), 'testcore')
+
+    def test_caches_in_core_array_can_be_named(self):
+        test_config = {
+            'ooo_cpu': [ { 'L1D': { 'name': 'testcache', '__var__': '__fromcore__' } } ]
+        }
+        cores, caches, ptws, pmem, vmem, root = config.parse.normalize_config(test_config)
+        self.assertIn('testcache', caches)
+
+class MergeConfigurationsTests(unittest.TestCase):
+    def test_merging_empty_with_empty_is_empty(self):
+        cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(config.parse.normalize_config({}), config.parse.normalize_config({}))
+        self.assertEqual(len(cores), 1)
+        self.assertEqual(caches, {})
+        self.assertEqual(ptws, {})
+        self.assertEqual(pmem, {})
+        self.assertEqual(vmem, {})
+
+    def test_merging_empty_with_nonempty_does_not_affect_result(self):
+        test_config = {
+            'num_cores': 2,
+            'ooo_cpu': [ { 'rob_size': 2016 } ],
+            'rob_size': 1028
+        }
+        for configs, label in (((test_config, {}), 'after'), (({}, test_config), 'before')):
+            with self.subTest(order=label):
+                cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(*map(config.parse.normalize_config, configs))
+                self.assertEqual(cores[0].get('rob_size'), 2016)
+                self.assertEqual(cores[1].get('rob_size'), 2016)
+
+    def test_merging_first_takes_priority_in_core_array(self):
+        seed_config = config.parse.normalize_config({
+            'ooo_cpu': [ { 'rob_size': 2016 } ],
+        })
+        test_config = config.parse.normalize_config({
+            'ooo_cpu': [ { 'rob_size': 2048 } ],
+        })
+        cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(seed_config, test_config)
+        self.assertEqual(cores[0].get('rob_size'), seed_config[0][0]['rob_size'])
+
+    def test_merging_first_takes_priority_from_root_to_core_array(self):
+        seed_config = config.parse.normalize_config({
+            'rob_size': 2016
+        })
+        test_config = config.parse.normalize_config({
+            'ooo_cpu': [ { 'rob_size': 2048 } ],
+        })
+        cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(seed_config, test_config)
+        self.assertEqual(cores[0].get('rob_size'), seed_config[0][0]['rob_size'])
+
+    def test_merging_first_takes_priority_from_core_array_to_root(self):
+        seed_config = config.parse.normalize_config({
+            'ooo_cpu': [ { 'rob_size': 2048 } ],
+        })
+        test_config = config.parse.normalize_config({
+            'rob_size': 2016
+        })
+        cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(seed_config, test_config)
+        self.assertEqual(cores[0].get('rob_size'), seed_config[0][0]['rob_size'])
+
+    def test_merging_first_takes_priority_from_cache_array_to_core_array(self):
+        seed_config = config.parse.normalize_config({
+            'caches': [ { 'name': 'test', 'sets': 2 } ],
+            'ooo_cpu': [ { 'L1D': 'test' } ]
+        })
+        test_config = config.parse.normalize_config({
+            'ooo_cpu': [ { 'L1D': { 'name': 'test', 'sets': 3 } } ],
+        })
+        cores, caches, ptws, pmem, vmem, root = config.parse.merge_configs(seed_config, test_config)
+        self.assertEqual(caches, seed_config[1])
 
 class DefaultFrequenciesTest(unittest.TestCase):
 
@@ -660,3 +736,10 @@ class CompileAllModulesTests(unittest.TestCase):
         result_all = config.parse.parse_normalized(*self.base_config, {}, PassthroughContext(), PassthroughContext(), PassthroughContext(), FoundMoreContext(), True)
         self.assertIn('extra', result_all[1])
 
+class PathEndInTests(unittest.TestCase):
+    def test_path_end(self):
+        for length in (1,2,4,16):
+            with self.subTest(length=length):
+                path = ({'name': x} for x in range(length))
+                result = config.parse.path_end_in(path, 'last')
+                self.assertEqual(result, {'name': length-1, 'lower_level': 'last'})

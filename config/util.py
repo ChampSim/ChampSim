@@ -73,9 +73,10 @@ def combine_named(*iterables):
     Collect a sequence of sequences of dictionaries by their 'name' parameter.
     Earlier parameters have priority over later parameters.
     '''
-    iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
-    iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
-    return {name: chain(*dict_list) for name, dict_list in iterable}
+    key_func = operator.methodcaller('get', 'name', '')
+    iterable = sorted(itertools.chain(*iterables), key=key_func)
+    iterable = itertools.groupby(iterable, key=key_func)
+    return {name: chain(*dict_list) for name, dict_list in iterable if name != ''}
 
 def upper_levels_for(system, name, key='lower_level'):
     '''
