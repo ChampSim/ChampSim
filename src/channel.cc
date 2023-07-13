@@ -119,7 +119,16 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 
   // check occupancy
   if (std::size(queue) >= queue_size) {
+    if constexpr (champsim::debug_print) {
+      fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {} FULL\n", __func__, packet.instr_id, packet.address, packet.v_address,
+          access_type_names.at(champsim::to_underlying(packet.type)));
+    }
     return false; // cannot handle this request
+  }
+
+  if constexpr (champsim::debug_print) {
+    fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
+        access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   // Insert the packet ahead of the translation misses
@@ -132,11 +141,6 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 
 bool champsim::channel::add_rq(const request_type& packet)
 {
-  if constexpr (champsim::debug_print) {
-    fmt::print("[channel_rq] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
-               access_type_names.at(champsim::to_underlying(packet.type)));
-  }
-
   sim_stats.RQ_ACCESS++;
 
   auto result = do_add_queue(RQ, RQ_SIZE, packet);
@@ -152,11 +156,6 @@ bool champsim::channel::add_rq(const request_type& packet)
 
 bool champsim::channel::add_wq(const request_type& packet)
 {
-  if constexpr (champsim::debug_print) {
-    fmt::print("[channel_wq] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
-               access_type_names.at(champsim::to_underlying(packet.type)));
-  }
-
   sim_stats.WQ_ACCESS++;
 
   auto result = do_add_queue(WQ, WQ_SIZE, packet);
@@ -172,11 +171,6 @@ bool champsim::channel::add_wq(const request_type& packet)
 
 bool champsim::channel::add_pq(const request_type& packet)
 {
-  if constexpr (champsim::debug_print) {
-    fmt::print("[channel_pq] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
-               access_type_names.at(champsim::to_underlying(packet.type)));
-  }
-
   sim_stats.PQ_ACCESS++;
 
   auto fwd_pkt = packet;
