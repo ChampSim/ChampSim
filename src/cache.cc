@@ -220,7 +220,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
         fmt::print("[{}] {} MSHR full\n", NAME, __func__);
       }
 
-      return false;  // TODO should we allow prefetches anyway if they will not be filled to this level?
+      return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
     }
 
     request_type fwd_pkt;
@@ -340,21 +340,22 @@ void CACHE::operate()
   std::vector<long long> channels_bandwidth_consumed{};
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      auto bandwidth_consumed = champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
+      auto bandwidth_consumed =
+          champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
       channels_bandwidth_consumed.push_back(bandwidth_consumed);
       tag_bw -= bandwidth_consumed;
     }
   }
-  auto pq_bandwidth_consumed = champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
+  auto pq_bandwidth_consumed =
+      champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
   tag_bw -= pq_bandwidth_consumed;
 
   // Issue translations
   issue_translation();
 
   // Find entries that would be ready except that they have not finished translation, move them to the stash
-  auto [last_not_missed, stash_end] =
-      champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
-                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated; });
+  auto [last_not_missed, stash_end] = champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
+                                                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated; });
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
@@ -377,10 +378,10 @@ void CACHE::operate()
   impl_prefetcher_cycle_operate();
 
   if (champsim::debug_print) {
-    fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume bw {}\n", NAME, __func__, current_cycle,
-        tag_bw_consumed, std::size(inflight_tag_check),
-        stash_bandwidth_consumed, std::size(translation_stash),
-        channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
+    fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
+               "bw {}\n",
+               NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
+               channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
   }
 }
 
@@ -725,8 +726,8 @@ void CACHE::print_deadlock()
   if (!std::empty(inflight_tag_check)) {
     std::size_t j = 0;
     for (auto entry : inflight_tag_check) {
-      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
+                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
     }
   } else {
     fmt::print("{} inflight_tag_check empty\n", NAME);
@@ -735,8 +736,8 @@ void CACHE::print_deadlock()
   if (!std::empty(translation_stash)) {
     std::size_t j = 0;
     for (auto entry : translation_stash) {
-      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
+                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
     }
   } else {
     fmt::print("{} translation_stash empty\n", NAME);
