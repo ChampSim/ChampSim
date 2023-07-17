@@ -17,12 +17,17 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
+#include <array>   // for array
+#include <cstdint> // for uint8_t, uint64_t
 #include <cstring>
 #include <deque>
+#include <iterator> // for begin, size, operator!=, operator==, back_i...
 #include <memory>
 #include <numeric>
 #include <string>
+#include <string_view> // for string_view
 #include <type_traits>
+#include <utility> // for move, forward
 
 #include "instruction.h"
 #include "util/detect.h"

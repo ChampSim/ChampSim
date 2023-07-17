@@ -22,8 +22,11 @@
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
 #include "cache.h"
+#include "cache_builder.h"
+#include "core_builder.h"
 #include "ooo_cpu.h"
 #include "ptw.h"
+#include "ptw_builder.h"
 
 namespace champsim::defaults
 {
