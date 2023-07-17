@@ -19,8 +19,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstdint>          // for uint64_t, uint8_t, uint32_t
-#include <cstdio>           // for size_t, stderr
+#include <cstdint> // for uint64_t, uint8_t, uint32_t
+#include <cstdio>  // for size_t, stderr
 #include <numeric>
 #include <string_view> // for string_view
 #include <fmt/core.h>
