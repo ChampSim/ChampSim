@@ -361,7 +361,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         return [
             *(os.path.join(m,dirname) for m in (module_dir or [])),
             *var,
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # champsim root
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), dirname) # champsim root
         ]
 
     def do_merge(lhs, rhs):
@@ -380,8 +380,8 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         modules_to_compile = [*set(itertools.chain(*(d.keys() for d in module_info.values())))]
     else:
         modules_to_compile = [*set(d['name'] for d in itertools.chain(
-            *(c['_replacement_data'] for c in elements['caches'].values()),
-            *(c['_prefetcher_data'] for c in elements['caches'].values()),
+            *(c['_replacement_data'] for c in elements['caches']),
+            *(c['_prefetcher_data'] for c in elements['caches']),
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]

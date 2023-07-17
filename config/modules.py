@@ -32,10 +32,12 @@ class ModuleSearchContext:
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
         # Return a normalized directory: variables and user shorthands are expanded
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, itertools.chain(
+        paths = list(itertools.chain(
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
-        ))))))
+        ))
+        #print(paths)
+        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, paths)))))
 
         return self.data_from_path(path)
 
@@ -205,6 +207,7 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         ),
 
         itertools.chain(
+            ('#include "module_impl.h"',),
             *(get_discriminator(fname, branch_varname, btb_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=classname) for fname, *finfo in branch_variant_data),
             *(get_discriminator(fname, btb_varname, branch_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=classname) for fname, *finfo in btb_variant_data)
         )
@@ -257,6 +260,7 @@ def get_cache_module_lines(pref_data, repl_data):
         ),
 
         itertools.chain(
+            ('#include "module_impl.h"',),
             *(get_discriminator(fname, pref_varname, repl_varname, [(pref_prefix + v['name'], v['func_map'][fname]) for v in pref_data.values()], *finfo, classname=classname) for fname, *finfo in itertools.chain(pref_nonbranch_variant_data, pref_branch_variant_data)),
             *(get_discriminator(fname, repl_varname, pref_varname, [(repl_prefix + v['name'], v['func_map'][fname]) for v in repl_data.values()], *finfo, classname=classname) for fname, *finfo in repl_variant_data)
         )

@@ -14,14 +14,28 @@
  * limitations under the License.
  */
 
+#include <algorithm> // for transform
+#include <array>     // for array
+#include <cmath>     // for ceil
+#include <cstddef>   // for size_t
+#include <iterator>  // for back_insert_iterator, begin, end
 #include <numeric>
-#include <sstream>
+#include <stdint.h>    // for uint64_t
+#include <string_view> // for string_view
 #include <utility>
 #include <vector>
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
+#include "cache.h"              // for CACHE::stats_type, CACHE
+#include "champsim_constants.h" // for NUM_CPUS
+#include "channel.h"            // for access_type, access_type::LOAD, acce...
+#include "dram_controller.h"    // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
+#include "instruction.h"        // for branch_type, BRANCH_CONDITIONAL, BRA...
+#include "ooo_cpu.h"            // for O3_CPU::stats_type, O3_CPU
+#include "phase_info.h"         // for phase_stats
 #include "stats_printer.h"
+#include "util/bits.h" // for to_underlying
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {

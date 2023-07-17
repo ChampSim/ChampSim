@@ -16,12 +16,15 @@
 
 #include "channel.h"
 
+#include <algorithm> // for find_if, set_union
 #include <cassert>
+#include <iterator> // for back_insert_iterator, begin, end, size, bac...
+#include <utility>  // for move
 #include <fmt/core.h>
 
-#include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "util/bits.h" // for to_underlying
 
 champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)

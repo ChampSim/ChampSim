@@ -19,8 +19,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iomanip>
+#include <cstdint>          // for uint64_t, uint8_t, uint32_t
+#include <cstdio>           // for size_t, stderr
 #include <numeric>
+#include <string_view> // for string_view
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
@@ -28,6 +30,7 @@
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/algorithm.h"
+#include "util/bits.h" // for bitmask, lg2, splice_bits
 #include "util/span.h"
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)

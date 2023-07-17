@@ -23,23 +23,25 @@
 #define OOO_CPU_H
 
 #include <array>
-#include <bitset>
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t, uint8_t, uint32_t
 #include <deque>
+#include <functional> // for reference_wrapper
 #include <limits>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <stdexcept>
-#include <type_traits>
+#include <string>  // for string, basic_string
+#include <utility> // for pair
 #include <vector>
 
-#include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "instruction.h"
 #include "module_impl.h"
 #include "operable.h"
+#include "util/bits.h" // for lg2
 #include "util/lru_table.h"
 
 class CACHE;

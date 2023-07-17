@@ -18,12 +18,21 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>      // for ceil
+#include <cstdlib>    // for size_t, abort
+#include <deque>      // for deque
+#include <functional> // for reference_wrapper, logical_and
+#include <iterator>   // for back_insert_iterator, begin, end, back_...
 #include <numeric>
+#include <string> // for string, basic_string
 #include <vector>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
+#include "cache.h"           // for CACHE::stats_type, CACHE
+#include "dram_controller.h" // for DRAM_CHANNEL::stats_type, MEMORY_CONTRO...
 #include "environment.h"
+#include "instruction.h" // for ooo_model_instr
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "phase_info.h"

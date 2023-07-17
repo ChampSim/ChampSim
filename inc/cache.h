@@ -23,21 +23,26 @@
 #define CACHE_H
 
 #include <array>
-#include <bitset>
 #include <cmath>
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
+#include <functional> // for reference_wrapper
+#include <iterator>   // for size
+#include <limits>     // for numeric_limits
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
+#include <utility> // for pair
 #include <vector>
 
 #include "cache_builder.h"
-#include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
-#include "module_impl.h"
 #include "operable.h"
+#include "util/bits.h" // for to_underlying
+
+struct ooo_model_instr;
 
 struct cache_stats {
   std::string name;
