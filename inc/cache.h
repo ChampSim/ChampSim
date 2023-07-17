@@ -40,6 +40,9 @@
 #include "channel.h"
 #include "modules.h"
 #include "operable.h"
+#include "util/to_underlying.h" // for to_underlying
+
+struct ooo_model_instr;
 
 struct cache_stats {
   std::string name;
@@ -447,11 +450,11 @@ void CACHE::replacement_module_model<Rs...>::impl_update_replacement_state(uint3
       r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
 
     /* Raw integer access type */
-    if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, std::underlying_type_t<access_type>, bool>)
+    else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, champsim::address, champsim::address, champsim::address, std::underlying_type_t<access_type>, bool>)
       r.update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, champsim::to_underlying(type), hit);
 
     /* Raw integer addresses, raw integer access type */
-    if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>, bool>)
+    else if constexpr (replacement::has_update_state<decltype(r), uint32_t, long, long, uint64_t, uint64_t, uint64_t, std::underlying_type_t<access_type>, bool>)
       r.update_replacement_state(triggering_cpu, set, way, full_addr.to<uint64_t>(), ip.to<uint64_t>(), victim_addr.to<uint64_t>(), champsim::to_underlying(type), hit);
   };
 

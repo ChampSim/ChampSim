@@ -33,9 +33,14 @@ namespace
       ::update_interface_discerner[intern_] = 1;
     }
 
-    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, uint32_t, uint8_t)
+    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, uint32_t, bool)
     {
       ::update_interface_discerner[intern_] = 2;
+    }
+
+    void update_replacement_state(uint32_t, long, long, champsim::address, champsim::address, champsim::address, access_type, bool)
+    {
+      ::update_interface_discerner[intern_] = 3;
     }
   };
 }
@@ -171,7 +176,7 @@ SCENARIO("The simulator selects the address-based update function in replacement
           elem->_operate();
 
       THEN("The replacement policy is called with the address interface") {
-        REQUIRE(::update_interface_discerner[&uut] == 2);
+        REQUIRE(::update_interface_discerner[&uut] == 3);
       }
     }
   }
