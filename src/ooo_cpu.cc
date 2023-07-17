@@ -17,16 +17,17 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <cassert> // for assert
 #include <chrono>
 #include <cmath>
-#include <numeric>
+#include <iterator> // for end, begin, back_insert_iterator, empty
 #include <fmt/chrono.h>
 #include <fmt/core.h>
-#include <fmt/ranges.h>
 
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "trace_instruction.h" // for REG_STACK_POINTER, REG_FLAGS, REG_INS...
 #include "util/span.h"
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;

@@ -40,10 +40,12 @@ class ModuleSearchContext:
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
         # Return a normalized directory: variables and user shorthands are expanded
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, itertools.chain(
+        paths = list(itertools.chain(
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
-        ))))))
+        ))
+        #print(paths)
+        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, paths)))))
 
         return self.data_from_path(path)
 

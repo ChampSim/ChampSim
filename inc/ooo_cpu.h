@@ -23,23 +23,25 @@
 #endif
 
 #include <array>
-#include <bitset>
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t, uint8_t, uint32_t
 #include <deque>
+#include <functional> // for reference_wrapper
 #include <limits>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <stdexcept>
-#include <type_traits>
+#include <string>  // for string, basic_string
+#include <utility> // for pair
 #include <vector>
 
-#include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "instruction.h"
 #include "modules.h"
 #include "operable.h"
+#include "util/bits.h" // for lg2
 #include "util/lru_table.h"
 
 class CACHE;
@@ -215,7 +217,7 @@ public:
   template <typename... Bs>
   struct branch_module_model final : branch_module_concept {
     std::tuple<Bs...> intern_;
-    explicit branch_module_model([[maybe_unused]] O3_CPU* cpu) : intern_(Bs{cpu}...) {}
+    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Bs) == 0 */ }
 
     void impl_initialize_branch_predictor() final;
     void impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) final;
@@ -225,7 +227,7 @@ public:
   template <typename... Ts>
   struct btb_module_model final : btb_module_concept {
     std::tuple<Ts...> intern_;
-    explicit btb_module_model([[maybe_unused]] O3_CPU* cpu) : intern_(Ts{cpu}...) {}
+    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Ts) == 0 */ }
 
     void impl_initialize_btb() final;
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) final;
@@ -267,7 +269,7 @@ public:
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     if constexpr (branch_predictor::has_initialize<decltype(b)>)
       b.initialize_branch_predictor();
@@ -279,7 +281,7 @@ void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     if constexpr (branch_predictor::has_last_branch_result<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
       b.last_branch_result(ip, target, taken, branch_type);
@@ -291,7 +293,7 @@ void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(uint64_t ip, ui
 template <typename... Bs>
 bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(uint64_t ip, uint64_t predicted_target, bool always_taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
       return b.predict_branch(ip, predicted_target, always_taken, branch_type);
@@ -309,7 +311,7 @@ bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(uint64_t ip, uint64
 template <typename... Ts>
 void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
 {
-  auto process_one = [&](auto& t) {
+  [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
     if constexpr (btb::has_initialize<decltype(t)>)
       t.initialize_btb();
@@ -321,7 +323,7 @@ void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
 template <typename... Ts>
 void O3_CPU::btb_module_model<Ts...>::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& t) {
+  [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
     if constexpr (btb::has_update_btb<decltype(t), uint64_t, uint64_t, bool, uint8_t>)
       t.update_btb(ip, predicted_target, taken, branch_type);
@@ -333,12 +335,12 @@ void O3_CPU::btb_module_model<Ts...>::impl_update_btb(uint64_t ip, uint64_t pred
 template <typename... Ts>
 std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(uint64_t ip, uint8_t branch_type)
 {
-  auto process_one = [&](auto& t) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
-    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
-      return t.btb_prediction(ip);
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t, uint8_t>)
       return t.btb_prediction(ip, branch_type);
+    if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
+      return t.btb_prediction(ip);
     return std::pair{0ul, false};
   };
 
