@@ -11,7 +11,7 @@ struct merge_testbed
   constexpr static uint64_t address_that_will_hit = 0xcafebabe;
   filter_MRC mock_ll{address_that_will_hit};
   to_rq_MRP seed_ul, test_ul;
-  CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+  CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
     .name("431-uut")
     .upper_levels({{&seed_ul.queues, &test_ul.queues}})
     .lower_level(&mock_ll.queues)

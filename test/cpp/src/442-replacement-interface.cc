@@ -21,7 +21,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     constexpr uint64_t fill_latency = 2;
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("442a-uut-"+std::string{str})
       .sets(1)
       .ways(1)
@@ -98,7 +98,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("442b-uut-"+std::string{str})
       .sets(1)
       .ways(1)
@@ -170,7 +170,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("442c-uut")
       .sets(1)
       .ways(1)

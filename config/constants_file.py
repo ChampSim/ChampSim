@@ -41,4 +41,3 @@ def get_constants_file(env, pmem):
         f'inline constexpr std::size_t DRAM_WQ_SIZE = {pmem["wq_size"]};',
         f'inline constexpr std::size_t DRAM_RQ_SIZE = {pmem["rq_size"]};',
         '#endif')
-

@@ -24,6 +24,7 @@
 
 #include <array>
 #include <bitset>
+#include <cmath>
 #include <deque>
 #include <memory>
 #include <stdexcept>
@@ -31,6 +32,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "cache_builder.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
@@ -288,177 +290,14 @@ public:
   void impl_replacement_final_stats() { module_pimpl->impl_replacement_final_stats(); }
   // NOLINTEND(readability-make-member-function-const)
 
-  class builder_conversion_tag
-  {
-  };
-  template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
-  class Builder
-  {
-    using self_type = Builder<P_FLAG, R_FLAG>;
-
-    std::string m_name{};
-    champsim::chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
-    uint32_t m_sets{};
-    uint32_t m_ways{};
-    std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
-    uint32_t m_mshr_size{};
-    uint64_t m_hit_lat{};
-    uint64_t m_fill_lat{};
-    uint64_t m_latency{};
-    uint32_t m_max_tag{};
-    uint32_t m_max_fill{};
-    unsigned m_offset_bits{};
-    bool m_pref_load{};
-    bool m_wq_full_addr{};
-    bool m_va_pref{};
-
-    unsigned m_pref_act_mask{};
-    std::vector<CACHE::channel_type*> m_uls{};
-    CACHE::channel_type* m_ll{};
-    CACHE::channel_type* m_lt{nullptr};
-
-    friend class CACHE;
-
-    template <unsigned long long OTHER_P, unsigned long long OTHER_R>
-    Builder(builder_conversion_tag /*tag*/, const Builder<OTHER_P, OTHER_R>& other)
-        : m_name(other.m_name), m_clock_period(other.m_clock_period), m_sets(other.m_sets), m_ways(other.m_ways), m_pq_size(other.m_pq_size),
-          m_mshr_size(other.m_mshr_size), m_hit_lat(other.m_hit_lat), m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag),
-          m_max_fill(other.m_max_fill), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
-          m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
-    {
-    }
-
-  public:
-    Builder() = default;
-
-    self_type& name(std::string name_)
-    {
-      m_name = name_;
-      return *this;
-    }
-    self_type& clock_period(champsim::chrono::picoseconds clock_period_)
-    {
-      m_clock_period = clock_period_;
-      return *this;
-    }
-    self_type& sets(uint32_t sets_)
-    {
-      m_sets = sets_;
-      return *this;
-    }
-    self_type& ways(uint32_t ways_)
-    {
-      m_ways = ways_;
-      return *this;
-    }
-    self_type& pq_size(uint32_t pq_size_)
-    {
-      m_pq_size = pq_size_;
-      return *this;
-    }
-    self_type& mshr_size(uint32_t mshr_size_)
-    {
-      m_mshr_size = mshr_size_;
-      return *this;
-    }
-    self_type& latency(uint64_t lat_)
-    {
-      m_latency = lat_;
-      return *this;
-    }
-    self_type& hit_latency(uint64_t hit_lat_)
-    {
-      m_hit_lat = hit_lat_;
-      return *this;
-    }
-    self_type& fill_latency(uint64_t fill_lat_)
-    {
-      m_fill_lat = fill_lat_;
-      return *this;
-    }
-    self_type& tag_bandwidth(uint32_t max_read_)
-    {
-      m_max_tag = max_read_;
-      return *this;
-    }
-    self_type& fill_bandwidth(uint32_t max_write_)
-    {
-      m_max_fill = max_write_;
-      return *this;
-    }
-    self_type& offset_bits(unsigned offset_bits_)
-    {
-      m_offset_bits = offset_bits_;
-      return *this;
-    }
-    self_type& set_prefetch_as_load()
-    {
-      m_pref_load = true;
-      return *this;
-    }
-    self_type& reset_prefetch_as_load()
-    {
-      m_pref_load = false;
-      return *this;
-    }
-    self_type& set_wq_checks_full_addr()
-    {
-      m_wq_full_addr = true;
-      return *this;
-    }
-    self_type& reset_wq_checks_full_addr()
-    {
-      m_wq_full_addr = false;
-      return *this;
-    }
-    self_type& set_virtual_prefetch()
-    {
-      m_va_pref = true;
-      return *this;
-    }
-    self_type& reset_virtual_prefetch()
-    {
-      m_va_pref = false;
-      return *this;
-    }
-    template <typename... Elems>
-    self_type& prefetch_activate(Elems... pref_act_elems)
-    {
-      m_pref_act_mask = ((1U << champsim::to_underlying(pref_act_elems)) | ... | 0);
-      return *this;
-    }
-    self_type& upper_levels(std::vector<CACHE::channel_type*>&& uls_)
-    {
-      m_uls = std::move(uls_);
-      return *this;
-    }
-    self_type& lower_level(CACHE::channel_type* ll_)
-    {
-      m_ll = ll_;
-      return *this;
-    }
-    self_type& lower_translate(CACHE::channel_type* lt_)
-    {
-      m_lt = lt_;
-      return *this;
-    }
-    template <unsigned long long P>
-    Builder<P, R_FLAG> prefetcher()
-    {
-      return Builder<P, R_FLAG>{builder_conversion_tag{}, *this};
-    }
-    template <unsigned long long R>
-    Builder<P_FLAG, R> replacement()
-    {
-      return Builder<P_FLAG, R>{builder_conversion_tag{}, *this};
-    }
-  };
-
   template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-  explicit CACHE(Builder<P_FLAG, R_FLAG> b)
-      : champsim::operable(b.m_clock_period), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.m_sets),
-        NUM_WAY(b.m_ways), MSHR_SIZE(b.m_mshr_size), PQ_SIZE(b.m_pq_size), HIT_LATENCY((b.m_hit_lat > 0) ? b.m_hit_lat : b.m_latency - b.m_fill_lat),
-        FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag), MAX_FILL(b.m_max_fill), prefetch_as_load(b.m_pref_load),
+  explicit CACHE(champsim::cache_builder<P_FLAG, R_FLAG> b)
+      : champsim::operable(b.m_clock_period), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
+        NUM_SET(b.m_sets.value_or(std::lround(b.m_sets_factor * std::floor(std::size(upper_levels))))), NUM_WAY(b.m_ways),
+        MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))), PQ_SIZE(b.m_pq_size),
+        HIT_LATENCY(b.m_hit_lat.value_or(b.m_latency - b.m_fill_lat)), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits),
+        MAX_TAG(b.m_max_tag.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))),
+        MAX_FILL(b.m_max_fill.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         module_pimpl(std::make_unique<module_model<P_FLAG, R_FLAG>>(this))
   {

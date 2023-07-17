@@ -48,61 +48,79 @@ class ModuleSearchContext:
 def data_getter(prefix, module_name, funcs):
     return {
         'name': module_name,
-        'opts': { 'CXXFLAGS': ('-Wno-unused-parameter',), 'CPPFLAGS': ('-DCHAMPSIM_MODULE',) },
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
 
-def get_branch_data(module_name):
-    return data_getter('bpred', module_name, ('initialize_branch_predictor', 'last_branch_result', 'predict_branch'))
-
-def get_btb_data(module_name):
-    return data_getter('btb', module_name, ('initialize_btb', 'update_btb', 'btb_prediction'))
-
-def get_pref_data(module_name, is_instruction_cache=False):
-    prefix = 'ipref' if is_instruction_cache else 'pref'
+def get_branch_data(module):
     return util.chain(
-            data_getter(prefix, module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
-            { 'deprecated_func_map' : {
-                    'l1i_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l1d_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l2c_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'llc_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l1i_prefetcher_cache_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l1d_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l2c_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'llc_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l1i_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l1d_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l2c_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'llc_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_name, 'prefetcher_cycle_operate')),
-                    'l1i_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l1d_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l2c_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'llc_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l1i_prefetcher_branch_operate': '_'.join((prefix, module_name, 'prefetcher_branch_operate'))
-                }
+        module,
+        data_getter('bpred', module['name'], ('initialize_branch_predictor', 'last_branch_result', 'predict_branch'))
+    )
+
+def get_btb_data(module):
+    return util.chain(
+        module,
+        data_getter('btb', module['name'], ('initialize_btb', 'update_btb', 'btb_prediction'))
+    )
+
+def get_pref_data(module, is_instruction_cache=False):
+    prefix = 'ipref' if module['_is_instruction_prefetcher'] else 'pref'
+    return util.chain(
+        module,
+        data_getter(prefix, module['name'], ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
+        { 'deprecated_func_map' : {
+                'l1i_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l1d_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l2c_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'llc_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l1i_prefetcher_cache_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l1d_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l2c_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'llc_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l1i_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l1d_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l2c_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'llc_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module['name'], 'prefetcher_cycle_operate')),
+                'l1i_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l1d_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l2c_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'llc_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l1i_prefetcher_branch_operate': '_'.join((prefix, module['name'], 'prefetcher_branch_operate'))
             }
+        }
         )
 
-def get_repl_data(module_name):
-    return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
+def get_repl_data(module):
+    return util.chain(
+        module,
+        data_getter('repl', module['name'], ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
+    )
+
+def get_module_opts_lines(module_data):
+    '''
+    Generate an iterable of the compiler options for a particular module
+    '''
+    yield '-Wno-unused-parameter'
+    yield '-DCHAMPSIM_MODULE'
+    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
+    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
 # Generate C++ code giving the mangled module specialization functions
-def mangled_declarations(rtype, names, args, attrs=[]):
+def mangled_declarations(rtype, names, args, attrs=None):
     if rtype != 'void':
         local_attrs = ('nodiscard',)
     else:
         local_attrs = tuple()
-    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+    attrstring = ', '.join(itertools.chain(attrs or [], local_attrs))
 
     argstring = ', '.join(a[0] for a in args)
     yield from ('[[{}]] {} {}({});'.format(attrstring, rtype, name, argstring) for name in names)
 
 # Generate C++ code giving the mangled module specialization functions that are not implemented
-def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=[]):
+def mangled_prohibited_definitions(fname, names, args=tuple(), rtype='void', *tail, attrs=None):
     local_attrs = ('noreturn',)
-    attrstring = ', '.join(itertools.chain(attrs, local_attrs))
+    attrstring = ', '.join(itertools.chain(attrs or [], local_attrs))
 
     argstring = ', '.join(a[0]+' /*unused*/' for a in args)
     yield from ('[[{}]] {} {}({}) {{ throw std::runtime_error("Not implemented"); }} // NOLINT(readability-convert-member-functions-to-static)'.format(attrstring, rtype, name, argstring) for name in names)
@@ -142,7 +160,7 @@ def discriminator_function_definition(fname, rtype, join_op, args, varname, zipp
     yield '}'
 
 # For a given module function, generate C++ code declaring its mangled specialization declarations and a discriminator function
-def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void', *tail, attrs=[]):
+def get_module_variant_declarations(fname, fnamelist, args=tuple(), rtype='void', *tail, attrs=None):
     yield from mangled_declarations(rtype, fnamelist, args, attrs=attrs)
     yield ''
 

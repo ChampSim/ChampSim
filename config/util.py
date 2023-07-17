@@ -49,9 +49,12 @@ def chain(*dicts):
     Dictionaries given earlier in the parameter list have priority.
     :param dicts: the sequence to be chained
     '''
+    def merge(merger, tname, lhs, rhs):
+        return {k:merger(v, rhs[k]) for k,v in lhs.items() if isinstance(v, tname) and isinstance(rhs.get(k), tname)}
+
     def merge_dicts(lhs,rhs):
-        dict_merges = {k:merge_dicts(v, rhs[k]) for k,v in lhs.items() if isinstance(v, dict) and isinstance(rhs.get(k), dict)}
-        list_merges = {k:(v + rhs[k]) for k,v in lhs.items() if isinstance(v, list) and isinstance(rhs.get(k), list)}
+        dict_merges = merge(merge_dicts, dict, lhs, rhs)
+        list_merges = merge(operator.concat, list, lhs, rhs)
         return dict(itertools.chain(rhs.items(), lhs.items(), dict_merges.items(), list_merges.items()))
 
     return functools.reduce(merge_dicts, dicts)
@@ -70,9 +73,10 @@ def combine_named(*iterables):
     Collect a sequence of sequences of dictionaries by their 'name' parameter.
     Earlier parameters have priority over later parameters.
     '''
-    iterable = sorted(itertools.chain(*iterables), key=operator.itemgetter('name'))
-    iterable = itertools.groupby(iterable, key=operator.itemgetter('name'))
-    return {name: chain(*dict_list) for name, dict_list in iterable}
+    key_func = operator.methodcaller('get', 'name', '')
+    iterable = sorted(itertools.chain(*iterables), key=key_func)
+    iterable = itertools.groupby(iterable, key=key_func)
+    return {name: chain(*dict_list) for name, dict_list in iterable if name != ''}
 
 def upper_levels_for(system, name, key='lower_level'):
     '''
@@ -102,3 +106,27 @@ def propogate_down(path, key):
             value = new_value
         else:
             yield from ({ **element, key: value } for element in chunk)
+
+def append_except_last(iterable, suffix):
+    ''' Append a string to each element of the iterable except the last one. '''
+    retval = None
+    first = True
+    for element in iterable:
+        if not first:
+            yield retval + suffix
+        retval = element
+        first = False
+
+    if retval is not None:
+        yield retval
+
+def do_for_first(func, iterable):
+    '''
+    Evaluate the function for the first element in the iterable and yield it.
+    Then yield the rest of the iterable.
+    '''
+    iterator = iter(iterable)
+    first = next(iterator, None)
+    if first is not None:
+        yield func(first)
+        yield from iterator

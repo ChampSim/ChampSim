@@ -18,13 +18,12 @@
 #define DEFAULTS_HPP
 
 #include "cache.h"
-#include "champsim_constants.h"
 #include "ooo_cpu.h"
 #include "ptw.h"
 
 namespace champsim::defaults
 {
-const auto default_core = O3_CPU::Builder{}
+const auto default_core = champsim::core_builder{}
                               .dib_set(32)
                               .dib_way(8)
                               .dib_window(16)
@@ -55,15 +54,14 @@ const auto default_core = O3_CPU::Builder{}
                               .branch_predictor<O3_CPU::bbranchDbimodal>()
                               .btb<O3_CPU::tbtbDbasic_btb>();
 
-const auto default_l1i = CACHE::Builder{}
-                             .sets(64)
+const auto default_l1i = champsim::cache_builder{}
+                             .sets_factor(64)
                              .ways(8)
                              .pq_size(32)
-                             .mshr_size(8)
+                             .mshr_factor(32)
                              .hit_latency(3)
                              .fill_latency(1)
-                             .tag_bandwidth(2)
-                             .fill_bandwidth(2)
+                             .bandwidth_factor(1)
                              .offset_bits(LOG2_BLOCK_SIZE)
                              .reset_prefetch_as_load()
                              .set_virtual_prefetch()
@@ -75,15 +73,14 @@ const auto default_l1i = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno_instr>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_l1d = CACHE::Builder{}
-                             .sets(64)
+const auto default_l1d = champsim::cache_builder{}
+                             .sets_factor(64)
                              .ways(12)
                              .pq_size(8)
-                             .mshr_size(16)
+                             .mshr_factor(32)
                              .hit_latency(4)
                              .fill_latency(1)
-                             .tag_bandwidth(2)
-                             .fill_bandwidth(2)
+                             .bandwidth_factor(1)
                              .offset_bits(LOG2_BLOCK_SIZE)
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
@@ -92,15 +89,14 @@ const auto default_l1d = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_l2c = CACHE::Builder{}
-                             .sets(1024)
+const auto default_l2c = champsim::cache_builder{}
+                             .sets_factor(512)
                              .ways(8)
                              .pq_size(16)
-                             .mshr_size(32)
+                             .mshr_factor(32)
                              .hit_latency(9)
                              .fill_latency(1)
-                             .tag_bandwidth(1)
-                             .fill_bandwidth(1)
+                             .bandwidth_factor(0.5)
                              .offset_bits(LOG2_BLOCK_SIZE)
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
@@ -109,15 +105,14 @@ const auto default_l2c = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_itlb = CACHE::Builder{}
-                              .sets(16)
+const auto default_itlb = champsim::cache_builder{}
+                              .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
-                              .mshr_size(8)
+                              .mshr_factor(8)
                               .hit_latency(1)
                               .fill_latency(1)
-                              .tag_bandwidth(2)
-                              .fill_bandwidth(2)
+                              .bandwidth_factor(1)
                               .offset_bits(LOG2_PAGE_SIZE)
                               .reset_prefetch_as_load()
                               .set_virtual_prefetch()
@@ -126,15 +121,14 @@ const auto default_itlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_dtlb = CACHE::Builder{}
-                              .sets(16)
+const auto default_dtlb = champsim::cache_builder{}
+                              .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
                               .mshr_size(8)
                               .hit_latency(1)
                               .fill_latency(1)
-                              .tag_bandwidth(2)
-                              .fill_bandwidth(2)
+                              .bandwidth_factor(1)
                               .offset_bits(LOG2_PAGE_SIZE)
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
@@ -143,15 +137,14 @@ const auto default_dtlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_stlb = CACHE::Builder{}
-                              .sets(128)
+const auto default_stlb = champsim::cache_builder{}
+                              .sets_factor(64)
                               .ways(12)
                               .pq_size(0)
-                              .mshr_size(16)
+                              .mshr_factor(8)
                               .hit_latency(7)
                               .fill_latency(1)
-                              .tag_bandwidth(1)
-                              .fill_bandwidth(1)
+                              .bandwidth_factor(0.5)
                               .offset_bits(LOG2_PAGE_SIZE)
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
@@ -160,16 +153,15 @@ const auto default_stlb = CACHE::Builder{}
                               .prefetcher<CACHE::pprefetcherDno>()
                               .replacement<CACHE::rreplacementDlru>();
 
-const auto default_llc = CACHE::Builder{}
+const auto default_llc = champsim::cache_builder{}
                              .name("LLC")
-                             .sets(2048 * NUM_CPUS)
+                             .sets_factor(2048)
                              .ways(16)
-                             .pq_size(32 * NUM_CPUS)
-                             .mshr_size(64 * NUM_CPUS)
+                             .pq_size(32)
+                             .mshr_factor(64)
                              .hit_latency(19)
                              .fill_latency(1)
-                             .tag_bandwidth(NUM_CPUS)
-                             .fill_bandwidth(NUM_CPUS)
+                             .bandwidth_factor(1)
                              .offset_bits(LOG2_BLOCK_SIZE)
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
@@ -178,8 +170,7 @@ const auto default_llc = CACHE::Builder{}
                              .prefetcher<CACHE::pprefetcherDno>()
                              .replacement<CACHE::rreplacementDlru>();
 
-const auto default_ptw =
-    PageTableWalker::Builder{}.tag_bandwidth(2).fill_bandwidth(2).mshr_size(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8);
+const auto default_ptw = champsim::ptw_builder{}.bandwidth_factor(2).mshr_factor(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8);
 } // namespace champsim::defaults
 
 #endif

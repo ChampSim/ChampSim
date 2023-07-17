@@ -8,7 +8,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
   GIVEN("An IFETCH_BUFFER with one inflight instruction") {
     release_MRC mock_L1I;
     do_nothing_MRC mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
       .dib_window(4)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
