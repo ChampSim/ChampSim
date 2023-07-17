@@ -169,7 +169,7 @@ def get_ptw_builder(ptw, upper_levels):
 def get_ref_vector_function(rtype, func_name, elements):
     yield f'auto {func_name}() -> std::vector<std::reference_wrapper<{rtype}>> override {{'
     yield '  return {'
-    yield '    ' + vector_string(f'std::reference_wrapper<{rtype}>{{{elem["name"]}}}' for elem in elements)
+    yield '    ' + ', '.join(f'std::ref({elem["name"]})' for elem in elements)
     yield '  };'
     yield '}'
     yield ''

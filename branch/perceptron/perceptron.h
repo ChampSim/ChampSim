@@ -34,7 +34,7 @@ struct perceptron : champsim::modules::branch_predictor
    * such as output and history needed for updating the perceptron predictor
    */
   struct perceptron_state {
-    uint64_t ip = 0;
+    champsim::address ip{};
     bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
     long long int output = 0;                    // perceptron output
     std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
@@ -48,8 +48,8 @@ struct perceptron : champsim::modules::branch_predictor
 
   using branch_predictor::branch_predictor;
 
-  bool predict_branch(uint64_t ip);
-  void last_branch_result(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type);
+  bool predict_branch(champsim::address ip);
+  void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
 };
 
 template <std::size_t HISTLEN, std::size_t BITS>

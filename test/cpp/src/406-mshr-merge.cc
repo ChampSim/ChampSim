@@ -9,20 +9,20 @@
 
 namespace
 {
-  std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
+  std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
 }
 
 struct address_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, bool, bool, access_type, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address, bool, bool, access_type, uint32_t metadata_in)
   {
     ::address_operate_collector[intern_].push_back(addr);
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
   {
     return metadata_in;
   }
@@ -56,11 +56,11 @@ SCENARIO("A cache merges two requests in the MSHR") {
         elem->_operate();
 
     WHEN("A packet is sent") {
-      ::address_operate_collector[&uut].clear();
+      ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       uint64_t id = 1;
       decltype(mock_ul_seed)::request_type test_a;
-      test_a.address = 0xdeadbeef;
+      test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
@@ -81,7 +81,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       }
 
       AND_WHEN("A packet with the same address is sent before the fill has completed") {
-        ::address_operate_collector[&uut].clear();
+        ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
         decltype(mock_ul_test)::request_type test_b = test_a;
         test_b.instr_id = id++;

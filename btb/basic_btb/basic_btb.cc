@@ -9,21 +9,23 @@
 #include "basic_btb.h"
 #include "instruction.h"
 
+#include "instruction.h"
+
 void basic_btb::initialize_btb()
 {
 }
 
-std::pair<uint64_t, bool> basic_btb::btb_prediction(uint64_t ip)
+std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)
 {
   // use BTB for all other branches + direct calls
   auto btb_entry = direct.check_hit(ip);
 
   // no prediction for this IP
   if (!btb_entry.has_value())
-    return {0, false};
+    return {champsim::address{}, false};
 
   if (btb_entry->type == direct_predictor::branch_info::RETURN)
-    return ras.prediction(ip);
+    return ras.prediction();
 
   if (btb_entry->type == direct_predictor::branch_info::INDIRECT)
     return indirect.prediction(ip);
@@ -31,7 +33,7 @@ std::pair<uint64_t, bool> basic_btb::btb_prediction(uint64_t ip)
   return {btb_entry->target, btb_entry->type != direct_predictor::branch_info::CONDITIONAL};
 }
 
-void basic_btb::update_btb(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type)
+void basic_btb::update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL)
@@ -47,5 +49,6 @@ void basic_btb::update_btb(uint64_t ip, uint64_t branch_target, bool taken, uint
   if (branch_type == BRANCH_RETURN)
     ras.calibrate_call_size(branch_target);
 
+  // update btb entry
   direct.update(ip, branch_target, branch_type);
 }

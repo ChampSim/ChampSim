@@ -21,10 +21,14 @@
 #include <cassert>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "msl/bits.h"
+#include "util/detect.h"
+#include "util/span.h"
 
 namespace champsim::msl
 {
@@ -39,6 +43,23 @@ template <typename T>
 struct table_tagger {
   auto operator()(const T& t) const { return t.tag(); }
 };
+
+// recognizes types that support slicing
+template <typename T>
+using dynamically_sliceable = decltype( std::declval<T>().slice(0,0) );
+
+template< class T, class U >
+constexpr bool cmp_equal( T t, U u ) noexcept
+{
+  using UT = std::make_unsigned_t<T>;
+  using UU = std::make_unsigned_t<U>;
+  if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
+    return t == u;
+  else if constexpr (std::is_signed_v<T>)
+    return t < 0 ? false : UT(t) == u;
+  else
+    return u < 0 ? false : t == UU(u);
+}
 } // namespace detail
 
 template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>>
@@ -53,21 +74,28 @@ private:
     value_type data;
   };
   using block_vec_type = std::vector<block_t>;
+  using diff_type = typename block_vec_type::difference_type;
 
   SetProj set_projection;
   TagProj tag_projection;
 
-  std::size_t NUM_SET, NUM_WAY;
+  diff_type NUM_SET;
+  diff_type NUM_WAY;
   uint64_t access_count = 0;
-  block_vec_type block{NUM_SET * NUM_WAY};
+  block_vec_type block;
 
   auto get_set_span(const value_type& elem)
   {
-    using diff_type = typename block_vec_type::difference_type;
-    auto set_idx = static_cast<diff_type>(set_projection(elem) & bitmask(lg2(NUM_SET)));
-    auto set_begin = std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY));
-    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
-    return std::pair{set_begin, set_end};
+    diff_type set_idx;
+    if constexpr (champsim::is_detected_v<detail::dynamically_sliceable, std::invoke_result_t<SetProj, decltype(elem)>>) {
+      set_idx = set_projection(elem).template to<decltype(set_idx)>();
+    } else {
+      set_idx = static_cast<diff_type>(set_projection(elem));
+    }
+    if (set_idx < 0)
+      throw std::range_error{"Set projection produced negative set index: "+std::to_string(set_idx)};
+    diff_type raw_idx{(set_idx % NUM_SET) * NUM_WAY};
+    return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), NUM_WAY);
   }
 
   auto match_func(const value_type& elem)
@@ -132,9 +160,16 @@ public:
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
-      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
+      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(static_cast<diff_type>(sets)), NUM_WAY(static_cast<diff_type>(ways)), block(sets*ways)
   {
-    assert(sets == 0 || sets == (1ULL << lg2(sets)));
+    if (!detail::cmp_equal(sets, static_cast<diff_type>(sets)))
+      throw std::overflow_error{"Sets is out of bounds"};
+    if (!detail::cmp_equal(ways, static_cast<diff_type>(ways)))
+      throw std::overflow_error{"Ways is out of bounds"};
+    if (sets <= 0)
+      throw std::range_error{"Sets is not positive"};
+    if ((sets & (sets-1)) != 0)
+      throw std::range_error{"Sets is not a power of 2"};
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}

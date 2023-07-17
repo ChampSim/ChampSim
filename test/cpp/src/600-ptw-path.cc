@@ -30,7 +30,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 
     WHEN("The PTW receives a request") {
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.v_address = test.address;
       test.cpu = 0;
 
@@ -74,7 +74,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 
     WHEN("The PTW receives a request") {
       decltype(mock_ul)::request_type test;
-      test.address = 0xffff'ffff'ffff'ffff;
+      test.address = champsim::address{0xffff'ffff'ffff'ffff};
       test.v_address = test.address;
       test.cpu = 0;
 
@@ -86,10 +86,10 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
           elem->_operate();
 
       THEN("The PSCLs contain the request's address") {
-        CHECK(uut.pscl.at(0).check_hit({test.address, 0, 4}).has_value());
-        CHECK(uut.pscl.at(1).check_hit({test.address, 0, 3}).has_value());
-        CHECK(uut.pscl.at(2).check_hit({test.address, 0, 2}).has_value());
-        CHECK(uut.pscl.at(3).check_hit({test.address, 0, 1}).has_value());
+        CHECK(uut.pscl.at(0).check_hit({test.address, champsim::address{}, 4}).has_value());
+        CHECK(uut.pscl.at(1).check_hit({test.address, champsim::address{}, 3}).has_value());
+        CHECK(uut.pscl.at(2).check_hit({test.address, champsim::address{}, 2}).has_value());
+        CHECK(uut.pscl.at(3).check_hit({test.address, champsim::address{}, 1}).has_value());
       }
     }
   }
@@ -119,7 +119,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     uut.begin_phase();
 
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xffff'ffff'ffff'ffff;
+    seed.address = champsim::address{0xffff'ffff'ffff'ffff};
     seed.v_address = seed.address;
     seed.cpu = 0;
 
@@ -150,7 +150,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ffff'ffc0'0000;
+      test.address = champsim::address{0xffff'ffff'ffc0'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -169,7 +169,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ffff'8000'0000;
+      test.address = champsim::address{0xffff'ffff'8000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -188,7 +188,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xffff'ff00'0000'0000;
+      test.address = champsim::address{0xffff'ff00'0000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);
@@ -207,7 +207,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
       mock_ll.addresses.clear();
 
       decltype(mock_ul)::request_type test = seed;
-      test.address = 0xfffe'0000'0000'0000;
+      test.address = champsim::address{0xfffe'0000'0000'0000};
       test.v_address = test.address;
       auto test_result = mock_ul.issue(test);
       REQUIRE(test_result);

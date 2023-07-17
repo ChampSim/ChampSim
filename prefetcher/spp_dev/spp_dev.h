@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "champsim.h"
+#include "address.h"
+
 namespace spp
 {
 // SPP functional knobs
@@ -65,7 +68,7 @@ public:
       }
   };
 
-  void read_and_update_sig(uint64_t page, uint32_t page_offset, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta);
+  void read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta);
 };
 
 class PATTERN_TABLE
@@ -105,7 +108,7 @@ public:
     }
   }
 
-  bool check(uint64_t pf_addr, FILTER_REQUEST filter_request);
+  bool check(champsim::address pf_addr, FILTER_REQUEST filter_request);
 };
 
 class GLOBAL_REGISTER

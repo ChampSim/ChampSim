@@ -24,6 +24,8 @@
 #include <limits>
 #include <vector>
 
+#include "champsim.h"
+#include "address.h"
 #include "trace_instruction.h"
 
 // branch types
@@ -40,7 +42,7 @@ enum branch_type {
 
 struct ooo_model_instr {
   uint64_t instr_id = 0;
-  uint64_t ip = 0;
+  champsim::address ip{};
   uint64_t event_cycle = 0;
 
   bool is_branch = false;
@@ -51,7 +53,7 @@ struct ooo_model_instr {
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
   uint8_t branch_type = NOT_BRANCH;
-  uint64_t branch_target = 0;
+  champsim::address branch_target{};
 
   bool dib_checked = false;
   bool fetch_issued = false;
@@ -67,8 +69,8 @@ struct ooo_model_instr {
   std::vector<uint8_t> destination_registers = {}; // output registers
   std::vector<uint8_t> source_registers = {};      // input registers
 
-  std::vector<uint64_t> destination_memory = {};
-  std::vector<uint64_t> source_memory = {};
+  std::vector<champsim::address> destination_memory = {};
+  std::vector<champsim::address> source_memory = {};
 
   // these are indices of instructions in the ROB that depend on me
   std::vector<std::reference_wrapper<ooo_model_instr>> registers_instrs_depend_on_me;
@@ -79,8 +81,12 @@ private:
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);
-    std::remove_copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::back_inserter(this->destination_memory), 0);
-    std::remove_copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::back_inserter(this->source_memory), 0);
+
+    auto dmem_end = std::remove(std::begin(instr.destination_memory), std::end(instr.destination_memory), uint64_t{0});
+    std::transform(std::begin(instr.destination_memory), dmem_end, std::back_inserter(this->destination_memory), [](auto x){ return champsim::address{x}; });
+
+    auto smem_end = std::remove(std::begin(instr.source_memory), std::end(instr.source_memory), uint64_t{0});
+    std::transform(std::begin(instr.source_memory), smem_end, std::back_inserter(this->source_memory), [](auto x){ return champsim::address{x}; });
 
     bool writes_sp = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_STACK_POINTER);
     bool writes_ip = std::count(std::begin(destination_registers), std::end(destination_registers), champsim::REG_INSTRUCTION_POINTER);

@@ -16,8 +16,6 @@
 
 #include "ptw_builder.h"
 
-#include <utility>
-
 auto champsim::ptw_builder::name(std::string_view name_) -> ptw_builder&
 {
   m_name = name_;

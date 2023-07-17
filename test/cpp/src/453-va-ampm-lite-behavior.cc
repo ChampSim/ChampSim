@@ -8,15 +8,14 @@
 #include "../../../prefetcher/va_ampm_lite/va_ampm_lite.h"
 
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
-  int64_t stride;
+  champsim::block_number::difference_type stride;
 
-  explicit StrideMatcher(int64_t s) : stride(s) {}
+  explicit StrideMatcher(champsim::block_number::difference_type s) : stride(s) {}
 
     template<typename Range>
-    bool match(Range const& range) const {
-      std::vector<int64_t> diffs;
-      std::adjacent_difference(std::cbegin(range), std::cend(range), std::back_inserter(diffs), [](const auto& x, const auto& y){ return (x >> LOG2_BLOCK_SIZE) - (y >> LOG2_BLOCK_SIZE); });
-      return std::all_of(std::next(std::cbegin(diffs)), std::cend(diffs), [stride=stride](auto x){ return x == stride; });
+    bool match(const Range& range) const {
+      std::vector<decltype(stride)> diffs;
+      return std::adjacent_find(std::cbegin(range), std::cend(range), [stride=stride](const auto& x, const auto& y){ return champsim::offset(champsim::block_number{x}, champsim::block_number{y}) != stride; }) == std::cend(range);
     }
 
     std::string describe() const override {
@@ -25,7 +24,7 @@ struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
 };
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the positive direction") {
-  auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
+  auto stride = GENERATE(as<typename champsim::block_number::difference_type>{}, 1, 2, 3, -1, -2, -3);
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
     do_nothing_MRC mock_lt;
@@ -49,9 +48,9 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     // Create a test packet
     static uint64_t id = 1;
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xdeadbeef0020;
+    seed.address = champsim::address{0xdeadbeef0800};
     seed.v_address = seed.address;
-    seed.ip = 0xcafecafe;
+    seed.ip = champsim::address{0xcafecafe};
     seed.instr_id = id++;
     seed.cpu = 0;
     seed.is_translated = false;
@@ -69,7 +68,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
 
     WHEN("Three more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address + stride*BLOCK_SIZE);
+      test_a.address = champsim::address{champsim::block_number{seed.address} + stride};
       test_a.v_address = test_a.address;
       test_a.instr_id = id++;
 
@@ -79,7 +78,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address + stride*BLOCK_SIZE);
+      test_b.address = champsim::address{champsim::block_number{test_a.address} + stride};
       test_b.v_address = test_b.address;
       test_b.instr_id = id++;
 
@@ -93,7 +92,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       auto test_c = test_b;
-      test_c.address = static_cast<uint64_t>(test_b.address + stride*BLOCK_SIZE);
+      test_c.address = champsim::address{champsim::block_number{test_b.address} + stride};
       test_c.v_address = test_c.address;
       test_c.instr_id = id++;
 
@@ -113,6 +112,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
   }
 }
 
+/*
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the negative direction") {
   auto stride = GENERATE(as<uint64_t>{}, 1, 2, 3, 4);
   GIVEN("A cache with one filled block") {
@@ -138,9 +138,9 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     // Create a test packet
     static uint64_t id = 1;
     decltype(mock_ul)::request_type seed;
-    seed.address = 0xdeadbeefffe0;
+    seed.address = champsim::address{0xdeadbeefffe0};
     seed.v_address = seed.address;
-    seed.ip = 0xcafecafe;
+    seed.ip = champsim::address{0xcafecafe};
     seed.instr_id = id++;
     seed.cpu = 0;
     seed.is_translated = false;
@@ -158,7 +158,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
 
     WHEN("Three more packets with the same IP but strided address is sent") {
       auto test_a = seed;
-      test_a.address = static_cast<uint64_t>(seed.address - stride*BLOCK_SIZE);
+      test_a.address = champsim::address{champsim::block_number{seed.address} - stride};
       test_a.v_address = test_a.address;
       test_a.instr_id = id++;
 
@@ -168,7 +168,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       }
 
       auto test_b = test_a;
-      test_b.address = static_cast<uint64_t>(test_a.address - stride*BLOCK_SIZE);
+      test_b.address = champsim::address{champsim::block_number{test_a.address} - stride};
       test_b.v_address = test_b.address;
       test_b.instr_id = id++;
 
@@ -182,7 +182,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       auto test_c = test_b;
-      test_c.address = static_cast<uint64_t>(test_b.address - stride*BLOCK_SIZE);
+      test_c.address = champsim::address{champsim::block_number{test_b.address} + stride};
       test_c.v_address = test_c.address;
       test_c.instr_id = id++;
 
@@ -201,5 +201,6 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
     }
   }
 }
+*/
 
 

@@ -59,26 +59,16 @@ def list_defaults_for_core(cpu, caches):
         { '_defaults': 'champsim::defaults::default_stlb', '_queue_factor': 16 }
     )
 
-    def connect_defaults(defaults, cache):
-        return {'name': cache['name'], **defaults}
-
     def connect_translator(cache, tlb):
         return {'name': cache['name'], 'lower_translate': tlb['name']}
 
     return (
-        #L1I path
-        itertools.starmap(connect_defaults, reversed(tuple(zip(l1i_members, icache_path[0])))),
-        #L1D path
-        itertools.starmap(connect_defaults, reversed(tuple(zip(l1d_members, dcache_path[0])))),
-        #ITLB path
-        itertools.starmap(connect_defaults, reversed(tuple(zip(itlb_members, itlb_path[0])))),
-        #DTLB path
-        itertools.starmap(connect_defaults, reversed(tuple(zip(dtlb_members, dtlb_path[0])))),
-
-        #L1I translation path
-        reversed(tuple(map(connect_translator, icache_path[1], itlb_path[1]))),
-        #L1D translation path
-        reversed(tuple(map(connect_translator, dcache_path[1], dtlb_path[1])))
+        map(util.chain, icache_path[0], l1i_members), #L1I path
+        map(util.chain, dcache_path[0], l1d_members), #L1D path
+        map(util.chain, itlb_path[0], itlb_members), #ITLB path
+        map(util.chain, dtlb_path[0], dtlb_members), #DTLB path
+        map(connect_translator, icache_path[1], itlb_path[1]), #L1I translation path
+        map(connect_translator, dcache_path[1], dtlb_path[1]) #L1D translation path
     )
 
 # Round-Robin recipe from itertools
@@ -97,4 +87,5 @@ def roundrobin(*paths):
 
 def list_defaults(cores, caches):
     ''' Generate the down-path defaults for all cores, merging with priority towards lower levels '''
-    yield from roundrobin(*itertools.chain(*(list_defaults_for_core(cpu, caches) for cpu in cores)))
+    paths = itertools.chain(*(list_defaults_for_core(cpu, caches) for cpu in cores))
+    yield from util.combine_named(reversed(list(roundrobin(*paths)))).values()

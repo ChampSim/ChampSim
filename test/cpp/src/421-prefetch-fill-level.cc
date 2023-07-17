@@ -29,7 +29,7 @@ SCENARIO("A prefetch can be issued that creates an MSHR") {
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, true, 0);
       REQUIRE(seed_result);
 
       for (int i = 0; i < 10; ++i) {
@@ -71,7 +71,7 @@ SCENARIO("A prefetch can be issued without creating an MSHR") {
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, false, 0);
       REQUIRE(seed_result);
 
       for (int i = 0; i < 10; ++i) {
@@ -110,7 +110,7 @@ SCENARIO("A prefetch fill the first level") {
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == true'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, true, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, true, 0);
       REQUIRE(seed_result);
 
       for (uint64_t i = 0; i < 2*fill_latency; i++) 
@@ -120,7 +120,7 @@ SCENARIO("A prefetch fill the first level") {
       AND_WHEN("A packet with the same address is sent")
       {
         decltype(mock_ut)::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
         test.cpu = 0;
 
         auto test_result = mock_ut.issue(test);
@@ -176,7 +176,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     }
 
     WHEN("A prefetch is issued with 'fill_this_level == false'") {
-      auto seed_result = uut.prefetch_line(0xdeadbeef, false, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xdeadbeef}, false, 0);
       REQUIRE(seed_result);
 
       for (uint64_t i = 0; i < 2*(hit_latency + fill_latency + 1); i++) {
@@ -189,7 +189,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
         mock_ut.packets.clear();
 
         decltype(mock_ut)::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
         test.is_translated = true;
         test.cpu = 0;
         test.instr_id = 1;
@@ -215,7 +215,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
     }
 
     WHEN("Another prefetch is issued with 'fill_this_level == false'") {
-      auto seed_result = uut.prefetch_line(0xbebacafe, false, 0);
+      auto seed_result = uut.prefetch_line(champsim::address{0xbebacafe}, false, 0);
       REQUIRE(seed_result);
 
       for (uint64_t i = 0; i < 6*fill_latency; i++) {
@@ -228,7 +228,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
         mock_ul.packets.clear();
 
         decltype(mock_ul)::request_type test;
-        test.address = 0xbebacafe;
+        test.address = champsim::address{0xbebacafe};
         test.is_translated = true;
         test.cpu = 0;
         test.instr_id = 2;

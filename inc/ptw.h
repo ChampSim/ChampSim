@@ -17,37 +17,28 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <cstddef> // for size_t
-#include <cstdint> // for uint64_t, uint8_t, uint32_t
+#include <array>
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <limits>     // for numeric_limits
-#include <optional>   // for optional
 #include <string>
-#include <vector> // for vector
 
+#include "address.h"
 #include "channel.h"
 #include "operable.h"
+#include "ptw_builder.h"
 #include "util/lru_table.h"
-
-namespace champsim
-{
-class ptw_builder;
-}
-struct ooo_model_instr;
 
 class VirtualMemory;
 class PageTableWalker : public champsim::operable
 {
   struct pscl_entry {
-    uint64_t vaddr;
-    uint64_t ptw_addr;
+    champsim::address vaddr;
+    champsim::address ptw_addr;
     std::size_t level;
   };
 
   struct pscl_indexer {
     std::size_t shamt;
-    auto operator()(const pscl_entry& entry) const { return entry.vaddr >> shamt; }
+    auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 
   using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
@@ -56,9 +47,9 @@ class PageTableWalker : public champsim::operable
   using response_type = typename channel_type::response_type;
 
   struct mshr_type {
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
@@ -95,7 +86,7 @@ public:
   std::vector<pscl_type> pscl;
   VirtualMemory* vmem;
 
-  const uint64_t CR3_addr;
+  const champsim::address CR3_addr;
 
   explicit PageTableWalker(champsim::ptw_builder builder);
 

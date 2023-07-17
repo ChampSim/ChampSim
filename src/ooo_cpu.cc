@@ -17,17 +17,16 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
-#include <cassert> // for assert
 #include <chrono>
 #include <cmath>
-#include <iterator> // for end, begin, back_insert_iterator, empty
+#include <numeric>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
+#include <fmt/ranges.h>
 
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "trace_instruction.h" // for REG_STACK_POINTER, REG_FLAGS, REG_INS...
 #include "util/span.h"
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
@@ -154,7 +153,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type) || always_taken;
   if (!arch_instr.branch_prediction) {
-    predicted_branch_target = 0;
+    predicted_branch_target = champsim::address{};
   }
 
   if (arch_instr.is_branch) {
@@ -234,7 +233,7 @@ void O3_CPU::fetch_instruction()
 
   // Find the chunk of instructions in the block
   auto no_match_ip = [](const auto& lhs, const auto& rhs) {
-    return (lhs.ip >> LOG2_BLOCK_SIZE) != (rhs.ip >> LOG2_BLOCK_SIZE);
+    return champsim::block_number{lhs.ip} != champsim::block_number{rhs.ip};
   };
 
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
@@ -584,7 +583,7 @@ void O3_CPU::handle_memory_return()
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
-      if ((fetched.ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched.fetch_issued) {
+      if (champsim::block_number{fetched.ip} == champsim::block_number{l1i_entry.v_address} && fetched.fetch_issued) {
         fetched.fetch_completed = true;
         --l1i_bw;
 
@@ -605,7 +604,7 @@ void O3_CPU::handle_memory_return()
   auto l1d_it = std::begin(L1D_bus.lower_level->returned);
   for (auto l1d_bw = L1D_BANDWIDTH; l1d_bw > 0 && l1d_it != std::end(L1D_bus.lower_level->returned); --l1d_bw, ++l1d_it) {
     for (auto& lq_entry : LQ) {
-      if (lq_entry.has_value() && lq_entry->fetch_issued && lq_entry->virtual_address >> LOG2_BLOCK_SIZE == l1d_it->v_address >> LOG2_BLOCK_SIZE) {
+      if (lq_entry.has_value() && lq_entry->fetch_issued && champsim::block_number{lq_entry->virtual_address} == champsim::block_number{l1d_it->v_address}) {
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
       }
@@ -617,10 +616,11 @@ void O3_CPU::handle_memory_return()
 void O3_CPU::retire_rob()
 {
   auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.completed; });
+  assert(std::distance(retire_begin, retire_end) >= 0); // end succeeds begin
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired\n", x.instr_id); });
   }
-  num_retired += std::distance(retire_begin, retire_end);
+  num_retired += static_cast<std::size_t>(std::distance(retire_begin, retire_end)); // cast protected by prior assert
   ROB.erase(retire_begin, retire_end);
 
   // LCOV_EXCL_START Check for deadlock
@@ -632,24 +632,24 @@ void O3_CPU::retire_rob()
 
 void O3_CPU::impl_initialize_branch_predictor() const { branch_module_pimpl->impl_initialize_branch_predictor(); }
 
-void O3_CPU::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) const
+void O3_CPU::impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) const
 {
   branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
 }
 
-bool O3_CPU::impl_predict_branch(uint64_t ip, uint64_t predicted_target, bool always_taken, uint8_t branch_type) const
+bool O3_CPU::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) const
 {
   return branch_module_pimpl->impl_predict_branch(ip, predicted_target, always_taken, branch_type);
 }
 
 void O3_CPU::impl_initialize_btb() const { btb_module_pimpl->impl_initialize_btb(); }
 
-void O3_CPU::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) const
+void O3_CPU::impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) const
 {
   btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
 }
 
-std::pair<uint64_t, bool> O3_CPU::impl_btb_prediction(uint64_t ip, uint8_t branch_type) const { return btb_module_pimpl->impl_btb_prediction(ip, branch_type); }
+std::pair<champsim::address, bool> O3_CPU::impl_btb_prediction(champsim::address ip, uint8_t branch_type) const { return btb_module_pimpl->impl_btb_prediction(ip, branch_type); }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()
@@ -701,7 +701,7 @@ void O3_CPU::print_deadlock()
 }
 // LCOV_EXCL_STOP
 
-LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
+LSQ_ENTRY::LSQ_ENTRY(uint64_t id, champsim::address addr, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
 {
 }

@@ -1,14 +1,14 @@
 #include "indirect_predictor.h"
 
-std::pair<uint64_t, bool> indirect_predictor::prediction(uint64_t ip)
+std::pair<champsim::address, bool> indirect_predictor::prediction(champsim::address ip)
 {
-  auto hash = (ip >> 2) ^ conditional_history.to_ullong();
+  auto hash = ip.slice_upper<2>().to<unsigned long long>() ^ conditional_history.to_ullong();
   return {predictor[hash % std::size(predictor)], true};
 }
 
-void indirect_predictor::update_target(uint64_t ip, uint64_t branch_target)
+void indirect_predictor::update_target(champsim::address ip, champsim::address branch_target)
 {
-  auto hash = (ip >> 2) ^ conditional_history.to_ullong();
+  auto hash = ip.slice_upper<2>().to<unsigned long long>() ^ conditional_history.to_ullong();
   predictor[hash % std::size(predictor)] = branch_target;
 }
 

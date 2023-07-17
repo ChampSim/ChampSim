@@ -15,33 +15,21 @@
  */
 
 #include <algorithm>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint8_t
-#include <functional> // for reference_wrapper
-#include <iostream>   // for cout, ofstream
-#include <iterator>   // for size, back_insert_iterator, begin
-#include <limits>     // for numeric_limits
-#include <memory>     // for allocator_traits<>::value_type
+#include <fstream>
 #include <numeric>
-#include <stdexcept> // for invalid_argument, out_of_range
 #include <string>
 #include <vector>
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
-#include "cache.h" // for CACHE
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "core_inst.inc"
 #include "defaults.hpp"
-#include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-
-namespace champsim
-{
-struct environment;
-}
+#include "vmem.h"
 
 namespace champsim
 {

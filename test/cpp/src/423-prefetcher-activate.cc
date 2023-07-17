@@ -9,19 +9,19 @@
 
 namespace
 {
-  std::map<CACHE*, std::vector<uint64_t>> address_operate_collector;
+  std::map<CACHE*, std::vector<champsim::address>> address_operate_collector;
 
   struct address_collector : champsim::modules::prefetcher
   {
     using prefetcher::prefetcher;
 
-    uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t, uint8_t, bool, access_type, uint32_t metadata_in)
+    uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in)
     {
       ::address_operate_collector[intern_].push_back(addr);
       return metadata_in;
     }
 
-    uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
+    uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
     {
       return metadata_in;
     }
@@ -46,10 +46,10 @@ SCENARIO("A prefetch does not trigger itself") {
     }
 
     WHEN("A prefetch is issued") {
-      ::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
+      ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       // Request a prefetch
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The prefetch is issued") {
@@ -91,10 +91,10 @@ SCENARIO("The prefetcher is triggered if the packet matches the activate field")
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      ::address_operate_collector.insert_or_assign(&uut, std::vector<uint64_t>{});
+      ::address_operate_collector.insert_or_assign(&uut, std::vector<champsim::address>{});
 
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
@@ -151,7 +151,7 @@ SCENARIO("The prefetcher is not triggered if the packet does not match the activ
       ::address_operate_collector[&uut].clear();
 
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = type;
       auto test_result = mock_ul.issue(test);
