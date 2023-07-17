@@ -17,12 +17,13 @@
 #include "vmem.h"
 
 #include <cassert>
+#include <limits> // for numeric_limits, numeric_limits<>::di...
 #include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
-#include "util/bits.h"
+#include "util/bits.h" // for lg2, splice_bits, bitmask
 
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : next_pte_page(LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size), 0), last_ppage(1ull << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),

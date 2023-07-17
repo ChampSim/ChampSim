@@ -19,11 +19,12 @@
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
+#include <utility> // for move
 #include <fmt/core.h>
 
 #include "champsim_constants.h"
 #include "instruction.h"
-#include "util/bits.h"
+#include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
 
 uint64_t cycles(double time, int io_freq)

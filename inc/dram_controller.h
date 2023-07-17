@@ -18,15 +18,22 @@
 #define DRAM_H
 
 #include <array>
-#include <cmath>
+#include <cstddef>    // for size_t
+#include <cstdint>    // for uint64_t, uint32_t, uint8_t
+#include <deque>      // for deque
+#include <functional> // for reference_wrapper
+#include <iterator>   // for end
 #include <limits>
 #include <optional>
 #include <string>
+#include <vector> // for vector, vector<>::iterator
 
 #include "address.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
+
+struct ooo_model_instr;
 
 struct dram_stats {
   std::string name{};
