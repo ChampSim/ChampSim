@@ -42,7 +42,7 @@
 #include "channel.h"
 #include "modules.h"
 #include "operable.h"
-#include "util/bits.h" // for to_underlying
+#include "util/to_underlying.h" // for to_underlying
 
 struct ooo_model_instr;
 

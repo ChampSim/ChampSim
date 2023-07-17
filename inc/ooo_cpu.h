@@ -335,7 +335,7 @@ void O3_CPU::btb_module_model<Ts...>::impl_update_btb(uint64_t ip, uint64_t pred
 template <typename... Ts>
 std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(uint64_t ip, uint8_t branch_type)
 {
-  [[maybe_unused]] auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t, uint8_t>)
       return t.btb_prediction(ip, branch_type);
