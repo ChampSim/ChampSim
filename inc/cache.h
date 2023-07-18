@@ -40,6 +40,7 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
+#include "waitable.h"
 #include "util/bits.h" // for to_underlying
 
 struct ooo_model_instr;
@@ -112,13 +113,13 @@ class CACHE : public champsim::operable
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint64_t cycle_enqueued;
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(const tag_lookup_type& req, uint64_t cycle);
+    static mshr_type merge(mshr_type predecessor, mshr_type successor);
   };
 
   bool try_hit(const tag_lookup_type& handle_pkt);
@@ -128,7 +129,7 @@ class CACHE : public champsim::operable
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
-  void issue_translation();
+  void issue_translation(tag_lookup_type& q_entry);
 
   struct BLOCK {
     bool valid = false;
@@ -182,8 +183,8 @@ public:
 
   stats_type sim_stats, roi_stats;
 
-  std::deque<mshr_type> MSHR;
-  std::deque<mshr_type> inflight_writes;
+  std::deque<champsim::waitable<mshr_type>> MSHR;
+  std::deque<champsim::waitable<mshr_type>> inflight_writes;
 
   void operate() final;
 
