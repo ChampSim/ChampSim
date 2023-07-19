@@ -192,7 +192,7 @@ def ptw_queue_defaults(ptw):
         '_queue_check_full_addr': False
     }
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
     upper_level_pairs = tuple(itertools.chain(
         ((elem['lower_level'], elem['name']) for elem in ptws),
         ((elem['lower_level'], elem['name']) for elem in caches),
@@ -221,6 +221,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "environment.h"'
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
+    yield '#include "chrono.h"'
     yield 'namespace champsim::configured {'
     yield 'struct generated_environment final : public champsim::environment {'
     yield ''
@@ -250,6 +251,10 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}'
     yield ''
+
+    yield 'auto time_quantum() const -> champsim::chrono::picoseconds {'
+    yield f'  return champsim::chrono::picoseconds{{{env["_clock_period"]}}};'
+    yield '}'
 
     yield '};'
     yield '}'

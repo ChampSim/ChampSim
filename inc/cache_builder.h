@@ -20,7 +20,6 @@
 #include <limits>
 #include <optional>
 
-#include "champsim_constants.h"
 #include "chrono.h"
 #include "util/bits.h"
 
@@ -37,7 +36,7 @@ class cache_builder
   using self_type = cache_builder<P_FLAG, R_FLAG>;
 
   std::string m_name{};
-  chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
+  chrono::picoseconds m_clock_period{};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
   uint32_t m_ways{1};

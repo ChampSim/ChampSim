@@ -17,17 +17,19 @@
 #include "operable.h"
 #include "champsim_constants.h"
 
-champsim::operable::operable() : operable(champsim::chrono::global_clock_period{1}) {}
+champsim::operable::operable() : operable(champsim::chrono::picoseconds{1}) {}
 
 champsim::operable::operable(champsim::chrono::picoseconds clock_period_) : clock_period(clock_period_) {}
 
-void champsim::operable::_operate()
+void champsim::operable::operate_on(const champsim::chrono::clock& clock)
 {
-  if (leap_operation <= champsim::chrono::picoseconds::zero()) {
-    operate();
-    ++current_cycle;
-    leap_operation += clock_period;
+  while (next_operate < clock.now()) {
+    _operate();
   }
+}
 
-  leap_operation -= champsim::chrono::global_clock_period{1};
+void champsim::operable::_operate() {
+  operate();
+  ++current_cycle;
+  next_operate += clock_period;
 }

@@ -35,16 +35,16 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index)
+void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
-            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
+            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.next_operate < rhs.next_operate; });
 
   // Operate
   for (champsim::operable& op : operables) {
     try {
-      op._operate();
+      op.operate_on(global_clock);
     } catch (champsim::deadlock& dl) {
       // env.cpu_view()[dl.which].print_deadlock();
       // std::cout << std::endl;
@@ -67,7 +67,7 @@ void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<st
   }
 }
 
-phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces)
+phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces, champsim::chrono::clock& global_clock)
 {
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
 
@@ -80,7 +80,9 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   // Perform cycles
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
-    do_cycle(env, traces, trace_index);
+    global_clock.tick(env.time_quantum());
+
+    do_cycle(env, traces, trace_index, global_clock);
 
     auto next_phase_complete = phase_complete;
 
@@ -147,9 +149,10 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
     op.initialize();
   }
 
+  champsim::chrono::clock global_clock;
   std::vector<phase_stats> results;
   for (auto phase : phases) {
-    auto stats = do_phase(phase, env, traces);
+    auto stats = do_phase(phase, env, traces, global_clock);
     if (!phase.is_warmup) {
       results.push_back(stats);
     }

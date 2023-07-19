@@ -23,7 +23,6 @@
 #include <string_view>
 #include <vector>
 
-#include "champsim_constants.h"
 #include "chrono.h"
 
 class VirtualMemory;
@@ -34,7 +33,7 @@ class channel;
 class ptw_builder
 {
   std::string_view m_name{};
-  chrono::picoseconds m_clock_period{champsim::chrono::global_clock_period{1}};
+  chrono::picoseconds m_clock_period{};
   uint32_t m_cpu{0};
   std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
   std::optional<uint32_t> m_mshr_size{};

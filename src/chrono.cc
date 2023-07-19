@@ -14,33 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef CHRONO_H
-#define CHRONO_H
+#include "chrono.h"
 
-#include <chrono>
+bool champsim::chrono::clock::is_steady() const { return false; }
+auto champsim::chrono::clock::now() const -> time_point { return m_now; }
+void champsim::chrono::clock::tick(duration amount) { m_now += amount; }
 
-namespace champsim
-{
-namespace chrono
-{
-using picoseconds = std::chrono::duration<std::intmax_t, std::pico>;
-
-class clock
-{
-  public:
-  using duration = picoseconds;
-  using time_point = std::chrono::time_point<clock>;
-  using rep = typename duration::rep;
-  using period = typename duration::period;
-
-  bool is_steady() const;
-  time_point now() const;
-  void tick(duration amount);
-
-  private:
-  time_point m_now{};
-};
-} // namespace chrono
-} // namespace champsim
-
-#endif

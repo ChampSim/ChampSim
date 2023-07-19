@@ -25,7 +25,7 @@ class operable
 {
 public:
   champsim::chrono::picoseconds clock_period{};
-  champsim::chrono::picoseconds leap_operation{};
+  champsim::chrono::clock::time_point next_operate{};
   uint64_t current_cycle = 0;
   bool warmup = true;
 
@@ -33,6 +33,7 @@ public:
   explicit operable(champsim::chrono::picoseconds clock_period);
 
   void _operate();
+  void operate_on(const champsim::chrono::clock& clock);
 
   virtual void initialize() {} // LCOV_EXCL_LINE
   virtual void operate() = 0;
