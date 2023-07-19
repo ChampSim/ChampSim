@@ -38,7 +38,7 @@
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
-  constexpr std::array types{BRANCH_DIRECT_JUMP, BRANCH_INDIRECT, BRANCH_CONDITIONAL, BRANCH_DIRECT_CALL, BRANCH_INDIRECT_CALL, BRANCH_RETURN};
+  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT, branch_type::BRANCH_CONDITIONAL, branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
   auto total_branch = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(champsim::to_underlying(next)); }));
   auto total_mispredictions = std::ceil(

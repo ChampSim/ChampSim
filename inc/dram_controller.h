@@ -69,7 +69,7 @@ struct DRAM_CHANNEL {
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
 
-    std::size_t open_row = std::numeric_limits<uint32_t>::max();
+    std::optional<std::size_t> open_row{};
 
     uint64_t event_cycle = 0;
 

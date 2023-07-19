@@ -62,19 +62,20 @@ TEST_CASE("splice_bits performs correctly at the limits") {
 TEST_CASE("splice_bits performs correctly in the middle") {
   constexpr unsigned long long a{0xaaaaaaaaaaaaaaaa};
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
+  constexpr unsigned long long zero{0};
 
   REQUIRE(champsim::splice_bits(a,b,8) == 0xaaaaaaaaaaaaaabb);
   REQUIRE(champsim::splice_bits(a,b,16) == 0xaaaaaaaaaaaabbbb);
   REQUIRE(champsim::splice_bits(a,b,32) == 0xaaaaaaaabbbbbbbb);
-  REQUIRE(champsim::splice_bits(a,0,8) == 0xaaaaaaaaaaaaaa00);
-  REQUIRE(champsim::splice_bits(a,0,16) == 0xaaaaaaaaaaaa0000);
-  REQUIRE(champsim::splice_bits(a,0,32) == 0xaaaaaaaa00000000);
-  REQUIRE(champsim::splice_bits(b,0,8) == 0xbbbbbbbbbbbbbb00);
-  REQUIRE(champsim::splice_bits(b,0,16) == 0xbbbbbbbbbbbb0000);
-  REQUIRE(champsim::splice_bits(b,0,32) == 0xbbbbbbbb00000000);
-  REQUIRE(champsim::splice_bits(0,b,8) == 0xbb);
-  REQUIRE(champsim::splice_bits(0,b,16) == 0xbbbb);
-  REQUIRE(champsim::splice_bits(0,b,32) == 0xbbbbbbbb);
+  REQUIRE(champsim::splice_bits(a,zero,8) == 0xaaaaaaaaaaaaaa00);
+  REQUIRE(champsim::splice_bits(a,zero,16) == 0xaaaaaaaaaaaa0000);
+  REQUIRE(champsim::splice_bits(a,zero,32) == 0xaaaaaaaa00000000);
+  REQUIRE(champsim::splice_bits(b,zero,8) == 0xbbbbbbbbbbbbbb00);
+  REQUIRE(champsim::splice_bits(b,zero,16) == 0xbbbbbbbbbbbb0000);
+  REQUIRE(champsim::splice_bits(b,zero,32) == 0xbbbbbbbb00000000);
+  REQUIRE(champsim::splice_bits(zero,b,8) == 0xbb);
+  REQUIRE(champsim::splice_bits(zero,b,16) == 0xbbbb);
+  REQUIRE(champsim::splice_bits(zero,b,32) == 0xbbbbbbbb);
 }
 
 TEST_CASE("lg2 correctly identifies powers of 2 in a constexpr") {
