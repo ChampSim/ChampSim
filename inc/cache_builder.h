@@ -36,7 +36,7 @@ class cache_builder
   using self_type = cache_builder<P_FLAG, R_FLAG>;
 
   std::string m_name{};
-  chrono::picoseconds m_clock_period{};
+  chrono::picoseconds m_clock_period{250};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
   uint32_t m_ways{1};

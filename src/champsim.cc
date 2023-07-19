@@ -48,7 +48,7 @@ void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<st
 {
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
-            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.next_operate < rhs.next_operate; });
+            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.current_time < rhs.current_time; });
 
   // Operate
   for (champsim::operable& op : operables) {

@@ -27,7 +27,7 @@ using picoseconds = std::chrono::duration<std::intmax_t, std::pico>;
 
 class clock
 {
-  public:
+public:
   using duration = picoseconds;
   using time_point = std::chrono::time_point<clock>;
   using rep = typename duration::rep;
@@ -37,7 +37,7 @@ class clock
   time_point now() const;
   void tick(duration amount);
 
-  private:
+private:
   time_point m_now{};
 };
 } // namespace chrono

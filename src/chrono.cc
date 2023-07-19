@@ -19,4 +19,3 @@
 bool champsim::chrono::clock::is_steady() const { return false; }
 auto champsim::chrono::clock::now() const -> time_point { return m_now; }
 void champsim::chrono::clock::tick(duration amount) { m_now += amount; }
-

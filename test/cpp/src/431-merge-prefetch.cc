@@ -93,13 +93,13 @@ SCENARIO("A prefetch MSHR that gets hit is promoted") {
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      auto old_cycle_enqueued = testbed.uut.MSHR.front()->cycle_enqueued;
+      auto old_time_enqueued = testbed.uut.MSHR.front()->time_enqueued;
 
       testbed.issue_type(type);
 
       THEN("The " + std::string{str} + " is in the MSHR") {
         REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
-        CHECK(testbed.uut.MSHR.front()->cycle_enqueued > old_cycle_enqueued);
+        CHECK(testbed.uut.MSHR.front()->time_enqueued > old_time_enqueued);
         //CHECK(testbed.uut.MSHR.front()->instr_id == 1);
         CHECK_THAT(testbed.uut.MSHR.front()->to_return, Catch::Matchers::SizeIs(2));
       }

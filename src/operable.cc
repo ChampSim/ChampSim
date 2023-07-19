@@ -15,6 +15,7 @@
  */
 
 #include "operable.h"
+
 #include "champsim_constants.h"
 
 champsim::operable::operable() : operable(champsim::chrono::picoseconds{1}) {}
@@ -23,13 +24,14 @@ champsim::operable::operable(champsim::chrono::picoseconds clock_period_) : cloc
 
 void champsim::operable::operate_on(const champsim::chrono::clock& clock)
 {
-  while (next_operate < clock.now()) {
+  while (current_time < clock.now()) {
     _operate();
   }
 }
 
-void champsim::operable::_operate() {
+void champsim::operable::_operate()
+{
+  current_time += clock_period;
   operate();
   ++current_cycle;
-  next_operate += clock_period;
 }

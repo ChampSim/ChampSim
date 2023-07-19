@@ -36,9 +36,8 @@ uint64_t cycles(double time, int io_freq)
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul)
-    : champsim::operable(clock_period_), queues(std::move(ul)), tRP(t_rp / clock_period_), tRCD(t_rcd / clock_period_),
-      tCAS(t_cas / clock_period_), DRAM_DBUS_TURN_AROUND_TIME(turnaround / clock_period_),
-      DRAM_DBUS_RETURN_TIME(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))
+    : champsim::operable(clock_period_), queues(std::move(ul)), tRP(t_rp / clock_period_), tRCD(t_rcd / clock_period_), tCAS(t_cas / clock_period_),
+      DRAM_DBUS_TURN_AROUND_TIME(turnaround / clock_period_), DRAM_DBUS_RETURN_TIME(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))
 {
 }
 
@@ -171,7 +170,8 @@ void MEMORY_CONTROLLER::operate()
         bool row_buffer_hit = (channel.bank_request[op_idx].open_row.has_value() && *(channel.bank_request[op_idx].open_row) == op_row);
 
         // this bank is now busy
-        channel.bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+        channel.bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD),
+                                        iter_next_schedule};
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
@@ -189,8 +189,7 @@ void MEMORY_CONTROLLER::initialize()
   } else {
     fmt::print("{} MiB", dram_size);
   }
-  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH,
-             std::chrono::microseconds{1}/clock_period);
+  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, std::chrono::microseconds{1} / clock_period);
 }
 
 void MEMORY_CONTROLLER::begin_phase()

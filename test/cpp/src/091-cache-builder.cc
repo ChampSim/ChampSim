@@ -167,7 +167,7 @@ TEST_CASE("If the hit latency is not specified, it is derived from the total lat
 
   CACHE uut{buildA};
 
-  REQUIRE(uut.HIT_LATENCY + uut.FILL_LATENCY == latency);
+  REQUIRE((uut.HIT_LATENCY + uut.FILL_LATENCY) == latency*uut.clock_period );
 }
 
 TEST_CASE("The hit latency overrides the cache's total latency") {
@@ -178,6 +178,6 @@ TEST_CASE("The hit latency overrides the cache's total latency") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == 2);
-  CHECK(uut.FILL_LATENCY == 2);
+  CHECK(uut.HIT_LATENCY == 2*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == 2*uut.clock_period);
 }

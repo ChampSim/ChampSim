@@ -39,9 +39,10 @@
 #include "cache_builder.h"
 #include "champsim_constants.h"
 #include "channel.h"
+#include "chrono.h"
 #include "operable.h"
-#include "waitable.h"
 #include "util/bits.h" // for to_underlying
+#include "waitable.h"
 
 struct ooo_model_instr;
 
@@ -58,7 +59,7 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> misses = {};
 
   double avg_miss_latency = 0;
-  uint64_t total_miss_latency = 0;
+  champsim::chrono::clock::duration total_miss_latency{};
 };
 
 class CACHE : public champsim::operable
@@ -89,7 +90,7 @@ class CACHE : public champsim::operable
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    champsim::chrono::clock::time_point event_cycle = champsim::chrono::clock::time_point::max();
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
@@ -113,12 +114,12 @@ class CACHE : public champsim::operable
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
-    uint64_t cycle_enqueued;
+    champsim::chrono::clock::time_point time_enqueued;
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    mshr_type(const tag_lookup_type& req, uint64_t cycle);
+    mshr_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued);
     static mshr_type merge(mshr_type predecessor, mshr_type successor);
   };
 
@@ -170,7 +171,8 @@ public:
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   const std::size_t PQ_SIZE;
-  const uint64_t HIT_LATENCY, FILL_LATENCY;
+  const champsim::chrono::clock::duration HIT_LATENCY;
+  const champsim::chrono::clock::duration FILL_LATENCY;
   const unsigned OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   const long int MAX_TAG, MAX_FILL;
@@ -301,8 +303,8 @@ public:
       : champsim::operable(b.m_clock_period), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
         NUM_SET(b.m_sets.value_or(std::lround(b.m_sets_factor * std::floor(std::size(upper_levels))))), NUM_WAY(b.m_ways),
         MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))), PQ_SIZE(b.m_pq_size),
-        HIT_LATENCY(b.m_hit_lat.value_or(b.m_latency - b.m_fill_lat)), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits),
-        MAX_TAG(b.m_max_tag.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))),
+        HIT_LATENCY(b.m_clock_period * (b.m_hit_lat.value_or(b.m_latency - b.m_fill_lat))), FILL_LATENCY(b.m_clock_period * b.m_fill_lat),
+        OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))),
         MAX_FILL(b.m_max_fill.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         module_pimpl(std::make_unique<module_model<P_FLAG, R_FLAG>>(this))

@@ -38,11 +38,12 @@
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
-  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT, branch_type::BRANCH_CONDITIONAL, branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
-  auto total_branch = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(champsim::to_underlying(next)); }));
-  auto total_mispredictions = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
+  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
+                             branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
+  auto total_branch = std::ceil(std::accumulate(std::begin(types), std::end(types), 0LL,
+                                                [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(champsim::to_underlying(next)); }));
+  auto total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
 
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());

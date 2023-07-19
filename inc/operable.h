@@ -25,7 +25,7 @@ class operable
 {
 public:
   champsim::chrono::picoseconds clock_period{};
-  champsim::chrono::clock::time_point next_operate{};
+  champsim::chrono::clock::time_point current_time{};
   uint64_t current_cycle = 0;
   bool warmup = true;
 

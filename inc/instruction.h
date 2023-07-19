@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <string_view>
 #include <vector>
 
 #include "trace_instruction.h"
@@ -39,7 +40,8 @@ enum branch_type {
 };
 
 using namespace std::literals::string_view_literals;
-inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv, "BRANCH_CONDITIONAL"sv, "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
+inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
+                                              "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
 
 struct ooo_model_instr {
   uint64_t instr_id = 0;
