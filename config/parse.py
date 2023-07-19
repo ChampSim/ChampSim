@@ -336,14 +336,10 @@ class NormalizedConfiguration:
             'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
         }
 
-        # Get fastest clock period in picoseconds
-        global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches.values(), ptws.values(), (pmem,))))
-
         config_env = util.subdict(root_config, ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
-            'num_cores': len(cores),
-            '_clock_period': global_clock_period
+            'num_cores': len(cores)
         }
 
         return elements, module_info, config_extern, config_env

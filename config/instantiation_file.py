@@ -192,7 +192,7 @@ def ptw_queue_defaults(ptw):
         '_queue_check_full_addr': False
     }
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_level_pairs = tuple(itertools.chain(
         ((elem['lower_level'], elem['name']) for elem in ptws),
         ((elem['lower_level'], elem['name']) for elem in caches),
@@ -252,8 +252,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
     yield f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}'
     yield ''
 
+    # Get fastest clock period in picoseconds
+    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
+
     yield 'auto time_quantum() const -> champsim::chrono::picoseconds {'
-    yield f'  return champsim::chrono::picoseconds{{{env["_clock_period"]}}};'
+    yield f'  return champsim::chrono::picoseconds{{{global_clock_period}}};'
     yield '}'
 
     yield '};'

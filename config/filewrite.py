@@ -113,7 +113,7 @@ def get_file_lines(parsed_config, bindir_name, srcdir_names, objdir_name):
     inc_dir = os.path.join(unique_obj_dir, 'inc')
 
     # Instantiation file
-    yield os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements, env=config_file)
+    yield os.path.join(inc_dir, 'core_inst.inc'), get_instantiation_lines(**elements)
 
     # Constants header
     yield os.path.join(inc_dir, 'champsim_constants.h'), get_constants_file(config_file, elements['pmem'])
