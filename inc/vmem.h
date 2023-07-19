@@ -17,8 +17,12 @@
 #ifndef VMEM_H
 #define VMEM_H
 
+#include <algorithm> // for max
+#include <cstddef>   // for size_t
 #include <cstdint>
 #include <map>
+#include <tuple>   // for tuple
+#include <utility> // for pair
 
 #include "champsim_constants.h"
 

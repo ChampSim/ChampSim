@@ -14,11 +14,27 @@
  * limitations under the License.
  */
 
-#include <algorithm>
+#include <array>       // for array
+#include <cmath>       // for ceil
+#include <cstddef>     // for size_t
+#include <iostream>    // for ostream
+#include <iterator>    // for begin, end
+#include <map>         // for operator!=, map
+#include <numeric>     // for accumulate
+#include <string>      // for string, basic_string, operator<
+#include <string_view> // for string_view
 #include <utility>
+#include <vector> // for vector
 #include <nlohmann/json.hpp>
 
+#include "cache.h"           // for CACHE::stats_type, cache_stats, CACHE
+#include "channel.h"         // for access_type, access_type::LOAD, acc...
+#include "dram_controller.h" // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
+#include "instruction.h"     // for branch_type, BRANCH_CONDITIONAL
+#include "ooo_cpu.h"         // for O3_CPU::stats_type, O3_CPU
+#include "phase_info.h"      // for phase_stats
 #include "stats_printer.h"
+#include "util/bits.h" // for to_underlying
 
 void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 {

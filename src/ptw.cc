@@ -16,13 +16,21 @@
 
 #include "ptw.h"
 
+#include <algorithm> // for for_each, partition, partition_copy
+#include <array>     // for array, get, swap
 #include <cmath>
+#include <iterator> // for back_insert_iterator, begin, end, size
+#include <memory>   // for allocator_traits<>::value_type
 #include <numeric>
+#include <string_view> // for string_view
+#include <tuple>       // for tie, tuple
+#include <utility>     // for tuple_element<>::type, pair
 #include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "instruction.h"
+#include "ptw_builder.h" // for ptw_builder
+#include "util/bits.h"   // for bitmask, lg2, splice_bits
 #include "util/span.h"
 #include "vmem.h"
 

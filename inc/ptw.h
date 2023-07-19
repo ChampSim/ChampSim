@@ -17,15 +17,25 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <array>
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t, uint8_t, uint32_t
 #include <deque>
+#include <functional> // for reference_wrapper
+#include <limits>     // for numeric_limits
+#include <optional>   // for optional
 #include <string>
+#include <vector> // for vector
 
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
-#include "ptw_builder.h"
 #include "util/lru_table.h"
+
+namespace champsim
+{
+class ptw_builder;
+}
+struct ooo_model_instr;
 
 class VirtualMemory;
 class PageTableWalker : public champsim::operable
