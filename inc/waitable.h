@@ -23,70 +23,74 @@
 #include <limits>
 #include <optional>
 
-namespace champsim {
+namespace champsim
+{
 template <typename T>
-  class waitable
-  {
-    public:
-      using value_type = T;
-      using time_type = uint64_t;
+class waitable
+{
+public:
+  using value_type = T;
+  using time_type = uint64_t;
 
-    private:
-    T m_value;
-    std::optional<time_type> event_cycle{};
+private:
+  T m_value;
+  std::optional<time_type> event_cycle{};
 
-    // a time value that is greater than all possible times
-    constexpr static time_type time_sentinel = std::numeric_limits<time_type>::max();
+  // a time value that is greater than all possible times
+  constexpr static time_type time_sentinel = std::numeric_limits<time_type>::max();
 
-    public:
-    waitable() = default;
-    explicit waitable(T val) : m_value(std::move(val)) {}
-    explicit waitable(T val, time_type cycle) : m_value(std::move(val)), event_cycle(cycle) {}
+public:
+  waitable() = default;
+  explicit waitable(T val) : m_value(std::move(val)) {}
+  explicit waitable(T val, time_type cycle) : m_value(std::move(val)), event_cycle(cycle) {}
 
-    void ready_at(time_type cycle);
-    void ready_by(time_type cycle);
+  void ready_at(time_type cycle);
+  void ready_by(time_type cycle);
 
-    template <typename F>
-    auto map(F&& func);
+  template <typename F>
+  auto map(F&& func);
 
-    template <typename F>
-    auto and_then(F&& func);
+  template <typename F>
+  auto and_then(F&& func);
 
-    //template <typename F>
-    //auto or_else(F&& func);
+  // template <typename F>
+  // auto or_else(F&& func);
 
-    //template <typename F>
-    //auto map_or(F&& func);
+  // template <typename F>
+  // auto map_or(F&& func);
 
-    //template <typename F>
-    //auto map_or_else(F&& func);
+  // template <typename F>
+  // auto map_or_else(F&& func);
 
-    //template <typename F>
-    //auto conjunction(F&& func);
+  // template <typename F>
+  // auto conjunction(F&& func);
 
-    //template <typename F>
-    //auto disjunction(F&& func);
+  // template <typename F>
+  // auto disjunction(F&& func);
 
-    void reset();
+  void reset();
 
-    bool is_ready_at(time_type cycle) const;
-    bool has_unknown_readiness() const;
+  bool is_ready_at(time_type cycle) const;
+  bool has_unknown_readiness() const;
 
-    auto& operator*();
-    auto& operator*() const;
-    auto operator->();
-    auto operator->() const;
-    auto& value();
-    auto& value() const;
-  };
+  auto& operator*();
+  auto& operator*() const;
+  auto operator->();
+  auto operator->() const;
+  auto& value();
+  auto& value() const;
+};
 
-  namespace detail {
-    template <typename T>
-      struct is_waitable : std::false_type {};
-    template <typename U>
-      struct is_waitable<waitable<U>> : std::true_type {};
-  }
-}
+namespace detail
+{
+template <typename T>
+struct is_waitable : std::false_type {
+};
+template <typename U>
+struct is_waitable<waitable<U>> : std::true_type {
+};
+} // namespace detail
+} // namespace champsim
 
 template <typename T>
 void champsim::waitable<T>::ready_at(time_type cycle)
@@ -115,7 +119,7 @@ template <typename T>
 template <typename F>
 auto champsim::waitable<T>::and_then(F&& func)
 {
-  static_assert(detail::is_waitable<std::invoke_result_t<F,T>>::value);
+  static_assert(detail::is_waitable<std::invoke_result_t<F, T>>::value);
   return std::invoke(std::forward<F>(func), std::move(m_value));
 }
 

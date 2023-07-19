@@ -40,8 +40,8 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
-#include "waitable.h"
 #include "util/bits.h" // for to_underlying
+#include "waitable.h"
 
 struct ooo_model_instr;
 

@@ -51,9 +51,9 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   std::vector<std::deque<response_type>*> merged_return{};
 
   std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
-      std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
+                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
   std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
-      std::back_inserter(merged_return));
+                 std::back_inserter(merged_return));
 
   mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
   retval.instr_depend_on_me = merged_instr;
@@ -312,8 +312,12 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
 void CACHE::operate()
 {
-  auto is_ready = [cycle = current_cycle](const auto& entry) { return entry.event_cycle <= cycle; };
-  auto is_translated = [](const auto& entry) { return entry.is_translated; };
+  auto is_ready = [cycle = current_cycle](const auto& entry) {
+    return entry.event_cycle <= cycle;
+  };
+  auto is_translated = [](const auto& entry) {
+    return entry.is_translated;
+  };
 
   for (auto* ul : upper_levels) {
     ul->check_collision();
@@ -344,8 +348,8 @@ void CACHE::operate()
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
-  auto stash_bandwidth_consumed = champsim::transform_while_n(
-      translation_stash, std::back_inserter(inflight_tag_check), tag_bw, is_translated, initiate_tag_check<false>());
+  auto stash_bandwidth_consumed =
+      champsim::transform_while_n(translation_stash, std::back_inserter(inflight_tag_check), tag_bw, is_translated, initiate_tag_check<false>());
   tag_bw -= stash_bandwidth_consumed;
   std::vector<long long> channels_bandwidth_consumed{};
   for (auto* ul : upper_levels) {
@@ -476,21 +480,22 @@ bool CACHE::prefetch_line(uint64_t /*deprecated*/, uint64_t /*deprecated*/, uint
 
 void CACHE::finish_packet(const response_type& packet)
 {
-  auto update_mshr_func = [data=packet.data, pf_metadata=packet.pf_metadata, cycle = current_cycle + (warmup ? 0 : FILL_LATENCY), this](auto mshr_val) {
+  auto update_mshr_func = [data = packet.data, pf_metadata = packet.pf_metadata, cycle = current_cycle + (warmup ? 0 : FILL_LATENCY), this](auto mshr_val) {
     mshr_val.data = data;
     mshr_val.pf_metadata = pf_metadata;
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_MSHR] finish_packet instr_id: {} address: {:#x} data: {:#x} type: {} current: {}\n", this->NAME, mshr_val.instr_id,
-          mshr_val.address, mshr_val.data, access_type_names.at(champsim::to_underlying(mshr_val.type)), cycle);
+      fmt::print("[{}_MSHR] finish_packet instr_id: {} address: {:#x} data: {:#x} type: {} current: {}\n", this->NAME, mshr_val.instr_id, mshr_val.address,
+                 mshr_val.data, access_type_names.at(champsim::to_underlying(mshr_val.type)), cycle);
     }
 
     return champsim::waitable{mshr_val, cycle};
   };
 
   // check MSHR information
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR),
-                                 [match = packet.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry->address >> shamt) == match; });
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match = packet.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
+    return (entry->address >> shamt) == match;
+  });
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.has_unknown_readiness(); });
 
   // sanity check
@@ -555,8 +560,8 @@ void CACHE::issue_translation(tag_lookup_type& q_entry)
     q_entry.translate_issued = lower_translate->add_rq(fwd_pkt);
     if constexpr (champsim::debug_print) {
       if (q_entry.translate_issued) {
-        fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", q_entry.instr_id, q_entry.address,
-            q_entry.v_address, access_type_names.at(champsim::to_underlying(q_entry.type)));
+        fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", q_entry.instr_id, q_entry.address, q_entry.v_address,
+                   access_type_names.at(champsim::to_underlying(q_entry.type)));
       }
     }
   }
