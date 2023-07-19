@@ -23,6 +23,7 @@
 #include <string_view> // for string_view
 #include <utility>
 #include <vector>
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
@@ -94,7 +95,7 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 {
   fmt::print(stream, "\n{} RQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
   if (stats.dbus_count_congested > 0) {
-    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
+    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", stats.dbus_cycle_congested / std::ceil(stats.dbus_count_congested));
   } else {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
   }

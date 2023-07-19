@@ -30,13 +30,15 @@
 
 #include "champsim_constants.h"
 #include "channel.h"
+#include "chrono.h"
 #include "operable.h"
 
 struct ooo_model_instr;
 
 struct dram_stats {
   std::string name{};
-  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
+  champsim::chrono::clock::duration dbus_cycle_congested{};
+  uint64_t dbus_count_congested = 0;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
@@ -54,7 +56,7 @@ struct DRAM_CHANNEL {
     uint64_t address = 0;
     uint64_t v_address = 0;
     uint64_t data = 0;
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
@@ -71,7 +73,7 @@ struct DRAM_CHANNEL {
 
     std::optional<std::size_t> open_row{};
 
-    uint64_t event_cycle = 0;
+    champsim::chrono::clock::time_point ready_time{};
 
     queue_type::iterator pkt;
   };
@@ -81,7 +83,7 @@ struct DRAM_CHANNEL {
   request_array_type::iterator active_request = std::end(bank_request);
 
   bool write_mode = false;
-  uint64_t dbus_cycle_available = 0;
+  champsim::chrono::clock::time_point dbus_cycle_available{};
 
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
@@ -98,7 +100,7 @@ class MEMORY_CONTROLLER : public champsim::operable
   std::vector<channel_type*> queues;
 
   // Latencies
-  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
   // these values control when to send out a burst of writes
   constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
