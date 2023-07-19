@@ -58,19 +58,17 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 
 void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{
-      {std::pair{"LOAD", champsim::to_underlying(access_type::LOAD)}, std::pair{"RFO", champsim::to_underlying(access_type::RFO)},
-       std::pair{"PREFETCH", champsim::to_underlying(access_type::PREFETCH)}, std::pair{"WRITE", champsim::to_underlying(access_type::WRITE)},
-       std::pair{"TRANSLATION", champsim::to_underlying(access_type::TRANSLATION)}}};
-
   std::map<std::string, nlohmann::json> statsmap;
   statsmap.emplace("prefetch requested", stats.pf_requested);
   statsmap.emplace("prefetch issued", stats.pf_issued);
   statsmap.emplace("useful prefetch", stats.pf_useful);
   statsmap.emplace("useless prefetch", stats.pf_useless);
   statsmap.emplace("miss latency", stats.avg_miss_latency);
-  for (const auto& type : types) {
-    statsmap.emplace(type.first, nlohmann::json{{"hit", stats.hits.at(type.second)}, {"miss", stats.misses.at(type.second)}});
+  for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{
+        {"hit", stats.hits.at(champsim::to_underlying(type))},
+        {"miss", stats.misses.at(champsim::to_underlying(type))}
+      });
   }
 
   j = statsmap;
