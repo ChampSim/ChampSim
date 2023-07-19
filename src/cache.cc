@@ -89,8 +89,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n", NAME,
                __func__, fill_mshr.instr_id, fill_mshr.address, fill_mshr.v_address, get_set_index(fill_mshr.address), way_idx,
                access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.pf_metadata,
-               (fill_mshr.time_enqueued - champsim::chrono::clock::time_point::min()) / clock_period,
-               (current_time - champsim::chrono::clock::time_point::min()) / clock_period);
+               (fill_mshr.time_enqueued.time_since_epoch()) / clock_period, (current_time.time_since_epoch()) / clock_period);
   }
 
   if (way != set_end && way->valid && way->dirty) {
@@ -162,7 +161,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
-               access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
+               access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_time.time_since_epoch() / clock_period);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
@@ -203,7 +202,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
-               current_cycle);
+               current_time.time_since_epoch() / clock_period);
   }
 
   cpu = handle_pkt.cpu;
@@ -280,7 +279,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
-               current_cycle);
+               current_time.time_since_epoch() / clock_period);
   }
 
   inflight_writes.emplace_back(mshr_type{handle_pkt, current_time}, current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
@@ -399,8 +398,8 @@ void CACHE::operate()
   if (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
-               NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
-               channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
+               NAME, __func__, current_time.time_since_epoch() / clock_period, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed,
+               std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
   }
 }
 
@@ -528,7 +527,8 @@ void CACHE::finish_translation(const response_type& packet)
   };
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}_TRANSLATE] {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address, current_cycle);
+    fmt::print("[{}_TRANSLATE] {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address,
+               current_time.time_since_epoch() / clock_period);
   }
 
   // Restart stashed translations
@@ -748,7 +748,7 @@ void CACHE::print_deadlock()
     for (auto entry : inflight_tag_check) {
       fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
                  entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued,
-                 (entry.event_cycle - champsim::chrono::clock::time_point::min()) / clock_period);
+                 (entry.event_cycle.time_since_epoch()) / clock_period);
     }
   } else {
     fmt::print("{} inflight_tag_check empty\n", NAME);
@@ -759,7 +759,7 @@ void CACHE::print_deadlock()
     for (auto entry : translation_stash) {
       fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
                  entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued,
-                 (entry.event_cycle - champsim::chrono::clock::time_point::min()) / clock_period);
+                 (entry.event_cycle.time_since_epoch()) / clock_period);
     }
   } else {
     fmt::print("{} translation_stash empty\n", NAME);

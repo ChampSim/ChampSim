@@ -86,10 +86,13 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     op.begin_phase();
   }
 
+  const auto time_quantum = std::accumulate(std::cbegin(env.operable_view()), std::cend(env.operable_view()), champsim::chrono::clock::duration::max(),
+                                            [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
+
   // Perform cycles
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
-    global_clock.tick(env.time_quantum());
+    global_clock.tick(time_quantum);
 
     do_cycle(env, traces, trace_index, global_clock);
 

@@ -88,7 +88,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
                fill_mshr.v_address, fill_mshr.data, (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
-               fill_mshr.translation_level, current_cycle);
+               fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
@@ -204,8 +204,12 @@ void PageTableWalker::finish_packet(const response_type& packet)
     return champsim::waitable{mshr_entry, this->current_time + penalty};
   };
 
-  auto matches_addr = [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); };
-  auto is_last_step = [](auto x) { return x.translation_level > 0; };
+  auto matches_addr = [addr = packet.address](auto x) {
+    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE);
+  };
+  auto is_last_step = [](auto x) {
+    return x.translation_level > 0;
+  };
   auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), matches_addr);
 
   std::vector<champsim::waitable<mshr_type>> match_addr;
@@ -219,7 +223,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
   });
   MSHR.erase(std::begin(MSHR), last_finished);
 
-  std::partition_copy(std::begin(match_addr), std::end(match_addr), std::back_inserter(finished), std::back_inserter(completed), [is_last_step](const auto& x) { return is_last_step(x.value()); });
+  std::partition_copy(std::begin(match_addr), std::end(match_addr), std::back_inserter(finished), std::back_inserter(completed),
+                      [is_last_step](const auto& x) { return is_last_step(x.value()); });
 }
 
 void PageTableWalker::begin_phase()

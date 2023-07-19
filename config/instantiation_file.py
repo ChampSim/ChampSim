@@ -111,8 +111,13 @@ def get_cpu_builder(cpu):
 
 def get_cache_builder(elem, upper_levels):
     yield f'CACHE {elem["name"]}{{champsim::cache_builder{{ {elem.get("_defaults", "")} }}'
-    yield f'.name("{elem["name"]}")'
-    yield f'.clock_period(champsim::chrono::picoseconds{{{int(1000000/elem["frequency"])}}})'
+
+    required_parts = [
+        '.name("{name}")',
+        '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})',
+        '.upper_levels({{{^upper_level_string}}})'
+        '.lower_level(&{name}_to_{lower_level}_channel)'
+    ]
 
     local_cache_builder_parts = {
         ('prefetch_as_load', True): '.set_prefetch_as_load()',
@@ -124,16 +129,19 @@ def get_cache_builder(elem, upper_levels):
     }
 
     local_params = {
+        '^clock_period': int(1000000/elem['frequency']),
+        '^upper_level_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ' | '.join(f'CACHE::r{k["name"]}' for k in elem.get('_replacement_data',[])),
         '^prefetcher_string': ' | '.join(f'CACHE::p{k["name"]}' for k in elem.get('_prefetcher_data',[]))
     }
 
-    yield from (v.format(**elem, **local_params) for k,v in cache_builder_parts.items() if k in elem)
-    yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
-
-    yield f'.upper_levels({{{vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"])}}})'
-    yield f'.lower_level(&{elem["name"]}_to_{elem["lower_level"]}_channel)'
+    builder_parts = itertools.chain(
+        required_parts,
+        (v for k,v in cache_builder_parts.items() if k in elem),
+        (v for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
+    )
+    yield from (part.format(**elem, **local_params) for part in builder_parts)
 
     yield '};'
     yield ''
@@ -254,10 +262,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     # Get fastest clock period in picoseconds
     global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
-
-    yield 'auto time_quantum() const -> champsim::chrono::picoseconds {'
-    yield f'  return champsim::chrono::picoseconds{{{global_clock_period}}};'
-    yield '}'
 
     yield '};'
     yield '}'
