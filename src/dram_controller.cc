@@ -29,8 +29,9 @@
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul)
-    : champsim::operable(clock_period_), queues(std::move(ul)), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
-      DRAM_DBUS_TURN_AROUND_TIME(turnaround), DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH)))
+    : champsim::operable(clock_period_), queues(std::move(ul)), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+      DRAM_DBUS_RETURN_TIME(
+          std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH)))
 {
 }
 
@@ -163,8 +164,8 @@ void MEMORY_CONTROLLER::operate()
         bool row_buffer_hit = (channel.bank_request[op_idx].open_row.has_value() && *(channel.bank_request[op_idx].open_row) == op_row);
 
         // this bank is now busy
-        channel.bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD),
-                                        iter_next_schedule};
+        channel.bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row},
+                                        current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().ready_time = champsim::chrono::clock::time_point::max();

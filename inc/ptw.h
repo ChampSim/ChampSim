@@ -30,6 +30,7 @@
 #include "channel.h"
 #include "operable.h"
 #include "util/lru_table.h"
+#include "waitable.h"
 
 namespace champsim
 {
@@ -64,7 +65,6 @@ class PageTableWalker : public champsim::operable
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -75,8 +75,8 @@ class PageTableWalker : public champsim::operable
   };
 
   std::deque<mshr_type> MSHR;
-  std::deque<mshr_type> finished;
-  std::deque<mshr_type> completed;
+  std::deque<champsim::waitable<mshr_type>> finished;
+  std::deque<champsim::waitable<mshr_type>> completed;
 
   std::vector<channel_type*> upper_levels;
   channel_type* lower_level;
@@ -91,7 +91,7 @@ public:
   const std::string NAME;
   const uint32_t MSHR_SIZE;
   const long int MAX_READ, MAX_FILL;
-  const uint64_t HIT_LATENCY;
+  const champsim::chrono::clock::duration HIT_LATENCY;
 
   std::vector<pscl_type> pscl;
   VirtualMemory* vmem;
