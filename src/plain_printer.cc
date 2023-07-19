@@ -20,7 +20,6 @@
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_insert_iterator, begin, end
 #include <numeric>
-#include <stdint.h>    // for uint64_t
 #include <string_view> // for string_view
 #include <utility>
 #include <vector>
@@ -39,15 +38,11 @@
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 6> types{
-      {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
-       std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
-       std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
-
+  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT, branch_type::BRANCH_CONDITIONAL, branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
   auto total_branch = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(next.second); }));
+      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(champsim::to_underlying(next)); }));
   auto total_mispredictions = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(next.second); }));
+      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
 
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
@@ -60,32 +55,31 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
 
   fmt::print(stream, "Branch type MPKI\n");
-  for (auto [str, idx] : types) {
-    fmt::print(stream, "{}: {:.3}\n", str, mpkis.at(idx));
+  for (auto idx : types) {
+    fmt::print(stream, "{}: {:.3}\n", branch_type_names.at(champsim::to_underlying(idx)), mpkis.at(champsim::to_underlying(idx)));
   }
   fmt::print(stream, "\n");
 }
 
 void champsim::plain_printer::print(CACHE::stats_type stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{
-      {std::pair{"LOAD", champsim::to_underlying(access_type::LOAD)}, std::pair{"RFO", champsim::to_underlying(access_type::RFO)},
-       std::pair{"PREFETCH", champsim::to_underlying(access_type::PREFETCH)}, std::pair{"WRITE", champsim::to_underlying(access_type::WRITE)},
-       std::pair{"TRANSLATION", champsim::to_underlying(access_type::TRANSLATION)}}};
+  using hits_value_type = typename decltype(stats.hits)::value_type::value_type;
+  using misses_value_type = typename decltype(stats.misses)::value_type::value_type;
 
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
-    uint64_t TOTAL_HIT = 0;
-    uint64_t TOTAL_MISS = 0;
-    for (const auto& type : types) {
-      TOTAL_HIT += stats.hits.at(type.second).at(cpu);
-      TOTAL_MISS += stats.misses.at(type.second).at(cpu);
+    hits_value_type total_hits = 0;
+    misses_value_type total_misses = 0;
+    for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+      total_hits += stats.hits.at(champsim::to_underlying(type)).at(cpu);
+      total_misses += stats.misses.at(champsim::to_underlying(type)).at(cpu);
     }
 
-    fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
-    for (const auto& type : types) {
-      fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, type.first,
-                 stats.hits.at(type.second).at(cpu) + stats.misses.at(type.second).at(cpu), stats.hits.at(type.second).at(cpu),
-                 stats.misses.at(type.second).at(cpu));
+    fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n"};
+    fmt::print(stream, hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses);
+    for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+      fmt::print(stream, hitmiss_fmtstr, stats.name, access_type_names.at(champsim::to_underlying(type)),
+                 stats.hits.at(champsim::to_underlying(type)).at(cpu) + stats.misses.at(champsim::to_underlying(type)).at(cpu),
+                 stats.hits.at(champsim::to_underlying(type)).at(cpu), stats.misses.at(champsim::to_underlying(type)).at(cpu));
     }
 
     fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,

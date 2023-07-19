@@ -96,7 +96,7 @@ void MEMORY_CONTROLLER::operate()
         if (it != channel.active_request && it->valid) {
           // Leave rows charged
           if (it->event_cycle < (current_cycle + tCAS)) {
-            it->open_row = UINT32_MAX;
+            it->open_row.reset();
           }
 
           // This bank is ready for another DRAM request
@@ -168,10 +168,10 @@ void MEMORY_CONTROLLER::operate()
       auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
       if (!channel.bank_request[op_idx].valid) {
-        bool row_buffer_hit = (channel.bank_request[op_idx].open_row == op_row);
+        bool row_buffer_hit = (channel.bank_request[op_idx].open_row.has_value() && *(channel.bank_request[op_idx].open_row) == op_row);
 
         // this bank is now busy
-        channel.bank_request[op_idx] = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+        channel.bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
