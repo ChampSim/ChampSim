@@ -40,6 +40,12 @@ def wrap_list(attr):
         attr = [attr]
     return attr
 
+def collect(iterable, key_func, join_func):
+    ''' Perform the "sort->groupby" idiom on an iterable, grouping according to the join_func '''
+    intern_iterable = sorted(iterable, key=key_func)
+    intern_iterable = itertools.groupby(intern_iterable, key=key_func)
+    return (join_func(it[1]) for it in intern_iterable)
+
 def chain(*dicts):
     '''
     Combine two or more dictionaries.
@@ -59,6 +65,12 @@ def chain(*dicts):
 
     return functools.reduce(merge_dicts, dicts)
 
+def star(func):
+    ''' Convert a function object that takes a starred parameter into one that takes an iterable parameter '''
+    def result(args):
+        return func(*args)
+    return result
+
 def extend_each(lhs,rhs):
     ''' For two dictionaries whose values are lists, join the values that have the same key. '''
     merges = {k: (*lhs[k],*rhs[k]) for k in lhs if k in rhs}
@@ -74,9 +86,8 @@ def combine_named(*iterables):
     Earlier parameters have priority over later parameters.
     '''
     key_func = operator.methodcaller('get', 'name', '')
-    iterable = sorted(itertools.chain(*iterables), key=key_func)
-    iterable = itertools.groupby(iterable, key=key_func)
-    return {name: chain(*dict_list) for name, dict_list in iterable if name != ''}
+    items = ((key_func(d), d) for d in collect(itertools.chain(*iterables), key_func, star(chain)))
+    return dict(filter(operator.itemgetter(0), items))
 
 def upper_levels_for(system, name, key='lower_level'):
     '''
@@ -87,9 +98,7 @@ def upper_levels_for(system, name, key='lower_level'):
     :param key: the key that points to the next element
     '''
     default_itemgetter = operator.methodcaller('get', key, '')
-    upper_levels = sorted(system, key=default_itemgetter)
-    upper_levels = itertools.groupby(upper_levels, key=default_itemgetter)
-    return next(filter(lambda kv: kv[0] == name, upper_levels))[1]
+    return next(filter(lambda v: default_itemgetter(v[0]) == name, collect(system, default_itemgetter, tuple)))
 
 def propogate_down(path, key):
     '''
