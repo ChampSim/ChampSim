@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <string_view>
 #include <vector>
 
 #include "trace_instruction.h"
