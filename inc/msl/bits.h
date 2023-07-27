@@ -41,7 +41,10 @@ constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 }
 
 template <typename T>
-constexpr auto splice_bits(T upper, T lower, std::size_t bits) { return (upper & ~bitmask(bits)) | (lower & bitmask(bits)); }
+constexpr auto splice_bits(T upper, T lower, std::size_t bits)
+{
+  return (upper & ~bitmask(bits)) | (lower & bitmask(bits));
+}
 } // namespace champsim::msl
 
 #endif
