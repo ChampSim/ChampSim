@@ -17,12 +17,8 @@ import os
 
 from . import util
 
-def multiline(long_line, length=1):
-    ''' Split a long string into lines with n words '''
-    grouped = [iter(long_line)] * length
-    grouped = itertools.zip_longest(*grouped, fillvalue='')
-    grouped = (' '.join(filter(None, group)) for group in grouped)
-    yield from util.append_except_last(grouped, ' \\')
+def sanitize(s):
+    return s.replace(':', '\:')
 
 def header(values):
     '''
@@ -40,17 +36,17 @@ def dereference(var):
 
 def dependency(target, head_dependent, *tail_dependent):
     ''' Mark the target as having the given dependencies '''
-    joined_vals = multiline((head_dependent, *tail_dependent), length=3)
+    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
     yield from util.do_for_first(lambda first: f'{target}: {first}', joined_vals)
 
 def order_dependency(target, head_dependent, *tail_dependent):
     ''' Mark the target as having the given order-only dependencies '''
-    joined_vals = multiline((head_dependent, *tail_dependent), length=3)
+    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
     yield from util.do_for_first(lambda first: f'{target}: | {first}', joined_vals)
 
 def assign_variable(var, head_val, *tail_val, targets=None):
     ''' Assign the given values space-separated to the given variable, conditionally for the given targets '''
-    joined_vals = multiline(itertools.chain((head_val,), tail_val), length=3)
+    joined_vals = util.multiline(itertools.chain((head_val,), tail_val), length=3, indent=1)
     variable_append = util.do_for_first(lambda first: f'{var} = {first}', joined_vals)
     if targets is None:
         yield from variable_append
@@ -59,7 +55,7 @@ def assign_variable(var, head_val, *tail_val, targets=None):
 
 def append_variable(var, head_val, *tail_val, targets=None):
     ''' Append the given values space-separated to the given variable, conditionally for the given targets '''
-    joined_vals = multiline(itertools.chain((head_val,), tail_val), length=3)
+    joined_vals = util.multiline(itertools.chain((head_val,), tail_val), length=3, indent=1)
     variable_append = util.do_for_first(lambda first: f'{var} += {first}', joined_vals)
     if targets is None:
         yield from variable_append
@@ -70,14 +66,14 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
     local_dir_varname = f'{build_id}_dirs_{i}'
     local_obj_varname = f'{build_id}_objs_{i}'
 
-    rel_dest_dir = os.path.abspath(os.path.join(dest_dir, os.path.relpath(base, src_dir)))
-    rel_src_dir = os.path.abspath(src_dir)
+    rel_dest_dir = sanitize(os.path.abspath(os.path.join(dest_dir, os.path.relpath(base, src_dir))))
+    rel_src_dir = sanitize(os.path.abspath(src_dir))
 
     yield from header({'Build ID': build_id, 'Source': rel_src_dir, 'Destination': rel_dest_dir})
     yield ''
 
     # Define variables
-    yield from assign_variable(local_dir_varname, dest_dir)
+    yield from assign_variable(local_dir_varname, sanitize(dest_dir))
 
     map_source_to_obj = f'$(patsubst {rel_src_dir}/%.cc, {rel_dest_dir}/%.o, $(wildcard {rel_src_dir}/*.cc))'
     yield from assign_variable(local_obj_varname, map_source_to_obj)
@@ -133,16 +129,18 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     # Flatten varnames
     dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
 
-    options_fname = os.path.join(objdir, 'inc', 'config.options')
-    global_options_fname = os.path.join(champsim_root, 'global.options')
+    options_fname = sanitize(os.path.join(objdir, 'inc', 'config.options'))
+    global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
+    exec_fname = sanitize(os.path.abspath(executable))
 
     yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
     for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
-        yield from dependency(' '.join(map(dereference, var)), os.path.join(objdir, 'inc', name, 'config.options'))
+        module_options_fname = sanitize(os.path.join(objdir, 'inc', name, 'config.options'))
+        yield from dependency(' '.join(map(dereference, var)), module_options_fname)
 
-    yield from dependency(os.path.abspath(executable), *map(dereference, obj_varnames))
-    yield from order_dependency(os.path.abspath(executable), os.path.abspath(os.path.dirname(executable)))
-    yield from append_variable('executable_name', os.path.abspath(executable))
-    yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.abspath(os.path.dirname(executable)))
+    yield from dependency(exec_fname, *map(dereference, obj_varnames))
+    yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
+    yield from append_variable('executable_name', exec_fname)
+    yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''

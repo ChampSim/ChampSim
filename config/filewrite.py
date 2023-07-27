@@ -227,7 +227,9 @@ class FileWriter:
         ''' Write out a set of prepared fragments '''
         if not fragments:
             return
-        Fragment.join(*fragments).map_files(write_out)
+        joined_fragments = Fragment.join(*fragments)
+        for fname, fcontents in joined_fragments.file_parts():
+            write_if_different(fname, '\n'.join(fcontents))
 
     def finish(self):
         FileWriter.write_fragments(*self.fragments)
