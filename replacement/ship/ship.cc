@@ -23,12 +23,13 @@ public:
   bool valid = false;
   uint8_t used = 0;
   uint64_t address = 0, cl_addr = 0, ip = 0;
-  uint64_t last_used = 0;
+  int last_used = 0;
 };
 
 // sampler
 std::map<CACHE*, std::vector<std::size_t>> rand_sets;
 std::map<CACHE*, std::vector<SAMPLER_class>> sampler;
+std::map<CACHE*, int> sampler_lru;
 std::map<CACHE*, std::vector<int>> rrpv_values;
 
 // prediction table structure
@@ -57,6 +58,7 @@ void CACHE::initialize_replacement()
   sampler.emplace(this, ::SAMPLER_SET * NUM_WAY);
 
   ::rrpv_values[this] = std::vector<int>(NUM_SET * NUM_WAY, ::maxRRPV);
+  ::sampler_lru[this] = 0;
 }
 
 // find replacement victim
@@ -120,7 +122,7 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
     }
 
     // update LRU state
-    match->last_used = current_cycle;
+    match->last_used = ++::sampler_lru[this];
   }
 
   if (hit)

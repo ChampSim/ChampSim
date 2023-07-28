@@ -7,7 +7,8 @@
 
 namespace
 {
-std::map<CACHE*, std::vector<uint64_t>> last_used_cycles;
+std::map<CACHE*, std::vector<int>> last_used_cycles;
+std::map<CACHE*, int> current_cycle;
 }
 
 namespace test
@@ -37,7 +38,8 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
   // Mark the way as being used on the current cycle
   if (!hit || access_type{type} != access_type::WRITE) { // Skip this for writeback hits
     auto luc_it = ::last_used_cycles.try_emplace(this, NUM_SET * NUM_WAY);
-    luc_it.first->second.at(set * NUM_WAY + way) = current_cycle;
+    auto cc_it = ::current_cycle.try_emplace(this, 0);
+    luc_it.first->second.at(set * NUM_WAY + way) = ++cc_it.first->second;
   }
 }
 

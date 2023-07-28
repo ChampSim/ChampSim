@@ -48,7 +48,7 @@ TEST_CASE("transform_while_n() is capped by the size parameter") {
 
   auto sz = champsim::transform_while_n(source, std::back_inserter(destination), size, ::always<int>, ::negative<int>);
 
-  REQUIRE_THAT(destination, Catch::Matchers::RangeEquals(std::vector<int>(size, 1)));
+  REQUIRE_THAT(destination, Catch::Matchers::RangeEquals(std::vector<int>((std::size_t)size, 1)));
   REQUIRE(sz == size);
 }
 

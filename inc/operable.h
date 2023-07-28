@@ -26,7 +26,6 @@ class operable
 public:
   champsim::chrono::picoseconds clock_period{};
   champsim::chrono::clock::time_point current_time{};
-  uint64_t current_cycle = 0;
   bool warmup = true;
 
   operable();
@@ -40,6 +39,8 @@ public:
   virtual void begin_phase() {}                     // LCOV_EXCL_LINE
   virtual void end_phase(unsigned /*cpu index*/) {} // LCOV_EXCL_LINE
   virtual void print_deadlock() {}                  // LCOV_EXCL_LINE
+
+  [[deprecated]] uint64_t current_cycle() const;
 };
 
 } // namespace champsim

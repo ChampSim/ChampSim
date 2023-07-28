@@ -5,7 +5,8 @@
 namespace {
 struct mock_operable : champsim::operable {
   using operable::operable;
-  void operate() {}
+  int count = 0;
+  void operate() { ++count; }
 };
 }
 
@@ -20,7 +21,7 @@ TEST_CASE("An operable with a scale of 1 operates every cycle") {
     uut.operate_on(global_clock);
   }
 
-  REQUIRE(uut.current_cycle == num_cycles);
+  REQUIRE(uut.count == num_cycles);
 }
 
 TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
@@ -34,8 +35,8 @@ TEST_CASE("An operable with a scale greater than 1 skips occasional cycles") {
     uut.operate_on(global_clock);
   }
 
-  REQUIRE(uut.current_cycle <= (2*num_cycles)/3 + 1);
-  REQUIRE(uut.current_cycle >= (2*num_cycles)/3 - 1);
+  REQUIRE(uut.count <= (2*num_cycles)/3 + 1);
+  REQUIRE(uut.count >= (2*num_cycles)/3 - 1);
 }
 
 TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
@@ -49,5 +50,5 @@ TEST_CASE("An operable with a scale greater than 2 skips multiple cycles") {
     uut.operate_on(global_clock);
   }
 
-  REQUIRE(uut.current_cycle == num_cycles/4);
+  REQUIRE(uut.count == num_cycles/4);
 }

@@ -12,8 +12,8 @@ namespace test
 
 SCENARIO("A prefetch can be issued") {
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 2;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 2;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -81,12 +81,12 @@ SCENARIO("A prefetch can be issued") {
           REQUIRE(test_result);
         }
 
-        for (uint64_t i = 0; i < 2*hit_latency; ++i)
+        for (auto i = 0; i < 2*hit_latency; ++i)
           for (auto elem : elements)
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + 1);
+          mock_ul.packets.back().assert_returned(hit_latency + 1, 1);
         }
 
         THEN("The number of useful prefetches is incremented") {

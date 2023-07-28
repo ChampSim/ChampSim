@@ -14,9 +14,9 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }));
 
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -77,7 +77,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
-        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
+        mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
@@ -97,9 +97,9 @@ SCENARIO("A cache completes a fill after the specified latency") {
   auto match_offset = GENERATE(true, false);
 
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
     auto builder = champsim::cache_builder{champsim::defaults::default_l1d}
@@ -151,9 +151,9 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       THEN("It takes exactly the specified cycles to return") {
         if (match_offset)
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
+          mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
         else
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + hit_latency));
+          mock_ul.packets.front().assert_returned((fill_latency + hit_latency), 1); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
@@ -221,8 +221,8 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
         REQUIRE(test_b_result);
       }
 
-      uint64_t first_packet_delay = 10;
-      for (uint64_t i = 0; i < first_packet_delay; ++i)
+      auto first_packet_delay = 10;
+      for (auto i = 0; i < first_packet_delay; ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -273,8 +273,8 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
         CHECK(test_a_result);
       }
 
-      uint64_t first_packet_delay = 10;
-      for (uint64_t i = 0; i < first_packet_delay; ++i)
+      auto first_packet_delay = 10;
+      for (auto i = 0; i < first_packet_delay; ++i)
         for (auto elem : elements)
           elem->_operate();
 

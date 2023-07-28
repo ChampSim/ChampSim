@@ -13,22 +13,24 @@ class do_nothing_MRC : public champsim::operable
 {
   struct packet : champsim::channel::request_type
   {
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    int event_cycle = std::numeric_limits<int>::max();
   };
   std::deque<packet> packets, ready_packets;
   uint64_t ret_data = 0x11111111;
-  const uint64_t latency = 0;
+  int cycle_count = 0;
+  int latency = 0;
 
   public:
     champsim::channel queues{};
     std::deque<uint64_t> addresses{};
-    do_nothing_MRC(uint64_t lat) : champsim::operable(), latency(lat) {}
+    do_nothing_MRC(int lat) : champsim::operable(), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
     void operate() override {
+      ++cycle_count;
       auto add_pkt = [&](auto pkt) {
         packet to_insert{pkt};
-        to_insert.event_cycle = current_cycle + latency;
+        to_insert.event_cycle = cycle_count + latency;
         to_insert.data = ++ret_data;
         addresses.push_back(to_insert.address);
         packets.push_back(to_insert);
@@ -42,7 +44,7 @@ class do_nothing_MRC : public champsim::operable
       queues.WQ.clear();
       queues.PQ.clear();
 
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=cycle_count](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
       packets.erase(std::begin(packets), end);
 
@@ -63,23 +65,25 @@ class filter_MRC : public champsim::operable
 {
   struct packet : champsim::channel::request_type
   {
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    int event_cycle = std::numeric_limits<int>::max();
   };
   std::deque<packet> packets, ready_packets;
   const uint64_t ret_addr;
-  const uint64_t latency = 0;
+  int cycle_count = 0;
+  int latency = 0;
   std::size_t mpacket_count = 0;
 
   public:
     champsim::channel queues{};
-    filter_MRC(uint64_t ret_addr_, uint64_t lat) : champsim::operable(), ret_addr(ret_addr_), latency(lat) {}
+    filter_MRC(uint64_t ret_addr_, int lat) : champsim::operable(), ret_addr(ret_addr_), latency(lat) {}
     filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     void operate() override {
+      ++cycle_count;
       auto add_pkt = [&](auto pkt) {
         if (pkt.address == ret_addr) {
           packet to_insert{pkt};
-          to_insert.event_cycle = current_cycle + latency;
+          to_insert.event_cycle = cycle_count + latency;
           packets.push_back(to_insert);
           ++mpacket_count;
         }
@@ -93,7 +97,7 @@ class filter_MRC : public champsim::operable
       queues.WQ.clear();
       queues.PQ.clear();
 
-      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=current_cycle](const auto &x){ return x.event_cycle <= cycle; });
+      auto end = std::find_if_not(std::begin(packets), std::end(packets), [cycle=cycle_count](const auto &x){ return x.event_cycle <= cycle; });
       std::move(std::begin(packets), end, std::back_inserter(ready_packets));
 
       for (auto &pkt : ready_packets) {
@@ -179,11 +183,21 @@ struct queue_issue_MRP : public champsim::operable
 
   std::deque<response_type> returned{};
   champsim::channel queues{};
+  int cycle_count = 0;
 
   struct result_data {
     request_type pkt;
-    uint64_t issue_time;
-    uint64_t return_time;
+    int issue_time;
+    int return_time;
+
+    void assert_returned(int cycles, int epsilon) {
+      REQUIRE(return_time >= issue_time + cycles - epsilon);
+      REQUIRE(return_time <= issue_time + cycles + epsilon);
+    }
+
+    void assert_returned(int cycles) {
+      assert_returned(cycles, 0);
+    }
   };
   std::deque<result_data> packets;
 
@@ -194,13 +208,14 @@ struct queue_issue_MRP : public champsim::operable
   explicit queue_issue_MRP(func_type finder) : champsim::operable(), top_finder(finder) {}
 
   void operate() override {
+    ++cycle_count;
     auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
     for (auto pkt : queues.returned) {
       auto it = std::partition(std::begin(packets), std::end(packets), std::not_fn(std::bind(finder, pkt, std::placeholders::_1)));
       if (it == std::end(packets))
         throw std::invalid_argument{"Packet returned which was not sent"};
-      std::for_each(it, std::end(packets), [cycle=current_cycle](auto& x){ return x.return_time = cycle; });
+      std::for_each(it, std::end(packets), [cycle=cycle_count](auto& x){ return x.return_time = cycle; });
     }
     queues.returned.clear();
   }
@@ -214,7 +229,7 @@ struct to_wq_MRP final : public queue_issue_MRP
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
   bool issue(const queue_issue_MRP::request_type &pkt) {
-    packets.push_back({pkt, current_cycle, 0});
+    packets.push_back({pkt, cycle_count, 0});
     return queues.add_wq(pkt);
   }
 };
@@ -227,7 +242,7 @@ struct to_rq_MRP final : public queue_issue_MRP
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
   bool issue(const queue_issue_MRP::request_type &pkt) {
-    packets.push_back({pkt, current_cycle, 0});
+    packets.push_back({pkt, cycle_count, 0});
     return queues.add_rq(pkt);
   }
 };
@@ -240,7 +255,7 @@ struct to_pq_MRP final : public queue_issue_MRP
   using queue_issue_MRP::queue_issue_MRP;
   using request_type = typename queue_issue_MRP::request_type;
   bool issue(const queue_issue_MRP::request_type &pkt) {
-    packets.push_back({pkt, current_cycle, 0});
+    packets.push_back({pkt, cycle_count, 0});
     return queues.add_pq(pkt);
   }
 };
