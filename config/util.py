@@ -139,3 +139,12 @@ def do_for_first(func, iterable):
     if first is not None:
         yield func(first)
         yield from iterator
+
+def multiline(long_line, length=1, indent=0, line_end=' \\'):
+    ''' Split a long string into lines with n words '''
+    grouped = [iter(long_line)] * length
+    grouped = itertools.zip_longest(*grouped, fillvalue='')
+    grouped = (' '.join(filter(None, group)) for group in grouped)
+    lines = append_except_last(grouped, f'{line_end}')
+    indentation = itertools.chain(('',), itertools.repeat('  '*indent))
+    yield from (i+l for i,l in zip(indentation,lines))
