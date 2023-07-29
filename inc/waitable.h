@@ -23,6 +23,8 @@
 #include <limits>
 #include <optional>
 
+#include "util/type_traits.h"
+
 namespace champsim
 {
 template <typename T>
@@ -80,16 +82,6 @@ public:
   auto& value();
   auto& value() const;
 };
-
-namespace detail
-{
-template <typename T>
-struct is_waitable : std::false_type {
-};
-template <typename U>
-struct is_waitable<waitable<U>> : std::true_type {
-};
-} // namespace detail
 } // namespace champsim
 
 template <typename T>
@@ -119,7 +111,7 @@ template <typename T>
 template <typename F>
 auto champsim::waitable<T>::and_then(F&& func)
 {
-  static_assert(detail::is_waitable<std::invoke_result_t<F, T>>::value);
+  static_assert(champsim::is_specialization_v<std::invoke_result_t<F, T>, waitable>);
   return std::invoke(std::forward<F>(func), std::move(m_value));
 }
 
