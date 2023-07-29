@@ -169,8 +169,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   // update prefetcher on load instructions and prefetches from upper levels
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
-    metadata_thru =
-        impl_prefetcher_cache_operate(module_address(handle_pkt), handle_pkt.ip, hit ? 1 : 0, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+    metadata_thru = impl_prefetcher_cache_operate(module_address(handle_pkt), handle_pkt.ip, hit ? 1 : 0, useful_prefetch,
+                                                  champsim::to_underlying(handle_pkt.type), metadata_thru);
   }
 
   if (hit) {
@@ -249,7 +249,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       }
     }
 
-    *mshr_entry = mshr_entry->map([to_allocate=mshr_pkt.first](auto mshr_val) { return mshr_type::merge(mshr_val, to_allocate); });
+    *mshr_entry = mshr_entry->map([to_allocate = mshr_pkt.first](auto mshr_val) { return mshr_type::merge(mshr_val, to_allocate); });
   } else {
     if (mshr_full) { // not enough MSHR resource
       if constexpr (champsim::debug_print) {
