@@ -8,7 +8,7 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
     constexpr unsigned levels = 5;
     constexpr uint64_t pte_page_size = 1ull << 12;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory uut{pte_page_size, levels, 200, dram};
+    VirtualMemory uut{pte_page_size, levels, std::chrono::nanoseconds{6400}, dram};
 
     WHEN("PTE requires memory") {
       std::size_t original_size = uut.available_ppages();
@@ -17,14 +17,14 @@ SCENARIO("The virtual memory remove PA asked by PTE") {
         auto [paddr_a, delay_a] = uut.get_pte_pa(0, 0, 1);
 
         THEN("The page table missed") {
-          REQUIRE(delay_a > 0);
+          REQUIRE(delay_a > champsim::chrono::clock::duration::zero());
         }
 
         AND_WHEN("PTE asks for another page") {
           auto [paddr_b, delay_b] = uut.get_pte_pa(0, 0, 2);
 
           THEN("The page table missed") {
-            REQUIRE(delay_b > 0);
+            REQUIRE(delay_b > champsim::chrono::clock::duration::zero());
           }
 
           THEN("The pages are different") {

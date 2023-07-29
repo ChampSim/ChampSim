@@ -24,6 +24,7 @@
 #include <tuple>   // for tuple
 #include <utility> // for pair
 
+#include "chrono.h"
 #include "champsim_constants.h"
 
 class MEMORY_CONTROLLER;
@@ -48,17 +49,17 @@ private:
   void ppage_pop();
 
 public:
-  const uint64_t minor_fault_penalty;
+  const champsim::chrono::clock::duration minor_fault_penalty;
   const std::size_t pt_levels;
   const uint64_t pte_page_size; // Size of a PTE page
 
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
+  VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram);
   [[nodiscard]] uint64_t shamt(std::size_t level) const;
   [[nodiscard]] uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
   [[nodiscard]] std::size_t available_ppages() const;
-  std::pair<uint64_t, uint64_t> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-  std::pair<uint64_t, uint64_t> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level);
+  std::pair<uint64_t, champsim::chrono::clock::duration> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
+  std::pair<uint64_t, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level);
 };
 
 #endif

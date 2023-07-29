@@ -19,7 +19,7 @@ import operator
 from . import util
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}}};'
-vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
+vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
@@ -242,6 +242,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield from (queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels'])
     yield ''
 
+    # Get fastest clock period in picoseconds
+    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
+
     yield pmem_fmtstr.format(
             clock_period=int(1000000/pmem['frequency']),
             _tRP=int(1000*pmem['tRP']),
@@ -250,7 +253,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             _turn_around_time=int(1000*pmem['turn_around_time']),
             _ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']),
             **pmem)
-    yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
+    yield vmem_fmtstr.format(dram_name=pmem['name'], clock_period=global_clock_period, **vmem)
 
     yield from itertools.chain(*map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws))
     yield from itertools.chain(*map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches))
@@ -263,9 +266,6 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}'
     yield ''
-
-    # Get fastest clock period in picoseconds
-    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
 
     yield '};'
     yield '}'

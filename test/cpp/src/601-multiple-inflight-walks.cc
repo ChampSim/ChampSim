@@ -13,11 +13,12 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    VirtualMemory vmem{1<<12, levels, std::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -70,12 +71,13 @@ SCENARIO("Concurrent page table walks can be merged") {
     constexpr uint64_t nearby_address = 0xffff'ffff'ffff'efff;
 
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory vmem{1<<12, levels, 10, dram};
+    VirtualMemory vmem{1<<12, levels, std::chrono::nanoseconds{10}, dram};
     release_MRC mock_ll;
     to_rq_MRP mock_ul{[](auto x, auto y){ return (x.address >> LOG2_BLOCK_SIZE) == (y.address >> LOG2_BLOCK_SIZE); }};
     //PageTableWalker uut{"601-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {0,0}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)

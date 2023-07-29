@@ -14,11 +14,12 @@ SCENARIO("The page table steps have correct offsets") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    VirtualMemory vmem{1<<12, levels, std::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("603-uut-"+std::to_string(level))
+      .clock_period(champsim::chrono::picoseconds{3200})
       //.rq_size(16)
       //.tag_bandwidth(2)
       //.fill_bandwidth(2)

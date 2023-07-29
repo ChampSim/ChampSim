@@ -25,7 +25,7 @@
 #include "dram_controller.h"
 #include "util/bits.h" // for lg2, splice_bits, bitmask
 
-VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
+VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram)
     : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ULL << (LOG2_PAGE_SIZE + champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
       minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
@@ -59,7 +59,7 @@ void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
 
 std::size_t VirtualMemory::available_ppages() const { return (last_ppage - next_ppage) / PAGE_SIZE; }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
+std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
 {
   auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> LOG2_PAGE_SIZE}, ppage_front()});
 
@@ -68,10 +68,15 @@ std::pair<uint64_t, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t
     ppage_pop();
   }
 
-  return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), fault ? minor_fault_penalty : 0};
+  auto penalty = minor_fault_penalty;
+  if (!fault) {
+    penalty = champsim::chrono::clock::duration::zero();
+  }
+
+  return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), penalty};
 }
 
-std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
+std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
 {
   if (next_pte_page == 0) {
     next_pte_page = ppage_front();
@@ -96,5 +101,10 @@ std::pair<uint64_t, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64
     fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} pt_page_offset: {} translation_level: {}\n", __func__, paddr, vaddr, offset, level);
   }
 
-  return {paddr, fault ? minor_fault_penalty : 0};
+  auto penalty = minor_fault_penalty;
+  if (!fault) {
+    penalty = champsim::chrono::clock::duration::zero();
+  }
+
+  return {paddr, penalty};
 }

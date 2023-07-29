@@ -26,6 +26,7 @@
 #include <tuple>       // for tie, tuple
 #include <utility>     // for tuple_element<>::type, pair
 #include <fmt/core.h>
+#include <fmt/chrono.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -173,32 +174,30 @@ void PageTableWalker::operate()
 void PageTableWalker::finish_packet(const response_type& packet)
 {
   auto finish_step = [this](auto mshr_entry) {
-    long penalty_cycles = 0;
-    std::tie(mshr_entry.data, penalty_cycles) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
     champsim::chrono::clock::duration penalty{};
+    std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
     if (!this->warmup) {
-      penalty = penalty_cycles * this->clock_period + HIT_LATENCY;
+      penalty += HIT_LATENCY;
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level, penalty);
     }
 
     return champsim::waitable{mshr_entry, this->current_time + penalty};
   };
 
   auto finish_last_step = [this](auto mshr_entry) {
-    long penalty_cycles = 0;
-    std::tie(mshr_entry.data, penalty_cycles) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
     champsim::chrono::clock::duration penalty{};
+    std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
     if (!this->warmup) {
-      penalty = penalty_cycles * this->clock_period + HIT_LATENCY;
+      penalty += HIT_LATENCY;
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address,
-                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", this->NAME, mshr_entry.address,
+                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level, penalty);
     }
 
     return champsim::waitable{mshr_entry, this->current_time + penalty};

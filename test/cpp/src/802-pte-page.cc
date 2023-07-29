@@ -29,7 +29,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
 
   GIVEN("A large virtual memory") {
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory uut{pte_page_size, 5, 200, dram};
+    VirtualMemory uut{pte_page_size, 5, std::chrono::nanoseconds{6400}, dram};
 
     uint64_t dist = PAGE_SIZE;
     for (std::size_t i = 0; i < level; ++i)
