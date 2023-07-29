@@ -25,6 +25,7 @@
 #include <string_view>
 #include <vector>
 
+#include "chrono.h"
 #include "trace_instruction.h"
 
 // branch types
@@ -46,7 +47,7 @@ inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_IN
 struct ooo_model_instr {
   uint64_t instr_id = 0;
   uint64_t ip = 0;
-  uint64_t event_cycle = 0;
+  champsim::chrono::clock::time_point ready_time{};
 
   bool is_branch = false;
   bool branch_taken = false;

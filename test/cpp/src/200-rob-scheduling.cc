@@ -19,7 +19,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     uut.ROB.push_back(champsim::test::instruction_with_ip(1));
     for (auto &instr : uut.ROB)
-      instr.event_cycle = 0;
+      instr.ready_time = champsim::chrono::clock::time_point{};
 
     //auto old_cycle = uut.current_cycle();
 
@@ -52,7 +52,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     for (auto &instr : uut.ROB)
-      instr.event_cycle = 0;
+      instr.ready_time = champsim::chrono::clock::time_point{};
 
     //auto old_cycle = uut.current_cycle();
 
@@ -92,7 +92,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     uint64_t id = 0;
     for (auto &instr : uut.ROB) {
       instr.instr_id = id++;
-      instr.event_cycle = 0;
+      instr.ready_time = champsim::chrono::clock::time_point{};
     }
 
     //auto old_cycle = uut.current_cycle();

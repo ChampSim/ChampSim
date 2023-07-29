@@ -18,7 +18,7 @@ SCENARIO("A late-added instruction does not miss the IFB") {
 
     uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeef));
     for (auto &instr : uut.IFETCH_BUFFER) {
-      instr.event_cycle = 0;
+      instr.ready_time = champsim::chrono::clock::time_point{};
       //instr.dib_checked = COMPLETED;
     }
 

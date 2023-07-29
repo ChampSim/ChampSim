@@ -35,7 +35,4 @@ void champsim::operable::_operate()
   operate();
 }
 
-uint64_t champsim::operable::current_cycle() const
-{
-  return current_time.time_since_epoch() / clock_period;
-}
+uint64_t champsim::operable::current_cycle() const { return current_time.time_since_epoch() / clock_period; }
