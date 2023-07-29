@@ -372,7 +372,7 @@ void CACHE::operate()
   }
   auto pq_bandwidth_consumed =
       champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
-  [[maybe_unused]] tag_bw -= pq_bandwidth_consumed;
+  [[maybe_unused]] auto remaining_tag_bw = tag_bw - pq_bandwidth_consumed;
 
   // Issue translations
   std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& x) { this->issue_translation(x); });
@@ -406,7 +406,7 @@ void CACHE::operate()
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
                NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
-               channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
+               channels_bandwidth_consumed, pq_bandwidth_consumed, remaining_tag_bw);
   }
 }
 
