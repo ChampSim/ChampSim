@@ -19,7 +19,8 @@
 
 #include <type_traits>
 
-namespace champsim {
+namespace champsim
+{
 template <typename T, template <typename...> typename Primary>
 inline constexpr bool is_specialization_v = false;
 
@@ -27,7 +28,8 @@ template <template <typename...> typename Primary, typename... Args>
 inline constexpr bool is_specialization_v<Primary<Args...>, Primary> = true;
 
 template <typename T, template <typename...> typename Primary>
-struct is_specialization : std::bool_constant<is_specialization_v<T, Primary>> {};
-}
+struct is_specialization : std::bool_constant<is_specialization_v<T, Primary>> {
+};
+} // namespace champsim
 
 #endif
