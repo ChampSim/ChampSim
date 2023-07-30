@@ -68,12 +68,17 @@ std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(u
     ppage_pop();
   }
 
+  auto paddr = champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE);
   auto penalty = minor_fault_penalty;
   if (!fault) {
     penalty = champsim::chrono::clock::duration::zero();
   }
 
-  return {champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE), penalty};
+  if constexpr (champsim::debug_print) {
+    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} fault: {}\n", __func__, paddr, vaddr, fault);
+  }
+
+  return {paddr, penalty};
 }
 
 std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
@@ -98,7 +103,7 @@ std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa
   auto offset = get_offset(vaddr, level);
   auto paddr = champsim::splice_bits(ppage->second, offset * PTE_BYTES, champsim::lg2(pte_page_size));
   if constexpr (champsim::debug_print) {
-    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} pt_page_offset: {} translation_level: {}\n", __func__, paddr, vaddr, offset, level);
+    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
 
   auto penalty = minor_fault_penalty;

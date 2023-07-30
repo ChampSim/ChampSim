@@ -60,6 +60,7 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
   retval.instr_depend_on_me = merged_instr;
   retval.to_return = merged_return;
+  retval.data = predecessor.data;
 
   return retval;
 }
@@ -111,6 +112,11 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     writeback_packet.type = access_type::WRITE;
     writeback_packet.pf_metadata = way->pf_metadata;
     writeback_packet.response_requested = false;
+
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME,
+          __func__, writeback_packet.address, writeback_packet.v_address, fill_mshr.pf_metadata);
+    }
 
     auto success = lower_level->add_wq(writeback_packet);
     if (!success) {
@@ -164,8 +170,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
-               handle_pkt.address, handle_pkt.v_address, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
+    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} data: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
+               handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
                access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_time.time_since_epoch() / clock_period);
   }
 
@@ -232,6 +238,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
                current_time.time_since_epoch() / clock_period);
   }
+
+  mshr_type to_allocate{handle_pkt, current_time};
 
   cpu = handle_pkt.cpu;
 
@@ -531,15 +539,15 @@ void CACHE::finish_translation(const response_type& packet)
   auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) {
     return (entry.v_address >> LOG2_PAGE_SIZE) == page_num;
   };
-  auto mark_translated = [p_page = packet.data](auto& entry) {
+  auto mark_translated = [p_page = packet.data, this](auto& entry) {
     entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
     entry.is_translated = true;                                                     // This entry is now translated
-  };
 
-  if constexpr (champsim::debug_print) {
-    fmt::print("[{}_TRANSLATE] {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address,
-               current_time.time_since_epoch() / clock_period);
-  }
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}_TRANSLATE] finish_translation paddr: {:#x} vaddr: {:#x} cycle: {}\n", this->NAME, entry.address, entry.v_address,
+          this->current_time.time_since_epoch() / this->clock_period);
+    }
+  };
 
   // Restart stashed translations
   auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
