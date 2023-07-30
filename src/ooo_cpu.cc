@@ -504,7 +504,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[SQ] {} instr_id: {}\n", __func__, sq_entry.instr_id);
+    fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
   return L1D_bus.issue_write(data_packet);
@@ -518,7 +518,7 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LQ] {} instr_id: {}\n", __func__, lq_entry.instr_id);
+    fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
   return L1D_bus.issue_read(data_packet);

@@ -112,6 +112,7 @@ class CACHE : public champsim::operable
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(tag_lookup_type req, uint64_t cycle);
+    static mshr_type merge(mshr_type predecessor, mshr_type successor);
   };
 
   bool try_hit(const tag_lookup_type& handle_pkt);

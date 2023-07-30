@@ -43,6 +43,24 @@ CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
 {
 }
 
+CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type successor)
+{
+  std::vector<std::reference_wrapper<ooo_model_instr>> merged_instr{};
+  std::vector<std::deque<response_type>*> merged_return{};
+
+  std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
+                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
+  std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
+                 std::back_inserter(merged_return));
+
+  mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
+  retval.instr_depend_on_me = merged_instr;
+  retval.to_return = merged_return;
+  retval.data = predecessor.data;
+
+  return retval;
+}
+
 CACHE::BLOCK::BLOCK(mshr_type mshr)
     : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
 {
@@ -84,6 +102,11 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       writeback_packet.type = access_type::WRITE;
       writeback_packet.pf_metadata = way->pf_metadata;
       writeback_packet.response_requested = false;
+
+      if constexpr (champsim::debug_print) {
+        fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME,
+            __func__, writeback_packet.address, writeback_packet.v_address, fill_mshr.pf_metadata);
+      }
 
       success = lower_level->add_wq(writeback_packet);
     }
@@ -140,9 +163,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__,
-               handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, get_set_index(handle_pkt.address),
-               std::distance(set_begin, way), hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
+    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} data: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
+               handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
+               access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
@@ -184,6 +207,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
                access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this, current_cycle);
   }
 
+  mshr_type to_allocate{handle_pkt, current_cycle};
+
   cpu = handle_pkt.cpu;
 
   // check mshr
@@ -194,27 +219,13 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 
   if (mshr_entry != MSHR.end()) // miss already inflight
   {
-    auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
-    auto ret_copy = std::move(mshr_entry->to_return);
-
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
-                   std::back_inserter(mshr_entry->instr_depend_on_me), ooo_model_instr::program_order);
-    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
-                   std::back_inserter(mshr_entry->to_return));
-
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this)
         ++sim_stats.pf_useful;
-
-      uint64_t prior_event_cycle = mshr_entry->event_cycle;
-      auto to_return = std::move(mshr_entry->to_return);
-      *mshr_entry = mshr_type{handle_pkt, current_cycle};
-
-      // in case request is already returned, we should keep event_cycle
-      mshr_entry->event_cycle = prior_event_cycle;
-      mshr_entry->to_return = std::move(to_return);
     }
+
+    *mshr_entry = mshr_type::merge(*mshr_entry, to_allocate);
   } else {
     if (mshr_full) { // not enough MSHR resource
       if constexpr (champsim::debug_print) {
@@ -257,7 +268,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 
     // Allocate an MSHR
     if (fwd_pkt.response_requested) {
-      MSHR.emplace_back(handle_pkt, current_cycle);
+      MSHR.push_back(to_allocate);
       MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
   }
@@ -493,14 +504,14 @@ void CACHE::finish_translation(const response_type& packet)
   auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) {
     return (entry.v_address >> LOG2_PAGE_SIZE) == page_num;
   };
-  auto mark_translated = [p_page = packet.data](auto& entry) {
+  auto mark_translated = [p_page = packet.data, this](auto& entry) {
     entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
     entry.is_translated = true;                                                     // This entry is now translated
-  };
 
-  if constexpr (champsim::debug_print) {
-    fmt::print("[{}_TRANSLATE] {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address, current_cycle);
-  }
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}_TRANSLATE] finish_translation paddr: {:#x} vaddr: {:#x} cycle: {}\n", this->NAME, entry.address, entry.v_address, this->current_cycle);
+    }
+  };
 
   // Restart stashed translations
   auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
