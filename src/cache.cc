@@ -111,8 +111,8 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     writeback_packet.response_requested = false;
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME,
-          __func__, writeback_packet.address, writeback_packet.v_address, fill_mshr.pf_metadata);
+      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME, __func__, writeback_packet.address, writeback_packet.v_address,
+                 fill_mshr.pf_metadata);
     }
 
     auto success = lower_level->add_wq(writeback_packet);
@@ -167,9 +167,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} data: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
-               handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
-               access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
+    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} data: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__,
+               handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way),
+               hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
