@@ -18,10 +18,17 @@ def get_constants_file(env, pmem):
         '#define CHAMPSIM_CONSTANTS_H',
         '#include <cstdlib>',
         '#include "util/bits.h"',
-        f'inline constexpr unsigned BLOCK_SIZE = {env["block_size"]};',
-        f'inline constexpr unsigned PAGE_SIZE = {env["page_size"]};',
+        '#include "util/units.h"',
+
+        'namespace champsim::data {',
+        f'  using blocks = size<unsigned long long, std::ratio<{env["block_size"]}>>;',
+        f'  using pages  = size<unsigned long long, std::ratio<{env["page_size"]}>>;',
+        '}',
         f'inline constexpr uint64_t STAT_PRINTING_PERIOD = {env["heartbeat_frequency"]};',
         f'inline constexpr std::size_t NUM_CPUS = {env["num_cores"]};',
+
+        'inline constexpr auto BLOCK_SIZE = champsim::data::blocks::byte_multiple;',
+        'inline constexpr auto PAGE_SIZE = champsim::data::pages::byte_multiple;',
         'inline constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);',
         'inline constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);',
 

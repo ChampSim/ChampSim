@@ -31,6 +31,7 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
+#include "util/units.h"
 
 struct ooo_model_instr;
 
@@ -119,7 +120,7 @@ public:
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
 
-  [[nodiscard]] std::size_t size() const;
+  [[nodiscard]] champsim::data::bytes size() const;
 
   uint32_t dram_get_channel(uint64_t address);
   uint32_t dram_get_rank(uint64_t address);
