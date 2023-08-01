@@ -163,6 +163,7 @@ class CACHE : public champsim::operable
   template <typename T>
   uint64_t module_address(const T& element) const;
 
+  auto matches_address(uint64_t address) const;
   std::pair<mshr_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
