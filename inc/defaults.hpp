@@ -18,8 +18,11 @@
 #define DEFAULTS_HPP
 
 #include "cache.h"
+#include "cache_builder.h"
+#include "core_builder.h"
 #include "ooo_cpu.h"
 #include "ptw.h"
+#include "ptw_builder.h"
 
 namespace champsim::defaults
 {

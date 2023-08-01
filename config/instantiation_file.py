@@ -25,15 +25,15 @@ queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_off
 
 core_builder_parts = {
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
-    'decode_buffer_size': '.decode_buffer_size({dispatch_buffer_size})',
-    'dispatch_buffer_size': '.dispatch_buffer_size({decode_buffer_size})',
+    'decode_buffer_size': '.decode_buffer_size({decode_buffer_size})',
+    'dispatch_buffer_size': '.dispatch_buffer_size({dispatch_buffer_size})',
     'rob_size': '.rob_size({rob_size})',
     'lq_size': '.lq_size({lq_size})',
     'sq_size': '.sq_size({sq_size})',
     'fetch_width': '.fetch_width({fetch_width})',
     'decode_width': '.decode_width({decode_width})',
     'dispatch_width': '.dispatch_width({dispatch_width})',
-    'schedule_size': '.schedule_width({scheduler_size})',
+    'scheduler_size': '.schedule_width({scheduler_size})',
     'execute_width': '.execute_width({execute_width})',
     'lq_width': '.lq_width({lq_width})',
     'sq_width': '.sq_width({sq_width})',
@@ -82,8 +82,6 @@ def vector_string(iterable):
     return '{'+', '.join(hoisted)+'}'
 
 def get_cpu_builder(cpu):
-    yield f'O3_CPU {cpu["name"]}{{champsim::core_builder{{ champsim::defaults::default_core }}'
-
     required_parts = [
         '.index({_index})',
         '.frequency({frequency})',
@@ -99,19 +97,20 @@ def get_cpu_builder(cpu):
         '^btb_string': ' | '.join(f'O3_CPU::t{k["name"]}' for k in cpu.get('_btb_data',[]))
     }
 
-    builder_parts = itertools.chain(
+    builder_parts = itertools.chain(util.multiline(itertools.chain(
+        ('O3_CPU {name}{{', 'champsim::core_builder{{ champsim::defaults::default_core }}'),
         required_parts,
         (v for k,v in core_builder_parts.items() if k in cpu),
         (v for k,v in dib_builder_parts.items() if k in cpu.get('DIB',{}))
-    )
+    ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**cpu, **local_params) for part in builder_parts)
 
-    yield '};'
-    yield ''
-
 def get_cache_builder(elem, upper_levels):
-    yield f'CACHE {elem["name"]}{{champsim::cache_builder{{ {elem.get("_defaults", "")} }}'
-    yield f'.name("{elem["name"]}")'
+    required_parts = [
+        '.name("{name}")',
+        '.upper_levels({{{^upper_levels_string}}})',
+        '.lower_level(&{name}_to_{lower_level}_channel)'
+    ]
 
     local_cache_builder_parts = {
         ('prefetch_as_load', True): '.set_prefetch_as_load()',
@@ -123,52 +122,63 @@ def get_cache_builder(elem, upper_levels):
     }
 
     local_params = {
+        '^defaults': elem.get('_defaults', ''),
+        '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ' | '.join(f'CACHE::r{k["name"]}' for k in elem.get('_replacement_data',[])),
         '^prefetcher_string': ' | '.join(f'CACHE::p{k["name"]}' for k in elem.get('_prefetcher_data',[]))
     }
 
-    yield from (v.format(**elem, **local_params) for k,v in cache_builder_parts.items() if k in elem)
-    yield from (v.format(**elem) for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
-
-    yield f'.upper_levels({{{vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"])}}})'
-    yield f'.lower_level(&{elem["name"]}_to_{elem["lower_level"]}_channel)'
-
-    yield '};'
-    yield ''
+    builder_parts = itertools.chain(util.multiline(itertools.chain(
+        ('CACHE {name}{{', 'champsim::cache_builder{{ {^defaults} }}'),
+        required_parts,
+        (v for k,v in cache_builder_parts.items() if k in elem),
+        (v for k,v in local_cache_builder_parts.items() if k[0] in elem and k[1] == elem[k[0]])
+    ), indent=1, line_end=''), ('}};', ''))
+    yield from (part.format(**elem, **local_params) for part in builder_parts)
 
 def get_ptw_builder(ptw, upper_levels):
-    yield f'PageTableWalker {ptw["name"]}{{champsim::ptw_builder{{champsim::defaults::default_ptw}}'
-    yield f'.name("{ptw["name"]}")'
-    yield f'.cpu({ptw["cpu"]})'
-    yield '.virtual_memory(&vmem)'
+    required_parts = [
+        '.name("{name}")',
+        '.cpu({cpu})',
+        '.upper_levels({{{^upper_levels_string}}})',
+        '.lower_level(&{name}_to_{lower_level}_channel)',
+        '.virtual_memory(&vmem)'
+    ]
 
-    if "pscl5_set" in ptw or "pscl5_way" in ptw:
-        yield f'.add_pscl(5, {ptw["pscl5_set"]}, {ptw["pscl5_way"]})'
-    if "pscl4_set" in ptw or "pscl4_way" in ptw:
-        yield f'.add_pscl(4, {ptw["pscl4_set"]}, {ptw["pscl4_way"]})'
-    if "pscl3_set" in ptw or "pscl3_way" in ptw:
-        yield f'.add_pscl(3, {ptw["pscl3_set"]}, {ptw["pscl3_way"]})'
-    if "pscl2_set" in ptw or "pscl2_way" in ptw:
-        yield f'.add_pscl(2, {ptw["pscl2_set"]}, {ptw["pscl2_way"]})'
-    if "mshr_size" in ptw:
-        yield f'.mshr_size({ptw["mshr_size"]})'
-    if "max_read" in ptw:
-        yield f'.tag_bandwidth({ptw["max_read"]})'
-    if "max_write" in ptw:
-        yield f'.fill_bandwidth({ptw["max_write"]})'
+    local_ptw_builder_parts = {
+        ('pscl5_set', 'pscl5_way'): '.add_pscl(5, {pscl5_set}, {pscl5_way})',
+        ('pscl4_set', 'pscl4_way'): '.add_pscl(4, {pscl4_set}, {pscl4_way})',
+        ('pscl3_set', 'pscl3_way'): '.add_pscl(3, {pscl3_set}, {pscl3_way})',
+        ('pscl2_set', 'pscl2_way'): '.add_pscl(2, {pscl2_set}, {pscl2_way})',
+        ('mshr_size',): '.mshr_size({mshr_size})',
+        ('max_read',): '.tag_bandwidth({max_read})',
+        ('max_write',): '.fill_bandwidth({max_write})'
+    }
 
-    yield f'.upper_levels({{{vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"])}}})'
-    yield f'.lower_level(&{ptw["name"]}_to_{ptw["lower_level"]}_channel)'
+    local_params = {
+        '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"])
+    }
 
-    yield '};'
-    yield ''
+    builder_parts = itertools.chain(util.multiline(itertools.chain(
+        ('PageTableWalker {name}{{', 'champsim::ptw_builder{{ champsim::defaults::default_ptw }}'),
+        required_parts,
+        (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
+    ), indent=1, line_end=''), ('}};', ''))
+    yield from (part.format(**ptw, **local_params) for part in builder_parts)
 
 def get_ref_vector_function(rtype, func_name, elements):
-    yield f'auto {func_name}() -> std::vector<std::reference_wrapper<{rtype}>> override {{'
-    yield '  return {'
-    yield '    ' + ', '.join(f'std::ref({elem["name"]})' for elem in elements)
-    yield '  };'
+    if len(elements) > 1:
+        open_brace, close_brace = '{{', '}}'
+    else:
+        open_brace, close_brace = '{', '}'
+
+    yield f'auto {func_name}() -> std::vector<std::reference_wrapper<{rtype}>> override'
+    yield '{'
+    wrapped = (f'std::reference_wrapper<{rtype}>{{{elem["name"]}}}' for elem in elements)
+    wrapped = itertools.chain((f'  return {open_brace}',), util.append_except_last(wrapped, ','))
+    yield from util.multiline(wrapped, length=3, indent=2, line_end='')
+    yield f'  {close_brace};'
     yield '}'
     yield ''
 
@@ -237,7 +247,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield from get_ref_vector_function('O3_CPU', 'cpu_view', cores)
     yield from get_ref_vector_function('CACHE', 'cache_view', caches)
     yield from get_ref_vector_function('PageTableWalker', 'ptw_view', ptws)
-    yield from get_ref_vector_function('champsim::operable', 'operable_view', itertools.chain(cores, caches, ptws, (pmem,)))
+    yield from get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,))))
 
     yield f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}'
     yield ''

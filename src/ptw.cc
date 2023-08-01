@@ -16,13 +16,21 @@
 
 #include "ptw.h"
 
+#include <algorithm> // for for_each, partition, partition_copy
+#include <array>     // for array, get, swap
 #include <cmath>
+#include <iterator> // for back_insert_iterator, begin, end, size
+#include <memory>   // for allocator_traits<>::value_type
 #include <numeric>
+#include <string_view> // for string_view
+#include <tuple>       // for tie, tuple
+#include <utility>     // for tuple_element<>::type, pair
 #include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "instruction.h"
+#include "ptw_builder.h" // for ptw_builder
+#include "util/bits.h"   // for bitmask, lg2, splice_bits
 #include "util/span.h"
 #include "vmem.h"
 
@@ -33,7 +41,7 @@ PageTableWalker::PageTableWalker(champsim::ptw_builder b)
       MAX_FILL(b.m_max_fill.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))), HIT_LATENCY(b.m_latency), vmem(b.m_vmem),
       CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
-  std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
+  std::vector<decltype(b.m_pscl)::value_type> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
   std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
 

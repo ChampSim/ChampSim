@@ -17,16 +17,17 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <cassert> // for assert
 #include <chrono>
 #include <cmath>
-#include <numeric>
+#include <iterator> // for end, begin, back_insert_iterator, empty
 #include <fmt/chrono.h>
 #include <fmt/core.h>
-#include <fmt/ranges.h>
 
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
+#include "trace_instruction.h" // for REG_STACK_POINTER, REG_FLAGS, REG_INS...
 #include "util/span.h"
 
 constexpr uint64_t DEADLOCK_CYCLE = 1000000;
@@ -134,7 +135,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
     // execution.
     bool reads_other =
         (std::count_if(std::begin(arch_instr.source_registers), std::end(arch_instr.source_registers),
-                       [](uint8_t r) { return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER; })
+                       [](auto r) { return r != champsim::REG_STACK_POINTER && r != champsim::REG_FLAGS && r != champsim::REG_INSTRUCTION_POINTER; })
          > 0);
     if ((arch_instr.is_branch) || !(std::empty(arch_instr.destination_memory) && std::empty(arch_instr.source_memory)) || (!reads_other)) {
       auto nonsp_end = std::remove(std::begin(arch_instr.destination_registers), std::end(arch_instr.destination_registers), champsim::REG_STACK_POINTER);
@@ -149,7 +150,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   bool stop_fetch = false;
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
-  sim_stats.total_branch_types.at(arch_instr.branch_type)++;
+  sim_stats.total_branch_types.at(arch_instr.branch)++;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
   arch_instr.branch_prediction = (impl_predict_branch(arch_instr.ip) != 0U) || (always_taken != 0U);
   if (!arch_instr.branch_prediction) {
@@ -162,13 +163,13 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
 
     // call code prefetcher every time the branch predictor is used
-    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch, predicted_branch_target);
 
     if (predicted_branch_target != arch_instr.branch_target
-        || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
+        || (((arch_instr.branch == BRANCH_CONDITIONAL) || (arch_instr.branch == BRANCH_OTHER))
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
-      sim_stats.branch_type_misses.at(arch_instr.branch_type)++;
+      sim_stats.branch_type_misses.at(arch_instr.branch)++;
       if (!warmup) {
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
         stop_fetch = true;
@@ -178,8 +179,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch_type);
-    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch_type);
+    impl_update_btb(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch);
+    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch);
   }
 
   return stop_fetch;
@@ -299,9 +300,8 @@ void O3_CPU::decode_instruction()
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
-      if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
-          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER))
-              && db_entry.branch_taken == db_entry.branch_prediction)) {
+      if ((db_entry.branch == BRANCH_DIRECT_JUMP) || (db_entry.branch == BRANCH_DIRECT_CALL)
+          || (((db_entry.branch == BRANCH_CONDITIONAL) || (db_entry.branch == BRANCH_OTHER)) && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
@@ -518,7 +518,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[SQ] {} instr_id: {}\n", __func__, sq_entry.instr_id);
+    fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
   return L1D_bus.issue_write(data_packet);
@@ -532,7 +532,7 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LQ] {} instr_id: {}\n", __func__, lq_entry.instr_id);
+    fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
   return L1D_bus.issue_read(data_packet);

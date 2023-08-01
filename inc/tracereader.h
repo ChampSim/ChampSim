@@ -17,30 +17,23 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
+#include <array>   // for array
+#include <cstdint> // for uint8_t, uint64_t
 #include <cstring>
 #include <deque>
+#include <iterator> // for begin, size, operator!=, operator==, back_i...
 #include <memory>
 #include <numeric>
 #include <string>
+#include <string_view> // for string_view
 #include <type_traits>
+#include <utility> // for move, forward
 
 #include "instruction.h"
 #include "util/detect.h"
 
 namespace champsim
 {
-class tracereader;
-
-namespace detail
-{
-template <typename>
-struct is_not_tracereader : std::true_type {
-};
-
-template <>
-struct is_not_tracereader<tracereader> : std::false_type {
-};
-} // namespace detail
 class tracereader
 {
   static uint64_t instr_unique_id; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
@@ -71,7 +64,7 @@ class tracereader
   std::unique_ptr<reader_concept> pimpl_;
 
 public:
-  template <typename T, std::enable_if_t<detail::is_not_tracereader<T>::value, bool> = true>
+  template <typename T, std::enable_if_t<!std::is_same_v<tracereader, T>, bool> = true>
   tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::forward<T>(val)))
   {
   }

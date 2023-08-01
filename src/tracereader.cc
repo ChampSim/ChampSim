@@ -16,11 +16,14 @@
 
 #include "tracereader.h"
 
+#include <algorithm> // for transform
 #include <fstream>
 #include <string>
+#include <string_view> // for basic_string_view
 
 #include "inf_stream.h"
 #include "repeatable.h"
+#include "trace_instruction.h" // for cloudsuite_instr, input_instr
 
 namespace champsim
 {

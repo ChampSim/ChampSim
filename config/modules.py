@@ -32,10 +32,12 @@ class ModuleSearchContext:
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
         # Return a normalized directory: variables and user shorthands are expanded
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, itertools.chain(
+        paths = list(itertools.chain(
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
-        ))))))
+        ))
+        #print(paths)
+        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, paths)))))
 
         return self.data_from_path(path)
 
@@ -51,41 +53,51 @@ def data_getter(prefix, module_name, funcs):
         'func_map': { k: '_'.join((prefix, module_name, k)) for k in funcs } # Resolve function names
     }
 
-def get_branch_data(module_name):
-    return data_getter('bpred', module_name, ('initialize_branch_predictor', 'last_branch_result', 'predict_branch'))
-
-def get_btb_data(module_name):
-    return data_getter('btb', module_name, ('initialize_btb', 'update_btb', 'btb_prediction'))
-
-def get_pref_data(module_name, is_instruction_cache=False):
-    prefix = 'ipref' if is_instruction_cache else 'pref'
+def get_branch_data(module):
     return util.chain(
-            data_getter(prefix, module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
-            { 'deprecated_func_map' : {
-                    'l1i_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l1d_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l2c_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'llc_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
-                    'l1i_prefetcher_cache_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l1d_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l2c_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'llc_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
-                    'l1i_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l1d_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l2c_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'llc_prefetcher_cache_fill': '_'.join((prefix, module_name, 'prefetcher_cache_fill')),
-                    'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_name, 'prefetcher_cycle_operate')),
-                    'l1i_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l1d_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l2c_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'llc_prefetcher_final_stats': '_'.join((prefix, module_name, 'prefetcher_final_stats')),
-                    'l1i_prefetcher_branch_operate': '_'.join((prefix, module_name, 'prefetcher_branch_operate'))
-                }
+        module,
+        data_getter('bpred', module['name'], ('initialize_branch_predictor', 'last_branch_result', 'predict_branch'))
+    )
+
+def get_btb_data(module):
+    return util.chain(
+        module,
+        data_getter('btb', module['name'], ('initialize_btb', 'update_btb', 'btb_prediction'))
+    )
+
+def get_pref_data(module, is_instruction_cache=False):
+    prefix = 'ipref' if module['_is_instruction_prefetcher'] else 'pref'
+    return util.chain(
+        module,
+        data_getter(prefix, module['name'], ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
+        { 'deprecated_func_map' : {
+                'l1i_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l1d_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l2c_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'llc_prefetcher_initialize': '_'.join((prefix, module['name'], 'prefetcher_initialize')),
+                'l1i_prefetcher_cache_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l1d_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l2c_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'llc_prefetcher_operate': '_'.join((prefix, module['name'], 'prefetcher_cache_operate')),
+                'l1i_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l1d_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l2c_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'llc_prefetcher_cache_fill': '_'.join((prefix, module['name'], 'prefetcher_cache_fill')),
+                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module['name'], 'prefetcher_cycle_operate')),
+                'l1i_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l1d_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l2c_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'llc_prefetcher_final_stats': '_'.join((prefix, module['name'], 'prefetcher_final_stats')),
+                'l1i_prefetcher_branch_operate': '_'.join((prefix, module['name'], 'prefetcher_branch_operate'))
             }
+        }
         )
 
-def get_repl_data(module_name):
-    return data_getter('repl', module_name, ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
+def get_repl_data(module):
+    return util.chain(
+        module,
+        data_getter('repl', module['name'], ('initialize_replacement', 'find_victim', 'update_replacement_state', 'replacement_final_stats'))
+    )
 
 def get_module_opts_lines(module_data):
     '''
@@ -195,6 +207,7 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         ),
 
         itertools.chain(
+            ('#include "module_impl.h"',),
             *(get_discriminator(fname, branch_varname, btb_varname, [(branch_prefix + v['name'], v['func_map'][fname]) for v in branch_data.values()], *finfo, classname=classname) for fname, *finfo in branch_variant_data),
             *(get_discriminator(fname, btb_varname, branch_varname, [(btb_prefix + v['name'], v['func_map'][fname]) for v in btb_data.values()], *finfo, classname=classname) for fname, *finfo in btb_variant_data)
         )
@@ -247,6 +260,7 @@ def get_cache_module_lines(pref_data, repl_data):
         ),
 
         itertools.chain(
+            ('#include "module_impl.h"',),
             *(get_discriminator(fname, pref_varname, repl_varname, [(pref_prefix + v['name'], v['func_map'][fname]) for v in pref_data.values()], *finfo, classname=classname) for fname, *finfo in itertools.chain(pref_nonbranch_variant_data, pref_branch_variant_data)),
             *(get_discriminator(fname, repl_varname, pref_varname, [(repl_prefix + v['name'], v['func_map'][fname]) for v in repl_data.values()], *finfo, classname=classname) for fname, *finfo in repl_variant_data)
         )

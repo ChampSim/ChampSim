@@ -19,14 +19,18 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iomanip>
+#include <cstdint> // for uint64_t, uint8_t, uint32_t
+#include <cstdio>  // for size_t, stderr
 #include <numeric>
+#include <string_view> // for string_view
 #include <fmt/core.h>
+#include <fmt/ranges.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "instruction.h"
 #include "util/algorithm.h"
+#include "util/bits.h" // for bitmask, lg2, splice_bits
 #include "util/span.h"
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
@@ -37,23 +41,58 @@ CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref
 }
 
 CACHE::mshr_type::mshr_type(const tag_lookup_type& req, uint64_t cycle)
-    : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
+    : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu),
       type(req.type), clusivity(req.clusivity), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me),
       to_return(req.to_return), inclusive_evict(req.inclusive_evict)
 {
 }
 
+CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type successor)
+{
+  std::vector<std::reference_wrapper<ooo_model_instr>> merged_instr{};
+  std::vector<channel_type*> merged_return{};
+  std::vector<channel_type*> merged_inclusive_evict{};
+
+  std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
+                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
+  std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
+                 std::back_inserter(merged_return));
+  std::set_union(std::begin(predecessor.inclusive_evict), std::end(predecessor.inclusive_evict), std::begin(successor.inclusive_evict), std::end(successor.inclusive_evict),
+                 std::back_inserter(merged_inclusive_evict));
+
+  mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
+  retval.instr_depend_on_me = merged_instr;
+  retval.to_return = merged_return;
+  retval.inclusive_evict = merged_inclusive_evict;
+  retval.data_promise = predecessor.data_promise;
+
+  return retval;
+}
+
 CACHE::BLOCK::BLOCK(const mshr_type& mshr)
-    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data),
+    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data_promise->data),
       inclusive_evict(mshr.inclusive_evict)
 {
 }
 
-auto CACHE::in_set_finder(uint64_t addr, unsigned offset)
+auto CACHE::matches_address(uint64_t addr) const
 {
-  return [match = addr >> offset, shamt = offset](const auto& entry) {
-    return entry.valid && (entry.address >> shamt) == match;
+  return [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; };
+}
+
+auto CACHE::in_set_finder(uint64_t addr) const
+{
+  return [matcher=matches_address(addr)](const auto& entry) {
+    return entry.valid && matcher(entry);
   };
+}
+
+template <typename T>
+uint64_t CACHE::module_address(const T& element) const
+{
+  auto address_bitmask = ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  auto address = virtual_prefetch ? element.v_address : element.address;
+  return address & address_bitmask;
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
@@ -73,7 +112,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n", NAME,
                __func__, fill_mshr.instr_id, fill_mshr.address, fill_mshr.v_address, get_set_index(fill_mshr.address), way_idx,
-               access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
+               access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.data_promise->pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
   }
 
   const bool bypass = (way == set_end || fill_mshr.clusivity == champsim::inclusivity::exclusive);
@@ -91,23 +130,25 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     writeback_packet.pf_metadata = way->pf_metadata;
     writeback_packet.response_requested = false;
 
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME,
+          __func__, writeback_packet.address, writeback_packet.v_address, fill_mshr.data_promise->pf_metadata);
+    }
+
     auto success = lower_level->add_wq(writeback_packet);
     if (!success) {
       return false;
     }
   }
 
-  auto address_bitmask = ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-
   uint64_t evicting_address = 0;
   if (!bypass && way->valid) {
-    evicting_address = virtual_prefetch ? way->v_address : way->address;
+    evicting_address = module_address(*way);
   }
 
-  auto pkt_address = virtual_prefetch ? fill_mshr.v_address : fill_mshr.address;
-  auto metadata_thru = impl_prefetcher_cache_fill(pkt_address & address_bitmask, get_set_index(fill_mshr.address), way_idx,
-                                                  (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address & address_bitmask, fill_mshr.pf_metadata);
-  impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
+  auto metadata_thru = impl_prefetcher_cache_fill(module_address(fill_mshr), get_set_index(fill_mshr.address), way_idx,
+                                                  (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address, fill_mshr.data_promise->pf_metadata);
+  impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, module_address(fill_mshr), fill_mshr.ip, evicting_address,
                                 champsim::to_underlying(fill_mshr.type), 0U);
 
   if (!bypass) {
@@ -130,7 +171,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   // COLLECT STATS
   sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
 
-  response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
+  response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data_promise->data, metadata_thru, fill_mshr.instr_depend_on_me};
   std::for_each(std::begin(fill_mshr.to_return), std::end(fill_mshr.to_return), channel_type::returner_for(std::move(response)));
 
   return true;
@@ -142,22 +183,21 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  auto way = std::find_if(set_begin, set_end, in_set_finder(handle_pkt.address, OFFSET_BITS));
+  auto way = std::find_if(set_begin, set_end, in_set_finder(handle_pkt.address));
   const auto hit = (way != set_end);
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
-               handle_pkt.address, handle_pkt.v_address, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
+    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} data: {:#x} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
+               handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way), hit ? "HIT" : "MISS",
                access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
   }
 
   // update prefetcher on load instructions and prefetches from upper levels
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
-    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    metadata_thru =
-        impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit ? 1 : 0, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+    metadata_thru = impl_prefetcher_cache_operate(module_address(handle_pkt), handle_pkt.ip, hit ? 1 : 0, useful_prefetch,
+                                                  champsim::to_underlying(handle_pkt.type), metadata_thru);
   }
 
   if (hit) {
@@ -165,7 +205,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
-    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
+    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(*way), handle_pkt.ip, 0,
                                   champsim::to_underlying(handle_pkt.type), 1U);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
@@ -185,6 +225,30 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   return hit;
 }
 
+auto CACHE::mshr_and_forward_packet(const tag_lookup_type& handle_pkt) -> std::pair<mshr_type, request_type>
+{
+  mshr_type to_allocate{handle_pkt, current_cycle};
+
+  request_type fwd_pkt;
+
+  fwd_pkt.asid[0] = handle_pkt.asid[0];
+  fwd_pkt.asid[1] = handle_pkt.asid[1];
+  fwd_pkt.type = (handle_pkt.type == access_type::WRITE) ? access_type::RFO : handle_pkt.type;
+  fwd_pkt.pf_metadata = handle_pkt.pf_metadata;
+  fwd_pkt.cpu = handle_pkt.cpu;
+
+  fwd_pkt.address = handle_pkt.address;
+  fwd_pkt.v_address = handle_pkt.v_address;
+  fwd_pkt.data = handle_pkt.data;
+  fwd_pkt.instr_id = handle_pkt.instr_id;
+  fwd_pkt.ip = handle_pkt.ip;
+
+  fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
+  fwd_pkt.response_requested = (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill);
+
+  return std::pair{std::move(to_allocate), std::move(fwd_pkt)};
+}
+
 bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
@@ -193,76 +257,49 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
                current_cycle);
   }
 
+  mshr_type to_allocate{handle_pkt, current_cycle};
+
   cpu = handle_pkt.cpu;
 
+  auto mshr_pkt = mshr_and_forward_packet(handle_pkt);
+
   // check mshr
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
-    return (entry.address >> shamt) == match;
-  });
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(handle_pkt.address));
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
 
   if (mshr_entry != MSHR.end()) // miss already inflight
   {
-    auto instr_copy = std::move(mshr_entry->instr_depend_on_me);
-    auto ret_copy = std::move(mshr_entry->to_return);
-    auto inc_copy = std::move(mshr_entry->inclusive_evict);
-
-    std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(handle_pkt.instr_depend_on_me), std::end(handle_pkt.instr_depend_on_me),
-                   std::back_inserter(mshr_entry->instr_depend_on_me), ooo_model_instr::program_order);
-    std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return),
-                   std::back_inserter(mshr_entry->to_return));
-    std::set_union(std::begin(inc_copy), std::end(inc_copy), std::begin(handle_pkt.inclusive_evict), std::end(handle_pkt.inclusive_evict),
-                   std::back_inserter(mshr_entry->inclusive_evict));
-
     if (mshr_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->prefetch_from_this) {
         ++sim_stats.pf_useful;
       }
-
-      uint64_t prior_event_cycle = mshr_entry->event_cycle;
-      auto to_return = std::move(mshr_entry->to_return);
-      auto inclusive_evict = std::move(mshr_entry->inclusive_evict);
-      *mshr_entry = mshr_type{handle_pkt, current_cycle};
-
-      // in case request is already returned, we should keep event_cycle
-      mshr_entry->event_cycle = prior_event_cycle;
-      mshr_entry->to_return = std::move(to_return);
-      mshr_entry->inclusive_evict = std::move(inclusive_evict);
     }
+
+    *mshr_entry = mshr_type::merge(*mshr_entry, to_allocate);
   } else {
     if (mshr_full) { // not enough MSHR resource
-      return false;  // TODO should we allow prefetches anyway if they will not be filled to this level?
+      if constexpr (champsim::debug_print) {
+        fmt::print("[{}] {} MSHR full\n", NAME, __func__);
+      }
+
+      return false; // TODO should we allow prefetches anyway if they will not be filled to this level?
     }
 
-    request_type fwd_pkt;
-
-    fwd_pkt.asid[0] = handle_pkt.asid[0];
-    fwd_pkt.asid[1] = handle_pkt.asid[1];
-    fwd_pkt.type = (handle_pkt.type == access_type::WRITE) ? access_type::RFO : handle_pkt.type;
-    fwd_pkt.pf_metadata = handle_pkt.pf_metadata;
-    fwd_pkt.cpu = handle_pkt.cpu;
-
-    fwd_pkt.address = handle_pkt.address;
-    fwd_pkt.v_address = handle_pkt.v_address;
-    fwd_pkt.data = handle_pkt.data;
-    fwd_pkt.instr_id = handle_pkt.instr_id;
-    fwd_pkt.ip = handle_pkt.ip;
-
-    fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
-    fwd_pkt.response_requested = (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill);
-
     const bool send_to_rq = (prefetch_as_load || handle_pkt.type != access_type::PREFETCH);
-    bool success = send_to_rq ? lower_level->add_rq(fwd_pkt) : lower_level->add_pq(fwd_pkt);
+    bool success = send_to_rq ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
 
     if (!success) {
+      if constexpr (champsim::debug_print) {
+        fmt::print("[{}] {} could not send to lower\n", NAME, __func__);
+      }
+
       return false;
     }
 
     // Allocate an MSHR
-    if (fwd_pkt.response_requested) {
-      MSHR.emplace_back(handle_pkt, current_cycle);
-      MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
+    if (mshr_pkt.second.response_requested) {
+      MSHR.emplace_back(std::move(mshr_pkt.first));
     }
   }
 
@@ -279,22 +316,13 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
                current_cycle);
   }
 
-  inflight_writes.emplace_back(handle_pkt, current_cycle);
-  inflight_writes.back().event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
+  mshr_type to_allocate{handle_pkt, current_cycle};
+  to_allocate.data_promise.ready_at(current_cycle + (warmup ? 0 : FILL_LATENCY));
+  inflight_writes.push_back(to_allocate);
 
   ++sim_stats.misses.at(champsim::to_underlying(handle_pkt.type)).at(handle_pkt.cpu);
 
   return true;
-}
-
-template <typename R, typename Output, typename F, typename G>
-long int transform_if_n(R& queue, Output out, long int sz, F&& test_func, G&& transform_func)
-{
-  auto [begin, end] = champsim::get_span_p(std::begin(queue), std::end(queue), sz, std::forward<F>(test_func));
-  auto retval = std::distance(begin, end);
-  std::transform(begin, end, out, std::forward<G>(transform_func));
-  queue.erase(begin, end);
-  return retval;
 }
 
 template <bool UpdateRequest>
@@ -318,7 +346,7 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (champsim::debug_print) {
       fmt::print("[TAG] initiate_tag_check instr_id: {} address: {:#x} v_address: {:#x} type: {} event: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), retval.event_cycle);
+                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), cycle);
     }
 
     return retval;
@@ -327,6 +355,13 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
 void CACHE::operate()
 {
+  auto is_ready = [cycle = current_cycle](const auto& entry) {
+    return entry.event_cycle <= cycle;
+  };
+  auto is_translated = [](const auto& entry) {
+    return entry.is_translated;
+  };
+
   for (auto* ul : upper_levels) {
     ul->check_collision();
   }
@@ -349,7 +384,7 @@ void CACHE::operate()
   auto fill_bw = MAX_FILL;
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
     auto [fill_begin, fill_end] =
-        champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
+        champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [cycle = current_cycle](const auto& x) { return x.data_promise.is_ready_at(cycle); });
     auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
     fill_bw -= std::distance(fill_begin, complete_end);
     q.get().erase(fill_begin, complete_end);
@@ -360,22 +395,29 @@ void CACHE::operate()
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
-  tag_bw -= transform_if_n(
-      translation_stash, std::back_inserter(inflight_tag_check), tag_bw, [](const auto& entry) { return entry.is_translated; }, initiate_tag_check<false>());
+  auto stash_bandwidth_consumed =
+      champsim::transform_while_n(translation_stash, std::back_inserter(inflight_tag_check), tag_bw, is_translated, initiate_tag_check<false>());
+  tag_bw -= stash_bandwidth_consumed;
+  std::vector<long long> channels_bandwidth_consumed{};
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
-      tag_bw -= transform_if_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
+      auto bandwidth_consumed =
+          champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
+      channels_bandwidth_consumed.push_back(bandwidth_consumed);
+      tag_bw -= bandwidth_consumed;
     }
   }
-  transform_if_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
+  auto pq_bandwidth_consumed =
+      champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
+  [[maybe_unused]] auto remaining_tag_bw = tag_bw - pq_bandwidth_consumed;
 
   // Issue translations
-  issue_translation();
+  std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& x) { this->issue_translation(x); });
+  std::for_each(std::begin(translation_stash), std::end(translation_stash), [this](auto& x) { this->issue_translation(x); });
 
   // Find entries that would be ready except that they have not finished translation, move them to the stash
-  auto [last_not_missed, stash_end] =
-      champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
-                           [cycle = current_cycle](const auto& x) { return x.event_cycle < cycle && !x.is_translated && x.translate_issued; });
+  auto [last_not_missed, stash_end] = champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
+                                                           [is_ready, is_translated](const auto& x) { return is_ready(x) && !is_translated(x); });
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
@@ -390,11 +432,19 @@ void CACHE::operate()
   };
   auto [tag_check_ready_begin, tag_check_ready_end] =
       champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
-                           [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
+                           [is_ready, is_translated](const auto& pkt) { return is_ready(pkt) && is_translated(pkt); });
   auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
+  [[maybe_unused]] auto tag_bw_consumed = std::distance(tag_check_ready_begin, finish_tag_check_end);
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
+
+  if (champsim::debug_print) {
+    fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
+               "bw {}\n",
+               NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
+               channels_bandwidth_consumed, pq_bandwidth_consumed, remaining_tag_bw);
+  }
 }
 
 // LCOV_EXCL_START exclude deprecated function
@@ -428,14 +478,14 @@ auto CACHE::get_set_span(uint64_t address) const -> std::pair<std::vector<BLOCK>
 uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 {
   auto [begin, end] = get_set_span(address);
-  return std::distance(begin, std::find_if(begin, end, in_set_finder(address, OFFSET_BITS)));
+  return std::distance(begin, std::find_if(begin, end, in_set_finder(address)));
 }
 // LCOV_EXCL_STOP
 
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(begin, end, in_set_finder(inval_addr, OFFSET_BITS));
+  auto inv_way = std::find_if(begin, end, in_set_finder(inval_addr));
 
   if (inv_way != end) {
     invalidate_entry(*inv_way);
@@ -488,9 +538,8 @@ bool CACHE::prefetch_line(uint64_t /*deprecated*/, uint64_t /*deprecated*/, uint
 void CACHE::finish_packet(const response_type& packet)
 {
   // check MSHR information
-  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR),
-                                 [match = packet.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
-  auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.event_cycle == std::numeric_limits<uint64_t>::max(); });
+  auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(packet.address));
+  auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.data_promise.has_unknown_readiness(); });
 
   // sanity check
   if (mshr_entry == MSHR.end()) {
@@ -499,14 +548,11 @@ void CACHE::finish_packet(const response_type& packet)
   }
 
   // MSHR holds the most updated information about this request
-  mshr_entry->data = packet.data;
-  mshr_entry->pf_metadata = packet.pf_metadata;
-  mshr_entry->event_cycle = current_cycle + (warmup ? 0 : FILL_LATENCY);
-
+  mshr_type::returned_value finished_value{packet.data, packet.pf_metadata};
+  mshr_entry->data_promise = champsim::waitable{finished_value, current_cycle + (warmup ? 0 : FILL_LATENCY)};
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}_MSHR] {} instr_id: {} address: {:#x} data: {:#x} type: {} to_finish: {} event: {} current: {}\n", NAME, __func__, mshr_entry->instr_id,
-               mshr_entry->address, mshr_entry->data, access_type_names.at(champsim::to_underlying(mshr_entry->type)), std::size(lower_level->returned),
-               mshr_entry->event_cycle, current_cycle);
+    fmt::print("[{}_MSHR] finish_packet instr_id: {} address: {:#x} data: {:#x} type: {} current: {}\n", this->NAME, mshr_entry->instr_id, mshr_entry->address,
+               mshr_entry->data_promise->data, access_type_names.at(champsim::to_underlying(mshr_entry->type)), current_cycle);
   }
 
   // Order this entry after previously-returned entries, but before non-returned
@@ -519,14 +565,14 @@ void CACHE::finish_translation(const response_type& packet)
   auto matches_vpage = [page_num = packet.v_address >> LOG2_PAGE_SIZE](const auto& entry) {
     return (entry.v_address >> LOG2_PAGE_SIZE) == page_num;
   };
-  auto mark_translated = [p_page = packet.data](auto& entry) {
+  auto mark_translated = [p_page = packet.data, this](auto& entry) {
     entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
     entry.is_translated = true;                                                     // This entry is now translated
-  };
 
-  if constexpr (champsim::debug_print) {
-    fmt::print("[{}_TRANSLATE] {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", NAME, __func__, packet.address, packet.v_address, current_cycle);
-  }
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}_TRANSLATE] finish_translation paddr: {:#x} vaddr: {:#x} cycle: {}\n", this->NAME, entry.address, entry.v_address, this->current_cycle);
+    }
+  };
 
   // Restart stashed translations
   auto finish_begin = std::find_if_not(std::begin(translation_stash), std::end(translation_stash), [](const auto& x) { return x.is_translated; });
@@ -535,40 +581,38 @@ void CACHE::finish_translation(const response_type& packet)
 
   // Find all packets that match the page of the returned packet
   for (auto& entry : inflight_tag_check) {
-    if ((entry.v_address >> LOG2_PAGE_SIZE) == (packet.v_address >> LOG2_PAGE_SIZE)) {
+    if (matches_vpage(entry)) {
       mark_translated(entry);
     }
   }
 }
 
-void CACHE::issue_translation()
+void CACHE::issue_translation(tag_lookup_type& q_entry)
 {
-  std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& q_entry) {
-    if (!q_entry.translate_issued && !q_entry.is_translated) {
-      request_type fwd_pkt;
-      fwd_pkt.asid[0] = q_entry.asid[0];
-      fwd_pkt.asid[1] = q_entry.asid[1];
-      fwd_pkt.type = access_type::LOAD;
-      fwd_pkt.cpu = q_entry.cpu;
+  if (!q_entry.translate_issued && !q_entry.is_translated) {
+    request_type fwd_pkt;
+    fwd_pkt.asid[0] = q_entry.asid[0];
+    fwd_pkt.asid[1] = q_entry.asid[1];
+    fwd_pkt.type = access_type::LOAD;
+    fwd_pkt.cpu = q_entry.cpu;
 
-      fwd_pkt.address = q_entry.address;
-      fwd_pkt.v_address = q_entry.v_address;
-      fwd_pkt.data = q_entry.data;
-      fwd_pkt.instr_id = q_entry.instr_id;
-      fwd_pkt.ip = q_entry.ip;
+    fwd_pkt.address = q_entry.address;
+    fwd_pkt.v_address = q_entry.v_address;
+    fwd_pkt.data = q_entry.data;
+    fwd_pkt.instr_id = q_entry.instr_id;
+    fwd_pkt.ip = q_entry.ip;
 
-      fwd_pkt.instr_depend_on_me = q_entry.instr_depend_on_me;
-      fwd_pkt.is_translated = true;
+    fwd_pkt.instr_depend_on_me = q_entry.instr_depend_on_me;
+    fwd_pkt.is_translated = true;
 
-      q_entry.translate_issued = this->lower_translate->add_rq(fwd_pkt);
-      if constexpr (champsim::debug_print) {
-        if (q_entry.translate_issued) {
-          fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", q_entry.instr_id, q_entry.address,
-                     q_entry.v_address, access_type_names.at(champsim::to_underlying(q_entry.type)));
-        }
+    q_entry.translate_issued = lower_translate->add_rq(fwd_pkt);
+    if constexpr (champsim::debug_print) {
+      if (q_entry.translate_issued) {
+        fmt::print("[TRANSLATE] do_issue_translation instr_id: {} paddr: {:#x} vaddr: {:#x} cycle: {}\n", q_entry.instr_id, q_entry.address, q_entry.v_address,
+                   access_type_names.at(champsim::to_underlying(q_entry.type)));
       }
     }
-  });
+  }
 }
 
 std::size_t CACHE::get_mshr_occupancy() const { return std::size(MSHR); }
@@ -735,18 +779,38 @@ void CACHE::print_deadlock()
   if (!std::empty(MSHR)) {
     std::size_t j = 0;
     for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} type: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.event_cycle);
+      fmt::print("[{}_MSHR] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}\n", NAME, j++, entry.instr_id, entry.address,
+                 entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.data_promise.is_ready_at(current_cycle));
     }
   } else {
     fmt::print("{} MSHR empty\n", NAME);
   }
 
+  if (!std::empty(inflight_tag_check)) {
+    std::size_t j = 0;
+    for (auto entry : inflight_tag_check) {
+      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
+                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+    }
+  } else {
+    fmt::print("{} inflight_tag_check empty\n", NAME);
+  }
+
+  if (!std::empty(translation_stash)) {
+    std::size_t j = 0;
+    for (auto entry : translation_stash) {
+      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
+                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
+    }
+  } else {
+    fmt::print("{} translation_stash empty\n", NAME);
+  }
+
   for (auto* ul : upper_levels) {
     if (!std::empty(ul->RQ)) {
       for (const auto& entry : ul->RQ) {
-        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} RQ empty\n", NAME);
@@ -754,8 +818,8 @@ void CACHE::print_deadlock()
 
     if (!std::empty(ul->WQ)) {
       for (const auto& entry : ul->WQ) {
-        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} WQ empty\n", NAME);
@@ -763,8 +827,8 @@ void CACHE::print_deadlock()
 
     if (!std::empty(ul->PQ)) {
       for (const auto& entry : ul->PQ) {
-        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)));
+        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
+                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
       }
     } else {
       fmt::print("{} PQ empty\n", NAME);
