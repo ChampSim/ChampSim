@@ -33,8 +33,8 @@ public:
   using rep = typename duration::rep;
   using period = typename duration::period;
 
-  bool is_steady() const;
-  time_point now() const;
+  constexpr static bool is_steady = false;
+  time_point now() const noexcept;
   void tick(duration amount);
 
 private:

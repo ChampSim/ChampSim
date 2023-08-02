@@ -216,9 +216,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
   std::transform(std::begin(MSHR), last_finished, std::back_inserter(match_addr), [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
     if (is_last_step(mshr_entry)) {
       return finish_step(mshr_entry);
-    } else {
-      return finish_last_step(mshr_entry);
     }
+    return finish_last_step(mshr_entry);
   });
   MSHR.erase(std::begin(MSHR), last_finished);
 
