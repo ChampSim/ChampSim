@@ -27,7 +27,6 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
-#include <functional> // for reference_wrapper
 #include <iterator>   // for size
 #include <limits>     // for numeric_limits
 #include <memory>
@@ -91,7 +90,7 @@ class CACHE : public champsim::operable
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
@@ -115,7 +114,7 @@ class CACHE : public champsim::operable
 
     uint64_t cycle_enqueued;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(const tag_lookup_type& req, uint64_t cycle);
