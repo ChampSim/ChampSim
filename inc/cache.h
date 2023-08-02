@@ -102,11 +102,14 @@ class CACHE : public champsim::operable
   struct mshr_type {
     uint64_t address;
     uint64_t v_address;
-    uint64_t data;
     uint64_t ip;
     uint64_t instr_id;
 
-    uint32_t pf_metadata;
+    struct returned_value {
+      uint64_t data;
+      uint32_t pf_metadata;
+    };
+    champsim::waitable<returned_value> data_promise{};
     uint32_t cpu;
 
     access_type type;
@@ -161,6 +164,7 @@ class CACHE : public champsim::operable
   template <typename T>
   uint64_t module_address(const T& element) const;
 
+  auto matches_address(uint64_t address) const;
   std::pair<mshr_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
@@ -190,8 +194,8 @@ public:
 
   stats_type sim_stats, roi_stats;
 
-  std::deque<champsim::waitable<mshr_type>> MSHR;
-  std::deque<champsim::waitable<mshr_type>> inflight_writes;
+  std::deque<mshr_type> MSHR;
+  std::deque<mshr_type> inflight_writes;
 
   void operate() final;
 

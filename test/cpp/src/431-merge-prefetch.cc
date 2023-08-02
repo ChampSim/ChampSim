@@ -64,8 +64,8 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
 
     THEN("An MSHR is created") {
       REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
-      CHECK(testbed.uut.MSHR.front()->instr_id == 0);
-      CHECK_THAT(testbed.uut.MSHR.front()->to_return, Catch::Matchers::SizeIs(1));
+      CHECK(testbed.uut.MSHR.front().instr_id == 0);
+      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A prefetch is issued") {
@@ -73,8 +73,8 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
 
       THEN("The " + std::string{str} + " is in the MSHR") {
         REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
-        CHECK(testbed.uut.MSHR.front()->instr_id == 0);
-        CHECK_THAT(testbed.uut.MSHR.front()->to_return, Catch::Matchers::SizeIs(2));
+        CHECK(testbed.uut.MSHR.front().instr_id == 0);
+        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
       }
     }
   }
@@ -88,20 +88,20 @@ SCENARIO("A prefetch MSHR that gets hit is promoted") {
 
     THEN("An MSHR is created") {
       REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
-      CHECK(testbed.uut.MSHR.front()->instr_id == 0);
-      CHECK_THAT(testbed.uut.MSHR.front()->to_return, Catch::Matchers::SizeIs(1));
+      CHECK(testbed.uut.MSHR.front().instr_id == 0);
+      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      auto old_time_enqueued = testbed.uut.MSHR.front()->time_enqueued;
+      auto old_time_enqueued = testbed.uut.MSHR.front().time_enqueued;
 
       testbed.issue_type(type);
 
       THEN("The " + std::string{str} + " is in the MSHR") {
         REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
-        CHECK(testbed.uut.MSHR.front()->time_enqueued > old_time_enqueued);
-        //CHECK(testbed.uut.MSHR.front()->instr_id == 1);
-        CHECK_THAT(testbed.uut.MSHR.front()->to_return, Catch::Matchers::SizeIs(2));
+        CHECK(testbed.uut.MSHR.front().time_enqueued > old_time_enqueued);
+        //CHECK(testbed.uut.MSHR.front().instr_id == 1);
+        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
       }
     }
   }
