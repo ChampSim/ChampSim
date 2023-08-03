@@ -29,6 +29,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "chrono.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/algorithm.h"
 #include "util/bits.h" // for bitmask, lg2, splice_bits
@@ -745,65 +746,36 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
 // LCOV_EXCL_START Exclude the following function from LCOV
 void CACHE::print_deadlock()
 {
-  if (!std::empty(MSHR)) {
-    std::size_t j = 0;
-    for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.data_promise.is_ready_at(current_time));
-    }
-  } else {
-    fmt::print("{} MSHR empty\n", NAME);
-  }
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}",
+                                 [time = current_time](const auto& entry) {
+                                   return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
+                                                     entry.data_promise.is_ready_at(time)};
+                                 });
 
-  if (!std::empty(inflight_tag_check)) {
-    std::size_t j = 0;
-    for (auto entry : inflight_tag_check) {
-      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
-                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued,
-                 (entry.event_cycle.time_since_epoch()) / clock_period);
-    }
-  } else {
-    fmt::print("{} inflight_tag_check empty\n", NAME);
-  }
+  champsim::range_print_deadlock(inflight_tag_check, NAME + "_tags",
+                                 "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [period = clock_period](const auto& entry) {
+                                   return std::tuple{entry.instr_id,      entry.address,          entry.v_address,
+                                                     entry.is_translated, entry.translate_issued, entry.event_cycle.time_since_epoch() / period};
+                                 });
 
-  if (!std::empty(translation_stash)) {
-    std::size_t j = 0;
-    for (auto entry : translation_stash) {
-      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++,
-                 entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued,
-                 (entry.event_cycle.time_since_epoch()) / clock_period);
-    }
-  } else {
-    fmt::print("{} translation_stash empty\n", NAME);
-  }
+  champsim::range_print_deadlock(translation_stash, NAME + "_translation",
+                                 "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [period = clock_period](const auto& entry) {
+                                   return std::tuple{entry.instr_id,      entry.address,          entry.v_address,
+                                                     entry.is_translated, entry.translate_issued, entry.event_cycle.time_since_epoch() / period};
+                                 });
 
   for (auto* ul : upper_levels) {
-    if (!std::empty(ul->RQ)) {
-      for (const auto& entry : ul->RQ) {
-        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} RQ empty\n", NAME);
-    }
+    champsim::range_print_deadlock(ul->RQ, NAME + "_RQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    });
 
-    if (!std::empty(ul->WQ)) {
-      for (const auto& entry : ul->WQ) {
-        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} WQ empty\n", NAME);
-    }
+    champsim::range_print_deadlock(ul->WQ, NAME + "_WQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    });
 
-    if (!std::empty(ul->PQ)) {
-      for (const auto& entry : ul->PQ) {
-        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} PQ empty\n", NAME);
-    }
+    champsim::range_print_deadlock(ul->PQ, NAME + "_PQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    });
   }
 }
 // LCOV_EXCL_STOP
