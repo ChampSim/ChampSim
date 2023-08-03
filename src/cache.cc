@@ -41,19 +41,18 @@ CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref
 }
 
 CACHE::mshr_type::mshr_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued)
-    : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu),
-      type(req.type), prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me),
-      to_return(req.to_return)
+    : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu), type(req.type),
+      prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
 {
 }
 
 CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type successor)
 {
-  std::vector<std::reference_wrapper<ooo_model_instr>> merged_instr{};
+  std::vector<uint64_t> merged_instr{};
   std::vector<std::deque<response_type>*> merged_return{};
 
   std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
-                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
+                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr));
   std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
                  std::back_inserter(merged_return));
 
@@ -66,13 +65,16 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
 }
 
 CACHE::BLOCK::BLOCK(const mshr_type& mshr)
-    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data_promise->data)
+    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address),
+      data(mshr.data_promise->data)
 {
 }
 
 auto CACHE::matches_address(uint64_t addr) const
 {
-  return [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; };
+  return [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
+    return (entry.address >> shamt) == match;
+  };
 }
 
 template <typename T>
@@ -119,8 +121,8 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     writeback_packet.response_requested = false;
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME,
-          __func__, writeback_packet.address, writeback_packet.v_address, fill_mshr.data_promise->pf_metadata);
+      fmt::print("[{}] {} evict address: {:#x} v_address: {:#x} prefetch_metadata: {}\n", NAME, __func__, writeback_packet.address, writeback_packet.v_address,
+                 fill_mshr.data_promise->pf_metadata);
     }
 
     auto success = lower_level->add_wq(writeback_packet);
@@ -463,8 +465,7 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way =
-      std::find_if(begin, end, matches_address(inval_addr));
+  auto inv_way = std::find_if(begin, end, matches_address(inval_addr));
 
   if (inv_way != end) {
     inv_way->valid = false;

@@ -18,11 +18,10 @@
 #define DRAM_H
 
 #include <array>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint32_t, uint8_t
-#include <deque>      // for deque
-#include <functional> // for reference_wrapper
-#include <iterator>   // for end
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint64_t, uint32_t, uint8_t
+#include <deque>    // for deque
+#include <iterator> // for end
 #include <limits>
 #include <optional>
 #include <string>
@@ -58,7 +57,7 @@ struct DRAM_CHANNEL {
     uint64_t data = 0;
     champsim::chrono::clock::time_point ready_time = champsim::chrono::clock::time_point::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit request_type(const typename champsim::channel::request_type& req);

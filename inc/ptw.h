@@ -20,9 +20,8 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint8_t, uint32_t
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <limits>     // for numeric_limits
-#include <optional>   // for optional
+#include <limits>   // for numeric_limits
+#include <optional> // for optional
 #include <string>
 #include <vector> // for vector
 
@@ -62,7 +61,7 @@ class PageTableWalker : public champsim::operable
     uint64_t v_address = 0;
     uint64_t data = 0;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     uint32_t pf_metadata = 0;

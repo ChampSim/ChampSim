@@ -27,9 +27,8 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <iterator>   // for size
-#include <limits>     // for numeric_limits
+#include <iterator> // for size
+#include <limits>   // for numeric_limits
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -92,7 +91,7 @@ class CACHE : public champsim::operable
 
     champsim::chrono::clock::time_point event_cycle = champsim::chrono::clock::time_point::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
@@ -119,7 +118,7 @@ class CACHE : public champsim::operable
 
     champsim::chrono::clock::time_point time_enqueued;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued);
