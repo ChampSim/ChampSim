@@ -18,10 +18,10 @@
 #define DRAM_H
 
 #include <array>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint32_t, uint8_t
-#include <deque>      // for deque
-#include <iterator>   // for end
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint64_t, uint32_t, uint8_t
+#include <deque>    // for deque
+#include <iterator> // for end
 #include <limits>
 #include <optional>
 #include <string>

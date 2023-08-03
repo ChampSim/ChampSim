@@ -261,7 +261,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
 
-  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr){ return instr.instr_id; });
+  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
 
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
@@ -583,7 +583,8 @@ void O3_CPU::handle_memory_return()
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
-      auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [id=l1i_entry.instr_depend_on_me.front()](const auto& x){ return x.instr_id == id; });
+      auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER),
+                                  [id = l1i_entry.instr_depend_on_me.front()](const auto& x) { return x.instr_id == id; });
       if (fetched != std::end(IFETCH_BUFFER) && (fetched->ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched->fetch_issued) {
         fetched->fetch_completed = true;
         --l1i_bw;
