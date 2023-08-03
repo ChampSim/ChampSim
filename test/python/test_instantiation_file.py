@@ -109,7 +109,7 @@ class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
         base_cache = {
-            'name': 'test_cache', 'lower_level': 'test_ll'
+            'name': 'test_cache', 'lower_level': 'test_ll', 'frequency': 250
         }
         upper_levels = {
             'test_cache': { 'upper_channels': [] }
@@ -176,7 +176,7 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
         base_ptw = {
-            'name': 'test_ptw', 'lower_level': 'test_ll', 'cpu': 0
+            'name': 'test_ptw', 'lower_level': 'test_ll', 'cpu': 0, 'frequency': 250
         }
         upper_levels = {
             'test_ptw': { 'upper_channels': [] }
