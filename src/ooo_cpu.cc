@@ -23,6 +23,7 @@
 
 #include "cache.h"
 #include "champsim.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/span.h"
 #include <fmt/chrono.h>
@@ -616,44 +617,34 @@ void O3_CPU::print_deadlock()
 {
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_cycle);
 
-  if (!std::empty(IFETCH_BUFFER)) {
-    fmt::print("IFETCH_BUFFER head instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}\n",
-               IFETCH_BUFFER.front().instr_id, +IFETCH_BUFFER.front().fetched, +IFETCH_BUFFER.front().scheduled, +IFETCH_BUFFER.front().executed,
-               +IFETCH_BUFFER.front().num_reg_dependent, IFETCH_BUFFER.front().num_mem_ops() - IFETCH_BUFFER.front().completed_mem_ops,
-               IFETCH_BUFFER.front().event_cycle);
-  } else {
-    fmt::print("IFETCH_BUFFER empty\n");
-  }
+  auto instr_pack = [](const auto& entry) {
+    return std::tuple{entry.instr_id, +entry.fetched, +entry.scheduled, +entry.executed, +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops, entry.event_cycle};
+  };
+  std::string_view instr_fmt{"instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
+  champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
+  champsim::range_print_deadlock(ROB, "cpu" + std::to_string(cpu) + "_ROB", instr_fmt, instr_pack);
 
-  if (!std::empty(ROB)) {
-    fmt::print("ROB head instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}\n", ROB.front().instr_id,
-               +ROB.front().fetched, +ROB.front().scheduled, +ROB.front().executed, +ROB.front().num_reg_dependent,
-               ROB.front().num_mem_ops() - ROB.front().completed_mem_ops, ROB.front().event_cycle);
-  } else {
-    fmt::print("ROB empty\n");
-  }
-
-  // print LQ entry
-  fmt::print("Load Queue Entry\n");
-  for (auto lq_it = std::begin(LQ); lq_it != std::end(LQ); ++lq_it) {
-    if (lq_it->has_value()) {
-      fmt::print("[LQ] entry: {} instr_id: {} address: {:#x} fetched_issued: {} event_cycle: {}", std::distance(std::begin(LQ), lq_it), (*lq_it)->instr_id,
-                 (*lq_it)->virtual_address, (*lq_it)->fetch_issued, (*lq_it)->event_cycle);
-      if ((*lq_it)->producer_id != std::numeric_limits<uint64_t>::max())
-        fmt::print(" waits on {}", (*lq_it)->producer_id);
-      fmt::print("\n");
+  // print LSQ entries
+  auto lq_pack = [](const auto& entry) {
+    std::string depend_id{"-"};
+    if (entry->producer_id != std::numeric_limits<uint64_t>::max()) {
+      depend_id = std::to_string(entry->producer_id);
     }
-  }
+    return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->event_cycle, depend_id};
+  };
+  std::string_view lq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} waits on {}"};
 
-  // print SQ entry
-  fmt::print("\nStore Queue Entry\n");
-  for (auto sq_it = std::begin(SQ); sq_it != std::end(SQ); ++sq_it) {
-    fmt::print("[SQ] entry: {} instr_id: {} address: {:#x} fetched_issued: {} event_cycle: {} LQ waiting:", std::distance(std::begin(SQ), sq_it),
-               sq_it->instr_id, sq_it->virtual_address, sq_it->fetch_issued, sq_it->event_cycle);
-    for (std::optional<LSQ_ENTRY>& lq_entry : sq_it->lq_depend_on_me)
-      fmt::print("{} ", lq_entry->producer_id);
-    fmt::print("\n");
-  }
+  auto sq_pack = [](const auto& entry) {
+    std::vector<uint64_t> depend_ids;
+    std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids),
+        [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
+    return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle, depend_ids};
+  };
+  std::string_view sq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
+  champsim::range_print_deadlock(LQ, "cpu" + std::to_string(cpu) + "_LQ", lq_fmt, lq_pack);
+  champsim::range_print_deadlock(SQ, "cpu" + std::to_string(cpu) + "_SQ", sq_fmt, sq_pack);
 }
 // LCOV_EXCL_STOP
 

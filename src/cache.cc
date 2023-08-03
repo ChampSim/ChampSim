@@ -26,6 +26,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/algorithm.h"
 #include "util/span.h"
@@ -386,7 +387,7 @@ void CACHE::operate()
 
   impl_prefetcher_cycle_operate();
 
-  if (champsim::debug_print) {
+  if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume bw {}\n", NAME, __func__, current_cycle,
         tag_bw_consumed, std::size(inflight_tag_check),
         stash_bandwidth_consumed, std::size(translation_stash),
@@ -716,63 +717,30 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
 // LCOV_EXCL_START Exclude the following function from LCOV
 void CACHE::print_deadlock()
 {
-  if (!std::empty(MSHR)) {
-    std::size_t j = 0;
-    for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} type: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.event_cycle);
-    }
-  } else {
-    fmt::print("{} MSHR empty\n", NAME);
-  }
+  std::string_view mshr_write{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} event: {}"};
+  auto mshr_pack = [](const auto& entry) {
+    return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
+      entry.event_cycle};
+  };
 
-  if (!std::empty(inflight_tag_check)) {
-    std::size_t j = 0;
-    for (auto entry : inflight_tag_check) {
-      fmt::print("[{}_tags] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
-    }
-  } else {
-    fmt::print("{} inflight_tag_check empty\n", NAME);
-  }
+  std::string_view tag_check_write{"instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}"};
+  auto tag_check_pack = [](const auto& entry) {
+    return std::tuple{entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle};
+  };
 
-  if (!std::empty(translation_stash)) {
-    std::size_t j = 0;
-    for (auto entry : translation_stash) {
-      fmt::print("[{}_translation] entry: {} instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}\n", NAME, j++, entry.instr_id, entry.address,
-                 entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle);
-    }
-  } else {
-    fmt::print("{} translation_stash empty\n", NAME);
-  }
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", mshr_write, mshr_pack);
+  champsim::range_print_deadlock(inflight_tag_check, NAME + "_tags", tag_check_write, tag_check_pack);
+  champsim::range_print_deadlock(translation_stash, NAME + "_translation", tag_check_write, tag_check_pack);
+
+  std::string_view q_writer{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}"};
+  auto q_entry_pack = [](const auto& entry) {
+    return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+  };
 
   for (auto* ul : upper_levels) {
-    if (!std::empty(ul->RQ)) {
-      for (const auto& entry : ul->RQ) {
-        fmt::print("[{}_RQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} RQ empty\n", NAME);
-    }
-
-    if (!std::empty(ul->WQ)) {
-      for (const auto& entry : ul->WQ) {
-        fmt::print("[{}_WQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} WQ empty\n", NAME);
-    }
-
-    if (!std::empty(ul->PQ)) {
-      for (const auto& entry : ul->PQ) {
-        fmt::print("[{}_PQ] instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}\n", NAME, entry.instr_id, entry.address, entry.v_address,
-                   access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated);
-      }
-    } else {
-      fmt::print("{} PQ empty\n", NAME);
-    }
+    champsim::range_print_deadlock(ul->RQ, NAME + "_RQ", q_writer, q_entry_pack);
+    champsim::range_print_deadlock(ul->WQ, NAME + "_WQ", q_writer, q_entry_pack);
+    champsim::range_print_deadlock(ul->PQ, NAME + "_PQ", q_writer, q_entry_pack);
   }
 }
 // LCOV_EXCL_STOP

@@ -20,6 +20,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/span.h"
 #include "vmem.h"
@@ -62,7 +63,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
     fwd_mshr.to_return = {&ul->returned};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
                walk_offset / PTE_BYTES, walk_init.level);
   }
 
@@ -202,15 +203,8 @@ void PageTableWalker::begin_phase()
 // LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
-  if (!std::empty(MSHR)) {
-    fmt::print("{} MSHR Entry\n", NAME);
-    std::size_t j = 0;
-    for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] {} address: {:#x} v_address: {:#x} translation_level: {} event_cycle: {}\n", NAME, j++, entry.address, entry.v_address,
-                 entry.translation_level, entry.event_cycle);
-    }
-  } else {
-    fmt::print("{} MSHR empty\n", NAME);
-  }
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {} event_cycle: {}", [](const auto& entry) {
+    return std::tuple{entry.address, entry.v_address, entry.translation_level, entry.event_cycle};
+  });
 }
 // LCOV_EXCL_STOP

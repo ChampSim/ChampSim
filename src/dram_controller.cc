@@ -21,6 +21,7 @@
 #include <cmath>
 
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/span.h"
 #include <fmt/core.h>
@@ -354,3 +355,25 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 }
 
 std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+
+// LCOV_EXCL_START Exclude the following function from LCOV
+void MEMORY_CONTROLLER::print_deadlock()
+{
+  int j = 0;
+  for (auto& chan : channels) {
+    fmt::print("DRAM Channel {}\n", j++);
+    chan.print_deadlock();
+  }
+}
+
+void DRAM_CHANNEL::print_deadlock()
+{
+  std::string_view q_writer{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}"};
+  auto q_entry_pack = [](const auto& entry) {
+    return std::tuple{entry->address, entry->v_address};
+  };
+
+  champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);
+  champsim::range_print_deadlock(WQ, "WQ", q_writer, q_entry_pack);
+}
+// LCOV_EXCL_STOP

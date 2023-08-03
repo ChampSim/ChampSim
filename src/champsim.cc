@@ -59,11 +59,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         // env.cpu_view()[dl.which].print_deadlock();
         // std::cout << std::endl;
         // for (auto c : caches)
-        for (champsim::operable& c : operables) {
-          c.print_deadlock();
-          fmt::print("\n");
-        }
-
+        std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
         abort();
       }
     }
