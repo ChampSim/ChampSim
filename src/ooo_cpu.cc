@@ -658,23 +658,24 @@ void O3_CPU::print_deadlock()
 
   // print LQ entry
   fmt::print("Load Queue Entry\n");
-  champsim::range_print_deadlock(LQ, "cpu"+std::to_string(cpu)+"_LQ", "instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} waits on {}", [](const auto& entry) {
-    std::string depend_id{"-"};
-    if (entry->producer_id != std::numeric_limits<uint64_t>::max()) {
-      depend_id = std::to_string(entry->producer_id);
-    }
-    return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->event_cycle, depend_id};
-  });
+  champsim::range_print_deadlock(LQ, "cpu" + std::to_string(cpu) + "_LQ", "instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} waits on {}",
+                                 [](const auto& entry) {
+                                   std::string depend_id{"-"};
+                                   if (entry->producer_id != std::numeric_limits<uint64_t>::max()) {
+                                     depend_id = std::to_string(entry->producer_id);
+                                   }
+                                   return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->event_cycle, depend_id};
+                                 });
 
   // print SQ entry
   fmt::print("\nStore Queue Entry\n");
-  champsim::range_print_deadlock(SQ, "cpu"+std::to_string(cpu)+"_SQ", "instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting", [](const auto& entry) {
-    std::vector<uint64_t> depend_ids;
-    std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids), [](const std::optional<LSQ_ENTRY>& lq_entry) {
-      return lq_entry->producer_id;
-    });
-    return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle, depend_ids};
-  });
+  champsim::range_print_deadlock(SQ, "cpu" + std::to_string(cpu) + "_SQ", "instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting",
+                                 [](const auto& entry) {
+                                   std::vector<uint64_t> depend_ids;
+                                   std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids),
+                                                  [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
+                                   return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle, depend_ids};
+                                 });
 }
 // LCOV_EXCL_STOP
 

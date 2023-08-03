@@ -224,7 +224,7 @@ void PageTableWalker::begin_phase()
 // LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
-  champsim::range_print_deadlock(MSHR, NAME+"_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {} event_cycle: {}", [](const auto& entry) {
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {} event_cycle: {}", [](const auto& entry) {
     return std::tuple{entry.address, entry.v_address, entry.translation_level, entry.event_cycle};
   });
 }

@@ -743,33 +743,35 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
 // LCOV_EXCL_START Exclude the following function from LCOV
 void CACHE::print_deadlock()
 {
-  champsim::range_print_deadlock(MSHR, NAME+"_MSHR", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}", [cycle = current_cycle](const auto& entry) {
-    return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
-      entry.data_promise.is_ready_at(cycle)};
-  });
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}",
+                                 [cycle = current_cycle](const auto& entry) {
+                                   return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
+                                                     entry.data_promise.is_ready_at(cycle)};
+                                 });
 
-  champsim::range_print_deadlock(inflight_tag_check, NAME+"_tags", "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [](const auto& entry) {
-    return std::tuple{entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle};
-  });
+  champsim::range_print_deadlock(inflight_tag_check, NAME + "_tags",
+                                 "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [](const auto& entry) {
+                                   return std::tuple{entry.instr_id,      entry.address,          entry.v_address,
+                                                     entry.is_translated, entry.translate_issued, entry.event_cycle};
+                                 });
 
-  champsim::range_print_deadlock(translation_stash, NAME+"_translation", "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [](const auto& entry) {
-    return std::tuple{entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle};
-  });
+  champsim::range_print_deadlock(translation_stash, NAME + "_translation",
+                                 "instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}", [](const auto& entry) {
+                                   return std::tuple{entry.instr_id,      entry.address,          entry.v_address,
+                                                     entry.is_translated, entry.translate_issued, entry.event_cycle};
+                                 });
 
   for (auto* ul : upper_levels) {
-    champsim::range_print_deadlock(ul->RQ, NAME+"_RQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
-      return std::tuple{entry.instr_id, entry.address, entry.v_address,
-        access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    champsim::range_print_deadlock(ul->RQ, NAME + "_RQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
     });
 
-    champsim::range_print_deadlock(ul->WQ, NAME+"_WQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
-      return std::tuple{entry.instr_id, entry.address, entry.v_address,
-        access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    champsim::range_print_deadlock(ul->WQ, NAME + "_WQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
     });
 
-    champsim::range_print_deadlock(ul->PQ, NAME+"_PQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
-      return std::tuple{entry.instr_id, entry.address, entry.v_address,
-        access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
+    champsim::range_print_deadlock(ul->PQ, NAME + "_PQ", "instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}", [](const auto& entry) {
+      return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)), entry.is_translated};
     });
   }
 }

@@ -17,8 +17,8 @@
 #ifndef DEADLOCK_H
 #define DEADLOCK_H
 
-#include <type_traits>
 #include <string>
+#include <type_traits>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
@@ -27,7 +27,8 @@ namespace champsim
 namespace detail
 {
 template <typename>
-struct fmtstr_type_finder {};
+struct fmtstr_type_finder {
+};
 
 template <typename... Args>
 struct fmtstr_type_finder<std::tuple<Args...>> {
@@ -36,18 +37,20 @@ struct fmtstr_type_finder<std::tuple<Args...>> {
 
 template <typename R, typename F>
 using fmtstr_type = typename fmtstr_type_finder<std::invoke_result_t<F, typename R::value_type>>::type;
-}
+} // namespace detail
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 template <typename R, typename F>
-void range_print_deadlock(const R& range, std::string kind_name, detail::fmtstr_type<R,F> fmtstr, F&& packing_func)
+void range_print_deadlock(const R& range, std::string kind_name, detail::fmtstr_type<R, F> fmtstr, F&& packing_func)
 {
   if (std::empty(range)) {
     fmt::print("{} empty\n", kind_name);
     return;
   }
 
-  auto unpacker = [fmtstr](auto... args){ fmt::print(fmtstr, args...); };
+  auto unpacker = [fmtstr](auto... args) {
+    fmt::print(fmtstr, args...);
+  };
 
   std::size_t j = 0;
   for (auto entry : range) {
@@ -56,6 +59,6 @@ void range_print_deadlock(const R& range, std::string kind_name, detail::fmtstr_
   }
 }
 // LCOV_EXCL_STOP
-}
+} // namespace champsim
 
 #endif
