@@ -4,7 +4,7 @@
 namespace {
 struct mock_operable : champsim::operable {
   using operable::operable;
-  void operate() {}
+  long operate() final { return 1; }
 };
 }
 

@@ -41,8 +41,10 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 {
 }
 
-void MEMORY_CONTROLLER::operate()
+long MEMORY_CONTROLLER::operate()
 {
+  long progress{0};
+
   initiate_requests();
 
   for (auto& channel : channels) {
@@ -53,12 +55,17 @@ void MEMORY_CONTROLLER::operate()
           for (auto ret : entry.value().to_return)
             ret->push_back(response);
 
+          ++progress;
           entry.reset();
         }
       }
 
-      for (auto& entry : channel.WQ)
+      for (auto& entry : channel.WQ) {
+        if (entry.has_value()) {
+          ++progress;
+        }
         entry.reset();
+      }
     }
 
     // Check for forwarding
@@ -76,6 +83,7 @@ void MEMORY_CONTROLLER::operate()
 
       channel.active_request->pkt->reset();
       channel.active_request = std::end(channel.bank_request);
+      ++progress;
     }
 
     // Check queue occupancy
@@ -129,6 +137,8 @@ void MEMORY_CONTROLLER::operate()
           ++channel.sim_stats.WQ_ROW_BUFFER_MISS;
         else
           ++channel.sim_stats.RQ_ROW_BUFFER_MISS;
+
+        ++progress;
       } else {
         // Bus is congested
         if (channel.active_request != std::end(channel.bank_request))
@@ -164,9 +174,13 @@ void MEMORY_CONTROLLER::operate()
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
+
+        ++progress;
       }
     }
   }
+
+  return progress;
 }
 
 void MEMORY_CONTROLLER::initialize()

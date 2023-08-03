@@ -29,6 +29,8 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
+constexpr int DEADLOCK_CYCLE{500};
+
 auto start_time = std::chrono::steady_clock::now();
 
 std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time); }
@@ -47,22 +49,28 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   }
 
   // Perform phase
+  int stalled_cycle{0};
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
     auto next_phase_complete = phase_complete;
 
     // Operate
+    long progress{0};
     for (champsim::operable& op : operables) {
-      try {
-        op._operate();
-      } catch (champsim::deadlock& dl) {
-        // env.cpu_view()[dl.which].print_deadlock();
-        // std::cout << std::endl;
-        // for (auto c : caches)
-        std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
-        abort();
-      }
+      progress += op._operate();
     }
+
+    if (progress == 0) {
+      ++stalled_cycle;
+    } else {
+      stalled_cycle = 0;
+    }
+
+    if (stalled_cycle >= DEADLOCK_CYCLE) {
+      std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
+      abort();
+    }
+
     std::sort(std::begin(operables), std::end(operables),
               [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
 

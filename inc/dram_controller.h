@@ -107,7 +107,7 @@ public:
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() override final;
-  void operate() override final;
+  long operate() override final;
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
   void print_deadlock() override final;
