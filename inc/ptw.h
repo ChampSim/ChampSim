@@ -59,7 +59,7 @@ class PageTableWalker : public champsim::operable
   struct mshr_type {
     uint64_t address = 0;
     uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::waitable<uint64_t> data{};
 
     std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
@@ -74,8 +74,8 @@ class PageTableWalker : public champsim::operable
   };
 
   std::deque<mshr_type> MSHR;
-  std::deque<champsim::waitable<mshr_type>> finished;
-  std::deque<champsim::waitable<mshr_type>> completed;
+  std::deque<mshr_type> finished;
+  std::deque<mshr_type> completed;
 
   std::vector<channel_type*> upper_levels;
   channel_type* lower_level;

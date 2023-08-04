@@ -89,15 +89,15 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
 {
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
-               fill_mshr.v_address, fill_mshr.data, (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
+               fill_mshr.v_address, *fill_mshr.data, (*fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
                fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
-  pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
+  pscl.at(pscl_idx).fill({fill_mshr.v_address, *fill_mshr.data, fill_mshr.translation_level - 1});
 
   mshr_type fwd_mshr = fill_mshr;
-  fwd_mshr.address = fill_mshr.data;
+  fwd_mshr.address = *fill_mshr.data;
   fwd_mshr.translation_level = fill_mshr.translation_level - 1;
 
   return step_translation(fwd_mshr);
@@ -127,7 +127,7 @@ auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional
 void PageTableWalker::operate()
 {
   auto is_ready = [time = current_time](const auto& pkt) {
-    return pkt.is_ready_at(time);
+    return pkt.data.is_ready_at(time);
   };
   for (const auto& x : lower_level->returned) {
     finish_packet(x);
@@ -139,8 +139,8 @@ void PageTableWalker::operate()
   auto fill_bw = MAX_FILL;
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, is_ready);
   std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
-    for (auto ret : mshr_entry->to_return) {
-      ret->emplace_back(mshr_entry->v_address, mshr_entry->v_address, mshr_entry->data, mshr_entry->pf_metadata, mshr_entry->instr_depend_on_me);
+    for (auto ret : mshr_entry.to_return) {
+      ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, *mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
     }
   });
   fill_bw -= std::distance(complete_begin, complete_end);
@@ -148,7 +148,7 @@ void PageTableWalker::operate()
 
   auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, is_ready);
   std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, this](const auto& pkt) {
-    auto result = this->handle_fill(*pkt);
+    auto result = this->handle_fill(pkt);
     if (result.has_value()) {
       next_steps.emplace_back(*result);
     }
@@ -175,33 +175,25 @@ void PageTableWalker::operate()
 void PageTableWalker::finish_packet(const response_type& packet)
 {
   auto finish_step = [this](auto mshr_entry) {
-    champsim::chrono::clock::duration penalty{};
-    std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
-    if (!this->warmup) {
-      penalty += HIT_LATENCY;
-    }
+    auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level, penalty);
+                 ppage, mshr_entry.translation_level, penalty);
     }
 
-    return champsim::waitable{mshr_entry, this->current_time + penalty};
+    return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };
 
   auto finish_last_step = [this](auto mshr_entry) {
-    champsim::chrono::clock::duration penalty{};
-    std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
-    if (!this->warmup) {
-      penalty += HIT_LATENCY;
-    }
+    auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", this->NAME, mshr_entry.address,
-                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level, penalty);
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 ppage, mshr_entry.translation_level, penalty);
     }
 
-    return champsim::waitable{mshr_entry, this->current_time + penalty};
+    return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };
 
   auto matches_addr = [addr = packet.address](auto x) {
@@ -212,18 +204,12 @@ void PageTableWalker::finish_packet(const response_type& packet)
   };
   auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), matches_addr);
 
-  std::vector<champsim::waitable<mshr_type>> match_addr;
-
-  std::transform(std::begin(MSHR), last_finished, std::back_inserter(match_addr), [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
-    if (is_last_step(mshr_entry)) {
-      return finish_step(mshr_entry);
-    }
-    return finish_last_step(mshr_entry);
+  std::for_each(std::begin(MSHR), last_finished, [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
+    mshr_entry.data = is_last_step(mshr_entry) ? finish_step(mshr_entry) : finish_last_step(mshr_entry);
   });
-  MSHR.erase(std::begin(MSHR), last_finished);
 
-  std::partition_copy(std::begin(match_addr), std::end(match_addr), std::back_inserter(finished), std::back_inserter(completed),
-                      [is_last_step](const auto& x) { return is_last_step(x.value()); });
+  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(finished), std::back_inserter(completed), is_last_step);
+  MSHR.erase(std::begin(MSHR), last_finished);
 }
 
 void PageTableWalker::begin_phase()
