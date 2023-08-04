@@ -667,7 +667,7 @@ void O3_CPU::print_deadlock()
                                    if (entry->producer_id != std::numeric_limits<uint64_t>::max()) {
                                      depend_id = std::to_string(entry->producer_id);
                                    }
-                                   return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->event_cycle.time_since_epoch() / period, depend_id};
+                                   return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->ready_time.time_since_epoch() / period, depend_id};
                                  });
 
   // print SQ entry
@@ -677,7 +677,7 @@ void O3_CPU::print_deadlock()
                                    std::vector<uint64_t> depend_ids;
                                    std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids),
                                                   [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
-                                   return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle.time_since_epoch() / period, depend_ids};
+                                   return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.ready_time.time_since_epoch() / period, depend_ids};
                                  });
 }
 // LCOV_EXCL_STOP
