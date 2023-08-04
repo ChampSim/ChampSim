@@ -59,6 +59,18 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   retval.to_return = merged_return;
   retval.data = predecessor.data;
 
+  if (predecessor.event_cycle < std::numeric_limits<uint64_t>::max()) {
+    retval.event_cycle = predecessor.event_cycle;
+  }
+
+  if constexpr (champsim::debug_print) {
+    if (successor.type == access_type::PREFETCH) {
+      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {} event: {}\n", __func__, successor.address, access_type_names.at(champsim::to_underlying(successor.type)), predecessor.address, access_type_names.at(champsim::to_underlying(successor.type)), retval.event_cycle);
+    } else {
+      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {} event: {}\n", __func__, predecessor.address, access_type_names.at(champsim::to_underlying(predecessor.type)), successor.address, access_type_names.at(champsim::to_underlying(successor.type)), retval.event_cycle);
+    }
+  }
+
   return retval;
 }
 
