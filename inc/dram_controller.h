@@ -87,6 +87,7 @@ struct DRAM_CHANNEL {
 
   void check_write_collision();
   void check_read_collision();
+  void print_deadlock();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -114,9 +115,10 @@ public:
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
+  void print_deadlock() final;
 
   [[nodiscard]] std::size_t size() const;
 

@@ -17,10 +17,13 @@
 #ifndef DEADLOCK_H
 #define DEADLOCK_H
 
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+
+#include "util/type_traits.h"
 
 namespace champsim
 {
@@ -44,19 +47,28 @@ template <typename R, typename F>
 void range_print_deadlock(const R& range, std::string kind_name, detail::fmtstr_type<R, F> fmtstr, F&& packing_func)
 {
   if (std::empty(range)) {
-    fmt::print("{} empty\n", kind_name);
+    fmt::print("{} empty\n\n", kind_name);
     return;
   }
 
-  auto unpacker = [fmtstr](auto... args) {
-    fmt::print(fmtstr, args...);
+  auto unpacker = [fmtstr](auto... args) -> std::string {
+    return fmt::format(fmtstr, args...);
+  };
+
+  auto formatter = [unpacker, &packing_func](auto entry) -> std::string {
+    if constexpr (champsim::is_specialization_v<std::decay_t<decltype(entry)>, std::optional>) {
+      if (!entry.has_value()) {
+        return std::string{"empty"};
+      }
+    }
+    return std::apply(unpacker, packing_func(entry));
   };
 
   std::size_t j = 0;
   for (auto entry : range) {
-    fmt::print("[{}] entry: {} ", kind_name, j++);
-    std::apply(unpacker, packing_func(entry));
+    fmt::print("[{:s}] entry: {:>3} {:s}\n", kind_name, j++, formatter(entry));
   }
+  fmt::print("\n");
 }
 // LCOV_EXCL_STOP
 } // namespace champsim
