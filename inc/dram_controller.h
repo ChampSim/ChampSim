@@ -40,7 +40,7 @@ struct dram_stats {
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
 
-struct DRAM_CHANNEL {
+struct DRAM_CHANNEL : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
   struct request_type {
     bool scheduled = false;
@@ -65,6 +65,11 @@ struct DRAM_CHANNEL {
   queue_type WQ{DRAM_WQ_SIZE};
   queue_type RQ{DRAM_RQ_SIZE};
 
+  // these values control when to send out a burst of writes
+  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
+  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
+  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
+
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
 
@@ -85,9 +90,29 @@ struct DRAM_CHANNEL {
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
+  // Latencies
+  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+  const std::size_t ROWS, COLUMNS, RANKS, BANKS;
+
+  DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
+
   void check_write_collision();
   void check_read_collision();
-  void print_deadlock();
+  long finish_dbus_request();
+  void swap_write_mode();
+  long populate_dbus();
+  long schedule_packets();
+
+  void initialize() final;
+  long operate() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
+  void print_deadlock() final;
+
+  uint32_t get_rank(uint64_t address) const;
+  uint32_t get_bank(uint64_t address) const;
+  uint32_t get_row(uint64_t address) const;
+  uint32_t get_column(uint64_t address) const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -97,20 +122,12 @@ class MEMORY_CONTROLLER : public champsim::operable
   using response_type = typename channel_type::response_type;
   std::vector<channel_type*> queues;
 
-  // Latencies
-  const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
-
-  // these values control when to send out a burst of writes
-  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
-  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
-  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
-
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);
   bool add_wq(const request_type& packet);
 
 public:
-  std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
+  std::vector<DRAM_CHANNEL> channels;
 
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
@@ -122,11 +139,11 @@ public:
 
   [[nodiscard]] std::size_t size() const;
 
-  static uint32_t dram_get_channel(uint64_t address);
-  static uint32_t dram_get_rank(uint64_t address);
-  static uint32_t dram_get_bank(uint64_t address);
-  static uint32_t dram_get_row(uint64_t address);
-  static uint32_t dram_get_column(uint64_t address);
+  uint32_t dram_get_channel(uint64_t address) const;
+  uint32_t dram_get_rank(uint64_t address) const;
+  uint32_t dram_get_bank(uint64_t address) const;
+  uint32_t dram_get_row(uint64_t address) const;
+  uint32_t dram_get_column(uint64_t address) const;
 };
 
 #endif
