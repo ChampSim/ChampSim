@@ -24,14 +24,10 @@ class O3_CPU;
 namespace champsim
 {
 class channel;
-class core_builder_conversion_tag
+namespace detail
 {
-};
-template <unsigned long long B_FLAG = 0, unsigned long long T_FLAG = 0>
-class core_builder
+struct core_builder_base
 {
-  using self_type = core_builder<B_FLAG, T_FLAG>;
-
   uint32_t m_cpu{};
   double m_freq_scale{1};
   std::size_t m_dib_set{};
@@ -62,24 +58,20 @@ class core_builder
   long int m_l1d_bw{};
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
+};
+}
+
+template <unsigned long long B_FLAG = 0, unsigned long long T_FLAG = 0>
+class core_builder : public detail::core_builder_base
+{
+  using self_type = core_builder<B_FLAG, T_FLAG>;
 
   friend class ::O3_CPU;
 
   template <unsigned long long OTHER_B, unsigned long long OTHER_T>
   friend class core_builder;
 
-  template <unsigned long long OTHER_B, unsigned long long OTHER_T>
-  core_builder(core_builder_conversion_tag /*tag*/, const core_builder<OTHER_B, OTHER_T>& other)
-      : m_cpu(other.m_cpu), m_freq_scale(other.m_freq_scale), m_dib_set(other.m_dib_set), m_dib_way(other.m_dib_way), m_dib_window(other.m_dib_window),
-        m_ifetch_buffer_size(other.m_ifetch_buffer_size), m_decode_buffer_size(other.m_decode_buffer_size),
-        m_dispatch_buffer_size(other.m_dispatch_buffer_size), m_rob_size(other.m_rob_size), m_lq_size(other.m_lq_size), m_sq_size(other.m_sq_size),
-        m_fetch_width(other.m_fetch_width), m_decode_width(other.m_decode_width), m_dispatch_width(other.m_dispatch_width),
-        m_schedule_width(other.m_schedule_width), m_execute_width(other.m_execute_width), m_lq_width(other.m_lq_width), m_sq_width(other.m_sq_width),
-        m_retire_width(other.m_retire_width), m_mispredict_penalty(other.m_mispredict_penalty), m_decode_latency(other.m_decode_latency),
-        m_dispatch_latency(other.m_dispatch_latency), m_schedule_latency(other.m_schedule_latency), m_execute_latency(other.m_execute_latency),
-        m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw), m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
-  {
-  }
+  explicit core_builder(const detail::core_builder_base& other) : detail::core_builder_base(other) {}
 
 public:
   core_builder() = default;
@@ -328,14 +320,14 @@ template <unsigned long long B_FLAG, unsigned long long T_FLAG>
 template <unsigned long long B>
 champsim::core_builder<B, T_FLAG> champsim::core_builder<B_FLAG, T_FLAG>::branch_predictor()
 {
-  return champsim::core_builder<B, T_FLAG>{core_builder_conversion_tag{}, *this};
+  return champsim::core_builder<B, T_FLAG>{*this};
 }
 
 template <unsigned long long B_FLAG, unsigned long long T_FLAG>
 template <unsigned long long T>
 champsim::core_builder<B_FLAG, T> champsim::core_builder<B_FLAG, T_FLAG>::btb()
 {
-  return champsim::core_builder<B_FLAG, T>{core_builder_conversion_tag{}, *this};
+  return champsim::core_builder<B_FLAG, T>{*this};
 }
 
 #endif

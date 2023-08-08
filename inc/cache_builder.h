@@ -26,14 +26,10 @@ class CACHE;
 namespace champsim
 {
 class channel;
-class cache_builder_conversion_tag
+namespace detail
 {
-};
-template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
-class cache_builder
+struct cache_builder_base
 {
-  using self_type = cache_builder<P_FLAG, R_FLAG>;
-
   std::string m_name{};
   double m_freq_scale{1};
   std::optional<uint32_t> m_sets{};
@@ -57,21 +53,20 @@ class cache_builder
   std::vector<champsim::channel*> m_uls{};
   champsim::channel* m_ll{};
   champsim::channel* m_lt{nullptr};
+};
+}
+
+template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
+class cache_builder : public detail::cache_builder_base
+{
+  using self_type = cache_builder<P_FLAG, R_FLAG>;
 
   friend class ::CACHE;
 
   template <unsigned long long OTHER_P, unsigned long long OTHER_R>
   friend class cache_builder;
 
-  template <unsigned long long OTHER_P, unsigned long long OTHER_R>
-  cache_builder(cache_builder_conversion_tag /*tag*/, const cache_builder<OTHER_P, OTHER_R>& other)
-      : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_sets_factor(other.m_sets_factor), m_ways(other.m_ways),
-        m_pq_size(other.m_pq_size), m_mshr_size(other.m_mshr_size), m_mshr_factor(other.m_mshr_factor), m_hit_lat(other.m_hit_lat),
-        m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag), m_max_fill(other.m_max_fill),
-        m_bandwidth_factor(other.m_bandwidth_factor), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
-        m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
-  {
-  }
+  explicit cache_builder(const detail::cache_builder_base& other) : detail::cache_builder_base(other) {}
 
 public:
   cache_builder() = default;
@@ -289,14 +284,14 @@ template <unsigned long long P_FLAG, unsigned long long R_FLAG>
 template <unsigned long long P>
 champsim::cache_builder<P, R_FLAG> champsim::cache_builder<P_FLAG, R_FLAG>::prefetcher()
 {
-  return champsim::cache_builder<P, R_FLAG>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<P, R_FLAG>{*this};
 }
 
 template <unsigned long long P_FLAG, unsigned long long R_FLAG>
 template <unsigned long long R>
 champsim::cache_builder<P_FLAG, R> champsim::cache_builder<P_FLAG, R_FLAG>::replacement()
 {
-  return champsim::cache_builder<P_FLAG, R>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<P_FLAG, R>{*this};
 }
 
 #endif
