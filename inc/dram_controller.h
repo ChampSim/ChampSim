@@ -42,7 +42,7 @@ struct dram_stats {
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
 
-struct DRAM_CHANNEL {
+struct DRAM_CHANNEL : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
   struct request_type {
     bool scheduled = false;
@@ -67,6 +67,11 @@ struct DRAM_CHANNEL {
   queue_type WQ{DRAM_WQ_SIZE};
   queue_type RQ{DRAM_RQ_SIZE};
 
+  // these values control when to send out a burst of writes
+  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
+  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
+  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
+
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
 
@@ -87,8 +92,29 @@ struct DRAM_CHANNEL {
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
+  // Latencies
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+  const std::size_t ROWS, COLUMNS, RANKS, BANKS;
+
+  DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd, champsim::chrono::picoseconds t_cas,
+    champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
+
   void check_write_collision();
   void check_read_collision();
+  void finish_dbus_request();
+  void swap_write_mode();
+  void populate_dbus();
+  void schedule_packets();
+
+  void initialize() final;
+  void operate() final;
+  void begin_phase() final;
+  void end_phase(unsigned cpu) final;
+
+  uint32_t get_rank(uint64_t address) const;
+  uint32_t get_bank(uint64_t address) const;
+  uint32_t get_row(uint64_t address) const;
+  uint32_t get_column(uint64_t address) const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -98,20 +124,12 @@ class MEMORY_CONTROLLER : public champsim::operable
   using response_type = typename channel_type::response_type;
   std::vector<channel_type*> queues;
 
-  // Latencies
-  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
-
-  // these values control when to send out a burst of writes
-  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
-  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
-  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
-
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);
   bool add_wq(const request_type& packet);
 
 public:
-  std::array<DRAM_CHANNEL, DRAM_CHANNELS> channels;
+  std::vector<DRAM_CHANNEL> channels;
 
   MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul);
