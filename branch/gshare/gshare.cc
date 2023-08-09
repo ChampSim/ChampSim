@@ -1,64 +1,46 @@
+#include <algorithm>
+#include <array>
+#include <bitset>
+#include <map>
+
+#include "msl/fwcounter.h"
 #include "ooo_cpu.h"
 
-#define GLOBAL_HISTORY_LENGTH 14
-#define GLOBAL_HISTORY_MASK (1 << GLOBAL_HISTORY_LENGTH) - 1
-int branch_history_vector[NUM_CPUS];
-
-#define GS_HISTORY_TABLE_SIZE 16384
-int gs_history_table[NUM_CPUS][GS_HISTORY_TABLE_SIZE];
-int my_last_prediction[NUM_CPUS];
-
-void O3_CPU::initialize_branch_predictor()
+namespace
 {
-  cout << "CPU " << cpu << " GSHARE branch predictor" << endl;
+constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
+constexpr std::size_t COUNTER_BITS = 2;
+constexpr std::size_t GS_HISTORY_TABLE_SIZE = 16384;
 
-  branch_history_vector[cpu] = 0;
-  my_last_prediction[cpu] = 0;
+std::map<O3_CPU*, std::bitset<GLOBAL_HISTORY_LENGTH>> branch_history_vector;
+std::map<O3_CPU*, std::array<champsim::msl::fwcounter<COUNTER_BITS>, GS_HISTORY_TABLE_SIZE>> gs_history_table;
 
-  for (int i = 0; i < GS_HISTORY_TABLE_SIZE; i++)
-    gs_history_table[cpu][i] = 2; // 2 is slightly taken
+std::size_t gs_table_hash(uint64_t ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
+{
+  std::size_t hash = bh_vector.to_ullong();
+  hash ^= ip;
+  hash ^= ip >> GLOBAL_HISTORY_LENGTH;
+  hash ^= ip >> (GLOBAL_HISTORY_LENGTH * 2);
+
+  return hash % GS_HISTORY_TABLE_SIZE;
 }
+} // namespace
 
-unsigned int gs_table_hash(uint64_t ip, int bh_vector)
+void O3_CPU::initialize_branch_predictor() {}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip)
 {
-  unsigned int hash = ip ^ (ip >> GLOBAL_HISTORY_LENGTH) ^ (ip >> (GLOBAL_HISTORY_LENGTH * 2)) ^ bh_vector;
-  hash = hash % GS_HISTORY_TABLE_SIZE;
-
-  // printf("%d\n", hash);
-
-  return hash;
-}
-
-uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
-{
-  int prediction = 1;
-
-  int gs_hash = gs_table_hash(ip, branch_history_vector[cpu]);
-
-  if (gs_history_table[cpu][gs_hash] >= 2)
-    prediction = 1;
-  else
-    prediction = 0;
-
-  my_last_prediction[cpu] = prediction;
-
-  return prediction;
+  auto gs_hash = ::gs_table_hash(ip, ::branch_history_vector[this]);
+  auto value = ::gs_history_table[this][gs_hash];
+  return value.value() >= (value.maximum / 2);
 }
 
 void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  int gs_hash = gs_table_hash(ip, branch_history_vector[cpu]);
-
-  if (taken == 1) {
-    if (gs_history_table[cpu][gs_hash] < 3)
-      gs_history_table[cpu][gs_hash]++;
-  } else {
-    if (gs_history_table[cpu][gs_hash] > 0)
-      gs_history_table[cpu][gs_hash]--;
-  }
+  auto gs_hash = gs_table_hash(ip, ::branch_history_vector[this]);
+  ::gs_history_table[this][gs_hash] += taken ? 1 : -1;
 
   // update branch history vector
-  branch_history_vector[cpu] <<= 1;
-  branch_history_vector[cpu] &= GLOBAL_HISTORY_MASK;
-  branch_history_vector[cpu] |= taken;
+  ::branch_history_vector[this] <<= 1;
+  ::branch_history_vector[this][0] = taken;
 }

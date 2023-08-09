@@ -19,44 +19,49 @@
 
 #include <limits>
 
+// special registers that help us identify branches
+namespace champsim
+{
+constexpr char REG_STACK_POINTER = 6;
+constexpr char REG_FLAGS = 25;
+constexpr char REG_INSTRUCTION_POINTER = 26;
+} // namespace champsim
+
 // instruction format
 constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
 constexpr std::size_t NUM_INSTR_DESTINATIONS = 2;
 constexpr std::size_t NUM_INSTR_SOURCES = 4;
 
-class LSQ_ENTRY;
-
 struct input_instr {
   // instruction pointer or PC (Program Counter)
-  unsigned long long ip = 0;
+  unsigned long long ip;
 
   // branch info
-  unsigned char is_branch = 0;
-  unsigned char branch_taken = 0;
+  unsigned char is_branch;
+  unsigned char branch_taken;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
-  unsigned char source_registers[NUM_INSTR_SOURCES] = {};           // input registers
+  unsigned char destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
+  unsigned char source_registers[NUM_INSTR_SOURCES];           // input registers
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};           // input memory
+  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
+  unsigned long long source_memory[NUM_INSTR_SOURCES];           // input memory
 };
 
 struct cloudsuite_instr {
   // instruction pointer or PC (Program Counter)
-  unsigned long long ip = 0;
+  unsigned long long ip;
 
   // branch info
-  unsigned char is_branch = 0;
-  unsigned char branch_taken = 0;
+  unsigned char is_branch;
+  unsigned char branch_taken;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
-  unsigned char source_registers[NUM_INSTR_SOURCES] = {};                 // input registers
+  unsigned char destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
+  unsigned char source_registers[NUM_INSTR_SOURCES];                 // input registers
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};                 // input memory
+  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
+  unsigned long long source_memory[NUM_INSTR_SOURCES];                 // input memory
 
-  unsigned char asid[2] = {std::numeric_limits<unsigned char>::max(), std::numeric_limits<unsigned char>::max()};
+  unsigned char asid[2];
 };
 
 #endif
-

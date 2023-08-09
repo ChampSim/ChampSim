@@ -17,74 +17,155 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <list>
-#include <map>
-#include <optional>
+#include <array>
+#include <deque>
 #include <string>
 
-#include "delay_queue.hpp"
-#include "memory_class.h"
+#include "channel.h"
 #include "operable.h"
+#include "util/lru_table.h"
 
-class PagingStructureCache
+class VirtualMemory;
+class PageTableWalker : public champsim::operable
 {
-  struct block_t {
-    bool valid = false;
-    uint64_t address;
-    uint64_t data;
-    uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
+  struct pscl_entry {
+    uint64_t vaddr;
+    uint64_t ptw_addr;
+    std::size_t level;
   };
 
-  const std::string NAME;
-  const uint32_t NUM_SET, NUM_WAY;
-  std::vector<block_t> block{NUM_SET * NUM_WAY};
+  struct pscl_indexer {
+    std::size_t shamt;
+    auto operator()(const pscl_entry& entry) const { return entry.vaddr >> shamt; }
+  };
+
+  using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
+  using channel_type = champsim::channel;
+  using request_type = typename channel_type::request_type;
+  using response_type = typename channel_type::response_type;
+
+  struct mshr_type {
+    uint64_t address = 0;
+    uint64_t v_address = 0;
+    uint64_t data = 0;
+
+    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
+
+    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
+    uint32_t pf_metadata = 0;
+    uint32_t cpu = std::numeric_limits<uint32_t>::max();
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
+
+    std::size_t translation_level = 0;
+
+    mshr_type(request_type req, std::size_t level);
+  };
+
+  std::deque<mshr_type> MSHR;
+  std::deque<mshr_type> finished;
+  std::deque<mshr_type> completed;
+
+  std::vector<channel_type*> upper_levels;
+  channel_type* lower_level;
+
+  std::optional<mshr_type> handle_read(const request_type& pkt, channel_type* ul);
+  std::optional<mshr_type> handle_fill(const mshr_type& pkt);
+  std::optional<mshr_type> step_translation(const mshr_type& source);
+
+  void finish_packet(const response_type& packet);
 
 public:
-  const std::size_t level;
-  PagingStructureCache(std::string v1, uint8_t v2, uint32_t v3, uint32_t v4) : NAME(v1), NUM_SET(v3), NUM_WAY(v4), level(v2) {}
-
-  std::optional<uint64_t> check_hit(uint64_t address);
-  void fill_cache(uint64_t next_level_paddr, uint64_t vaddr);
-};
-
-class PageTableWalker : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
-{
-public:
   const std::string NAME;
-  const uint32_t cpu;
-  const uint32_t MSHR_SIZE, MAX_READ, MAX_FILL;
+  const uint32_t MSHR_SIZE;
+  const long int MAX_READ, MAX_FILL;
+  const uint64_t HIT_LATENCY;
 
-  champsim::delay_queue<PACKET> RQ;
-
-  std::list<PACKET> MSHR;
-
-  uint64_t total_miss_latency = 0;
-
-  PagingStructureCache PSCL5, PSCL4, PSCL3, PSCL2;
+  std::vector<pscl_type> pscl;
+  VirtualMemory* vmem;
 
   const uint64_t CR3_addr;
-  std::map<std::pair<uint64_t, std::size_t>, uint64_t> page_table;
 
-  PageTableWalker(std::string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
-                  uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll);
+  class Builder
+  {
+    std::string_view m_name{};
+    double m_freq_scale{};
+    uint32_t m_cpu{};
+    std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
+    uint32_t m_mshr_size{};
+    uint32_t m_max_tag_check{};
+    uint32_t m_max_fill{};
+    unsigned m_latency{};
+    std::vector<PageTableWalker::channel_type*> m_uls{};
+    PageTableWalker::channel_type* m_ll{};
+    VirtualMemory* m_vmem{};
 
-  // functions
-  int add_rq(PACKET* packet) override;
-  int add_wq(PACKET* packet) override { assert(0); }
-  int add_pq(PACKET* packet) override { assert(0); }
+    friend class PageTableWalker;
 
-  void return_data(PACKET* packet) override;
-  void operate() override;
+  public:
+    Builder& name(std::string_view name_)
+    {
+      m_name = name_;
+      return *this;
+    }
+    Builder& frequency(double freq_scale_)
+    {
+      m_freq_scale = freq_scale_;
+      return *this;
+    }
+    Builder& cpu(uint32_t cpu_)
+    {
+      m_cpu = cpu_;
+      return *this;
+    }
+    Builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way)
+    {
+      m_pscl.at(lvl) = {lvl, set, way};
+      return *this;
+    }
+    Builder& mshr_size(uint32_t mshr_size_)
+    {
+      m_mshr_size = mshr_size_;
+      return *this;
+    }
+    Builder& tag_bandwidth(uint32_t max_read_)
+    {
+      m_max_tag_check = max_read_;
+      return *this;
+    }
+    Builder& fill_bandwidth(uint32_t max_fill_)
+    {
+      m_max_fill = max_fill_;
+      return *this;
+    }
+    Builder& latency(unsigned latency_)
+    {
+      m_latency = latency_;
+      return *this;
+    }
+    Builder& upper_levels(std::vector<PageTableWalker::channel_type*>&& uls_)
+    {
+      m_uls = std::move(uls_);
+      return *this;
+    }
+    Builder& lower_level(PageTableWalker::channel_type* ll_)
+    {
+      m_ll = ll_;
+      return *this;
+    }
+    Builder& virtual_memory(VirtualMemory* vmem_)
+    {
+      m_vmem = vmem_;
+      return *this;
+    }
+  };
 
-  void handle_read();
-  void handle_fill();
+  explicit PageTableWalker(Builder builder);
 
-  uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
-  uint32_t get_size(uint8_t queue_type, uint64_t address) override;
+  long operate() override final;
 
-  uint64_t get_shamt(uint8_t pt_level);
-
-  void print_deadlock() override;
+  void begin_phase() override final;
+  void print_deadlock() override final;
 };
 
 #endif

@@ -16,259 +16,201 @@
 
 #include "ptw.h"
 
+#include <numeric>
+
 #include "champsim.h"
-#include "util.h"
+#include "champsim_constants.h"
+#include "deadlock.h"
+#include "instruction.h"
+#include "util/span.h"
 #include "vmem.h"
+#include <fmt/core.h>
 
-extern VirtualMemory vmem;
-extern uint8_t warmup_complete[NUM_CPUS];
-
-PageTableWalker::PageTableWalker(string v1, uint32_t cpu, unsigned fill_level, uint32_t v2, uint32_t v3, uint32_t v4, uint32_t v5, uint32_t v6, uint32_t v7,
-                                 uint32_t v8, uint32_t v9, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t v13, unsigned latency, MemoryRequestConsumer* ll)
-    : champsim::operable(1), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), cpu(cpu), MSHR_SIZE(v11), MAX_READ(v12),
-      MAX_FILL(v13), RQ{v10, latency}, PSCL5{"PSCL5", 4, v2, v3}, // Translation from L5->L4
-      PSCL4{"PSCL4", 3, v4, v5},                                  // Translation from L5->L3
-      PSCL3{"PSCL3", 2, v6, v7},                                  // Translation from L5->L2
-      PSCL2{"PSCL2", 1, v8, v9},                                  // Translation from L5->L1
-      CR3_addr(vmem.get_pte_pa(cpu, 0, vmem.pt_levels).first)
+PageTableWalker::PageTableWalker(Builder b)
+    : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
+      MAX_FILL(b.m_max_fill), HIT_LATENCY(b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
+  std::vector<std::array<uint32_t, 3>> local_pscl_dims{};
+  std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
+  std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
+
+  for (auto [level, sets, ways] : local_pscl_dims)
+    pscl.emplace_back(sets, ways, pscl_indexer{b.m_vmem->shamt(level)}, pscl_indexer{b.m_vmem->shamt(level)});
 }
 
-void PageTableWalker::handle_read()
+PageTableWalker::mshr_type::mshr_type(request_type req, std::size_t level)
+    : address(req.address), v_address(req.v_address), instr_depend_on_me(req.instr_depend_on_me), pf_metadata(req.pf_metadata), cpu(req.cpu),
+      translation_level(level)
 {
-  int reads_this_cycle = MAX_READ;
+  asid[0] = req.asid[0];
+  asid[1] = req.asid[1];
+}
 
-  while (reads_this_cycle > 0 && RQ.has_ready() && std::size(MSHR) != MSHR_SIZE) {
-    PACKET& handle_pkt = RQ.front();
+auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* ul) -> std::optional<mshr_type>
+{
+  pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
+  std::vector<std::optional<pscl_entry>> pscl_hits;
+  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x) { return x.check_hit(walk_init); });
+  walk_init =
+      std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-    DP(if (warmup_complete[packet->cpu]) {
-      std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << handle_pkt.instr_id;
-      std::cout << " address: " << std::hex << (handle_pkt.address >> LOG2_PAGE_SIZE) << " full_addr: " << handle_pkt.address;
-      std::cout << " full_v_addr: " << handle_pkt.v_address;
-      std::cout << " data: " << handle_pkt.data << std::dec;
-      std::cout << " translation_level: " << +handle_pkt.translation_level;
-      std::cout << " event: " << handle_pkt.event_cycle << " current: " << current_cycle << std::endl;
+  auto walk_offset = vmem->get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
+
+  mshr_type fwd_mshr{handle_pkt, walk_init.level};
+  fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
+  fwd_mshr.v_address = handle_pkt.address;
+  if (handle_pkt.response_requested)
+    fwd_mshr.to_return = {&ul->returned};
+
+  if constexpr (champsim::debug_print) {
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
+               walk_offset / PTE_BYTES, walk_init.level);
+  }
+
+  return step_translation(fwd_mshr);
+}
+
+auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
+{
+  if constexpr (champsim::debug_print) {
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
+               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
+               fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
+  }
+
+  const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
+  pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1});
+
+  mshr_type fwd_mshr = fill_mshr;
+  fwd_mshr.address = fill_mshr.data;
+  fwd_mshr.translation_level = fill_mshr.translation_level - 1;
+  fwd_mshr.event_cycle = std::numeric_limits<uint64_t>::max();
+
+  return step_translation(fwd_mshr);
+}
+
+auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional<mshr_type>
+{
+  request_type packet;
+  packet.address = source.address;
+  packet.v_address = source.v_address;
+  packet.pf_metadata = source.pf_metadata;
+  packet.cpu = source.cpu;
+  packet.asid[0] = source.asid[0];
+  packet.asid[1] = source.asid[1];
+  packet.is_translated = true;
+  packet.type = access_type::TRANSLATION;
+
+  bool success = lower_level->add_rq(packet);
+
+  if (success)
+    return source;
+
+  return std::nullopt;
+}
+
+long PageTableWalker::operate()
+{
+  long progress{0};
+
+  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
+  progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
+  lower_level->returned.clear();
+
+  std::vector<mshr_type> next_steps{};
+
+  auto fill_bw = MAX_FILL;
+  auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw,
+                                                             [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle; });
+  std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
+    for (auto ret : mshr_entry.to_return)
+      ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
+  });
+  fill_bw -= std::distance(complete_begin, complete_end);
+  progress += std::distance(complete_begin, complete_end);
+  completed.erase(complete_begin, complete_end);
+
+  auto [mshr_begin, mshr_end] =
+      champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle; });
+  std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, this](const auto& pkt) {
+    auto result = this->handle_fill(pkt);
+    if (result.has_value())
+      next_steps.push_back(*result);
+    return result.has_value();
+  });
+  progress += std::distance(mshr_begin, mshr_end);
+  finished.erase(mshr_begin, mshr_end);
+
+  auto tag_bw = MAX_READ;
+  for (auto ul : upper_levels) {
+    auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [&next_steps, ul, this](const auto& pkt) {
+      auto result = this->handle_read(pkt, ul);
+      if (result.has_value())
+        next_steps.push_back(*result);
+      return result.has_value();
     });
+    tag_bw -= std::distance(rq_begin, rq_end);
+    progress += std::distance(rq_begin, rq_end);
+    ul->RQ.erase(rq_begin, rq_end);
+  }
 
-    auto ptw_addr = splice_bits(CR3_addr, vmem.get_offset(handle_pkt.address, vmem.pt_levels - 1) * PTE_BYTES, LOG2_PAGE_SIZE);
-    auto ptw_level = vmem.pt_levels - 1;
-    for (auto pscl : {&PSCL5, &PSCL4, &PSCL3, &PSCL2}) {
-      if (auto check_addr = pscl->check_hit(handle_pkt.address); check_addr.has_value()) {
-        ptw_addr = check_addr.value();
-        ptw_level = pscl->level - 1;
-      }
+  MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
+  return progress;
+}
+
+void PageTableWalker::finish_packet(const response_type& packet)
+{
+  auto finish_step = [this](auto& mshr_entry) {
+    uint64_t penalty;
+    std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+    mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
+
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
+  };
 
-    PACKET packet = handle_pkt;
-    packet.fill_level = lower_level->fill_level; // This packet will be sent from L1 to PTW.
-    packet.address = ptw_addr;
-    packet.v_address = handle_pkt.address;
-    packet.cpu = cpu;
-    packet.type = TRANSLATION;
-    packet.init_translation_level = ptw_level;
-    packet.translation_level = packet.init_translation_level;
-    packet.to_return = {this};
+  auto finish_last_step = [this](auto& mshr_entry) {
+    uint64_t penalty;
+    std::tie(mshr_entry.data, penalty) = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+    mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
-    int rq_index = lower_level->add_rq(&packet);
-    if (rq_index == -2)
-      return;
-
-    packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
-    packet.type = handle_pkt.type;
-
-    auto it = MSHR.insert(std::end(MSHR), packet);
-    it->cycle_enqueued = current_cycle;
-    it->event_cycle = std::numeric_limits<uint64_t>::max();
-
-    RQ.pop_front();
-    reads_this_cycle--;
-  }
-}
-
-void PageTableWalker::handle_fill()
-{
-  int fill_this_cycle = MAX_FILL;
-
-  while (fill_this_cycle > 0 && !std::empty(MSHR) && MSHR.front().event_cycle <= current_cycle) {
-    auto fill_mshr = MSHR.begin();
-    if (fill_mshr->translation_level == 0) // If translation complete
-    {
-      // Return the translated physical address to STLB. Does not contain last
-      // 12 bits
-      auto [addr, fault] = vmem.va_to_pa(cpu, fill_mshr->v_address);
-      if (warmup_complete[cpu] && fault) {
-        fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
-        MSHR.sort(ord_event_cycle<PACKET>{});
-      } else {
-        fill_mshr->data = addr;
-        fill_mshr->address = fill_mshr->v_address;
-
-        DP(if (warmup_complete[packet->cpu]) {
-          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
-          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
-          std::cout << " full_v_addr: " << fill_mshr->v_address;
-          std::cout << " data: " << fill_mshr->data << std::dec;
-          std::cout << " translation_level: " << +fill_mshr->translation_level;
-          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
-          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
-        });
-
-        for (auto ret : fill_mshr->to_return)
-          ret->return_data(&(*fill_mshr));
-
-        if (warmup_complete[cpu])
-          total_miss_latency += current_cycle - fill_mshr->cycle_enqueued;
-
-        MSHR.erase(fill_mshr);
-      }
-    } else {
-      auto [addr, fault] = vmem.get_pte_pa(cpu, fill_mshr->v_address, fill_mshr->translation_level);
-      if (warmup_complete[cpu] && fault) {
-        fill_mshr->event_cycle = current_cycle + vmem.minor_fault_penalty;
-        MSHR.sort(ord_event_cycle<PACKET>{});
-      } else {
-        if (fill_mshr->translation_level == PSCL5.level)
-          PSCL5.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL4.level)
-          PSCL4.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL2.level)
-          PSCL3.fill_cache(addr, fill_mshr->v_address);
-        if (fill_mshr->translation_level == PSCL2.level)
-          PSCL2.fill_cache(addr, fill_mshr->v_address);
-
-        DP(if (warmup_complete[packet->cpu]) {
-          std::cout << "[" << NAME << "] " << __func__ << " instr_id: " << fill_mshr->instr_id;
-          std::cout << " address: " << std::hex << (fill_mshr->address >> LOG2_PAGE_SIZE) << " full_addr: " << fill_mshr->address;
-          std::cout << " full_v_addr: " << fill_mshr->v_address;
-          std::cout << " data: " << fill_mshr->data << std::dec;
-          std::cout << " translation_level: " << +fill_mshr->translation_level;
-          std::cout << " index: " << std::distance(MSHR.begin(), fill_mshr) << " occupancy: " << get_occupancy(0, 0);
-          std::cout << " event: " << fill_mshr->event_cycle << " current: " << current_cycle << std::endl;
-        });
-
-        PACKET packet = *fill_mshr;
-        packet.cpu = cpu;
-        packet.type = TRANSLATION;
-        packet.address = addr;
-        packet.to_return = {this};
-        packet.translation_level = fill_mshr->translation_level - 1;
-
-        int rq_index = lower_level->add_rq(&packet);
-        if (rq_index != -2) {
-          fill_mshr->event_cycle = std::numeric_limits<uint64_t>::max();
-          fill_mshr->address = packet.address;
-          fill_mshr->translation_level--;
-
-          MSHR.splice(std::end(MSHR), MSHR, fill_mshr);
-        }
-      }
+    if constexpr (champsim::debug_print) {
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
+  };
 
-    fill_this_cycle--;
+  auto last_finished =
+      std::partition(std::begin(MSHR), std::end(MSHR), [addr = packet.address](auto x) { return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE); });
+
+  std::for_each(std::begin(MSHR), last_finished, [finish_step, finish_last_step](auto& mshr_entry) {
+    if (mshr_entry.translation_level > 0)
+      finish_step(mshr_entry);
+    else
+      finish_last_step(mshr_entry);
+  });
+
+  std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(finished), std::back_inserter(completed),
+                      [](auto x) { return x.translation_level > 0; });
+  MSHR.erase(std::begin(MSHR), last_finished);
+}
+
+void PageTableWalker::begin_phase()
+{
+  for (auto ul : upper_levels) {
+    channel_type::stats_type ul_new_roi_stats, ul_new_sim_stats;
+    ul->roi_stats = ul_new_roi_stats;
+    ul->sim_stats = ul_new_sim_stats;
   }
 }
 
-void PageTableWalker::operate()
-{
-  handle_fill();
-  handle_read();
-  RQ.operate();
-}
-
-int PageTableWalker::add_rq(PACKET* packet)
-{
-  assert(packet->address != 0);
-
-  // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
-  assert(found_rq == RQ.end()); // Duplicate request should not be sent.
-
-  // check occupancy
-  if (RQ.full()) {
-    return -2; // cannot handle this request
-  }
-
-  // if there is no duplicate, add it to RQ
-  RQ.push_back(*packet);
-
-  return RQ.occupancy();
-}
-
-void PageTableWalker::return_data(PACKET* packet)
-{
-  for (auto& mshr_entry : MSHR) {
-    if (eq_addr<PACKET>{packet->address, LOG2_BLOCK_SIZE}(mshr_entry)) {
-      mshr_entry.event_cycle = current_cycle;
-
-      DP(if (warmup_complete[cpu]) {
-        std::cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << mshr_entry.instr_id;
-        std::cout << " address: " << std::hex << mshr_entry.address;
-        std::cout << " v_address: " << mshr_entry.v_address;
-        std::cout << " data: " << mshr_entry.data << std::dec;
-        std::cout << " translation_level: " << +mshr_entry.translation_level;
-        std::cout << " occupancy: " << get_occupancy(0, mshr_entry.address);
-        std::cout << " event: " << mshr_entry.event_cycle << " current: " << current_cycle << std::endl;
-      });
-    }
-  }
-
-  MSHR.sort(ord_event_cycle<PACKET>());
-}
-
-uint32_t PageTableWalker::get_occupancy(uint8_t queue_type, uint64_t address)
-{
-  if (queue_type == 0)
-    return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-  else if (queue_type == 1)
-    return RQ.occupancy();
-  return 0;
-}
-
-uint32_t PageTableWalker::get_size(uint8_t queue_type, uint64_t address)
-{
-  if (queue_type == 0)
-    return MSHR_SIZE;
-  else if (queue_type == 1)
-    return RQ.size();
-  return 0;
-}
-
-void PagingStructureCache::fill_cache(uint64_t next_level_paddr, uint64_t vaddr)
-{
-  auto set_idx = (vaddr >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
-  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-  auto set_end = std::next(set_begin, NUM_WAY);
-  auto fill_block = std::max_element(set_begin, set_end, lru_comparator<block_t, block_t>());
-
-  *fill_block = {true, vaddr, next_level_paddr, fill_block->lru};
-  std::for_each(set_begin, set_end, lru_updater<block_t>(fill_block));
-}
-
-std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address)
-{
-  auto set_idx = (address >> vmem.shamt(level + 1)) & bitmask(lg2(NUM_SET));
-  auto set_begin = std::next(std::begin(block), set_idx * NUM_WAY);
-  auto set_end = std::next(set_begin, NUM_WAY);
-  auto hit_block = std::find_if(set_begin, set_end, eq_addr<block_t>{address, vmem.shamt(level + 1)});
-
-  if (hit_block != set_end)
-    return splice_bits(hit_block->data, vmem.get_offset(address, level) * PTE_BYTES, LOG2_PAGE_SIZE);
-
-  return {};
-}
-
+// LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
-  if (!std::empty(MSHR)) {
-    std::cout << NAME << " MSHR Entry" << std::endl;
-    std::size_t j = 0;
-    for (PACKET entry : MSHR) {
-      std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " translation_level: " << +entry.translation_level;
-      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
-    }
-  } else {
-    std::cout << NAME << " MSHR empty" << std::endl;
-  }
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {} event_cycle: {}", [](const auto& entry) {
+    return std::tuple{entry.address, entry.v_address, entry.translation_level, entry.event_cycle};
+  });
 }
+// LCOV_EXCL_STOP

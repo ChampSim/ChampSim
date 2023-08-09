@@ -1,0 +1,4 @@
+{
+    "block_size": 64,
+    "L1D": { "sets": 256, "ways": 4, "latency": 4 }
+}

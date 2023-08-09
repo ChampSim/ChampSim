@@ -1,0 +1,15 @@
+{
+    "num_cores": 2,
+    "ooo_cpu": [
+        {
+            "branch_predictor": "bimodal",
+            "rob_size": 120, "lq_size": 90,
+            "L1D": { "prefetcher": "next_line" }
+        },
+        {
+            "branch_predictor": "gshare",
+            "rob_size": 240, "lq_size": 70,
+            "L1D": { "prefetcher": "no" }
+        }
+    ]
+}

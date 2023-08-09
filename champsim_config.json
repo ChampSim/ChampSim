@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/champsim",
+    "executable_name": "champsim",
     "block_size": 64,
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
@@ -46,8 +46,8 @@
         "pq_size": 32,
         "mshr_size": 8,
         "latency": 4,
-        "max_read": 2,
-        "max_write": 2,
+        "max_tag_check": 2,
+        "max_fill": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": true,
         "prefetch_activate": "LOAD,PREFETCH",
@@ -62,8 +62,8 @@
         "pq_size": 8,
         "mshr_size": 16,
         "latency": 5,
-        "max_read": 2,
-        "max_write": 2,
+        "max_tag_check": 2,
+        "max_fill": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
@@ -78,8 +78,8 @@
         "pq_size": 16,
         "mshr_size": 32,
         "latency": 10,
-        "max_read": 1,
-        "max_write": 1,
+        "max_tag_check": 1,
+        "max_fill": 1,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
@@ -94,8 +94,8 @@
         "pq_size": 0,
         "mshr_size": 8,
         "latency": 1,
-        "max_read": 2,
-        "max_write": 2,
+        "max_tag_check": 2,
+        "max_fill": 2,
         "prefetch_as_load": false
     },
 
@@ -107,8 +107,8 @@
         "pq_size": 0,
         "mshr_size": 8,
         "latency": 1,
-        "max_read": 2,
-        "max_write": 2,
+        "max_tag_check": 2,
+        "max_fill": 2,
         "prefetch_as_load": false
     },
 
@@ -120,8 +120,8 @@
         "pq_size": 0,
         "mshr_size": 16,
         "latency": 8,
-        "max_read": 1,
-        "max_write": 1,
+        "max_tag_check": 1,
+        "max_fill": 1,
         "prefetch_as_load": false
     },
 
@@ -134,10 +134,10 @@
 		"pscl3_way": 4,
 		"pscl2_set": 4,
 		"pscl2_way": 8,
-		"ptw_rq_size": 16,
-		"ptw_mshr_size": 5,
-		"ptw_max_read": 2,
-		"ptw_max_write": 2
+		"rq_size": 16,
+		"mshr_size": 5,
+		"max_read": 2,
+		"max_write": 2
 	},
 
     "LLC": {
@@ -149,8 +149,8 @@
         "pq_size": 32,
         "mshr_size": 64,
         "latency": 20,
-        "max_read": 1,
-        "max_write": 1,
+        "max_tag_check": 1,
+        "max_fill": 1,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
@@ -175,7 +175,7 @@
     },
 
     "virtual_memory": {
-        "size": 8589934592,
+        "pte_page_size": 4096,
         "num_levels": 5,
         "minor_fault_penalty": 200
     }

@@ -1,49 +1,48 @@
 #ifndef SPP_H
 #define SPP_H
 
-// SPP functional knobs
-#define LOOKAHEAD_ON
-#define FILTER_ON
-#define GHR_ON
-#define SPP_SANITY_CHECK
+#include <cstdint>
+#include <vector>
 
-//#define SPP_DEBUG_PRINT
-#ifdef SPP_DEBUG_PRINT
-#define SPP_DP(x) x
-#else
-#define SPP_DP(x)
-#endif
+namespace spp
+{
+// SPP functional knobs
+constexpr bool LOOKAHEAD_ON = true;
+constexpr bool FILTER_ON = true;
+constexpr bool GHR_ON = true;
+constexpr bool SPP_SANITY_CHECK = true;
+constexpr bool SPP_DEBUG_PRINT = false;
 
 // Signature table parameters
-#define ST_SET 1
-#define ST_WAY 256
-#define ST_TAG_BIT 16
-#define ST_TAG_MASK ((1 << ST_TAG_BIT) - 1)
-#define SIG_SHIFT 3
-#define SIG_BIT 12
-#define SIG_MASK ((1 << SIG_BIT) - 1)
-#define SIG_DELTA_BIT 7
+constexpr std::size_t ST_SET = 1;
+constexpr std::size_t ST_WAY = 256;
+constexpr unsigned ST_TAG_BIT = 16;
+constexpr uint32_t ST_TAG_MASK = ((1 << ST_TAG_BIT) - 1);
+constexpr unsigned SIG_SHIFT = 3;
+constexpr unsigned SIG_BIT = 12;
+constexpr uint32_t SIG_MASK = ((1 << SIG_BIT) - 1);
+constexpr unsigned SIG_DELTA_BIT = 7;
 
 // Pattern table parameters
-#define PT_SET 512
-#define PT_WAY 4
-#define C_SIG_BIT 4
-#define C_DELTA_BIT 4
-#define C_SIG_MAX ((1 << C_SIG_BIT) - 1)
-#define C_DELTA_MAX ((1 << C_DELTA_BIT) - 1)
+constexpr std::size_t PT_SET = 512;
+constexpr std::size_t PT_WAY = 4;
+constexpr unsigned C_SIG_BIT = 4;
+constexpr unsigned C_DELTA_BIT = 4;
+constexpr uint32_t C_SIG_MAX = ((1 << C_SIG_BIT) - 1);
+constexpr uint32_t C_DELTA_MAX = ((1 << C_DELTA_BIT) - 1);
 
 // Prefetch filter parameters
-#define QUOTIENT_BIT 10
-#define REMAINDER_BIT 6
-#define HASH_BIT (QUOTIENT_BIT + REMAINDER_BIT + 1)
-#define FILTER_SET (1 << QUOTIENT_BIT)
-#define FILL_THRESHOLD 90
-#define PF_THRESHOLD 25
+constexpr unsigned QUOTIENT_BIT = 10;
+constexpr unsigned REMAINDER_BIT = 6;
+constexpr unsigned HASH_BIT = (QUOTIENT_BIT + REMAINDER_BIT + 1);
+constexpr std::size_t FILTER_SET = (1 << QUOTIENT_BIT);
+constexpr uint32_t FILL_THRESHOLD = 90;
+constexpr uint32_t PF_THRESHOLD = 25;
 
 // Global register parameters
-#define GLOBAL_COUNTER_BIT 10
-#define GLOBAL_COUNTER_MAX ((1 << GLOBAL_COUNTER_BIT) - 1)
-#define MAX_GHR_ENTRY 8
+constexpr unsigned GLOBAL_COUNTER_BIT = 10;
+constexpr uint32_t GLOBAL_COUNTER_MAX = ((1 << GLOBAL_COUNTER_BIT) - 1);
+constexpr std::size_t MAX_GHR_ENTRY = 8;
 
 enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
@@ -56,12 +55,6 @@ public:
 
   SIGNATURE_TABLE()
   {
-    cout << "Initialize SIGNATURE TABLE" << endl;
-    cout << "ST_SET: " << ST_SET << endl;
-    cout << "ST_WAY: " << ST_WAY << endl;
-    cout << "ST_TAG_BIT: " << ST_TAG_BIT << endl;
-    cout << "ST_TAG_MASK: " << hex << ST_TAG_MASK << dec << endl;
-
     for (uint32_t set = 0; set < ST_SET; set++)
       for (uint32_t way = 0; way < ST_WAY; way++) {
         valid[set][way] = 0;
@@ -83,13 +76,6 @@ public:
 
   PATTERN_TABLE()
   {
-    cout << endl << "Initialize PATTERN TABLE" << endl;
-    cout << "PT_SET: " << PT_SET << endl;
-    cout << "PT_WAY: " << PT_WAY << endl;
-    cout << "SIG_DELTA_BIT: " << SIG_DELTA_BIT << endl;
-    cout << "C_SIG_BIT: " << C_SIG_BIT << endl;
-    cout << "C_DELTA_BIT: " << C_DELTA_BIT << endl;
-
     for (uint32_t set = 0; set < PT_SET; set++) {
       for (uint32_t way = 0; way < PT_WAY; way++) {
         delta[set][way] = 0;
@@ -99,8 +85,8 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, int*prefetch_delta, uint32_t*confidence_q, uint32_t&lookahead_way,
-                                                                       uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
+  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, std::vector<int>&prefetch_delta, std::vector<uint32_t>&confidence_q,
+                                                                       uint32_t&lookahead_way, uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
 };
 
 class PREFETCH_FILTER
@@ -112,9 +98,6 @@ public:
 
   PREFETCH_FILTER()
   {
-    cout << endl << "Initialize PREFETCH FILTER" << endl;
-    cout << "FILTER_SET: " << FILTER_SET << endl;
-
     for (uint32_t set = 0; set < FILTER_SET; set++) {
       remainder_tag[set] = 0;
       valid[set] = 0;
@@ -129,8 +112,8 @@ class GLOBAL_REGISTER
 {
 public:
   // Global counters to calculate global prefetching accuracy
-  uint64_t pf_useful, pf_issued,
-      global_accuracy; // Alpha value in Section III. Equation 3
+  uint32_t pf_useful, pf_issued;
+  uint32_t global_accuracy; // Alpha value in Section III. Equation 3
 
   // Global History Register (GHR) entries
   uint8_t valid[MAX_GHR_ENTRY];
@@ -155,5 +138,6 @@ public:
   void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
   uint32_t check_entry(uint32_t page_offset);
 };
+} // namespace spp
 
 #endif

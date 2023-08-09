@@ -1,11 +1,24 @@
-<p align="center">
-  <h1 align="center"> ChampSim </h1>
-  <p> ChampSim is a trace-based simulator for a microarchitecture study. If you have questions about how to use ChampSim, we encourage you to search the threads in the Discussions tab or start your own thread. If you are aware of a bug or have a feature request, open a new Issue. <p>
-</p>
+# ChampSim
+
+![GitHub](https://img.shields.io/github/license/ChampSim/ChampSim)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ChampSim/ChampSim/test.yml)
+![GitHub forks](https://img.shields.io/github/forks/ChampSim/ChampSim)
+[![Coverage Status](https://coveralls.io/repos/github/ChampSim/ChampSim/badge.svg?branch=develop)](https://coveralls.io/github/ChampSim/ChampSim?branch=develop)
+
+ChampSim is a trace-based simulator for a microarchitecture study. If you have questions about how to use ChampSim, we encourage you to search the threads in the Discussions tab or start your own thread. If you are aware of a bug or have a feature request, open a new Issue.
 
 # Using ChampSim
 
 ChampSim is the result of academic research. To support its continued growth, please cite our work when you publish results that use ChampSim by clicking "Cite this Repository" in the sidebar.
+
+# Download dependencies
+
+ChampSim uses [vcpkg](https://vcpkg.io) to manage its dependencies. In this repository, vcpkg is included as a submodule. You can download the dependencies with
+```
+git submodule update --init
+vcpkg/bootstrap-vcpkg.sh
+vcpkg/vcpkg install
+```
 
 # Compile
 
