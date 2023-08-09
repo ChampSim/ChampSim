@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef MODULE_IMPL_H
-#define MODULE_IMPL_H
+#ifndef UTIL_TO_UNDERLYING_H
+#define UTIL_TO_UNDERLYING_H
 
-namespace champsim
+namespace champsim {
+/*
+ * A forward-port of C++23's function of the same name.
+ * This avoids static_cast'ing an enumeration to an integer type other than its underlying type,
+ * an action that could dodge -Wconversion
+ */
+template <typename E>
+constexpr std::underlying_type_t<E> to_underlying(E e) noexcept
 {
-
-namespace detail
-{
-template <typename T>
-struct take_last {
-  T operator()(T /*first*/, T last) const { return last; }
-};
-} // namespace detail
-
-} // namespace champsim
+  return static_cast<std::underlying_type_t<E>>(e);
+}
+}
 
 #endif

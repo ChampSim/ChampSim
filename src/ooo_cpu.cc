@@ -154,8 +154,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types.at(arch_instr.branch)++;
-  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
-  arch_instr.branch_prediction = (impl_predict_branch(arch_instr.ip) != 0U) || (always_taken != 0U);
+  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch) || always_taken;
   if (!arch_instr.branch_prediction) {
     predicted_branch_target = 0;
   }
@@ -182,8 +182,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch);
-    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, static_cast<uint8_t>(arch_instr.branch_taken), arch_instr.branch);
+    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch);
+    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch);
   }
 
   return stop_fetch;
@@ -643,6 +643,27 @@ long O3_CPU::retire_rob()
 
   return retire_count;
 }
+
+void O3_CPU::impl_initialize_branch_predictor() const { branch_module_pimpl->impl_initialize_branch_predictor(); }
+
+void O3_CPU::impl_last_branch_result(uint64_t ip, uint64_t target, bool taken, uint8_t branch_type) const
+{
+  branch_module_pimpl->impl_last_branch_result(ip, target, taken, branch_type);
+}
+
+bool O3_CPU::impl_predict_branch(uint64_t ip, uint64_t predicted_target, bool always_taken, uint8_t branch_type) const
+{
+  return branch_module_pimpl->impl_predict_branch(ip, predicted_target, always_taken, branch_type);
+}
+
+void O3_CPU::impl_initialize_btb() const { btb_module_pimpl->impl_initialize_btb(); }
+
+void O3_CPU::impl_update_btb(uint64_t ip, uint64_t predicted_target, bool taken, uint8_t branch_type) const
+{
+  btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+}
+
+std::pair<uint64_t, bool> O3_CPU::impl_btb_prediction(uint64_t ip, uint8_t branch_type) const { return btb_module_pimpl->impl_btb_prediction(ip, branch_type); }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()

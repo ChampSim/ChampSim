@@ -15,9 +15,9 @@
 import itertools
 import functools
 import operator
-import collections
 import os
 import math
+from collections import deque
 
 from . import defaults
 from . import modules
@@ -85,6 +85,11 @@ def filter_inaccessible(system, roots, key='lower_level'):
     :param key: The key used to traverse the system
     '''
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
+
+def module_parse(mod, context):
+    if isinstance(mod, dict):
+        return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
+    return context.find(mod)
 
 def split_string_or_list(val, delim=','):
     ''' Split a comma-separated string into a list '''
@@ -156,7 +161,7 @@ def do_deprecation(element, deprecation_map):
     return retval
 
 def path_end_in(path, end_name, key='lower_level'):
-    return {'name': collections.deque(path, maxlen=1)[0]['name'], key: end_name}
+    return {'name': deque(path, maxlen=1)[0]['name'], key: end_name}
 
 class NormalizedConfiguration:
     '''
@@ -264,6 +269,15 @@ class NormalizedConfiguration:
         # Follow paths and apply default sizings
         caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches))
 
+        branch_parse = functools.partial(module_parse, context=branch_context)
+        btb_parse = functools.partial(module_parse, context=btb_context)
+        replacement_parse = functools.partial(module_parse, context=replacement_context)
+        def prefetcher_parse(mod_name, cache):
+            return {
+                '_is_instruction_prefetcher': cache.get('_is_instruction_cache', False),
+                **module_parse(mod_name, prefetcher_context)
+            }
+
         tlb_path = itertools.chain(*(util.iter_system(caches, name) for name in (*itlb_path_names, *dtlb_path_names)))
         data_path = itertools.chain(*(util.iter_system(caches, name) for name in (*l1i_path_names, *l1d_path_names)))
         caches = util.combine_named(
@@ -298,14 +312,8 @@ class NormalizedConfiguration:
                '_queue_check_full_addr': cache.get('_first_level', False) or cache.get('wq_check_full_addr', False),
 
                 # Get module path names and unique module names
-               '_replacement_data': [*map(replacement_context.find, util.wrap_list(cache.get('replacement', 'lru')))],
-               '_prefetcher_data': [
-                   {
-                       '_is_instruction_prefetcher': cache.get('_is_instruction_cache',False),
-                       **prefetcher_context.find(f)
-                   }
-               for f in util.wrap_list(cache.get('prefetcher', 'no_instr' if cache.get('_is_instruction_cache') else 'no'))
-               ]
+               '_replacement_data': list(map(replacement_parse, util.wrap_list(cache.get('replacement', 'lru')))),
+               '_prefetcher_data': [*map(functools.partial(prefetcher_parse, cache=cache), util.wrap_list(cache.get('prefetcher', 'no')))]
             } for k,cache in caches.items())
         )
 
@@ -316,7 +324,7 @@ class NormalizedConfiguration:
             # The listed keys are deprecated. For now, permit them but print a warning
             (do_deprecation(ptw, ptw_deprecation_keys) for ptw in ptws.values()),
 
-            ({'name': cpu['PTW'], 'frequency': cpu['frequency'], 'cpu': cpu['_index'], '_queue_factor': 32} for cpu in cores)
+            ({ 'name': cpu['PTW'], 'frequency': cpu.get('frequency'), 'cpu': cpu.get('_index'), '_queue_factor': 32 } for cpu in cores)
         )
 
         cores = list(util.combine_named(cores,
@@ -341,13 +349,14 @@ class NormalizedConfiguration:
             'vmem': vmem
         }
         module_info = {
-            'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()),
-            'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()),
-            'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()),
-            'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
+            'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
+            'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
+            'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
+            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
         }
 
-        config_env = util.subdict(root_config, ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
+
+        config_env = util.subdict(root_config, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
             'num_cores': len(cores)
@@ -385,12 +394,5 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]
-
-    module_info = {
-        'repl': {k: modules.get_repl_data(v) for k,v in module_info['repl'].items()},
-        'pref': {k: modules.get_pref_data(v) for k,v in module_info['pref'].items()},
-        'branch': {k: modules.get_branch_data(v) for k,v in module_info['branch'].items()},
-        'btb': {k: modules.get_btb_data(v) for k,v in module_info['btb'].items()},
-    }
 
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file, env

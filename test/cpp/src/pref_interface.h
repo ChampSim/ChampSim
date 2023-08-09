@@ -9,7 +9,7 @@ namespace test
     uint64_t ip;
     uint8_t cache_hit;
     bool useful_prefetch;
-    uint8_t type;
+    access_type type;
     uint32_t metadata_in;
   };
 }

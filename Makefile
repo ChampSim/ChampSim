@@ -22,7 +22,7 @@ all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig $(module_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
 	@-$(RM) inc/ooo_cpu_modules.h
@@ -31,26 +31,26 @@ clean:
 
 # Remove all configuration files
 configclean: clean
-	@-$(RM) -r $(module_dirs) _configuration.mk
+	@-$(RM) -r $(dirs) _configuration.mk
 
 # Make directories that don't exist
 # exclude "test" to not conflict with the phony target
 $(filter-out test, $(sort $(dirs))): | $(dir $@)
 	-mkdir $@
 
+reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
+
 # All .o files should be made like .cc files
 $(objs):
-	$(CXX) $(addprefix @,$(filter %.options, $^)) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
-$(test_main_name):
-	$(LINK.cc) $(LDFLAGS) -o $@ $(filter-out %/main.o, $^) $(LOADLIBES) $(LDLIBS)
 
 # Link main executables
-$(filter-out $(test_main_name), $(executable_name)):
-	$(LINK.cc) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+$(executable_name):
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
 test: $(test_main_name)
@@ -58,6 +58,4 @@ test: $(test_main_name)
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(shell pwd) python3 -m unittest discover -v --start-directory='test/python'
-
--include $(foreach dir,$(wildcard .csconfig/*/) $(wildcard .csconfig/test/*/),$(wildcard $(dir)/obj/*.d))
 

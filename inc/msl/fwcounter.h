@@ -25,6 +25,9 @@ namespace champsim::msl
 template <typename val_type, val_type MAXVAL, val_type MINVAL>
 class base_fwcounter
 {
+public:
+  using value_type = val_type;
+
 protected:
   val_type _value{};
 

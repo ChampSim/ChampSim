@@ -15,6 +15,7 @@
 import itertools
 import functools
 import operator
+import os
 
 from . import util
 
@@ -93,8 +94,8 @@ def get_cpu_builder(cpu):
     ]
 
     local_params = {
-        '^branch_predictor_string': ' | '.join(f'O3_CPU::b{k["name"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ' | '.join(f'O3_CPU::t{k["name"]}' for k in cpu.get('_btb_data',[]))
+        '^branch_predictor_string': ', '.join(f'{k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
+        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[]))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -125,8 +126,8 @@ def get_cache_builder(elem, upper_levels):
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
-        '^replacement_string': ' | '.join(f'CACHE::r{k["name"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ' | '.join(f'CACHE::p{k["name"]}' for k in elem.get('_prefetcher_data',[]))
+        '^replacement_string': ', '.join(f'{k["class"]}' for k in elem.get('_replacement_data',[])),
+        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[]))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -166,6 +167,7 @@ def get_ptw_builder(ptw, upper_levels):
         (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
+
 
 def get_ref_vector_function(rtype, func_name, elements):
     if len(elements) > 1:
@@ -227,6 +229,14 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
+    yield '#include "module_def.inc"'
+
+    inc_files = set()
+    for m in itertools.chain(*(c['_branch_predictor_data'] for c in cores), *(c['_btb_data'] for c in cores), *(c['_prefetcher_data'] for c in caches), *(c['_replacement_data'] for c in caches)):
+        for base,_,files in os.walk(m['path']):
+            inc_files.update([os.path.join(base, f) for f in files if os.path.splitext(f)[1] == '.h'])
+    yield from ('#include "../../../'+f+'"' for f in inc_files)
+
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'

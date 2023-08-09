@@ -114,7 +114,7 @@ def make_part(src_dirs, dest_dir, build_id):
     dir_varnames, obj_varnames = yield from yield_from_star(make_subpart, counted_arg_list, n=2)
     return dir_varnames, obj_varnames
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({'Build ID': build_id, 'Executable': executable, 'Source Directories': source_dirs, 'Module Names': list(module_info.keys())})
     yield ''
@@ -123,7 +123,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
 
     ragged_dir_varnames, ragged_obj_varnames = yield from yield_from_star(make_part, (
         (source_dirs, os.path.join(objdir, 'obj'), build_id),
-        *(((mod_info['fname'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
+        *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
     ), n=2)
 
     # Flatten varnames
@@ -133,13 +133,18 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
     exec_fname = sanitize(os.path.abspath(executable))
 
-    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
     for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
         module_options_fname = sanitize(os.path.join(objdir, 'inc', name, 'config.options'))
         yield from dependency(' '.join(map(dereference, var)), module_options_fname)
+    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
 
-    yield from dependency(exec_fname, *map(dereference, obj_varnames))
+    objs = map(dereference, obj_varnames)
+    if omit_main:
+        objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
+
+    yield from dependency(exec_fname, *objs)
     yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
+
     yield from append_variable('executable_name', exec_fname)
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))

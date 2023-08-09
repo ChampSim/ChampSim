@@ -20,19 +20,23 @@
 #include <limits>
 #include <optional>
 
-#include "util/bits.h"
+#include "channel.h"
 
 class CACHE;
 namespace champsim
 {
 class channel;
+template <typename... Ts>
+class cache_builder_module_type_holder
+{
+};
 class cache_builder_conversion_tag
 {
 };
-template <unsigned long long P_FLAG = 0, unsigned long long R_FLAG = 0>
+template <typename P = cache_builder_module_type_holder<>, typename R = cache_builder_module_type_holder<>>
 class cache_builder
 {
-  using self_type = cache_builder<P_FLAG, R_FLAG>;
+  using self_type = cache_builder<P, R>;
 
   std::string m_name{};
   double m_freq_scale{1};
@@ -53,17 +57,17 @@ class cache_builder
   bool m_wq_full_addr{};
   bool m_va_pref{};
 
-  unsigned m_pref_act_mask{};
+  std::vector<access_type> m_pref_act_mask{access_type::LOAD, access_type::PREFETCH};
   std::vector<champsim::channel*> m_uls{};
   champsim::channel* m_ll{};
   champsim::channel* m_lt{nullptr};
 
   friend class ::CACHE;
 
-  template <unsigned long long OTHER_P, unsigned long long OTHER_R>
+  template <typename OTHER_P, typename OTHER_R>
   friend class cache_builder;
 
-  template <unsigned long long OTHER_P, unsigned long long OTHER_R>
+  template <typename OTHER_P, typename OTHER_R>
   cache_builder(cache_builder_conversion_tag /*tag*/, const cache_builder<OTHER_P, OTHER_R>& other)
       : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_sets_factor(other.m_sets_factor), m_ways(other.m_ways),
         m_pq_size(other.m_pq_size), m_mshr_size(other.m_mshr_size), m_mshr_factor(other.m_mshr_factor), m_hit_lat(other.m_hit_lat),
@@ -102,201 +106,201 @@ public:
   self_type& upper_levels(std::vector<champsim::channel*>&& uls_);
   self_type& lower_level(champsim::channel* ll_);
   self_type& lower_translate(champsim::channel* lt_);
-  template <unsigned long long P>
-  cache_builder<P, R_FLAG> prefetcher();
-  template <unsigned long long R>
-  cache_builder<P_FLAG, R> replacement();
+  template <typename... Ps>
+  cache_builder<cache_builder_module_type_holder<Ps...>, R> prefetcher();
+  template <typename... Rs>
+  cache_builder<P, cache_builder_module_type_holder<Rs...>> replacement();
 };
 } // namespace champsim
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::name(std::string name_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::name(std::string name_) -> self_type&
 {
   m_name = name_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::frequency(double freq_scale_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::frequency(double freq_scale_) -> self_type&
 {
   m_freq_scale = freq_scale_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::sets(uint32_t sets_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::sets(uint32_t sets_) -> self_type&
 {
   m_sets = sets_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::sets_factor(double sets_factor_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::sets_factor(double sets_factor_) -> self_type&
 {
   m_sets_factor = sets_factor_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::ways(uint32_t ways_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::ways(uint32_t ways_) -> self_type&
 {
   m_ways = ways_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::pq_size(uint32_t pq_size_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::pq_size(uint32_t pq_size_) -> self_type&
 {
   m_pq_size = pq_size_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::mshr_size(uint32_t mshr_size_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::mshr_size(uint32_t mshr_size_) -> self_type&
 {
   m_mshr_size = mshr_size_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::mshr_factor(double mshr_factor_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::mshr_factor(double mshr_factor_) -> self_type&
 {
   m_mshr_factor = mshr_factor_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::latency(uint64_t lat_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::latency(uint64_t lat_) -> self_type&
 {
   m_latency = lat_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::hit_latency(uint64_t hit_lat_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::hit_latency(uint64_t hit_lat_) -> self_type&
 {
   m_hit_lat = hit_lat_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::fill_latency(uint64_t fill_lat_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::fill_latency(uint64_t fill_lat_) -> self_type&
 {
   m_fill_lat = fill_lat_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::tag_bandwidth(uint32_t max_read_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::tag_bandwidth(uint32_t max_read_) -> self_type&
 {
   m_max_tag = max_read_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::fill_bandwidth(uint32_t max_write_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::fill_bandwidth(uint32_t max_write_) -> self_type&
 {
   m_max_fill = max_write_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::bandwidth_factor(double bandwidth_factor_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::bandwidth_factor(double bandwidth_factor_) -> self_type&
 {
   m_bandwidth_factor = bandwidth_factor_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::offset_bits(unsigned offset_bits_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::offset_bits(unsigned offset_bits_) -> self_type&
 {
   m_offset_bits = offset_bits_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::set_prefetch_as_load() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::set_prefetch_as_load() -> self_type&
 {
   m_pref_load = true;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::reset_prefetch_as_load() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::reset_prefetch_as_load() -> self_type&
 {
   m_pref_load = false;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::set_wq_checks_full_addr() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::set_wq_checks_full_addr() -> self_type&
 {
   m_wq_full_addr = true;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::reset_wq_checks_full_addr() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::reset_wq_checks_full_addr() -> self_type&
 {
   m_wq_full_addr = false;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::set_virtual_prefetch() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::set_virtual_prefetch() -> self_type&
 {
   m_va_pref = true;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::reset_virtual_prefetch() -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::reset_virtual_prefetch() -> self_type&
 {
   m_va_pref = false;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
+template <typename P, typename R>
 template <typename... Elems>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::prefetch_activate(Elems... pref_act_elems) -> self_type&
+auto champsim::cache_builder<P, R>::prefetch_activate(Elems... pref_act_elems) -> self_type&
 {
-  m_pref_act_mask = ((1U << champsim::to_underlying(pref_act_elems)) | ... | 0);
+  m_pref_act_mask = {pref_act_elems...};
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::upper_levels(std::vector<champsim::channel*>&& uls_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::upper_levels(std::vector<champsim::channel*>&& uls_) -> self_type&
 {
   m_uls = std::move(uls_);
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::lower_level(champsim::channel* ll_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::lower_level(champsim::channel* ll_) -> self_type&
 {
   m_ll = ll_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-auto champsim::cache_builder<P_FLAG, R_FLAG>::lower_translate(champsim::channel* lt_) -> self_type&
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::lower_translate(champsim::channel* lt_) -> self_type&
 {
   m_lt = lt_;
   return *this;
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-template <unsigned long long P>
-champsim::cache_builder<P, R_FLAG> champsim::cache_builder<P_FLAG, R_FLAG>::prefetcher()
+template <typename P, typename R>
+template <typename... Ps>
+auto champsim::cache_builder<P, R>::prefetcher() -> champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, R>
 {
-  return champsim::cache_builder<P, R_FLAG>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, R>{cache_builder_conversion_tag{}, *this};
 }
 
-template <unsigned long long P_FLAG, unsigned long long R_FLAG>
-template <unsigned long long R>
-champsim::cache_builder<P_FLAG, R> champsim::cache_builder<P_FLAG, R_FLAG>::replacement()
+template <typename P, typename R>
+template <typename... Rs>
+auto champsim::cache_builder<P, R>::replacement() -> champsim::cache_builder<P, champsim::cache_builder_module_type_holder<Rs...>>
 {
-  return champsim::cache_builder<P_FLAG, R>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<P, champsim::cache_builder_module_type_holder<Rs...>>{cache_builder_conversion_tag{}, *this};
 }
 
 #endif
