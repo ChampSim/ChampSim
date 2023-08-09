@@ -5,12 +5,10 @@
 #include <bitset>
 #include <cstdint>
 
+#include "champsim_constants.h"
 #include "modules.h"
 
-#include "champsim_constants.h"
-
-struct va_ampm_lite : champsim::modules::prefetcher
-{
+struct va_ampm_lite : champsim::modules::prefetcher {
   static constexpr std::size_t REGION_COUNT = 128;
   static constexpr int MAX_DISTANCE = 256;
   static constexpr int PREFETCH_DEGREE = 2;
@@ -40,9 +38,8 @@ struct va_ampm_lite : champsim::modules::prefetcher
   uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in);
   uint32_t prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
 
-  //void prefetcher_cycle_operate() {}
-  //void prefetcher_final_stats() {}
+  // void prefetcher_cycle_operate() {}
+  // void prefetcher_final_stats() {}
 };
 
 #endif
-

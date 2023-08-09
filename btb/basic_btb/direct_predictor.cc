@@ -2,10 +2,7 @@
 
 #include "instruction.h"
 
-auto direct_predictor::check_hit(uint64_t ip) -> std::optional<btb_entry_t>
-{
-  return BTB.check_hit({ip, 0, branch_info::ALWAYS_TAKEN});
-}
+auto direct_predictor::check_hit(uint64_t ip) -> std::optional<btb_entry_t> { return BTB.check_hit({ip, 0, branch_info::ALWAYS_TAKEN}); }
 
 void direct_predictor::update(uint64_t ip, uint64_t branch_target, uint8_t branch_type)
 {
@@ -29,4 +26,3 @@ void direct_predictor::update(uint64_t ip, uint64_t branch_target, uint8_t branc
     BTB.fill(opt_entry.value_or(btb_entry_t{ip, branch_target, type}));
   }
 }
-

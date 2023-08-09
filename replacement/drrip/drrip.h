@@ -8,8 +8,7 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct drrip : champsim::modules::replacement
-{
+struct drrip : champsim::modules::replacement {
   static constexpr unsigned maxRRPV = 3;
   static constexpr std::size_t NUM_POLICY = 2;
   static constexpr std::size_t SDM_SIZE = 32;
@@ -26,13 +25,13 @@ struct drrip : champsim::modules::replacement
 
   drrip(CACHE* cache);
 
-  //void initialize_replacement()
+  // void initialize_replacement()
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type);
   void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                     uint8_t hit);
+                                uint8_t hit);
 
   // use this function to print out your own stats at the end of simulation
-  //void replacement_final_stats() {}
+  // void replacement_final_stats() {}
 
   void update_bip(long set, long way);
   void update_srrip(long set, long way);

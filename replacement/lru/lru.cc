@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cassert>
 
-lru::lru(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), last_used_cycles(static_cast<std::size_t>(NUM_SET*NUM_WAY), 0) {}
+lru::lru(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), last_used_cycles(static_cast<std::size_t>(NUM_SET * NUM_WAY), 0)
+{
+}
 
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type)
 {
@@ -17,10 +19,10 @@ long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, cons
   return std::distance(begin, victim);
 }
 
-void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type, uint8_t hit)
+void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
+                                   uint8_t hit)
 {
   // Mark the way as being used on the current cycle
   if (!hit || access_type{type} != access_type::WRITE) // Skip this for writeback hits
     last_used_cycles.at(set * NUM_WAY + way) = cycle++;
 }
-

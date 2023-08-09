@@ -6,10 +6,14 @@
 
 #include "cache.h"
 
-srrip::srrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV) {}
+srrip::srrip(CACHE* cache)
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
+{
+}
 
 // find replacement victim
-long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type)
+long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                        access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);

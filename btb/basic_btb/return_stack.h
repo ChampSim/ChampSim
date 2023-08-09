@@ -6,8 +6,7 @@
 #include <cstdint>
 #include <deque>
 
-struct return_stack
-{
+struct return_stack {
   static constexpr std::size_t max_size = 64;
   static constexpr std::size_t num_call_size_trackers = 1024;
 
@@ -19,10 +18,7 @@ struct return_stack
    */
   std::array<uint64_t, num_call_size_trackers> call_size_trackers;
 
-  return_stack()
-  {
-    std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4);
-  }
+  return_stack() { std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4); }
 
   std::pair<uint64_t, bool> prediction(uint64_t ip);
   void push(uint64_t ip);

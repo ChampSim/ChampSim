@@ -8,8 +8,7 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct perceptron : champsim::modules::branch_predictor
-{
+struct perceptron : champsim::modules::branch_predictor {
   template <std::size_t HISTLEN, std::size_t BITS>
   class internal_perceptron
   {
@@ -18,7 +17,7 @@ struct perceptron : champsim::modules::branch_predictor
     counter_type bias{0};
     std::array<counter_type, HISTLEN> weights = {};
 
-    public:
+  public:
     typename counter_type::value_type predict(std::bitset<HISTLEN> history);
 
     void update(bool result, std::bitset<HISTLEN> history);
@@ -40,11 +39,11 @@ struct perceptron : champsim::modules::branch_predictor
     std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
   };
 
-  std::array<internal_perceptron<PERCEPTRON_HISTORY, PERCEPTRON_BITS>, NUM_PERCEPTRONS> perceptrons;             // table of perceptrons
-  std::deque<perceptron_state> perceptron_state_buf;   // state for updating perceptron predictor
-  std::bitset<PERCEPTRON_HISTORY> spec_global_history; // speculative global history - updated by predictor
-  std::bitset<PERCEPTRON_HISTORY> global_history;      // real global history - updated when the predictor is
-                                                       // updated
+  std::array<internal_perceptron<PERCEPTRON_HISTORY, PERCEPTRON_BITS>, NUM_PERCEPTRONS> perceptrons; // table of perceptrons
+  std::deque<perceptron_state> perceptron_state_buf;                                                 // state for updating perceptron predictor
+  std::bitset<PERCEPTRON_HISTORY> spec_global_history;                                               // speculative global history - updated by predictor
+  std::bitset<PERCEPTRON_HISTORY> global_history;                                                    // real global history - updated when the predictor is
+                                                                                                     // updated
 
   using branch_predictor::branch_predictor;
 

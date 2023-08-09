@@ -1,14 +1,12 @@
 #ifndef BTB_BASIC_BTB_H
 #define BTB_BASIC_BTB_H
 
-#include "return_stack.h"
-#include "indirect_predictor.h"
 #include "direct_predictor.h"
-
+#include "indirect_predictor.h"
 #include "modules.h"
+#include "return_stack.h"
 
-struct basic_btb : champsim::modules::btb
-{
+struct basic_btb : champsim::modules::btb {
   return_stack ras{};
   indirect_predictor indirect{};
   direct_predictor direct{};

@@ -17,7 +17,8 @@
 #ifndef UTIL_TO_UNDERLYING_H
 #define UTIL_TO_UNDERLYING_H
 
-namespace champsim {
+namespace champsim
+{
 /*
  * A forward-port of C++23's function of the same name.
  * This avoids static_cast'ing an enumeration to an integer type other than its underlying type,
@@ -28,6 +29,6 @@ constexpr std::underlying_type_t<E> to_underlying(E e) noexcept
 {
   return static_cast<std::underlying_type_t<E>>(e);
 }
-}
+} // namespace champsim
 
 #endif

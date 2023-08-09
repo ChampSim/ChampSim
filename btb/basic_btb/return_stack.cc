@@ -32,4 +32,3 @@ void return_stack::calibrate_call_size(uint64_t branch_target)
     }
   }
 }
-

@@ -7,11 +7,10 @@
  */
 
 #include "basic_btb.h"
+
 #include "instruction.h"
 
-void basic_btb::initialize_btb()
-{
-}
+void basic_btb::initialize_btb() {}
 
 std::pair<uint64_t, bool> basic_btb::btb_prediction(uint64_t ip)
 {

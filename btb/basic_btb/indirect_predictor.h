@@ -8,8 +8,7 @@
 
 #include "msl/bits.h"
 
-struct indirect_predictor
-{
+struct indirect_predictor {
   static constexpr std::size_t size = 4096;
   std::array<uint64_t, size> predictor = {};
   std::bitset<champsim::msl::lg2(size)> conditional_history = {};

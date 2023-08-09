@@ -4,7 +4,9 @@
 #include <cassert>
 
 // initialize replacement state
-ship::ship(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * NUM_WAY), rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
+ship::ship(CACHE* cache)
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * NUM_WAY),
+      rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   // randomly selected sampler sets
   std::size_t rand_seed = 1103515245 + 12345;
@@ -43,7 +45,7 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 
 // called on every cache hit and cache fill
 void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                     uint8_t hit)
+                                    uint8_t hit)
 {
   // handle writeback access
   if (access_type{type} == access_type::WRITE) {
