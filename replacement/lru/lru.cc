@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 
+lru::lru(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), last_used_cycles(static_cast<std::size_t>(NUM_SET*NUM_WAY), 0) {}
+
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type)
 {
   auto begin = std::next(std::begin(last_used_cycles), set * NUM_WAY);
