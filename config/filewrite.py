@@ -85,9 +85,12 @@ def generate_module_information(containing_dir, module_info):
 
     yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), (*cxx_generated_warning(), *core_declarations)
     yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
-    yield os.path.join(containing_dir, 'module_def.inc'), (*cxx_generated_warning(), '#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{')
-    yield os.path.join(containing_dir, 'module_def.inc'), module_definitions
-    yield os.path.join(containing_dir, 'module_def.inc'), ('}','#endif')
+    yield os.path.join(containing_dir, 'module_def.inc'), (
+            *cxx_generated_warning(),
+            '#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{',
+            *module_definitions,
+            '}','#endif'
+        )
 
     joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
     for k,v in joined_info_items:
