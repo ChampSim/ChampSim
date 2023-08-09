@@ -30,9 +30,9 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "deadlock.h"
+#include "instruction.h"
 #include "ptw_builder.h" // for ptw_builder
 #include "util/bits.h"   // for bitmask, lg2, splice_bits
-#include "instruction.h"
 #include "util/span.h"
 #include "vmem.h"
 

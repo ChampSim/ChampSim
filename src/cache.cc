@@ -63,9 +63,13 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
 
   if constexpr (champsim::debug_print) {
     if (successor.type == access_type::PREFETCH) {
-      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, successor.address, access_type_names.at(champsim::to_underlying(successor.type)), predecessor.address, access_type_names.at(champsim::to_underlying(successor.type)));
+      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, successor.address,
+                 access_type_names.at(champsim::to_underlying(successor.type)), predecessor.address,
+                 access_type_names.at(champsim::to_underlying(successor.type)));
     } else {
-      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, predecessor.address, access_type_names.at(champsim::to_underlying(predecessor.type)), successor.address, access_type_names.at(champsim::to_underlying(successor.type)));
+      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, predecessor.address,
+                 access_type_names.at(champsim::to_underlying(predecessor.type)), successor.address,
+                 access_type_names.at(champsim::to_underlying(successor.type)));
     }
   }
 
@@ -336,8 +340,9 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {:#x} v_address: {:#x} type: {} response_requested: {} event: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return), retval.event_cycle);
+      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {:#x} v_address: {:#x} type: {} response_requested: {} event: {}\n", retval.instr_id,
+                 retval.address, retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return),
+                 retval.event_cycle);
     }
 
     return retval;
@@ -766,7 +771,7 @@ void CACHE::print_deadlock()
   std::string_view mshr_write{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} ready: {}"};
   auto mshr_pack = [cycle = current_cycle](const auto& entry) {
     return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
-      entry.data_promise.is_ready_at(cycle)};
+                      entry.data_promise.is_ready_at(cycle)};
   };
 
   std::string_view tag_check_write{"instr_id: {} address: {:#x} v_addr: {:#x} is_translated: {} translate_issued: {} event_cycle: {}"};

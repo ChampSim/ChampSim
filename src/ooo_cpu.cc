@@ -206,7 +206,7 @@ long O3_CPU::check_dib()
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
   auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
-  std::for_each(window_begin, window_end, [this](auto& ifetch_entry){ this->do_check_dib(ifetch_entry); });
+  std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
   return std::distance(window_begin, window_end);
 }
 
@@ -650,10 +650,12 @@ void O3_CPU::print_deadlock()
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_cycle);
 
   auto instr_pack = [](const auto& entry) {
-    return std::tuple{entry.instr_id, entry.fetch_issued, entry.fetch_completed, entry.scheduled, entry.executed, entry.completed, +entry.num_reg_dependent,
-      entry.num_mem_ops() - entry.completed_mem_ops, entry.event_cycle};
+    return std::tuple{entry.instr_id,   entry.fetch_issued, entry.fetch_completed,    entry.scheduled,
+                      entry.executed,   entry.completed,    +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops,
+                      entry.event_cycle};
   };
-  std::string_view instr_fmt{"instr_id: {} fetch_issued: {} fetch_completed: {} scheduled: {} executed: {} completed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
+  std::string_view instr_fmt{
+      "instr_id: {} fetch_issued: {} fetch_completed: {} scheduled: {} executed: {} completed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
   champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
@@ -672,7 +674,7 @@ void O3_CPU::print_deadlock()
   auto sq_pack = [](const auto& entry) {
     std::vector<uint64_t> depend_ids;
     std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids),
-        [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
+                   [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
     return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle, depend_ids};
   };
   std::string_view sq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
