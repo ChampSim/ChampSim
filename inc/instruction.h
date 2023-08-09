@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <string_view>
 #include <vector>
 
 #include "champsim.h"
@@ -30,15 +31,19 @@
 
 // branch types
 enum branch_type {
-  NOT_BRANCH = 0,
-  BRANCH_DIRECT_JUMP = 1,
-  BRANCH_INDIRECT = 2,
-  BRANCH_CONDITIONAL = 3,
-  BRANCH_DIRECT_CALL = 4,
-  BRANCH_INDIRECT_CALL = 5,
-  BRANCH_RETURN = 6,
-  BRANCH_OTHER = 7
+  BRANCH_DIRECT_JUMP = 0,
+  BRANCH_INDIRECT,
+  BRANCH_CONDITIONAL,
+  BRANCH_DIRECT_CALL,
+  BRANCH_INDIRECT_CALL,
+  BRANCH_RETURN,
+  BRANCH_OTHER,
+  NOT_BRANCH
 };
+
+using namespace std::literals::string_view_literals;
+inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
+                                              "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
 
 struct ooo_model_instr {
   uint64_t instr_id = 0;
@@ -52,7 +57,7 @@ struct ooo_model_instr {
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
-  uint8_t branch_type = NOT_BRANCH;
+  branch_type branch{NOT_BRANCH};
   champsim::address branch_target{};
 
   bool dib_checked = false;
@@ -102,37 +107,37 @@ private:
       // direct jump
       is_branch = true;
       branch_taken = true;
-      branch_type = BRANCH_DIRECT_JUMP;
+      branch = BRANCH_DIRECT_JUMP;
     } else if (!reads_sp && !reads_flags && writes_ip && reads_other) {
       // indirect branch
       is_branch = true;
       branch_taken = true;
-      branch_type = BRANCH_INDIRECT;
+      branch = BRANCH_INDIRECT;
     } else if (!reads_sp && reads_ip && !writes_sp && writes_ip && reads_flags && !reads_other) {
       // conditional branch
       is_branch = true;
       branch_taken = instr.branch_taken; // don't change this
-      branch_type = BRANCH_CONDITIONAL;
+      branch = BRANCH_CONDITIONAL;
     } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && !reads_other) {
       // direct call
       is_branch = true;
       branch_taken = true;
-      branch_type = BRANCH_DIRECT_CALL;
+      branch = BRANCH_DIRECT_CALL;
     } else if (reads_sp && reads_ip && writes_sp && writes_ip && !reads_flags && reads_other) {
       // indirect call
       is_branch = true;
       branch_taken = true;
-      branch_type = BRANCH_INDIRECT_CALL;
+      branch = BRANCH_INDIRECT_CALL;
     } else if (reads_sp && !reads_ip && writes_sp && writes_ip) {
       // return
       is_branch = true;
       branch_taken = true;
-      branch_type = BRANCH_RETURN;
+      branch = BRANCH_RETURN;
     } else if (writes_ip) {
       // some other branch type that doesn't fit the above categories
       is_branch = true;
       branch_taken = instr.branch_taken; // don't change this
-      branch_type = BRANCH_OTHER;
+      branch = BRANCH_OTHER;
     } else {
       branch_taken = false;
     }

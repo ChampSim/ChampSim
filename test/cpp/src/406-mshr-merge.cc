@@ -31,7 +31,9 @@ struct address_collector : champsim::modules::prefetcher
 SCENARIO("A cache merges two requests in the MSHR") {
   GIVEN("An empty cache") {
     constexpr uint64_t hit_latency = 4;
-    release_MRC mock_ll;
+    constexpr uint64_t fill_latency = 10;
+    constexpr uint64_t miss_latency = 2;
+    do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -39,6 +41,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
       .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
+      .fill_latency(fill_latency)
       .prefetcher<address_collector>()
     };
 
@@ -67,7 +70,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
       auto test_a_result = mock_ul_seed.issue(test_a);
 
-      for (uint64_t i = 0; i < 100; ++i)
+      for (uint64_t i = 0; i < hit_latency+2; ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -88,13 +91,7 @@ SCENARIO("A cache merges two requests in the MSHR") {
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < 10; ++i)
-          for (auto elem : elements)
-            elem->_operate();
-
-        mock_ll.release(test_a.address);
-
-        for (uint64_t i = 0; i < 10; ++i)
+        for (uint64_t i = 0; i < 100; ++i)
           for (auto elem : elements)
             elem->_operate();
 
@@ -110,9 +107,10 @@ SCENARIO("A cache merges two requests in the MSHR") {
           REQUIRE(mock_ll.packet_count() == 1);
         }
 
-        THEN("The upper level for the test packet received its return") {
+        THEN("The upper level for the test packet received its return without delay") {
           REQUIRE(std::size(mock_ul_test.packets) == 1);
-          REQUIRE(mock_ul_test.packets.front().return_time != 0);
+          REQUIRE(std::size(mock_ul_seed.packets) == 1);
+          REQUIRE(mock_ul_test.packets.front().return_time == mock_ul_seed.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
         }
       }
     }

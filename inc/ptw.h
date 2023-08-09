@@ -19,6 +19,8 @@
 
 #include <array>
 #include <deque>
+#include <limits>   // for numeric_limits
+#include <optional> // for optional
 #include <string>
 
 #include "address.h"
@@ -51,7 +53,7 @@ class PageTableWalker : public champsim::operable
     champsim::address v_address{};
     champsim::address data{};
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
@@ -90,7 +92,7 @@ public:
 
   explicit PageTableWalker(champsim::ptw_builder builder);
 
-  void operate() final;
+  long operate() final;
 
   void begin_phase() final;
   void print_deadlock() final;

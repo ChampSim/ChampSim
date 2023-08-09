@@ -22,9 +22,10 @@
 
 namespace champsim::msl
 {
-constexpr unsigned lg2(uint64_t n)
+template <typename T>
+constexpr T lg2(T n)
 {
-  unsigned result = 0;
+  T result = 0;
   while (n >>= 1) {
     ++result;
   }
@@ -39,8 +40,15 @@ constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
   return ((1ULL << (begin - end)) - 1) << end;
 }
 
-constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits_upper, std::size_t bits_lower) { return (upper & ~bitmask(bits_upper, bits_lower)) | (lower & bitmask(bits_upper, bits_lower)); }
-constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits) { return splice_bits(upper, lower, bits, 0); }
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower) {
+  return (upper & ~bitmask(bits_upper, bits_lower)) | (lower & bitmask(bits_upper, bits_lower));
+}
+
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits) {
+  return splice_bits(upper, lower, bits, 0);
+}
 } // namespace champsim::msl
 
 #endif

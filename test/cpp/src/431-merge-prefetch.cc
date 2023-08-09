@@ -63,18 +63,18 @@ SCENARIO("A prefetch that hits an MSHR is dropped") {
     merge_testbed testbed{type};
 
     THEN("An MSHR is created") {
-      REQUIRE(std::size(testbed.uut.MSHR) == 1);
+      REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
       CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
+      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A prefetch is issued") {
       testbed.issue_type(access_type::PREFETCH);
 
       THEN("The " + std::string{str} + " is in the MSHR") {
-        REQUIRE(std::size(testbed.uut.MSHR) == 1);
+        REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
         CHECK(testbed.uut.MSHR.front().instr_id == 0);
-        CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
+        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
       }
     }
   }
@@ -87,9 +87,9 @@ SCENARIO("A prefetch MSHR that gets hit is promoted") {
     merge_testbed testbed{access_type::PREFETCH};
 
     THEN("An MSHR is created") {
-      REQUIRE(std::size(testbed.uut.MSHR) == 1);
+      REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
       CHECK(testbed.uut.MSHR.front().instr_id == 0);
-      CHECK(std::size(testbed.uut.MSHR.front().to_return) == 1);
+      CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(1));
     }
 
     WHEN("A " + std::string{str} + " is issued") {
@@ -98,10 +98,10 @@ SCENARIO("A prefetch MSHR that gets hit is promoted") {
       testbed.issue_type(type);
 
       THEN("The " + std::string{str} + " is in the MSHR") {
-        REQUIRE(std::size(testbed.uut.MSHR) == 1);
+        REQUIRE_THAT(testbed.uut.MSHR, Catch::Matchers::SizeIs(1));
         CHECK(testbed.uut.MSHR.front().cycle_enqueued > old_cycle_enqueued);
         //CHECK(testbed.uut.MSHR.front().instr_id == 1);
-        CHECK(std::size(testbed.uut.MSHR.front().to_return) == 2);
+        CHECK_THAT(testbed.uut.MSHR.front().to_return, Catch::Matchers::SizeIs(2));
       }
     }
   }

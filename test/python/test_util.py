@@ -37,10 +37,18 @@ class SubdictTests(unittest.TestCase):
         self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b','d')), {'a':1, 'b':2})
 
 class CombineNamedTests(unittest.TestCase):
+    def test_empty(self):
+        self.assertEqual(len(config.util.combine_named()), 0)
+
     def test_combine_named_flat(self):
         a = [{'name': 'a', 'k': 1}]
         b = [{'name': 'a', 'k': 2}, {'name': 'b', 'k': 2}]
         self.assertEqual(config.util.combine_named(a,b), {'a': {'name': 'a', 'k': 1}, 'b': {'name': 'b', 'k': 2}})
+
+    def test_values_without_names_are_skipped(self):
+        a = [{'k': 1}]
+        b = [{'name': 'a', 'k': 2}, {'name': 'b', 'k': 2}]
+        self.assertEqual(config.util.combine_named(a,b), {'a': {'name': 'a', 'k': 2}, 'b': {'name': 'b', 'k': 2}})
 
 class IterSystemTests(unittest.TestCase):
     def test_iter_system_all(self):

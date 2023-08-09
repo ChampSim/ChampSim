@@ -19,6 +19,8 @@
 
 #include <algorithm>
 
+#include "span.h"
+
 namespace champsim
 {
 template <typename InputIt, typename OutputIt, typename F>
@@ -33,6 +35,16 @@ auto extract_if(InputIt begin, InputIt end, OutputIt d_begin, F func)
     }
   }
   return std::pair{begin, d_begin};
+}
+
+template <typename R, typename Output, typename F, typename G>
+long int transform_while_n(R& queue, Output out, long int sz, F&& test_func, G&& transform_func)
+{
+  auto [begin, end] = champsim::get_span_p(std::begin(queue), std::end(queue), sz, std::forward<F>(test_func));
+  auto retval = std::distance(begin, end);
+  std::transform(begin, end, out, std::forward<G>(transform_func));
+  queue.erase(begin, end);
+  return retval;
 }
 } // namespace champsim
 

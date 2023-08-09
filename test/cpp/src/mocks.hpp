@@ -26,7 +26,7 @@ class do_nothing_MRC : public champsim::operable
     do_nothing_MRC(uint64_t lat) : champsim::operable(1), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
-    void operate() override {
+    long operate() override {
       auto add_pkt = [&](auto pkt) {
         packet to_insert{pkt};
         to_insert.event_cycle = current_cycle + latency;
@@ -53,6 +53,8 @@ class do_nothing_MRC : public champsim::operable
           queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
+
+      return 1; // never deadlock
     }
 
     std::size_t packet_count() const { return std::size(addresses); }
@@ -77,7 +79,7 @@ class filter_MRC : public champsim::operable
     filter_MRC(champsim::address ret_addr_, uint64_t lat) : champsim::operable(1), ret_addr(ret_addr_), latency(lat) {}
     filter_MRC(champsim::address ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
-    void operate() override {
+    long operate() override {
       auto add_pkt = [&](auto pkt) {
         if (pkt.address == ret_addr) {
           packet to_insert{pkt};
@@ -103,6 +105,8 @@ class filter_MRC : public champsim::operable
           queues.returned.push_back(champsim::channel::response_type{pkt});
       }
       ready_packets.clear();
+
+      return 1; // never deadlock
     }
 
     std::size_t packet_count() const { return mpacket_count; }
@@ -121,7 +125,7 @@ class release_MRC : public champsim::operable
     champsim::channel queues{};
     release_MRC() : champsim::operable(1) {}
 
-    void operate() override {
+    long operate() override {
       auto add_pkt = [&](auto pkt) {
         packets.push_back(pkt);
         ++mpacket_count;
@@ -135,6 +139,8 @@ class release_MRC : public champsim::operable
       queues.RQ.clear();
       queues.WQ.clear();
       queues.PQ.clear();
+
+      return 1; // never deadlock
     }
 
     std::size_t packet_count() const { return mpacket_count; }
@@ -168,9 +174,11 @@ struct counting_MRP
 
   std::size_t count = 0;
 
-  void operate() {
+  long operate() {
     count += std::size(returned);
     returned.clear();
+
+    return 1; // never deadlock
   }
 };
 
@@ -195,7 +203,7 @@ struct queue_issue_MRP : public champsim::operable
   queue_issue_MRP() : queue_issue_MRP([](auto x, auto y){ return x.address == y.address; }) {}
   explicit queue_issue_MRP(func_type finder) : champsim::operable(1), top_finder(finder) {}
 
-  void operate() override {
+  long operate() override {
     auto finder = [&](response_type to_find, result_data candidate) { return top_finder(candidate.pkt, to_find); };
 
     for (auto pkt : queues.returned) {
@@ -205,6 +213,8 @@ struct queue_issue_MRP : public champsim::operable
       std::for_each(it, std::end(packets), [cycle=current_cycle](auto& x){ return x.return_time = cycle; });
     }
     queues.returned.clear();
+
+    return 1; // never deadlock
   }
 };
 

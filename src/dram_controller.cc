@@ -22,6 +22,7 @@
 #include <fmt/core.h>
 
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h"
 #include "util/span.h"
@@ -41,8 +42,10 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 {
 }
 
-void MEMORY_CONTROLLER::operate()
+long MEMORY_CONTROLLER::operate()
 {
+  long progress{0};
+
   initiate_requests();
 
   for (auto& channel : channels) {
@@ -54,11 +57,15 @@ void MEMORY_CONTROLLER::operate()
             ret->push_back(response);
           }
 
+          ++progress;
           entry.reset();
         }
       }
 
       for (auto& entry : channel.WQ) {
+        if (entry.has_value()) {
+          ++progress;
+        }
         entry.reset();
       }
     }
@@ -80,6 +87,7 @@ void MEMORY_CONTROLLER::operate()
 
       channel.active_request->pkt->reset();
       channel.active_request = std::end(channel.bank_request);
+      ++progress;
     }
 
     // Check queue occupancy
@@ -95,7 +103,7 @@ void MEMORY_CONTROLLER::operate()
         if (it != channel.active_request && it->valid) {
           // Leave rows charged
           if (it->event_cycle < (current_cycle + tCAS)) {
-            it->open_row = UINT32_MAX;
+            it->open_row.reset();
           }
 
           // This bank is ready for another DRAM request
@@ -137,6 +145,8 @@ void MEMORY_CONTROLLER::operate()
         } else {
           ++channel.sim_stats.RQ_ROW_BUFFER_MISS;
         }
+
+        ++progress;
       } else {
         // Bus is congested
         if (channel.active_request != std::end(channel.bank_request)) {
@@ -167,16 +177,21 @@ void MEMORY_CONTROLLER::operate()
       auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
       if (!channel.bank_request.at(op_idx).valid) {
-        bool row_buffer_hit = (channel.bank_request.at(op_idx).open_row == op_row);
+        bool row_buffer_hit = (channel.bank_request.at(op_idx).open_row.has_value() && *(channel.bank_request.at(op_idx).open_row) == op_row);
 
         // this bank is now busy
-        channel.bank_request.at(op_idx) = {true, row_buffer_hit, op_row, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+        channel.bank_request.at(op_idx) = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD),
+                                        iter_next_schedule};
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
+
+        ++progress;
       }
     }
   }
+
+  return progress;
 }
 
 void MEMORY_CONTROLLER::initialize()
@@ -255,7 +270,7 @@ void DRAM_CHANNEL::check_read_collision()
         auto ret_copy = std::move(found->value().to_return);
 
         std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+                       std::back_inserter(found->value().instr_depend_on_me));
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 
@@ -265,7 +280,7 @@ void DRAM_CHANNEL::check_read_collision()
         auto ret_copy = std::move(found->value().to_return);
 
         std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(rq_it->value().instr_depend_on_me), std::end(rq_it->value().instr_depend_on_me),
-                       std::back_inserter(found->value().instr_depend_on_me), ooo_model_instr::program_order);
+                       std::back_inserter(found->value().instr_depend_on_me));
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 
@@ -379,4 +394,26 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(champsim::address address) const
   return ::get_dram_address_slice<uint32_t>(address, lower + champsim::lg2(DRAM_ROWS), lower);
 }
 
-std::size_t MEMORY_CONTROLLER::size() { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+
+// LCOV_EXCL_START Exclude the following function from LCOV
+void MEMORY_CONTROLLER::print_deadlock()
+{
+  int j = 0;
+  for (auto& chan : channels) {
+    fmt::print("DRAM Channel {}\n", j++);
+    chan.print_deadlock();
+  }
+}
+
+void DRAM_CHANNEL::print_deadlock()
+{
+  std::string_view q_writer{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}"};
+  auto q_entry_pack = [](const auto& entry) {
+    return std::tuple{entry->address, entry->v_address};
+  };
+
+  champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);
+  champsim::range_print_deadlock(WQ, "WQ", q_writer, q_entry_pack);
+}
+// LCOV_EXCL_STOP
