@@ -23,6 +23,7 @@
 #include <fmt/core.h>
 
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
@@ -42,8 +43,10 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 {
 }
 
-void MEMORY_CONTROLLER::operate()
+long MEMORY_CONTROLLER::operate()
 {
+  long progress{0};
+
   initiate_requests();
 
   for (auto& channel : channels) {
@@ -55,11 +58,15 @@ void MEMORY_CONTROLLER::operate()
             ret->push_back(response);
           }
 
+          ++progress;
           entry.reset();
         }
       }
 
       for (auto& entry : channel.WQ) {
+        if (entry.has_value()) {
+          ++progress;
+        }
         entry.reset();
       }
     }
@@ -81,6 +88,7 @@ void MEMORY_CONTROLLER::operate()
 
       channel.active_request->pkt->reset();
       channel.active_request = std::end(channel.bank_request);
+      ++progress;
     }
 
     // Check queue occupancy
@@ -138,6 +146,8 @@ void MEMORY_CONTROLLER::operate()
         } else {
           ++channel.sim_stats.RQ_ROW_BUFFER_MISS;
         }
+
+        ++progress;
       } else {
         // Bus is congested
         if (channel.active_request != std::end(channel.bank_request)) {
@@ -176,9 +186,13 @@ void MEMORY_CONTROLLER::operate()
 
         iter_next_schedule->value().scheduled = true;
         iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
+
+        ++progress;
       }
     }
   }
+
+  return progress;
 }
 
 void MEMORY_CONTROLLER::initialize()
@@ -378,3 +392,25 @@ uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address)
 }
 
 std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+
+// LCOV_EXCL_START Exclude the following function from LCOV
+void MEMORY_CONTROLLER::print_deadlock()
+{
+  int j = 0;
+  for (auto& chan : channels) {
+    fmt::print("DRAM Channel {}\n", j++);
+    chan.print_deadlock();
+  }
+}
+
+void DRAM_CHANNEL::print_deadlock()
+{
+  std::string_view q_writer{"instr_id: {} address: {:#x} v_addr: {:#x} type: {} translated: {}"};
+  auto q_entry_pack = [](const auto& entry) {
+    return std::tuple{entry->address, entry->v_address};
+  };
+
+  champsim::range_print_deadlock(RQ, "RQ", q_writer, q_entry_pack);
+  champsim::range_print_deadlock(WQ, "WQ", q_writer, q_entry_pack);
+}
+// LCOV_EXCL_STOP

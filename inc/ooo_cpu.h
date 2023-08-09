@@ -153,24 +153,22 @@ public:
   CACHE* l1i;
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
 
   void initialize_instruction();
-  void check_dib();
-  void translate_fetch();
-  void fetch_instruction();
-  void promote_to_decode();
-  void decode_instruction();
-  void dispatch_instruction();
-  void schedule_instruction();
-  void execute_instruction();
-  void schedule_memory_instruction();
-  void operate_lsq();
-  void complete_inflight_instruction();
-  void handle_memory_return();
-  void retire_rob();
+  long check_dib();
+  long fetch_instruction();
+  long promote_to_decode();
+  long decode_instruction();
+  long dispatch_instruction();
+  long schedule_instruction();
+  long execute_instruction();
+  long operate_lsq();
+  long complete_inflight_instruction();
+  long handle_memory_return();
+  long retire_rob();
 
   bool do_init_instruction(ooo_model_instr& instr);
   bool do_predict_branch(ooo_model_instr& instr);
