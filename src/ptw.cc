@@ -20,6 +20,7 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "deadlock.h"
 #include "instruction.h"
 #include "util/span.h"
 #include "vmem.h"
@@ -62,7 +63,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
     fwd_mshr.to_return = {&ul->returned};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
                walk_offset / PTE_BYTES, walk_init.level);
   }
 
@@ -108,10 +109,12 @@ auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional
   return std::nullopt;
 }
 
-void PageTableWalker::operate()
+long PageTableWalker::operate()
 {
-  for (const auto& x : lower_level->returned)
-    finish_packet(x);
+  long progress{0};
+
+  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
+  progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
   lower_level->returned.clear();
 
   std::vector<mshr_type> next_steps{};
@@ -124,6 +127,7 @@ void PageTableWalker::operate()
       ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
   });
   fill_bw -= std::distance(complete_begin, complete_end);
+  progress += std::distance(complete_begin, complete_end);
   completed.erase(complete_begin, complete_end);
 
   auto [mshr_begin, mshr_end] =
@@ -134,6 +138,7 @@ void PageTableWalker::operate()
       next_steps.push_back(*result);
     return result.has_value();
   });
+  progress += std::distance(mshr_begin, mshr_end);
   finished.erase(mshr_begin, mshr_end);
 
   auto tag_bw = MAX_READ;
@@ -145,10 +150,12 @@ void PageTableWalker::operate()
       return result.has_value();
     });
     tag_bw -= std::distance(rq_begin, rq_end);
+    progress += std::distance(rq_begin, rq_end);
     ul->RQ.erase(rq_begin, rq_end);
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
+  return progress;
 }
 
 void PageTableWalker::finish_packet(const response_type& packet)
@@ -202,15 +209,8 @@ void PageTableWalker::begin_phase()
 // LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
-  if (!std::empty(MSHR)) {
-    fmt::print("{} MSHR Entry\n", NAME);
-    std::size_t j = 0;
-    for (auto entry : MSHR) {
-      fmt::print("[{}_MSHR] {} address: {:#x} v_address: {:#x} translation_level: {} event_cycle: {}\n", NAME, j++, entry.address, entry.v_address,
-                 entry.translation_level, entry.event_cycle);
-    }
-  } else {
-    fmt::print("{} MSHR empty\n", NAME);
-  }
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {} event_cycle: {}", [](const auto& entry) {
+    return std::tuple{entry.address, entry.v_address, entry.translation_level, entry.event_cycle};
+  });
 }
 // LCOV_EXCL_STOP

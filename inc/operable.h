@@ -31,22 +31,24 @@ public:
 
   explicit operable(double scale) : CLOCK_SCALE(scale - 1) {}
 
-  void _operate()
+  long _operate()
   {
     // skip periodically
     if (leap_operation >= 1) {
       leap_operation -= 1;
-      return;
+      return 0;
     }
 
-    operate();
+    auto result = operate();
 
     leap_operation += CLOCK_SCALE;
     ++current_cycle;
+
+    return result;
   }
 
   virtual void initialize() {} // LCOV_EXCL_LINE
-  virtual void operate() = 0;
+  virtual long operate() = 0;
   virtual void begin_phase() {}       // LCOV_EXCL_LINE
   virtual void end_phase(unsigned) {} // LCOV_EXCL_LINE
   virtual void print_deadlock() {}    // LCOV_EXCL_LINE

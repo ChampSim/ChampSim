@@ -180,7 +180,7 @@ public:
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> inflight_writes;
 
-  void operate() override final;
+  long operate() override final;
 
   void initialize() override final;
   void begin_phase() override final;
