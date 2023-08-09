@@ -18,7 +18,7 @@ struct hashed_perceptron : champsim::modules::branch_predictor
   constexpr static std::size_t NGHIST_WORDS = MAXHIST / champsim::msl::lg2(TABLE_SIZE) + 1; // this many 12-bit words will be kept in the global history
   constexpr static int THRESHOLD = 1;
 
-  constexpr static std::array<int, NTABLES> history_lengths = {0, 3, 4, 6, 8, 10, 14, 19, 26, 36, 49, 67, 91, 125, 170, MAXHIST}; // geometric global history lengths
+  constexpr static std::array<unsigned long, NTABLES> history_lengths = {0, 3, 4, 6, 8, 10, 14, 19, 26, 36, 49, 67, 91, 125, 170, MAXHIST}; // geometric global history lengths
 
   std::array<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>, NTABLES> tables = {}; // tables of 8-bit weights
 

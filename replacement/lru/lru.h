@@ -8,7 +8,7 @@
 
 struct lru : champsim::modules::replacement
 {
-  std::size_t NUM_SET, NUM_WAY;
+  long NUM_SET, NUM_WAY;
   std::vector<uint64_t> last_used_cycles;
   uint64_t cycle = 0;
 

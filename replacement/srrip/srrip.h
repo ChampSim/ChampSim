@@ -11,7 +11,7 @@ struct srrip : champsim::modules::replacement
 {
   static constexpr int maxRRPV = 3;
 
-  std::size_t NUM_SET, NUM_WAY;
+  long NUM_SET, NUM_WAY;
   std::vector<int> rrpv_values;
 
   srrip(CACHE* cache);

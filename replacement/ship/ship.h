@@ -27,7 +27,7 @@ struct ship : champsim::modules::replacement
     uint64_t last_used = 0;
   };
 
-  std::size_t NUM_SET, NUM_WAY;
+  long NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
 
   // sampler
