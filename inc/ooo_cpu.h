@@ -73,8 +73,8 @@ struct cpu_stats {
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
 
-  [[nodiscard]] long long instrs() const { return end_instrs - begin_instrs; }
-  [[nodiscard]] uint64_t cycles() const { return end_cycles - begin_cycles; }
+  [[nodiscard]] auto instrs() const { return end_instrs - begin_instrs; }
+  [[nodiscard]] auto cycles() const { return end_cycles - begin_cycles; }
 };
 
 struct LSQ_ENTRY {
@@ -155,24 +155,22 @@ public:
   CACHE* l1i;
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
 
   void initialize_instruction();
-  void check_dib();
-  void translate_fetch();
-  void fetch_instruction();
-  void promote_to_decode();
-  void decode_instruction();
-  void dispatch_instruction();
-  void schedule_instruction();
-  void execute_instruction();
-  void schedule_memory_instruction();
-  void operate_lsq();
-  void complete_inflight_instruction();
-  void handle_memory_return();
-  void retire_rob();
+  long check_dib();
+  long fetch_instruction();
+  long promote_to_decode();
+  long decode_instruction();
+  long dispatch_instruction();
+  long schedule_instruction();
+  long execute_instruction();
+  long operate_lsq();
+  long complete_inflight_instruction();
+  long handle_memory_return();
+  long retire_rob();
 
   bool do_init_instruction(ooo_model_instr& instr);
   bool do_predict_branch(ooo_model_instr& instr);
@@ -189,10 +187,10 @@ public:
   bool do_complete_store(const LSQ_ENTRY& sq_entry);
   bool execute_load(const LSQ_ENTRY& lq_entry);
 
-  [[nodiscard]] long long roi_instr() const { return roi_stats.instrs(); }
-  [[nodiscard]] uint64_t roi_cycle() const { return roi_stats.cycles(); }
-  [[nodiscard]] long long sim_instr() const { return num_retired - begin_phase_instr; }
-  [[nodiscard]] uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
+  [[nodiscard]] auto roi_instr() const { return roi_stats.instrs(); }
+  [[nodiscard]] auto roi_cycle() const { return roi_stats.cycles(); }
+  [[nodiscard]] auto sim_instr() const { return num_retired - begin_phase_instr; }
+  [[nodiscard]] auto sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
   void print_deadlock() final;
 

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <tuple>
 
 #include "modules.h"
 #include "msl/bits.h"

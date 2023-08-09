@@ -18,11 +18,10 @@
 #define DRAM_H
 
 #include <array>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint32_t, uint8_t
-#include <deque>      // for deque
-#include <functional> // for reference_wrapper
-#include <iterator>   // for end
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint64_t, uint32_t, uint8_t
+#include <deque>    // for deque
+#include <iterator> // for end
 #include <limits>
 #include <optional>
 #include <string>
@@ -56,7 +55,7 @@ struct DRAM_CHANNEL {
     uint64_t data = 0;
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit request_type(const typename champsim::channel::request_type& req);
@@ -69,7 +68,7 @@ struct DRAM_CHANNEL {
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
 
-    std::size_t open_row = std::numeric_limits<uint32_t>::max();
+    std::optional<std::size_t> open_row{};
 
     uint64_t event_cycle = 0;
 
@@ -88,6 +87,7 @@ struct DRAM_CHANNEL {
 
   void check_write_collision();
   void check_read_collision();
+  void print_deadlock();
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -115,11 +115,12 @@ public:
   MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
+  void print_deadlock() final;
 
-  [[nodiscard]] static std::size_t size();
+  [[nodiscard]] std::size_t size() const;
 
   static uint32_t dram_get_channel(uint64_t address);
   static uint32_t dram_get_rank(uint64_t address);

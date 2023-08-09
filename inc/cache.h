@@ -27,9 +27,8 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <iterator>   // for size
-#include <limits>     // for numeric_limits
+#include <iterator> // for size
+#include <limits>   // for numeric_limits
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -43,6 +42,7 @@
 #include "modules.h"
 #include "operable.h"
 #include "util/to_underlying.h" // for to_underlying
+#include "waitable.h"
 
 struct ooo_model_instr;
 
@@ -92,7 +92,7 @@ class CACHE : public champsim::operable
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
@@ -102,11 +102,14 @@ class CACHE : public champsim::operable
   struct mshr_type {
     uint64_t address;
     uint64_t v_address;
-    uint64_t data;
     uint64_t ip;
     uint64_t instr_id;
 
-    uint32_t pf_metadata;
+    struct returned_value {
+      uint64_t data;
+      uint32_t pf_metadata;
+    };
+    champsim::waitable<returned_value> data_promise{};
     uint32_t cpu;
 
     access_type type;
@@ -114,13 +117,13 @@ class CACHE : public champsim::operable
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint64_t cycle_enqueued;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
     mshr_type(const tag_lookup_type& req, uint64_t cycle);
+    static mshr_type merge(mshr_type predecessor, mshr_type successor);
   };
 
   bool try_hit(const tag_lookup_type& handle_pkt);
@@ -130,7 +133,7 @@ class CACHE : public champsim::operable
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
-  void issue_translation();
+  void issue_translation(tag_lookup_type& q_entry);
 
 public:
   using BLOCK = champsim::cache_block;
@@ -148,6 +151,12 @@ private:
 
   template <bool>
   auto initiate_tag_check(champsim::channel* ul = nullptr);
+
+  template <typename T>
+  uint64_t module_address(const T& element) const;
+
+  auto matches_address(uint64_t address) const;
+  std::pair<mshr_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
   std::deque<tag_lookup_type> inflight_tag_check{};
@@ -178,7 +187,7 @@ public:
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> inflight_writes;
 
-  void operate() final;
+  long operate() final;
 
   void initialize() final;
   void begin_phase() final;
