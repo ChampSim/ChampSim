@@ -213,7 +213,7 @@ public:
   template <typename... Bs>
   struct branch_module_model final : branch_module_concept {
     std::tuple<Bs...> intern_;
-    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) {}
+    explicit branch_module_model(O3_CPU* cpu) : intern_(Bs{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Bs) == 0 */ }
 
     void impl_initialize_branch_predictor() final;
     void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
@@ -223,7 +223,7 @@ public:
   template <typename... Ts>
   struct btb_module_model final : btb_module_concept {
     std::tuple<Ts...> intern_;
-    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) {}
+    explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Ts) == 0 */ }
 
     void impl_initialize_btb() final;
     void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
@@ -243,11 +243,6 @@ public:
   [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) const;
   // NOLINTEND(readability-make-member-function-const)
 
-  template <typename... Ts>
-  class builder_module_type_holder
-  {
-  };
-
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
       : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
@@ -265,7 +260,7 @@ public:
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     if constexpr (branch_predictor::has_initialize<decltype(b)>)
       b.initialize_branch_predictor();
@@ -277,7 +272,7 @@ void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     if constexpr (branch_predictor::has_last_branch_result<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
       b.last_branch_result(ip.to<uint64_t>(), target.to<uint64_t>(), taken, branch_type);
@@ -291,7 +286,7 @@ void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::addre
 template <typename... Bs>
 bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& b) {
+  [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     /* Strong addresses, full size */
     if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
@@ -321,7 +316,7 @@ bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address i
 template <typename... Ts>
 void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
 {
-  auto process_one = [&](auto& t) {
+  [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
     if constexpr (btb::has_initialize<decltype(t)>)
       t.initialize_btb();
@@ -333,7 +328,7 @@ void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
 template <typename... Ts>
 void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type)
 {
-  auto process_one = [&](auto& t) {
+  [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
     if constexpr (btb::has_update_btb<decltype(t), champsim::address, champsim::address, bool, uint8_t>)
       t.update_btb(ip, predicted_target, taken, branch_type);

@@ -1,4 +1,5 @@
 #include "ip_stride.h"
+
 #include "cache.h"
 
 uint32_t ip_stride::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
@@ -10,7 +11,7 @@ uint32_t ip_stride::prefetcher_cache_operate(champsim::address addr, champsim::a
 
   // if we found a matching entry
   if (found.has_value()) {
-      stride = champsim::offset(found->last_cl_addr, cl_addr);
+    stride = champsim::offset(found->last_cl_addr, cl_addr);
 
     // Initialize prefetch state unless we somehow saw the same address twice in
     // a row or if this is the first time we've seen this stride

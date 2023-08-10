@@ -26,6 +26,7 @@
 #include "champsim_constants.h"
 #include "core_inst.inc"
 #include "defaults.hpp"
+#include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"

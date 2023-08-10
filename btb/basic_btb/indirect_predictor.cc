@@ -17,4 +17,3 @@ void indirect_predictor::update_direction(bool taken)
   conditional_history <<= 1;
   conditional_history.set(0, taken);
 }
-

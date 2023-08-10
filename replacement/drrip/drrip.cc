@@ -1,9 +1,10 @@
 #include "drrip.h"
+
 #include <algorithm>
 #include <cassert>
 #include <utility>
 
-drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(NUM_SET * NUM_WAY)
+drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
   // randomly selected sampler sets
   std::size_t rand_seed = 1103515245 + 12345;
@@ -32,10 +33,7 @@ void drrip::update_bip(long set, long way)
   }
 }
 
-void drrip::update_srrip(long set, long way)
-{
-  rrpv[set * NUM_WAY + way] = maxRRPV - 1;
-}
+void drrip::update_srrip(long set, long way) { rrpv[set * NUM_WAY + way] = maxRRPV - 1; }
 
 // called on every cache hit and cache fill
 void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type,

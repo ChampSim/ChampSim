@@ -9,12 +9,6 @@
 #include "basic_btb.h"
 #include "instruction.h"
 
-#include "instruction.h"
-
-void basic_btb::initialize_btb()
-{
-}
-
 std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)
 {
   // use BTB for all other branches + direct calls
@@ -49,6 +43,5 @@ void basic_btb::update_btb(champsim::address ip, champsim::address branch_target
   if (branch_type == BRANCH_RETURN)
     ras.calibrate_call_size(branch_target);
 
-  // update btb entry
   direct.update(ip, branch_target, branch_type);
 }

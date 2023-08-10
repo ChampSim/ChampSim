@@ -7,8 +7,7 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct gshare : champsim::modules::branch_predictor
-{
+struct gshare : champsim::modules::branch_predictor {
   static constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
   static constexpr std::size_t COUNTER_BITS = 2;
   static constexpr std::size_t GS_HISTORY_TABLE_SIZE = 16384;

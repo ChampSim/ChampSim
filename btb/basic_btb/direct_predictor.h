@@ -8,8 +8,7 @@
 #include "address.h"
 #include "msl/lru_table.h"
 
-struct direct_predictor
-{
+struct direct_predictor {
   enum class branch_info {
     INDIRECT,
     RETURN,

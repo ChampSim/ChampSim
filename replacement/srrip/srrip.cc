@@ -6,7 +6,10 @@
 
 #include "cache.h"
 
-srrip::srrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv_values(NUM_SET*NUM_WAY, maxRRPV) {}
+srrip::srrip(CACHE* cache)
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
+{
+}
 
 // find replacement victim
 long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type)

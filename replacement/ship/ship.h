@@ -9,8 +9,7 @@
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
-struct ship : champsim::modules::replacement
-{
+struct ship : champsim::modules::replacement {
   static constexpr int maxRRPV = 3;
   static constexpr std::size_t SHCT_SIZE = 16384;
   static constexpr unsigned SHCT_PRIME = 16381;
@@ -28,7 +27,7 @@ struct ship : champsim::modules::replacement
     uint64_t last_used = 0;
   };
 
-  std::size_t NUM_SET, NUM_WAY;
+  long NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
 
   // sampler

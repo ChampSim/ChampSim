@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "cache.h"
 #include "modules.h"
+
+#include "cache.h"
 
 bool champsim::modules::prefetcher::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {

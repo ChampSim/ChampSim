@@ -1,6 +1,5 @@
 #include <catch.hpp>
 
-#include "instruction.h"
 #include "../../../btb/basic_btb/basic_btb.h"
 #include "instruction.h"
 

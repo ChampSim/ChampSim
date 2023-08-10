@@ -5,7 +5,11 @@
 
 uint64_t va_ampm_lite::region_type::region_lru = 0;
 
-void va_ampm_lite::prefetcher_initialize() {}
+template <typename T>
+auto va_ampm_lite::page_and_offset(T addr) -> std::pair<champsim::page_number, block_in_page>
+{
+  return std::pair{champsim::page_number{addr}, block_in_page{addr}};
+}
 
 bool va_ampm_lite::check_cl_access(champsim::block_number v_addr)
 {
@@ -51,7 +55,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim
         if (block_addr != champsim::block_number{pos_step_addr}) {
           champsim::address pf_addr{pos_step_addr};
           if (bool prefetch_success = prefetch_line(pf_addr, (intern_->get_mshr_occupancy_ratio() < 0.5), metadata_in); prefetch_success) {
-            auto [pf_vpn, pf_page_offset] = page_and_offset(pf_addr);
+            auto [pf_vpn, pf_page_offset] = page_and_offset(pos_step_addr);
             auto pf_region = std::find_if(std::begin(regions), std::end(regions), [vpn = pf_vpn](auto x) { return x.vpn == vpn; });
 
             if (pf_region == std::end(regions)) {

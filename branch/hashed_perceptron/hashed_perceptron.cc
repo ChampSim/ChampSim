@@ -51,24 +51,27 @@ sources for you to plagiarize.
 
 bool hashed_perceptron::predict_branch(champsim::address pc)
 {
+  auto get_table_index = [pc, ghist_words=ghist_words](auto hist_len) { // for each table...
+
+    // hash global history bits 0..n-1 into x by XORing the words from the ghist_words array
+    const int most_words = hist_len / champsim::msl::lg2(TABLE_SIZE); // most of the words are 12 bits long
+    const int last_word = hist_len % champsim::msl::lg2(TABLE_SIZE); // the last word is fewer than 12 bits
+
+    // seed in the PC to spread accesses around (like gshare) XOR in the last word
+    auto x = pc.slice_lower<champsim::msl::lg2(TABLE_SIZE)>().to<uint64_t>() ^ (ghist_words[most_words] & champsim::msl::bitmask(last_word));
+
+    // XOR up to the next-to-the-last word
+    x = std::accumulate(std::begin(ghist_words), std::next(std::begin(ghist_words), most_words), x, std::bit_xor<>{});
+
+    return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE)); // stay within the table size
+  };
+
   perceptron_result result;
-  std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(result.indices), [pc, ghist_words=ghist_words](auto hist_len) { // for each table...
-
-      // hash global history bits 0..n-1 into x by XORing the words from the ghist_words array
-      const int most_words = hist_len / champsim::msl::lg2(TABLE_SIZE); // most of the words are 12 bits long
-      const int last_word = hist_len % champsim::msl::lg2(TABLE_SIZE); // the last word is fewer than 12 bits
-
-      // seed in the PC to spread accesses around (like gshare) XOR in the last word
-      auto x = pc.slice_lower<champsim::msl::lg2(TABLE_SIZE)>().to<uint64_t>() ^ (ghist_words[most_words] & champsim::msl::bitmask(last_word));
-
-      // XOR up to the next-to-the-last word
-      x = std::accumulate(std::begin(ghist_words), std::next(std::begin(ghist_words), most_words), x, std::bit_xor<>{});
-
-      return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE)); // stay within the table size
-  });
+  std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(result.indices), get_table_index);
 
   // add the selected weights to the perceptron sum
-  result.yout = std::inner_product(std::begin(tables), std::end(tables), std::begin(result.indices), 0, std::plus<>{}, [](const auto& table, const auto& index){ return table[index].value(); });
+  result.yout = std::inner_product(std::begin(tables), std::end(tables), std::begin(result.indices), 0, std::plus<>{},
+                                   [](const auto& table, const auto& index) { return table[index].value(); });
   last_result = result;
   return result.yout >= THRESHOLD;
 }
@@ -76,12 +79,17 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
 void hashed_perceptron::last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   // insert this branch outcome into the global history
-  std::transform(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), [](auto x){ return x << 1; });
-  std::adjacent_difference(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), [](auto next_word, auto last_word) {
-      bool b = (last_word > champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE))); // get the MSB from the last word
-      return next_word | b;
-    });
-  std::transform(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), [](auto x){ return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE)); }); // Remove MSBs that were shifted into the next word
+  auto shift_ghist_words = [](auto next_word, auto last_word) {
+    bool b = (last_word > champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE))); // get the MSB from the last word
+    return next_word | b;
+  };
+
+  // Remove MSBs that were shifted into the next word
+  auto mask_ghist_words = [](auto x) { return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE)); };
+
+  std::transform(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), [](auto x) { return x << 1; });
+  std::adjacent_difference(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), shift_ghist_words);
+  std::transform(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), mask_ghist_words);
   ghist_words[0] |= taken;
 
   // perceptron learning rule: train if misprediction or weak correct prediction

@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <cassert>
 
+lru::lru(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), last_used_cycles(static_cast<std::size_t>(NUM_SET * NUM_WAY), 0)
+{
+}
+
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
   auto begin = std::next(std::begin(last_used_cycles), set * NUM_WAY);
@@ -22,4 +26,3 @@ void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, 
   if (!hit || access_type{type} != access_type::WRITE) // Skip this for writeback hits
     last_used_cycles.at(set * NUM_WAY + way) = cycle++;
 }
-

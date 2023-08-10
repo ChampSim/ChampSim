@@ -8,8 +8,7 @@
 #include "address.h"
 #include "msl/fwcounter.h"
 
-struct bimodal : champsim::modules::branch_predictor
-{
+struct bimodal : champsim::modules::branch_predictor {
   using branch_predictor::branch_predictor;
 
   static constexpr std::size_t TABLE_SIZE = 16384;

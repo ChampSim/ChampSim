@@ -17,7 +17,7 @@ struct drrip : champsim::modules::replacement
   static constexpr unsigned BIP_MAX = 32;
   static constexpr unsigned PSEL_WIDTH = 10;
 
-  std::size_t NUM_SET, NUM_WAY;
+  long NUM_SET, NUM_WAY;
 
   unsigned bip_counter;
   std::vector<std::size_t> rand_sets;
