@@ -5,7 +5,7 @@ TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_install
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.phony: all all_execs clean configclean test makedirs
+.PHONY: all all_execs clean configclean test makedirs list_execs
 
 all: all_execs
 

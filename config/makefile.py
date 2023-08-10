@@ -122,15 +122,15 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     ragged_dir_varnames, ragged_obj_varnames = yield from yield_from_star(make_part, (
-        (source_dirs, os.path.join(objdir, 'obj'), build_id),
+        (source_dirs, objdir, build_id),
         *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
     ), n=2)
 
     # Flatten varnames
     dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
 
-    options_fname = sanitize(os.path.join(objdir, 'inc', 'config.options'))
-    global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
+    options_fname = sanitize(os.path.abspath(os.path.join(objdir, 'inc', 'config.options')))
+    global_options_fname = sanitize(os.path.abspath(os.path.join(champsim_root, 'global.options')))
     exec_fname = sanitize(os.path.abspath(executable))
 
     for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):

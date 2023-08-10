@@ -32,6 +32,7 @@
 #include "deadlock.h"
 #include "instruction.h"
 #include "ptw_builder.h" // for ptw_builder
+#include "instruction.h"
 #include "util/bits.h"   // for bitmask, lg2, splice_bits
 #include "util/span.h"
 #include "vmem.h"

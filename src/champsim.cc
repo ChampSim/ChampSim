@@ -84,6 +84,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
     auto progress = do_cycle(env, traces, trace_index);
+    auto next_phase_complete = phase_complete;
 
     if (progress == 0) {
       ++stalled_cycle;
@@ -96,8 +97,6 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
       std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
       abort();
     }
-
-    auto next_phase_complete = phase_complete;
 
     // If any trace reaches EOF, terminate all phases
     if (std::any_of(std::begin(traces), std::end(traces), [](const auto& tr) { return tr.eof(); })) {

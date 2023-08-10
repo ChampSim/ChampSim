@@ -188,7 +188,6 @@ public:
   std::deque<mshr_type> inflight_writes;
 
   long operate() final;
-
   void initialize() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;

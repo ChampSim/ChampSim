@@ -157,7 +157,7 @@ class Fragment:
 
         executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
 
-        unique_obj_dir = os.path.join(objdir_name, build_id)
+        unique_obj_dir = os.path.join(os.path.abspath(objdir_name), build_id)
         inc_dir = os.path.join(unique_obj_dir, 'inc')
 
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
