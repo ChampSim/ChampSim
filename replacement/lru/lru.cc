@@ -24,5 +24,5 @@ void lru::update_replacement_state(uint32_t triggering_cpu, long set, long way, 
 {
   // Mark the way as being used on the current cycle
   if (!hit || access_type{type} != access_type::WRITE) // Skip this for writeback hits
-    last_used_cycles.at(set * NUM_WAY + way) = cycle++;
+    last_used_cycles.at((std::size_t) (set * NUM_WAY + way)) = cycle++;
 }

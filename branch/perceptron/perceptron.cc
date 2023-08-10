@@ -82,7 +82,7 @@ void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, bool ta
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  const int THETA = std::floor(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
+  const long THETA = std::lround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
   if ((output <= THETA && output >= -THETA) || (prediction != taken))
     perceptrons[index].update(taken, history);
 }

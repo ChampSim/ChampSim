@@ -94,7 +94,7 @@ struct btb {
 struct prefetcher {
   CACHE* intern_;
   explicit prefetcher(CACHE* cache) : intern_(cache) {}
-  bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+  bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
 
   template <typename T, typename... Args>
   static auto initiailize_memory_impl(int) -> decltype(std::declval<T>().prefetcher_initialize(std::declval<Args>()...), std::true_type{});

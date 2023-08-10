@@ -2,27 +2,21 @@
 
 #include <algorithm>
 #include <cassert>
+#include <random>
 
 // initialize replacement state
 ship::ship(CACHE* cache)
-    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * NUM_WAY),
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   // randomly selected sampler sets
-  std::size_t rand_seed = 1103515245 + 12345;
-  ;
-  for (std::size_t i = 0; i < SAMPLER_SET; i++) {
-    std::size_t val = (rand_seed / 65536) % NUM_SET;
-    auto loc = std::lower_bound(std::begin(rand_sets), std::end(rand_sets), val);
+  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET, std::knuth_b{1});
+  std::sort(std::begin(rand_sets), std::end(rand_sets));
+}
 
-    while (loc != std::end(rand_sets) && *loc == val) {
-      rand_seed = rand_seed * 1103515245 + 12345;
-      val = (rand_seed / 65536) % NUM_SET;
-      loc = std::lower_bound(std::begin(rand_sets), std::end(rand_sets), val);
-    }
-
-    rand_sets.insert(loc, val);
-  }
+int& ship::get_rrpv(long set, long way)
+{
+  return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way));
 }
 
 // find replacement victim
@@ -50,7 +44,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
   // handle writeback access
   if (access_type{type} == access_type::WRITE) {
     if (!hit)
-      rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
+      get_rrpv(set, way) = maxRRPV - 1;
 
     return;
   }
@@ -85,11 +79,11 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
   }
 
   if (hit)
-    rrpv_values[set * NUM_WAY + way] = 0;
+    get_rrpv(set, way) = 0;
   else {
     // SHIP prediction
-    rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
+    get_rrpv(set, way) = maxRRPV - 1;
     if (SHCT[triggering_cpu][ip % SHCT_PRIME].is_max())
-      rrpv_values[set * NUM_WAY + way] = maxRRPV;
+      get_rrpv(set, way) = maxRRPV;
   }
 }

@@ -418,51 +418,51 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
  * offset |
  */
 
-uint32_t MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
 {
   int shift = LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const
 {
   return channels.at(dram_get_channel(address)).get_bank(address);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_column(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_column(uint64_t address) const
 {
   return channels.at(dram_get_channel(address)).get_column(address);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const
 {
   return channels.at(dram_get_channel(address)).get_rank(address);
 }
 
-uint32_t MEMORY_CONTROLLER::dram_get_row(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const
 {
   return channels.at(dram_get_channel(address)).get_row(address);
 }
 
-uint32_t DRAM_CHANNEL::get_bank(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
 {
   int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(BANKS));
 }
 
-uint32_t DRAM_CHANNEL::get_column(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_column(uint64_t address) const
 {
   auto shift = champsim::lg2(BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(COLUMNS));
 }
 
-uint32_t DRAM_CHANNEL::get_rank(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_rank(uint64_t address) const
 {
   auto shift = champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(RANKS));
 }
 
-uint32_t DRAM_CHANNEL::get_row(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_row(uint64_t address) const
 {
   auto shift = champsim::lg2(RANKS) + champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(ROWS));

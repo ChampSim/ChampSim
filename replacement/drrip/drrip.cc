@@ -3,37 +3,32 @@
 #include <algorithm>
 #include <cassert>
 #include <utility>
+#include <random>
 
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
   // randomly selected sampler sets
-  std::size_t rand_seed = 1103515245 + 12345;
-  for (std::size_t i = 0; i < TOTAL_SDM_SETS; i++) {
-    std::size_t val = (rand_seed / 65536) % NUM_SET;
-    auto loc = std::lower_bound(std::begin(rand_sets), std::end(rand_sets), val);
+  std::generate_n(std::back_inserter(rand_sets), TOTAL_SDM_SETS, std::knuth_b{1});
+  std::sort(std::begin(rand_sets), std::end(rand_sets));
+}
 
-    while (loc != std::end(rand_sets) && *loc == val) {
-      rand_seed = rand_seed * 1103515245 + 12345;
-      val = (rand_seed / 65536) % NUM_SET;
-      loc = std::lower_bound(std::begin(rand_sets), std::end(rand_sets), val);
-    }
-
-    rand_sets.insert(loc, val);
-  }
+unsigned& drrip::get_rrpv(long set, long way)
+{
+  return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way));
 }
 
 void drrip::update_bip(long set, long way)
 {
-  rrpv[set * NUM_WAY + way] = maxRRPV;
+  get_rrpv(set, way) = maxRRPV;
 
   bip_counter++;
   if (bip_counter == BIP_MAX) {
     bip_counter = 0;
-    rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+    get_rrpv(set, way) = maxRRPV - 1;
   }
 }
 
-void drrip::update_srrip(long set, long way) { rrpv[set * NUM_WAY + way] = maxRRPV - 1; }
+void drrip::update_srrip(long set, long way) { get_rrpv(set, way) = maxRRPV - 1; }
 
 // called on every cache hit and cache fill
 void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
@@ -41,13 +36,13 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
 {
   // do not update replacement state for writebacks
   if (access_type{type} == access_type::WRITE) {
-    rrpv[set * NUM_WAY + way] = maxRRPV - 1;
+    get_rrpv(set, way) = maxRRPV - 1;
     return;
   }
 
   // cache hit
   if (hit) {
-    rrpv[set * NUM_WAY + way] = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
+    get_rrpv(set, way) = 0; // for cache hit, DRRIP always promotes a cache line to the MRU position
     return;
   }
 

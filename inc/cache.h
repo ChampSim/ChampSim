@@ -133,7 +133,7 @@ class CACHE : public champsim::operable
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
-  void issue_translation(tag_lookup_type& q_entry);
+  void issue_translation(tag_lookup_type& q_entry) const;
 
 public:
   using BLOCK = champsim::cache_block;
