@@ -76,16 +76,21 @@ def write_if_different(fname, new_file_string, file=None, verbose=False):
 
 def generate_module_information(containing_dir, module_info):
     ''' Generates all of the include-files with module information '''
-    # Core modules file
-    core_declarations, core_definitions = modules.get_ooo_cpu_module_lines(module_info['branch'], module_info['btb'])
-
-    # Cache modules file
-    cache_declarations, cache_definitions = modules.get_cache_module_lines(module_info['pref'], module_info['repl'])
+    core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
+            [v for v in module_info['branch'].values() if v.get('legacy')],
+            [v for v in module_info['btb'].values() if v.get('legacy')],
+            [v for v in module_info['pref'].values() if v.get('legacy')],
+            [v for v in module_info['repl'].values() if v.get('legacy')]
+        )
 
     yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), (*cxx_generated_warning(), *core_declarations)
-    yield os.path.join(containing_dir, 'ooo_cpu_module_def.inc'), (*cxx_generated_warning(), *core_definitions)
     yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
-    yield os.path.join(containing_dir, 'cache_module_def.inc'), (*cxx_generated_warning(), *cache_definitions)
+    yield os.path.join(containing_dir, 'module_def.inc'), (
+            *cxx_generated_warning(),
+            '#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{',
+            *module_definitions,
+            '}','#endif'
+        )
 
     joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
     for k,v in joined_info_items:
@@ -144,7 +149,7 @@ class Fragment:
         copy.fileparts = list(util.collect(joined_parts, operator.itemgetter(0), Fragment.__part_joiner))
         return copy
 
-    def __init__(self, parsed_config, bindir_name, srcdir_names, objdir_name, verbose=False):
+    def __init__(self, parsed_config, bindir_name, srcdir_names, objdir_name, omit_main, verbose=False):
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
 
@@ -177,7 +182,7 @@ class Fragment:
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
-                *get_makefile_lines(unique_obj_dir, build_id, executable, (*srcdir_names, core_sources), joined_module_info)
+                *get_makefile_lines(unique_obj_dir, build_id, executable, (*srcdir_names, core_sources), joined_module_info, omit_main)
             ))
         ]
         self.fileparts = list(util.collect(self.fileparts, operator.itemgetter(0), Fragment.__part_joiner)) # hoist the parts
@@ -214,13 +219,13 @@ class FileWriter:
         self.fragments = []
         return self
 
-    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
+    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False):
         ''' Apply defaults to get_file_lines() '''
         local_bindir_name = bindir_name or self.bindir_name
         local_srcdir_names = srcdir_names or []
         local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        self.fragments.append(Fragment(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name))
+        self.fragments.append(Fragment(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
 
     @staticmethod
     def write_fragments(*fragments):

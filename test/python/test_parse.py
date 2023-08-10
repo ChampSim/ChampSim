@@ -114,7 +114,7 @@ class FilterInaccessibleTests(unittest.TestCase):
 
 class PassthroughContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
         return [] # FIXME
@@ -581,16 +581,6 @@ class CoreDefaultNamesTests(unittest.TestCase):
 
 class EnvironmentParseTests(unittest.TestCase):
 
-    def test_cc_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CC': 'cc' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_cxx_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CXX': 'cxx' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
     def test_cppflags_passes_through(self):
         test_config = config.parse.NormalizedConfiguration({ 'CPPFLAGS': 'cppflags' })
         result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
@@ -639,10 +629,10 @@ class ConfigRootPassthroughParseTests(unittest.TestCase):
 
 class FoundMoreContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
-        return [{'name': 'extra', 'fname': 'aaaabbbb/extra', '_is_instruction_prefetcher': False}]
+        return [{'name': 'extra', 'fname': 'aaaabbbb/extra'}]
 
 class PathEndInTests(unittest.TestCase):
     def test_path_end(self):

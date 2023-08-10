@@ -4,6 +4,8 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
+#include "../../../prefetcher/next_line/next_line.h"
+
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll;
@@ -12,7 +14,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::pprefetcherDnext_line>()
+      .prefetcher<next_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -42,11 +44,8 @@ SCENARIO("The next line prefetcher issues prefetches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 2 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 2);
-      }
-
       THEN("All of the issued requests have the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
         REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + 1 == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
       }
     }
@@ -61,7 +60,7 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
       .name("451-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::pprefetcherDnext_line_instr>()
+      .prefetcher<next_line>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -91,11 +90,8 @@ SCENARIO("The next line instruction prefetcher issues prefetches") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("A total of 2 requests were generated") {
-        REQUIRE(mock_ll.packet_count() == 2);
-      }
-
       THEN("All of the issued requests have the same stride") {
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
         REQUIRE((mock_ll.addresses.at(0) >> LOG2_BLOCK_SIZE) + 1 == (mock_ll.addresses.at(1) >> LOG2_BLOCK_SIZE));
       }
     }

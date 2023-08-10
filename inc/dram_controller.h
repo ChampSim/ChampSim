@@ -42,7 +42,7 @@ struct dram_stats {
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
 
-struct DRAM_CHANNEL : public champsim::operable {
+struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
   struct request_type {
     bool scheduled = false;
@@ -101,20 +101,21 @@ struct DRAM_CHANNEL : public champsim::operable {
 
   void check_write_collision();
   void check_read_collision();
-  void finish_dbus_request();
+  long finish_dbus_request();
   void swap_write_mode();
-  void populate_dbus();
-  void schedule_packets();
+  long populate_dbus();
+  long schedule_packets();
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
+  void print_deadlock() final;
 
-  uint32_t get_rank(uint64_t address) const;
-  uint32_t get_bank(uint64_t address) const;
-  uint32_t get_row(uint64_t address) const;
-  uint32_t get_column(uint64_t address) const;
+  unsigned long get_rank(uint64_t address) const;
+  unsigned long get_bank(uint64_t address) const;
+  unsigned long get_row(uint64_t address) const;
+  unsigned long get_column(uint64_t address) const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -135,17 +136,18 @@ public:
                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul);
 
   void initialize() final;
-  void operate() final;
+  long operate() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
+  void print_deadlock() final;
 
   [[nodiscard]] std::size_t size() const;
 
-  uint32_t dram_get_channel(uint64_t address);
-  uint32_t dram_get_rank(uint64_t address);
-  uint32_t dram_get_bank(uint64_t address);
-  uint32_t dram_get_row(uint64_t address);
-  uint32_t dram_get_column(uint64_t address);
+  unsigned long dram_get_channel(uint64_t address) const;
+  unsigned long dram_get_rank(uint64_t address) const;
+  unsigned long dram_get_bank(uint64_t address) const;
+  unsigned long dram_get_row(uint64_t address) const;
+  unsigned long dram_get_column(uint64_t address) const;
 };
 
 #endif

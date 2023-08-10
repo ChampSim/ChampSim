@@ -6,7 +6,7 @@ namespace {
 struct mock_operable : champsim::operable {
   using operable::operable;
   int count = 0;
-  void operate() { ++count; }
+  long operate() { ++count; return 1; }
 };
 }
 

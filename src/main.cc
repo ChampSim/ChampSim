@@ -32,6 +32,7 @@
 #include "cache.h" // for CACHE
 #include "champsim_constants.h"
 #include "core_inst.inc"
+#include "defaults.hpp"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
@@ -54,8 +55,8 @@ int main(int argc, char** argv)
   CLI::App app{"A microarchitecture simulator for research and education"};
 
   bool knob_cloudsuite{false};
-  uint64_t warmup_instructions = 0;
-  uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
+  long long warmup_instructions = 0;
+  long long simulation_instructions = std::numeric_limits<long long>::max();
   std::string json_file_name;
   std::vector<std::string> trace_names;
 

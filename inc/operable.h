@@ -31,11 +31,11 @@ public:
   operable();
   explicit operable(champsim::chrono::picoseconds clock_period);
 
-  void _operate();
-  void operate_on(const champsim::chrono::clock& clock);
+  long _operate();
+  long operate_on(const champsim::chrono::clock& clock);
 
   virtual void initialize() {} // LCOV_EXCL_LINE
-  virtual void operate() = 0;
+  virtual long operate() = 0;
   virtual void begin_phase() {}                     // LCOV_EXCL_LINE
   virtual void end_phase(unsigned /*cpu index*/) {} // LCOV_EXCL_LINE
   virtual void print_deadlock() {}                  // LCOV_EXCL_LINE

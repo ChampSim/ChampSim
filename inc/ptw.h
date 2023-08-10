@@ -99,7 +99,7 @@ public:
 
   explicit PageTableWalker(champsim::ptw_builder builder);
 
-  void operate() final;
+  long operate() final;
 
   void begin_phase() final;
   void print_deadlock() final;
