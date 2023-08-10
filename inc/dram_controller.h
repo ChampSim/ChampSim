@@ -94,7 +94,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
   const uint64_t tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
   const std::size_t ROWS, COLUMNS, RANKS, BANKS;
 
-  DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
+  DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks,
+               std::size_t banks);
 
   void check_write_collision();
   void check_read_collision();

@@ -30,8 +30,7 @@ class core_builder_module_type_holder
 };
 namespace detail
 {
-struct core_builder_base
-{
+struct core_builder_base {
   uint32_t m_cpu{};
   double m_freq_scale{1};
   std::size_t m_dib_set{1};
@@ -63,7 +62,7 @@ struct core_builder_base
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
 };
-}
+} // namespace detail
 
 template <typename B = core_builder_module_type_holder<>, typename T = core_builder_module_type_holder<>>
 class core_builder : public detail::core_builder_base

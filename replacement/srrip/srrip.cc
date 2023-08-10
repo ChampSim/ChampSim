@@ -11,10 +11,7 @@ srrip::srrip(CACHE* cache)
 {
 }
 
-int& srrip::get_rrpv(long set, long way)
-{
-  return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way));
-}
+int& srrip::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
 
 // find replacement victim
 long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr,

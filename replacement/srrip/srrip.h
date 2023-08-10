@@ -8,10 +8,10 @@
 #include "modules.h"
 
 struct srrip : champsim::modules::replacement {
-  private:
+private:
   int& get_rrpv(long set, long way);
 
-  public:
+public:
   static constexpr int maxRRPV = 3;
 
   long NUM_SET, NUM_WAY;

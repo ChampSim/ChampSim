@@ -44,10 +44,11 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
   }
 }
 
-DRAM_CHANNEL::DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
-    : champsim::operable(1.0), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)),
-      tCAS(cycles(t_cas / 1000, io_freq)), DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)),
-      DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1)), ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
+DRAM_CHANNEL::DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks,
+                           std::size_t banks)
+    : champsim::operable(1.0), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
+      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1)),
+      ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
 {
 }
 
@@ -104,9 +105,8 @@ long DRAM_CHANNEL::finish_dbus_request()
   long progress{0};
 
   if (active_request != std::end(bank_request) && active_request->event_cycle <= current_cycle) {
-    response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address,
-      active_request->pkt->value().data, active_request->pkt->value().pf_metadata,
-      active_request->pkt->value().instr_depend_on_me};
+    response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address, active_request->pkt->value().data,
+                           active_request->pkt->value().pf_metadata, active_request->pkt->value().instr_depend_on_me};
     for (auto* ret : active_request->pkt->value().to_return) {
       ret->push_back(response);
     }
@@ -164,7 +164,7 @@ long DRAM_CHANNEL::populate_dbus()
   long progress{0};
 
   auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-      [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
+                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
   if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_cycle) {
       // Bus is available
@@ -225,8 +225,7 @@ long DRAM_CHANNEL::schedule_packets()
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
 
       // this bank is now busy
-      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD),
-        iter_next_schedule};
+      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
 
       iter_next_schedule->value().scheduled = true;
       iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
@@ -250,9 +249,7 @@ void MEMORY_CONTROLLER::initialize()
   fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
 }
 
-void DRAM_CHANNEL::initialize()
-{
-}
+void DRAM_CHANNEL::initialize() {}
 
 void MEMORY_CONTROLLER::begin_phase()
 {
@@ -272,9 +269,7 @@ void MEMORY_CONTROLLER::begin_phase()
   }
 }
 
-void DRAM_CHANNEL::begin_phase()
-{
-}
+void DRAM_CHANNEL::begin_phase() {}
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
@@ -283,10 +278,7 @@ void MEMORY_CONTROLLER::end_phase(unsigned cpu)
   }
 }
 
-void DRAM_CHANNEL::end_phase(unsigned /*cpu*/)
-{
-  roi_stats = sim_stats;
-}
+void DRAM_CHANNEL::end_phase(unsigned /*cpu*/) { roi_stats = sim_stats; }
 
 void DRAM_CHANNEL::check_write_collision()
 {
@@ -424,25 +416,13 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const
-{
-  return channels.at(dram_get_channel(address)).get_bank(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_column(uint64_t address) const
-{
-  return channels.at(dram_get_channel(address)).get_column(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_column(uint64_t address) const { return channels.at(dram_get_channel(address)).get_column(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const
-{
-  return channels.at(dram_get_channel(address)).get_rank(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
 
-unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const
-{
-  return channels.at(dram_get_channel(address)).get_row(address);
-}
+unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const { return channels.at(dram_get_channel(address)).get_row(address); }
 
 unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
 {

@@ -32,8 +32,7 @@ class cache_builder_module_type_holder
 };
 namespace detail
 {
-struct cache_builder_base
-{
+struct cache_builder_base {
   std::string m_name{};
   double m_freq_scale{1};
   std::optional<uint32_t> m_sets{};
@@ -58,7 +57,7 @@ struct cache_builder_base
   champsim::channel* m_ll{};
   champsim::channel* m_lt{nullptr};
 };
-}
+} // namespace detail
 
 template <typename P = cache_builder_module_type_holder<>, typename R = cache_builder_module_type_holder<>>
 class cache_builder : public detail::cache_builder_base

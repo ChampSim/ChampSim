@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <utility>
 #include <random>
+#include <utility>
 
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
@@ -12,10 +12,7 @@ drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WA
   std::sort(std::begin(rand_sets), std::end(rand_sets));
 }
 
-unsigned& drrip::get_rrpv(long set, long way)
-{
-  return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way));
-}
+unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
 
 void drrip::update_bip(long set, long way)
 {

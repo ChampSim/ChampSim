@@ -10,10 +10,10 @@
 #include "msl/fwcounter.h"
 
 struct ship : champsim::modules::replacement {
-  private:
+private:
   int& get_rrpv(long set, long way);
 
-  public:
+public:
   static constexpr int maxRRPV = 3;
   static constexpr std::size_t SHCT_SIZE = 16384;
   static constexpr unsigned SHCT_PRIME = 16381;
