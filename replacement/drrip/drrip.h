@@ -8,8 +8,11 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct drrip : champsim::modules::replacement
-{
+struct drrip : champsim::modules::replacement {
+private:
+  unsigned& get_rrpv(long set, long way);
+
+public:
   static constexpr unsigned maxRRPV = 3;
   static constexpr std::size_t NUM_POLICY = 2;
   static constexpr std::size_t SDM_SIZE = 32;

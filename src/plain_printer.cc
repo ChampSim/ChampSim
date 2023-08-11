@@ -15,7 +15,7 @@
  */
 
 #include <numeric>
-#include <sstream>
+#include <ratio>
 #include <string_view> // for string_view
 #include <utility>
 #include <vector>
@@ -36,12 +36,12 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
-             (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
+             (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (std::kilo::num * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
-                 [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
+                 [instrs = stats.instrs()](auto x) { return std::kilo::num * std::ceil(x) / std::ceil(instrs); });
 
   fmt::print(stream, "Branch type MPKI\n");
   for (auto idx : types) {

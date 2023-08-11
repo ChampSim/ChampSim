@@ -91,10 +91,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     auto next_phase_complete = phase_complete;
 
     // If any trace reaches EOF, terminate all phases
-    for (const auto& tr : traces) {
-      if (tr.eof()) {
-        std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
-      }
+    if (std::any_of(std::begin(traces), std::end(traces), [](const auto& tr) { return tr.eof(); })) {
+      std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
     }
 
     // Check for phase finish

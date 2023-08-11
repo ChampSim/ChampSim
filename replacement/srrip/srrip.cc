@@ -11,6 +11,8 @@ srrip::srrip(CACHE* cache)
 {
 }
 
+int& srrip::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
+
 // find replacement victim
 long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
@@ -35,7 +37,7 @@ void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
                                      uint8_t hit)
 {
   if (hit)
-    rrpv_values[set * NUM_WAY + way] = 0;
+    get_rrpv(set, way) = 0;
   else
-    rrpv_values[set * NUM_WAY + way] = maxRRPV - 1;
+    get_rrpv(set, way) = maxRRPV - 1;
 }

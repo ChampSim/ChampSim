@@ -153,7 +153,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   auto metadata_thru = impl_prefetcher_cache_fill(module_address(fill_mshr), get_set_index(fill_mshr.address), way_idx,
-                                                  (fill_mshr.type == access_type::PREFETCH) ? 1 : 0, evicting_address, fill_mshr.data_promise->pf_metadata);
+                                                  (fill_mshr.type == access_type::PREFETCH), evicting_address, fill_mshr.data_promise->pf_metadata);
   impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, module_address(fill_mshr), fill_mshr.ip, evicting_address,
                                 fill_mshr.type, false);
 
@@ -381,7 +381,7 @@ long CACHE::operate()
   progress += MAX_FILL - fill_bw;
 
   // Initiate tag checks
-  auto tag_bw = std::clamp<long long>(MAX_TAG * HIT_LATENCY - std::size(inflight_tag_check), 0LL, MAX_TAG);
+  auto tag_bw = std::clamp<long long>(MAX_TAG * (long)HIT_LATENCY - (long)std::size(inflight_tag_check), 0LL, MAX_TAG);
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
@@ -581,7 +581,7 @@ void CACHE::finish_translation(const response_type& packet)
   }
 }
 
-void CACHE::issue_translation(tag_lookup_type& q_entry)
+void CACHE::issue_translation(tag_lookup_type& q_entry) const
 {
   if (!q_entry.translate_issued && !q_entry.is_translated) {
     request_type fwd_pkt;

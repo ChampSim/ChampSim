@@ -7,8 +7,11 @@
 #include "cache.h"
 #include "modules.h"
 
-struct srrip : champsim::modules::replacement
-{
+struct srrip : champsim::modules::replacement {
+private:
+  int& get_rrpv(long set, long way);
+
+public:
   static constexpr int maxRRPV = 3;
 
   long NUM_SET, NUM_WAY;

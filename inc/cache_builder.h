@@ -30,14 +30,9 @@ template <typename... Ts>
 class cache_builder_module_type_holder
 {
 };
-class cache_builder_conversion_tag
+namespace detail
 {
-};
-template <typename P = cache_builder_module_type_holder<>, typename R = cache_builder_module_type_holder<>>
-class cache_builder
-{
-  using self_type = cache_builder<P, R>;
-
+struct cache_builder_base {
   std::string m_name{};
   double m_freq_scale{1};
   std::optional<uint32_t> m_sets{};
@@ -61,21 +56,20 @@ class cache_builder
   std::vector<champsim::channel*> m_uls{};
   champsim::channel* m_ll{};
   champsim::channel* m_lt{nullptr};
+};
+} // namespace detail
+
+template <typename P = cache_builder_module_type_holder<>, typename R = cache_builder_module_type_holder<>>
+class cache_builder : public detail::cache_builder_base
+{
+  using self_type = cache_builder<P, R>;
 
   friend class ::CACHE;
 
   template <typename OTHER_P, typename OTHER_R>
   friend class cache_builder;
 
-  template <typename OTHER_P, typename OTHER_R>
-  cache_builder(cache_builder_conversion_tag /*tag*/, const cache_builder<OTHER_P, OTHER_R>& other)
-      : m_name(other.m_name), m_freq_scale(other.m_freq_scale), m_sets(other.m_sets), m_sets_factor(other.m_sets_factor), m_ways(other.m_ways),
-        m_pq_size(other.m_pq_size), m_mshr_size(other.m_mshr_size), m_mshr_factor(other.m_mshr_factor), m_hit_lat(other.m_hit_lat),
-        m_fill_lat(other.m_fill_lat), m_latency(other.m_latency), m_max_tag(other.m_max_tag), m_max_fill(other.m_max_fill),
-        m_bandwidth_factor(other.m_bandwidth_factor), m_offset_bits(other.m_offset_bits), m_pref_load(other.m_pref_load), m_wq_full_addr(other.m_wq_full_addr),
-        m_va_pref(other.m_va_pref), m_pref_act_mask(other.m_pref_act_mask), m_uls(other.m_uls), m_ll(other.m_ll), m_lt(other.m_lt)
-  {
-  }
+  explicit cache_builder(const detail::cache_builder_base& other) : detail::cache_builder_base(other) {}
 
 public:
   cache_builder() = default;
@@ -293,14 +287,14 @@ template <typename P, typename R>
 template <typename... Ps>
 auto champsim::cache_builder<P, R>::prefetcher() -> champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, R>
 {
-  return champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, R>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, R>{*this};
 }
 
 template <typename P, typename R>
 template <typename... Rs>
 auto champsim::cache_builder<P, R>::replacement() -> champsim::cache_builder<P, champsim::cache_builder_module_type_holder<Rs...>>
 {
-  return champsim::cache_builder<P, champsim::cache_builder_module_type_holder<Rs...>>{cache_builder_conversion_tag{}, *this};
+  return champsim::cache_builder<P, champsim::cache_builder_module_type_holder<Rs...>>{*this};
 }
 
 #endif
