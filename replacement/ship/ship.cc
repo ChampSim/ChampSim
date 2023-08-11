@@ -85,7 +85,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     auto SHCT_idx = ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
 
     get_rrpv(set, way) = maxRRPV - 1;
-    if (SHCT[triggering_cpu][ip % SHCT_PRIME].is_max())
+    if (SHCT[triggering_cpu][SHCT_idx].is_max())
       get_rrpv(set, way) = maxRRPV;
   }
 }

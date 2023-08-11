@@ -109,10 +109,10 @@ struct DRAM_CHANNEL final : public champsim::operable {
   void end_phase(unsigned cpu) final;
   void print_deadlock() final;
 
-  unsigned long get_rank(uint64_t address) const;
-  unsigned long get_bank(uint64_t address) const;
-  unsigned long get_row(uint64_t address) const;
-  unsigned long get_column(uint64_t address) const;
+  unsigned long get_rank(champsim::address address) const;
+  unsigned long get_bank(champsim::address address) const;
+  unsigned long get_row(champsim::address address) const;
+  unsigned long get_column(champsim::address address) const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable

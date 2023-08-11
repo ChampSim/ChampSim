@@ -162,19 +162,6 @@ long DRAM_CHANNEL::populate_dbus()
 {
   long progress{0};
 
-<<<<<<< HEAD
-      if (!channel.bank_request.at(op_idx).valid) {
-        bool row_buffer_hit = (channel.bank_request.at(op_idx).open_row.has_value() && *(channel.bank_request.at(op_idx).open_row) == op_row);
-
-        // this bank is now busy
-        channel.bank_request.at(op_idx) = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD),
-                                        iter_next_schedule};
-
-        iter_next_schedule->value().scheduled = true;
-        iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
-
-        ++progress;
-=======
   auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                              [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
   if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
@@ -194,7 +181,6 @@ long DRAM_CHANNEL::populate_dbus()
         ++sim_stats.WQ_ROW_BUFFER_MISS;
       } else {
         ++sim_stats.RQ_ROW_BUFFER_MISS;
->>>>>>> develop
       }
 
       ++progress;
