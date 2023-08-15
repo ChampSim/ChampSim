@@ -123,15 +123,16 @@ def get_repl_data(module_data):
     func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
     return util.chain(module_data, { 'func_map': func_map })
 
-def get_module_opts_lines(module_data):
+###
+# Legacy module support below
+###
+
+def get_legacy_module_opts_lines(module_data):
     '''
     Generate an iterable of the compiler options for a particular module
     '''
-    yield '-Wno-unused-parameter'
-    yield '-DCHAMPSIM_MODULE'
-    if module_data.get('legacy'):
-        full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
-        yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
+    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
+    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
 def mangled_declaration(fname, args, rtype, module_data):
     ''' Generate C++ code giving the mangled module specialization functions. '''

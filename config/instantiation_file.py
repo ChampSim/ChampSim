@@ -229,7 +229,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
+    yield '#if __has_include("module_def.inc")'
     yield '#include "module_def.inc"'
+    yield '#endif'
 
     inc_files = set()
     for m in itertools.chain(*(c['_branch_predictor_data'] for c in cores), *(c['_btb_data'] for c in cores), *(c['_prefetcher_data'] for c in caches), *(c['_replacement_data'] for c in caches)):

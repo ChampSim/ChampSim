@@ -51,6 +51,9 @@ $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
 # Link main executables
 $(executable_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+ifdef POSTBUILD_CLEAN
+	find $(local_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+endif
 
 # Tests: build and run
 test: $(test_main_name)

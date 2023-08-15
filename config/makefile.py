@@ -131,11 +131,15 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
 
     options_fname = sanitize(os.path.join(objdir, 'inc', 'config.options'))
     global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
+    global_module_options_fname = sanitize(os.path.join(champsim_root, 'module.options'))
     exec_fname = sanitize(os.path.abspath(executable))
 
-    for var, name in zip(ragged_obj_varnames[1:], module_info.keys()):
-        module_options_fname = sanitize(os.path.join(objdir, 'inc', name, 'config.options'))
-        yield from dependency(' '.join(map(dereference, var)), module_options_fname)
+    for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
+        name, mod_info = item
+        yield from dependency(' '.join(map(dereference, var)), global_module_options_fname)
+        if mod_info.get('legacy'):
+            module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
+            yield from dependency(' '.join(map(dereference, var)), module_options_fname)
     yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
 
     objs = map(dereference, obj_varnames)
@@ -146,6 +150,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
 
     yield from append_variable('executable_name', exec_fname)
+    yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=exec_fname)
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''
