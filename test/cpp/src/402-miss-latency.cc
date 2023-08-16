@@ -87,6 +87,11 @@ SCENARIO("A cache returns a miss after the specified latency") {
       THEN("The average miss latency increases") {
         REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
       }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+      }
     }
   }
 }
@@ -165,6 +170,14 @@ SCENARIO("A cache completes a fill after the specified latency") {
           REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
         else
           REQUIRE(uut.sim_stats.total_miss_latency == fill_latency-1); // -1 due to ordering of elements
+      }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        if (match_offset)
+          REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+        else
+          REQUIRE(uut.roi_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
       }
     }
   }
