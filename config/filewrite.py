@@ -97,19 +97,6 @@ def generate_module_information(containing_dir, module_info):
         fname = os.path.join(containing_dir, k, 'config.options')
         yield fname, modules.get_module_opts_lines(v)
 
-def generate_build_information(inc_dir, config_flags):
-    ''' Generates all of the build-level include-files module '''
-    fname = os.path.join(inc_dir, 'config.options')
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    global_inc_dir = os.path.join(champsim_root, 'inc')
-
-    vcpkg_dir = os.path.join(champsim_root, 'vcpkg_installed')
-    vcpkg_triplet = next(filter(lambda triplet: triplet != 'vcpkg', os.listdir(vcpkg_dir)), None)
-    vcpkg_inc_dir = os.path.join(vcpkg_dir, vcpkg_triplet, 'include')
-
-    yield fname, itertools.chain((f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}'), config_flags)
-
 def try_int(val):
     try:
       return int(val)
@@ -141,15 +128,18 @@ class Fragment:
         contents_parts = (itertools.islice(v[1], header_len, None) for v in it)
         return key, tuple(itertools.chain(first_value, *contents_parts))
 
-    @staticmethod
-    def join(head_frags, *tail_frags):
-        ''' Merge multiple Fragments into one. '''
-        copy = head_frags
-        joined_parts = list(itertools.chain(*(f.file_parts() for f in (head_frags, *tail_frags))))
-        copy.fileparts = list(util.collect(joined_parts, operator.itemgetter(0), Fragment.__part_joiner))
-        return copy
+    def __init__(self, fileparts):
+        self.fileparts = list(fileparts)
 
-    def __init__(self, parsed_config, bindir_name, srcdir_names, objdir_name, omit_main, verbose=False):
+    @staticmethod
+    def join(*frags):
+        ''' Merge multiple Fragments into one. '''
+        joined_parts = list(itertools.chain(*(f.file_parts() for f in frags)))
+        fileparts = list(util.collect(joined_parts, operator.itemgetter(0), Fragment.__part_joiner))
+        return Fragment(fileparts)
+
+    @staticmethod
+    def from_config(parsed_config, bindir_name, srcdir_names, objdir_name, omit_main, verbose=False):
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
 
@@ -166,7 +156,7 @@ class Fragment:
             print('For Executable', executable)
             print('Writing objects to', unique_obj_dir)
 
-        self.fileparts = [
+        fileparts = [
             # Instantiation file
             (os.path.join(inc_dir, 'core_inst.inc'), (*cxx_generated_warning(), *get_instantiation_lines(**elements))),
 
@@ -176,16 +166,13 @@ class Fragment:
             # Module name mangling
             *generate_module_information(inc_dir, module_info),
 
-            # Build-level compile flags
-            *generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values()),
-
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
                 *get_makefile_lines(unique_obj_dir, build_id, executable, (*srcdir_names, core_sources), joined_module_info, omit_main)
             ))
         ]
-        self.fileparts = list(util.collect(self.fileparts, operator.itemgetter(0), Fragment.__part_joiner)) # hoist the parts
+        return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
 
     def map_files(self, func):
         yield from itertools.starmap(func, self.fileparts)
@@ -225,7 +212,7 @@ class FileWriter:
         local_srcdir_names = srcdir_names or []
         local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        self.fragments.append(Fragment(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
+        self.fragments.append(Fragment.from_config(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
 
     @staticmethod
     def write_fragments(*fragments):

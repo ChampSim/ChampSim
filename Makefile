@@ -40,6 +40,9 @@ $(filter-out test, $(sort $(dirs))): | $(dir $@)
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
+%/absolute.options:
+	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
+
 # All .o files should be made like .cc files
 $(objs):
 	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
