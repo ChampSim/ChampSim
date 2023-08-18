@@ -129,7 +129,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     # Flatten varnames
     dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
 
-    options_fname = sanitize(os.path.join(objdir, 'inc', 'config.options'))
+    options_fname = sanitize(os.path.normpath(os.path.join(objdir, '..', 'absolute.options')))
     global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
     global_module_options_fname = sanitize(os.path.join(champsim_root, 'module.options'))
     exec_fname = sanitize(os.path.abspath(executable))
@@ -148,6 +148,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
 
     yield from dependency(exec_fname, *objs)
     yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=' '.join(map(dereference, obj_varnames)))
 
     yield from append_variable('executable_name', exec_fname)
     yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=exec_fname)
