@@ -5,7 +5,7 @@ TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_install
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.phony: all all_execs clean configclean test makedirs
+.PHONY: all all_execs clean configclean test makedirs
 
 all: all_execs
 
@@ -40,7 +40,7 @@ $(filter-out test, $(sort $(dirs))): | $(dir $@)
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
-%/absolute.options:
+%/absolute.options: | %
 	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
 
 # All .o files should be made like .cc files
@@ -51,12 +51,13 @@ $(objs):
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
 
+ifdef POSTBUILD_CLEAN
+.INTERMEDIATE: $(objs) $($(OBJS):.o=.d)
+endif
+
 # Link main executables
 $(executable_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
-ifdef POSTBUILD_CLEAN
-	find $(local_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
-endif
 
 # Tests: build and run
 test: $(test_main_name)
