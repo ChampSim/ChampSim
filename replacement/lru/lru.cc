@@ -3,7 +3,11 @@
 #include <algorithm>
 #include <cassert>
 
-lru::lru(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), last_used_cycles(static_cast<std::size_t>(NUM_SET * NUM_WAY), 0)
+lru::lru(CACHE* cache) : lru(cache, cache->NUM_SET, cache->NUM_WAY)
+{
+}
+
+lru::lru(CACHE* cache, long sets, long ways) : replacement(cache), NUM_SET(sets), NUM_WAY(ways), last_used_cycles(static_cast<std::size_t>(sets*ways), 0)
 {
 }
 
