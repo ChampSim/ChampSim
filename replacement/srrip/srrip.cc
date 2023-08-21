@@ -6,13 +6,11 @@
 
 #include "cache.h"
 
-srrip::srrip(CACHE* cache) : srrip(cache, cache->NUM_SET, cache->NUM_WAY)
-{
-}
+srrip::srrip(CACHE* cache) : srrip(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
 srrip::srrip(CACHE* cache, long sets_, long ways_) : replacement(cache)
 {
-  std::generate_n(std::back_inserter(sets), sets_, [ways=ways_]{ return srrip_set_helper{ways}; });
+  std::generate_n(std::back_inserter(sets), sets_, [ways = ways_] { return srrip_set_helper{ways}; });
 }
 
 // find replacement victim
@@ -29,9 +27,7 @@ void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
   sets.at(set).update(way, hit);
 }
 
-srrip_set_helper::srrip_set_helper(long ways) : rrpv_values(static_cast<std::size_t>(ways), maxRRPV)
-{
-}
+srrip_set_helper::srrip_set_helper(long ways) : rrpv_values(static_cast<std::size_t>(ways), maxRRPV) {}
 
 auto srrip_set_helper::get_rrpv(long way) -> rrpv_type& { return rrpv_values.at(static_cast<std::size_t>(way)); }
 
@@ -47,7 +43,4 @@ long srrip_set_helper::victim()
   return std::distance(std::begin(rrpv_values), victim);
 }
 
-void srrip_set_helper::update(long way, bool hit)
-{
-  get_rrpv(way) = hit ? 0 : (maxRRPV - 1);
-}
+void srrip_set_helper::update(long way, bool hit) { get_rrpv(way) = hit ? 0 : (maxRRPV - 1); }
