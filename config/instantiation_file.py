@@ -202,19 +202,27 @@ def ptw_queue_defaults(ptw):
         '_queue_check_full_addr': False
     }
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
-    upper_level_pairs = tuple(itertools.chain(
-        ((elem['lower_level'], elem['name']) for elem in ptws),
-        ((elem['lower_level'], elem['name']) for elem in caches),
-        ((elem['lower_translate'], elem['name']) for elem in caches if 'lower_translate' in elem),
-        *(((elem['L1I'], elem['name']), (elem['L1D'], elem['name'])) for elem in cores)
+def named_selector(elem, key):
+    return elem.get(key), elem.get('name')
+
+def upper_channel_collector(grouped_by_lower_level):
+    return util.chain(*(
+        {lower_name: {'upper_channels': [f'{upper_name}_to_{lower_name}_channel']}}
+        for lower_name, upper_name in grouped_by_lower_level
     ))
 
-    upper_level_pairs = sorted(upper_level_pairs, key=operator.itemgetter(0))
-    upper_level_pairs = itertools.groupby(upper_level_pairs, key=operator.itemgetter(0))
-    upper_levels = {k: {'upper_channels': tuple(f'{x[1]}_to_{k}_channel' for x in v)} for k,v in upper_level_pairs}
+def get_upper_levels(cores, caches, ptws):
+    return list(filter(lambda x: x[0] is not None, itertools.chain(
+        map(functools.partial(named_selector, key='lower_level'), ptws),
+        map(functools.partial(named_selector, key='lower_level'), caches),
+        map(functools.partial(named_selector, key='lower_translate'), caches),
+        map(functools.partial(named_selector, key='L1I'), cores),
+        map(functools.partial(named_selector, key='L1D'), cores)
+    )))
 
-    upper_levels = util.chain(upper_levels,
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+    upper_levels = util.chain(
+            util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
             *({c['name']: cache_queue_defaults(c)} for c in caches),
             *({p['name']: ptw_queue_defaults(p)} for p in ptws),
             {pmem['name']: {

@@ -159,3 +159,54 @@ class DoForFirstTests(unittest.TestCase):
                 result = list(config.util.do_for_first(lambda x: 'ABC', testval))
                 expected = ['ABC'] + ['teststring'] * (length-1)
                 self.assertEqual(result, expected)
+
+class YieldFromStar(unittest.TestCase):
+    class Generator:
+        def __init__(self, gen):
+            self.gen = gen
+            self.value = None
+
+        def __iter__(self):
+            self.value = yield from self.gen
+
+    @staticmethod
+    def empty_gen2():
+        if False:
+            yield None # never yield
+        return 'empty_gen_first', 'empty_gen_second'
+
+    @staticmethod
+    def empty_gen3():
+        if False:
+            yield None # never yield
+        return 'empty_gen_first', 'empty_gen_second', 'empty_gen_third'
+
+    @staticmethod
+    def identity_gen2(count):
+        yield from range(count)
+        return 'identity_first', 'identity_second'
+
+    def test_empty_collects_two(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.empty_gen2, (tuple(), tuple()), n=2))
+        yielded = list(iter(gen))
+        first, second = gen.value
+        self.assertEqual(yielded, [])
+        self.assertEqual(first, ['empty_gen_first', 'empty_gen_first'])
+        self.assertEqual(second, ['empty_gen_second', 'empty_gen_second'])
+
+    def test_empty_collects_three(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.empty_gen3, (tuple(), tuple()), n=3))
+        yielded = list(iter(gen))
+        first, second, third = gen.value
+        self.assertEqual(yielded, [])
+        self.assertEqual(first, ['empty_gen_first', 'empty_gen_first'])
+        self.assertEqual(second, ['empty_gen_second', 'empty_gen_second'])
+        self.assertEqual(third, ['empty_gen_third', 'empty_gen_third'])
+
+    def test_identity_collects_two(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.identity_gen2, ((2,), (4,)), n=2))
+        yielded = list(iter(gen))
+        first, second = gen.value
+        self.assertEqual(yielded, [0,1,0,1,2,3])
+        self.assertEqual(first, ['identity_first', 'identity_first'])
+        self.assertEqual(second, ['identity_second', 'identity_second'])

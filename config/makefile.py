@@ -89,15 +89,6 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
 
     return local_dir_varname, local_obj_varname
 
-def yield_from_star(func, args, n=2):
-    ''' Generate each part for a tuple of parameters to the given func, returning a list of lists of the variable names. '''
-    retvals = [list() for _ in range(n)]
-    for a in args:
-        retval = yield from func(*a)
-        for seq,r in zip(retvals, retval):
-            seq.append(r)
-    return retvals
-
 def make_part(src_dirs, dest_dir, build_id):
     '''
     Given a list of source directories and a destination directory, generate the makefile linkages to make
@@ -111,7 +102,7 @@ def make_part(src_dirs, dest_dir, build_id):
     source_base = itertools.chain.from_iterable([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs)
     counted_arg_list = ((i, *sb, dest_dir, build_id) for i,sb in enumerate(source_base))
 
-    dir_varnames, obj_varnames = yield from yield_from_star(make_subpart, counted_arg_list, n=2)
+    dir_varnames, obj_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
     return dir_varnames, obj_varnames
 
 def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
@@ -121,7 +112,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
 
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    ragged_dir_varnames, ragged_obj_varnames = yield from yield_from_star(make_part, (
+    ragged_dir_varnames, ragged_obj_varnames = yield from util.yield_from_star(make_part, (
         (source_dirs, os.path.join(objdir, 'obj'), build_id),
         *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
     ), n=2)
