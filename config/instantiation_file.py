@@ -222,7 +222,7 @@ def get_upper_levels(cores, caches, ptws):
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_levels = util.chain(
-            util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
+            *util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
             *({c['name']: cache_queue_defaults(c)} for c in caches),
             *({p['name']: ptw_queue_defaults(p)} for p in ptws),
             {pmem['name']: {
