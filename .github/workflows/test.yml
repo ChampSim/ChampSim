@@ -122,13 +122,18 @@ jobs:
         #}
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'true'
+    - name: Set up basic environment
+      if: startsWith(matrix.config.os, 'ubuntu')
+      run: |
+        sudo apt-get install curl zip unzip tar
 
     - name: Set up pkg-config
       if: startsWith(matrix.config.os, 'macos')
       run: brew install pkg-config
+
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
 
     - name: Set up vcpkg
       run: |
