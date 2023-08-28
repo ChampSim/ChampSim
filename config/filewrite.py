@@ -144,7 +144,7 @@ class Fragment:
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
 
-        build_id = hashlib.shake_128(json.dumps(parsed_config, default=try_int).encode('utf-8')).hexdigest(8)
+        build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
         executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
 
