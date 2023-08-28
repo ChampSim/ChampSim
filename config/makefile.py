@@ -34,10 +34,15 @@ def dereference(var):
     ''' Dereference the variable with the given name '''
     return '$(' + var + ')'
 
+def multi_target_dependency(target_iterable, head_dependent, *tail_dependent):
+    ''' Mark the target as having the given dependencies '''
+    joined_targets = util.multiline(target_iterable, length=3, indent=1)
+    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
+    yield from util.fuse(joined_targets, joined_vals, lambda target, first: f'{target}: {first}')
+
 def dependency(target, head_dependent, *tail_dependent):
     ''' Mark the target as having the given dependencies '''
-    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
-    yield from util.do_for_first(lambda first: f'{target}: {first}', joined_vals)
+    yield from multi_target_dependency([target], head_dependent, *tail_dependent)
 
 def order_dependency(target, head_dependent, *tail_dependent):
     ''' Mark the target as having the given order-only dependencies '''
@@ -51,7 +56,8 @@ def assign_variable(var, head_val, *tail_val, targets=None):
     if targets is None:
         yield from variable_append
     else:
-        yield from util.do_for_first(lambda first: f'{targets}: {first}', variable_append)
+        joined_targets = util.multiline(targets, length=3, indent=1)
+        yield from util.fuse(joined_targets, variable_append, lambda target, first: f'{target}: {first}')
 
 def append_variable(var, head_val, *tail_val, targets=None):
     ''' Append the given values space-separated to the given variable, conditionally for the given targets '''
@@ -60,7 +66,8 @@ def append_variable(var, head_val, *tail_val, targets=None):
     if targets is None:
         yield from variable_append
     else:
-        yield from util.do_for_first(lambda first: f'{targets}: {first}', variable_append)
+        joined_targets = util.multiline(targets, length=3, indent=1)
+        yield from util.fuse(joined_targets, variable_append, lambda target, first: f'{target}: {first}')
 
 def make_subpart(i, src_dir, base, dest_dir, build_id):
     local_dir_varname = f'{build_id}_dirs_{i}'
@@ -136,11 +143,12 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
 
     for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
         name, mod_info = item
-        yield from dependency(' '.join(map(dereference, var)), global_module_options_fname)
         if mod_info.get('legacy'):
             module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
-            yield from dependency(' '.join(map(dereference, var)), module_options_fname)
-    yield from dependency(' '.join(map(dereference, obj_varnames)), options_fname, global_options_fname)
+            yield from multi_target_dependency(map(dereference, var), module_options_fname)
+
+    yield from multi_target_dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), global_module_options_fname, options_fname, global_options_fname)
+    yield from multi_target_dependency(map(dereference, ragged_obj_varnames[0]), options_fname, global_options_fname)
 
     objs = map(dereference, obj_varnames)
     if omit_main:
@@ -148,10 +156,10 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
 
     yield from dependency(exec_fname, *objs)
     yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
-    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=' '.join(map(dereference, obj_varnames)))
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
 
     yield from append_variable('executable_name', exec_fname)
-    yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=exec_fname)
+    yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=[exec_fname])
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''
