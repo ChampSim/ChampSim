@@ -15,6 +15,7 @@
 import itertools
 import functools
 import operator
+import collections
 
 def iter_system(system, name, key='lower_level'):
     '''
@@ -116,35 +117,46 @@ def propogate_down(path, key):
         else:
             yield from ({ **element, key: value } for element in chunk)
 
+def cut(iterable, n=-1):
+    it = iter(iterable)
+    if n >= 0:
+        return itertools.islice(it, n), it
+
+    tail = collections.deque(itertools.islice(it, -1*n))
+    def head_iterator():
+        for elem in it:
+            yield tail.popleft()
+            tail.append(elem)
+
+    return head_iterator(), tail
+
 def append_except_last(iterable, suffix):
     ''' Append a string to each element of the iterable except the last one. '''
-    retval = None
-    first = True
-    for element in iterable:
-        if not first:
-            yield retval + suffix
-        retval = element
-        first = False
+    head, tail = cut(iterable, n=-1)
+    yield from map(operator.concat, head, itertools.repeat(suffix))
+    yield from tail
 
-    if retval is not None:
-        yield retval
+def fuse(head, tail, join_func, n=1):
+    tail_it = iter(tail)
+    result_head, transition = cut(head, n=-1*n)
+    yield from result_head
+    yield from map(join_func, transition, tail_it)
+    yield from tail_it
 
 def do_for_first(func, iterable):
     '''
     Evaluate the function for the first element in the iterable and yield it.
     Then yield the rest of the iterable.
     '''
-    iterator = iter(iterable)
-    first = next(iterator, None)
-    if first is not None:
-        yield func(first)
-        yield from iterator
+    head, tail = cut(iterable, n=1)
+    yield from map(func, head)
+    yield from tail
 
 def multiline(long_line, length=1, indent=0, line_end=' \\'):
     ''' Split a long string into lines with n words '''
     grouped = [iter(long_line)] * length
     grouped = itertools.zip_longest(*grouped, fillvalue='')
     grouped = (' '.join(filter(None, group)) for group in grouped)
-    lines = append_except_last(grouped, f'{line_end}')
+    lines = append_except_last(grouped, line_end)
     indentation = itertools.chain(('',), itertools.repeat('  '*indent))
     yield from (i+l for i,l in zip(indentation,lines))

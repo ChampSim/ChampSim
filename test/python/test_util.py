@@ -1,5 +1,6 @@
 import unittest
 import operator
+import itertools
 
 import config.util
 
@@ -127,6 +128,47 @@ class PropogateDownTests(unittest.TestCase):
         expected_result = [{ 'test': 1 }, { 'test': 1 }, { 'test': 2 }, { 'test': 2 }, { 'test': 2 }]
         self.assertEqual(list(config.util.propogate_down(path, 'test')), expected_result)
 
+class CutTests(unittest.TestCase):
+    def test_empty_gives_two_empty(self):
+        for cutpoint in (1,-1):
+            with self.subTest(n=cutpoint):
+                testval = []
+                head, tail = config.util.cut(testval, n=cutpoint)
+                self.assertEqual(list(head), [])
+                self.assertEqual(list(tail), [])
+
+    def test_length_one_can_go_to_head(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=1)
+        self.assertEqual(list(head), testval)
+        self.assertEqual(list(tail), [])
+
+    def test_length_one_can_go_to_tail(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=-1)
+        self.assertEqual(list(head), [])
+        self.assertEqual(list(tail), testval)
+
+    def test_positive_count_that_exceeds_sends_all_to_head(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=2)
+        self.assertEqual(list(head), testval)
+        self.assertEqual(list(tail), [])
+
+    def test_negative_count_that_exceeds_sends_all_to_tail(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=-2)
+        self.assertEqual(list(head), [])
+        self.assertEqual(list(tail), testval)
+
+    def test_middle_splits(self):
+        testval = ['teststringa', 'teststringb', 'teststringc']
+        for cutpoint in (1,2,-1,-2):
+            with self.subTest(n=cutpoint):
+                head, tail = config.util.cut(testval, n=cutpoint)
+                self.assertEqual(list(head), testval[:cutpoint])
+                self.assertEqual(list(tail), testval[cutpoint:])
+
 class AppendExceptLastTests(unittest.TestCase):
     def test_empty_does_not_append(self):
         testval = []
@@ -140,11 +182,12 @@ class AppendExceptLastTests(unittest.TestCase):
 
     def test_longer_length_appends(self):
         for length in (2,4,8,16):
-            with self.subTest(length=length):
-                testval = ['teststring'] * length
-                result = list(config.util.append_except_last(testval, 'a'))
-                expected = ['teststringa'] * (length-1) + ['teststring']
-                self.assertEqual(result, expected)
+            testval = ['teststring'] * length
+            result = config.util.append_except_last(testval, 'a')
+            expected = ['teststringa'] * (length-1) + ['teststring']
+            for i,elem_pair in enumerate(itertools.zip_longest(result, expected, fillvalue=None)):
+                with self.subTest(iterable_length=length, element_index=i):
+                    self.assertEqual(*elem_pair)
 
 class DoForFirstTests(unittest.TestCase):
     def test_empty_does_not_transform(self):
