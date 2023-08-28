@@ -160,3 +160,16 @@ def multiline(long_line, length=1, indent=0, line_end=' \\'):
     lines = append_except_last(grouped, line_end)
     indentation = itertools.chain(('',), itertools.repeat('  '*indent))
     yield from (i+l for i,l in zip(indentation,lines))
+
+def yield_from_star(gen, args, n=2):
+    '''
+    Python generators can return values when they are finished.
+    This adaptor yields the values from the generators and collects the returned values into a list.
+    '''
+    retvals = [list() for _ in range(n)]
+    for a in args:
+        instance_retval = yield from gen(*a)
+        for seq,r in zip(retvals, instance_retval):
+            seq.append(r)
+    return retvals
+
