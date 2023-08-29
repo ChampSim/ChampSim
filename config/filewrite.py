@@ -129,8 +129,8 @@ class Fragment:
         contents_parts = (itertools.islice(v[1], header_len, None) for v in it)
         return key, tuple(itertools.chain(first_value, *contents_parts))
 
-    def __init__(self, fileparts):
-        self.fileparts = list(fileparts)
+    def __init__(self, fileparts=None):
+        self.fileparts = list(fileparts or [])
 
     @staticmethod
     def join(*frags):
@@ -176,9 +176,6 @@ class Fragment:
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
 
-    def map_files(self, func):
-        yield from itertools.starmap(func, self.fileparts)
-
     def write(self):
         for fname, fcontents in self.fileparts:
             write_if_different(fname, '\n'.join(fcontents))
@@ -221,9 +218,7 @@ class FileWriter:
         ''' Write out a set of prepared fragments '''
         if not fragments:
             return
-        joined_fragments = Fragment.join(*fragments)
-        for fname, fcontents in joined_fragments.file_parts():
-            write_if_different(fname, '\n'.join(fcontents))
+        Fragment.join(*fragments).write()
 
     def finish(self):
         FileWriter.write_fragments(*self.fragments)
