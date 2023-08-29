@@ -138,13 +138,6 @@ def append_except_last(iterable, suffix):
     yield from map(operator.concat, head, itertools.repeat(suffix))
     yield from tail
 
-def fuse(head, tail, join_func, n=1):
-    tail_it = iter(tail)
-    result_head, transition = cut(head, n=-1*n)
-    yield from result_head
-    yield from map(join_func, transition, tail_it)
-    yield from tail_it
-
 def do_for_first(func, iterable):
     '''
     Evaluate the function for the first element in the iterable and yield it.
