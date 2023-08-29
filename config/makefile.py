@@ -34,40 +34,26 @@ def dereference(var):
     ''' Dereference the variable with the given name '''
     return '$(' + var + ')'
 
-def multi_target_dependency(target_iterable, head_dependent, *tail_dependent):
-    ''' Mark the target as having the given dependencies '''
-    joined_targets = util.multiline(target_iterable, length=3, indent=1)
-    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
-    yield from util.fuse(joined_targets, joined_vals, lambda target, first: f'{target}: {first}')
+def __do_dependency(dependents, targets=None, order_dependents=None):
+    targets_head, targets_tail = util.cut(targets or [], n=-1)
+    orders_head, orders_tail = util.cut(order_dependents or [], n=1)
+    sequence = itertools.chain(targets_head, (l+':' for l in targets_tail), dependents, ('| '+l for l in orders_head), orders_tail)
+    yield from util.multiline(sequence, length=3, indent=1, line_end=' \\')
 
-def dependency(target, head_dependent, *tail_dependent):
-    ''' Mark the target as having the given dependencies '''
-    yield from multi_target_dependency([target], head_dependent, *tail_dependent)
+def __do_assign_variable(operator, var, val, targets):
+    yield from __do_dependency(itertools.chain((f'{var} {operator}',), val), targets)
 
-def order_dependency(target, head_dependent, *tail_dependent):
-    ''' Mark the target as having the given order-only dependencies '''
-    joined_vals = util.multiline((head_dependent, *tail_dependent), length=3, indent=1)
-    yield from util.do_for_first(lambda first: f'{target}: | {first}', joined_vals)
+def dependency(target_iterable, head_dependent, *tail_dependent):
+    ''' Mark the target as having the given dependencies '''
+    yield from __do_dependency((head_dependent, *tail_dependent), target_iterable)
 
 def assign_variable(var, head_val, *tail_val, targets=None):
     ''' Assign the given values space-separated to the given variable, conditionally for the given targets '''
-    joined_vals = util.multiline(itertools.chain((head_val,), tail_val), length=3, indent=1)
-    variable_append = util.do_for_first(lambda first: f'{var} = {first}', joined_vals)
-    if targets is None:
-        yield from variable_append
-    else:
-        joined_targets = util.multiline(targets, length=3, indent=1)
-        yield from util.fuse(joined_targets, variable_append, lambda target, first: f'{target}: {first}')
+    yield from __do_assign_variable('=', var, (head_val, *tail_val), targets)
 
 def append_variable(var, head_val, *tail_val, targets=None):
     ''' Append the given values space-separated to the given variable, conditionally for the given targets '''
-    joined_vals = util.multiline(itertools.chain((head_val,), tail_val), length=3, indent=1)
-    variable_append = util.do_for_first(lambda first: f'{var} += {first}', joined_vals)
-    if targets is None:
-        yield from variable_append
-    else:
-        joined_targets = util.multiline(targets, length=3, indent=1)
-        yield from util.fuse(joined_targets, variable_append, lambda target, first: f'{target}: {first}')
+    yield from __do_assign_variable('+=', var, (head_val, *tail_val), targets)
 
 def make_subpart(i, src_dir, base, dest_dir, build_id):
     local_dir_varname = f'{build_id}_dirs_{i}'
@@ -86,9 +72,8 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
     yield from assign_variable(local_obj_varname, map_source_to_obj)
 
     # Assign dependencies
-    wildcard_dep = next(dependency(os.path.join(rel_dest_dir, '%.o'), os.path.join(rel_src_dir, '%.cc')), None)
-    yield from dependency(dereference(local_obj_varname), wildcard_dep)
-    yield from order_dependency(dereference(local_obj_varname), rel_dest_dir)
+    wildcard_dep = dependency([os.path.join(rel_dest_dir, '%.o')], os.path.join(rel_src_dir, '%.cc'))
+    yield from __do_dependency(wildcard_dep, [dereference(local_obj_varname)], [rel_dest_dir])
 
     wildcard_dest_dir = os.path.join(rel_dest_dir, '*.d')
     yield f'-include $(wildcard {wildcard_dest_dir})'
@@ -136,17 +121,16 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
         name, mod_info = item
         if mod_info.get('legacy'):
             module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
-            yield from multi_target_dependency(map(dereference, var), module_options_fname)
+            yield from dependency(map(dereference, var), module_options_fname)
 
-    yield from multi_target_dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), global_module_options_fname, options_fname, global_options_fname)
-    yield from multi_target_dependency(map(dereference, ragged_obj_varnames[0]), options_fname, global_options_fname)
+    yield from dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), global_module_options_fname, options_fname, global_options_fname)
+    yield from dependency(map(dereference, ragged_obj_varnames[0]), options_fname, global_options_fname)
 
     objs = map(dereference, obj_varnames)
     if omit_main:
         objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
 
-    yield from dependency(exec_fname, *objs)
-    yield from order_dependency(exec_fname, os.path.dirname(exec_fname))
+    yield from __do_dependency(objs, [exec_fname], [os.path.dirname(exec_fname)])
     yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
 
     yield from append_variable('executable_name', exec_fname)

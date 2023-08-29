@@ -203,6 +203,27 @@ class DoForFirstTests(unittest.TestCase):
                 expected = ['ABC'] + ['teststring'] * (length-1)
                 self.assertEqual(result, expected)
 
+class MultilineTests(unittest.TestCase):
+    def test_empty_does_nothing(self):
+        self.assertEqual(list(config.util.multiline([])), [])
+
+    def test_shorter_than_length_yields_one_line(self):
+        testval = ['test']
+        self.assertEqual(list(config.util.multiline(testval, length=2)), ['test'])
+
+    def test_longer_than_length_groups_elements(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2)), ['testa testb', 'testc'])
+
+    def test_lines_can_indent(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2, indent=1)), ['testa testb', '  testc'])
+
+    def test_line_terminators_are_added(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2, line_end='x')), ['testa testbx', 'testc'])
+
+
 class YieldFromStar(unittest.TestCase):
     class Generator:
         def __init__(self, gen):

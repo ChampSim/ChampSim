@@ -127,8 +127,10 @@ def cut(iterable, n=-1):
         for elem in it:
             yield tail.popleft()
             tail.append(elem)
+    def tail_iterator():
+        yield from tail
 
-    return head_iterator(), tail
+    return head_iterator(), tail_iterator()
 
 def append_except_last(iterable, suffix):
     ''' Append a string to each element of the iterable except the last one. '''
@@ -152,12 +154,12 @@ def do_for_first(func, iterable):
     yield from map(func, head)
     yield from tail
 
-def multiline(long_line, length=1, indent=0, line_end=' \\'):
+def multiline(long_line, length=1, indent=0, line_end=None):
     ''' Split a long string into lines with n words '''
     grouped = [iter(long_line)] * length
     grouped = itertools.zip_longest(*grouped, fillvalue='')
     grouped = (' '.join(filter(None, group)) for group in grouped)
-    lines = append_except_last(grouped, line_end)
+    lines = append_except_last(grouped, line_end or '')
     indentation = itertools.chain(('',), itertools.repeat('  '*indent))
     yield from (i+l for i,l in zip(indentation,lines))
 
