@@ -1,5 +1,7 @@
 import unittest
 import itertools
+import tempfile
+import os
 
 import config.instantiation_file
 
@@ -254,3 +256,19 @@ class GetUpperLevelsTests(unittest.TestCase):
         ptws = []
         self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
 
+class CheckHeaderCompilesForClassTests(unittest.TestCase):
+    def test_present(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('A', fname))
+
+    def test_absent(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('B', fname))

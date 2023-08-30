@@ -16,6 +16,8 @@ import itertools
 import functools
 import operator
 import os
+import tempfile
+import subprocess
 
 from . import util
 
@@ -222,6 +224,66 @@ def get_upper_levels(cores, caches, ptws):
         map(functools.partial(named_selector, key='L1D'), cores)
     )))
 
+def check_header_compiles_for_class(clazz, file):
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    include_dir = os.path.join(champsim_root, 'inc')
+    global_options = os.path.join(champsim_root, 'global.options')
+
+    with tempfile.TemporaryDirectory() as dtemp:
+        args = (
+            'c++',
+            '--std=c++17',
+            f'-I{include_dir}',
+            f'-I{dtemp}',
+            '-o', os.path.join(dtemp, 'test'),
+
+            # patch constants
+            '-DBLOCK_SIZE=64',
+            '-DPAGE_SIZE=4096',
+            '-DSTAT_PRINTING_PERIOD=1000000',
+            '-DNUM_CPUS=1',
+            '-DLOG2_BLOCK_SIZE=6',
+            '-DLOG2_PAGE_SIZE=12',
+
+            '-DDRAM_IO_FREQ=3200',
+            '-DDRAM_CHANNELS=1',
+            '-DDRAM_RANKS=1',
+            '-DDRAM_BANKS=1',
+            '-DDRAM_ROWS=65536',
+            '-DDRAM_COLUMNS=16',
+            '-DDRAM_CHANNEL_WIDTH=8',
+            '-DDRAM_WQ_SIZE=8',
+            '-DDRAM_RQ_SIZE=8'
+        )
+
+        fname = os.path.join(dtemp, f'{clazz}.cc')
+        with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
+            print('', file=wfp)
+
+        with open(fname, 'wt') as wfp:
+            print(f'#include "{file}"', file=wfp)
+
+            # main function
+            main_body = [f'{clazz} x{{nullptr}};']
+            for l in util.cxx_function('main', [], rtype='int'):
+                print(l, file=wfp)
+        result = subprocess.run((*args, f'-I{dtemp}', fname), capture_output=True)
+
+    return (result.returncode == 0)
+
+def module_include_files(datas):
+    def all_headers_on(path):
+        for base,_,files in os.walk(path):
+            for file in files:
+                if os.path.splitext(file)[1] == '.h':
+                    yield os.path.abspath(os.path.join(base, file))
+
+    class_paths = [(module_data['class'], all_headers_on(module_data['path'])) for module_data in datas]
+    candidates = set(itertools.chain(*(zip(itertools.repeat(clazz), headers) for clazz,headers in class_paths)))
+    inc_files = {file for clazz,file in candidates if check_header_compiles_for_class(clazz, file)}
+
+    yield from (f'#include "{f}"' for f in inc_files)
+
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_levels = util.chain(
             *util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
@@ -243,17 +305,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "module_def.inc"'
     yield '#endif'
 
-    inc_files = set()
     datas = itertools.chain(
         *(c['_branch_predictor_data'] for c in cores),
         *(c['_btb_data'] for c in cores),
         *(c['_prefetcher_data'] for c in caches),
         *(c['_replacement_data'] for c in caches)
     )
-    for module_data in datas:
-        for base,_,files in os.walk(module_data['path']):
-            inc_files.update([os.path.join(base, f) for f in files if os.path.splitext(f)[1] == '.h'])
-    yield from ('#include "../../../'+f+'"' for f in inc_files)
+    yield from module_include_files(datas)
 
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
@@ -264,16 +322,16 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
         (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),
 
-        itertools.chain(*map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws)),
-        itertools.chain(*map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches)),
-        itertools.chain(*map(get_cpu_builder, cores)),
+        *map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws),
+        *map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches),
+        *map(get_cpu_builder, cores),
 
         get_ref_vector_function('O3_CPU', 'cpu_view', cores),
         get_ref_vector_function('CACHE', 'cache_view', caches),
         get_ref_vector_function('PageTableWalker', 'ptw_view', ptws),
         get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,)))),
 
-        (f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}',)
+        util.cxx_function('dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&', qualifiers=['override'])
     )
     yield from util.cxx_struct('generated_environment final', struct_body, superclass='champsim::environment')
 

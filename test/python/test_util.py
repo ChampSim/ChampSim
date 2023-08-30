@@ -285,7 +285,7 @@ class CxxFunctionTests(unittest.TestCase):
             with open(fname, 'wt') as wfp:
                 for l in function:
                     print(l, file=wfp)
-            subprocess.run(['c++', fname])
+            subprocess.run(['c++', fname, '-o', os.path.join(dtemp, 'test')])
 
     def test_main(self):
         self.do_build(config.util.cxx_function('main', [], rtype='int'))
@@ -307,7 +307,7 @@ class CxxStructTests(unittest.TestCase):
                 # main function
                 for l in config.util.cxx_function('main', [], rtype='int'):
                     print(l, file=wfp)
-            subprocess.run(['c++', fname])
+            subprocess.run(['c++', fname, '-o', os.path.join(dtemp, 'test')])
 
     def test_empty(self):
         self.do_build(config.util.cxx_struct('A', []))
