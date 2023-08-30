@@ -168,20 +168,22 @@ def get_ptw_builder(ptw, upper_levels):
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
 
-
 def get_ref_vector_function(rtype, func_name, elements):
     if len(elements) > 1:
         open_brace, close_brace = '{{', '}}'
     else:
         open_brace, close_brace = '{', '}'
 
-    yield f'auto {func_name}() -> std::vector<std::reference_wrapper<{rtype}>> override'
-    yield '{'
-    wrapped = (f'std::reference_wrapper<{rtype}>{{{elem["name"]}}}' for elem in elements)
-    wrapped = itertools.chain((f'  return {open_brace}',), util.append_except_last(wrapped, ','))
-    yield from util.multiline(wrapped, length=3, indent=2, line_end='')
-    yield f'  {close_brace};'
-    yield '}'
+    wrapped = itertools.chain(
+        ('return', open_brace),
+        util.append_except_last((f'std::reference_wrapper<{rtype}>{{{elem["name"]}}}' for elem in elements), ','),
+        (f'{close_brace};',)
+    )
+    wrapped = util.multiline(wrapped, length=3, indent=2, line_end='')
+
+    wrapped_rtype = f'std::vector<std::reference_wrapper<{rtype}>>'
+
+    yield from util.cxx_function(func_name, wrapped, rtype=wrapped_rtype, qualifiers=['override'])
     yield ''
 
 def cache_queue_defaults(cache):
@@ -250,28 +252,24 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'
-    yield 'struct generated_environment final : public champsim::environment {'
-    yield ''
+    struct_body = itertools.chain(
+        *((queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels']) for v in upper_levels.values()),
 
-    for v in upper_levels.values():
-        yield from (queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels'])
-    yield ''
+        (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
+        (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),
 
-    yield pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem)
-    yield vmem_fmtstr.format(dram_name=pmem['name'], **vmem)
+        itertools.chain(*map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws)),
+        itertools.chain(*map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches)),
+        itertools.chain(*map(get_cpu_builder, cores)),
 
-    yield from itertools.chain(*map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws))
-    yield from itertools.chain(*map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches))
-    yield from itertools.chain(*map(get_cpu_builder, cores))
+        get_ref_vector_function('O3_CPU', 'cpu_view', cores),
+        get_ref_vector_function('CACHE', 'cache_view', caches),
+        get_ref_vector_function('PageTableWalker', 'ptw_view', ptws),
+        get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,)))),
 
-    yield from get_ref_vector_function('O3_CPU', 'cpu_view', cores)
-    yield from get_ref_vector_function('CACHE', 'cache_view', caches)
-    yield from get_ref_vector_function('PageTableWalker', 'ptw_view', ptws)
-    yield from get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,))))
+        (f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}',)
+    )
+    yield from util.cxx_struct('generated_environment final', struct_body, superclass='champsim::environment')
 
-    yield f'MEMORY_CONTROLLER& dram_view() override {{ return {pmem["name"]}; }}'
-    yield ''
-
-    yield '};'
     yield '}'
     yield '// NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)'

@@ -139,23 +139,20 @@ def mangled_declaration(fname, args, rtype, module_data):
     argstring = ', '.join(a[0] for a in args)
     return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
+def variant_function_body(fname, args, module_data):
+    argnamestring = ', '.join(a[1] for a in args)
+    body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
+    yield from util.cxx_function(fname, body, args=args)
+    yield ''
+
 def get_discriminator(variant_data, module_data, classname):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
     discriminator_classname = module_data['class'].split('::')[-1]
-    yield f'struct {discriminator_classname} : {classname}'
-    yield '{'
-    yield f'  using {classname}::{classname};'
-
-    for fname, args, _ in variant_data:
-        argstring = ', '.join((a[0]+' '+a[1]) for a in args)
-        argnamestring = ', '.join(a[1] for a in args)
-        yield f'  auto {fname}({argstring})'
-        yield '  {'
-        yield f'    return intern_->{module_data["func_map"][fname]}({argnamestring});'
-        yield '  }'
-        yield ''
-
-    yield '};'
+    body = itertools.chain(
+        (f'using {classname}::{classname}',),
+        *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
+    )
+    yield from util.cxx_struct(discriminator_classname, body, superclass=classname)
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
