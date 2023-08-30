@@ -17,8 +17,9 @@ import os
 
 from . import util
 
-def sanitize(s):
-    return s.replace(':', '\:')
+def sanitize(name):
+    ''' Remove colon characters from makefile names. '''
+    return name.replace(':', r'\:')
 
 def header(values):
     '''
@@ -37,7 +38,9 @@ def dereference(var):
 def __do_dependency(dependents, targets=None, order_dependents=None):
     targets_head, targets_tail = util.cut(targets or [], n=-1)
     orders_head, orders_tail = util.cut(order_dependents or [], n=1)
-    sequence = itertools.chain(targets_head, (l+':' for l in targets_tail), dependents, ('| '+l for l in orders_head), orders_tail)
+    targets_tail = (l+':' for l in targets_tail)
+    orders_head = ('| '+l for l in orders_head)
+    sequence = itertools.chain(targets_head, targets_tail, dependents, orders_head, orders_tail)
     yield from util.multiline(sequence, length=3, indent=1, line_end=' \\')
 
 def __do_assign_variable(operator, var, val, targets):
@@ -56,6 +59,7 @@ def append_variable(var, head_val, *tail_val, targets=None):
     yield from __do_assign_variable('+=', var, (head_val, *tail_val), targets)
 
 def make_subpart(i, src_dir, base, dest_dir, build_id):
+    ''' Map a single directory of sources to destinations. '''
     local_dir_varname = f'{build_id}_dirs_{i}'
     local_obj_varname = f'{build_id}_objs_{i}'
 
@@ -99,7 +103,12 @@ def make_part(src_dirs, dest_dir, build_id):
 
 def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
-    yield from header({'Build ID': build_id, 'Executable': executable, 'Source Directories': source_dirs, 'Module Names': list(module_info.keys())})
+    yield from header({
+        'Build ID': build_id,
+        'Executable': executable,
+        'Source Directories': source_dirs,
+        'Module Names': list(module_info.keys())
+    })
     yield ''
 
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -123,8 +132,9 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
             module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
             yield from dependency(map(dereference, var), module_options_fname)
 
-    yield from dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), global_module_options_fname, options_fname, global_options_fname)
-    yield from dependency(map(dereference, ragged_obj_varnames[0]), options_fname, global_options_fname)
+    options_names = (global_module_options_fname, options_fname, global_options_fname)
+    yield from dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), *options_names)
+    yield from dependency(map(dereference, ragged_obj_varnames[0]), *options_names[1:])
 
     objs = map(dereference, obj_varnames)
     if omit_main:

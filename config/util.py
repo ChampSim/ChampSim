@@ -118,6 +118,12 @@ def propogate_down(path, key):
             yield from ({ **element, key: value } for element in chunk)
 
 def cut(iterable, n=-1):
+    '''
+    Split an iterable into a head and a tail. The head should be completely consumed before the tail is accesssed.
+
+    :param iterable: An iterable
+    :param n: The length of the head or, if the value is negative, the length of the tail.
+    '''
     it = iter(iterable)
     if n >= 0:
         return itertools.islice(it, n), it
@@ -161,11 +167,11 @@ def yield_from_star(gen, args, n=2):
     Python generators can return values when they are finished.
     This adaptor yields the values from the generators and collects the returned values into a list.
     '''
-    retvals = [list() for _ in range(n)]
-    for a in args:
-        instance_retval = yield from gen(*a)
-        for seq,r in zip(retvals, instance_retval):
-            seq.append(r)
+    retvals = [[] for _ in range(n)]
+    for argument in args:
+        instance_retval = yield from gen(*argument)
+        for seq,return_value in zip(retvals, instance_retval):
+            seq.append(return_value)
     return retvals
 
 def cxx_function(name, body, args=None, rtype=None, qualifiers=tuple()):

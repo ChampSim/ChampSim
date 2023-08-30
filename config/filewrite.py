@@ -15,7 +15,6 @@
 import difflib
 import hashlib
 import itertools
-import functools
 import operator
 import os
 import json
@@ -88,9 +87,14 @@ def generate_legacy_module_information(containing_dir, module_info):
         yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
         yield os.path.join(containing_dir, 'module_def.inc'), (
                 *cxx_generated_warning(),
-                '#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{',
+                '#ifndef GENERATED_MODULES_INC',
+                '#define GENERATED_MODULES_INC',
+                '#include "modules.h"',
+                'namespace champsim::modules::generated',
+                '{',
                 *module_definitions,
-                '}','#endif'
+                '}',
+                '#endif'
             )
 
         joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
@@ -100,9 +104,9 @@ def generate_legacy_module_information(containing_dir, module_info):
 
 def try_int(val):
     try:
-      return int(val)
-    except:
-      raise TypeError
+        return int(val)
+    except Exception as exc:
+        raise TypeError from exc
 
 class Fragment:
     '''
@@ -146,12 +150,16 @@ class Fragment:
 
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
-        executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
+        executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
 
         unique_obj_dir = os.path.join(objdir_name, build_id)
         inc_dir = os.path.join(unique_obj_dir, 'inc')
 
-        legacy_module_info = { mod_type: { k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy') } for mod_type, mod_set in module_info.items() }
+        legacy_module_info = {
+            mod_type: {
+                k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
+            } for mod_type, mod_set in module_info.items()
+        }
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
