@@ -150,8 +150,18 @@ long MEMORY_CONTROLLER::operate()
     }
 
     // Look for queued packets that have not been scheduled
-    auto next_schedule = [](const auto& lhs, const auto& rhs) {
-      return !(rhs.has_value() && !rhs.value().scheduled) || ((lhs.has_value() && !lhs.value().scheduled) && lhs.value().event_cycle < rhs.value().event_cycle);
+    // prioritize packets that are ready to execute, bank is free
+    auto next_schedule = [&](const auto& lhs, const auto& rhs) {
+      if (!(rhs.has_value() && !rhs.value().scheduled))
+      return(true);
+      if (!(lhs.has_value() && !lhs.value().scheduled))
+      return(false);
+
+      auto lop_idx = dram_get_rank(lhs.value().address)*DRAM_BANKS + dram_get_bank(lhs.value().address);
+      auto rop_idx = dram_get_rank(rhs.value().address)*DRAM_BANKS + dram_get_bank(rhs.value().address);
+      auto rready = !channel.bank_request[rop_idx].valid;
+      auto lready = !channel.bank_request[lop_idx].valid;
+      return (rready && lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
     };
     DRAM_CHANNEL::queue_type::iterator iter_next_schedule;
     if (channel.write_mode)
