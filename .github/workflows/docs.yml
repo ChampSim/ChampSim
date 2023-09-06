@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Documentation
-        run: sphinx-versioning docs _build
+        run: sphinx-multiversion docs _build
 
       - uses: actions/checkout@v4
         with:
