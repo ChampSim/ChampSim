@@ -7,8 +7,6 @@
 #include <cfenv>
 #include <cmath>
 
-#include <iostream>
-
 std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::channel::request_type>* packet_stream, std::vector<uint64_t>* arriv_time)
 {
     uut->current_cycle = 0;
@@ -23,15 +21,13 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
     });
 
     //carry out operates, record request scheduling order
-    uint64_t completed_reqs = 0;
     std::vector<bool> last_scheduled(packet_stream->size(),false);
     std::vector<uint64_t> scheduled_order;
 
-    while (completed_reqs < std::size(*packet_stream))
+    while (std::size(scheduled_order) < std::size(*packet_stream))
     {
         //operate mem controller
         uut->_operate();
-        
         //get scheduled requests
         std::vector<bool> next_scheduled{};
         std::transform(std::begin(uut->channels[0].RQ), std::end(uut->channels[0].RQ), std::back_inserter(next_scheduled), [](const auto& entry) { return ((entry.has_value() && entry.value().scheduled) || !entry.has_value()); });
@@ -46,7 +42,6 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
             if (chunk_begin != chunk_end)
             {
                scheduled_order.push_back(std::distance(std::begin(next_scheduled), chunk_begin));
-               completed_reqs++;
                break;
             }
         }
@@ -59,7 +54,9 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
 SCENARIO("A series of reads arrive at the memory controller and are reordered") {
     GIVEN("A request stream to the memory controller") {
         MEMORY_CONTROLLER uut{1, 3200, 12.5, 12.5, 20, 7.5, {}};
+        //test
         uut.warmup = false;
+        uut.channels[0].warmup = false;
         //packets need address
         /*
         * | row address | rank index | column address | bank index | channel | block
