@@ -30,7 +30,7 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: mv _build/* .
+        run: mv -f _build/* .
 
       - uses: EndBug/add-and-commit@v9
         with:
