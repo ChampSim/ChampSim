@@ -118,6 +118,12 @@ def propogate_down(path, key):
             yield from ({ **element, key: value } for element in chunk)
 
 def cut(iterable, n=-1):
+    '''
+    Split an iterable into a head and a tail. The head should be completely consumed before the tail is accesssed.
+
+    :param iterable: An iterable
+    :param n: The length of the head or, if the value is negative, the length of the tail.
+    '''
     it = iter(iterable)
     if n >= 0:
         return itertools.islice(it, n), it
@@ -161,10 +167,41 @@ def yield_from_star(gen, args, n=2):
     Python generators can return values when they are finished.
     This adaptor yields the values from the generators and collects the returned values into a list.
     '''
-    retvals = [list() for _ in range(n)]
-    for a in args:
-        instance_retval = yield from gen(*a)
-        for seq,r in zip(retvals, instance_retval):
-            seq.append(r)
+    retvals = [[] for _ in range(n)]
+    for argument in args:
+        instance_retval = yield from gen(*argument)
+        for seq,return_value in zip(retvals, instance_retval):
+            seq.append(return_value)
     return retvals
 
+def cxx_function(name, body, args=None, rtype=None, qualifiers=tuple()):
+    '''
+    Yields a C++ function with the given name and body.
+
+    :param name: The function name
+    :param body: An iterable of function body lines
+    :param args: An iterable of (type, name) pairs
+    :param rtype: The return type (auto if not specified)
+    :param qualifiers: An iterable of type qualifiers (e.g. const, override)
+    '''
+    local_args = args or tuple()
+    arg_string = ', '.join((a[0]+' '+a[1]) for a in local_args)
+    rtype_string = f' -> {rtype}' if rtype is not None else ''
+    yield f'auto {name}({arg_string}){rtype_string}{" ".join(qualifiers)}'
+    yield '{'
+    yield from ('  '+l for l in body)
+    yield '}'
+
+def cxx_struct(name, body, superclass=None):
+    '''
+    Yields a C++ struct with the given name and body.
+
+    :param name: The function name
+    :param body: An iterable of function body lines
+    :param superclass: The class's superclass
+    '''
+    superclass_string = f' : public {superclass}' if superclass is not None else ''
+    yield f'struct {name}{superclass_string}'
+    yield '{'
+    yield from ('  '+l for l in body)
+    yield '};'

@@ -331,9 +331,9 @@ class NormalizedConfiguration:
             ({
                 'name': c['name'],
                 '_branch_predictor_data':
-                    [*map(branch_context.find, util.wrap_list(c.get('branch_predictor', 'hashed_perceptron')))],
+                    [*map(branch_parse, util.wrap_list(c.get('branch_predictor', 'hashed_perceptron')))],
                 '_btb_data':
-                    [*map(btb_context.find, util.wrap_list(c.get('btb', 'basic_btb')))]
+                    [*map(btb_parse, util.wrap_list(c.get('btb', 'basic_btb')))]
              } for c in cores),
             ).values()
         )
@@ -355,14 +355,12 @@ class NormalizedConfiguration:
             'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
         }
 
-
-        config_env = util.subdict(root_config, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
             'num_cores': len(cores)
         }
 
-        return elements, module_info, config_extern, config_env
+        return elements, module_info, config_extern
 
 def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_dir=None, repl_dir=None, compile_all_modules=False): # pylint: disable=line-too-long,
     ''' Main parsing dispatch function '''
@@ -378,7 +376,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         return lhs
     merged_config = functools.reduce(do_merge, (NormalizedConfiguration(c) for c in configs))
 
-    elements, module_info, config_file, env = merged_config.apply_defaults_in(
+    elements, module_info, config_file = merged_config.apply_defaults_in(
         branch_context = modules.ModuleSearchContext(list_dirs('branch', branch_dir or [])),
         btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or [])),
         replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or [])),
@@ -395,4 +393,4 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_btb_data'] for c in elements['cores'])
         ))]
 
-    return executable_name(*configs), elements, modules_to_compile, module_info, config_file, env
+    return executable_name(*configs), elements, modules_to_compile, module_info, config_file

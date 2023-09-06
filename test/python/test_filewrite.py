@@ -68,7 +68,7 @@ class FragmentTests(unittest.TestCase):
         b_frag = config.filewrite.Fragment(b_parts)
         self.assertEqual(list(iter(config.filewrite.Fragment.join(a_frag, b_frag))), expected)
 
-    def test_joined_fragments_preserve_makefile_headers(self):
+    def test_joined_fragments_preserve_make_headers(self):
         a_parts = [('a.mk', (*config.filewrite.make_generated_warning(), 'aaa'))]
         b_parts = [('a.mk', (*config.filewrite.make_generated_warning(), 'bbb'))]
         expected = [('a.mk', (*config.filewrite.make_generated_warning(), 'aaa','bbb'))]

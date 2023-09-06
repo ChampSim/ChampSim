@@ -1,6 +1,9 @@
 import unittest
 import operator
 import itertools
+import tempfile
+import subprocess
+import os
 
 import config.util
 
@@ -274,3 +277,43 @@ class YieldFromStar(unittest.TestCase):
         self.assertEqual(yielded, [0,1,0,1,2,3])
         self.assertEqual(first, ['identity_first', 'identity_first'])
         self.assertEqual(second, ['identity_second', 'identity_second'])
+
+class CxxFunctionTests(unittest.TestCase):
+    def do_build(self, function):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.cc')
+            with open(fname, 'wt') as wfp:
+                for l in function:
+                    print(l, file=wfp)
+            subprocess.run(['c++', fname, '-o', os.path.join(dtemp, 'test')])
+
+    def test_main(self):
+        self.do_build(config.util.cxx_function('main', [], rtype='int'))
+
+    def test_main_with_args(self):
+        self.do_build(config.util.cxx_function('main', [], args=[('int', 'argc'), ('char**', 'argv')], rtype='int'))
+
+    def test_body(self):
+        self.do_build(config.util.cxx_function('main', ['return 0;'], rtype='int'))
+
+class CxxStructTests(unittest.TestCase):
+    def do_build(self, struct):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.cc')
+            with open(fname, 'wt') as wfp:
+                for l in struct:
+                    print(l, file=wfp)
+
+                # main function
+                for l in config.util.cxx_function('main', [], rtype='int'):
+                    print(l, file=wfp)
+            subprocess.run(['c++', fname, '-o', os.path.join(dtemp, 'test')])
+
+    def test_empty(self):
+        self.do_build(config.util.cxx_struct('A', []))
+
+    def test_super(self):
+        base = config.util.cxx_struct('A', [])
+        deriv = config.util.cxx_struct('B', [], superclass='A')
+        self.do_build([*base, *deriv])
+
