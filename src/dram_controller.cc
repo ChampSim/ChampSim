@@ -206,7 +206,7 @@ long DRAM_CHANNEL::schedule_packets()
 
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
-  auto next_schedule = [this, &](const auto& lhs, const auto& rhs) {
+  auto next_schedule = [this](const auto& lhs, const auto& rhs) {
     if (!(rhs.has_value() && !rhs.value().scheduled))
     return(true);
     if (!(lhs.has_value() && !lhs.value().scheduled))
@@ -214,8 +214,8 @@ long DRAM_CHANNEL::schedule_packets()
 
     auto lop_idx = this->get_rank(lhs.value().address)*this->BANKS + this->get_bank(lhs.value().address);
     auto rop_idx = this->get_rank(rhs.value().address)*this->BANKS + this->get_bank(rhs.value().address);
-    auto rready = !channel.bank_request[rop_idx].valid;
-    auto lready = !channel.bank_request[lop_idx].valid;
+    auto rready = !this->bank_request[rop_idx].valid;
+    auto lready = !this->bank_request[lop_idx].valid;
     return (rready && lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
   };
   queue_type::iterator iter_next_schedule;
@@ -237,7 +237,6 @@ long DRAM_CHANNEL::schedule_packets()
 
       // this bank is now busy
       bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
-
       iter_next_schedule->value().scheduled = true;
       iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
 
