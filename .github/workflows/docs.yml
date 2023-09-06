@@ -30,7 +30,7 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: mv -f _build/* .
+        run: rsync -av _build/ .
 
       - uses: EndBug/add-and-commit@v9
         with:
