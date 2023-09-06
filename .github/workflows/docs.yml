@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Set Up Environment
-        run: python3 -m pip install sphinx sphinx-rtd-theme sphinx-versioning
+        run: python3 -m pip install sphinx sphinx-rtd-theme sphinx-multiversion
 
       - uses: actions/checkout@v4
 
