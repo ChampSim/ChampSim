@@ -17,11 +17,17 @@
 #ifndef TRACEREADER_H
 #define TRACEREADER_H
 
+#include <array>   // for array
+#include <cstdint> // for uint8_t, uint64_t
 #include <cstring>
 #include <deque>
+#include <iterator> // for begin, size, operator!=, operator==, back_i...
 #include <memory>
 #include <numeric>
 #include <string>
+#include <string_view> // for string_view
+#include <type_traits>
+#include <utility> // for move, forward
 
 #include "instruction.h"
 #include "util/detect.h"
@@ -30,11 +36,11 @@ namespace champsim
 {
 class tracereader
 {
-  static uint64_t instr_unique_id;
+  static uint64_t instr_unique_id; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   struct reader_concept {
     virtual ~reader_concept() = default;
     virtual ooo_model_instr operator()() = 0;
-    virtual bool eof() const = 0;
+    [[nodiscard]] virtual bool eof() const = 0;
   };
 
   template <typename T>
@@ -46,10 +52,11 @@ class tracereader
     using has_eof = decltype(std::declval<U>().eof());
 
     ooo_model_instr operator()() override { return intern_(); }
-    bool eof() const override
+    [[nodiscard]] bool eof() const override
     {
-      if constexpr (champsim::is_detected_v<has_eof, T>)
+      if constexpr (champsim::is_detected_v<has_eof, T>) {
         return intern_.eof();
+      }
       return false; // If an eof() member function is not provided, assume the trace never ends.
     }
   };
@@ -57,8 +64,8 @@ class tracereader
   std::unique_ptr<reader_concept> pimpl_;
 
 public:
-  template <typename T>
-  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::move(val)))
+  template <typename T, std::enable_if_t<!std::is_same_v<tracereader, T>, bool> = true>
+  tracereader(T&& val) : pimpl_(std::make_unique<reader_model<T>>(std::forward<T>(val)))
   {
   }
 
@@ -69,7 +76,7 @@ public:
     return retval;
   }
 
-  auto eof() const { return pimpl_->eof(); }
+  [[nodiscard]] auto eof() const { return pimpl_->eof(); }
 };
 
 template <typename T, typename F>
@@ -92,7 +99,7 @@ public:
   bulk_tracereader(uint8_t cpu_idx, std::string tf) : cpu(cpu_idx), trace_file(tf) {}
   bulk_tracereader(uint8_t cpu_idx, F&& file) : cpu(cpu_idx), trace_file(std::move(file)) {}
 
-  bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
+  [[nodiscard]] bool eof() const { return trace_file.eof() && std::size(instr_buffer) <= refresh_thresh; }
 };
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target);
@@ -100,7 +107,8 @@ ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_inst
 template <typename It>
 void set_branch_targets(It begin, It end)
 {
-  std::reverse_iterator rbegin{end}, rend{begin};
+  std::reverse_iterator rbegin{end};
+  std::reverse_iterator rend{begin};
   std::adjacent_difference(rbegin, rend, rbegin, apply_branch_target);
 }
 
@@ -138,6 +146,6 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
 std::string get_fptr_cmd(std::string_view fname);
 } // namespace champsim
 
-champsim::tracereader get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
+champsim::tracereader get_tracereader(const std::string& fname, uint8_t cpu, bool is_cloudsuite, bool repeat);
 
 #endif

@@ -14,20 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef MODULE_IMPL_H
-#define MODULE_IMPL_H
+#include "modules.h"
 
-namespace champsim
+#include "cache.h"
+
+bool champsim::modules::prefetcher::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const
 {
-
-namespace detail
-{
-template <typename T>
-struct take_last {
-  T operator()(T, T last) const { return last; }
-};
-} // namespace detail
-
-} // namespace champsim
-
-#endif
+  return intern_->prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
+}

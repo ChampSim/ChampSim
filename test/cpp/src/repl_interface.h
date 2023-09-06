@@ -8,8 +8,8 @@ namespace test
   struct repl_update_interface
   {
     uint32_t cpu;
-    uint32_t set;
-    uint32_t way;
+    long set;
+    long way;
     uint64_t full_addr;
     uint64_t ip;
     uint64_t victim_addr;

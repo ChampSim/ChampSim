@@ -17,15 +17,19 @@
 #ifndef VMEM_H
 #define VMEM_H
 
+#include <algorithm> // for max
+#include <cstddef>   // for size_t
 #include <cstdint>
 #include <map>
+#include <tuple>   // for tuple
+#include <utility> // for pair
 
 #include "champsim_constants.h"
 
 class MEMORY_CONTROLLER;
 
 // reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ull << 20);
+inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ULL << 20);
 
 inline constexpr std::size_t PTE_BYTES = 8;
 
@@ -40,7 +44,7 @@ private:
   uint64_t next_ppage;
   uint64_t last_ppage;
 
-  uint64_t ppage_front() const;
+  [[nodiscard]] uint64_t ppage_front() const;
   void ppage_pop();
 
 public:
@@ -49,10 +53,10 @@ public:
   const uint64_t pte_page_size; // Size of a PTE page
 
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(uint64_t pg_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
-  uint64_t shamt(std::size_t level) const;
-  uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
-  std::size_t available_ppages() const;
+  VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
+  [[nodiscard]] uint64_t shamt(std::size_t level) const;
+  [[nodiscard]] uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
+  [[nodiscard]] std::size_t available_ppages() const;
   std::pair<uint64_t, uint64_t> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
   std::pair<uint64_t, uint64_t> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level);
 };

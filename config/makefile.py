@@ -12,127 +12,139 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools, operator
+import itertools
 import os
 
 from . import util
 
+def sanitize(name):
+    ''' Remove colon characters from makefile names. '''
+    return name.replace(':', r'\:')
+
+def header(values):
+    '''
+    Generate a makefile section header.
+
+    :param values: A dictionary with the parameters to display
+    '''
+    yield '######'
+    yield from (f'# {k}: {v}' for k,v in values.items())
+    yield '######'
+
 def dereference(var):
+    ''' Dereference the variable with the given name '''
     return '$(' + var + ')'
 
-def dependency(target, *dependent, order=None):
-    if order is None:
-        return '{}: {}'.format(target, ' '.join(dependent))
-    else:
-        return '{}: {} | {}'.format(target, ' '.join(dependent), order)
+def __do_dependency(dependents, targets=None, order_dependents=None):
+    targets_head, targets_tail = util.cut(targets or [], n=-1)
+    orders_head, orders_tail = util.cut(order_dependents or [], n=1)
+    targets_tail = (l+':' for l in targets_tail)
+    orders_head = ('| '+l for l in orders_head)
+    sequence = itertools.chain(targets_head, targets_tail, dependents, orders_head, orders_tail)
+    yield from util.multiline(sequence, length=3, indent=1, line_end=' \\')
 
-def assign_variable(var, val, target=None):
-    retval = '{} = {}'.format(var, val)
-    if target is not None:
-        retval = dependency(target, retval)
-    return retval
+def __do_assign_variable(operator, var, val, targets):
+    yield from __do_dependency(itertools.chain((f'{var} {operator}',), val), targets)
 
-def append_variable(var, *val, targets=[]):
-    retval = '{} += {}'.format(var, ' '.join(val))
-    if targets:
-        retval = dependency(' '.join(targets), retval)
-    return retval
+def dependency(target_iterable, head_dependent, *tail_dependent):
+    ''' Mark the target as having the given dependencies '''
+    yield from __do_dependency((head_dependent, *tail_dependent), target_iterable)
 
-def each_in_dict_list(d):
-    yield from itertools.chain(*(zip(itertools.repeat(kv[0]), kv[1]) for kv in d.items()))
+def assign_variable(var, head_val, *tail_val, targets=None):
+    ''' Assign the given values space-separated to the given variable, conditionally for the given targets '''
+    yield from __do_assign_variable('=', var, (head_val, *tail_val), targets)
+
+def append_variable(var, head_val, *tail_val, targets=None):
+    ''' Append the given values space-separated to the given variable, conditionally for the given targets '''
+    yield from __do_assign_variable('+=', var, (head_val, *tail_val), targets)
+
+def make_subpart(i, src_dir, base, dest_dir, build_id):
+    ''' Map a single directory of sources to destinations. '''
+    local_dir_varname = f'{build_id}_dirs_{i}'
+    local_obj_varname = f'{build_id}_objs_{i}'
+
+    rel_dest_dir = sanitize(os.path.abspath(os.path.join(dest_dir, os.path.relpath(base, src_dir))))
+    rel_src_dir = sanitize(os.path.abspath(src_dir))
+
+    yield from header({'Build ID': build_id, 'Source': rel_src_dir, 'Destination': rel_dest_dir})
+    yield ''
+
+    # Define variables
+    yield from assign_variable(local_dir_varname, sanitize(dest_dir))
+
+    map_source_to_obj = f'$(patsubst {rel_src_dir}/%.cc, {rel_dest_dir}/%.o, $(wildcard {rel_src_dir}/*.cc))'
+    yield from assign_variable(local_obj_varname, map_source_to_obj)
+
+    # Assign dependencies
+    wildcard_dep = dependency([os.path.join(rel_dest_dir, '%.o')], os.path.join(rel_src_dir, '%.cc'))
+    yield from __do_dependency(wildcard_dep, [dereference(local_obj_varname)], [rel_dest_dir])
+
+    wildcard_dest_dir = os.path.join(rel_dest_dir, '*.d')
+    yield f'-include $(wildcard {wildcard_dest_dir})'
+    yield ''
+
+    return local_dir_varname, local_obj_varname
 
 def make_part(src_dirs, dest_dir, build_id):
-    dir_varnames = []
-    obj_varnames = []
+    '''
+    Given a list of source directories and a destination directory, generate the makefile linkages to make
+    object files across the directories.
 
-    for i, base_source in enumerate(itertools.chain(*([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs))):
-        local_dir_varname = '{}_dirs_{}'.format(build_id, i)
-        local_obj_varname = '{}_objs_{}'.format(build_id, i)
+    :param src_dirs: a sequence of source directories
+    :param dest_dir: the target directory
+    :param build_id: a unique identifier for this build
+    :returns: a tuple of the list of directory make variable names and the object make variable names
+    '''
+    source_base = itertools.chain.from_iterable([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs)
+    counted_arg_list = ((i, *sb, dest_dir, build_id) for i,sb in enumerate(source_base))
 
-        src_dir, base = base_source
-        reldir = os.path.relpath(base, src_dir)
-
-        rel_dest_dir = os.path.abspath(os.path.join(dest_dir, reldir))
-        rel_src_dir = os.path.abspath(src_dir)
-
-        local_opts = {'CPPFLAGS': ('-I'+rel_src_dir,) }
-
-        yield '###'
-        yield '# Build ID: ' + build_id
-        yield '# Source: ' + rel_src_dir
-        yield '# Destination: ' + rel_dest_dir
-        yield '###'
-        yield ''
-
-        # Definee variables
-        yield assign_variable(local_dir_varname, dest_dir)
-        yield assign_variable(local_obj_varname, '$(patsubst {src_dir}/%.cc, {dest_dir}/%.o, $(wildcard {src_dir}/*.cc))'.format(dest_dir=rel_dest_dir, src_dir=rel_src_dir))
-
-        # Set flags
-        yield from (append_variable(*kv, targets=[dereference(local_obj_varname)]) for kv in each_in_dict_list(local_opts))
-
-        # Assign dependencies
-        yield dependency(dereference(local_obj_varname), dependency(os.path.join(rel_dest_dir, '%.o'), os.path.join(rel_src_dir, '%.cc')), order=rel_dest_dir)
-        yield '-include $(wildcard {})'.format(os.path.join(rel_dest_dir, '*.d'))
-        yield ''
-
-        dir_varnames.append(local_dir_varname)
-        obj_varnames.append(local_obj_varname)
-
+    dir_varnames, obj_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
     return dir_varnames, obj_varnames
 
-def executable_opts(obj_root, build_id, executable, source_dirs):
-    dest_dir = os.path.join(obj_root, build_id)
-
-    # Add compiler flags
-    local_opts = {'CPPFLAGS': ('-I'+os.path.join(dest_dir, 'inc'),)}
-
-    yield '######'
-    yield '# Build ID: ' + build_id
-    yield '# Executable: ' + executable
-    yield '######'
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
+    ''' Generate all of the lines to be written in a particular configuration's makefile '''
+    yield from header({
+        'Build ID': build_id,
+        'Executable': executable,
+        'Source Directories': source_dirs,
+        'Module Names': list(module_info.keys())
+    })
     yield ''
 
-    dir_varnames, obj_varnames = yield from make_part(source_dirs, os.path.join(dest_dir, 'obj'), build_id)
-    yield dependency(executable, *map(dereference, obj_varnames), order=os.path.split(executable)[0])
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(local_opts))
-    yield append_variable('build_dirs', *map(dereference, dir_varnames), os.path.split(executable)[0])
-    yield append_variable('build_objs', *map(dereference, obj_varnames))
-    yield append_variable('executable_name', executable)
+    ragged_dir_varnames, ragged_obj_varnames = yield from util.yield_from_star(make_part, (
+        (source_dirs, os.path.join(objdir, 'obj'), build_id),
+        *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
+    ), n=2)
+
+    # Flatten varnames
+    dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
+
+    options_fname = sanitize(os.path.normpath(os.path.join(objdir, '..', 'absolute.options')))
+    global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
+    global_module_options_fname = sanitize(os.path.join(champsim_root, 'module.options'))
+    exec_fname = sanitize(os.path.abspath(executable))
+
+    for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
+        name, mod_info = item
+        if mod_info.get('legacy'):
+            module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
+            yield from dependency(map(dereference, var), module_options_fname)
+
+    options_names = (global_module_options_fname, options_fname, global_options_fname)
+    yield from dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:])), *options_names)
+    yield from dependency(map(dereference, ragged_obj_varnames[0]), *options_names[1:])
+
+    objs = map(dereference, obj_varnames)
+    if omit_main:
+        objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
+
+    yield from __do_dependency(objs, [exec_fname], [os.path.dirname(exec_fname)])
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
+
+    yield from append_variable('executable_name', exec_fname)
+    yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=[exec_fname])
+    yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
+    yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''
-
-    return dir_varnames, obj_varnames
-
-def module_opts(obj_dir, build_id, module_name, source_dirs, opts):
-    build_dir = os.path.join(obj_dir, build_id)
-    dest_dir = os.path.join(build_dir, module_name)
-
-    local_opts = {'CPPFLAGS': ('-I'+os.path.join(build_dir, 'inc'), '-include {}.inc'.format(module_name))}
-
-    dir_varnames, obj_varnames = yield from make_part(source_dirs, dest_dir, build_id+'_'+module_name)
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(opts))
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(local_opts))
-    yield append_variable('module_dirs', *map(dereference, dir_varnames))
-    yield append_variable('module_objs', *map(dereference, obj_varnames))
-    yield ''
-
-    return dir_varnames, obj_varnames
-
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, config_file):
-    executable_path = os.path.abspath(executable)
-
-    dir_varnames, obj_varnames = yield from executable_opts(os.path.abspath(objdir), build_id, executable_path, source_dirs)
-    for k,v in module_info.items():
-        module_dir_varnames, module_obj_varnames = yield from module_opts(os.path.abspath(objdir), build_id, k, (v['fname'],), v['opts'])
-        yield dependency(executable_path, *map(dereference, module_obj_varnames))
-        dir_varnames.extend(module_dir_varnames)
-        obj_varnames.extend(module_obj_varnames)
-
-    global_overrides = util.subdict(config_file, ('CXX',))
-    yield from (assign_variable(*kv, targets=[dereference(x) for x in dir_varnames]) for kv in global_overrides.items())
-
-    global_opts = util.subdict(config_file, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS'))
-    yield from (append_variable(*kv, targets=[dereference(x) for x in obj_varnames]) for kv in each_in_dict_list(global_opts))
-    yield ''
-

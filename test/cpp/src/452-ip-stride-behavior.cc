@@ -5,6 +5,8 @@
 #include "cache.h"
 #include "champsim_constants.h"
 
+#include "../../../prefetcher/ip_stride/ip_stride.h"
+
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
   int64_t stride;
 
@@ -27,11 +29,11 @@ SCENARIO("The ip_stride prefetcher issues prefetches when the IP matches") {
   GIVEN("A cache with one filled block") {
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("452-uut-["+std::to_string(stride)+"]")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .prefetcher<CACHE::pprefetcherDip_stride>()
+      .prefetcher<ip_stride>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};

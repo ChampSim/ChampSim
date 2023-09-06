@@ -16,7 +16,7 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600a-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -56,7 +56,7 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600b-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -102,7 +102,7 @@ SCENARIO("PSCLs can reduce the number of issued translation requests") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600c-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
