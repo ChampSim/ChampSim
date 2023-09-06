@@ -14,25 +14,40 @@
  * limitations under the License.
  */
 
-#include <algorithm>
+#include <array>       // for array
+#include <cmath>       // for ceil
+#include <cstddef>     // for size_t
+#include <iostream>    // for ostream
+#include <iterator>    // for begin, end
+#include <map>         // for operator!=, map
+#include <numeric>     // for accumulate
+#include <string>      // for string, basic_string, operator<
+#include <string_view> // for string_view
 #include <utility>
-
-#include "stats_printer.h"
+#include <vector> // for vector
 #include <nlohmann/json.hpp>
 
-void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
-{
-  std::array<std::pair<std::string, std::size_t>, 6> types{
-      {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
-       std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
-       std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
+#include "cache.h"           // for CACHE::stats_type, cache_stats, CACHE
+#include "channel.h"         // for access_type, access_type::LOAD, acc...
+#include "dram_controller.h" // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
+#include "instruction.h"     // for branch_type, BRANCH_CONDITIONAL
+#include "ooo_cpu.h"         // for O3_CPU::stats_type, O3_CPU
+#include "phase_info.h"      // for phase_stats
+#include "stats_printer.h"
+#include "util/bits.h" // for to_underlying
 
-  auto total_mispredictions = std::ceil(
-      std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
+void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
+{
+  constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
+                             branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
+
+  auto total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
 
   std::map<std::string, std::size_t> mpki{};
-  for (auto [name, idx] : types)
-    mpki.emplace(name, stats.branch_type_misses[idx]);
+  for (auto type : types) {
+    mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.at(champsim::to_underlying(type)));
+  }
 
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
@@ -40,21 +55,17 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
                      {"mispredict", mpki}};
 }
 
-void to_json(nlohmann::json& j, const CACHE::stats_type stats)
+void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 {
-  constexpr std::array<std::pair<std::string_view, std::size_t>, 5> types{
-      {std::pair{"LOAD", champsim::to_underlying(access_type::LOAD)}, std::pair{"RFO", champsim::to_underlying(access_type::RFO)},
-       std::pair{"PREFETCH", champsim::to_underlying(access_type::PREFETCH)}, std::pair{"WRITE", champsim::to_underlying(access_type::WRITE)},
-       std::pair{"TRANSLATION", champsim::to_underlying(access_type::TRANSLATION)}}};
-
   std::map<std::string, nlohmann::json> statsmap;
   statsmap.emplace("prefetch requested", stats.pf_requested);
   statsmap.emplace("prefetch issued", stats.pf_issued);
   statsmap.emplace("useful prefetch", stats.pf_useful);
   statsmap.emplace("useless prefetch", stats.pf_useless);
   statsmap.emplace("miss latency", stats.avg_miss_latency);
-  for (const auto& type : types) {
-    statsmap.emplace(type.first, nlohmann::json{{"hit", stats.hits[type.second]}, {"miss", stats.misses[type.second]}});
+  for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)),
+                     nlohmann::json{{"hit", stats.hits.at(champsim::to_underlying(type))}, {"miss", stats.misses.at(champsim::to_underlying(type))}});
   }
 
   j = statsmap;
@@ -76,14 +87,16 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
   std::map<std::string, nlohmann::json> roi_stats;
   roi_stats.emplace("cores", stats.roi_cpu_stats);
   roi_stats.emplace("DRAM", stats.roi_dram_stats);
-  for (auto x : stats.roi_cache_stats)
+  for (auto x : stats.roi_cache_stats) {
     roi_stats.emplace(x.name, x);
+  }
 
   std::map<std::string, nlohmann::json> sim_stats;
   sim_stats.emplace("cores", stats.sim_cpu_stats);
   sim_stats.emplace("DRAM", stats.sim_dram_stats);
-  for (auto x : stats.sim_cache_stats)
+  for (auto x : stats.sim_cache_stats) {
     sim_stats.emplace(x.name, x);
+  }
 
   std::map<std::string, nlohmann::json> statsmap{{"name", stats.name}, {"traces", stats.trace_names}};
   statsmap.emplace("roi", roi_stats);

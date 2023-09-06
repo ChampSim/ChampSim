@@ -4,14 +4,31 @@
 #include "cache.h"
 #include "champsim_constants.h"
 #include "repl_interface.h"
+#include "modules.h"
 
 #include <map>
 #include <vector>
 
 namespace test
 {
-  extern std::map<CACHE*, std::vector<repl_update_interface>> replacement_update_state_collector;
+  std::map<CACHE*, std::vector<repl_update_interface>> replacement_update_state_collector;
 }
+
+struct update_state_collector : champsim::modules::replacement
+{
+  using replacement::replacement;
+
+  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
+  {
+    return 0;
+  }
+
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+  {
+    auto usc_it = test::replacement_update_state_collector.try_emplace(intern_);
+    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, access_type{type}, hit});
+  }
+};
 
 SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
   using namespace std::literals;
@@ -21,7 +38,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     constexpr uint64_t fill_latency = 2;
     release_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("442a-uut-"+std::string{str})
       .sets(1)
       .ways(1)
@@ -31,7 +48,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(0)
-      .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -73,11 +90,8 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The replacement policy is called once") {
-          REQUIRE(std::size(test::replacement_update_state_collector[&uut]) == 1);
-        }
-
         THEN("The replacement policy is called with information from the issued packet") {
+          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
           CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
           CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
           CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
@@ -98,7 +112,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("442b-uut-"+std::string{str})
       .sets(1)
       .ways(1)
@@ -108,7 +122,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .fill_latency(fill_latency)
       .prefetch_activate(type)
       .offset_bits(0)
-      .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -147,11 +161,8 @@ SCENARIO("The replacement policy is triggered on a hit") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The replacement policy is called once") {
-        REQUIRE(std::size(test::replacement_update_state_collector[&uut]) == 1);
-      }
-
       THEN("The replacement policy is called with information from the issued packet") {
+        REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
         CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
         CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
@@ -170,7 +181,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l2c}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l2c}
       .name("442c-uut")
       .sets(1)
       .ways(1)
@@ -180,7 +191,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .fill_latency(fill_latency)
       .prefetch_activate(access_type::LOAD)
       .offset_bits(0)
-      .replacement<CACHE::rtestDcppDmodulesDreplacementDlru_collect>()
+      .replacement<update_state_collector, lru>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul_seed, &mock_ul_test, &uut}};
@@ -211,6 +222,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
           elem->_operate();
 
       AND_WHEN("A packet with a different address is issued") {
+        test::replacement_update_state_collector[&uut].clear();
 
         decltype(mock_ul_test)::request_type test = seed;
         test.address = 0xcafebabe;
@@ -234,12 +246,12 @@ SCENARIO("The replacement policy notes the correct eviction information") {
             elem->_operate();
 
         THEN("An eviction occurred") {
-          REQUIRE(mock_ll.packet_count() == 2);
+          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2));
           REQUIRE(mock_ll.addresses.at(1) == seed.address);
         }
 
         THEN("The replacement policy is called with information from the evicted packet") {
-          REQUIRE(std::size(test::replacement_update_state_collector[&uut]) >= 1);
+          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
           CHECK(test::replacement_update_state_collector[&uut].back().cpu == test.cpu);
           CHECK(test::replacement_update_state_collector[&uut].back().set == 0);
           CHECK(test::replacement_update_state_collector[&uut].back().way == 0);

@@ -22,14 +22,29 @@
 
 namespace champsim::msl
 {
-constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
+template <typename T>
+constexpr T lg2(T n)
+{
+  T result = 0;
+  while (n >>= 1) {
+    ++result;
+  }
+  return result;
+}
 
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
-  return (begin - end < 64) ? ((1ull << (begin - end)) - 1) << end : std::numeric_limits<uint64_t>::max();
+  if (begin - end >= std::numeric_limits<uint64_t>::digits) {
+    return std::numeric_limits<uint64_t>::max();
+  }
+  return ((1ULL << (begin - end)) - 1) << end;
 }
 
-constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits) { return (upper & ~bitmask(bits)) | (lower & bitmask(bits)); }
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits)
+{
+  return (upper & ~bitmask(bits)) | (lower & bitmask(bits));
+}
 } // namespace champsim::msl
 
 #endif

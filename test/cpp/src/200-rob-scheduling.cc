@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 #include "ooo_cpu.h"
 #include "instr.h"
 
@@ -10,7 +9,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .schedule_width(schedule_width)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
@@ -30,7 +29,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
       THEN("The instruction has no register dependencies") {
         REQUIRE(uut.ROB.front().num_reg_dependent == 0);
-        REQUIRE(uut.ROB.front().scheduled == COMPLETED);
+        REQUIRE(uut.ROB.front().scheduled);
         //REQUIRE(uut.ROB.front().event_cycle == old_cycle + schedule_latency);
       }
     }
@@ -41,7 +40,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .schedule_width(schedule_width)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
@@ -66,8 +65,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
       THEN("The second instruction is dependent on the first") {
         REQUIRE(uut.ROB[0].num_reg_dependent == 0);
         REQUIRE(uut.ROB[1].num_reg_dependent == 1);
-        REQUIRE(uut.ROB[0].scheduled == COMPLETED);
-        REQUIRE(uut.ROB[1].scheduled == COMPLETED);
+        REQUIRE(uut.ROB[0].scheduled);
+        REQUIRE(uut.ROB[1].scheduled);
         //REQUIRE(uut.ROB[0].event_cycle == old_cycle + schedule_latency);
         //REQUIRE(uut.ROB[1].event_cycle == old_cycle + schedule_latency);
       }
@@ -79,7 +78,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{O3_CPU::Builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .schedule_width(schedule_width)
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
@@ -115,13 +114,13 @@ SCENARIO("The scheduler can detect RAW hazards") {
         //REQUIRE(std::all_of(std::next(std::begin(uut.ROB)), std::next(std::begin(uut.ROB), schedule_width), [](ooo_model_instr x){ return x.num_reg_dependent >= 1; }));
         //REQUIRE(uut.ROB.back().num_reg_dependent == 0);
 
-        REQUIRE(uut.ROB.at(0).scheduled == COMPLETED);
-        REQUIRE(uut.ROB.at(1).scheduled == COMPLETED);
-        REQUIRE(uut.ROB.at(2).scheduled == COMPLETED);
-        REQUIRE(uut.ROB.at(3).scheduled == COMPLETED);
-        REQUIRE(uut.ROB.at(4).scheduled == 0);
-        //REQUIRE(std::all_of(std::next(std::begin(uut.ROB)), std::next(std::begin(uut.ROB), schedule_width), [](ooo_model_instr x){ return x.scheduled == COMPLETED; }));
-        //REQUIRE(uut.ROB.back().scheduled == 0);
+        REQUIRE(uut.ROB.at(0).scheduled);
+        REQUIRE(uut.ROB.at(1).scheduled);
+        REQUIRE(uut.ROB.at(2).scheduled);
+        REQUIRE(uut.ROB.at(3).scheduled);
+        REQUIRE_FALSE(uut.ROB.at(4).scheduled);
+        //REQUIRE(std::all_of(std::next(std::begin(uut.ROB)), std::next(std::begin(uut.ROB), schedule_width), [](ooo_model_instr x){ return x.scheduled; }));
+        //REQUIRE_FALSE(uut.ROB.back().scheduled);
 
         //REQUIRE(uut.ROB[0].event_cycle == old_cycle + schedule_latency);
         //REQUIRE(std::all_of(std::next(std::begin(uut.ROB)), std::next(std::begin(uut.ROB), schedule_width), [old_cycle](ooo_model_instr x){ return x.event_cycle == old_cycle + schedule_latency; }));

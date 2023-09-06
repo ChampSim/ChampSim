@@ -14,7 +14,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
     TestType mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("403-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

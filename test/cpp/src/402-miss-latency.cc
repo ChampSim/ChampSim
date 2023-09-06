@@ -19,7 +19,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402a-uut-"+std::string(str))
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -87,6 +87,12 @@ SCENARIO("A cache returns a miss after the specified latency") {
       THEN("The average miss latency increases") {
         REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
       }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
+        REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+      }
     }
   }
 }
@@ -102,7 +108,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
     constexpr uint64_t fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
-    auto builder = CACHE::Builder{champsim::defaults::default_l1d}
+    auto builder = champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402b-uut-"+std::string(str))
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -166,6 +172,17 @@ SCENARIO("A cache completes a fill after the specified latency") {
         else
           REQUIRE(uut.sim_stats.total_miss_latency == fill_latency-1); // -1 due to ordering of elements
       }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        if (match_offset) {
+          REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
+          REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+        } else {
+          REQUIRE(uut.sim_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
+          REQUIRE(uut.roi_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
+        }
+      }
     }
   }
 }
@@ -175,7 +192,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402c-uut")
         .upper_levels({{&mock_ul_seed.queues, &mock_ul_test.queues}})
         .lower_level(&mock_ll.queues)
@@ -241,9 +258,9 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
   GIVEN("An empty cache") {
     champsim::channel refusal_channel{0,0,0,0,0}; // Refuses all packets
     to_rq_MRP mock_ul;
-    CACHE uut{CACHE::Builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402c-uut")
-      .upper_levels({{&mock_ul.queues}})
+      .upper_levels({&mock_ul.queues})
       .lower_level(&refusal_channel)
     };
 

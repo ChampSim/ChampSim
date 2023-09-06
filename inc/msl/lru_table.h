@@ -96,8 +96,9 @@ public:
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
-    if (hit == set_end)
+    if (hit == set_end) {
       return std::nullopt;
+    }
 
     hit->last_used = ++access_count;
     return hit->data;
@@ -110,10 +111,11 @@ public:
     if (set_begin != set_end) {
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-      if (tag_projection(hit->data) == tag)
+      if (tag_projection(hit->data) == tag) {
         *hit = {++access_count, elem};
-      else
+      } else {
         *miss = {++access_count, elem};
+      }
     }
   }
 
@@ -122,8 +124,9 @@ public:
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
 
-    if (hit == set_end)
+    if (hit == set_end) {
       return std::nullopt;
+    }
 
     return std::exchange(*hit, {}).data;
   }
@@ -131,7 +134,7 @@ public:
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
       : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
   {
-    assert(sets == 0 || sets == (1ull << lg2(sets)));
+    assert(sets == 0 || sets == (1ULL << lg2(sets)));
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj) : lru_table(sets, ways, set_proj, {}) {}

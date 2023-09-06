@@ -16,7 +16,7 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
     VirtualMemory vmem{1<<12, levels, 200, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
@@ -74,7 +74,7 @@ SCENARIO("Concurrent page table walks can be merged") {
     release_MRC mock_ll;
     to_rq_MRP mock_ul{[](auto x, auto y){ return (x.address >> LOG2_BLOCK_SIZE) == (y.address >> LOG2_BLOCK_SIZE); }};
     //PageTableWalker uut{"601-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {0,0}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
-    PageTableWalker uut{PageTableWalker::Builder{champsim::defaults::default_ptw}
+    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)

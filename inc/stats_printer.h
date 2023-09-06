@@ -28,15 +28,16 @@ class plain_printer
 {
   std::ostream& stream;
 
-  void print(O3_CPU::stats_type);
-  void print(CACHE::stats_type);
-  void print(DRAM_CHANNEL::stats_type);
+  void print(O3_CPU::stats_type stats);
+  void print(CACHE::stats_type stats);
+  void print(DRAM_CHANNEL::stats_type stats);
 
   template <typename T>
   void print(std::vector<T> stats_list)
   {
-    for (auto& stats : stats_list)
+    for (auto& stats : stats_list) {
       print(stats);
+    }
   }
 
 public:
