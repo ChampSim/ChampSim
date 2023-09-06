@@ -7,60 +7,53 @@
 #include <cfenv>
 #include <cmath>
 
-bool dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::channel::request_type>* packet_stream, std::vector<uint64_t>* expected_order, std::vector<uint64_t>* arriv_time)
+#include <iostream>
+
+std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::channel::request_type>* packet_stream, std::vector<uint64_t>* arriv_time)
 {
-    uint64_t vector_index = 0;
     uut->current_cycle = 0;
 
-    std::vector<DRAM_CHANNEL::queue_type::iterator> request_locations;
+     auto ins_begin = std::begin(uut->channels[0].RQ);
     //load requests into controller
-    for(auto it = packet_stream->begin(); it != packet_stream->end(); it++)
-    {
-        auto jt = uut->channels[0].RQ.begin() + vector_index;
-        *jt = DRAM_CHANNEL::request_type{*it};
-        jt->value().forward_checked = false;
-        jt->value().event_cycle = (*arriv_time)[vector_index];
-        request_locations.push_back(jt);
-        vector_index++;
-    }
+    std::transform(std::cbegin(*packet_stream), std::cend(*packet_stream), std::cbegin(*arriv_time), ins_begin, [](auto pkt, uint64_t cycle) {
+        DRAM_CHANNEL::request_type r_pkt = DRAM_CHANNEL::request_type{pkt};
+        r_pkt.forward_checked = false;
+        r_pkt.event_cycle = cycle;
+        return r_pkt;
+    });
 
-    //carry out operates, make sure they complete in the expected order
+    //carry out operates, record request scheduling order
     uint64_t completed_reqs = 0;
     std::vector<bool> last_scheduled(packet_stream->size(),false);
-    while(true)
+    std::vector<uint64_t> scheduled_order;
+
+    while (completed_reqs < std::size(*packet_stream))
     {
-        //decide if we are to enqueue a new packet or not
-        uut->operate();
-        uut->current_cycle++;
+        //operate mem controller
+        uut->_operate();
         
-        //look through RQ, make sure the right packet was scheduled
-        uint64_t index = 0;
-        for(auto it = uut->channels[0].RQ.begin(); it != uut->channels[0].RQ.end(); it++)
+        //get scheduled requests
+        std::vector<bool> next_scheduled{};
+        std::transform(std::begin(uut->channels[0].RQ), std::end(uut->channels[0].RQ), std::back_inserter(next_scheduled), [](const auto& entry) { return ((entry.has_value() && entry.value().scheduled) || !entry.has_value()); });
+        
+        //search for newly scheduled requests
+        auto chunk_begin = std::begin(next_scheduled);
+        auto chunk_end = std::end(next_scheduled);
+        while (chunk_begin != chunk_end) 
         {
-            if(it->has_value())
-            if(!last_scheduled[index] && it->has_value() && it->value().scheduled)
+            std::tie(chunk_begin, std::ignore) = std::mismatch(chunk_begin, chunk_end, std::cbegin(last_scheduled));
+            //found newly scheduled request
+            if (chunk_begin != chunk_end)
             {
-                
-                if(it != request_locations[(*expected_order)[completed_reqs]])
-                {
-                
-                return(false);
-                }
-                completed_reqs++;
+               scheduled_order.push_back(std::distance(std::begin(next_scheduled), chunk_begin));
+               completed_reqs++;
+               break;
             }
-            if(it->has_value())
-            {
-                last_scheduled[index] = it->value().scheduled;
-            }
-
-            index++;
         }
-
-        //if we are done, break loop
-        if(completed_reqs == packet_stream->size())
-        break;
+        //update vector of scheduled requests
+        last_scheduled = next_scheduled;
     }
-    return(true);
+    return(scheduled_order);
 }
 
 SCENARIO("A series of reads arrive at the memory controller and are reordered") {
@@ -105,10 +98,10 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
             packet_stream.push_back(r);
         }
         WHEN("The memory controller is operated") {
-            bool result = dram_test(&uut,&packet_stream,&expected_order,&arriv_time);
+            std::vector<uint64_t> observed_order = dram_test(&uut,&packet_stream,&arriv_time);
             THEN("The memory controller scheduled packets according to the FR-FCFS scheme")
             {
-                REQUIRE(result);
+                REQUIRE_THAT(expected_order, Catch::Matchers::RangeEquals(observed_order));
             }
         }
     }
