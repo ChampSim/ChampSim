@@ -27,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: gh-pages
+          clean: false
 
       - name: Install HTML sources
         run: mv _build/${{ github.event.base_ref }} .
