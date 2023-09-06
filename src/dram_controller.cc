@@ -208,12 +208,12 @@ long DRAM_CHANNEL::schedule_packets()
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
     if (!(rhs.has_value() && !rhs.value().scheduled))
-    return(true);
+      return (true);
     if (!(lhs.has_value() && !lhs.value().scheduled))
-    return(false);
+      return (false);
 
-    auto lop_idx = this->get_rank(lhs.value().address)*this->BANKS + this->get_bank(lhs.value().address);
-    auto rop_idx = this->get_rank(rhs.value().address)*this->BANKS + this->get_bank(rhs.value().address);
+    auto lop_idx = this->get_rank(lhs.value().address) * this->BANKS + this->get_bank(lhs.value().address);
+    auto rop_idx = this->get_rank(rhs.value().address) * this->BANKS + this->get_bank(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid;
     auto lready = !this->bank_request[lop_idx].valid;
     return (rready && lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
