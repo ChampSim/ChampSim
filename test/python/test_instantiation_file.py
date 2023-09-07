@@ -1,5 +1,7 @@
 import unittest
 import itertools
+import tempfile
+import os
 
 import config.instantiation_file
 
@@ -206,3 +208,67 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
     def test_pscl2(self):
         self.get_element_diff(['.add_pscl(2, 1, 2)'], pscl2_set=1, pscl2_way=2)
 
+class UpperChannelCollectorTests(unittest.TestCase):
+
+    def test_single(self):
+        value = (('low', 'up'),)
+        self.assertEqual({'low': {'upper_channels': ['up_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+    def test_multiple(self):
+        value = (('low', 'up1'), ('low', 'up2'))
+        self.assertEqual({'low': {'upper_channels': ['up1_to_low_channel', 'up2_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+class GetUpperLevelsTests(unittest.TestCase):
+
+    def test_empty(self):
+        cores = []
+        caches = []
+        ptws = []
+        self.assertEqual([], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Is_are_upper_levels(self):
+        cores = [{'L1I': 'test_l1i', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1i', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Ds_are_upper_levels(self):
+        cores = [{'L1D': 'test_l1d', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1d', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_levels(self):
+        cores = []
+        caches = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_ptws_have_upper_levels(self):
+        cores = []
+        caches = []
+        ptws = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_translations(self):
+        cores = []
+        caches = [{'lower_translate': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+class CheckHeaderCompilesForClassTests(unittest.TestCase):
+    def test_present(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('A', fname))
+
+    def test_absent(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('B', fname))

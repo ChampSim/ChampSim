@@ -15,7 +15,6 @@
 import difflib
 import hashlib
 import itertools
-import functools
 import operator
 import os
 import json
@@ -74,47 +73,40 @@ def write_if_different(fname, new_file_string, file=None, verbose=False):
         else:
             file.write(new_file_string)
 
-def generate_module_information(containing_dir, module_info):
+def generate_legacy_module_information(containing_dir, module_info):
     ''' Generates all of the include-files with module information '''
-    core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
-            [v for v in module_info['branch'].values() if v.get('legacy')],
-            [v for v in module_info['btb'].values() if v.get('legacy')],
-            [v for v in module_info['pref'].values() if v.get('legacy')],
-            [v for v in module_info['repl'].values() if v.get('legacy')]
-        )
+    if any(module_info.values()):
+        core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
+                module_info['branch'].values(),
+                module_info['btb'].values(),
+                module_info['pref'].values(),
+                module_info['repl'].values()
+            )
 
-    yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), (*cxx_generated_warning(), *core_declarations)
-    yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
-    yield os.path.join(containing_dir, 'module_def.inc'), (
-            *cxx_generated_warning(),
-            '#ifndef GENERATED_MODULES_INC', '#define GENERATED_MODULES_INC', '#include "modules.h"', 'namespace champsim::modules::generated','{',
-            *module_definitions,
-            '}','#endif'
-        )
+        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), (*cxx_generated_warning(), *core_declarations)
+        yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
+        yield os.path.join(containing_dir, 'module_def.inc'), (
+                *cxx_generated_warning(),
+                '#ifndef GENERATED_MODULES_INC',
+                '#define GENERATED_MODULES_INC',
+                '#include "modules.h"',
+                'namespace champsim::modules::generated',
+                '{',
+                *module_definitions,
+                '}',
+                '#endif'
+            )
 
-    joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
-    for k,v in joined_info_items:
-        fname = os.path.join(containing_dir, k, 'config.options')
-        yield fname, modules.get_module_opts_lines(v)
-
-def generate_build_information(inc_dir, config_flags):
-    ''' Generates all of the build-level include-files module '''
-    fname = os.path.join(inc_dir, 'config.options')
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    global_inc_dir = os.path.join(champsim_root, 'inc')
-
-    vcpkg_dir = os.path.join(champsim_root, 'vcpkg_installed')
-    vcpkg_triplet = next(filter(lambda triplet: triplet != 'vcpkg', os.listdir(vcpkg_dir)), None)
-    vcpkg_inc_dir = os.path.join(vcpkg_dir, vcpkg_triplet, 'include')
-
-    yield fname, itertools.chain((f'-I{inc_dir}',f'-I{global_inc_dir}',f'-isystem {vcpkg_inc_dir}'), config_flags)
+        joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
+        for k,v in joined_info_items:
+            fname = os.path.join(containing_dir, k+'.options')
+            yield fname, modules.get_legacy_module_opts_lines(v)
 
 def try_int(val):
     try:
-      return int(val)
-    except:
-      raise TypeError
+        return int(val)
+    except Exception as exc:
+        raise TypeError from exc
 
 class Fragment:
     '''
@@ -141,32 +133,40 @@ class Fragment:
         contents_parts = (itertools.islice(v[1], header_len, None) for v in it)
         return key, tuple(itertools.chain(first_value, *contents_parts))
 
-    @staticmethod
-    def join(head_frags, *tail_frags):
-        ''' Merge multiple Fragments into one. '''
-        copy = head_frags
-        joined_parts = list(itertools.chain(*(f.file_parts() for f in (head_frags, *tail_frags))))
-        copy.fileparts = list(util.collect(joined_parts, operator.itemgetter(0), Fragment.__part_joiner))
-        return copy
+    def __init__(self, fileparts=None):
+        self.fileparts = list(fileparts or [])
 
-    def __init__(self, parsed_config, bindir_name, srcdir_names, objdir_name, omit_main, verbose=False):
+    @staticmethod
+    def join(*frags):
+        ''' Merge multiple Fragments into one. '''
+        joined_parts = list(itertools.chain(*(f.file_parts() for f in frags)))
+        fileparts = list(util.collect(joined_parts, operator.itemgetter(0), Fragment.__part_joiner))
+        return Fragment(fileparts)
+
+    @staticmethod
+    def from_config(parsed_config, bindir_name, srcdir_names, objdir_name, omit_main=False, verbose=False):
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         core_sources = os.path.join(champsim_root, 'src')
 
-        build_id = hashlib.shake_128(json.dumps(parsed_config, default=try_int).encode('utf-8')).hexdigest(4)
+        build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
-        executable_basename, elements, modules_to_compile, module_info, config_file, env = parsed_config
+        executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
 
         unique_obj_dir = os.path.join(objdir_name, build_id)
         inc_dir = os.path.join(unique_obj_dir, 'inc')
 
+        legacy_module_info = {
+            mod_type: {
+                k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
+            } for mod_type, mod_set in module_info.items()
+        }
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
             print('For Executable', executable)
             print('Writing objects to', unique_obj_dir)
 
-        self.fileparts = [
+        fileparts = [
             # Instantiation file
             (os.path.join(inc_dir, 'core_inst.inc'), (*cxx_generated_warning(), *get_instantiation_lines(**elements))),
 
@@ -174,10 +174,7 @@ class Fragment:
             (os.path.join(inc_dir, 'champsim_constants.h'), (*cxx_generated_warning(), *get_constants_file(config_file, elements['pmem']))),
 
             # Module name mangling
-            *generate_module_information(inc_dir, module_info),
-
-            # Build-level compile flags
-            *generate_build_information(inc_dir, util.subdict(env, ('CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS')).values()),
+            *generate_legacy_module_information(inc_dir, legacy_module_info),
 
             # Makefile generation
             (makefile_file_name, (
@@ -185,10 +182,7 @@ class Fragment:
                 *get_makefile_lines(unique_obj_dir, build_id, executable, (*srcdir_names, core_sources), joined_module_info, omit_main)
             ))
         ]
-        self.fileparts = list(util.collect(self.fileparts, operator.itemgetter(0), Fragment.__part_joiner)) # hoist the parts
-
-    def map_files(self, func):
-        yield from itertools.starmap(func, self.fileparts)
+        return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
 
     def write(self):
         for fname, fcontents in self.fileparts:
@@ -225,16 +219,14 @@ class FileWriter:
         local_srcdir_names = srcdir_names or []
         local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        self.fragments.append(Fragment(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
+        self.fragments.append(Fragment.from_config(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
 
     @staticmethod
     def write_fragments(*fragments):
         ''' Write out a set of prepared fragments '''
         if not fragments:
             return
-        joined_fragments = Fragment.join(*fragments)
-        for fname, fcontents in joined_fragments.file_parts():
-            write_if_different(fname, '\n'.join(fcontents))
+        Fragment.join(*fragments).write()
 
     def finish(self):
         FileWriter.write_fragments(*self.fragments)

@@ -235,7 +235,9 @@ public:
 
   void print_deadlock() final;
 
+#if __has_include("cache_module_decl.inc")
 #include "cache_module_decl.inc"
+#endif
 
   struct prefetcher_module_concept {
     virtual ~prefetcher_module_concept() = default;

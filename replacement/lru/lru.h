@@ -12,7 +12,8 @@ struct lru : champsim::modules::replacement
   std::vector<uint64_t> last_used_cycles;
   uint64_t cycle = 0;
 
-  lru(CACHE* cache);
+  explicit lru(CACHE* cache);
+  lru(CACHE* cache, long sets, long ways);
 
   //void initialize_replacement();
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type);

@@ -579,28 +579,6 @@ class CoreDefaultNamesTests(unittest.TestCase):
                 result = config.parse.core_default_names(testval)
                 self.assertEqual(result.get(name), testval.get(name))
 
-class EnvironmentParseTests(unittest.TestCase):
-
-    def test_cppflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CPPFLAGS': 'cppflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_cxxflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CXXFLAGS': 'cxxflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_ldflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'LDFLAGS': 'ldflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_ldlibs_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'LDLIBS': 'ldlibs' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
 class ConfigRootPassthroughParseTests(unittest.TestCase):
 
     def test_block_size_passes_through(self):
