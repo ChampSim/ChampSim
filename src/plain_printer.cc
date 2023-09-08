@@ -93,14 +93,16 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
 
 void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 {
-  fmt::print(stream, "\n{} RQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
+  fmt::print(stream, "\n{}\n RQ ROW_BUFFER_HIT: {:12}\n    ROW_BUFFER_MISS: {:11}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
+  fmt::print(stream, " WQ ROW_BUFFER_HIT: {:12}\n    ROW_BUFFER_MISS: {:11}\n    FULL: {:22}\n",stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS,
+             stats.WQ_FULL);
+  fmt::print(stream, " REFRESHES ISSUED: {:13}\n",stats.refresh_cycles);
   if (stats.dbus_count_congested > 0) {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
   } else {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
   }
-  fmt::print(stream, "WQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n  FULL: {:10}\n", stats.name, stats.WQ_ROW_BUFFER_HIT, stats.WQ_ROW_BUFFER_MISS,
-             stats.WQ_FULL);
+
 }
 
 void champsim::plain_printer::print(champsim::phase_stats& stats)
