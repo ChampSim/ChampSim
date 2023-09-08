@@ -35,7 +35,7 @@ struct ooo_model_instr;
 
 struct dram_stats {
   std::string name{};
-  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
+  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0, refresh_cycles = 0;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };
@@ -71,7 +71,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   struct BANK_REQUEST {
-    bool valid = false, row_buffer_hit = false;
+    bool valid,row_buffer_hit,need_refresh,under_refresh = false;
 
     std::optional<std::size_t> open_row{};
 
@@ -86,7 +86,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   bool write_mode = false;
   uint64_t dbus_cycle_available = 0;
-
+  std::size_t ROWS_PER_REFRESH = 8;
+  std::size_t refresh_row = 0;
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
@@ -100,9 +101,11 @@ struct DRAM_CHANNEL final : public champsim::operable {
   void check_write_collision();
   void check_read_collision();
   long finish_dbus_request();
+  long schedule_refresh();
   void swap_write_mode();
   long populate_dbus();
-  long schedule_packets();
+  DRAM_CHANNEL::queue_type::iterator schedule_packet();
+  long service_packet(DRAM_CHANNEL::queue_type::iterator pkt);
 
   void initialize() final;
   long operate() final;
