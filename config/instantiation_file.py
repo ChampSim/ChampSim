@@ -17,9 +17,9 @@ import functools
 import operator
 import os
 import tempfile
-import subprocess
 
 from . import util
+from . import cxx
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
@@ -185,7 +185,7 @@ def get_ref_vector_function(rtype, func_name, elements):
 
     wrapped_rtype = f'std::vector<std::reference_wrapper<{rtype}>>'
 
-    yield from util.cxx_function(func_name, wrapped, rtype=wrapped_rtype, qualifiers=['override'])
+    yield from cxx.function(func_name, wrapped, rtype=wrapped_rtype, qualifiers=['override'])
     yield ''
 
 def cache_queue_defaults(cache):
@@ -227,15 +227,11 @@ def get_upper_levels(cores, caches, ptws):
 def check_header_compiles_for_class(clazz, file):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
-    global_options = os.path.join(champsim_root, 'global.options')
 
     with tempfile.TemporaryDirectory() as dtemp:
         args = (
-            'c++',
-            '--std=c++17',
             f'-I{include_dir}',
             f'-I{dtemp}',
-            '-o', os.path.join(dtemp, 'test'),
 
             # patch constants
             '-DBLOCK_SIZE=64',
@@ -256,20 +252,11 @@ def check_header_compiles_for_class(clazz, file):
             '-DDRAM_RQ_SIZE=8'
         )
 
-        fname = os.path.join(dtemp, f'{clazz}.cc')
+        # touch this file
         with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
             print('', file=wfp)
 
-        with open(fname, 'wt') as wfp:
-            print(f'#include "{file}"', file=wfp)
-
-            # main function
-            main_body = [f'{clazz} x{{nullptr}};']
-            for l in util.cxx_function('main', [], rtype='int'):
-                print(l, file=wfp)
-        result = subprocess.run((*args, f'-I{dtemp}', fname), capture_output=True)
-
-    return (result.returncode == 0)
+        return cxx.check_compiles((f'#include "{file}"', f'{clazz} x{{nullptr}};'), *args)
 
 def module_include_files(datas):
     def all_headers_on(path):
@@ -331,9 +318,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         get_ref_vector_function('PageTableWalker', 'ptw_view', ptws),
         get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,)))),
 
-        util.cxx_function('dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&', qualifiers=['override'])
+        cxx.function('dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&', qualifiers=['override'])
     )
-    yield from util.cxx_struct('generated_environment final', struct_body, superclass='champsim::environment')
+    yield from cxx.struct('generated_environment final', struct_body, superclass='champsim::environment')
 
     yield '}'
     yield '// NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)'

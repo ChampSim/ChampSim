@@ -271,4 +271,4 @@ class CheckHeaderCompilesForClassTests(unittest.TestCase):
             with open(fname, 'wt') as wfp:
                 print('struct A { explicit A(int*); };', file=wfp)
 
-            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('B', fname))
+            self.assertFalse(config.instantiation_file.check_header_compiles_for_class('B', fname))

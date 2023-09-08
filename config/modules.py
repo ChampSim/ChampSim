@@ -17,6 +17,7 @@ import itertools
 import functools
 
 from . import util
+from . import cxx
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
@@ -142,7 +143,7 @@ def mangled_declaration(fname, args, rtype, module_data):
 def variant_function_body(fname, args, module_data):
     argnamestring = ', '.join(a[1] for a in args)
     body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
-    yield from util.cxx_function(fname, body, args=args)
+    yield from util.cxx.function(fname, body, args=args)
     yield ''
 
 def get_discriminator(variant_data, module_data, classname):
@@ -152,7 +153,7 @@ def get_discriminator(variant_data, module_data, classname):
         (f'using {classname}::{classname}',),
         *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
     )
-    yield from util.cxx_struct(discriminator_classname, body, superclass=classname)
+    yield from util.cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):

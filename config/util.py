@@ -173,35 +173,3 @@ def yield_from_star(gen, args, n=2):
         for seq,return_value in zip(retvals, instance_retval):
             seq.append(return_value)
     return retvals
-
-def cxx_function(name, body, args=None, rtype=None, qualifiers=tuple()):
-    '''
-    Yields a C++ function with the given name and body.
-
-    :param name: The function name
-    :param body: An iterable of function body lines
-    :param args: An iterable of (type, name) pairs
-    :param rtype: The return type (auto if not specified)
-    :param qualifiers: An iterable of type qualifiers (e.g. const, override)
-    '''
-    local_args = args or tuple()
-    arg_string = ', '.join((a[0]+' '+a[1]) for a in local_args)
-    rtype_string = f' -> {rtype}' if rtype is not None else ''
-    yield f'auto {name}({arg_string}){rtype_string}{" ".join(qualifiers)}'
-    yield '{'
-    yield from ('  '+l for l in body)
-    yield '}'
-
-def cxx_struct(name, body, superclass=None):
-    '''
-    Yields a C++ struct with the given name and body.
-
-    :param name: The function name
-    :param body: An iterable of function body lines
-    :param superclass: The class's superclass
-    '''
-    superclass_string = f' : public {superclass}' if superclass is not None else ''
-    yield f'struct {name}{superclass_string}'
-    yield '{'
-    yield from ('  '+l for l in body)
-    yield '};'
