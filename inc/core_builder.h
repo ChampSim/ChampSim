@@ -17,6 +17,7 @@
 #ifndef CORE_BUILDER_H
 #define CORE_BUILDER_H
 
+#include <cstdint>
 #include <limits>
 
 class CACHE;

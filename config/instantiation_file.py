@@ -21,12 +21,16 @@ import tempfile
 from . import util
 from . import cxx
 
+def channel_name(*, lower, upper):
+    return f'{upper}_to_{lower}_channel'
+
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
 core_builder_parts = {
+    'frequency': '.frequency({frequency})',
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
     'decode_buffer_size': '.decode_buffer_size({decode_buffer_size})',
     'dispatch_buffer_size': '.dispatch_buffer_size({dispatch_buffer_size})',
@@ -49,8 +53,11 @@ core_builder_parts = {
     'dib_set': '  .dib_set({dib_set})',
     'dib_way': '  .dib_way({dib_way})',
     'dib_window': '  .dib_window({dib_window})',
+    'L1I': ['.l1i(&{L1I})', '.l1i_bandwidth({L1I}.MAX_TAG)', '.fetch_queues(&{^fetch_queues})'],
+    'L1D': ['.l1d_bandwidth({L1D}.MAX_TAG)', '.data_queues(&{^data_queues})'],
     '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
-    '_btb_data': '.btb<{^btb_string}>()'
+    '_btb_data': '.btb<{^btb_string}>()',
+    '_index': '.index({_index})'
 }
 
 dib_builder_parts = {
@@ -60,6 +67,7 @@ dib_builder_parts = {
 }
 
 cache_builder_parts = {
+    'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
@@ -74,7 +82,14 @@ cache_builder_parts = {
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
     '_replacement_data': '.replacement<{^replacement_string}>()',
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
-    'lower_translate': '.lower_translate(&{name}_to_{lower_translate}_channel)'
+    'lower_translate': '.lower_translate(&{^lower_translate_queues})',
+    'lower_level': '.lower_level(&{^lower_level_queues})'
+}
+
+ptw_builder_parts = {
+    'name': '.name("{name}")',
+    'cpu': '.cpu({cpu})',
+    'lower_level': '.lower_level(&{^lower_level_queues})'
 }
 
 def vector_string(iterable):
@@ -86,33 +101,26 @@ def vector_string(iterable):
 
 def get_cpu_builder(cpu):
     required_parts = [
-        '.index({_index})',
-        '.frequency({frequency})',
-        '.l1i(&{L1I})',
-        '.l1i_bandwidth({L1I}.MAX_TAG)',
-        '.l1d_bandwidth({L1D}.MAX_TAG)',
-        '.fetch_queues(&{name}_to_{L1I}_channel)',
-        '.data_queues(&{name}_to_{L1D}_channel)'
     ]
 
     local_params = {
         '^branch_predictor_string': ', '.join(f'{k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[]))
+        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^fetch_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1I')),
+        '^data_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1D'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('O3_CPU {name}{{', 'champsim::core_builder{{ champsim::defaults::default_core }}'),
         required_parts,
-        (v for k,v in core_builder_parts.items() if k in cpu),
+        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu),
         (v for k,v in dib_builder_parts.items() if k in cpu.get('DIB',{}))
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**cpu, **local_params) for part in builder_parts)
 
 def get_cache_builder(elem, upper_levels):
     required_parts = [
-        '.name("{name}")',
-        '.upper_levels({{{^upper_levels_string}}})',
-        '.lower_level(&{name}_to_{lower_level}_channel)'
+        '.upper_levels({{{^upper_levels_string}}})'
     ]
 
     local_cache_builder_parts = {
@@ -129,7 +137,9 @@ def get_cache_builder(elem, upper_levels):
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ', '.join(f'{k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[]))
+        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
+        '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -142,10 +152,7 @@ def get_cache_builder(elem, upper_levels):
 
 def get_ptw_builder(ptw, upper_levels):
     required_parts = [
-        '.name("{name}")',
-        '.cpu({cpu})',
         '.upper_levels({{{^upper_levels_string}}})',
-        '.lower_level(&{name}_to_{lower_level}_channel)',
         '.virtual_memory(&vmem)'
     ]
 
@@ -160,12 +167,14 @@ def get_ptw_builder(ptw, upper_levels):
     }
 
     local_params = {
-        '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"])
+        '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"]),
+        '^lower_level_queues': channel_name(upper=ptw.get('name'), lower=ptw.get('lower_level'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('PageTableWalker {name}{{', 'champsim::ptw_builder{{ champsim::defaults::default_ptw }}'),
         required_parts,
+        (v for k,v in ptw_builder_parts.items() if k in ptw),
         (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
@@ -211,7 +220,7 @@ def named_selector(elem, key):
 
 def upper_channel_collector(grouped_by_lower_level):
     return util.chain(*(
-        {lower_name: {'upper_channels': [f'{upper_name}_to_{lower_name}_channel']}}
+        {lower_name: {'upper_channels': [channel_name(lower=lower_name, upper=upper_name)]}}
         for lower_name, upper_name in grouped_by_lower_level
     ))
 

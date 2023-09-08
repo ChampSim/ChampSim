@@ -19,10 +19,7 @@ class VectorStringTest(unittest.TestCase):
 class CpuBuilderTest(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cpu = {
-            'name': 'test_cpu', '_index': 0, 'frequency': 1,
-            'L1I': 'test_l1i', 'L1D': 'test_l1d'
-        }
+        base_cpu = { 'name': 'test_cpu' }
         empty = list(config.instantiation_file.get_cpu_builder(base_cpu))
         modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -110,12 +107,8 @@ class CpuBuilderTest(unittest.TestCase):
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = {
-            'name': 'test_cache', 'lower_level': 'test_ll'
-        }
-        upper_levels = {
-            'test_cache': { 'upper_channels': [] }
-        }
+        base_cache = { 'name': 'test_cache' }
+        upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -177,12 +170,8 @@ class CacheBuilderTests(unittest.TestCase):
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = {
-            'name': 'test_ptw', 'lower_level': 'test_ll', 'cpu': 0
-        }
-        upper_levels = {
-            'test_ptw': { 'upper_channels': [] }
-        }
+        base_ptw = { 'name': 'test_ptw' }
+        upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace

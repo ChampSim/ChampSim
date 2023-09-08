@@ -17,6 +17,7 @@
 #ifndef CACHE_BUILDER_H
 #define CACHE_BUILDER_H
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 
