@@ -94,8 +94,9 @@ long DRAM_CHANNEL::operate()
   check_read_collision();
   progress += finish_dbus_request();
   swap_write_mode();
+  progress += schedule_refresh();
   progress += populate_dbus();
-  progress += schedule_packets();
+  progress += service_packet(schedule_packet());
 
   return progress;
 }
@@ -121,9 +122,51 @@ long DRAM_CHANNEL::finish_dbus_request()
   return progress;
 }
 
+long DRAM_CHANNEL::schedule_refresh()
+{
+  long progress = {0};
+  //check if we reached refresh cycle
+  bool schedule_refresh = current_cycle % uint64_t((DRAM_IO_FREQ * 1e6 * 0.064) / (DRAM_ROWS/(double)ROWS_PER_REFRESH)) == 1;
+
+  //if so, record stats
+  if(schedule_refresh)
+  {
+    refresh_row += ROWS_PER_REFRESH;
+    if(refresh_row >= DRAM_ROWS)
+    {
+      refresh_row = 0;
+      sim_stats.refresh_cycles++;
+    }
+  }
+
+  //go through each bank, and handle refreshes
+  for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it)
+  {
+    //refresh is now needed for this bank
+    if(schedule_refresh)
+    {
+      it->need_refresh = true;
+    }
+    //refresh is being scheduled for this bank
+    if(it->need_refresh && !it->valid)
+    {
+      it->event_cycle = current_cycle + tCAS + tRCD;
+      it->need_refresh = false;
+      it->under_refresh = true;
+    }
+    else if(it->under_refresh && it->event_cycle <= current_cycle)
+    {
+      it->under_refresh = false;
+      it->open_row.reset();
+      progress++;
+    }
+  }
+  return(progress);
+}
+
 void DRAM_CHANNEL::swap_write_mode()
 {
-  // Check queue occupancy
+    // Check queue occupancy
   auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.has_value(); }));
   auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(RQ), std::end(RQ), [](const auto& x) { return x.has_value(); }));
 
@@ -161,7 +204,7 @@ void DRAM_CHANNEL::swap_write_mode()
 // Look for requests to put on the bus
 long DRAM_CHANNEL::populate_dbus()
 {
-  long progress{0};
+ long progress{0};
 
   auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                              [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
@@ -200,10 +243,8 @@ long DRAM_CHANNEL::populate_dbus()
 }
 
 // Look for queued packets that have not been scheduled
-long DRAM_CHANNEL::schedule_packets()
+DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
 {
-  long progress{0};
-
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
@@ -214,9 +255,9 @@ long DRAM_CHANNEL::schedule_packets()
 
     auto lop_idx = this->get_rank(lhs.value().address)*this->BANKS + this->get_bank(lhs.value().address);
     auto rop_idx = this->get_rank(rhs.value().address)*this->BANKS + this->get_bank(rhs.value().address);
-    auto rready = !this->bank_request[rop_idx].valid;
-    auto lready = !this->bank_request[lop_idx].valid;
-    return (rready && lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
+    auto rready = !this->bank_request[rop_idx].valid && !this->bank_request[rop_idx].under_refresh;
+    auto lready = !this->bank_request[lop_idx].valid && !this->bank_request[lop_idx].under_refresh;
+    return !(rready ^ lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
   };
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
@@ -224,21 +265,27 @@ long DRAM_CHANNEL::schedule_packets()
   } else {
     iter_next_schedule = std::min_element(std::begin(RQ), std::end(RQ), next_schedule);
   }
+  return(iter_next_schedule);
+}
 
-  if (iter_next_schedule->has_value() && iter_next_schedule->value().event_cycle <= current_cycle) {
-    auto op_rank = get_rank(iter_next_schedule->value().address);
-    auto op_bank = get_bank(iter_next_schedule->value().address);
-    auto op_row = get_row(iter_next_schedule->value().address);
+long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
+{
+  long progress{0};
+  if (pkt->has_value() && pkt->value().event_cycle <= current_cycle) {
+    auto op_rank = get_rank(pkt->value().address);
+    auto op_bank = get_bank(pkt->value().address);
+    auto op_row = get_row(pkt->value().address);
 
     auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
-    if (!bank_request[op_idx].valid) {
+    if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
 
       // this bank is now busy
-      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
-      iter_next_schedule->value().scheduled = true;
-      iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
+      uint64_t row_charge_delay = bank_request[op_idx].open_row.has_value() ? tRP + tRCD : tRCD;
+      bank_request[op_idx] = {true,row_buffer_hit,false,false,std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : row_charge_delay),pkt};
+      pkt->value().scheduled = true;
+      pkt->value().event_cycle = std::numeric_limits<uint64_t>::max();
 
       ++progress;
     }
