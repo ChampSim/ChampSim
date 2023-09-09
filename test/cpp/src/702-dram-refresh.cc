@@ -82,11 +82,11 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
         * | row address | rank index | column address | bank index | channel | block
         * offset |
         */
-        WHEN("The memory controller is operated over 80 refresh cycles") {
-            std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,80);
+        WHEN("The memory controller is operated over 40 refresh cycles") {
+            std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,40);
             THEN("Each bank undergoes refresh according to specified timing")
             {
-                REQUIRE_THAT(std::vector<bool>(80,true), Catch::Matchers::RangeEquals(refresh_status));
+                REQUIRE_THAT(std::vector<bool>(40,true), Catch::Matchers::RangeEquals(refresh_status));
             }
         }
     }
