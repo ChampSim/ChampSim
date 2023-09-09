@@ -285,7 +285,6 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
       bank_request[op_idx] = {true,row_buffer_hit,false,false,std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : row_charge_delay),pkt};
       pkt->value().scheduled = true;
       pkt->value().event_cycle = std::numeric_limits<uint64_t>::max();
-
       ++progress;
     }
   }
