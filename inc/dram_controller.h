@@ -86,7 +86,6 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   bool write_mode = false;
   uint64_t dbus_cycle_available = 0;
-  std::size_t ROWS_PER_REFRESH = 8;
   std::size_t refresh_row = 0;
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;

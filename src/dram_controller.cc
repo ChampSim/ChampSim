@@ -126,12 +126,12 @@ long DRAM_CHANNEL::schedule_refresh()
 {
   long progress = {0};
   //check if we reached refresh cycle
-  bool schedule_refresh = current_cycle % uint64_t((DRAM_IO_FREQ * 1e6 * 0.064) / (DRAM_ROWS/(double)ROWS_PER_REFRESH)) == 1;
+  bool schedule_refresh = current_cycle % uint64_t((DRAM_IO_FREQ * 1e6 * 0.064) / (DRAM_ROWS/(double)8)) == 1;
 
   //if so, record stats
   if(schedule_refresh)
   {
-    refresh_row += ROWS_PER_REFRESH;
+    refresh_row += 8;
     sim_stats.refresh_cycles++;
     if(refresh_row >= DRAM_ROWS)
       refresh_row = 0;
@@ -152,6 +152,7 @@ long DRAM_CHANNEL::schedule_refresh()
       it->need_refresh = false;
       it->under_refresh = true;
     }
+    //refresh is done for this bank
     else if(it->under_refresh && it->event_cycle <= current_cycle)
     {
       it->under_refresh = false;
