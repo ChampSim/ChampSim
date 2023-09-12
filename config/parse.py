@@ -163,6 +163,15 @@ def do_deprecation(element, deprecation_map):
 def path_end_in(path, end_name, key='lower_level'):
     return {'name': deque(path, maxlen=1)[0]['name'], key: end_name}
 
+def extract_element(name, core, config_file):
+    # Copy values from the config root, if these are dicts
+    local_config_element = config_file[name] if isinstance(config_file.get(name), dict) else {}
+
+    # Copy values from the core specification, if these are dicts
+    local_core_element = {'name': f'{core["name"]}_{name}', **core[name]} if isinstance(core.get(name), dict) else {}
+
+    return util.chain(local_config_element, local_core_element)
+
 class NormalizedConfiguration:
     '''
     The internal representation of a JSON configuration.
@@ -171,7 +180,7 @@ class NormalizedConfiguration:
     and defaults are inferred when writing generated files.
     '''
 
-    def __init__(self, config_file):
+    def __init__(self, config_file, verbose=False):
         ''' Normalize a JSON configuration in preparation for parsing '''
         # Copy or trim cores as necessary to fill out the specified number of cores
         self.cores = duplicate_to_length(config_file.get('ooo_cpu', [{}]), config_file.get('num_cores', 1))
@@ -187,34 +196,29 @@ class NormalizedConfiguration:
         )
         self.cores = [util.chain(cpu, core_from_config, {'name': f'cpu{i}'}) for i,cpu in enumerate(self.cores)]
 
+        if verbose:
+            print('P: core count', len(self.cores))
+
         pinned_cache_names = ('L1I', 'L1D', 'ITLB', 'DTLB', 'L2C', 'STLB')
         self.caches = util.combine_named(
             config_file.get('caches', []),
-
-            (util.chain(
-                # Copy values from the config root, if these are dicts
-                (config_file[name] if isinstance(config_file.get(name), dict) else {}),
-
-                # Copy values from the core specification, if these are dicts
-                ({'name': f'{core["name"]}_{name}', **core[name]} if isinstance(core.get(name), dict) else {})
-            ) for core, name in itertools.product(self.cores, pinned_cache_names))
+            (extract_element(name, core, config_file) for core, name in itertools.product(self.cores, pinned_cache_names))
         )
 
         # Read LLC from the configuration file
         if 'LLC' in config_file:
             self.caches.update(LLC={'name': 'LLC', **config_file['LLC']})
 
+        if verbose:
+            print('P: caches', list(self.caches.keys()))
+
         self.ptws = util.combine_named(
             config_file.get('ptws',[]),
-
-            (util.chain(
-                # Copy values from the config root, if these are dicts
-                (config_file['PTW'] if isinstance(config_file.get('PTW'), dict) else {}),
-
-                # Copy values from the core specification, if these are dicts
-                ({'name': f'{core["name"]}_PTW', **core['PTW']} if isinstance(core.get('PTW'), dict) else {})
-            ) for core in self.cores)
+            (extract_element('PTW', core, config_file) for core in self.cores)
         )
+
+        if verbose:
+            print('P: ptws', list(self.ptws.keys()))
 
         # Convert all core values to labels
         self.cores = [
@@ -229,7 +233,14 @@ class NormalizedConfiguration:
         self.caches = {k:v for k,v in self.caches.items() if k != 'DRAM'}
 
         self.pmem = config_file.get('physical_memory', {})
+
+        if verbose:
+            print('P: pmem', list(self.pmem.keys()))
+
         self.vmem = config_file.get('virtual_memory', {})
+
+        if verbose:
+            print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
             ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS', 'block_size', 'page_size', 'heartbeat_frequency')
@@ -244,8 +255,17 @@ class NormalizedConfiguration:
         self.vmem = util.chain(self.vmem, rhs.vmem)
         self.root = util.chain(self.root, rhs.root)
 
-    def apply_defaults_in(self, branch_context, btb_context, prefetcher_context, replacement_context):
+    def apply_defaults_in(self, branch_context, btb_context, prefetcher_context, replacement_context, verbose=False):
         ''' Apply defaults and produce a result suitible for writing the generated files. '''
+        if verbose:
+            print('D: keys in root', list(self.root.keys()))
+            for cpu in self.cores:
+                print('D: core', cpu['name'], list(cpu.keys()))
+            for cache in self.caches.values():
+                print('D: cache', cache['name'], list(cache.keys()))
+            for ptw in self.ptws.values():
+                print('D: ptw', ptw['name'], list(ptw.keys()))
+
         root_config = util.chain(self.root, default_root)
 
         pmem = util.chain(self.pmem, default_pmem)
@@ -362,7 +382,7 @@ class NormalizedConfiguration:
 
         return elements, module_info, config_extern
 
-def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_dir=None, repl_dir=None, compile_all_modules=False): # pylint: disable=line-too-long,
+def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_dir=None, repl_dir=None, compile_all_modules=False, verbose=False): # pylint: disable=line-too-long,
     ''' Main parsing dispatch function '''
     def list_dirs(dirname, var):
         return [
@@ -374,13 +394,14 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
     def do_merge(lhs, rhs):
         lhs.merge(rhs)
         return lhs
-    merged_config = functools.reduce(do_merge, (NormalizedConfiguration(c) for c in configs))
+    merged_config = functools.reduce(do_merge, (NormalizedConfiguration(c, verbose=verbose) for c in configs))
 
     elements, module_info, config_file = merged_config.apply_defaults_in(
-        branch_context = modules.ModuleSearchContext(list_dirs('branch', branch_dir or [])),
-        btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or [])),
-        replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or [])),
-        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or [])),
+        branch_context = modules.ModuleSearchContext(list_dirs('branch', branch_dir or []), verbose=verbose),
+        btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or []), verbose=verbose),
+        replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or []), verbose=verbose),
+        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose),
+        verbose=verbose
     )
 
     if compile_all_modules:

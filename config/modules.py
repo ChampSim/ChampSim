@@ -25,18 +25,23 @@ def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(
     return os.path.relpath(path, start=start).translate(fname_translation_table)
 
 class ModuleSearchContext:
-    def __init__(self, paths):
+    def __init__(self, paths, verbose=False):
         self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
+        self.verbose = verbose
 
     def data_from_path(self, path):
         name = get_module_name(path)
         is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
-        return {
+        retval = {
             'name': name,
             'path': path,
             'legacy': is_legacy,
             'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)
         }
+
+        if self.verbose:
+            print('M:', retval)
+        return retval
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
