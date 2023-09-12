@@ -2,6 +2,15 @@ import subprocess
 import tempfile
 import os
 
+class CompileResult:
+    def __init__(self, subprocess_result):
+        self.returncode = subprocess_result.returncode
+        self.stdout = subprocess_result.stdout
+        self.stderr = subprocess_result.stderr
+
+    def __bool__(self):
+        return (self.returncode == 0)
+
 def check_compiles(body, *args, cxx='c++'):
     '''
     Check whether the given body compiles as a valid C++ file.
@@ -13,8 +22,8 @@ def check_compiles(body, *args, cxx='c++'):
             for line in body:
                 print(line, file=wfp)
         process_args = (cxx, '--std=c++17', '-c', '-o', os.devnull, *args, '-x', 'c++', fname)
-        result = subprocess.run(process_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return (result.returncode == 0)
+        result = subprocess.run(process_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        return CompileResult(result)
 
 def function(name, body, args=None, rtype=None, qualifiers=tuple()):
     '''
