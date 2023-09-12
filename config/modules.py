@@ -45,8 +45,11 @@ class ModuleSearchContext:
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
         ))
-        #print(paths)
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, paths)))))
+
+        paths = map(os.path.expandvars, paths)
+        paths = map(os.path.expanduser, paths)
+        paths = filter(os.path.exists, paths)
+        path = os.path.relpath(next(paths, None))
 
         return self.data_from_path(path)
 
@@ -143,7 +146,7 @@ def mangled_declaration(fname, args, rtype, module_data):
 def variant_function_body(fname, args, module_data):
     argnamestring = ', '.join(a[1] for a in args)
     body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
-    yield from util.cxx.function(fname, body, args=args)
+    yield from cxx.function(fname, body, args=args)
     yield ''
 
 def get_discriminator(variant_data, module_data, classname):
@@ -153,7 +156,7 @@ def get_discriminator(variant_data, module_data, classname):
         (f'using {classname}::{classname}',),
         *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
     )
-    yield from util.cxx.struct(discriminator_classname, body, superclass=classname)
+    yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
