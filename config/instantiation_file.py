@@ -17,6 +17,7 @@ import functools
 import operator
 import os
 import tempfile
+import multiprocessing as mp
 
 from . import util
 from . import cxx
@@ -274,11 +275,23 @@ def module_include_files(datas):
                 if os.path.splitext(file)[1] == '.h':
                     yield os.path.abspath(os.path.join(base, file))
 
-    class_paths = [(module_data['class'], all_headers_on(module_data['path'])) for module_data in datas]
-    candidates = set(itertools.chain(*(zip(itertools.repeat(clazz), headers) for clazz,headers in class_paths)))
-    inc_files = {file for clazz,file in candidates if check_header_compiles_for_class(clazz, file)}
+    class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
+    candidates = list(set(itertools.chain.from_iterable(class_paths)))
+    with mp.Pool() as pool:
+        successes = pool.starmap(check_header_compiles_for_class, candidates)
+    filtered_candidates = list(itertools.compress(candidates, successes))
 
-    yield from (f'#include "{f}"' for f in inc_files)
+    class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
+    for clazz in class_difference:
+        tried_files = (f for c,f in candidates if c == clazz)
+        print('WARNING: no header found for', clazz)
+        print('NOTE: after trying files')
+        for f in tried_files:
+            print('NOTE:', f)
+            for line in successes[candidates.index((clazz,f))].stderr.splitlines():
+                print('NOTE:  ', line)
+
+    yield from (f'#include "{f}"' for _,f in filtered_candidates)
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_levels = util.chain(
