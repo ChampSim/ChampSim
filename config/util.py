@@ -64,7 +64,7 @@ def chain(*dicts):
         list_merges = merge(operator.concat, list, lhs, rhs)
         return dict(itertools.chain(rhs.items(), lhs.items(), dict_merges.items(), list_merges.items()))
 
-    return functools.reduce(merge_dicts, dicts)
+    return functools.reduce(merge_dicts, dicts, {})
 
 def star(func):
     ''' Convert a function object that takes a starred parameter into one that takes an iterable parameter '''

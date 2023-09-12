@@ -163,14 +163,36 @@ def do_deprecation(element, deprecation_map):
 def path_end_in(path, end_name, key='lower_level'):
     return {'name': deque(path, maxlen=1)[0]['name'], key: end_name}
 
-def extract_element(name, core, config_file):
-    # Copy values from the config root, if these are dicts
-    local_config_element = config_file[name] if isinstance(config_file.get(name), dict) else {}
+def extract_element(key, *parents):
+    '''
+    Extract a certain key from the series of parents, returning the merged keys.
+    Keys whose values are not dictionaries are ignored.
 
-    # Copy values from the core specification, if these are dicts
-    local_core_element = {'name': f'{core["name"]}_{name}', **core[name]} if isinstance(core.get(name), dict) else {}
+    >>> a = { 'key': { 'internal': 1 } }
+    >>> b = { 'key': { 'internal': 2 } }
+    >>> extract_element('key', a, b)
+    { 'internal': 1 }
+    >>> c = { 'key': { 'other': 1 } }
+    >>> extract_element('key', a, c)
+    { 'internal': 1, 'other': 1 }
+    >>> d = { 'key': 'foo' }
+    >>> extract_element('key', a, c, d)
+    { 'internal': 1, 'other': 1 }
 
-    return util.chain(local_config_element, local_core_element)
+    If one or more of the parents contains a 'name' key, the result will contain a 'name' key
+    with value '{parent["name"]}_{key}'.
+
+    :param key: the key to extract
+    :param parents: the dictionaries to extract from
+    '''
+
+    parent_names = map(operator.methodcaller('get', 'name'), parents)
+    child_names = map(lambda name: { 'name': f'{name}_{key}' }, filter(None, parent_names))
+
+    local_elements = filter(lambda x: isinstance(x, dict) and x, map(operator.methodcaller('get', key), parents))
+    local_elements = map(util.chain, local_elements, itertools.chain(child_names, itertools.repeat({})))
+
+    return util.chain(*local_elements)
 
 class NormalizedConfiguration:
     '''
@@ -243,7 +265,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('CC', 'CXX', 'CPPFLAGS', 'CXXFLAGS', 'LDFLAGS', 'LDLIBS', 'block_size', 'page_size', 'heartbeat_frequency')
+            ('block_size', 'page_size', 'heartbeat_frequency')
         )
 
     def merge(self, rhs):

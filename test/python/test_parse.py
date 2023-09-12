@@ -468,6 +468,35 @@ class MergeConfigurationsTests(unittest.TestCase):
         seed_config.merge(test_config)
         self.assertEqual(seed_config.caches['test'].get('sets'), test_val)
 
+class ExtractElementTests(unittest.TestCase):
+
+    def test_key_not_present(self):
+        self.assertEqual(config.parse.extract_element('absent', {}, {}), {})
+        self.assertEqual(config.parse.extract_element('absent', {'other': 1}, {'other': 2}), {})
+
+    def test_key_present_in_first(self):
+        testcore = { 'key': { 'test': 10 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, {}), { 'test': 10 })
+
+    def test_key_present_in_second(self):
+        testconfig = { 'key': { 'test': 10 } }
+        self.assertEqual(config.parse.extract_element('key', {}, testconfig), { 'test': 10 })
+
+    def test_first_takes_priority(self):
+        testcore = { 'key': { 'test': 10 } }
+        testconfig = { 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'test': 10 })
+
+    def test_key_can_receive_name(self):
+        testcore = { 'name': 'first', 'key': { 'test': 10 } }
+        testconfig = { 'name': 'second', 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'name': 'first_key', 'test': 10 })
+
+    def test_nondicts_are_ignored(self):
+        testcore = { 'key': 'poison' }
+        testconfig = { 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'test': 20 })
+
 class DefaultFrequenciesTest(unittest.TestCase):
 
     def test_first_level_caches_inherit_core_frequency(self):
