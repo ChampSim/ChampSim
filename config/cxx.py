@@ -3,13 +3,16 @@ import tempfile
 import os
 
 class CompileResult:
+    '''
+    The result from check_compiles(), which is convertible to boolean, but retains the output from the compilation check.
+    '''
     def __init__(self, subprocess_result):
         self.returncode = subprocess_result.returncode
         self.stdout = subprocess_result.stdout
         self.stderr = subprocess_result.stderr
 
     def __bool__(self):
-        return (self.returncode == 0)
+        return self.returncode == 0
 
 def check_compiles(body, *args, cxx='c++'):
     '''
@@ -22,7 +25,13 @@ def check_compiles(body, *args, cxx='c++'):
             for line in body:
                 print(line, file=wfp)
         process_args = (cxx, '--std=c++17', '-c', '-o', os.devnull, *args, '-x', 'c++', fname)
-        result = subprocess.run(process_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        result = subprocess.run(
+            process_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            check=False
+        )
         return CompileResult(result)
 
 def function(name, body, args=None, rtype=None, qualifiers=tuple()):
@@ -56,4 +65,3 @@ def struct(name, body, superclass=None):
     yield '{'
     yield from ('  '+l for l in body)
     yield '};'
-

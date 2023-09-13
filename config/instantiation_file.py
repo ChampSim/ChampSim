@@ -182,6 +182,11 @@ def get_ptw_builder(ptw, upper_levels):
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
 
 def get_ref_vector_function(rtype, func_name, elements):
+    '''
+    Generate a C++ function with the given name whose return type is a `std::vector` of `std::reference_wrapper`s to the given type.
+    The members of the vector are references to the given elements.
+    '''
+
     if len(elements) > 1:
         open_brace, close_brace = '{{', '}}'
     else:
@@ -236,6 +241,7 @@ def get_upper_levels(cores, caches, ptws):
     )))
 
 def check_header_compiles_for_class(clazz, file):
+    ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
 
@@ -270,6 +276,16 @@ def check_header_compiles_for_class(clazz, file):
         return cxx.check_compiles((f'#include "{file}"', f'{clazz} x{{nullptr}};'), *args)
 
 def module_include_files(datas):
+    '''
+    Generate C++ include lines for all header files necessary to compile the given modules.
+
+    Each module's paths are searched, and compilation checked (linking is not performed. If the compilation succeeds,
+    the file is emitted as a candidate.
+
+    A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
+    In this case, we procede, but ChampSim's compilation will likely fail.
+    '''
+
     def all_headers_on(path):
         for base,_,files in os.walk(path):
             for file in files:
@@ -287,9 +303,9 @@ def module_include_files(datas):
         tried_files = (f for c,f in candidates if c == clazz)
         print('WARNING: no header found for', clazz)
         print('NOTE: after trying files')
-        for f in tried_files:
-            print('NOTE:', f)
-            for line in successes[candidates.index((clazz,f))].stderr.splitlines():
+        for file in tried_files:
+            print('NOTE:', file)
+            for line in successes[candidates.index((clazz,file))].stderr.splitlines():
                 print('NOTE:  ', line)
 
     yield from (f'#include "{f}"' for _,f in filtered_candidates)
