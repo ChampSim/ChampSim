@@ -17,10 +17,12 @@
 #ifndef CACHE_BUILDER_H
 #define CACHE_BUILDER_H
 
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <optional>
 
+#include "champsim_constants.h"
 #include "channel.h"
 
 class CACHE;
@@ -36,9 +38,10 @@ namespace detail
 struct cache_builder_base {
   std::string m_name{};
   double m_freq_scale{1};
+  std::optional<uint64_t> m_size{};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
-  uint32_t m_ways{1};
+  std::optional<uint32_t> m_ways{};
   std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
   std::optional<uint32_t> m_mshr_size{};
   double m_mshr_factor{1};
@@ -72,11 +75,24 @@ class cache_builder : public detail::cache_builder_base
 
   explicit cache_builder(const detail::cache_builder_base& other) : detail::cache_builder_base(other) {}
 
+  template <typename Result>
+  Result scaled_by_ul_size(double factor) const
+  {
+    return std::lround(factor * std::floor(std::size(m_uls)));
+  }
+
+  uint32_t get_num_sets() const;
+  uint32_t get_num_ways() const;
+  uint32_t get_num_mshrs() const;
+  uint32_t get_tag_bandwidth() const;
+  uint32_t get_fill_bandwidth() const;
+
 public:
   cache_builder() = default;
 
   self_type& name(std::string name_);
   self_type& frequency(double freq_scale_);
+  self_type& size(uint64_t size_);
   self_type& sets(uint32_t sets_);
   self_type& sets_factor(double sets_factor_);
   self_type& ways(uint32_t ways_);
@@ -109,6 +125,44 @@ public:
 } // namespace champsim
 
 template <typename P, typename R>
+auto champsim::cache_builder<P, R>::get_num_sets() const -> uint32_t
+{
+  if (m_sets.has_value())
+    return m_sets.value();
+  if (m_size.has_value() && m_ways.has_value())
+    return m_size.value() / m_ways.value() / BLOCK_SIZE;
+  return scaled_by_ul_size<uint32_t>(m_sets_factor);
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::get_num_ways() const -> uint32_t
+{
+  if (m_ways.has_value())
+    return m_ways.value();
+  if (m_size.has_value())
+    return m_size.value() / get_num_sets() / BLOCK_SIZE;
+  return 1;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::get_num_mshrs() const -> uint32_t
+{
+  return m_mshr_size.value_or(scaled_by_ul_size<uint32_t>(m_mshr_factor));
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::get_tag_bandwidth() const -> uint32_t
+{
+  return m_max_tag.value_or(scaled_by_ul_size<uint32_t>(m_bandwidth_factor));
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::get_fill_bandwidth() const -> uint32_t
+{
+  return m_max_fill.value_or(scaled_by_ul_size<uint32_t>(m_bandwidth_factor));
+}
+
+template <typename P, typename R>
 auto champsim::cache_builder<P, R>::name(std::string name_) -> self_type&
 {
   m_name = name_;
@@ -119,6 +173,13 @@ template <typename P, typename R>
 auto champsim::cache_builder<P, R>::frequency(double freq_scale_) -> self_type&
 {
   m_freq_scale = freq_scale_;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::size(uint64_t size_) -> self_type&
+{
+  m_size = size_;
   return *this;
 }
 

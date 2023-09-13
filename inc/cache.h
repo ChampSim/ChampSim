@@ -23,7 +23,6 @@
 #define CACHE_H
 
 #include <array>
-#include <cmath>
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
@@ -304,12 +303,10 @@ public:
 
   template <typename... Ps, typename... Rs>
   explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
-      : champsim::operable(b.m_freq_scale), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
-        NUM_SET(b.m_sets.value_or(std::lround(b.m_sets_factor * std::floor(std::size(upper_levels))))), NUM_WAY(b.m_ways),
-        MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))), PQ_SIZE(b.m_pq_size),
+      : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
+        NUM_SET(b.get_num_sets()), NUM_WAY(b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size),
         HIT_LATENCY(b.m_hit_lat.value_or(b.m_latency - b.m_fill_lat)), FILL_LATENCY(b.m_fill_lat), OFFSET_BITS(b.m_offset_bits),
-        MAX_TAG(b.m_max_tag.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))),
-        MAX_FILL(b.m_max_fill.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))), prefetch_as_load(b.m_pref_load),
+        MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
   {

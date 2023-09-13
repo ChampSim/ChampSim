@@ -77,6 +77,72 @@ class SplitStringOrListTests(unittest.TestCase):
     def test_string_strip(self):
         self.assertEqual(config.parse.split_string_or_list('a, b'), ['a','b'])
 
+class IntOrPrefixedSizeTests(unittest.TestCase):
+
+    def test_integer(self):
+        self.assertEqual(config.parse.int_or_prefixed_size(1), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size(10), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size(100), 100)
+
+    def test_string_with_prefix(self):
+        self.assertEqual(config.parse.int_or_prefixed_size('1B'), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size('10B'), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size('100B'), 100)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1k'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10k'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100k'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1kB'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10kB'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100kB'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1kiB'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10kiB'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100kiB'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1M'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10M'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100M'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1MB'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10MB'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100MB'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1MiB'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10MiB'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100MiB'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1G'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10G'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100G'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1GB'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10GB'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100GB'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1GiB'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10GiB'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100GiB'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1T'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10T'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100T'), 100*(1024**4))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1TB'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10TB'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100TB'), 100*(1024**4))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1TiB'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10TiB'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100TiB'), 100*(1024**4))
+
+
+    def test_string_without_prefix(self):
+        self.assertEqual(config.parse.int_or_prefixed_size('1'), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size('10'), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size('100'), 100)
+
 class FilterInaccessibleTests(unittest.TestCase):
 
     def test_empty_system(self):

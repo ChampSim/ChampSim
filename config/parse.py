@@ -23,13 +23,13 @@ from . import defaults
 from . import modules
 from . import util
 
-default_root = { 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1 }
+default_root = { 'block_size': "64B", 'page_size': "4kB", 'heartbeat_frequency': 10000000, 'num_cores': 1 }
 default_pmem = {
     'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128,
     'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5,
     'turn_around_time': 7.5
 }
-default_vmem = { 'pte_page_size': (1 << 12), 'num_levels': 5, 'minor_fault_penalty': 200 }
+default_vmem = { 'pte_page_size': "4kB", 'num_levels': 5, 'minor_fault_penalty': 200 }
 
 cache_deprecation_keys = {
     'max_read': 'max_tag_check',
@@ -96,6 +96,26 @@ def split_string_or_list(val, delim=','):
     if isinstance(val, str):
         retval = (t.strip() for t in val.split(delim))
         return [v for v in retval if v]
+    return val
+
+def int_or_prefixed_size(val):
+    '''
+    Convert a string value to an integer. The following sizes are recognized:
+        B, k, kB, kiB, M, MB, MiB, G, GB, GiB, T, TB, TiB
+    '''
+
+    sizes = {
+        'k': 1024**1, 'kB': 1024**1, 'kiB': 1024**1,
+        'M': 1024**2, 'MB': 1024**2, 'MiB': 1024**2,
+        'G': 1024**3, 'GB': 1024**3, 'GiB': 1024**3,
+        'T': 1024**4, 'TB': 1024**4, 'TiB': 1024**4,
+        'B': 1
+    }
+    if isinstance(val, str):
+        for suffix, multiplier in sizes.items():
+            if val.endswith(suffix):
+                return int(val[:-len(suffix)]) * multiplier
+        return int(val)
     return val
 
 def core_default_names(cpu):
@@ -288,10 +308,15 @@ class NormalizedConfiguration:
             for ptw in self.ptws.values():
                 print('D: ptw', ptw['name'], list(ptw.keys()))
 
+        def transform_for_keys(element, keys, transform_func):
+            return { k:transform_func(v) for k,v in util.subdict(element, keys).items() }
+
         root_config = util.chain(self.root, default_root)
+        root_config = util.chain(transform_for_keys(root_config, ('block_size', 'page_size'), int_or_prefixed_size), root_config)
 
         pmem = util.chain(self.pmem, default_pmem)
         vmem = util.chain(self.vmem, default_vmem)
+        vmem = util.chain(transform_for_keys(vmem, ('pte_page_size',), int_or_prefixed_size), vmem)
 
         # Give cores numeric indices and default cache names
         cores = [{'_index': i, **core_default_names(cpu)} for i,cpu in enumerate(self.cores)]
@@ -331,6 +356,9 @@ class NormalizedConfiguration:
             # TLBs use page offsets, Caches use block offsets
             ({'name': c['name'], '_offset_bits': f'champsim::lg2({root_config["page_size"]})'} for c in tlb_path),
             ({'name': c['name'], '_offset_bits': f'champsim::lg2({root_config["block_size"]})'} for c in data_path),
+
+            # Unfold suffixed strings
+            ({'name': c['name'], **transform_for_keys(c, ('size',), int_or_prefixed_size)} for c in caches.values()),
 
             caches.values(),
 

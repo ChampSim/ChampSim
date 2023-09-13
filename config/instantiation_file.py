@@ -70,6 +70,7 @@ dib_builder_parts = {
 cache_builder_parts = {
     'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
+    'size': '.size({size})',
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
     'pq_size': '.pq_size({pq_size})',
