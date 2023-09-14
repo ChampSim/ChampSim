@@ -1,8 +1,8 @@
 .. _Modules:
 
-=============================
+====================================
 The ChampSim Module System
-=============================
+====================================
 
 ChampSim uses four kinds of modules:
 
@@ -11,229 +11,259 @@ ChampSim uses four kinds of modules:
 * Memory Prefetchers
 * Cache Replacement Policies
 
-Each of these is implemented as a set of hook functions. Each hook must be implemented, or compilation will fail.
+Modules are implemented as C++ objects.
+The module should inherit from one of the following classes:
+
+* ``champsim::modules::branch_predictor``
+* ``champsim::modules::btb``
+* ``champsim::modules::prefetcher``
+* ``champsim::modules::replacement``
+
+The module must be constructible with a ``O3_CPU*`` (for branch predictors and BTBs) or a ``CACHE*`` (for prefetchers and replacement policies).
+Such a constructor must call the superclass constructor of the same kind, for example::
+
+    class my_pref : champsim::modules::prefetcher
+    {
+        public:
+        explicit my_pref(CACHE* cache) : champsim::modules::prefetcher(cache) {}
+    };
+
+One way to do this, if your module's constructor has an empty body, is to inherit the constructors of the superclass, as with::
+
+    class my_pref : champsim::modules::prefetcher
+    {
+        public:
+        using champsim::modules::prefetcher::prefetcher;
+    };
+
+A module may implement any of the listed member functions.
+If a member function has overloads listed, any of them may be implemented, and the simulator will select the first candidate overload in the list.
 
 ----------------------------
 Branch Predictors
 ----------------------------
 
-A branch predictor module must implement three functions.
+A branch predictor module may implement three functions.
 
-::
+.. cpp:function:: void initialize_branch_predictor()
 
-  void O3_CPU::initialize_branch_predictor()
+   This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as `std::vector` or `std::map`.
+.. cpp:function:: bool predict_branch(uint64_t ip, uint64_t predicted_target, bool always_taken, uint8_t branch_type)
+.. cpp:function:: bool predict_branch(uint64_t ip)
 
-::
+   This function is called when a prediction is needed.
 
-  uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type)
+   :param ip: The instruction pointer of the branch
+   :param predicted_target: The predicted target of the branch.
+       This is passed directly from the branch target predictor module and may be incorrect.
+   :param always_taken: A boolean value.
+       This parameter will be nonzero if the branch target predictor determines that the branch is always taken.
+   :param branch_type: One of the following
 
-This function is called when a prediction is needed. The parameters passed are:
+     * ``BRANCH_DIRECT_JUMP``: Direct non-call, unconditional branches, whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT``: Indirect non-call, unconditional branches, whose target is stored in a register
+     * ``BRANCH_CONDITIONAL``: A direct conditional branch
+     * ``BRANCH_DIRECT_CALL``: A call to a procedure whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT_CALL``: A call to a procedure whose target is stored in a register
+     * ``BRANCH_RETURN``: A return to a calling procedure
+     * ``BRANCH_OTHER``: If the branch type cannot be determined
 
-* ip: The instruction pointer of the branch
-* predicted_target: The predicted target of the branch. This is passed directly from the branch target predictor module and may be incorrect.
-* always_taken: A boolean value. This parameter will be nonzero if the branch target predictor determines that the branch is always taken.
-* branch_type: One of the following
+   :return: This function must return true if the branch is predicted taken, and false otherwise.
 
-  * `BRANCH_DIRECT_JUMP`: Direct non-call, unconditional branches, whose target is encoded in the instruction
-  * `BRANCH_INDIRECT`: Indirect non-call, unconditional branches, whose target is stored in a register
-  * `BRANCH_CONDITIONAL`: A direct conditional branch
-  * `BRANCH_DIRECT_CALL`: A call to a procedure whose target is encoded in the instruction
-  * `BRANCH_INDIRECT_CALL`: A call to a procedure whose target is stored in a register
-  * `BRANCH_RETURN`: A return to a calling procedure
-  * `BRANCH_OTHER`: If the branch type cannot be determined
+.. cpp:function:: void last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 
-::
-
-  void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
-
-
-This function is called when a branch is resolved. The parameters are the same as in the previous hook, except that the last three are guaranteed to be correct.
+   This function is called when a branch is resolved. The parameters are the same as in the previous hook, except that the last three are guaranteed to be correct.
 
 -----------------------------------
 Branch Target Buffers
 -----------------------------------
 
-A BTB module must implement three functions.
+A BTB module may implement three functions.
 
-::
+.. cpp:function:: void initialize_btb()
 
-  void O3_CPU::initialize_btb()
+   This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as `std::vector` or `std::map`.
+.. cpp:function:: std::pair<uint64_t, bool> btb_prediction(uint64_t ip, uint8_t branch_type)
+.. cpp:function:: std::pair<uint64_t, bool> btb_prediction(uint64_t ip)
 
-::
+   This function is called when a prediction is needed.
 
-  std::pair<uint64_t, bool> O3_CPU::btb_prediction(uint64_t ip)
+   :param ip: The instruction pointer of the branch
+   :param branch_type: One of the following
 
-This function is called when a prediction is needed. The parameters passed are:
+     * ``BRANCH_DIRECT_JUMP``: Direct non-call, unconditional branches, whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT``: Indirect non-call, unconditional branches, whose target is stored in a register
+     * ``BRANCH_CONDITIONAL``: A direct conditional branch
+     * ``BRANCH_DIRECT_CALL``: A call to a procedure whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT_CALL``: A call to a procedure whose target is stored in a register
+     * ``BRANCH_RETURN``: A return to a calling procedure
+     * ``BRANCH_OTHER``: If the branch type cannot be determined
 
-* ip: The instruction pointer of the branch
+   :return: The function should return a pair containing the predicted address and a boolean that describes if the branch is known to be always taken.
+       If the prediction fails, the function should return a default-initialized address, e.g. ``uint64_t{}``.
 
-The function should return a pair containing the predicted address and a boolean that describes if the branch is known to be always taken. If the prediction fails, the function should return a default-initialized address, e.g. `uint64_t{}`.
+.. cpp:function:: void update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 
-::
+   This function is called when a branch is resolved.
 
-  void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+   :param ip: The instruction pointer of the branch
+   :param branch_target: The correct target of the branch.
+   :param taken: A boolean value. This parameter will be nonzero if the branch was taken.
+   :param branch_type: One of the following
 
-
-This function is called when a branch is resolved. The parameters are:
-
-* ip: The instruction pointer of the branch
-* branch_target: The correct target of the branch.
-* taken: A boolean value. This parameter will be nonzero if the branch was taken.
-* branch_type: One of the following
-
-  * `BRANCH_DIRECT_JUMP`: Direct non-call, unconditional branches, whose target is encoded in the instruction
-  * `BRANCH_INDIRECT`: Indirect non-call, unconditional branches, whose target is stored in a register
-  * `BRANCH_CONDITIONAL`: A direct conditional branch
-  * `BRANCH_DIRECT_CALL`: A call to a procedure whose target is encoded in the instruction
-  * `BRANCH_INDIRECT_CALL`: A call to a procedure whose target is stored in a register
-  * `BRANCH_RETURN`: A return to a calling procedure
-  * `BRANCH_OTHER`: If the branch type cannot be determined
+     * ``BRANCH_DIRECT_JUMP``: Direct non-call, unconditional branches, whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT``: Indirect non-call, unconditional branches, whose target is stored in a register
+     * ``BRANCH_CONDITIONAL``: A direct conditional branch
+     * ``BRANCH_DIRECT_CALL``: A call to a procedure whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT_CALL``: A call to a procedure whose target is stored in a register
+     * ``BRANCH_RETURN``: A return to a calling procedure
+     * ``BRANCH_OTHER``: If the branch type cannot be determined
 
 -----------------------------------
 Memory Prefetchers
 -----------------------------------
 
-A prefetcher module must implement five or six functions.
+A prefetcher module may implement five or six functions.
 
-::
+.. cpp:function:: void prefetcher_initialize()
 
-  void CACHE::prefetcher_initialize()
+   This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as `std::vector` or `std::map`.
+.. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, uint8_t type, uint32_t metadata_in)
 
-::
+   This function is called when a tag is checked in the cache.
 
-  uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
+   :param addr: the address of the packet.
+       If this is the first-level cache, the offset bits are included.
+       Otherwise, the offset bits are zero.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
+   :param ip: the address of the instruction that initiated the demand.
+       If the packet is a prefetch from another level, this value will be 0.
+   :param cache_hit: if this tag check is a hit, this value is true.
+   :param useful_prefetch: if this tag check hit a prior prefetch, this value is true.
+   :param type: one of the following
 
-This function is called when a tag is checked in the cache. The parameters passed are:
+     * ``access_type::LOAD``
+     * ``access_type::RFO``
+     * ``access_type::PREFETCH``
+     * ``access_type::WRITE``
+     * ``access_type::TRANSLATION``
 
-* addr: the address of the packet. If this is the first-level cache, the offset bits are included. Otherwise, the offset bits are zero. If the cache was configured with `"virtual_prefetch": true`, this address will be a virtual address. Otherwise, this is a physical address.
-* ip: the address of the instruction that initiated the demand. If the packet is a prefetch from another level, this value will be 0.
-* cache_hit: if this tag check is a hit, this value is nonzero. Otherwise, it is 0.
-* useful_prefetch: if this tag check hit a prior prefetch, this value is true.
-* type: the result of `static_cast<std::underlying_type_t<access_type>>(v)` for v in:
-  * `access_type::LOAD`
-  * `access_type::RFO`
-  * `access_type::PREFETCH`
-  * `access_type::WRITE`
-  * `access_type::TRANSLATION`
-* metadata_in: the metadata carried along by the packet.
+   :param metadata_in: the metadata carried along by the packet.
 
-The function should return metadata that will be stored alongside the block.
+   :return: The function should return metadata that will be stored alongside the block.
 
-::
+.. cpp:function:: uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_way, uint8_t prefetch, uint32_t metadata_in)
 
-  uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_way, uint8_t prefetch, uint32_t metadata_in);
+   This function is called when a miss is filled in the cache.
 
-This function is called when a miss is filled in the cache. The parameters passed are:
+   :param addr: the address of the packet.
+       If this is the first-level cache, the offset bits are included.
+       Otherwise, the offset bits are zero.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
+   :param set: the set that the fill occurred in
+   :param way: the way that the fill occurred in, or ``this->NUM_WAY`` if a bypass occurred
+   :param prefetch: if this tag check hit a prior prefetch, this value is true.
+   :param metadata_in: the metadata carried along by the packet.
 
-* addr: the address of the packet. If this is the first-level cache, the offset bits are included. Otherwise, the offset bits are zero. If the cache was configured with `"virtual_prefetch": true`, this address will be a virtual address. Otherwise, this is a physical address.
-* set: the set that the fill occurred in
-* way: the way that the fill occurred in, or `this->NUM_WAY` if a bypass occurred
-* prefetch: if this tag check hit a prior prefetch, this value is true.
-* metadata_in: the metadata carried along by the packet.
+   :return: The function should return metadata that will be stored alongside the block.
 
-The function should return metadata that will be stored alongside the block.
-
-::
-
-  void CACHE::prefetcher_cycle_operate();
-
-
-This function is called each cycle, after all other operation has completed.
-
-::
-
-  void CACHE::prefetcher_final_stats();
+.. cpp:function:: void prefetcher_cycle_operate()
 
 
-This function is called at the end of the simulation and can be used to print statistics.
+   This function is called each cycle, after all other operation has completed.
+
+.. cpp:function:: void prefetcher_final_stats()
 
 
-::
-
-  void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+   This function is called at the end of the simulation and can be used to print statistics.
 
 
-This function must be implemented by instruction prefetchers. The parameters passed are:
+.. cpp:function:: void prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
 
-* ip: The instruction pointer of the branch
-* branch_type: One of the following
 
-  * `BRANCH_DIRECT_JUMP`: Direct non-call, unconditional branches, whose target is encoded in the instruction
-  * `BRANCH_INDIRECT`: Indirect non-call, unconditional branches, whose target is stored in a register
-  * `BRANCH_CONDITIONAL`: A direct conditional branch
-  * `BRANCH_DIRECT_CALL`: A call to a procedure whose target is encoded in the instruction
-  * `BRANCH_INDIRECT_CALL`: A call to a procedure whose target is stored in a register
-  * `BRANCH_RETURN`: A return to a calling procedure
-  * `BRANCH_OTHER`: If the branch type cannot be determined
+   This function may be implemented by instruction prefetchers.
 
-* branch_target: The instruction pointer of the target
+   :param ip: The instruction pointer of the branch
+   :param branch_type: One of the following
+
+     * ``BRANCH_DIRECT_JUMP``: Direct non-call, unconditional branches, whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT``: Indirect non-call, unconditional branches, whose target is stored in a register
+     * ``BRANCH_CONDITIONAL``: A direct conditional branch
+     * ``BRANCH_DIRECT_CALL``: A call to a procedure whose target is encoded in the instruction
+     * ``BRANCH_INDIRECT_CALL``: A call to a procedure whose target is stored in a register
+     * ``BRANCH_RETURN``: A return to a calling procedure
+     * ``BRANCH_OTHER``: If the branch type cannot be determined
+
+   :param branch_target: The instruction pointer of the target
 
 -----------------------------------
 Replacement Policies
 -----------------------------------
 
-A replacement policy module must implement four functions.
+A replacement policy module may implement four functions.
 
-::
+.. cpp:function:: void initialize_replacement()
 
-  void CACHE::initialize_replacement()
+   This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as `std::vector` or `std::map`.
+.. cpp:function:: uint32_t find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t addr, access_type type)
+.. cpp:function:: uint32_t find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t addr, uint32_t type)
 
-::
+   This function is called when a tag is checked in the cache.
 
-  uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t addr, uint32_t type);
+   :param triggering_cpu: the core index that initiated this fill
+   :param instr_id: an instruction count that can be used to examine the program order of requests.
+   :param set: the set that the fill occurred in.
+   :param current_set: a pointer to the beginning of the set being accessed.
+   :param ip: the address of the instruction that initiated the demand.
+       If the packet is a prefetch from another level, this value will be 0.
+   :param addr: the address of the packet.
+       If this is the first-level cache, the offset bits are included.
+       Otherwise, the offset bits are zero.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
+   :param type: one of the following
 
-This function is called when a tag is checked in the cache. The parameters passed are:
+     * ``access_type::LOAD``
+     * ``access_type::RFO``
+     * ``access_type::PREFETCH``
+     * ``access_type::WRITE``
+     * ``access_type::TRANSLATION``
 
-* triggering_cpu: the core index that initiated this fill
-* instr_id: an instruction count that can be used to examine the program order of requests.
-* set: the set that the fill occurred in.
-* current_set: a pointer to the beginning of the set being accessed.
-* ip: the address of the instruction that initiated the demand. If the packet is a prefetch from another level, this value will be 0.
-* addr: the address of the packet. If this is the first-level cache, the offset bits are included. Otherwise, the offset bits are zero. If the cache was configured with `"virtual_prefetch": true`, this address will be a virtual address. Otherwise, this is a physical address.
-* type: the result of `static_cast<std::underlying_type_t<access_type>>(v)` for v in:
+   :return: The function should return the way index that should be evicted, or ``this->NUM_WAY`` to indicate that a bypass should occur.
 
-  * `access_type::LOAD`
-  * `access_type::RFO`
-  * `access_type::PREFETCH`
-  * `access_type::WRITE`
-  * `access_type::TRANSLATION`
+.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t addr, uint64_t ip, uint64_t victim_addr, uint8_t hit)
 
-The function should return the way index that should be evicted, or `this->NUM_WAY` to indicate that a bypass should occur.
+   This function is called when a hit occurs or a miss is filled in the cache.
 
-::
+   :param triggering_cpu: the core index that initiated this fill
+   :param set: the set that the fill occurred in.
+   :param way: the way that the fill occurred in.
+   :param addr: the address of the packet.
+       If this is the first-level cache, the offset bits are included.
+       Otherwise, the offset bits are zero.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
+   :param ip: the address of the instruction that initiated the demand.
+       If the packet is a prefetch from another level, this value will be 0.
+   :param victim_addr: the address of the evicted block, if this is a miss.
+       If this is a hit, the value is 0.
+   :param type: one of the following
 
-  void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t addr, uint64_t ip, uint64_t victim_addr, uint8_t hit);
+     * ``access_type::LOAD``
+     * ``access_type::RFO``
+     * ``access_type::PREFETCH``
+     * ``access_type::WRITE``
+     * ``access_type::TRANSLATION``
 
-This function is called when a hit occurs or a miss is filled in the cache. The parameters passed are:
+.. cpp:function:: void replacement_final_stats()
 
-* triggering_cpu: the core index that initiated this fill
-* set: the set that the fill occurred in.
-* way: the way that the fill occurred in.
-* addr: the address of the packet. If this is the first-level cache, the offset bits are included. Otherwise, the offset bits are zero. If the cache was configured with `"virtual_prefetch": true`, this address will be a virtual address. Otherwise, this is a physical address.
-* ip: the address of the instruction that initiated the demand. If the packet is a prefetch from another level, this value will be 0.
-* victim_addr: the address of the evicted block, if this is a miss. If this is a hit, the value is 0.
-* type: the result of `static_cast<std::underlying_type_t<access_type>>(v)` for v in:
-
-  * `access_type::LOAD`
-  * `access_type::RFO`
-  * `access_type::PREFETCH`
-  * `access_type::WRITE`
-  * `access_type::TRANSLATION`
-
-The function should return metadata that will be stored alongside the block.
-
-::
-
-  void CACHE::replacement_final_stats();
-
-
-This function is called at the end of the simulation and can be used to print statistics.
+   This function is called at the end of the simulation and can be used to print statistics.
 

@@ -19,6 +19,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="The Legacy ChampSim Module System" href="Legacy-modules.html" />
     <link rel="prev" title="The ChampSim Module System" href="Modules.html" /> 
 </head>
 
@@ -51,6 +52,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#heterogeneous-systems">Heterogeneous systems</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Legacy-modules.html">The Legacy ChampSim Module System</a></li>
 </ul>
 
         </div>
@@ -100,7 +102,7 @@ We can start with the most trivial of configuration files.:</p>
 <p>This would specify a default configuration.
 But, this is not frequently useful.
 Let’s change the branch predictor that ChampSim uses.
-Legal values for the <cite>branch_predictor</cite> key are directory names under the <cite>branch/</cite> directory, or valid paths.
+Legal values for the <code class="docutils literal notranslate"><span class="pre">branch_predictor</span></code> key are directory names under the <code class="docutils literal notranslate"><span class="pre">branch/</span></code> directory, or valid paths.
 The same is true for specifying BTBs in the core and both prefetchers and replacement policies in the cache.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;branch_predictor&quot;</span><span class="p">:</span> <span class="s2">&quot;perceptron&quot;</span>
@@ -148,7 +150,7 @@ So far, we’ve only handled the single-core case.</p>
 </section>
 <section id="multi-core-configurations">
 <h2>Multi-core configurations<a class="headerlink" href="#multi-core-configurations" title="Link to this heading"></a></h2>
-<p>Multi-core simulations can be enabled by specifying the <cite>num_cores</cite> key.:</p>
+<p>Multi-core simulations can be enabled by specifying the <code class="docutils literal notranslate"><span class="pre">num_cores</span></code> key.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;num_cores&quot;</span><span class="p">:</span> <span class="mi">2</span>
 <span class="p">}</span>
@@ -175,7 +177,7 @@ This can be combined with the other specifications that we have made so far to c
 <h2>Heterogeneous systems<a class="headerlink" href="#heterogeneous-systems" title="Link to this heading"></a></h2>
 <p>ChampSim supports a variety of system configurations, including systems that are not homogeneous.
 For example, we could create two cores with different ROB sizes.
-Specify all cores in a list under the <cite>ooo_cpu</cite> key.:</p>
+Specify all cores in a list under the <code class="docutils literal notranslate"><span class="pre">ooo_cpu</span></code> key.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;num_cores&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
     <span class="s2">&quot;ooo_cpu&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -185,7 +187,7 @@ Specify all cores in a list under the <cite>ooo_cpu</cite> key.:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Each object in the <cite>ooo_cpu</cite> list specifies one core, and takes all of the options that we have discussed so far.:</p>
+<p>Each object in the <code class="docutils literal notranslate"><span class="pre">ooo_cpu</span></code> list specifies one core, and takes all of the options that we have discussed so far.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;num_cores&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
     <span class="s2">&quot;ooo_cpu&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -203,8 +205,8 @@ Specify all cores in a list under the <cite>ooo_cpu</cite> key.:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Each cache object can also be specified in a list under the <cite>caches</cite> key.
-These caches can then be referred to by their <cite>name</cite> key.
+<p>Each cache object can also be specified in a list under the <code class="docutils literal notranslate"><span class="pre">caches</span></code> key.
+These caches can then be referred to by their <code class="docutils literal notranslate"><span class="pre">name</span></code> key.
 In the following configuration, each core has a distinct L1 cache.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;num_cores&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
@@ -220,8 +222,8 @@ In the following configuration, each core has a distinct L1 cache.:</p>
 </pre></div>
 </div>
 <p>The configuration script will make every attempt to assign defaults to objects, but it may not be able to do so for.
-In the following configuration, cores 0 and 1 are attached to <cite>llcA</cite>, and cores 2 and 3 are attached to <cite>llcB</cite>.
-The script is able to assign LLC-like defaults to each of the caches specified under <cite>“caches”</cite>:</p>
+In the following configuration, cores 0 and 1 are attached to <code class="docutils literal notranslate"><span class="pre">llcA</span></code> and cores 2 and 3 are attached to <code class="docutils literal notranslate"><span class="pre">llcB</span></code>.
+The script is able to assign LLC-like defaults to each of the caches specified under <code class="docutils literal notranslate"><span class="pre">&quot;caches&quot;</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;num_cores&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
     <span class="s2">&quot;ooo_cpu&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -258,6 +260,7 @@ The script is able to assign LLC-like defaults to each of the caches specified u
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="Modules.html" class="btn btn-neutral float-left" title="The ChampSim Module System" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Legacy-modules.html" class="btn btn-neutral float-right" title="The Legacy ChampSim Module System" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
