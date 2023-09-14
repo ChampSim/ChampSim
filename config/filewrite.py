@@ -164,6 +164,13 @@ class Fragment:
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
             print('For Executable', executable)
+            if any(legacy_module_info.values()):
+                print('Legacy modules detected:')
+                for module in itertools.chain.from_iterable(v.values() for v in legacy_module_info.values()):
+                    print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
+            print('Modules:')
+            for module in joined_module_info.values():
+                print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Writing objects to', unique_obj_dir)
 
         fileparts = [
@@ -200,7 +207,7 @@ class FileWriter:
 
     This class provides a context manager interface over a set of Fragments, and is more convenient for general use.
     '''
-    def __init__(self, bindir_name=None, objdir_name=None):
+    def __init__(self, bindir_name=None, objdir_name=None, verbose=False):
         '''
         param bindir_name: The default directory for binaries if none is given to write_files().
         param objdir_name: The default directory for object files if none is given to write_files().
@@ -208,6 +215,7 @@ class FileWriter:
         self.fragments = []
         self.bindir_name = bindir_name
         self.objdir_name = objdir_name
+        self.verbose = verbose
 
     def __enter__(self):
         self.fragments = []
@@ -219,7 +227,7 @@ class FileWriter:
         local_srcdir_names = srcdir_names or []
         local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
 
-        self.fragments.append(Fragment.from_config(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main))
+        self.fragments.append(Fragment.from_config(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main, verbose=self.verbose))
 
     @staticmethod
     def write_fragments(*fragments):
