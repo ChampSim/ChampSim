@@ -7,9 +7,9 @@
 #include <cfenv>
 #include <cmath>
 
-void generate_packet(champsim::channel* channel)
+void generate_packet(champsim::channel* channel,uint64_t packet_num)
 {
-    auto pkt_type = rand() % 2 ? access_type::LOAD : access_type::WRITE;
+    auto pkt_type = packet_num % 2 ? access_type::LOAD : access_type::WRITE;
     champsim::channel::request_type r;
     r.type = pkt_type;
     uint64_t offset = 0;
@@ -18,13 +18,13 @@ void generate_packet(champsim::channel* channel)
     offset += LOG2_BLOCK_SIZE;
     r.address += 0 << offset;
     offset += champsim::lg2(DRAM_CHANNELS);
-    r.address += rand() % DRAM_BANKS << offset;
+    r.address += packet_num % DRAM_BANKS << offset;
     offset += champsim::lg2(DRAM_BANKS);
     r.address += 1 << offset;
     offset += champsim::lg2(DRAM_COLUMNS);
-    r.address += rand() % DRAM_RANKS << offset;
+    r.address += packet_num % DRAM_RANKS << offset;
     offset += champsim::lg2(DRAM_RANKS);
-    r.address += rand() % DRAM_ROWS << offset;
+    r.address += packet_num % DRAM_ROWS << offset;
     r.instr_id = 0;
     r.response_requested = false;
 
@@ -52,7 +52,7 @@ std::vector<bool> refresh_test(MEMORY_CONTROLLER* uut, champsim::channel* channe
     while (uut->current_cycle < refresh_rate*refresh_cycles)
     {
         //generate a random packet
-        generate_packet(channel_uut);
+        generate_packet(channel_uut,uut->current_cycle);
         //operate mem controller
         uut->_operate();
         
