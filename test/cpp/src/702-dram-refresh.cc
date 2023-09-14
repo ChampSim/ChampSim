@@ -86,7 +86,7 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
             std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,40);
             THEN("Each bank undergoes refresh according to specified timing")
             {
-                REQUIRE_THAT(std::vector<bool>(40,true), Catch::Matchers::RangeEquals(refresh_status));
+                REQUIRE_THAT(refresh_status, Catch::Matchers::AllTrue());
             }
         }
     }
