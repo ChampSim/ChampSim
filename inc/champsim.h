@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <limits>
 
 #include "champsim_constants.h"
 

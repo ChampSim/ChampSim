@@ -338,27 +338,6 @@ TEST_CASE("An address slice can post-decrement") {
   REQUIRE(lhs == champsim::address_slice<20,16>{1});
 }
 
-TEST_CASE("Address slices with the same size can be spliced") {
-  champsim::address_slice<64,0> a{0xaaaa'aaaa'aaaa'aaaa};
-  champsim::address_slice<64,0> b{0xbbbb'bbbb'bbbb'bbbb};
-
-  REQUIRE(champsim::splice(a,b,8) == champsim::address_slice<64,0>{0xaaaaaaaaaaaaaabb});
-  REQUIRE(champsim::splice(a,b,16) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbbb});
-  REQUIRE(champsim::splice(a,b,32) == champsim::address_slice<64,0>{0xaaaaaaaabbbbbbbb});
-  REQUIRE(champsim::splice(a,b,48) == champsim::address_slice<64,0>{0xaaaabbbbbbbbbbbb});
-}
-
-TEST_CASE("Address slices with the same size can be partially spliced") {
-  champsim::address_slice<64,0> a{0xaaaaaaaaaaaaaaaa};
-  champsim::address_slice<64,0> b{0xbbbbbbbbbbbbbbbb};
-
-  REQUIRE(champsim::splice(a,b,8,4) == champsim::address_slice<64,0>{0xaaaaaaaaaaaaaaba});
-  REQUIRE(champsim::splice(a,b,16,4) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbba});
-  REQUIRE(champsim::splice(a,b,16,8) == champsim::address_slice<64,0>{0xaaaaaaaaaaaabbaa});
-  REQUIRE(champsim::splice(a,b,32,8) == champsim::address_slice<64,0>{0xaaaaaaaabbbbbbaa});
-  REQUIRE(champsim::splice(a,b,32,16) == champsim::address_slice<64,0>{0xaaaaaaaabbbbaaaa});
-}
-
 TEMPLATE_TEST_CASE_SIG("Address slices with adjacent indices can be spliced", "", ((std::size_t V), V), 4, 8, 12, 16, 20, 24, 28) {
   champsim::address_slice<32,V> lhs{0xaaaa'aaaa};
   champsim::address_slice<V,0> rhs{0xbbbb'bbbb};

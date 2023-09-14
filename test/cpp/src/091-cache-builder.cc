@@ -56,6 +56,16 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
   REQUIRE(uut.NUM_SET == 6);
 }
 
+TEST_CASE("Specifying the size infers the cache's number of sets") {
+  CACHE uut{champsim::cache_builder{}.size(16*1024).ways(16)};
+  REQUIRE(uut.NUM_SET == 16);
+}
+
+TEST_CASE("Specifying the size infers the cache's number of ways") {
+  CACHE uut{champsim::cache_builder{}.size(16*1024).sets(16)};
+  REQUIRE(uut.NUM_WAY == 16);
+}
+
 TEST_CASE("The MSHR factor uses the number of upper levels to determine the cache's default number of MSHRs") {
   auto num_uls = GENERATE(1u,2u,4u,6u);
   auto mshr_factor = 2u;

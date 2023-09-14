@@ -192,7 +192,9 @@ public:
 
   void print_deadlock() final;
 
+#if __has_include("ooo_cpu_module_decl.inc")
 #include "ooo_cpu_module_decl.inc"
+#endif
 
   struct branch_module_concept {
     virtual ~branch_module_concept() = default;

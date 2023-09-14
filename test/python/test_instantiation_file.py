@@ -1,5 +1,7 @@
 import unittest
 import itertools
+import tempfile
+import os
 
 import config.instantiation_file
 
@@ -17,10 +19,7 @@ class VectorStringTest(unittest.TestCase):
 class CpuBuilderTest(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cpu = {
-            'name': 'test_cpu', '_index': 0, 'frequency': 1,
-            'L1I': 'test_l1i', 'L1D': 'test_l1d'
-        }
+        base_cpu = { 'name': 'test_cpu' }
         empty = list(config.instantiation_file.get_cpu_builder(base_cpu))
         modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -108,12 +107,8 @@ class CpuBuilderTest(unittest.TestCase):
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = {
-            'name': 'test_cache', 'lower_level': 'test_ll'
-        }
-        upper_levels = {
-            'test_cache': { 'upper_channels': [] }
-        }
+        base_cache = { 'name': 'test_cache' }
+        upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -175,12 +170,8 @@ class CacheBuilderTests(unittest.TestCase):
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = {
-            'name': 'test_ptw', 'lower_level': 'test_ll', 'cpu': 0
-        }
-        upper_levels = {
-            'test_ptw': { 'upper_channels': [] }
-        }
+        base_ptw = { 'name': 'test_ptw' }
+        upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -206,3 +197,67 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
     def test_pscl2(self):
         self.get_element_diff(['.add_pscl(2, 1, 2)'], pscl2_set=1, pscl2_way=2)
 
+class UpperChannelCollectorTests(unittest.TestCase):
+
+    def test_single(self):
+        value = (('low', 'up'),)
+        self.assertEqual({'low': {'upper_channels': ['up_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+    def test_multiple(self):
+        value = (('low', 'up1'), ('low', 'up2'))
+        self.assertEqual({'low': {'upper_channels': ['up1_to_low_channel', 'up2_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+class GetUpperLevelsTests(unittest.TestCase):
+
+    def test_empty(self):
+        cores = []
+        caches = []
+        ptws = []
+        self.assertEqual([], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Is_are_upper_levels(self):
+        cores = [{'L1I': 'test_l1i', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1i', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Ds_are_upper_levels(self):
+        cores = [{'L1D': 'test_l1d', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1d', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_levels(self):
+        cores = []
+        caches = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_ptws_have_upper_levels(self):
+        cores = []
+        caches = []
+        ptws = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_translations(self):
+        cores = []
+        caches = [{'lower_translate': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+class CheckHeaderCompilesForClassTests(unittest.TestCase):
+    def test_present(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('A', fname))
+
+    def test_absent(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertFalse(config.instantiation_file.check_header_compiles_for_class('B', fname))

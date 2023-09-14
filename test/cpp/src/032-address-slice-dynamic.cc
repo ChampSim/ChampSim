@@ -290,27 +290,6 @@ TEST_CASE("An dynamically-sized address slice can post-decrement") {
   REQUIRE(lhs == champsim::address_slice{20,16,1});
 }
 
-TEST_CASE("Dynamic address slices with the same size can be spliced") {
-  champsim::address_slice a{64,0,0xaaaa'aaaa'aaaa'aaaa};
-  champsim::address_slice b{64,0,0xbbbb'bbbb'bbbb'bbbb};
-
-  REQUIRE(champsim::splice(a,b,8) == champsim::address_slice{64,0,0xaaaaaaaaaaaaaabb});
-  REQUIRE(champsim::splice(a,b,16) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbbb});
-  REQUIRE(champsim::splice(a,b,32) == champsim::address_slice{64,0,0xaaaaaaaabbbbbbbb});
-  REQUIRE(champsim::splice(a,b,48) == champsim::address_slice{64,0,0xaaaabbbbbbbbbbbb});
-}
-
-TEST_CASE("Dynamic address slices with the same size can be partially spliced") {
-  champsim::address_slice a{64,0,0xaaaaaaaaaaaaaaaa};
-  champsim::address_slice b{64,0,0xbbbbbbbbbbbbbbbb};
-
-  REQUIRE(champsim::splice(a,b,8,4) == champsim::address_slice{64,0,0xaaaaaaaaaaaaaaba});
-  REQUIRE(champsim::splice(a,b,16,4) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbba});
-  REQUIRE(champsim::splice(a,b,16,8) == champsim::address_slice{64,0,0xaaaaaaaaaaaabbaa});
-  REQUIRE(champsim::splice(a,b,32,8) == champsim::address_slice{64,0,0xaaaaaaaabbbbbbaa});
-  REQUIRE(champsim::splice(a,b,32,16) == champsim::address_slice{64,0,0xaaaaaaaabbbbaaaa});
-}
-
 TEST_CASE("Dynamic address slices with adjacent indices can be spliced") {
   auto low = GENERATE(as<std::size_t>{},4,8,12,16,20,28);
   champsim::address_slice lhs{32,low,0xaaaa'aaaa};

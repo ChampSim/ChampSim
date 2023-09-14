@@ -252,6 +252,6 @@ TEST_CASE("An address prints something to libfmt") {
 
 TEST_CASE("The libfmt specifiers affect the width of the address") {
   champsim::address addr{0xffff'ffff};
-  auto result = fmt::format("{:16}", addr);
+  auto result = fmt::format("{:18}", addr);
   REQUIRE_THAT(result, Catch::Matchers::Matches( "0x00000000ffffffff"));
 }
