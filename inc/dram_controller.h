@@ -71,7 +71,10 @@ struct DRAM_CHANNEL final : public champsim::operable {
   constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   struct BANK_REQUEST {
-    bool valid,row_buffer_hit,need_refresh,under_refresh = false;
+    bool valid = false;
+    bool row_buffer_hit = false;
+    bool need_refresh = false;
+    bool under_refresh = false;
 
     std::optional<std::size_t> open_row{};
 
