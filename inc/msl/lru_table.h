@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "extent.h"
 #include "msl/bits.h"
 #include "util/detect.h"
 #include "util/span.h"
@@ -46,7 +47,7 @@ struct table_tagger {
 
 // recognizes types that support slicing
 template <typename T>
-using dynamically_sliceable = decltype( std::declval<T>().slice(0,0) );
+using dynamically_sliceable = decltype( std::declval<T>().slice(champsim::dynamic_extent{0,0}) );
 
 template< class T, class U >
 constexpr bool cmp_equal( T t, U u ) noexcept

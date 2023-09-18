@@ -419,7 +419,7 @@ namespace {
 template <typename T>
 T get_dram_address_slice(champsim::address addr, std::size_t upper, std::size_t lower)
 {
-  return addr.slice(upper, lower).to<T>();
+  return addr.slice(champsim::dynamic_extent{upper, lower}).to<T>();
 }
 }
 

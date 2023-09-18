@@ -450,7 +450,7 @@ uint64_t CACHE::get_set(uint64_t address) const { return static_cast<uint64_t>(g
 
 long CACHE::get_set_index(champsim::address address) const
 {
-  return address.slice(champsim::lg2(NUM_SET)+OFFSET_BITS, OFFSET_BITS).to<long>();
+  return address.slice(champsim::dynamic_extent{champsim::lg2(NUM_SET)+OFFSET_BITS, OFFSET_BITS}).to<long>();
 }
 
 template <typename It>
