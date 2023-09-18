@@ -417,16 +417,16 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
 namespace {
 template <typename T>
-T get_dram_address_slice(champsim::address addr, std::size_t upper, std::size_t lower)
+T get_dram_address_slice(champsim::address addr, std::size_t lower, std::size_t size)
 {
-  return addr.slice(champsim::dynamic_extent{upper, lower}).to<T>();
+  return addr.slice(champsim::sized_extent{lower, size}).to<T>();
 }
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
   const auto lower = LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower + champsim::lg2(DRAM_CHANNELS), lower);
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_CHANNELS));
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
@@ -440,25 +440,25 @@ unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const {
 unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const
 {
   const auto lower = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower + champsim::lg2(DRAM_BANKS), lower);
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_BANKS));
 }
 
 unsigned long DRAM_CHANNEL::get_column(champsim::address address) const
 {
   const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower + champsim::lg2(DRAM_COLUMNS), lower);
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_COLUMNS));
 }
 
 unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const
 {
   const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower + champsim::lg2(DRAM_RANKS), lower);
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_RANKS));
 }
 
 unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
 {
   const auto lower = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower + champsim::lg2(DRAM_ROWS), lower);
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_ROWS));
 }
 
 std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }

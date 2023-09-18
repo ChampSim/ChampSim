@@ -29,7 +29,18 @@ struct dynamic_extent
 
   dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low)
   {
-    assert(up >= low);
+    assert(upper >= lower);
+  }
+};
+
+struct sized_extent
+{
+  std::size_t upper;
+  std::size_t lower;
+
+  sized_extent(std::size_t low, std::size_t size) : upper(low+size), lower(low)
+  {
+    assert(upper >= lower);
   }
 };
 
