@@ -19,8 +19,10 @@
 
 #include <cstdint>
 #include <exception>
+#include <limits>
 
 #include "champsim_constants.h"
+#include "extent.h"
 
 namespace champsim
 {
@@ -35,15 +37,15 @@ constexpr bool debug_print = true;
 constexpr bool debug_print = false;
 #endif
 
-template <std::size_t, std::size_t>
+template <typename Extent>
 class address_slice;
 
 // Convenience definitions
-using address = address_slice<std::numeric_limits<uint64_t>::digits, 0>;
-using block_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_BLOCK_SIZE>;
-using block_offset = address_slice<LOG2_BLOCK_SIZE, 0>;
-using page_number = address_slice<std::numeric_limits<uint64_t>::digits, LOG2_PAGE_SIZE>;
-using page_offset = address_slice<LOG2_PAGE_SIZE, 0>;
+using address = address_slice<static_extent<std::numeric_limits<uint64_t>::digits, 0>>;
+using block_number = address_slice<static_extent<std::numeric_limits<uint64_t>::digits, LOG2_BLOCK_SIZE>>;
+using block_offset = address_slice<static_extent<LOG2_BLOCK_SIZE, 0>>;
+using page_number = address_slice<static_extent<std::numeric_limits<uint64_t>::digits, LOG2_PAGE_SIZE>>;
+using page_offset = address_slice<static_extent<LOG2_PAGE_SIZE, 0>>;
 } // namespace champsim
 
 #endif

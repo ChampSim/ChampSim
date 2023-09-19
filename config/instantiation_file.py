@@ -17,9 +17,13 @@ import functools
 import operator
 import os
 import tempfile
-import subprocess
+import multiprocessing as mp
 
 from . import util
+from . import cxx
+
+def channel_name(*, lower, upper):
+    return f'{upper}_to_{lower}_channel'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
@@ -27,6 +31,7 @@ vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_p
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
 core_builder_parts = {
+    'frequency': '.frequency({frequency})',
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
     'decode_buffer_size': '.decode_buffer_size({decode_buffer_size})',
     'dispatch_buffer_size': '.dispatch_buffer_size({dispatch_buffer_size})',
@@ -49,8 +54,11 @@ core_builder_parts = {
     'dib_set': '  .dib_set({dib_set})',
     'dib_way': '  .dib_way({dib_way})',
     'dib_window': '  .dib_window({dib_window})',
+    'L1I': ['.l1i(&{L1I})', '.l1i_bandwidth({L1I}.MAX_TAG)', '.fetch_queues(&{^fetch_queues})'],
+    'L1D': ['.l1d_bandwidth({L1D}.MAX_TAG)', '.data_queues(&{^data_queues})'],
     '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
-    '_btb_data': '.btb<{^btb_string}>()'
+    '_btb_data': '.btb<{^btb_string}>()',
+    '_index': '.index({_index})'
 }
 
 dib_builder_parts = {
@@ -60,7 +68,9 @@ dib_builder_parts = {
 }
 
 cache_builder_parts = {
+    'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
+    'size': '.size({size})',
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
     'pq_size': '.pq_size({pq_size})',
@@ -74,7 +84,14 @@ cache_builder_parts = {
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
     '_replacement_data': '.replacement<{^replacement_string}>()',
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
-    'lower_translate': '.lower_translate(&{name}_to_{lower_translate}_channel)'
+    'lower_translate': '.lower_translate(&{^lower_translate_queues})',
+    'lower_level': '.lower_level(&{^lower_level_queues})'
+}
+
+ptw_builder_parts = {
+    'name': '.name("{name}")',
+    'cpu': '.cpu({cpu})',
+    'lower_level': '.lower_level(&{^lower_level_queues})'
 }
 
 def vector_string(iterable):
@@ -86,33 +103,26 @@ def vector_string(iterable):
 
 def get_cpu_builder(cpu):
     required_parts = [
-        '.index({_index})',
-        '.frequency({frequency})',
-        '.l1i(&{L1I})',
-        '.l1i_bandwidth({L1I}.MAX_TAG)',
-        '.l1d_bandwidth({L1D}.MAX_TAG)',
-        '.fetch_queues(&{name}_to_{L1I}_channel)',
-        '.data_queues(&{name}_to_{L1D}_channel)'
     ]
 
     local_params = {
         '^branch_predictor_string': ', '.join(f'{k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[]))
+        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^fetch_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1I')),
+        '^data_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1D'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('O3_CPU {name}{{', 'champsim::core_builder{{ champsim::defaults::default_core }}'),
         required_parts,
-        (v for k,v in core_builder_parts.items() if k in cpu),
+        *(util.wrap_list(v) for k,v in core_builder_parts.items() if k in cpu),
         (v for k,v in dib_builder_parts.items() if k in cpu.get('DIB',{}))
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**cpu, **local_params) for part in builder_parts)
 
 def get_cache_builder(elem, upper_levels):
     required_parts = [
-        '.name("{name}")',
-        '.upper_levels({{{^upper_levels_string}}})',
-        '.lower_level(&{name}_to_{lower_level}_channel)'
+        '.upper_levels({{{^upper_levels_string}}})'
     ]
 
     local_cache_builder_parts = {
@@ -129,7 +139,9 @@ def get_cache_builder(elem, upper_levels):
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ', '.join(f'{k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[]))
+        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
+        '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
@@ -142,10 +154,7 @@ def get_cache_builder(elem, upper_levels):
 
 def get_ptw_builder(ptw, upper_levels):
     required_parts = [
-        '.name("{name}")',
-        '.cpu({cpu})',
         '.upper_levels({{{^upper_levels_string}}})',
-        '.lower_level(&{name}_to_{lower_level}_channel)',
         '.virtual_memory(&vmem)'
     ]
 
@@ -160,12 +169,14 @@ def get_ptw_builder(ptw, upper_levels):
     }
 
     local_params = {
-        '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"])
+        '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"]),
+        '^lower_level_queues': channel_name(upper=ptw.get('name'), lower=ptw.get('lower_level'))
     }
 
     builder_parts = itertools.chain(util.multiline(itertools.chain(
         ('PageTableWalker {name}{{', 'champsim::ptw_builder{{ champsim::defaults::default_ptw }}'),
         required_parts,
+        (v for k,v in ptw_builder_parts.items() if k in ptw),
         (v for keys,v in local_ptw_builder_parts.items() if any(k in ptw for k in keys))
     ), indent=1, line_end=''), ('}};', ''))
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
@@ -185,7 +196,7 @@ def get_ref_vector_function(rtype, func_name, elements):
 
     wrapped_rtype = f'std::vector<std::reference_wrapper<{rtype}>>'
 
-    yield from util.cxx_function(func_name, wrapped, rtype=wrapped_rtype, qualifiers=['override'])
+    yield from cxx.function(func_name, wrapped, rtype=wrapped_rtype, qualifiers=['override'])
     yield ''
 
 def cache_queue_defaults(cache):
@@ -211,7 +222,7 @@ def named_selector(elem, key):
 
 def upper_channel_collector(grouped_by_lower_level):
     return util.chain(*(
-        {lower_name: {'upper_channels': [f'{upper_name}_to_{lower_name}_channel']}}
+        {lower_name: {'upper_channels': [channel_name(lower=lower_name, upper=upper_name)]}}
         for lower_name, upper_name in grouped_by_lower_level
     ))
 
@@ -227,15 +238,15 @@ def get_upper_levels(cores, caches, ptws):
 def check_header_compiles_for_class(clazz, file):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
-    global_options = os.path.join(champsim_root, 'global.options')
+    vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
+    _, triplet_dirs, _ = next(os.walk(vcpkg_parent))
+    triplet_dir = os.path.join(vcpkg_parent, next(filter(lambda x: x != 'vcpkg', triplet_dirs), None), 'include')
 
     with tempfile.TemporaryDirectory() as dtemp:
         args = (
-            'c++',
-            '--std=c++17',
             f'-I{include_dir}',
+            f'-I{triplet_dir}',
             f'-I{dtemp}',
-            '-o', os.path.join(dtemp, 'test'),
 
             # patch constants
             '-DBLOCK_SIZE=64',
@@ -256,20 +267,11 @@ def check_header_compiles_for_class(clazz, file):
             '-DDRAM_RQ_SIZE=8'
         )
 
-        fname = os.path.join(dtemp, f'{clazz}.cc')
+        # touch this file
         with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
             print('', file=wfp)
 
-        with open(fname, 'wt') as wfp:
-            print(f'#include "{file}"', file=wfp)
-
-            # main function
-            main_body = [f'{clazz} x{{nullptr}};']
-            for l in util.cxx_function('main', [], rtype='int'):
-                print(l, file=wfp)
-        result = subprocess.run((*args, f'-I{dtemp}', fname), capture_output=True)
-
-    return (result.returncode == 0)
+        return cxx.check_compiles((f'#include "{file}"', f'{clazz} x{{nullptr}};'), *args)
 
 def module_include_files(datas):
     def all_headers_on(path):
@@ -278,11 +280,23 @@ def module_include_files(datas):
                 if os.path.splitext(file)[1] == '.h':
                     yield os.path.abspath(os.path.join(base, file))
 
-    class_paths = [(module_data['class'], all_headers_on(module_data['path'])) for module_data in datas]
-    candidates = set(itertools.chain(*(zip(itertools.repeat(clazz), headers) for clazz,headers in class_paths)))
-    inc_files = {file for clazz,file in candidates if check_header_compiles_for_class(clazz, file)}
+    class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
+    candidates = list(set(itertools.chain.from_iterable(class_paths)))
+    with mp.Pool() as pool:
+        successes = pool.starmap(check_header_compiles_for_class, candidates)
+    filtered_candidates = list(itertools.compress(candidates, successes))
 
-    yield from (f'#include "{f}"' for f in inc_files)
+    class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
+    for clazz in class_difference:
+        tried_files = (f for c,f in candidates if c == clazz)
+        print('WARNING: no header found for', clazz)
+        print('NOTE: after trying files')
+        for f in tried_files:
+            print('NOTE:', f)
+            for line in successes[candidates.index((clazz,f))].stderr.splitlines():
+                print('NOTE:  ', line)
+
+    yield from (f'#include "{f}"' for _,f in filtered_candidates)
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     upper_levels = util.chain(
@@ -331,9 +345,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         get_ref_vector_function('PageTableWalker', 'ptw_view', ptws),
         get_ref_vector_function('champsim::operable', 'operable_view', list(itertools.chain(cores, caches, ptws, (pmem,)))),
 
-        util.cxx_function('dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&', qualifiers=['override'])
+        cxx.function('dram_view', [f'return {pmem["name"]};'], rtype='MEMORY_CONTROLLER&', qualifiers=['override'])
     )
-    yield from util.cxx_struct('generated_environment final', struct_body, superclass='champsim::environment')
+    yield from cxx.struct('generated_environment final', struct_body, superclass='champsim::environment')
 
     yield '}'
     yield '// NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)'

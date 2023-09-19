@@ -29,11 +29,11 @@ We can start with the most trivial of configuration files.::
 This would specify a default configuration.
 But, this is not frequently useful.
 Let's change the branch predictor that ChampSim uses.
-Legal values for the `branch_predictor` key are directory names under the `branch/` directory, or valid paths.
+Legal values for the ``branch_predictor`` key are directory names under the ``branch/`` directory, or valid paths.
 The same is true for specifying BTBs in the core and both prefetchers and replacement policies in the cache.::
 
-    { 
-        "branch_predictor": "perceptron" 
+    {
+        "branch_predictor": "perceptron"
     }
 
 This configuration file will configure ChampSim with a default configuration, but with a perceptron branch predictor instead.
@@ -81,9 +81,9 @@ So far, we've only handled the single-core case.
 Multi-core configurations
 --------------------------
 
-Multi-core simulations can be enabled by specifying the `num_cores` key.::
+Multi-core simulations can be enabled by specifying the ``num_cores`` key.::
 
-    { 
+    {
         "num_cores": 2
     }
 
@@ -109,7 +109,7 @@ Heterogeneous systems
 
 ChampSim supports a variety of system configurations, including systems that are not homogeneous.
 For example, we could create two cores with different ROB sizes.
-Specify all cores in a list under the `ooo_cpu` key.::
+Specify all cores in a list under the ``ooo_cpu`` key.::
 
     {
         "num_cores": 2,
@@ -119,7 +119,7 @@ Specify all cores in a list under the `ooo_cpu` key.::
         ]
     }
 
-Each object in the `ooo_cpu` list specifies one core, and takes all of the options that we have discussed so far.::
+Each object in the ``ooo_cpu`` list specifies one core, and takes all of the options that we have discussed so far.::
 
 
     {
@@ -130,7 +130,7 @@ Each object in the `ooo_cpu` list specifies one core, and takes all of the optio
                 "rob_size": 120, "lq_size": 90,
                 "L1D": { "prefetcher": "next_line" }
             },
-            { 
+            {
                 "branch_predictor": "gshare",
                 "rob_size": 240, "lq_size": 70,
                 "L1D": { "prefetcher": "no" }
@@ -138,8 +138,8 @@ Each object in the `ooo_cpu` list specifies one core, and takes all of the optio
         ]
     }
 
-Each cache object can also be specified in a list under the `caches` key.
-These caches can then be referred to by their `name` key.
+Each cache object can also be specified in a list under the ``caches`` key.
+These caches can then be referred to by their ``name`` key.
 In the following configuration, each core has a distinct L1 cache.::
 
     {
@@ -155,8 +155,8 @@ In the following configuration, each core has a distinct L1 cache.::
     }
 
 The configuration script will make every attempt to assign defaults to objects, but it may not be able to do so for.
-In the following configuration, cores 0 and 1 are attached to `llcA`, and cores 2 and 3 are attached to `llcB`.
-The script is able to assign LLC-like defaults to each of the caches specified under `"caches"`::
+In the following configuration, cores 0 and 1 are attached to ``llcA`` and cores 2 and 3 are attached to ``llcB``.
+The script is able to assign LLC-like defaults to each of the caches specified under ``"caches"``::
 
     {
         "num_cores": 4,

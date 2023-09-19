@@ -16,7 +16,7 @@ struct va_ampm_lite : champsim::modules::prefetcher
   static constexpr int MAX_DISTANCE = 256;
   static constexpr int PREFETCH_DEGREE = 2;
 
-  using block_in_page = champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>;
+  using block_in_page = champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>>;
 
   struct region_type {
     champsim::page_number vpn;

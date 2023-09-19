@@ -17,6 +17,7 @@ import itertools
 import functools
 
 from . import util
+from . import cxx
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
@@ -24,26 +25,36 @@ def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(
     return os.path.relpath(path, start=start).translate(fname_translation_table)
 
 class ModuleSearchContext:
-    def __init__(self, paths):
+    def __init__(self, paths, verbose=False):
         self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
+        self.verbose = verbose
 
     def data_from_path(self, path):
         name = get_module_name(path)
         is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
-        return {
+        retval = {
             'name': name,
             'path': path,
             'legacy': is_legacy,
             'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)
         }
 
+        if self.verbose:
+            print('M:', retval)
+        return retval
+
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
         # Return a normalized directory: variables and user shorthands are expanded
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, itertools.chain(
+        paths = itertools.chain(
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
-        ))))))
+        )
+
+        paths = map(os.path.expandvars, paths)
+        paths = map(os.path.expanduser, paths)
+        paths = filter(os.path.exists, paths)
+        path = os.path.relpath(next(paths, None))
 
         return self.data_from_path(path)
 
@@ -140,7 +151,7 @@ def mangled_declaration(fname, args, rtype, module_data):
 def variant_function_body(fname, args, module_data):
     argnamestring = ', '.join(a[1] for a in args)
     body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
-    yield from util.cxx_function(fname, body, args=args)
+    yield from cxx.function(fname, body, args=args)
     yield ''
 
 def get_discriminator(variant_data, module_data, classname):
@@ -150,7 +161,7 @@ def get_discriminator(variant_data, module_data, classname):
         (f'using {classname}::{classname}',),
         *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
     )
-    yield from util.cxx_struct(discriminator_classname, body, superclass=classname)
+    yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):

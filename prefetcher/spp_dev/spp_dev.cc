@@ -38,7 +38,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
 {
   champsim::address addr{raw_addr};
   champsim::page_number page{addr};
-  champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE> page_offset{addr};
+  champsim::address_slice page_offset{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
   std::vector<uint32_t> confidence_q(MSHR_SIZE);
 
@@ -108,7 +108,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i], champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{pf_addr}.to<uint32_t>(), delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i], champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, pf_addr}.to<uint32_t>(), delta_q[i]);
           }
         }
 
@@ -182,7 +182,7 @@ void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t&
   auto set = get_hash(champsim::page_number{addr}.to<uint64_t>()) % ST_SET;
   auto match = ST_WAY;
   auto partial_page = champsim::page_number{addr}.to<uint64_t>() & ST_TAG_MASK;
-  auto page_offset = champsim::address_slice<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{addr}.to<uint32_t>();
+  auto page_offset = champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, addr}.to<uint32_t>();
   uint8_t ST_hit = 0;
   int sig_delta = 0;
 
