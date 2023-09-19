@@ -69,6 +69,18 @@ auto extent_union(LHS_EXTENT lhs, RHS_EXTENT rhs)
     return dynamic_extent{std::max(lhs.upper, rhs.upper), std::min(lhs.lower, rhs.lower)};
   }
 }
+
+template <typename LHS_EXTENT, typename RHS_EXTENT>
+auto relative_extent(LHS_EXTENT superextent, RHS_EXTENT subextent)
+{
+  if constexpr (detail::extent_is_static<std::decay_t<LHS_EXTENT>> && detail::extent_is_static<std::decay_t<RHS_EXTENT>>) {
+    constexpr auto superextent_size = superextent.upper - superextent.lower;
+    return static_extent<superextent.lower + std::min(subextent.upper, superextent_size), superextent.lower + std::min(subextent.lower, superextent_size)>{};
+  } else {
+    const auto superextent_size = superextent.upper - superextent.lower;
+    return dynamic_extent{superextent.lower + std::min(subextent.upper, superextent_size), superextent.lower + std::min(subextent.lower, superextent_size)};
+  }
+}
 }
 
 #endif

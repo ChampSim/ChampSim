@@ -178,43 +178,25 @@ class address_slice
     template <typename SUB_EXTENT>
     [[nodiscard]] auto slice(SUB_EXTENT subextent) const
     {
-      assert(subextent.lower <= (upper_extent() - lower_extent()));
-      assert(subextent.upper <= (upper_extent() - lower_extent()));
-
-      if constexpr (detail::extent_is_static<extent_type> && detail::extent_is_static<SUB_EXTENT>) {
-        using return_extent_type = static_extent<extent_type::lower + SUB_EXTENT::upper, extent_type::lower + SUB_EXTENT::lower>;
-        return address_slice<return_extent_type>(return_extent_type{}, value >> subextent.lower);
-      } else {
-        using return_extent_type = dynamic_extent;
-        return_extent_type ext{lower_extent() + subextent.upper, lower_extent() + subextent.lower};
-        return address_slice<return_extent_type>(ext, value >> subextent.lower);
-      }
+      auto new_ext = relative_extent(extent, subextent);
+      return address_slice<decltype(new_ext)>{new_ext, value >> subextent.lower};
     }
 
     template <std::size_t new_lower>
     [[nodiscard]] auto slice_upper() const
     {
-      if constexpr (detail::extent_is_static<extent_type>) {
-        static_extent<extent_type::upper - extent_type::lower, new_lower> ext{};
-        return slice(ext);
-      } else {
-        return slice(dynamic_extent{upper_extent() - lower_extent(), new_lower});
-      }
+      return slice(static_extent<bits, new_lower>{});
     }
 
     template <std::size_t new_upper>
     [[nodiscard]] auto slice_lower() const
     {
-      if constexpr (detail::extent_is_static<extent_type>) {
-        return slice(static_extent<new_upper, 0>{});
-      } else {
-        return slice(dynamic_extent{new_upper, 0});
-      }
+      return slice(static_extent<new_upper, 0>{});
     }
 
     [[nodiscard]] auto slice_upper(std::size_t new_lower) const
     {
-      return slice(dynamic_extent{upper_extent() - lower_extent(), new_lower});
+      return slice(dynamic_extent{bits, new_lower});
     }
 
     [[nodiscard]] auto slice_lower(std::size_t new_upper) const
