@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <type_traits>
 
 namespace champsim {
