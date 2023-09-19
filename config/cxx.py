@@ -22,7 +22,6 @@ def check_compiles(body, *args, cxx='c++'):
             for line in body:
                 print(line, file=wfp)
         process_args = (cxx, '--std=c++17', '-c', '-o', os.devnull, *args, '-x', 'c++', fname)
-        print(*process_args)
         result = subprocess.run(process_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         return CompileResult(result)
 

@@ -76,8 +76,8 @@ struct cpu_stats {
 };
 
 struct LSQ_ENTRY {
-  uint64_t instr_id = 0;
   champsim::address virtual_address{};
+  uint64_t instr_id = 0;
   champsim::address ip{};
   uint64_t event_cycle = 0;
 
@@ -87,7 +87,7 @@ struct LSQ_ENTRY {
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
-  LSQ_ENTRY(uint64_t id, champsim::address addr, champsim::address ip, std::array<uint8_t, 2> asid);
+  LSQ_ENTRY(champsim::address addr, uint64_t id, champsim::address ip, std::array<uint8_t, 2> asid);
   void finish(ooo_model_instr& rob_entry) const;
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };

@@ -431,7 +431,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   for (auto& smem : instr.source_memory) {
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
-    q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid); // add it to the load queue
+    q_entry->emplace(smem, instr.instr_id, instr.ip, instr.asid); // add it to the load queue
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -455,7 +455,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
   // store
   for (auto& dmem : instr.destination_memory) {
-    SQ.emplace_back(instr.instr_id, dmem, instr.ip, instr.asid); // add it to the store queue
+    SQ.emplace_back(dmem, instr.instr_id, instr.ip, instr.asid); // add it to the store queue
   }
 
   if constexpr (champsim::debug_print) {
@@ -704,8 +704,8 @@ void O3_CPU::print_deadlock()
 }
 // LCOV_EXCL_STOP
 
-LSQ_ENTRY::LSQ_ENTRY(uint64_t id, champsim::address addr, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
-    : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
+LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, uint64_t id, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
+    : virtual_address(addr), instr_id(id), ip(local_ip), asid(local_asid)
 {
 }
 

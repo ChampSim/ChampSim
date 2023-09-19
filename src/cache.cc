@@ -28,7 +28,6 @@
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h"
-#include "util/span.h"
 #include "util/algorithm.h"
 #include "util/span.h"
 
@@ -642,10 +641,11 @@ std::size_t CACHE::get_occupancy(uint8_t queue_type, uint64_t /*deprecated*/) co
   return 0;
 }
 
-std::size_t CACHE::get_occupancy(uint8_t queue_type, champsim::address) const
+std::size_t CACHE::get_occupancy(uint8_t queue_type, champsim::address /*deprecated*/) const
 {
-  if (queue_type == 0)
+  if (queue_type == 0) {
     return get_mshr_occupancy();
+  }
   return 0;
 }
 // LCOV_EXCL_STOP
@@ -674,10 +674,11 @@ std::vector<std::size_t> CACHE::get_pq_size() const
 }
 
 // LCOV_EXCL_START exclude deprecated function
-std::size_t CACHE::get_size(uint8_t queue_type, champsim::address) const
+std::size_t CACHE::get_size(uint8_t queue_type, champsim::address /*deprecated*/) const
 {
-  if (queue_type == 0)
+  if (queue_type == 0) {
     return get_mshr_size();
+  }
   return 0;
 }
 
@@ -774,7 +775,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  auto total_miss = 0ull;
+  auto total_miss = 0ULL;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     total_miss = std::accumulate(std::begin(sim_stats.misses.at(champsim::to_underlying(type))), std::end(sim_stats.misses.at(champsim::to_underlying(type))),
                                  total_miss);
