@@ -75,10 +75,7 @@ class cache_builder : public detail::cache_builder_base
 
   explicit cache_builder(const detail::cache_builder_base& other) : detail::cache_builder_base(other) {}
 
-  uint32_t scaled_by_ul_size(double factor) const
-  {
-    return factor < 0 ? 0 : static_cast<uint32_t>(std::lround(factor * std::floor(std::size(m_uls))));
-  }
+  uint32_t scaled_by_ul_size(double factor) const { return factor < 0 ? 0 : static_cast<uint32_t>(std::lround(factor * std::floor(std::size(m_uls)))); }
 
   uint32_t get_num_sets() const;
   uint32_t get_num_ways() const;
