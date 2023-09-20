@@ -106,8 +106,8 @@ def get_cpu_builder(cpu):
     ]
 
     local_params = {
-        '^branch_predictor_string': ', '.join(f'{k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
+        '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1I')),
         '^data_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1D'))
     }
@@ -138,8 +138,8 @@ def get_cache_builder(elem, upper_levels):
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
-        '^replacement_string': ', '.join(f'{k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
+        '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
         '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
         '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }
@@ -273,7 +273,7 @@ def check_header_compiles_for_class(clazz, file):
         with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
             print('', file=wfp)
 
-        return cxx.check_compiles((f'#include "{file}"', f'{clazz} x{{nullptr}};'), *args)
+        return cxx.check_compiles((f'#include "{file}"', f'class {clazz} x{{nullptr}};'), *args)
 
 def module_include_files(datas):
     '''
@@ -304,8 +304,10 @@ def module_include_files(datas):
         print('WARNING: no header found for', clazz)
         print('NOTE: after trying files')
         for file in tried_files:
+            failed = successes[candidates.index((clazz,file))]
             print('NOTE:', file)
-            for line in successes[candidates.index((clazz,file))].stderr.splitlines():
+            print('NOTE:', failed.args)
+            for line in failed.stderr.splitlines():
                 print('NOTE:  ', line)
 
     yield from (f'#include "{f}"' for _,f in filtered_candidates)

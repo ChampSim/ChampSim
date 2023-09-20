@@ -8,6 +8,7 @@ class CompileResult:
     '''
     def __init__(self, subprocess_result):
         self.returncode = subprocess_result.returncode
+        self.args = subprocess_result.args
         self.stdout = subprocess_result.stdout
         self.stderr = subprocess_result.stderr
 
