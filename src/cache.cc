@@ -216,7 +216,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       ret->push_back(response);
     }
 
-    way->dirty = (handle_pkt.type == access_type::WRITE);
+    way->dirty |= (handle_pkt.type == access_type::WRITE);
 
     // update prefetch stats and reset prefetch bit
     if (useful_prefetch) {
@@ -766,7 +766,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  auto total_miss = 0ull;
+  auto total_miss = 0ULL;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     total_miss = std::accumulate(std::begin(sim_stats.misses.at(champsim::to_underlying(type))), std::end(sim_stats.misses.at(champsim::to_underlying(type))),
                                  total_miss);

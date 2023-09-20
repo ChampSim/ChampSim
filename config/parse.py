@@ -87,6 +87,16 @@ def filter_inaccessible(system, roots, key='lower_level'):
     return util.combine_named(*(util.iter_system(system, r, key=key) for r in roots))
 
 def module_parse(mod, context):
+    '''
+    Parse a module descriptor in the configuration.
+
+    If the descriptor is a dictionary, it should have at least a "path" key, and optionally a "class" and "legacy" key.
+    If the descriptor is a string, it will be interpreted as a path (absolute or relative to the search paths)
+
+    :param mod: the value from the configuration file
+    :param context: an instance of modules.ModuleSearchContext, the search context for the module
+    '''
+
     if isinstance(mod, dict):
         return util.chain(util.subdict(mod, ('class',)), context.find(mod['path']))
     return context.find(mod)
@@ -154,15 +164,18 @@ def default_frequencies(cores, caches):
     paths = itertools.starmap(make_path, itertools.product(cores, ('L1I', 'L1D', 'ITLB', 'DTLB')))
 
     # Propogate the frequencies down the path
-    paths = (util.propogate_down(p, 'frequency') for p in paths)
+    paths = itertools.chain.from_iterable(util.propogate_down(p, 'frequency') for p in paths)
 
     # Collect caches in multiple paths together
-    aggregate = sorted(itertools.chain(*paths), key=operator.itemgetter('name'))
-    aggregate = itertools.groupby(aggregate, key=operator.itemgetter('name'))
-
     # The frequency is the maximum of the frequencies seen
     # Note if the frequency was provided, it was never overwritten
-    yield from [{ 'name': name, 'frequency': max(x['frequency'] for x in chunk) } for name, chunk in aggregate]
+    def max_joiner(chunk):
+        first = next(chunk, None)
+        if first is None:
+            return {}
+        return { 'name': first['name'], 'frequency': max(x['frequency'] for x in itertools.chain((first,), chunk)) }
+
+    yield from util.collect(paths, operator.itemgetter('name'), max_joiner)
 
 def do_deprecation(element, deprecation_map):
     '''
