@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/** \file */
+
 #ifdef CHAMPSIM_MODULE
 #define SET_ASIDE_CHAMPSIM_MODULE
 #undef CHAMPSIM_MODULE
@@ -53,22 +55,125 @@ namespace detail
   struct splice_fold_wrapper;
 }
 
+/**
+ * \class address_slice address.h inc/address.h
+ *
+ * The correctness of address operations is critical to the correctness of ChampSim.
+ *
+ * This class is a strong type for addresses to prevent bugs that would result from unchecked operations on raw integers.
+ * The primary benefit is this: Most address operation bugs are compiler errors.
+ * Those that are not are usually runtime exceptions.
+ * If you need to manipulate the bits of an address, you can, but you must explicitly enter an unsafe mode.
+ *
+ * This class is a generalization of a subset of address bits.
+ * Champsim provides five specializations of this class in inc/champsim.h:
+ * \ref champsim::address
+ * \ref champsim::block_number
+ * \ref champsim::block_offset
+ * \ref champsim::page_number
+ * \ref champsim::page_offset
+ *
+ * Implicit conversions between address slices of different extents are compile-time errors, providing a measure of safety.
+ * New slices must be explicitly constructed.
+ *
+ * .. code-block:: cpp
+ *
+ *    // LOG2_PAGE_SIZE = 12
+ *    // LOG2_BLOCK_SIZE = 6
+ *    address full_addr{0xffff'ffff};
+ *    block_number block{full_addr}; // 0xffff'ffc0
+ *    page_number page{full_addr}; // 0xffff'f000
+ *
+ * All address slices can take their extent as a constructor parameter.
+ *
+ * .. code-block:: cpp
+ *
+ *    address_slice st_full_addr{static_extent<64,0>{},0xffff'ffff};
+ *    address_slice st_block{static_extent<64, LOG2_BLOCK_SIZE>{}, st_full_addr}; // 0xffff'ffc0
+ *    address_slice st_page{static_extent<64, LOG2_PAGE_SIZE>{}, st_full_addr}; // 0xffff'f000
+ *
+ *    address_slice dyn_full_addr{dynamic_extent{64,0},0xffff'ffff};
+ *    address_slice dyn_block{dynamic_extent{64, LOG2_BLOCK_SIZE}, dyn_full_addr}; // 0xffff'ffc0
+ *    address_slice dyn_page{dynamic_extent{64, LOG2_PAGE_SIZE}, dyn_full_addr}; // 0xffff'f000
+ *
+ *    address_slice szd_full_addr{sized_extent{0, 64},0xffff'ffff};
+ *    address_slice szd_block_offset{sized_extent{0, LOG2_BLOCK_SIZE}, szd_full_addr}; // 0x3f
+ *    address_slice szd_page_offset{sized_extent{0, LOG2_PAGE_SIZE}, szd_full_addr}; // 0xfff
+ *
+ * For static extents, it can be useful to explicitly specify the template parameter.
+ *
+ * .. code-block:: cpp
+ *
+ *    address_slice<static_extent<64,0>> st_full_addr{0xffff'ffff};
+ *    address_slice<static_extent<LOG2_BLOCK_SIZE, 0>> st_block{st_full_addr}; // 0x3f
+ *    address_slice<static_extent<LOG2_PAGE_SIZE, 0>> st_page{st_full_addr}; // 0xfff
+ *
+ * The address slices have a constructor that accepts a uint64_t.
+ * No bit shifting is performed in these constructors.
+ * The argument is assumed to be in the domain of the slice.
+ *
+ * .. code-block:: cpp
+ *
+ *    champsim::block_number block{0xffff}; // 0x003f'ffc0
+ *
+ * Relative slicing is possible with member functions:
+ *
+ * .. code-block:: cpp
+ *
+ *    address_slice<static_extent<24,12>>::slice(static_extent<8,4>{}) -> address_slice<static_extent<20,16>>
+ *    address_slice<static_extent<24,12>>::slice_upper<4>() -> address_slice<static_extent<24,16>>
+ *    address_slice<static_extent<24,12>>::slice_lower<8>() -> address_slice<static_extent<20,12>>
+ *
+ * The offset between two addresses can be found with
+ *
+ * .. code-block:: cpp
+ *
+ *    auto champsim::offset(champsim::address base, champsim::address other) -> champsim::address::difference_type
+ *
+ * The function is a template, so any address slice is accepted, but the two arguments must be of the same type.
+ * The return type is signed and the conversion is safe against overflows.
+ *
+ * Address slices also support addition and subtraction with signed integers.
+ * The arguments to this arithmetic are in the domain of the type.
+ *
+ * .. code-block:: cpp
+ *
+ *    champsim::block_number block{0xffff}; // 0x003f'ffc0
+ *    block += 1; // 0x0040'0000
+ *
+ * Two or more slices can be spliced together.
+ * Later arguments takes priority over the first, and the result type has an extent that is a superset of all slices.
+ *
+ * .. code-block:: cpp
+ *
+ *    champsim::splice(champsim::page_number{0xaaa}, champsim::page_offset{0xbbb}) == champsim::address{0xaaabbb};
+ *
+ * Sometimes, it is necessary to directly manipulate the bits of an address in a way that these strong types do not allow.
+ * Additionally, sometimes slices must be used as array indices.
+ * In those cases, the address_slice<>::to<T>() function performs a checked cast to the type.
+ *
+ * .. code-block:: cpp
+ *
+ *    champsim::address addr{0xffff'ffff};
+ *    class Foo {};
+ *    std::array<Foo, 256> foos = {};
+ *    auto the_foo = foos.at(addr.slice_lower<8>().to<std::size_t>());
+ *
+ * \tparam EXTENT One of ``champsim::static_extent<>``, ``champsim::dynamic_extent``, or ``champsim::sized_extent``.
+ */
 template <typename EXTENT>
 class address_slice
 {
-  using extent_type = EXTENT;
-  using self_type = address_slice<extent_type>;
-
-  extent_type extent;
-
-  template <typename> friend class address_slice;
-  friend class detail::splice_fold_wrapper<extent_type>;
-
   public:
+    using extent_type = EXTENT;
     using underlying_type = uint64_t;
     using difference_type = std::make_signed_t<underlying_type>;
 
   private:
+    using self_type = address_slice<extent_type>;
+
+    extent_type extent;
+
     underlying_type value{};
 
     template <typename OTHER_EXT>
@@ -82,10 +187,13 @@ class address_slice
       }
     }
 
-  public:
+    template <typename> friend class address_slice;
+    friend class detail::splice_fold_wrapper<extent_type>;
+
     template <typename E>
       friend constexpr auto offset(address_slice<E> base, address_slice<E> other) -> typename address_slice<E>::difference_type;
 
+  public:
     /**
      * Default-initialize the slice. This constructor is invalid for dynamically-sized extents.
      */
@@ -97,13 +205,17 @@ class address_slice
     constexpr explicit address_slice(underlying_type val) : extent{}, value(val) {}
 
     /**
-     * Initialize the slice with the given slice, shifting and masking if necessary. If this extent is dynamic, it will have the same bounds as the given slice.
+     * Initialize the slice with the given slice, shifting and masking if necessary.
+     * If this extent is dynamic, it will have the same bounds as the given slice.
+     * If the conversion is a widening, the widened bits will be 0.
      */
     template <typename OTHER_EXT>
     constexpr explicit address_slice(const address_slice<OTHER_EXT>& val) : address_slice(maybe_dynamic(val.extent), val) {}
 
     /**
-     * Initialize the slice with the given slice, shifting and masking if necessary. The extent type can be deduced from the first argument.
+     * Initialize the slice with the given slice, shifting and masking if necessary.
+     * The extent type can be deduced from the first argument.
+     * If the conversion is a widening, the widened bits will be 0.
      */
     template <typename OTHER_EXT>
     constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
@@ -113,7 +225,9 @@ class address_slice
     }
 
     /**
-     * Initialize the slice with the given value. The extent type can be deduced from the first argument.
+     * Initialize the slice with the given value.
+     * The extent type can be deduced from the first argument.
+     * If the conversion is a widening, the widened bits will be 0.
      */
     constexpr address_slice(extent_type ext, underlying_type val) : extent(ext), value(val & bitmask(ext.upper-ext.lower))
     {
@@ -143,7 +257,7 @@ class address_slice
     /**
      * Compare with another address slice for equality.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator==(self_type other) const
     {
@@ -157,7 +271,7 @@ class address_slice
     /**
      * Compare with another address slice for ordering.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator< (self_type other) const
     {
@@ -171,28 +285,28 @@ class address_slice
     /**
      * Compare with another address slice for inequality.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator!=(self_type other) const { return !(*this == other); }
 
     /**
      * Compare with another address slice for ordering.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator<=(self_type other) const { return *this < other || *this == other; }
 
     /**
      * Compare with another address slice for ordering.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator> (self_type other) const { return !(value <= other.value); }
 
     /**
      * Compare with another address slice for ordering.
      *
-     * \throws std::invalid_argument{ If the extents do not match }
+     * \throws std::invalid_argument If the extents do not match
      */
     [[nodiscard]] constexpr bool operator>=(self_type other) const { return *this > other || *this == other; }
 
