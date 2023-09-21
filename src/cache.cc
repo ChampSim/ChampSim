@@ -212,7 +212,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       ret->push_back(response);
     }
 
-    way->dirty = (handle_pkt.type == access_type::WRITE);
+    way->dirty |= (handle_pkt.type == access_type::WRITE);
 
     // update prefetch stats and reset prefetch bit
     if (useful_prefetch) {

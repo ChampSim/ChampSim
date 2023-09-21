@@ -106,8 +106,8 @@ def get_cpu_builder(cpu):
     ]
 
     local_params = {
-        '^branch_predictor_string': ', '.join(f'{k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'{k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
+        '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
         '^fetch_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1I')),
         '^data_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1D'))
     }
@@ -138,8 +138,8 @@ def get_cache_builder(elem, upper_levels):
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
-        '^replacement_string': ', '.join(f'{k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'{k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
+        '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
         '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
         '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }
@@ -182,6 +182,11 @@ def get_ptw_builder(ptw, upper_levels):
     yield from (part.format(**ptw, **local_params) for part in builder_parts)
 
 def get_ref_vector_function(rtype, func_name, elements):
+    '''
+    Generate a C++ function with the given name whose return type is a `std::vector` of `std::reference_wrapper`s to the given type.
+    The members of the vector are references to the given elements.
+    '''
+
     if len(elements) > 1:
         open_brace, close_brace = '{{', '}}'
     else:
@@ -236,6 +241,7 @@ def get_upper_levels(cores, caches, ptws):
     )))
 
 def check_header_compiles_for_class(clazz, file):
+    ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
     vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
@@ -271,9 +277,19 @@ def check_header_compiles_for_class(clazz, file):
         with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
             print('', file=wfp)
 
-        return cxx.check_compiles((f'#include "{file}"', f'{clazz} x{{nullptr}};'), *args)
+        return cxx.check_compiles((f'#include "{file}"', f'class {clazz} x{{nullptr}};'), *args)
 
 def module_include_files(datas):
+    '''
+    Generate C++ include lines for all header files necessary to compile the given modules.
+
+    Each module's paths are searched, and compilation checked (linking is not performed. If the compilation succeeds,
+    the file is emitted as a candidate.
+
+    A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
+    In this case, we procede, but ChampSim's compilation will likely fail.
+    '''
+
     def all_headers_on(path):
         for base,_,files in os.walk(path):
             for file in files:
@@ -291,9 +307,11 @@ def module_include_files(datas):
         tried_files = (f for c,f in candidates if c == clazz)
         print('WARNING: no header found for', clazz)
         print('NOTE: after trying files')
-        for f in tried_files:
-            print('NOTE:', f)
-            for line in successes[candidates.index((clazz,f))].stderr.splitlines():
+        for file in tried_files:
+            failed = successes[candidates.index((clazz,file))]
+            print('NOTE:', file)
+            print('NOTE:', failed.args)
+            for line in failed.stderr.splitlines():
                 print('NOTE:  ', line)
 
     yield from (f'#include "{f}"' for _,f in filtered_candidates)
