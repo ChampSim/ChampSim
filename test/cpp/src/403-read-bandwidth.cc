@@ -20,8 +20,8 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .tag_bandwidth(tag_bandwidth)
-      .fill_bandwidth(10)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{tag_bandwidth})
+      .fill_bandwidth(champsim::bandwidth::maximum_type{10})
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};

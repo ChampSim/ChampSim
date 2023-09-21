@@ -70,7 +70,7 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
       .lower_level(&mock_ll.queues)
       .lower_translate(&refusal_channel)
       .mshr_size(1)
-      .tag_bandwidth(1)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{1})
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
   };
