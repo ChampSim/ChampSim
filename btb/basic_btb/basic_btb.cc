@@ -24,7 +24,7 @@ enum class branch_info {
 };
 
 constexpr std::size_t BTB_SET = 1024;
-constexpr std::size_t BTB_WAY = 8;
+constexpr std::size_t BTB_WAY = 2; // reducing this to 2, since max entries we can have is 2048
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;

@@ -8,8 +8,8 @@
 
 namespace
 {
-constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
-constexpr std::size_t COUNTER_BITS = 2;
+constexpr std::size_t GLOBAL_HISTORY_LENGTH = 10;
+constexpr std::size_t COUNTER_BITS = 20;
 constexpr std::size_t GS_HISTORY_TABLE_SIZE = 16384;
 
 std::map<O3_CPU*, std::bitset<GLOBAL_HISTORY_LENGTH>> branch_history_vector;

@@ -35,7 +35,9 @@
  * which is comparable to the hardware budget of the Alpha 21264 hybrid
  * branch predictor.
  */
-
+// we need to use 128KB of storage, what we will do is
+// we will use 5200 perceptrons once expt1
+// 1000 perceptrons and 130 bits of history expt2
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -85,9 +87,9 @@ public:
   }
 };
 
-constexpr std::size_t PERCEPTRON_HISTORY = 24; // history length for the global history shift register
-constexpr std::size_t PERCEPTRON_BITS = 8;     // number of bits per weight
-constexpr std::size_t NUM_PERCEPTRONS = 163;
+constexpr std::size_t PERCEPTRON_HISTORY = 130; // history length for the global history shift register
+constexpr std::size_t PERCEPTRON_BITS = 8;      // number of bits per weight
+constexpr std::size_t NUM_PERCEPTRONS = 1000;
 
 constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'perceptron_state' for update
 

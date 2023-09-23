@@ -8,9 +8,9 @@
     "ooo_cpu": [
         {
             "frequency": 4000,
-            "ifetch_buffer_size":64,
-            "decode_buffer_size":32,
-            "dispatch_buffer_size":32,
+            "ifetch_buffer_size": 64,
+            "decode_buffer_size": 32,
+            "dispatch_buffer_size": 32,
             "rob_size": 352,
             "lq_size": 128,
             "sq_size": 72,
@@ -27,7 +27,7 @@
             "dispatch_latency": 1,
             "schedule_latency": 0,
             "execute_latency": 0,
-            "branch_predictor": "bimodal",
+            "branch_predictor": "tage",
             "btb": "basic_btb"
         }
     ],
@@ -125,20 +125,20 @@
         "prefetch_as_load": false
     },
 
-	"PTW": {
-		"pscl5_set": 1,
-		"pscl5_way": 2,
-		"pscl4_set": 1,
-		"pscl4_way": 4,
-		"pscl3_set": 2,
-		"pscl3_way": 4,
-		"pscl2_set": 4,
-		"pscl2_way": 8,
-		"rq_size": 16,
-		"mshr_size": 5,
-		"max_read": 2,
-		"max_write": 2
-	},
+    "PTW": {
+        "pscl5_set": 1,
+        "pscl5_way": 2,
+        "pscl4_set": 1,
+        "pscl4_way": 4,
+        "pscl3_set": 2,
+        "pscl3_way": 4,
+        "pscl2_set": 4,
+        "pscl2_way": 8,
+        "rq_size": 16,
+        "mshr_size": 5,
+        "max_read": 2,
+        "max_write": 2
+    },
 
     "LLC": {
         "frequency": 4000,
