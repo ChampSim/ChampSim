@@ -46,6 +46,9 @@ class address_slice;
 template <typename Extent>
 [[nodiscard]] constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type;
 
+template <typename Extent>
+[[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned<typename address_slice<Extent>::difference_type>;
+
 template <typename... Extents>
 [[nodiscard]] constexpr auto splice(address_slice<Extents>... slices);
 
@@ -129,9 +132,11 @@ namespace detail
  * .. code-block:: cpp
  *
  *    auto champsim::offset(champsim::address base, champsim::address other) -> champsim::address::difference_type
+ *    auto champsim::uoffset(champsim::address base, champsim::address other) -> std::make_unsigned_t<champsim::address::difference_type>
  *
  * The function is a template, so any address slice is accepted, but the two arguments must be of the same type.
- * The return type is signed and the conversion is safe against overflows.
+ * For the first function, the return type is signed and the conversion is safe against overflows, where it will throw an exception.
+ * For the second function, the return type is unsigned and the 'other' argument must succeed 'base', or the function will throw an exception.
  *
  * Address slices also support addition and subtraction with signed integers.
  * The arguments to this arithmetic are in the domain of the type.
@@ -192,6 +197,9 @@ class address_slice
 
     template <typename E>
       friend constexpr auto offset(address_slice<E> base, address_slice<E> other) -> typename address_slice<E>::difference_type;
+
+    template <typename E>
+      friend constexpr auto uoffset(address_slice<E> base, address_slice<E> other) -> std::make_unsigned_t<typename address_slice<E>::difference_type>;
 
   public:
     /**
@@ -416,6 +424,8 @@ class address_slice
 
 /**
  * Find the offset between two slices with the same types.
+ *
+ * \throws overflow_error if the difference cannot be represented in the difference type
  */
 template <typename Extent>
 constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type
@@ -424,8 +434,27 @@ constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -
   using difference_type = typename address_slice<Extent>::difference_type;
 
   underlying_type abs_diff = (base.value > other.value) ? (base.value - other.value) : (other.value - base.value);
-  assert(abs_diff <= std::numeric_limits<difference_type>::max());
+  if (abs_diff > std::numeric_limits<difference_type>::max()) {
+    throw std::overflow_error{"The offset cannot be represented in the difference type. Consider using champsim::uoffset() instead."};
+  }
   return (base.value > other.value) ? -static_cast<difference_type>(abs_diff) : static_cast<difference_type>(abs_diff);
+}
+
+/**
+ * Find the offset between two slices with the same types, where the first element must be less than or equal to than the second.
+ * The return type of this function is unsigned.
+ *
+ * \throws overflow_error if the difference cannot be represented in the difference type
+ */
+template <typename Extent>
+constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>
+{
+  if (base > other) {
+    throw std::overflow_error{"The offset cannot be represented in the difference type. Consider using champsim::offset() instead."};
+  }
+
+  using difference_type = std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
+  return difference_type{other.value - base.value};
 }
 
 namespace detail

@@ -227,6 +227,8 @@ TEST_CASE("The offset between two addresses is correct") {
   CHECK(champsim::offset(champsim::address{0xffff'ffff'ffff'ffff}, champsim::address{0x8000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
   CHECK(champsim::offset(champsim::address{0x0000'0000'0000'0000}, champsim::address{0x7fff'ffff'ffff'ffff}) == std::numeric_limits<champsim::address::difference_type>::max());
   CHECK(champsim::offset(champsim::address{0x7fff'ffff'ffff'ffff}, champsim::address{0x0000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
+
+  CHECK_THROWS(champsim::offset(champsim::address{0x8000'0000'0000'0000}, champsim::address{0x0000'0000'0000'0000}));
 }
 
 TEST_CASE("An address prints something at all") {
