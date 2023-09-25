@@ -47,7 +47,7 @@ template <typename Extent>
 [[nodiscard]] constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type;
 
 template <typename Extent>
-[[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned<typename address_slice<Extent>::difference_type>;
+[[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
 
 template <typename... Extents>
 [[nodiscard]] constexpr auto splice(address_slice<Extents>... slices);
