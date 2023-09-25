@@ -176,15 +176,16 @@ class address_slice
 
   private:
     using self_type = address_slice<extent_type>;
+    constexpr static bool is_static = detail::extent_is_static<extent_type>;
 
     extent_type extent;
 
     underlying_type value{};
 
     template <typename OTHER_EXT>
-    static extent_type maybe_dynamic(OTHER_EXT other)
+    static extent_type maybe_dynamic(OTHER_EXT other) noexcept
     {
-      if constexpr (detail::extent_is_static<extent_type>) {
+      if constexpr (is_static) {
         (void)other;
         return extent_type{};
       } else {
@@ -205,12 +206,12 @@ class address_slice
     /**
      * Default-initialize the slice. This constructor is invalid for dynamically-sized extents.
      */
-    constexpr address_slice() : extent{}, value{} {}
+    constexpr address_slice() noexcept(is_static) : address_slice(extent_type{}, underlying_type{}) {}
 
     /**
      * Initialize the slice with the given raw value. This constructor is invalid for dynamically-sized extents.
      */
-    constexpr explicit address_slice(underlying_type val) : extent{}, value(val) {}
+    constexpr explicit address_slice(underlying_type val) noexcept(is_static) : address_slice(extent_type{}, val) {}
 
     /**
      * Initialize the slice with the given slice, shifting and masking if necessary.
@@ -218,7 +219,7 @@ class address_slice
      * If the conversion is a widening, the widened bits will be 0.
      */
     template <typename OTHER_EXT>
-    constexpr explicit address_slice(const address_slice<OTHER_EXT>& val) : address_slice(maybe_dynamic(val.extent), val) {}
+    constexpr explicit address_slice(const address_slice<OTHER_EXT>& val) noexcept(is_static) : address_slice(maybe_dynamic(val.extent), val) {}
 
     /**
      * Initialize the slice with the given slice, shifting and masking if necessary.
@@ -226,10 +227,16 @@ class address_slice
      * If the conversion is a widening, the widened bits will be 0.
      */
     template <typename OTHER_EXT>
-    constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
+    constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) noexcept(is_static) : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
     {
-      assert(ext.upper <= bits);
-      assert(ext.lower <= bits);
+      if constexpr (!is_static) {
+        if (ext.upper > bits) {
+          throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
+        }
+        if (ext.lower > bits) {
+          throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
+        }
+      }
     }
 
     /**
@@ -237,13 +244,20 @@ class address_slice
      * The extent type can be deduced from the first argument.
      * If the conversion is a widening, the widened bits will be 0.
      */
-    constexpr address_slice(extent_type ext, underlying_type val) : extent(ext), value(val & bitmask(ext.upper-ext.lower))
+    constexpr address_slice(extent_type ext, underlying_type val) noexcept(is_static) : extent(ext), value(val & bitmask(ext.upper-ext.lower))
     {
-      assert(ext.upper <= bits);
-      assert(ext.lower <= bits);
+      if constexpr (!is_static) {
+        if (ext.upper > bits) {
+          throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
+        }
+        if (ext.lower > bits) {
+          throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
+        }
+      }
     }
 
     constexpr static int bits = std::numeric_limits<underlying_type>::digits;
+    static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
 
     template <typename Ostr, typename ST>
     friend Ostr& operator<<(Ostr& stream, const address_slice<ST>& addr);
@@ -267,12 +281,16 @@ class address_slice
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator==(self_type other) const
+    [[nodiscard]] constexpr bool operator==(self_type other) const noexcept(is_static)
     {
-      if (upper_extent() != other.upper_extent())
-        throw std::invalid_argument{"Upper bounds do not match"};
-      if (lower_extent() != other.lower_extent())
-        throw std::invalid_argument{"Lower bounds do not match"};
+      if constexpr (!is_static) {
+        if (upper_extent() != other.upper_extent()) {
+          throw std::invalid_argument{"Upper bounds do not match"};
+        }
+        if (lower_extent() != other.lower_extent()) {
+          throw std::invalid_argument{"Lower bounds do not match"};
+        }
+      }
       return value == other.value;
     }
 
@@ -281,12 +299,16 @@ class address_slice
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator< (self_type other) const
+    [[nodiscard]] constexpr bool operator< (self_type other) const noexcept(is_static)
     {
-      if (upper_extent() != other.upper_extent())
-        throw std::invalid_argument{"Upper bounds do not match"};
-      if (lower_extent() != other.lower_extent())
-        throw std::invalid_argument{"Lower bounds do not match"};
+      if constexpr (!is_static) {
+        if (upper_extent() != other.upper_extent()) {
+          throw std::invalid_argument{"Upper bounds do not match"};
+        }
+        if (lower_extent() != other.lower_extent()) {
+          throw std::invalid_argument{"Lower bounds do not match"};
+        }
+      }
       return value < other.value;
     }
 
@@ -295,28 +317,28 @@ class address_slice
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator!=(self_type other) const { return !(*this == other); }
+    [[nodiscard]] constexpr bool operator!=(self_type other) const noexcept(is_static) { return !(*this == other); }
 
     /**
      * Compare with another address slice for ordering.
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator<=(self_type other) const { return *this < other || *this == other; }
+    [[nodiscard]] constexpr bool operator<=(self_type other) const noexcept(is_static) { return *this < other || *this == other; }
 
     /**
      * Compare with another address slice for ordering.
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator> (self_type other) const { return !(value <= other.value); }
+    [[nodiscard]] constexpr bool operator> (self_type other) const noexcept(is_static) { return !(value <= other.value); }
 
     /**
      * Compare with another address slice for ordering.
      *
      * \throws std::invalid_argument If the extents do not match
      */
-    [[nodiscard]] constexpr bool operator>=(self_type other) const { return *this > other || *this == other; }
+    [[nodiscard]] constexpr bool operator>=(self_type other) const noexcept(is_static) { return *this > other || *this == other; }
 
     constexpr self_type& operator+=(difference_type delta)
     {
@@ -355,7 +377,7 @@ class address_slice
      * Otherwise, the extent will be statically-sized.
      */
     template <typename SUB_EXTENT>
-    [[nodiscard]] auto slice(SUB_EXTENT subextent) const
+    [[nodiscard]] auto slice(SUB_EXTENT subextent) const noexcept(is_static && detail::extent_is_static<SUB_EXTENT>)
     {
       auto new_ext = relative_extent(extent, subextent);
       return address_slice<decltype(new_ext)>{new_ext, value >> subextent.lower};
@@ -366,7 +388,7 @@ class address_slice
      * If this slice is statically-sized, the result will be statically-sized.
      */
     template <std::size_t new_lower>
-    [[nodiscard]] auto slice_upper() const
+    [[nodiscard]] auto slice_upper() const noexcept
     {
       return slice(static_extent<bits, new_lower>{});
     }
@@ -376,7 +398,7 @@ class address_slice
      * If this slice is statically-sized, the result will be statically-sized.
      */
     template <std::size_t new_upper>
-    [[nodiscard]] auto slice_lower() const
+    [[nodiscard]] auto slice_lower() const noexcept
     {
       return slice(static_extent<new_upper, 0>{});
     }
@@ -402,8 +424,8 @@ class address_slice
     /**
      * Get the upper portion of the extent.
      */
-    [[nodiscard]] constexpr auto upper_extent() const {
-      if constexpr (detail::extent_is_static<extent_type>) {
+    [[nodiscard]] constexpr auto upper_extent() const noexcept {
+      if constexpr (is_static) {
         return extent_type::upper;
       } else {
         return extent.upper;
@@ -413,8 +435,8 @@ class address_slice
     /**
      * Get the lower portion of the extent.
      */
-    [[nodiscard]] constexpr auto lower_extent() const {
-      if constexpr (detail::extent_is_static<extent_type>) {
+    [[nodiscard]] constexpr auto lower_extent() const noexcept {
+      if constexpr (is_static) {
         return extent_type::lower;
       } else {
         return extent.lower;
@@ -430,14 +452,14 @@ class address_slice
 template <typename Extent>
 constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type
 {
-  using underlying_type = typename address_slice<Extent>::underlying_type;
   using difference_type = typename address_slice<Extent>::difference_type;
 
-  underlying_type abs_diff = (base.value > other.value) ? (base.value - other.value) : (other.value - base.value);
+  const bool result_sign = (base <= other);
+  auto abs_diff = result_sign ? uoffset(base, other) : uoffset(other, base);
   if (abs_diff > std::numeric_limits<difference_type>::max()) {
     throw std::overflow_error{"The offset cannot be represented in the difference type. Consider using champsim::uoffset() instead."};
   }
-  return (base.value > other.value) ? -static_cast<difference_type>(abs_diff) : static_cast<difference_type>(abs_diff);
+  return result_sign ? static_cast<difference_type>(abs_diff) : -static_cast<difference_type>(abs_diff);
 }
 
 /**
@@ -468,8 +490,8 @@ namespace detail
     extent_type extent;
     value_type underlying;
 
-    explicit splice_fold_wrapper(address_slice<extent_type> addr) : splice_fold_wrapper(addr.extent, addr.value) {}
-    splice_fold_wrapper(extent_type ext, value_type und) : extent(ext), underlying(und) {}
+    explicit splice_fold_wrapper(address_slice<extent_type> addr) noexcept : splice_fold_wrapper(addr.extent, addr.value) {}
+    splice_fold_wrapper(extent_type ext, value_type und) noexcept : extent(ext), underlying(und) {}
 
     template <typename OtherExtent>
     auto operator+(splice_fold_wrapper<OtherExtent> other) const {
@@ -484,7 +506,7 @@ namespace detail
         };
     }
 
-    auto address() const
+    auto address() const noexcept
     {
       return address_slice{extent, underlying};
     }
@@ -522,10 +544,8 @@ Ostr& operator<<(Ostr& stream, const champsim::address_slice<extent_type> &addr)
 
 template <typename Extent>
 struct fmt::formatter<champsim::address_slice<Extent>>
-  //: fmt::formatter<typename champsim::address_slice<UP, LOW>::underlying_type>
 {
   using addr_type = champsim::address_slice<Extent>;
-  //using underlying_type = typename addr_type::underlying_type;
   std::size_t len = std::numeric_limits<std::size_t>::max();
 
   constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator
@@ -538,7 +558,6 @@ struct fmt::formatter<champsim::address_slice<Extent>>
 
   auto format(const addr_type& addr, fmt::format_context& ctx) const -> fmt::format_context::iterator
   {
-    //return fmt::formatter<underlying_type>::format(addr.template to<underlying_type>(), ctx);
     if (len == std::numeric_limits<std::size_t>::max())
       return fmt::format_to(ctx.out(), "{:#0x}", addr.template to<typename addr_type::underlying_type>());
     return fmt::format_to(ctx.out(), "{:#0{}x}", addr.template to<typename addr_type::underlying_type>(), len);

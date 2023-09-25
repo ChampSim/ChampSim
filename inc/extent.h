@@ -28,7 +28,7 @@ struct dynamic_extent
   std::size_t upper;
   std::size_t lower;
 
-  dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low)
+  constexpr dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low)
   {
     assert(upper >= lower);
   }
@@ -39,7 +39,7 @@ struct sized_extent
   std::size_t upper;
   std::size_t lower;
 
-  sized_extent(std::size_t low, std::size_t size) : upper(low+size), lower(low)
+  constexpr sized_extent(std::size_t low, std::size_t size) : upper(low+size), lower(low)
   {
     assert(upper >= lower);
   }
@@ -82,6 +82,24 @@ auto relative_extent(LHS_EXTENT superextent, RHS_EXTENT subextent)
     return dynamic_extent{superextent.lower + std::min(subextent.upper, superextent_size), superextent.lower + std::min(subextent.lower, superextent_size)};
   }
 }
+
+template <std::size_t UP, typename EXTENT>
+constexpr bool bounded_upper_v = false;
+
+template <std::size_t UP, auto SUB_UP, auto SUB_LOW>
+constexpr bool bounded_upper_v<UP, static_extent<SUB_UP, SUB_LOW>> = (SUB_UP <= UP);
+
+template <std::size_t UP, typename EXTENT>
+struct bounded_upper : std::bool_constant<bounded_upper_v<UP, EXTENT>> {};
+
+template <std::size_t LOW, typename EXTENT>
+constexpr bool bounded_lower_v = false;
+
+template <std::size_t LOW, auto SUB_UP, auto SUB_LOW>
+constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <= LOW);
+
+template <std::size_t LOW, typename EXTENT>
+struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {};
 }
 
 #endif
