@@ -197,6 +197,7 @@ TEST_CASE("Statically-sized address slices can be re-sliced") {
   champsim::address addr{0xabcdef89};
 
   REQUIRE(champsim::address_slice{champsim::static_extent<20,8>{}, addr}.slice(champsim::static_extent<8,2>{}) == champsim::address_slice{champsim::static_extent<16,10>{}, addr});
+  REQUIRE(champsim::address_slice{champsim::static_extent<20,8>{}, addr}.slice<8,2>() == champsim::address_slice{champsim::static_extent<16,10>{}, addr});
 }
 
 TEST_CASE("An address slice compares for equality") {

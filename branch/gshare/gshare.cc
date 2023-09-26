@@ -3,9 +3,9 @@
 std::size_t gshare::gs_table_hash(champsim::address ip, std::bitset<GLOBAL_HISTORY_LENGTH> bh_vector)
 {
   std::size_t hash = bh_vector.to_ullong();
-  hash ^= ip.slice(champsim::static_extent<champsim::lg2(GS_HISTORY_TABLE_SIZE), 0>{}).to<std::size_t>();
-  hash ^= ip.slice(champsim::static_extent<champsim::lg2(GS_HISTORY_TABLE_SIZE) + GLOBAL_HISTORY_LENGTH, GLOBAL_HISTORY_LENGTH>{}).to<std::size_t>();
-  hash ^= ip.slice(champsim::static_extent<champsim::lg2(GS_HISTORY_TABLE_SIZE) + 2*GLOBAL_HISTORY_LENGTH, 2*GLOBAL_HISTORY_LENGTH>{}).to<std::size_t>();
+  hash ^= ip.slice<champsim::lg2(GS_HISTORY_TABLE_SIZE), 0>().to<std::size_t>();
+  hash ^= ip.slice<champsim::lg2(GS_HISTORY_TABLE_SIZE) + GLOBAL_HISTORY_LENGTH, GLOBAL_HISTORY_LENGTH>().to<std::size_t>();
+  hash ^= ip.slice<champsim::lg2(GS_HISTORY_TABLE_SIZE) + 2*GLOBAL_HISTORY_LENGTH, 2*GLOBAL_HISTORY_LENGTH>().to<std::size_t>();
 
   return hash % GS_HISTORY_TABLE_SIZE;
 }

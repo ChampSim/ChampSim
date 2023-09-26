@@ -82,7 +82,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
 {
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
-               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.data.slice(champsim::static_extent<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>{}).to<int>(),
+               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.data.slice<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>(),
                fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 

@@ -124,6 +124,7 @@ namespace detail
  * .. code-block:: cpp
  *
  *    address_slice<static_extent<24,12>>::slice(static_extent<8,4>{}) -> address_slice<static_extent<20,16>>
+ *    address_slice<static_extent<24,12>>::slice<8,4>() -> address_slice<static_extent<20,16>>
  *    address_slice<static_extent<24,12>>::slice_upper<4>() -> address_slice<static_extent<24,16>>
  *    address_slice<static_extent<24,12>>::slice_lower<8>() -> address_slice<static_extent<20,12>>
  *
@@ -384,13 +385,23 @@ class address_slice
     }
 
     /**
+     * Perform a slice on this address. The given extent should be relative to this slice's extent.
+     * This is a synonym for ``slice(static_extent<new_upper, new_lower>{})``.
+     */
+    template <std::size_t new_upper, std::size_t new_lower>
+    [[nodiscard]] auto slice() const noexcept
+    {
+      return slice(static_extent<new_upper, new_lower>{});
+    }
+
+    /**
      * Slice the upper bits, ending with the given bit relative to the lower extent of this.
      * If this slice is statically-sized, the result will be statically-sized.
      */
     template <std::size_t new_lower>
     [[nodiscard]] auto slice_upper() const noexcept
     {
-      return slice(static_extent<bits, new_lower>{});
+      return slice<bits, new_lower>();
     }
 
     /**
@@ -400,7 +411,7 @@ class address_slice
     template <std::size_t new_upper>
     [[nodiscard]] auto slice_lower() const noexcept
     {
-      return slice(static_extent<new_upper, 0>{});
+      return slice<new_upper, 0>();
     }
 
     /**
