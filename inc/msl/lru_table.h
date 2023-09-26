@@ -30,6 +30,13 @@
 #include "msl/bits.h"
 #include "util/detect.h"
 #include "util/span.h"
+#include "util/type_traits.h"
+
+namespace champsim
+{
+template <typename Extent>
+class address_slice;
+}
 
 namespace champsim::msl
 {
@@ -44,10 +51,6 @@ template <typename T>
 struct table_tagger {
   auto operator()(const T& t) const { return t.tag(); }
 };
-
-// recognizes types that support slicing
-template <typename T>
-using dynamically_sliceable = decltype( std::declval<T>().slice(champsim::dynamic_extent{0,0}) );
 
 template< class T, class U >
 constexpr bool cmp_equal( T t, U u ) noexcept
@@ -88,7 +91,7 @@ private:
   auto get_set_span(const value_type& elem)
   {
     diff_type set_idx;
-    if constexpr (champsim::is_detected_v<detail::dynamically_sliceable, std::invoke_result_t<SetProj, decltype(elem)>>) {
+    if constexpr (champsim::is_specialization_v<std::invoke_result_t<SetProj, decltype(elem)>, champsim::address_slice>) {
       set_idx = set_projection(elem).template to<decltype(set_idx)>();
     } else {
       set_idx = static_cast<diff_type>(set_projection(elem));
