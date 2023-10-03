@@ -125,7 +125,7 @@ jobs:
     - name: Set up basic environment
       if: startsWith(matrix.config.os, 'ubuntu')
       run: |
-        sudo apt-get install curl zip unzip tar
+        sudo apt-get install curl zip unzip tar ${{ matrix.config.cxx }}
 
     - name: Set up pkg-config
       if: startsWith(matrix.config.os, 'macos')
