@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include "util/detect.h"
 #include "bandwidth.h"
 
 TEST_CASE("The bandwidth initially is not consumed")
@@ -67,3 +68,22 @@ TEST_CASE("Consuming more than the bandwidth throws an exception")
   REQUIRE_THROWS(test_val.consume(11));
 }
 
+template <typename T>
+using can_increment = decltype( std::declval<T>()++ );
+
+template <typename T>
+using can_add = decltype( std::declval<T>()+1 );
+
+template <typename T>
+using can_decrement = decltype( std::declval<T>()-- );
+
+template <typename T>
+using can_subtract = decltype( std::declval<T>()-1 );
+
+TEST_CASE("Bandwidth maximums are not incrementable")
+{
+  STATIC_REQUIRE_FALSE(champsim::is_detected_v<can_increment, champsim::bandwidth::maximum_type>);
+  STATIC_REQUIRE_FALSE(champsim::is_detected_v<can_add, champsim::bandwidth::maximum_type>);
+  STATIC_REQUIRE_FALSE(champsim::is_detected_v<can_decrement, champsim::bandwidth::maximum_type>);
+  STATIC_REQUIRE_FALSE(champsim::is_detected_v<can_subtract, champsim::bandwidth::maximum_type>);
+}
