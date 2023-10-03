@@ -13,12 +13,15 @@ TEST_CASE("The bandwidth initially is not consumed")
 
 TEST_CASE("Calling bandwidth::consume() without arguments is like calling it with '1'")
 {
-  champsim::bandwidth test_val{champsim::bandwidth::maximum_type{10}};
+  champsim::bandwidth::maximum_type maxval{10};
+  champsim::bandwidth test_a{maxval};
+  champsim::bandwidth test_b{maxval};
 
-  test_val.consume();
+  test_a.consume();
+  test_b.consume(1);
 
-  REQUIRE(test_val.amount_consumed() == 1);
-  REQUIRE(test_val.amount_remaining() == 9);
+  REQUIRE(test_a.amount_consumed() == test_b.amount_consumed());
+  REQUIRE(test_a.amount_remaining() == test_b.amount_remaining());
 }
 
 TEST_CASE("Consuming bandwidth shows in the amount consumed")
