@@ -38,14 +38,14 @@ core_builder_parts = {
     'rob_size': '.rob_size({rob_size})',
     'lq_size': '.lq_size({lq_size})',
     'sq_size': '.sq_size({sq_size})',
-    'fetch_width': '.fetch_width({fetch_width})',
-    'decode_width': '.decode_width({decode_width})',
-    'dispatch_width': '.dispatch_width({dispatch_width})',
-    'scheduler_size': '.schedule_width({scheduler_size})',
-    'execute_width': '.execute_width({execute_width})',
-    'lq_width': '.lq_width({lq_width})',
-    'sq_width': '.sq_width({sq_width})',
-    'retire_width': '.retire_width({retire_width})',
+    'fetch_width': '.fetch_width(champsim::bandwidth::maximum_type{{{fetch_width}}})',
+    'decode_width': '.decode_width(champsim::bandwidth::maximum_type{{{decode_width}}})',
+    'dispatch_width': '.dispatch_width(champsim::bandwidth::maximum_type{{{dispatch_width}}})',
+    'scheduler_size': '.schedule_width(champsim::bandwidth::maximum_type{{{scheduler_size}}})',
+    'execute_width': '.execute_width(champsim::bandwidth::maximum_type{{{execute_width}}})',
+    'lq_width': '.lq_width(champsim::bandwidth::maximum_type{{{lq_width}}})',
+    'sq_width': '.sq_width(champsim::bandwidth::maximum_type{{{sq_width}}})',
+    'retire_width': '.retire_width(champsim::bandwidth::maximum_type{{{retire_width}}})',
     'mispredict_penalty': '.mispredict_penalty({mispredict_penalty})',
     'decode_latency': '.decode_latency({decode_latency})',
     'dispatch_latency': '.dispatch_latency({dispatch_latency})',
@@ -78,8 +78,8 @@ cache_builder_parts = {
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',
     'fill_latency': '.fill_latency({fill_latency})',
-    'max_tag_check': '.tag_bandwidth({max_tag_check})',
-    'max_fill': '.fill_bandwidth({max_fill})',
+    'max_tag_check': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_tag_check}}})',
+    'max_fill': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_fill}}})',
     '_offset_bits': '.offset_bits({_offset_bits})',
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
     '_replacement_data': '.replacement<{^replacement_string}>()',
@@ -91,7 +91,10 @@ cache_builder_parts = {
 ptw_builder_parts = {
     'name': '.name("{name}")',
     'cpu': '.cpu({cpu})',
-    'lower_level': '.lower_level(&{^lower_level_queues})'
+    'lower_level': '.lower_level(&{^lower_level_queues})',
+    'mshr_size': '.mshr_size({mshr_size})',
+    'max_read': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_read}}})',
+    'max_write': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_write}}})'
 }
 
 def vector_string(iterable):
@@ -162,10 +165,7 @@ def get_ptw_builder(ptw, upper_levels):
         ('pscl5_set', 'pscl5_way'): '.add_pscl(5, {pscl5_set}, {pscl5_way})',
         ('pscl4_set', 'pscl4_way'): '.add_pscl(4, {pscl4_set}, {pscl4_way})',
         ('pscl3_set', 'pscl3_way'): '.add_pscl(3, {pscl3_set}, {pscl3_way})',
-        ('pscl2_set', 'pscl2_way'): '.add_pscl(2, {pscl2_set}, {pscl2_way})',
-        ('mshr_size',): '.mshr_size({mshr_size})',
-        ('max_read',): '.tag_bandwidth({max_read})',
-        ('max_write',): '.fill_bandwidth({max_write})'
+        ('pscl2_set', 'pscl2_way'): '.add_pscl(2, {pscl2_set}, {pscl2_way})'
     }
 
     local_params = {

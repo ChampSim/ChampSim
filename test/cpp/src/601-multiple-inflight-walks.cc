@@ -21,8 +21,8 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
-      .tag_bandwidth(2)
-      .fill_bandwidth(2)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{2})
+      .fill_bandwidth(champsim::bandwidth::maximum_type{2})
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
@@ -78,8 +78,8 @@ SCENARIO("Concurrent page table walks can be merged") {
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
-      .tag_bandwidth(2)
-      .fill_bandwidth(2)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{2})
+      .fill_bandwidth(champsim::bandwidth::maximum_type{2})
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};

@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "address.h"
+#include "bandwidth.h"
 #include "block.h"
 #include "cache_builder.h"
 #include "champsim.h"
@@ -177,7 +178,7 @@ public:
   const uint64_t HIT_LATENCY, FILL_LATENCY;
   const unsigned OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
-  const long int MAX_TAG, MAX_FILL;
+  champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;

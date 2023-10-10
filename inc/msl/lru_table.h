@@ -99,7 +99,9 @@ private:
     if (set_idx < 0)
       throw std::range_error{"Set projection produced negative set index: "+std::to_string(set_idx)};
     diff_type raw_idx{(set_idx % NUM_SET) * NUM_WAY};
-    return champsim::get_span(std::next(std::begin(block), raw_idx), std::end(block), NUM_WAY);
+    auto begin = std::next(std::begin(block), raw_idx);
+    auto end = std::next(begin, NUM_WAY);
+    return std::pair{begin, end};
   }
 
   auto match_func(const value_type& elem)

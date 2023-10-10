@@ -22,19 +22,21 @@
 #include <iterator>
 #include <limits>
 
+#include "bandwidth.h"
+
 namespace champsim
 {
 template <typename It>
-std::pair<It, It> get_span(It begin, It end, typename std::iterator_traits<It>::difference_type sz)
+std::pair<It, It> get_span(It begin, It end, bandwidth sz)
 {
   assert(std::distance(begin, end) >= 0);
-  assert(sz >= 0);
-  auto distance = std::min(std::distance(begin, end), sz);
+  assert(sz.amount_remaining() >= 0);
+  auto distance = std::min(std::distance(begin, end), sz.amount_remaining());
   return {begin, std::next(begin, distance)};
 }
 
 template <typename It, typename F>
-std::pair<It, It> get_span_p(It begin, It end, typename std::iterator_traits<It>::difference_type sz, F&& func)
+std::pair<It, It> get_span_p(It begin, It end, bandwidth sz, F&& func)
 {
   auto [span_begin, span_end] = get_span(begin, end, sz);
   return {span_begin, std::find_if_not(span_begin, span_end, std::forward<F>(func))};
@@ -43,7 +45,7 @@ std::pair<It, It> get_span_p(It begin, It end, typename std::iterator_traits<It>
 template <typename It, typename F>
 std::pair<It, It> get_span_p(It begin, It end, F&& func)
 {
-  return get_span_p(begin, end, std::numeric_limits<typename std::iterator_traits<It>::difference_type>::max(), std::forward<F>(func));
+  return {begin, std::find_if_not(begin, end, std::forward<F>(func))};
 }
 } // namespace champsim
 

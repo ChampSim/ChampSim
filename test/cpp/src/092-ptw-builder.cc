@@ -83,8 +83,8 @@ TEST_CASE("The bandwidth factor uses the number of upper levels to determine the
 
   PageTableWalker uut{buildA.virtual_memory(&vmem)};
 
-  CHECK(uut.MAX_READ == bandwidth_factor*num_uls);
-  CHECK(uut.MAX_FILL == bandwidth_factor*num_uls);
+  CHECK(uut.MAX_READ == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
 }
 
 TEST_CASE("The bandwidth factor can control the PTW's default tag bandwidth") {
@@ -103,8 +103,8 @@ TEST_CASE("The bandwidth factor can control the PTW's default tag bandwidth") {
 
   PageTableWalker uut{buildA.virtual_memory(&vmem)};
 
-  CHECK(uut.MAX_READ == bandwidth_factor*num_uls);
-  CHECK(uut.MAX_FILL == bandwidth_factor*num_uls);
+  CHECK(uut.MAX_READ == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
 }
 
 TEST_CASE("Specifying the tag bandwidth overrides the PTW's bandwidth factor") {
@@ -121,13 +121,13 @@ TEST_CASE("Specifying the tag bandwidth overrides the PTW's bandwidth factor") {
   buildA.upper_levels(std::move(channel_pointers));
   buildA.bandwidth_factor((double)bandwidth_factor);
 
-  buildA.tag_bandwidth(6);
-  buildA.fill_bandwidth(7);
+  buildA.tag_bandwidth(champsim::bandwidth::maximum_type{6});
+  buildA.fill_bandwidth(champsim::bandwidth::maximum_type{7});
 
   PageTableWalker uut{buildA.virtual_memory(&vmem)};
 
-  CHECK(uut.MAX_READ == 6);
-  CHECK(uut.MAX_FILL == 7);
+  CHECK(uut.MAX_READ == champsim::bandwidth::maximum_type{6});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{7});
 }
 
 
