@@ -107,7 +107,8 @@ void O3_CPU::end_phase(unsigned finished_cpu)
 
 void O3_CPU::initialize_instruction()
 {
-  champsim::bandwidth instrs_to_read_this_cycle{std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER))})};
+  champsim::bandwidth instrs_to_read_this_cycle{
+      std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER))})};
 
   bool stop_fetch = false;
   while (current_cycle >= fetch_resume_cycle && instrs_to_read_this_cycle.has_remaining() && !stop_fetch && !std::empty(input_queue)) {
@@ -278,7 +279,8 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
 
 long O3_CPU::promote_to_decode()
 {
-  champsim::bandwidth available_fetch_bandwidth{std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER))})};
+  champsim::bandwidth available_fetch_bandwidth{
+      std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(DECODE_BUFFER_SIZE - std::size(DECODE_BUFFER))})};
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), available_fetch_bandwidth,
                                                          [cycle = current_cycle](const auto& x) { return x.fetch_completed && x.event_cycle <= cycle; });
   long progress{std::distance(window_begin, window_end)};
@@ -293,7 +295,8 @@ long O3_CPU::promote_to_decode()
 
 long O3_CPU::decode_instruction()
 {
-  champsim::bandwidth available_decode_bandwidth{std::min(DECODE_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER))})};
+  champsim::bandwidth available_decode_bandwidth{
+      std::min(DECODE_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(DISPATCH_BUFFER_SIZE - std::size(DISPATCH_BUFFER))})};
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth,
                                                          [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
   long progress{std::distance(window_begin, window_end)};
@@ -331,7 +334,8 @@ long O3_CPU::dispatch_instruction()
   champsim::bandwidth available_dispatch_bandwidth{DISPATCH_WIDTH};
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
-  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
+  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle
+         && std::size(ROB) != ROB_SIZE
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
@@ -588,7 +592,8 @@ long O3_CPU::handle_memory_return()
 {
   long progress{0};
 
-  for (champsim::bandwidth l1i_bw{FETCH_WIDTH}, to_read{L1I_BANDWIDTH}; l1i_bw.has_remaining() && to_read.has_remaining() && !L1I_bus.lower_level->returned.empty(); to_read.consume()) {
+  for (champsim::bandwidth l1i_bw{FETCH_WIDTH}, to_read{L1I_BANDWIDTH};
+       l1i_bw.has_remaining() && to_read.has_remaining() && !L1I_bus.lower_level->returned.empty(); to_read.consume()) {
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
@@ -632,7 +637,8 @@ long O3_CPU::handle_memory_return()
 
 long O3_CPU::retire_rob()
 {
-  auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
+  auto [retire_begin, retire_end] =
+      champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired\n", x.instr_id); });
   }

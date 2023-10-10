@@ -444,8 +444,8 @@ long CACHE::operate()
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
-               NAME, __func__, current_cycle, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
-               channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining());
+               NAME, __func__, current_cycle, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed,
+               std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining());
   }
 
   return progress + fill_bw.amount_consumed() + initiate_tag_bw.amount_consumed() + tag_check_bw.amount_consumed();
