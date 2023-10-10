@@ -19,60 +19,59 @@
 
 namespace champsim
 {
+/**
+ * This class encapuslates the operation of consuming a fixed number of operations, a very common operation in ChampSim.
+ * Once initialized, the maximum bandwidth cannot be changed. Instead, consuming the bandwidth reduces the amount available
+ * until it is depleted.
+ */
+class bandwidth
+{
+  using underlying_type = long int;
+  enum class max_t : underlying_type {};
+
+public:
   /**
-   * This class encapuslates the operation of consuming a fixed number of operations, a very common operation in ChampSim.
-   * Once initialized, the maximum bandwidth cannot be changed. Instead, consuming the bandwidth reduces the amount available
-   * until it is depleted.
+   * The type of the maximum. This type is integer-like, with the exception that it is immutable.
+   *
+   * This type is exported so that other types can keep maximums as members.
    */
-  class bandwidth
-  {
-    using underlying_type = long int;
-    enum class max_t : underlying_type {};
+  using maximum_type = max_t;
 
-    public:
-    /**
-     * The type of the maximum. This type is integer-like, with the exception that it is immutable.
-     *
-     * This type is exported so that other types can keep maximums as members.
-     */
-    using maximum_type = max_t;
+private:
+  underlying_type value_;
+  maximum_type maximum_;
 
-    private:
-    underlying_type value_;
-    maximum_type maximum_;
+public:
+  /**
+   * Consume one or more unit of bandwidth. The default is 1 if nothing is specified.
+   *
+   * \throws std::range_error if more than the maximum amount of bandwidth will have been consumed.
+   */
+  void consume(underlying_type delta);
+  void consume();
 
-    public:
+  /**
+   * Report if the bandwidth has one or more unit remaining.
+   */
+  bool has_remaining() const;
 
-    /**
-     * Consume one or more unit of bandwidth. The default is 1 if nothing is specified.
-     *
-     * \throws std::range_error if more than the maximum amount of bandwidth will have been consumed.
-     */
-    void consume(underlying_type delta);
-    void consume();
+  /**
+   * Report the amount of bandwidth that has been consumed
+   */
+  underlying_type amount_consumed() const;
 
-    /**
-     * Report if the bandwidth has one or more unit remaining.
-     */
-    bool has_remaining() const;
+  /**
+   * Report the amount of bandwidth that remains
+   */
+  underlying_type amount_remaining() const;
 
-    /**
-     * Report the amount of bandwidth that has been consumed
-     */
-    underlying_type amount_consumed() const;
+  /**
+   * Reset the bandwidth, so that it can be used again.
+   */
+  void reset();
 
-    /**
-     * Report the amount of bandwidth that remains
-     */
-    underlying_type amount_remaining() const;
-
-    /**
-     * Reset the bandwidth, so that it can be used again.
-     */
-    void reset();
-
-    explicit bandwidth(maximum_type maximum);
-  };
-}
+  explicit bandwidth(maximum_type maximum);
+};
+} // namespace champsim
 
 #endif

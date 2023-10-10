@@ -31,27 +31,12 @@ void champsim::bandwidth::consume(underlying_type delta)
   }
 }
 
-void champsim::bandwidth::consume()
-{
-  consume(1);
-}
+void champsim::bandwidth::consume() { consume(1); }
 
-bool champsim::bandwidth::has_remaining() const
-{
-  return amount_remaining() > 0;
-}
+bool champsim::bandwidth::has_remaining() const { return amount_remaining() > 0; }
 
-auto champsim::bandwidth::amount_consumed() const -> underlying_type
-{
-  return champsim::to_underlying(maximum_) - value_;
-}
+auto champsim::bandwidth::amount_consumed() const -> underlying_type { return champsim::to_underlying(maximum_) - value_; }
 
-auto champsim::bandwidth::amount_remaining() const -> underlying_type
-{
-  return value_;
-}
+auto champsim::bandwidth::amount_remaining() const -> underlying_type { return value_; }
 
-void champsim::bandwidth::reset()
-{
-  value_ = champsim::to_underlying(maximum_);
-}
+void champsim::bandwidth::reset() { value_ = champsim::to_underlying(maximum_); }
