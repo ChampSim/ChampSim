@@ -15,6 +15,9 @@
 import itertools
 import functools
 import operator
+import os
+import tempfile
+import multiprocessing as mp
 
 from . import util
 from . import cxx
@@ -243,6 +246,78 @@ def get_upper_levels(cores, caches, ptws):
         map(functools.partial(named_selector, key='L1D'), cores)
     )))
 
+def check_header_compiles_for_class(clazz, file):
+    ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
+    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    include_dir = os.path.join(champsim_root, 'inc')
+
+    with tempfile.TemporaryDirectory() as dtemp:
+        args = (
+            f'-I{include_dir}',
+            f'-I{dtemp}',
+
+            # patch constants
+            '-DBLOCK_SIZE=64',
+            '-DPAGE_SIZE=4096',
+            '-DSTAT_PRINTING_PERIOD=1000000',
+            '-DNUM_CPUS=1',
+            '-DLOG2_BLOCK_SIZE=6',
+            '-DLOG2_PAGE_SIZE=12',
+
+            '-DDRAM_IO_FREQ=3200',
+            '-DDRAM_CHANNELS=1',
+            '-DDRAM_RANKS=1',
+            '-DDRAM_BANKS=1',
+            '-DDRAM_ROWS=65536',
+            '-DDRAM_COLUMNS=16',
+            '-DDRAM_CHANNEL_WIDTH=8',
+            '-DDRAM_WQ_SIZE=8',
+            '-DDRAM_RQ_SIZE=8'
+        )
+
+        # touch this file
+        with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
+            print('', file=wfp)
+
+        return cxx.check_compiles((f'#include "{file}"', f'class {clazz} x{{nullptr}};'), *args)
+
+def module_include_files(datas):
+    '''
+    Generate C++ include lines for all header files necessary to compile the given modules.
+
+    Each module's paths are searched, and compilation checked (linking is not performed. If the compilation succeeds,
+    the file is emitted as a candidate.
+
+    A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
+    In this case, we procede, but ChampSim's compilation will likely fail.
+    '''
+
+    def all_headers_on(path):
+        for base,_,files in os.walk(path):
+            for file in files:
+                if os.path.splitext(file)[1] == '.h':
+                    yield os.path.abspath(os.path.join(base, file))
+
+    class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
+    candidates = list(set(itertools.chain.from_iterable(class_paths)))
+    with mp.Pool() as pool:
+        successes = pool.starmap(check_header_compiles_for_class, candidates)
+    filtered_candidates = list(itertools.compress(candidates, successes))
+
+    class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
+    for clazz in class_difference:
+        tried_files = (f for c,f in candidates if c == clazz)
+        print('WARNING: no header found for', clazz)
+        print('NOTE: after trying files')
+        for file in tried_files:
+            failed = successes[candidates.index((clazz,file))]
+            print('NOTE:', file)
+            print('NOTE:', failed.args)
+            for line in failed.stderr.splitlines():
+                print('NOTE:  ', line)
+
+    yield from (f'#include "{f}"' for _,f in filtered_candidates)
+
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
@@ -266,6 +341,14 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#if __has_include("module_def.inc")'
     yield '#include "module_def.inc"'
     yield '#endif'
+
+    datas = itertools.chain(
+        *(c['_branch_predictor_data'] for c in cores),
+        *(c['_btb_data'] for c in cores),
+        *(c['_prefetcher_data'] for c in caches),
+        *(c['_replacement_data'] for c in caches)
+    )
+    yield from module_include_files(datas)
 
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
