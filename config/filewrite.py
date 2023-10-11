@@ -206,7 +206,7 @@ class Fragment:
     def write(self):
         ''' Write the internal series of fragments to file. '''
         for fname, fcontents in self.fileparts:
-            write_if_different(fname, '\n'.join(fcontents))
+            write_if_different(fname, '\n'.join(l.rstrip() for l in fcontents))
 
     def file_parts(self):
         return self.fileparts
