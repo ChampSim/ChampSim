@@ -180,7 +180,8 @@ def get_ptw_builder(ptw, upper_levels):
 
 def get_ref_vector_function(rtype, func_name, elements):
     '''
-    Generate a C++ function with the given name whose return type is a `std::vector` of `std::reference_wrapper`s to the given type.
+    Generate a C++ function with the given name whose return type is a
+    `std::vector` of `std::reference_wrapper`s to the given type.
     The members of the vector are references to the given elements.
     '''
 
@@ -219,16 +220,21 @@ def ptw_queue_defaults(ptw):
         '_queue_check_full_addr': False
     }
 
-def named_selector(elem, key):
-    return elem.get(key), elem.get('name')
-
 def upper_channel_collector(grouped_by_lower_level):
+    '''
+    Join a sequence of (lower_name, upper_name) into a dictionary with schema:
+    { lower_name: {'upper_channels': channel_name} }.
+    '''
     return util.chain(*(
         {lower_name: {'upper_channels': [channel_name(lower=lower_name, upper=upper_name)]}}
         for lower_name, upper_name in grouped_by_lower_level
     ))
 
 def get_upper_levels(cores, caches, ptws):
+    ''' Get a sequence of (lower_name, upper_name) for the given elements. '''
+    def named_selector(elem, key):
+        return elem.get(key), elem.get('name')
+
     return list(filter(lambda x: x[0] is not None, itertools.chain(
         map(functools.partial(named_selector, key='lower_level'), ptws),
         map(functools.partial(named_selector, key='lower_level'), caches),
@@ -238,6 +244,9 @@ def get_upper_levels(cores, caches, ptws):
     )))
 
 def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+    '''
+    Generate the lines for a C++ file that instantiates a configuration.
+    '''
     upper_levels = util.chain(
             *util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
             *({c['name']: cache_queue_defaults(c)} for c in caches),
