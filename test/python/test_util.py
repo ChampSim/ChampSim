@@ -40,6 +40,9 @@ class SubdictTests(unittest.TestCase):
     def test_subdict_does_not_fail_on_missing(self):
         self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b','d')), {'a':1, 'b':2})
 
+    def test_subdict_invert(self):
+        self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b'), invert=True), {'c':3})
+
 class CombineNamedTests(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(len(config.util.combine_named()), 0)

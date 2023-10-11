@@ -77,9 +77,9 @@ def extend_each(lhs,rhs):
     merges = {k: (*lhs[k],*rhs[k]) for k in lhs if k in rhs}
     return {**lhs, **rhs, **merges}
 
-def subdict(whole_dict, keys):
+def subdict(whole_dict, keys, invert=False):
     ''' Extract only the given keys from a dictionary. If they keys are not present, they are not defaulted. '''
-    return {k:v for k,v in whole_dict.items() if k in keys}
+    return {k:v for k,v in whole_dict.items() if (k in keys) != invert}
 
 def combine_named(*iterables):
     '''
