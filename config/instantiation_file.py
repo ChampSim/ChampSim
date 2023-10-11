@@ -342,12 +342,12 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "module_def.inc"'
     yield '#endif'
 
-    datas = itertools.chain(
+    datas = itertools.filterfalse(operator.methodcaller('get', 'legacy', False), itertools.chain(
         *(c['_branch_predictor_data'] for c in cores),
         *(c['_btb_data'] for c in cores),
         *(c['_prefetcher_data'] for c in caches),
         *(c['_replacement_data'] for c in caches)
-    )
+    ))
     yield from module_include_files(datas)
 
     yield '#include "defaults.hpp"'
