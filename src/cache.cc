@@ -26,6 +26,7 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#include "bandwidth.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "deadlock.h"
@@ -381,39 +382,36 @@ long CACHE::operate()
   }
 
   // Perform fills
-  auto fill_bw = MAX_FILL;
+  champsim::bandwidth fill_bw{MAX_FILL};
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
     auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw,
                                                        [cycle = current_cycle](const auto& x) { return x.data_promise.is_ready_at(cycle); });
     auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
-    fill_bw -= std::distance(fill_begin, complete_end);
+    fill_bw.consume(std::distance(fill_begin, complete_end));
     q.get().erase(fill_begin, complete_end);
   }
-  progress += MAX_FILL - fill_bw;
 
   // Initiate tag checks
-  auto tag_bw = std::clamp<long long>(MAX_TAG * (long)HIT_LATENCY - (long)std::size(inflight_tag_check), 0LL, MAX_TAG);
+  const champsim::bandwidth::maximum_type bandwidth_from_tag_checks{champsim::to_underlying(MAX_TAG) * (long)HIT_LATENCY - (long)std::size(inflight_tag_check)};
+  champsim::bandwidth initiate_tag_bw{std::clamp(bandwidth_from_tag_checks, champsim::bandwidth::maximum_type{0}, MAX_TAG)};
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
   };
   auto stash_bandwidth_consumed =
-      champsim::transform_while_n(translation_stash, std::back_inserter(inflight_tag_check), tag_bw, is_translated, initiate_tag_check<false>());
-  tag_bw -= stash_bandwidth_consumed;
-  progress += stash_bandwidth_consumed;
+      champsim::transform_while_n(translation_stash, std::back_inserter(inflight_tag_check), initiate_tag_bw, is_translated, initiate_tag_check<false>());
+  initiate_tag_bw.consume(stash_bandwidth_consumed);
   std::vector<long long> channels_bandwidth_consumed{};
   for (auto* ul : upper_levels) {
     for (auto q : {std::ref(ul->WQ), std::ref(ul->RQ), std::ref(ul->PQ)}) {
       auto bandwidth_consumed =
-          champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<true>(ul));
+          champsim::transform_while_n(q.get(), std::back_inserter(inflight_tag_check), initiate_tag_bw, can_translate, initiate_tag_check<true>(ul));
       channels_bandwidth_consumed.push_back(bandwidth_consumed);
-      tag_bw -= bandwidth_consumed;
-      progress += bandwidth_consumed;
+      initiate_tag_bw.consume(bandwidth_consumed);
     }
   }
   auto pq_bandwidth_consumed =
-      champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), tag_bw, can_translate, initiate_tag_check<false>());
-  [[maybe_unused]] auto remaining_tag_bw = tag_bw - pq_bandwidth_consumed;
-  progress += pq_bandwidth_consumed;
+      champsim::transform_while_n(internal_PQ, std::back_inserter(inflight_tag_check), initiate_tag_bw, can_translate, initiate_tag_check<false>());
+  initiate_tag_bw.consume(pq_bandwidth_consumed);
 
   // Issue translations
   std::for_each(std::begin(inflight_tag_check), std::end(inflight_tag_check), [this](auto& x) { this->issue_translation(x); });
@@ -426,21 +424,19 @@ long CACHE::operate()
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
-  auto do_tag_check = [this](const auto& pkt) {
-    if (this->try_hit(pkt)) {
-      return true;
-    }
+  auto do_handle_miss = [this](const auto& pkt) {
     if (pkt.type == access_type::WRITE && !this->match_offset_bits) {
       return this->handle_write(pkt); // Treat writes (that is, writebacks) like fills
     }
     return this->handle_miss(pkt); // Treat writes (that is, stores) like reads
   };
+  champsim::bandwidth tag_check_bw{MAX_TAG};
   auto [tag_check_ready_begin, tag_check_ready_end] =
-      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
+      champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), tag_check_bw,
                            [is_ready, is_translated](const auto& pkt) { return is_ready(pkt) && is_translated(pkt); });
-  auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
-  [[maybe_unused]] auto tag_bw_consumed = std::distance(tag_check_ready_begin, finish_tag_check_end);
-  progress += std::distance(tag_check_ready_begin, finish_tag_check_end);
+  auto hits_end = std::stable_partition(tag_check_ready_begin, tag_check_ready_end, [this](const auto& pkt) { return this->try_hit(pkt); });
+  auto finish_tag_check_end = std::stable_partition(hits_end, tag_check_ready_end, do_handle_miss);
+  tag_check_bw.consume(std::distance(tag_check_ready_begin, finish_tag_check_end));
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
 
   impl_prefetcher_cycle_operate();
@@ -448,11 +444,11 @@ long CACHE::operate()
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
-               NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
-               channels_bandwidth_consumed, pq_bandwidth_consumed, remaining_tag_bw);
+               NAME, __func__, current_cycle, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed,
+               std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining());
   }
 
-  return progress;
+  return progress + fill_bw.amount_consumed() + initiate_tag_bw.amount_consumed() + tag_check_bw.amount_consumed();
 }
 
 // LCOV_EXCL_START exclude deprecated function

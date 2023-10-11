@@ -10,7 +10,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
-      .schedule_width(schedule_width)
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -41,7 +41,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
-      .schedule_width(schedule_width)
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -79,7 +79,7 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     do_nothing_MRC mock_L1I, mock_L1D;
     O3_CPU uut{champsim::core_builder{}
-      .schedule_width(schedule_width)
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
