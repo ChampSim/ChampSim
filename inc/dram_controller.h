@@ -33,6 +33,19 @@
 
 #ifdef RAMULATOR
 #include "../ramulator/src/Config.h"
+#include "../ramulator/src/Request.h"
+#include "../ramulator/src/MemoryFactory.h"
+#include "../ramulator/src/Memory.h"
+#include "../ramulator/src/DDR3.h"
+#include "../ramulator/src/DDR4.h"
+#include "../ramulator/src/LPDDR3.h"
+#include "../ramulator/src/LPDDR4.h"
+#include "../ramulator/src/GDDR5.h"
+#include "../ramulator/src/WideIO.h"
+#include "../ramulator/src/WideIO2.h"
+#include "../ramulator/src/HBM.h"
+#include "../ramulator/src/SALP.h"
+#include <map>
 namespace ramulator
 {
   class Request;
@@ -150,6 +163,9 @@ class MEMORY_CONTROLLER : public champsim::operable
   };
   //queue needed to manage packet return requests
   std::vector<RAMULATOR_Q_ENTRY> RAMULATOR_RQ;
+
+  template <typename T>
+  ramulator::MemoryBase* create_memory_controller();
   #endif
 
 public:

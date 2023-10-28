@@ -30,34 +30,29 @@
 #include "util/span.h"
 
 #ifdef RAMULATOR
-//This interface was originally designed for gem5.
-#include "../ramulator/src/Config.h"
-#include "../ramulator/src/Request.h"
-#include "../ramulator/src/MemoryFactory.h"
-#include "../ramulator/src/Memory.h"
-#include "../ramulator/src/DDR3.h"
-#include "../ramulator/src/DDR4.h"
-#include "../ramulator/src/LPDDR3.h"
-#include "../ramulator/src/LPDDR4.h"
-#include "../ramulator/src/GDDR5.h"
-#include "../ramulator/src/WideIO.h"
-#include "../ramulator/src/WideIO2.h"
-#include "../ramulator/src/HBM.h"
-#include "../ramulator/src/SALP.h"
-static map<string, function<ramulator::MemoryBase *(const ramulator::Config&, int)> > name_to_func = {
-    {"DDR3", &ramulator::MemoryFactory<ramulator::DDR3>::create}, 
-    {"DDR4", &ramulator::MemoryFactory<ramulator::DDR4>::create},
-    {"LPDDR3", &ramulator::MemoryFactory<ramulator::LPDDR3>::create}, 
-    {"LPDDR4", &ramulator::MemoryFactory<ramulator::LPDDR4>::create},
-    {"GDDR5", &ramulator::MemoryFactory<ramulator::GDDR5>::create}, 
-    {"WideIO", &ramulator::MemoryFactory<ramulator::WideIO>::create}, 
-    {"WideIO2", &ramulator::MemoryFactory<ramulator::WideIO2>::create},
-    {"HBM", &ramulator::MemoryFactory<ramulator::HBM>::create},
-    {"SALP-1", &ramulator::MemoryFactory<ramulator::SALP>::create}, 
-    {"SALP-2", &ramulator::MemoryFactory<ramulator::SALP>::create}, 
-    {"SALP-MASA", &ramulator::MemoryFactory<ramulator::SALP>::create},
-};
+//This interface was originally designed for gem5. It requires some modification to use with ChampSim's configuration system
+
+template <typename T>
+ramulator::MemoryBase* MEMORY_CONTROLLER::create_memory_controller()
+{
+    int channels = DRAM_CHANNELS;
+    int ranks = DRAM_RANKS;
+
+    const string& org_name = "DDR4_4Gb_x8";
+    const string& speed_name = "DDR4_3200";
+
+    ramulator::Config configs;
+    configs.add("mapping","defaultmapping");
+    configs.set_core_num(NUM_CPUS);
+
+    T *spec = new T(org_name, speed_name);
+
+    ramulator::MemoryFactory<T>::extend_channel_width(spec, BLOCK_SIZE);
+    return (ramulator::MemoryBase *)ramulator::MemoryFactory<T>::populate_memory(configs, spec, channels, ranks);
+}
+
 #endif
+
 uint64_t cycles(double time, int io_freq)
 {
   std::fesetround(FE_UPWARD);
@@ -70,11 +65,28 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
     : champsim::operable(freq_scale), queues(std::move(ul))
 {
   #ifdef RAMULATOR
-    ramulator::Config configs("DDR4-config.cfg");
-    configs.set_core_num(NUM_CPUS);
-    const string& std_name = configs["standard"];
-    assert(name_to_func.find(std_name) != name_to_func.end() && "unrecognized standard name");
-    mem_controller = name_to_func[std_name](configs, BLOCK_SIZE);
+  std::string dram_spec = "DDR4";
+  if(dram_spec == "DDR4")
+  mem_controller = create_memory_controller<ramulator::DDR4>();
+  else if(dram_spec == "DDR3")
+  mem_controller = create_memory_controller<ramulator::DDR3>();
+  else if(dram_spec == "LPDDR3")
+  mem_controller = create_memory_controller<ramulator::LPDDR3>();
+  else if(dram_spec == "LPDDR4")
+  mem_controller = create_memory_controller<ramulator::LPDDR4>();
+  else if(dram_spec == "GDDR5")
+  mem_controller = create_memory_controller<ramulator::GDDR5>();
+  else if(dram_spec == "WideIO") 
+  mem_controller = create_memory_controller<ramulator::WideIO>();
+  else if(dram_spec == "WideIO2")
+  mem_controller = create_memory_controller<ramulator::WideIO2>();
+  else if(dram_spec == "HBM")
+  mem_controller = create_memory_controller<ramulator::HBM>();
+  else if(dram_spec == "SALP-1" || dram_spec == "SALP-2" || dram_spec == "SALP-MASA")
+  mem_controller = create_memory_controller<ramulator::SALP>(); 
+  else
+  assert(false);
+
   #else
   for (std::size_t i{0}; i < DRAM_CHANNELS; ++i) {
     channels.emplace_back(io_freq, t_rp, t_rcd, t_cas, turnaround, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS);
@@ -99,13 +111,15 @@ long MEMORY_CONTROLLER::operate()
   int current_requests = mem_controller->pending_requests();
   mem_controller->tick();
   Stats::curTick++;
-  progress = std::max(current_requests - mem_controller->pending_requests(),0);
+  progress = 1;
+  //progress = std::max(current_requests - mem_controller->pending_requests(),0);
   #else
   for (auto& channel : channels) {
     progress += channel._operate();
   }
   #endif
 
+  
   return progress;
 }
 
@@ -338,6 +352,9 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
 
 void MEMORY_CONTROLLER::initialize()
 {
+  #ifdef RAMULATOR
+  fmt::print("Refer to Ramulator configuration for Off-chip DRAM Size\n");
+  #else
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
   fmt::print("Off-chip DRAM Size: ");
   if (dram_size > 1024) {
@@ -346,6 +363,7 @@ void MEMORY_CONTROLLER::initialize()
     fmt::print("{} MiB", dram_size);
   }
   fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
+  #endif
 }
 
 void DRAM_CHANNEL::initialize() {}

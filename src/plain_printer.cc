@@ -37,6 +37,10 @@
 #include "stats_printer.h"
 #include "util/bits.h" // for to_underlying
 
+#ifdef RAMULATOR
+#include "../ramulator/src/Statistics.h"
+#endif
+
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
   constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
@@ -137,9 +141,26 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
   }
 
   fmt::print(stream, "\nDRAM Statistics\n");
+  #ifdef RAMULATOR
+  std::ofstream ofs;
+  ofs.basic_ios<char>::rdbuf(std::cout.rdbuf());
+  for(Stats::off_type i = 0 ; i < Stats::all_stats.size() ; ++i) {
+      if (!Stats::all_stats[i]) {
+        continue;
+      }
+      if (Stats::all_stats[i]->is_nozero() && Stats::all_stats[i]->zero()) {
+        continue;
+      }
+      if (Stats::all_stats[i]->is_display()) {
+        Stats::all_stats[i]->prepare();
+        Stats::all_stats[i]->print(ofs);
+      }
+    }
+  #else
   for (const auto& stat : stats.roi_dram_stats) {
     print(stat);
   }
+  #endif
 }
 
 void champsim::plain_printer::print(std::vector<phase_stats>& stats)
