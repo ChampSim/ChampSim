@@ -48,8 +48,8 @@ struct cache_builder_base {
   std::optional<uint64_t> m_hit_lat{};
   uint64_t m_fill_lat{1};
   uint64_t m_latency{2};
-  std::optional<uint32_t> m_max_tag{};
-  std::optional<uint32_t> m_max_fill{};
+  std::optional<champsim::bandwidth::maximum_type> m_max_tag{};
+  std::optional<champsim::bandwidth::maximum_type> m_max_fill{};
   double m_bandwidth_factor{1};
   unsigned m_offset_bits{};
   bool m_pref_load{};
@@ -80,8 +80,8 @@ class cache_builder : public detail::cache_builder_base
   uint32_t get_num_sets() const;
   uint32_t get_num_ways() const;
   uint32_t get_num_mshrs() const;
-  uint32_t get_tag_bandwidth() const;
-  uint32_t get_fill_bandwidth() const;
+  champsim::bandwidth::maximum_type get_tag_bandwidth() const;
+  champsim::bandwidth::maximum_type get_fill_bandwidth() const;
 
 public:
   cache_builder() = default;
@@ -98,8 +98,8 @@ public:
   self_type& latency(uint64_t lat_);
   self_type& hit_latency(uint64_t hit_lat_);
   self_type& fill_latency(uint64_t fill_lat_);
-  self_type& tag_bandwidth(uint32_t max_read_);
-  self_type& fill_bandwidth(uint32_t max_write_);
+  self_type& tag_bandwidth(champsim::bandwidth::maximum_type max_read_);
+  self_type& fill_bandwidth(champsim::bandwidth::maximum_type max_write_);
   self_type& bandwidth_factor(double bandwidth_factor_);
   self_type& offset_bits(unsigned offset_bits_);
   self_type& set_prefetch_as_load();
@@ -147,15 +147,15 @@ auto champsim::cache_builder<P, R>::get_num_mshrs() const -> uint32_t
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::get_tag_bandwidth() const -> uint32_t
+auto champsim::cache_builder<P, R>::get_tag_bandwidth() const -> champsim::bandwidth::maximum_type
 {
-  return m_max_tag.value_or(scaled_by_ul_size(m_bandwidth_factor));
+  return m_max_tag.value_or(champsim::bandwidth::maximum_type{scaled_by_ul_size(m_bandwidth_factor)});
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::get_fill_bandwidth() const -> uint32_t
+auto champsim::cache_builder<P, R>::get_fill_bandwidth() const -> champsim::bandwidth::maximum_type
 {
-  return m_max_fill.value_or(scaled_by_ul_size(m_bandwidth_factor));
+  return m_max_fill.value_or(champsim::bandwidth::maximum_type{scaled_by_ul_size(m_bandwidth_factor)});
 }
 
 template <typename P, typename R>
@@ -243,14 +243,14 @@ auto champsim::cache_builder<P, R>::fill_latency(uint64_t fill_lat_) -> self_typ
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::tag_bandwidth(uint32_t max_read_) -> self_type&
+auto champsim::cache_builder<P, R>::tag_bandwidth(champsim::bandwidth::maximum_type max_read_) -> self_type&
 {
   m_max_tag = max_read_;
   return *this;
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::fill_bandwidth(uint32_t max_write_) -> self_type&
+auto champsim::cache_builder<P, R>::fill_bandwidth(champsim::bandwidth::maximum_type max_write_) -> self_type&
 {
   m_max_fill = max_write_;
   return *this;

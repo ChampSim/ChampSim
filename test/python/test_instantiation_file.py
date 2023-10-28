@@ -42,26 +42,29 @@ class CpuBuilderTest(unittest.TestCase):
     def test_sq_size(self):
         self.get_element_diff(['.sq_size(1)'], sq_size=1)
 
+    def test_fetch_width(self):
+        self.get_element_diff(['.fetch_width(champsim::bandwidth::maximum_type{1})'], fetch_width=1)
+
     def test_decode_width(self):
-        self.get_element_diff(['.decode_width(1)'], decode_width=1)
+        self.get_element_diff(['.decode_width(champsim::bandwidth::maximum_type{1})'], decode_width=1)
 
     def test_dispatch_width(self):
-        self.get_element_diff(['.dispatch_width(1)'], dispatch_width=1)
+        self.get_element_diff(['.dispatch_width(champsim::bandwidth::maximum_type{1})'], dispatch_width=1)
 
     def test_scheduler_size(self):
-        self.get_element_diff(['.schedule_width(1)'], scheduler_size=1)
+        self.get_element_diff(['.schedule_width(champsim::bandwidth::maximum_type{1})'], scheduler_size=1)
 
     def test_execute_width(self):
-        self.get_element_diff(['.execute_width(1)'], execute_width=1)
+        self.get_element_diff(['.execute_width(champsim::bandwidth::maximum_type{1})'], execute_width=1)
 
     def test_lq_width(self):
-        self.get_element_diff(['.lq_width(1)'], lq_width=1)
+        self.get_element_diff(['.lq_width(champsim::bandwidth::maximum_type{1})'], lq_width=1)
 
     def test_sq_width(self):
-        self.get_element_diff(['.sq_width(1)'], sq_width=1)
+        self.get_element_diff(['.sq_width(champsim::bandwidth::maximum_type{1})'], sq_width=1)
 
     def test_retire_width(self):
-        self.get_element_diff(['.retire_width(1)'], retire_width=1)
+        self.get_element_diff(['.retire_width(champsim::bandwidth::maximum_type{1})'], retire_width=1)
 
     def test_mispredict_penalty(self):
         self.get_element_diff(['.mispredict_penalty(1)'], mispredict_penalty=1)
@@ -135,10 +138,10 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.fill_latency(1)'], fill_latency=1)
 
     def test_max_tag_check(self):
-        self.get_element_diff(['.tag_bandwidth(1)'], max_tag_check=1)
+        self.get_element_diff(['.tag_bandwidth(champsim::bandwidth::maximum_type{1})'], max_tag_check=1)
 
     def test_max_fill(self):
-        self.get_element_diff(['.fill_bandwidth(1)'], max_fill=1)
+        self.get_element_diff(['.fill_bandwidth(champsim::bandwidth::maximum_type{1})'], max_fill=1)
 
     def test_prefetch_as_load(self):
         self.get_element_diff(['.set_prefetch_as_load()'], prefetch_as_load=True)
@@ -180,10 +183,10 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
         self.get_element_diff(['.mshr_size(1)'], mshr_size=1)
 
     def test_max_read(self):
-        self.get_element_diff(['.tag_bandwidth(1)'], max_read=1)
+        self.get_element_diff(['.tag_bandwidth(champsim::bandwidth::maximum_type{1})'], max_read=1)
 
     def test_max_write(self):
-        self.get_element_diff(['.fill_bandwidth(1)'], max_write=1)
+        self.get_element_diff(['.fill_bandwidth(champsim::bandwidth::maximum_type{1})'], max_write=1)
 
     def test_pscl5(self):
         self.get_element_diff(['.add_pscl(5, 1, 2)'], pscl5_set=1, pscl5_way=2)
