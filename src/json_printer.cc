@@ -73,6 +73,8 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 
 void to_json(nlohmann::json& j, const DRAM_CHANNEL::stats_type stats)
 {
+  //need to fix this for RAMULATOR
+  //can only print stats as a large block of text -> print to sstream and then convert to JSON entries
   j = nlohmann::json{{"RQ ROW_BUFFER_HIT", stats.RQ_ROW_BUFFER_HIT},
                      {"RQ ROW_BUFFER_MISS", stats.RQ_ROW_BUFFER_MISS},
                      {"WQ ROW_BUFFER_HIT", stats.WQ_ROW_BUFFER_HIT},

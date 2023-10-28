@@ -38,11 +38,16 @@ ramulator::MemoryBase* MEMORY_CONTROLLER::create_memory_controller()
     int channels = DRAM_CHANNELS;
     int ranks = DRAM_RANKS;
 
+    //these need to be fixed, added to champsim config
     const string& org_name = "DDR4_4Gb_x8";
     const string& speed_name = "DDR4_3200";
 
     ramulator::Config configs;
+
+    //same with this, add to champsim config
     configs.add("mapping","defaultmapping");
+    //org name, speed name, default mapping, and dram spec (DDR4, DDR3, etc...). ALL STRINGS
+
     configs.set_core_num(NUM_CPUS);
 
     T *spec = new T(org_name, speed_name);
