@@ -5,6 +5,8 @@ TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_install
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
+RAMULATOR_DIR=$(ROOT_DIR)/ramulator
+
 .PHONY: all all_execs clean configclean test makedirs
 
 all: all_execs
@@ -18,7 +20,11 @@ test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
 
-all_execs: $(filter-out $(test_main_name), $(executable_name))
+ram_srcs=$(filter-out $(RAMULATOR_DIR)/src/Main.cpp $(RAMULATOR_DIR)/src/Gem5Wrapper.cpp, $(wildcard $(RAMULATOR_DIR)/src/*.cpp))
+ram_objs=$(patsubst $(RAMULATOR_DIR)/src/%.cpp, $(RAMULATOR_DIR)/obj/%.o, $(ram_srcs))
+dirs += $(RAMULATOR_DIR)/obj/
+
+all_execs: $(ram_objs) $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
@@ -47,6 +53,9 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 $(objs):
 	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
+$(RAMULATOR_DIR)/obj/%.o: $(RAMULATOR_DIR)/src/%.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -DRAMULATOR -c $^ -o $@
+
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
@@ -57,7 +66,7 @@ endif
 
 # Link main executables
 $(executable_name):
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+	$(CXX) $(LDFLAGS) $(ram_objs) -o $@ $^ $(LOADLIBES) $(LDLIBS) 
 
 # Tests: build and run
 test: $(test_main_name)

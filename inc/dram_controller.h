@@ -31,6 +31,15 @@
 #include "channel.h"
 #include "operable.h"
 
+#ifdef RAMULATOR
+#include "../ramulator/src/Config.h"
+namespace ramulator
+{
+  class Request;
+  class MemoryBase;
+}
+#endif
+
 struct ooo_model_instr;
 
 struct dram_stats {
@@ -132,6 +141,17 @@ class MEMORY_CONTROLLER : public champsim::operable
   bool add_rq(const request_type& packet, champsim::channel* ul);
   bool add_wq(const request_type& packet);
 
+  #ifdef RAMULATOR
+  ramulator::MemoryBase *mem_controller;
+  struct RAMULATOR_Q_ENTRY
+  {
+    long addr;
+    DRAM_CHANNEL::request_type pkt;
+  };
+  //queue needed to manage packet return requests
+  std::vector<RAMULATOR_Q_ENTRY> RAMULATOR_RQ;
+  #endif
+
 public:
   std::vector<DRAM_CHANNEL> channels;
 
@@ -150,6 +170,7 @@ public:
   unsigned long dram_get_bank(uint64_t address) const;
   unsigned long dram_get_row(uint64_t address) const;
   unsigned long dram_get_column(uint64_t address) const;
+
 };
 
 #endif
