@@ -3,13 +3,25 @@ ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-RAMULATOR_DIR=$(ROOT_DIR)/ramulator
+RAMULATOR_DIR=$(ROOT_DIR)/ramulator2/
+RAMULATOR_LIB=$(RAMULATOR_DIR)
+LDLIBS   += -llzma -lz -lbz2 -lfmt
+INC=
 
 .PHONY: all all_execs clean configclean test makedirs
 
+
+
+#if ramulator exists make it and include the library as well as the compile flags
+ifneq ($(wildcard $(RAMULATOR_DIR)/.),)
+LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)deps/yaml-cpp-build -lramulator -lspdlog -lyaml-cpp $(LDLIBS)
+CPPFLAGS += -DRAMULATOR
+INC += -I$(RAMULATOR_DIR)/src
+all: ramulator all_execs
+else
 all: all_execs
+endif
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 
@@ -20,11 +32,12 @@ test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
 
-ram_srcs=$(filter-out $(RAMULATOR_DIR)/src/Main.cpp $(RAMULATOR_DIR)/src/Gem5Wrapper.cpp, $(wildcard $(RAMULATOR_DIR)/src/*.cpp))
-ram_objs=$(patsubst $(RAMULATOR_DIR)/src/%.cpp, $(RAMULATOR_DIR)/obj/%.o, $(ram_srcs))
-dirs += $(RAMULATOR_DIR)/obj/
+#create ramulator library and copy header files to local directory
+ramulator:
+	bash -c "cmake -DYAML_BUILD_SHARED_LIBS=ON $(RAMULATOR_DIR)";
+	bash -c "cd $(RAMULATOR_DIR) && make -j";
 
-all_execs: $(ram_objs) $(filter-out $(test_main_name), $(executable_name))
+all_execs: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
@@ -51,10 +64,8 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 
 # All .o files should be made like .cc files
 $(objs):
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(INC) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
-$(RAMULATOR_DIR)/obj/%.o: $(RAMULATOR_DIR)/src/%.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -DRAMULATOR -c $^ -o $@
 
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
@@ -66,7 +77,7 @@ endif
 
 # Link main executables
 $(executable_name):
-	$(CXX) $(LDFLAGS) $(ram_objs) -o $@ $^ $(LOADLIBES) $(LDLIBS) 
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS) 
 
 # Tests: build and run
 test: $(test_main_name)

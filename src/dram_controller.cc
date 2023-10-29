@@ -29,34 +29,6 @@
 #include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
 
-#ifdef RAMULATOR
-//This interface was originally designed for gem5. It requires some modification to use with ChampSim's configuration system
-
-template <typename T>
-ramulator::MemoryBase* MEMORY_CONTROLLER::create_memory_controller()
-{
-    int channels = DRAM_CHANNELS;
-    int ranks = DRAM_RANKS;
-
-    //these need to be fixed, added to champsim config
-    const string& org_name = "DDR4_4Gb_x8";
-    const string& speed_name = "DDR4_3200";
-
-    ramulator::Config configs;
-
-    //same with this, add to champsim config
-    configs.add("mapping","defaultmapping");
-    //org name, speed name, default mapping, and dram spec (DDR4, DDR3, etc...). ALL STRINGS
-
-    configs.set_core_num(NUM_CPUS);
-
-    T *spec = new T(org_name, speed_name);
-
-    ramulator::MemoryFactory<T>::extend_channel_width(spec, BLOCK_SIZE);
-    return (ramulator::MemoryBase *)ramulator::MemoryFactory<T>::populate_memory(configs, spec, channels, ranks);
-}
-
-#endif
 
 uint64_t cycles(double time, int io_freq)
 {
@@ -70,27 +42,12 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
     : champsim::operable(freq_scale), queues(std::move(ul))
 {
   #ifdef RAMULATOR
-  std::string dram_spec = "DDR4";
-  if(dram_spec == "DDR4")
-  mem_controller = create_memory_controller<ramulator::DDR4>();
-  else if(dram_spec == "DDR3")
-  mem_controller = create_memory_controller<ramulator::DDR3>();
-  else if(dram_spec == "LPDDR3")
-  mem_controller = create_memory_controller<ramulator::LPDDR3>();
-  else if(dram_spec == "LPDDR4")
-  mem_controller = create_memory_controller<ramulator::LPDDR4>();
-  else if(dram_spec == "GDDR5")
-  mem_controller = create_memory_controller<ramulator::GDDR5>();
-  else if(dram_spec == "WideIO") 
-  mem_controller = create_memory_controller<ramulator::WideIO>();
-  else if(dram_spec == "WideIO2")
-  mem_controller = create_memory_controller<ramulator::WideIO2>();
-  else if(dram_spec == "HBM")
-  mem_controller = create_memory_controller<ramulator::HBM>();
-  else if(dram_spec == "SALP-1" || dram_spec == "SALP-2" || dram_spec == "SALP-MASA")
-  mem_controller = create_memory_controller<ramulator::SALP>(); 
-  else
-  assert(false);
+  YAML::Node config = Ramulator::Config::parse_config_file(config_path, {});
+  ramulator2_frontend = Ramulator::Factory::create_frontend(config);
+  ramulator2_memorysystem = Ramulator::Factory::create_memory_system(config);
+
+  ramulator2_frontend->connect_memory_system(ramulator2_memorysystem);
+  ramulator2_memorysystem->connect_frontend(ramulator2_frontend);
 
   #else
   for (std::size_t i{0}; i < DRAM_CHANNELS; ++i) {
@@ -113,11 +70,20 @@ long MEMORY_CONTROLLER::operate()
 
   initiate_requests();
   #ifdef RAMULATOR
-  int current_requests = mem_controller->pending_requests();
-  mem_controller->tick();
-  Stats::curTick++;
+
+  int frontend_tick = ramulator2_frontend->get_clock_ratio();
+  int mem_tick = ramulator2_memorysystem->get_clock_ratio();
+
+  int tick_mult = frontend_tick * mem_tick;
+
+  if (((current_cycle % tick_mult) % mem_tick) == 0) {
+    ramulator2_frontend->tick();
+  }
+  if ((current_cycle % tick_mult) % frontend_tick == 0) {
+    ramulator2_memorysystem->tick();
+  }
+  //Stats::curTick++;
   progress = 1;
-  //progress = std::max(current_requests - mem_controller->pending_requests(),0);
   #else
   for (auto& channel : channels) {
     progress += channel._operate();
@@ -375,6 +341,10 @@ void DRAM_CHANNEL::initialize() {}
 
 void MEMORY_CONTROLLER::begin_phase()
 {
+  #ifdef RAMULATOR
+  //Stats::reset_stats();
+  #endif
+
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
     DRAM_CHANNEL::stats_type new_stats;
@@ -395,6 +365,11 @@ void DRAM_CHANNEL::begin_phase() {}
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
+  #ifdef RAMULATOR
+  ramulator2_frontend->finalize();
+  ramulator2_memorysystem->finalize();
+  #endif
+
   for (auto& chan : channels) {
     chan.end_phase(cpu);
   }
@@ -492,7 +467,7 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
   #ifdef RAMULATOR
-  std::function<void(ramulator::Request&)> return_packet_rq_rr = [this](ramulator::Request& req)
+  std::function<void(Ramulator::Request&)> return_packet_rq_rr = [this](Ramulator::Request& req)
   {
     for(auto it = RAMULATOR_RQ.begin(); it != RAMULATOR_RQ.end(); it++)
     {
@@ -514,8 +489,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   {
     DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
     pkt.to_return = {&ul->returned};
-    ramulator::Request req(packet.address,ramulator::Request::Type::READ,return_packet_rq_rr);
-    bool success = mem_controller->send(req);
+    bool success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu, return_packet_rq_rr);
     if(success)
     RAMULATOR_RQ.emplace(RAMULATOR_RQ.end(),RAMULATOR_Q_ENTRY{packet.address,pkt});
 
@@ -523,8 +497,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   }
   else
   {
-    ramulator::Request req(packet.address,ramulator::Request::Type::READ);
-    return(mem_controller->send(req));
+    return(ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu,[this](Ramulator::Request& req){}));
   }
   #else
   auto& channel = channels[dram_get_channel(packet.address)];
@@ -550,8 +523,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
 
   #ifdef RAMULATOR
-  ramulator::Request req(packet.address,ramulator::Request::Type::WRITE);
-  return(mem_controller->send(req));
+  return(ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address, packet.cpu, [this](Ramulator::Request& req){}));
   #else
   auto& channel = channels[dram_get_channel(packet.address)];
 

@@ -32,19 +32,12 @@
 #include "operable.h"
 
 #ifdef RAMULATOR
-#include "../ramulator/src/Config.h"
-#include "../ramulator/src/Request.h"
-#include "../ramulator/src/MemoryFactory.h"
-#include "../ramulator/src/Memory.h"
-#include "../ramulator/src/DDR3.h"
-#include "../ramulator/src/DDR4.h"
-#include "../ramulator/src/LPDDR3.h"
-#include "../ramulator/src/LPDDR4.h"
-#include "../ramulator/src/GDDR5.h"
-#include "../ramulator/src/WideIO.h"
-#include "../ramulator/src/WideIO2.h"
-#include "../ramulator/src/HBM.h"
-#include "../ramulator/src/SALP.h"
+#include "../ramulator2/src/base/base.h"
+#include "../ramulator2/src/base/request.h"
+#include "../ramulator2/src/base/config.h"
+#include "../ramulator2/src/frontend/frontend.h"
+#include "../ramulator2/src/memory_system/memory_system.h"
+
 #include <map>
 namespace ramulator
 {
@@ -143,6 +136,30 @@ struct DRAM_CHANNEL final : public champsim::operable {
   unsigned long get_column(uint64_t address) const;
 };
 
+
+#ifdef RAMULATOR
+
+  namespace Ramulator {
+
+    //here is our frontend type
+    class ChampSimRamulator : public IFrontEnd, public Implementation {
+    RAMULATOR_REGISTER_IMPLEMENTATION(IFrontEnd, ChampSimRamulator, "ChampSim", "ChampSim frontend.")
+
+    public:
+      void init() override { };
+      void tick() override { };
+
+      bool receive_external_requests(int req_type_id, Addr_t addr, int source_id, std::function<void(Request&)> callback) override {
+        return m_memory_system->send({addr, req_type_id, source_id, callback});
+      }
+
+    private:
+      bool is_finished() override { return true; };
+    };
+  }
+
+#endif
+
 class MEMORY_CONTROLLER : public champsim::operable
 {
   using channel_type = champsim::channel;
@@ -155,7 +172,11 @@ class MEMORY_CONTROLLER : public champsim::operable
   bool add_wq(const request_type& packet);
 
   #ifdef RAMULATOR
-  ramulator::MemoryBase *mem_controller;
+  std::string config_path;
+  Ramulator::IFrontEnd* ramulator2_frontend;
+  Ramulator::IMemorySystem* ramulator2_memorysystem;
+
+
   struct RAMULATOR_Q_ENTRY
   {
     long addr;
