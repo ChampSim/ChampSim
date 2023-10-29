@@ -101,7 +101,7 @@ def make_part(src_dirs, dest_dir, build_id):
     dir_varnames, obj_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
     return dir_varnames, obj_varnames
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main, pmem):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({
         'Build ID': build_id,
@@ -141,8 +141,12 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
         objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
 
     yield from __do_dependency(objs, [exec_fname], [os.path.dirname(exec_fname)])
-    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
 
+    #ramulator support (add DRAMULATOR to flags and set model flag)
+    if pmem['model'] == 'ramulator':
+        yield from assign_variable('RAMULATOR_MODEL', '1')
+
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
     yield from append_variable('executable_name', exec_fname)
     yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=[exec_fname])
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))

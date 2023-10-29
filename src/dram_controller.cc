@@ -43,26 +43,10 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 {
   #ifdef RAMULATOR
   YAML::Node config;
-  config["Frontend"]["impl"] = "ChampSim"; //leave
-  config["Frontend"]["clock ratio"] = 1; //leave 1
-  config["Frontend"]["num_expected_insts"] = 0; //probaby okay to leave this 0
-  config["Frontend"]["Translation"]["impl"] = "None"; //leave
-  config["MemorySystem"]["impl"] = "GenericDRAM"; //needs parameterized
-  config["MemorySystem"]["clock_ratio"] = 1; //leave
-  config["MemorySystem"]["DRAM"]["impl"] = "DDR4"; //needs parameterized
-  config["MemorySystem"]["DRAM"]["org"]["preset"] = "DDR4_4Gb_x8"; //needs parameterized
-  config["MemorySystem"]["DRAM"]["org"]["channel"] = DRAM_CHANNELS; //good
-  config["MemorySystem"]["DRAM"]["org"]["rank"] = DRAM_RANKS; //good
-  config["MemorySystem"]["DRAM"]["timing"]["preset"] = "DDR4_3200W"; //needs parameterized
-  config["MemorySystem"]["Controller"]["impl"] = "Generic"; //needs parameterized
-  config["MemorySystem"]["Controller"]["Scheduler"]["impl"] = "FRFCFS"; //needs parameterized
-  config["MemorySystem"]["Controller"]["RefreshManager"]["impl"] = "AllBank"; //needs parameterized
-  config["MemorySystem"]["Controller"]["plugins"] = ""; //needs parameterized
-  config["MemorySystem"]["AddrMapper"]["impl"] = "RoBaRaCoCh"; //needs parameterized
 
-  //this line can be used to instead read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
+  //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
-  //config = Ramulator::Config::parse_config_file(config_path, {});
+  config = Ramulator::Config::parse_config_file(RAMULATOR_CONFIG, {});
 
   //create our frontend (us) and the memory system (ramulator)
   ramulator2_frontend = Ramulator::Factory::create_frontend(config);
@@ -343,7 +327,7 @@ void MEMORY_CONTROLLER::initialize()
 {
   #ifdef RAMULATOR
   //ramulator will print this information out upon startup. We might be able to derive size somehow
-  fmt::print("Refer to Ramulator configuration for Off-chip DRAM Size\n");
+  fmt::print("Refer to Ramulator configuration for Off-chip DRAM Size and Configuration\n");
   #else
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
   fmt::print("Off-chip DRAM Size: ");
@@ -360,10 +344,6 @@ void DRAM_CHANNEL::initialize() {}
 
 void MEMORY_CONTROLLER::begin_phase()
 {
-  #ifdef RAMULATOR
-  //reset stats in Ramulator (once I figure out how to do this in Ramulator2)
-  //Stats::reset_stats();
-  #endif
 
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
@@ -387,8 +367,11 @@ void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
   #ifdef RAMULATOR
   //this happens to also print stats. We should probably disable the first phase printout and reset stats?
-  ramulator2_frontend->finalize();
-  ramulator2_memorysystem->finalize();
+  if(!warmup)
+  {
+    ramulator2_frontend->finalize();
+    ramulator2_memorysystem->finalize();
+  }
   #endif
 
   for (auto& chan : channels) {
@@ -507,38 +490,55 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     }
   };
   //if packet needs response, we need to track its data to return later
-  if(packet.response_requested)
+  if(!warmup)
   {
-    DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
-    pkt.to_return = {&ul->returned};
-    bool success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu, return_packet_rq_rr);
-    if(success)
-    RAMULATOR_RQ.emplace(RAMULATOR_RQ.end(),RAMULATOR_Q_ENTRY{packet.address,pkt});
+    //if not warmup
+    if(packet.response_requested)
+    {
+      DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
+      pkt.to_return = {&ul->returned};
+      bool success = ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu, return_packet_rq_rr);
+      if(success)
+      RAMULATOR_RQ.emplace(RAMULATOR_RQ.end(),RAMULATOR_Q_ENTRY{packet.address,pkt});
 
-    return(success);
+      return(success);
+    }
+    else
+    {
+      //otherwise feed to ramulator directly with no response requested
+      return(ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu,[this](Ramulator::Request& req){}));
+    }
   }
   else
   {
-    //otherwise feed to ramulator directly with no response requested
-    return(ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu,[this](Ramulator::Request& req){}));
+    //if warmup, just return true and send necessary responses
+    if(packet.response_requested)
+    {
+        response_type response{packet.address, packet.v_address, packet.data,
+                              packet.pf_metadata, packet.instr_depend_on_me};
+        for (auto* ret : {&ul->returned}) {
+          ret->push_back(response);
+        }
+    }
+    return(true);
   }
-  #else
-  auto& channel = channels[dram_get_channel(packet.address)];
+    #else
+    auto& channel = channels[dram_get_channel(packet.address)];
 
-  // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
-      rq_it != std::end(channel.RQ)) {
-    *rq_it = DRAM_CHANNEL::request_type{packet};
-    rq_it->value().forward_checked = false;
-    rq_it->value().event_cycle = current_cycle;
-    if (packet.response_requested) {
-      rq_it->value().to_return = {&ul->returned};
+    // Find empty slot
+    if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
+        rq_it != std::end(channel.RQ)) {
+      *rq_it = DRAM_CHANNEL::request_type{packet};
+      rq_it->value().forward_checked = false;
+      rq_it->value().event_cycle = current_cycle;
+      if (packet.response_requested) {
+        rq_it->value().to_return = {&ul->returned};
+      }
+
+      return true;
     }
 
-    return true;
-  }
-
-  return false;
+    return false;
   #endif
 }
 
@@ -547,7 +547,9 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
   #ifdef RAMULATOR
   //if ramulator, feed directly. Since its a write, no response is needed
+  if(!warmup)
   return(ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address, packet.cpu, [this](Ramulator::Request& req){}));
+  return(true);
   #else
   auto& channel = channels[dram_get_channel(packet.address)];
 

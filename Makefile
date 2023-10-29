@@ -13,13 +13,6 @@ INC=
 
 all: all_execs
 
-#if ramulator exists include the library as well as the compile flags
-ifneq ($(wildcard $(RAMULATOR_DIR)/.),)
-LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)deps/yaml-cpp-build -lramulator -lspdlog -lyaml-cpp $(LDLIBS)
-CPPFLAGS += -DRAMULATOR
-INC += -I$(RAMULATOR_DIR)/src
-endif
-
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 
 # Generated configuration makefile contains:
@@ -28,6 +21,12 @@ test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 #  - $(objs), the list of all object files corresponding to sources
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
+
+#if ramulator exists include the library as well as the compile flags
+ifeq ($(RAMULATOR_MODEL),1)
+LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)deps/yaml-cpp-build -lramulator -lspdlog -lyaml-cpp $(LDLIBS)
+CPPFLAGS += -DRAMULATOR -I$(RAMULATOR_DIR)/src
+endif
 
 all_execs: $(filter-out $(test_main_name), $(executable_name))
 
@@ -56,7 +55,7 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 
 # All .o files should be made like .cc files
 $(objs):
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(INC) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 
 # Link test executable

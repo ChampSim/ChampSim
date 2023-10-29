@@ -38,7 +38,11 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
   if (required_bits > champsim::lg2(dram.size())) {
-    fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
+    #ifdef RAMULATOR
+      fmt::print("WARNING: Ramulator's physical memory size may be smaller than virtual memory size.\n");
+    #else
+      fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
+    #endif
   }
 }
 

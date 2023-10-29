@@ -30,7 +30,6 @@ def get_constants_file(env, pmem):
         f'inline constexpr std::size_t NUM_CPUS = {env["num_cores"]};',
         'inline constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);',
         'inline constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);',
-
         f'inline constexpr uint64_t DRAM_IO_FREQ = {pmem["io_freq"]};',
         f'inline constexpr std::size_t DRAM_CHANNELS = {pmem["channels"]};',
         f'inline constexpr std::size_t DRAM_RANKS = {pmem["ranks"]};',
@@ -40,7 +39,7 @@ def get_constants_file(env, pmem):
         f'inline constexpr std::size_t DRAM_CHANNEL_WIDTH = {pmem["channel_width"]};',
         f'inline constexpr std::size_t DRAM_WQ_SIZE = {pmem["wq_size"]};',
         f'inline constexpr std::size_t DRAM_RQ_SIZE = {pmem["rq_size"]};',
-
+        f'inline constexpr char RAMULATOR_CONFIG[] = "{pmem["ramulator_config"]}";' if pmem["model"] == "ramulator" else '',
         '#ifdef SET_ASIDE_CHAMPSIM_MODULE',
         '#undef SET_ASIDE_CHAMPSIM_MODULE',
         '#define CHAMPSIM_MODULE',

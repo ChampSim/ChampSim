@@ -136,11 +136,11 @@ void champsim::plain_printer::print(champsim::phase_stats& stats)
     print(stat);
   }
 
-  fmt::print(stream, "\nDRAM Statistics\n");
   #ifdef RAMULATOR
   //need to do this, perhaps disable when ramulator is active?
   
   #else
+  fmt::print(stream, "\nDRAM Statistics\n");
   for (const auto& stat : stats.roi_dram_stats) {
     print(stat);
   }
