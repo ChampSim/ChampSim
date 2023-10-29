@@ -11,16 +11,13 @@ INC=
 
 .PHONY: all all_execs clean configclean test makedirs
 
+all: all_execs
 
-
-#if ramulator exists make it and include the library as well as the compile flags
+#if ramulator exists include the library as well as the compile flags
 ifneq ($(wildcard $(RAMULATOR_DIR)/.),)
 LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)deps/yaml-cpp-build -lramulator -lspdlog -lyaml-cpp $(LDLIBS)
 CPPFLAGS += -DRAMULATOR
 INC += -I$(RAMULATOR_DIR)/src
-all: ramulator all_execs
-else
-all: all_execs
 endif
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
@@ -31,11 +28,6 @@ test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 #  - $(objs), the list of all object files corresponding to sources
 #  - All dependencies and flags assigned according to the modules
 include _configuration.mk
-
-#create ramulator library and copy header files to local directory
-ramulator:
-	bash -c "cmake -DYAML_BUILD_SHARED_LIBS=ON $(RAMULATOR_DIR)";
-	bash -c "cd $(RAMULATOR_DIR) && make -j";
 
 all_execs: $(filter-out $(test_main_name), $(executable_name))
 

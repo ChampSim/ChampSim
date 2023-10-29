@@ -42,12 +42,39 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
     : champsim::operable(freq_scale), queues(std::move(ul))
 {
   #ifdef RAMULATOR
-  YAML::Node config = Ramulator::Config::parse_config_file(config_path, {});
+  YAML::Node config;
+  config["Frontend"]["impl"] = "ChampSim"; //leave
+  config["Frontend"]["clock ratio"] = 1; //leave 1
+  config["Frontend"]["num_expected_insts"] = 0; //probaby okay to leave this 0
+  config["Frontend"]["Translation"]["impl"] = "None"; //leave
+  config["MemorySystem"]["impl"] = "GenericDRAM"; //needs parameterized
+  config["MemorySystem"]["clock_ratio"] = 1; //leave
+  config["MemorySystem"]["DRAM"]["impl"] = "DDR4"; //needs parameterized
+  config["MemorySystem"]["DRAM"]["org"]["preset"] = "DDR4_4Gb_x8"; //needs parameterized
+  config["MemorySystem"]["DRAM"]["org"]["channel"] = DRAM_CHANNELS; //good
+  config["MemorySystem"]["DRAM"]["org"]["rank"] = DRAM_RANKS; //good
+  config["MemorySystem"]["DRAM"]["timing"]["preset"] = "DDR4_3200W"; //needs parameterized
+  config["MemorySystem"]["Controller"]["impl"] = "Generic"; //needs parameterized
+  config["MemorySystem"]["Controller"]["Scheduler"]["impl"] = "FRFCFS"; //needs parameterized
+  config["MemorySystem"]["Controller"]["RefreshManager"]["impl"] = "AllBank"; //needs parameterized
+  config["MemorySystem"]["Controller"]["plugins"] = ""; //needs parameterized
+  config["MemorySystem"]["AddrMapper"]["impl"] = "RoBaRaCoCh"; //needs parameterized
+
+  //this line can be used to instead read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
+  //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
+  //config = Ramulator::Config::parse_config_file(config_path, {});
+
+  //create our frontend (us) and the memory system (ramulator)
   ramulator2_frontend = Ramulator::Factory::create_frontend(config);
   ramulator2_memorysystem = Ramulator::Factory::create_memory_system(config);
 
+  //connect the two. we can use this connection to get some more information from ramulator
   ramulator2_frontend->connect_memory_system(ramulator2_memorysystem);
   ramulator2_memorysystem->connect_frontend(ramulator2_frontend);
+
+  //correct clock scale for ramulator2 frequency. Looks like this may point to an inaccuracy in our own model:
+  //although the data bus is running at freq f, the memory controller runs at half this (f/2). This is where "DDR" gets its name
+  CLOCK_SCALE = ((ramulator2_memorysystem->get_tCK() / (1000.0/double(DRAM_IO_FREQ)))*(CLOCK_SCALE+1.0)) - 1.0;
 
   #else
   for (std::size_t i{0}; i < DRAM_CHANNELS; ++i) {
@@ -69,20 +96,11 @@ long MEMORY_CONTROLLER::operate()
   long progress{0};
 
   initiate_requests();
+
   #ifdef RAMULATOR
-
-  int frontend_tick = ramulator2_frontend->get_clock_ratio();
-  int mem_tick = ramulator2_memorysystem->get_clock_ratio();
-
-  int tick_mult = frontend_tick * mem_tick;
-
-  if (((current_cycle % tick_mult) % mem_tick) == 0) {
-    ramulator2_frontend->tick();
-  }
-  if ((current_cycle % tick_mult) % frontend_tick == 0) {
-    ramulator2_memorysystem->tick();
-  }
-  //Stats::curTick++;
+  //tick ramulator.
+  //we will assume no deadlock, since there are no other ways to measure progress
+  ramulator2_memorysystem->tick();
   progress = 1;
   #else
   for (auto& channel : channels) {
@@ -324,6 +342,7 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
 void MEMORY_CONTROLLER::initialize()
 {
   #ifdef RAMULATOR
+  //ramulator will print this information out upon startup. We might be able to derive size somehow
   fmt::print("Refer to Ramulator configuration for Off-chip DRAM Size\n");
   #else
   long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
@@ -342,6 +361,7 @@ void DRAM_CHANNEL::initialize() {}
 void MEMORY_CONTROLLER::begin_phase()
 {
   #ifdef RAMULATOR
+  //reset stats in Ramulator (once I figure out how to do this in Ramulator2)
   //Stats::reset_stats();
   #endif
 
@@ -366,6 +386,7 @@ void DRAM_CHANNEL::begin_phase() {}
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
   #ifdef RAMULATOR
+  //this happens to also print stats. We should probably disable the first phase printout and reset stats?
   ramulator2_frontend->finalize();
   ramulator2_memorysystem->finalize();
   #endif
@@ -467,6 +488,7 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
   #ifdef RAMULATOR
+  //return handler, to make sure packet responses get delivered
   std::function<void(Ramulator::Request&)> return_packet_rq_rr = [this](Ramulator::Request& req)
   {
     for(auto it = RAMULATOR_RQ.begin(); it != RAMULATOR_RQ.end(); it++)
@@ -484,7 +506,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
       }
     }
   };
-  //attach channel if need response and wait for response
+  //if packet needs response, we need to track its data to return later
   if(packet.response_requested)
   {
     DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
@@ -497,6 +519,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   }
   else
   {
+    //otherwise feed to ramulator directly with no response requested
     return(ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address, packet.cpu,[this](Ramulator::Request& req){}));
   }
   #else
@@ -523,6 +546,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
 
   #ifdef RAMULATOR
+  //if ramulator, feed directly. Since its a write, no response is needed
   return(ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address, packet.cpu, [this](Ramulator::Request& req){}));
   #else
   auto& channel = channels[dram_get_channel(packet.address)];
@@ -547,6 +571,8 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
  * offset |
  */
 
+//These are all inaccurate and will need to be updated when using Ramulator. We can grab some of these values from the config
+//others are part of spec that aren't as easily obtained
 unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
 {
   int shift = LOG2_BLOCK_SIZE;

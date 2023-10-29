@@ -172,10 +172,8 @@ class MEMORY_CONTROLLER : public champsim::operable
   bool add_wq(const request_type& packet);
 
   #ifdef RAMULATOR
-  std::string config_path;
   Ramulator::IFrontEnd* ramulator2_frontend;
   Ramulator::IMemorySystem* ramulator2_memorysystem;
-
 
   struct RAMULATOR_Q_ENTRY
   {

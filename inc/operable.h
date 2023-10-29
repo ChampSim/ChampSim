@@ -23,7 +23,8 @@ namespace champsim
 class operable
 {
 public:
-  const double CLOCK_SCALE;
+  //had to made this constant to facilitate ramulator2 support. Perhaps there is a better way to update the clock scale
+  double CLOCK_SCALE;
 
   double leap_operation = 0;
   uint64_t current_cycle = 0;
