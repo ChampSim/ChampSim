@@ -48,6 +48,15 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
   config = Ramulator::Config::parse_config_file(RAMULATOR_CONFIG, {});
 
+  //force frontend to be champsim, clock ratio == 1, no instruction limit, and no v->p address translation layers
+  config["Frontend"]["impl"] = "ChampSim";
+  config["Frontend"]["clock_ratio"] = 1;
+  config["Frontend"]["num_expected_insts"] = 0;
+  config["Frontend"]["Translation"]["impl"] = "None";
+
+  //force memory controller clock scale to 1
+  config["MemorySystem"]["clock_ratio"] = 1;
+
   //create our frontend (us) and the memory system (ramulator)
   ramulator2_frontend = Ramulator::Factory::create_frontend(config);
   ramulator2_memorysystem = Ramulator::Factory::create_memory_system(config);
@@ -58,6 +67,9 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp
 
   //correct clock scale for ramulator2 frequency. Looks like this may point to an inaccuracy in our own model:
   //although the data bus is running at freq f, the memory controller runs at half this (f/2). This is where "DDR" gets its name
+
+  //not sure how to do this any better. I don't like relying on DRAM_IO_FREQ, but we also can't determine this value
+  //ahead of time, since it is controlled by the ramulator config file.
   CLOCK_SCALE = ((ramulator2_memorysystem->get_tCK() / (1000.0/double(DRAM_IO_FREQ)))*(CLOCK_SCALE+1.0)) - 1.0;
 
   #else
