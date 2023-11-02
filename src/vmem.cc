@@ -37,13 +37,13 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
   if (required_bits > std::numeric_limits<uint64_t>::digits) {
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
+  #ifdef RAMULATOR
+  fmt::print("WARNING: Ramulator's physical memory size may be smaller than virtual memory size.\n");
+  #else
   if (required_bits > champsim::lg2(dram.size())) {
-    #ifdef RAMULATOR
-      fmt::print("WARNING: Ramulator's physical memory size may be smaller than virtual memory size.\n");
-    #else
       fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
-    #endif
   }
+  #endif
 }
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }

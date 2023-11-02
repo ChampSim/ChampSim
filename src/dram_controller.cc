@@ -83,7 +83,7 @@ long MEMORY_CONTROLLER::operate()
 
   #ifdef RAMULATOR
   //tick ramulator.
-  //we will assume no deadlock, since there are no other ways to measure progress
+  //we will assume no deadlock, since there are no ways to measure progress
   ramulator2_memorysystem->tick();
   progress = 1;
   #else
@@ -366,7 +366,7 @@ void DRAM_CHANNEL::begin_phase() {}
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
   #ifdef RAMULATOR
-  //this happens to also print stats. We should probably disable the first phase printout and reset stats?
+  //this happens to also print stats. Finalize for each phase past the warmup
   if(!warmup)
   {
     ramulator2_frontend->finalize();
@@ -577,8 +577,14 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 //others are part of spec that aren't as easily obtained
 unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
 {
+  #ifdef RAMULATOR
+  //this is a sanity check, prevent use of non-applicable command
+  assert(false);
+  return(0);
+  #else
   int shift = LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
+  #endif
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
@@ -591,29 +597,57 @@ unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const { return c
 
 unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
 {
+  #ifdef RAMULATOR
+  assert(false);
+  return(0);
+  #else
   int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(BANKS));
+  #endif
 }
 
 unsigned long DRAM_CHANNEL::get_column(uint64_t address) const
 {
+  #ifdef RAMULATOR
+  assert(false);
+  return(0);
+  #else
   auto shift = champsim::lg2(BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(COLUMNS));
+  #endif
 }
 
 unsigned long DRAM_CHANNEL::get_rank(uint64_t address) const
 {
+  #ifdef RAMULATOR
+  assert(false);
+  return(0);
+  #else
   auto shift = champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(RANKS));
+  #endif
 }
 
 unsigned long DRAM_CHANNEL::get_row(uint64_t address) const
 {
+  #ifdef RAMULATOR
+  assert(false);
+  return(0);
+  #else
   auto shift = champsim::lg2(RANKS) + champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(ROWS));
+  #endif
 }
 
-std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+std::size_t MEMORY_CONTROLLER::size() const 
+{ 
+  #ifdef RAMULATOR
+  assert(false);
+  return(0);
+  #else
+  return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE;
+  #endif
+}
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()
