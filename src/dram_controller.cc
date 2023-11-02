@@ -580,7 +580,7 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
   #ifdef RAMULATOR
   //this is a sanity check, prevent use of non-applicable command
   assert(false);
-  return(0);
+  return(address);
   #else
   int shift = LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
@@ -599,7 +599,7 @@ unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
 {
   #ifdef RAMULATOR
   assert(false);
-  return(0);
+  return(address);
   #else
   int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(BANKS));
@@ -610,7 +610,7 @@ unsigned long DRAM_CHANNEL::get_column(uint64_t address) const
 {
   #ifdef RAMULATOR
   assert(false);
-  return(0);
+  return(address);
   #else
   auto shift = champsim::lg2(BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(COLUMNS));
@@ -621,7 +621,7 @@ unsigned long DRAM_CHANNEL::get_rank(uint64_t address) const
 {
   #ifdef RAMULATOR
   assert(false);
-  return(0);
+  return(address);
   #else
   auto shift = champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(RANKS));
@@ -632,7 +632,7 @@ unsigned long DRAM_CHANNEL::get_row(uint64_t address) const
 {
   #ifdef RAMULATOR
   assert(false);
-  return(0);
+  return(address);
   #else
   auto shift = champsim::lg2(RANKS) + champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(ROWS));
