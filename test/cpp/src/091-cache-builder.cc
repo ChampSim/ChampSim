@@ -56,6 +56,16 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
   REQUIRE(uut.NUM_SET == 6);
 }
 
+TEST_CASE("Specifying the size infers the cache's number of sets") {
+  CACHE uut{champsim::cache_builder{}.size(16*1024).ways(16)};
+  REQUIRE(uut.NUM_SET == 16);
+}
+
+TEST_CASE("Specifying the size infers the cache's number of ways") {
+  CACHE uut{champsim::cache_builder{}.size(16*1024).sets(16)};
+  REQUIRE(uut.NUM_WAY == 16);
+}
+
 TEST_CASE("The MSHR factor uses the number of upper levels to determine the cache's default number of MSHRs") {
   auto num_uls = GENERATE(1u,2u,4u,6u);
   auto mshr_factor = 2u;
@@ -119,8 +129,8 @@ TEST_CASE("The bandwidth factor uses the number of upper levels to determine the
 
   CACHE uut{buildA};
 
-  CHECK(uut.MAX_TAG == bandwidth_factor*num_uls);
-  CHECK(uut.MAX_FILL == bandwidth_factor*num_uls);
+  CHECK(uut.MAX_TAG == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
 }
 
 TEST_CASE("The bandwidth factor can control the cache's default tag bandwidth") {
@@ -136,8 +146,8 @@ TEST_CASE("The bandwidth factor can control the cache's default tag bandwidth") 
 
   CACHE uut{buildA};
 
-  CHECK(uut.MAX_TAG == bandwidth_factor*num_uls);
-  CHECK(uut.MAX_FILL == bandwidth_factor*num_uls);
+  CHECK(uut.MAX_TAG == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{bandwidth_factor*num_uls});
 }
 
 TEST_CASE("Specifying the tag bandwidth overrides the bandwidth factor") {
@@ -151,13 +161,13 @@ TEST_CASE("Specifying the tag bandwidth overrides the bandwidth factor") {
   buildA.upper_levels(std::move(channel_pointers));
   buildA.bandwidth_factor((double)bandwidth_factor);
 
-  buildA.tag_bandwidth(6);
-  buildA.fill_bandwidth(7);
+  buildA.tag_bandwidth(champsim::bandwidth::maximum_type{6});
+  buildA.fill_bandwidth(champsim::bandwidth::maximum_type{7});
 
   CACHE uut{buildA};
 
-  CHECK(uut.MAX_TAG == 6);
-  CHECK(uut.MAX_FILL == 7);
+  CHECK(uut.MAX_TAG == champsim::bandwidth::maximum_type{6});
+  CHECK(uut.MAX_FILL == champsim::bandwidth::maximum_type{7});
 }
 
 TEST_CASE("If the hit latency is not specified, it is derived from the total latency") {

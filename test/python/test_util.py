@@ -1,5 +1,9 @@
 import unittest
 import operator
+import itertools
+import tempfile
+import subprocess
+import os
 
 import config.util
 
@@ -127,6 +131,47 @@ class PropogateDownTests(unittest.TestCase):
         expected_result = [{ 'test': 1 }, { 'test': 1 }, { 'test': 2 }, { 'test': 2 }, { 'test': 2 }]
         self.assertEqual(list(config.util.propogate_down(path, 'test')), expected_result)
 
+class CutTests(unittest.TestCase):
+    def test_empty_gives_two_empty(self):
+        for cutpoint in (1,-1):
+            with self.subTest(n=cutpoint):
+                testval = []
+                head, tail = config.util.cut(testval, n=cutpoint)
+                self.assertEqual(list(head), [])
+                self.assertEqual(list(tail), [])
+
+    def test_length_one_can_go_to_head(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=1)
+        self.assertEqual(list(head), testval)
+        self.assertEqual(list(tail), [])
+
+    def test_length_one_can_go_to_tail(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=-1)
+        self.assertEqual(list(head), [])
+        self.assertEqual(list(tail), testval)
+
+    def test_positive_count_that_exceeds_sends_all_to_head(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=2)
+        self.assertEqual(list(head), testval)
+        self.assertEqual(list(tail), [])
+
+    def test_negative_count_that_exceeds_sends_all_to_tail(self):
+        testval = ['teststring']
+        head, tail = config.util.cut(testval, n=-2)
+        self.assertEqual(list(head), [])
+        self.assertEqual(list(tail), testval)
+
+    def test_middle_splits(self):
+        testval = ['teststringa', 'teststringb', 'teststringc']
+        for cutpoint in (1,2,-1,-2):
+            with self.subTest(n=cutpoint):
+                head, tail = config.util.cut(testval, n=cutpoint)
+                self.assertEqual(list(head), testval[:cutpoint])
+                self.assertEqual(list(tail), testval[cutpoint:])
+
 class AppendExceptLastTests(unittest.TestCase):
     def test_empty_does_not_append(self):
         testval = []
@@ -140,11 +185,12 @@ class AppendExceptLastTests(unittest.TestCase):
 
     def test_longer_length_appends(self):
         for length in (2,4,8,16):
-            with self.subTest(length=length):
-                testval = ['teststring'] * length
-                result = list(config.util.append_except_last(testval, 'a'))
-                expected = ['teststringa'] * (length-1) + ['teststring']
-                self.assertEqual(result, expected)
+            testval = ['teststring'] * length
+            result = config.util.append_except_last(testval, 'a')
+            expected = ['teststringa'] * (length-1) + ['teststring']
+            for i,elem_pair in enumerate(itertools.zip_longest(result, expected, fillvalue=None)):
+                with self.subTest(iterable_length=length, element_index=i):
+                    self.assertEqual(*elem_pair)
 
 class DoForFirstTests(unittest.TestCase):
     def test_empty_does_not_transform(self):
@@ -159,3 +205,76 @@ class DoForFirstTests(unittest.TestCase):
                 result = list(config.util.do_for_first(lambda x: 'ABC', testval))
                 expected = ['ABC'] + ['teststring'] * (length-1)
                 self.assertEqual(result, expected)
+
+class MultilineTests(unittest.TestCase):
+    def test_empty_does_nothing(self):
+        self.assertEqual(list(config.util.multiline([])), [])
+
+    def test_shorter_than_length_yields_one_line(self):
+        testval = ['test']
+        self.assertEqual(list(config.util.multiline(testval, length=2)), ['test'])
+
+    def test_longer_than_length_groups_elements(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2)), ['testa testb', 'testc'])
+
+    def test_lines_can_indent(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2, indent=1)), ['testa testb', '  testc'])
+
+    def test_line_terminators_are_added(self):
+        testval = ['testa', 'testb', 'testc']
+        self.assertEqual(list(config.util.multiline(testval, length=2, line_end='x')), ['testa testbx', 'testc'])
+
+
+class YieldFromStar(unittest.TestCase):
+    class Generator:
+        def __init__(self, gen):
+            self.gen = gen
+            self.value = None
+
+        def __iter__(self):
+            self.value = yield from self.gen
+
+    @staticmethod
+    def empty_gen2():
+        if False:
+            yield None # never yield
+        return 'empty_gen_first', 'empty_gen_second'
+
+    @staticmethod
+    def empty_gen3():
+        if False:
+            yield None # never yield
+        return 'empty_gen_first', 'empty_gen_second', 'empty_gen_third'
+
+    @staticmethod
+    def identity_gen2(count):
+        yield from range(count)
+        return 'identity_first', 'identity_second'
+
+    def test_empty_collects_two(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.empty_gen2, (tuple(), tuple()), n=2))
+        yielded = list(iter(gen))
+        first, second = gen.value
+        self.assertEqual(yielded, [])
+        self.assertEqual(first, ['empty_gen_first', 'empty_gen_first'])
+        self.assertEqual(second, ['empty_gen_second', 'empty_gen_second'])
+
+    def test_empty_collects_three(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.empty_gen3, (tuple(), tuple()), n=3))
+        yielded = list(iter(gen))
+        first, second, third = gen.value
+        self.assertEqual(yielded, [])
+        self.assertEqual(first, ['empty_gen_first', 'empty_gen_first'])
+        self.assertEqual(second, ['empty_gen_second', 'empty_gen_second'])
+        self.assertEqual(third, ['empty_gen_third', 'empty_gen_third'])
+
+    def test_identity_collects_two(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.identity_gen2, ((2,), (4,)), n=2))
+        yielded = list(iter(gen))
+        first, second = gen.value
+        self.assertEqual(yielded, [0,1,0,1,2,3])
+        self.assertEqual(first, ['identity_first', 'identity_first'])
+        self.assertEqual(second, ['identity_second', 'identity_second'])
+

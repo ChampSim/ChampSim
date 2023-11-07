@@ -17,6 +17,7 @@
 #ifndef CORE_BUILDER_H
 #define CORE_BUILDER_H
 
+#include <cstdint>
 #include <limits>
 
 class CACHE;
@@ -42,14 +43,14 @@ struct core_builder_base {
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
   std::size_t m_sq_size{1};
-  unsigned m_fetch_width{1};
-  unsigned m_decode_width{1};
-  unsigned m_dispatch_width{1};
-  unsigned m_schedule_width{1};
-  unsigned m_execute_width{1};
-  unsigned m_lq_width{1};
-  unsigned m_sq_width{1};
-  unsigned m_retire_width{1};
+  champsim::bandwidth::maximum_type m_fetch_width{1};
+  champsim::bandwidth::maximum_type m_decode_width{1};
+  champsim::bandwidth::maximum_type m_dispatch_width{1};
+  champsim::bandwidth::maximum_type m_schedule_width{1};
+  champsim::bandwidth::maximum_type m_execute_width{1};
+  champsim::bandwidth::maximum_type m_lq_width{1};
+  champsim::bandwidth::maximum_type m_sq_width{1};
+  champsim::bandwidth::maximum_type m_retire_width{1};
   unsigned m_mispredict_penalty{};
   unsigned m_decode_latency{};
   unsigned m_dispatch_latency{};
@@ -57,8 +58,8 @@ struct core_builder_base {
   unsigned m_execute_latency{};
 
   CACHE* m_l1i{};
-  long int m_l1i_bw{1};
-  long int m_l1d_bw{1};
+  champsim::bandwidth::maximum_type m_l1i_bw{1};
+  champsim::bandwidth::maximum_type m_l1d_bw{1};
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
 };
@@ -90,22 +91,22 @@ public:
   self_type& rob_size(std::size_t rob_size_);
   self_type& lq_size(std::size_t lq_size_);
   self_type& sq_size(std::size_t sq_size_);
-  self_type& fetch_width(unsigned fetch_width_);
-  self_type& decode_width(unsigned decode_width_);
-  self_type& dispatch_width(unsigned dispatch_width_);
-  self_type& schedule_width(unsigned schedule_width_);
-  self_type& execute_width(unsigned execute_width_);
-  self_type& lq_width(unsigned lq_width_);
-  self_type& sq_width(unsigned sq_width_);
-  self_type& retire_width(unsigned retire_width_);
+  self_type& fetch_width(champsim::bandwidth::maximum_type fetch_width_);
+  self_type& decode_width(champsim::bandwidth::maximum_type decode_width_);
+  self_type& dispatch_width(champsim::bandwidth::maximum_type dispatch_width_);
+  self_type& schedule_width(champsim::bandwidth::maximum_type schedule_width_);
+  self_type& execute_width(champsim::bandwidth::maximum_type execute_width_);
+  self_type& lq_width(champsim::bandwidth::maximum_type lq_width_);
+  self_type& sq_width(champsim::bandwidth::maximum_type sq_width_);
+  self_type& retire_width(champsim::bandwidth::maximum_type retire_width_);
   self_type& mispredict_penalty(unsigned mispredict_penalty_);
   self_type& decode_latency(unsigned decode_latency_);
   self_type& dispatch_latency(unsigned dispatch_latency_);
   self_type& schedule_latency(unsigned schedule_latency_);
   self_type& execute_latency(unsigned execute_latency_);
   self_type& l1i(CACHE* l1i_);
-  self_type& l1i_bandwidth(long int l1i_bw_);
-  self_type& l1d_bandwidth(long int l1d_bw_);
+  self_type& l1i_bandwidth(champsim::bandwidth::maximum_type l1i_bw_);
+  self_type& l1d_bandwidth(champsim::bandwidth::maximum_type l1d_bw_);
   self_type& fetch_queues(champsim::channel* fetch_queues_);
   self_type& data_queues(champsim::channel* data_queues_);
 
@@ -194,56 +195,56 @@ auto champsim::core_builder<B, T>::sq_size(std::size_t sq_size_) -> self_type&
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::fetch_width(unsigned fetch_width_) -> self_type&
+auto champsim::core_builder<B, T>::fetch_width(champsim::bandwidth::maximum_type fetch_width_) -> self_type&
 {
   m_fetch_width = fetch_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::decode_width(unsigned decode_width_) -> self_type&
+auto champsim::core_builder<B, T>::decode_width(champsim::bandwidth::maximum_type decode_width_) -> self_type&
 {
   m_decode_width = decode_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::dispatch_width(unsigned dispatch_width_) -> self_type&
+auto champsim::core_builder<B, T>::dispatch_width(champsim::bandwidth::maximum_type dispatch_width_) -> self_type&
 {
   m_dispatch_width = dispatch_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::schedule_width(unsigned schedule_width_) -> self_type&
+auto champsim::core_builder<B, T>::schedule_width(champsim::bandwidth::maximum_type schedule_width_) -> self_type&
 {
   m_schedule_width = schedule_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::execute_width(unsigned execute_width_) -> self_type&
+auto champsim::core_builder<B, T>::execute_width(champsim::bandwidth::maximum_type execute_width_) -> self_type&
 {
   m_execute_width = execute_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::lq_width(unsigned lq_width_) -> self_type&
+auto champsim::core_builder<B, T>::lq_width(champsim::bandwidth::maximum_type lq_width_) -> self_type&
 {
   m_lq_width = lq_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::sq_width(unsigned sq_width_) -> self_type&
+auto champsim::core_builder<B, T>::sq_width(champsim::bandwidth::maximum_type sq_width_) -> self_type&
 {
   m_sq_width = sq_width_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::retire_width(unsigned retire_width_) -> self_type&
+auto champsim::core_builder<B, T>::retire_width(champsim::bandwidth::maximum_type retire_width_) -> self_type&
 {
   m_retire_width = retire_width_;
   return *this;
@@ -292,14 +293,14 @@ auto champsim::core_builder<B, T>::l1i(CACHE* l1i_) -> self_type&
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::l1i_bandwidth(long int l1i_bw_) -> self_type&
+auto champsim::core_builder<B, T>::l1i_bandwidth(champsim::bandwidth::maximum_type l1i_bw_) -> self_type&
 {
   m_l1i_bw = l1i_bw_;
   return *this;
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::l1d_bandwidth(long int l1d_bw_) -> self_type&
+auto champsim::core_builder<B, T>::l1d_bandwidth(champsim::bandwidth::maximum_type l1d_bw_) -> self_type&
 {
   m_l1d_bw = l1d_bw_;
   return *this;

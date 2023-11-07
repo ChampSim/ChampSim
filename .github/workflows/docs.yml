@@ -1,0 +1,46 @@
+name: Update Documentation
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - feature/*
+      - release/*
+
+permissions:
+  contents: write
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Environment
+        run: python3 -m pip install -r docs/requirements.txt
+
+      - name: Build Documentation
+        run: sphinx-multiversion docs _build
+
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          clean: false
+
+      - name: Install HTML sources
+        run: rsync -av _build/ .
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          message: |
+            Update documentation for branch ${{ github.ref }}.
+
+            Author: ${{ github.event.head_commit.author.name }}
+            Committer: ${{ github.event.head_commit.committer.name }}
+
+            ${{ github.event.head_commit.message }}
+
+

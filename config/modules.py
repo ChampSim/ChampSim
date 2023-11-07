@@ -17,6 +17,7 @@ import itertools
 import functools
 
 from . import util
+from . import cxx
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
@@ -24,18 +25,23 @@ def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(
     return os.path.relpath(path, start=start).translate(fname_translation_table)
 
 class ModuleSearchContext:
-    def __init__(self, paths):
+    def __init__(self, paths, verbose=False):
         self.paths = [p for p in paths if os.path.exists(p) and os.path.isdir(p)]
+        self.verbose = verbose
 
     def data_from_path(self, path):
         name = get_module_name(path)
         is_legacy = ('__legacy__' in [*itertools.chain(*(f for _,_,f in os.walk(path)))])
-        return {
+        retval = {
             'name': name,
             'path': path,
             'legacy': is_legacy,
             'class': 'champsim::modules::generated::'+name if is_legacy else os.path.basename(path)
         }
+
+        if self.verbose:
+            print('M:', retval)
+        return retval
 
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
@@ -44,8 +50,11 @@ class ModuleSearchContext:
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
         ))
-        #print(paths)
-        path = os.path.relpath(os.path.expandvars(os.path.expanduser(next(filter(os.path.exists, paths)))))
+
+        paths = map(os.path.expandvars, paths)
+        paths = map(os.path.expanduser, paths)
+        paths = filter(os.path.exists, paths)
+        path = os.path.relpath(next(paths, None))
 
         return self.data_from_path(path)
 
@@ -123,38 +132,36 @@ def get_repl_data(module_data):
     func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
     return util.chain(module_data, { 'func_map': func_map })
 
-def get_module_opts_lines(module_data):
+###
+# Legacy module support below
+###
+
+def get_legacy_module_opts_lines(module_data):
     '''
     Generate an iterable of the compiler options for a particular module
     '''
-    yield '-Wno-unused-parameter'
-    yield '-DCHAMPSIM_MODULE'
-    if module_data.get('legacy'):
-        full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
-        yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
+    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
+    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
 def mangled_declaration(fname, args, rtype, module_data):
     ''' Generate C++ code giving the mangled module specialization functions. '''
     argstring = ', '.join(a[0] for a in args)
     return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
+def variant_function_body(fname, args, module_data):
+    argnamestring = ', '.join(a[1] for a in args)
+    body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
+    yield from cxx.function(fname, body, args=args)
+    yield ''
+
 def get_discriminator(variant_data, module_data, classname):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
     discriminator_classname = module_data['class'].split('::')[-1]
-    yield f'struct {discriminator_classname} : {classname}'
-    yield '{'
-    yield f'  using {classname}::{classname};'
-
-    for fname, args, _ in variant_data:
-        argstring = ', '.join((a[0]+' '+a[1]) for a in args)
-        argnamestring = ', '.join(a[1] for a in args)
-        yield f'  auto {fname}({argstring})'
-        yield '  {'
-        yield f'    return intern_->{module_data["func_map"][fname]}({argnamestring});'
-        yield '  }'
-        yield ''
-
-    yield '};'
+    body = itertools.chain(
+        (f'using {classname}::{classname};',),
+        *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
+    )
+    yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
