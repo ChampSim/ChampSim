@@ -1,6 +1,7 @@
 #pragma once
-#include "global.hpp"
-#include "SVMClassifier.hpp"
+#include  "svm4ap/global.hpp"
+#include "backend/SVMClassifier.hpp"
+
 
 class StandardSVM : public SVM{
 
@@ -42,8 +43,8 @@ class StandardSVM : public SVM{
             this->clean();
         }
 
-        void copyTo(shared_ptr<SVM>& svm){
-            svm = shared_ptr<SVM>(
+        void copyTo(std::shared_ptr<SVM>& svm){
+            svm = std::shared_ptr<SVM>(
                 (SVM*) new StandardSVM(*this)
             );
         }

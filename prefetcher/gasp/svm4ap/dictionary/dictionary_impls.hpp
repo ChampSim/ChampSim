@@ -1,10 +1,10 @@
 #pragma once
-#include "global.hpp"
+#include "svm4ap/global.hpp"
 
 struct OriginalDictionaryEntry{
     int64_t delta;
     uint16_t confidence;
-}
+};
 
 class OriginalDictionary : public Dictionary{
 public:
@@ -22,12 +22,12 @@ public:
 
     OriginalDictionary(uint8_t numClasses) : 
         numClasses(numClasses), maxConfidence(255), confidenceStep(32), initialConfidence(64)
-        )
+        
     {
         for(int i = 0; i < numClasses; i++){
             OriginalDictionaryEntry entry = {
                 0, 0,
-            }
+            };
             this->entries.push_back(entry);
         }
     }
@@ -40,12 +40,12 @@ public:
         for(int i = 0; i < numClasses; i++){
             OriginalDictionaryEntry entry = {
                 0, 0,
-            }
+            };
             this->entries.push_back(entry);
         }
     }
 
-    OriginalDictionary(const& OriginalDictionary dictionary):
+    OriginalDictionary(const OriginalDictionary& dictionary):
         numClasses(dictionary.numClasses), maxConfidence(dictionary.maxConfidence), 
         confidenceStep(dictionary.confidenceStep), initialConfidence(dictionary.initialConfidence),
         entries(vector<OriginalDictionaryEntry>(dictionary.entries))
@@ -63,7 +63,7 @@ public:
     }
     void copyTo(shared_ptr<Dictionary>& dictionary){
         dictionary = shared_ptr<Dictionary>((Dictionary*)
-            new OriginalDictionary(*this);
+            new OriginalDictionary(*this)
         );  
     }
-}
+};

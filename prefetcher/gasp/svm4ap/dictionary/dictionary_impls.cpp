@@ -13,7 +13,10 @@ std::optional<uint8_t> OriginalDictionary::read(int64_t delta){
 }
 
 std::optional<int64_t>  OriginalDictionary::read(uint8_t class_){
-    return class_ < this->numClasses ? this->entries[class_].delta : std::nullopt;
+    std::optional<int64_t> res = std::nullopt;
+    if(class_ < this->numClasses)
+        res = this->entries[class_].delta;
+    return res;
 }
 
 uint8_t OriginalDictionary::write(int64_t delta){
@@ -33,14 +36,14 @@ uint8_t OriginalDictionary::write(int64_t delta){
         }
         else{
             if(entry.confidence > 0)
-                entry.confidence--
+                entry.confidence--;
         }
     }
 
     // In case of write miss, the least reliable class is to be evicted in favour of the input delta:
     if(!hasHit){
         uint16_t minConfidence = maxConfidence;
-        uint8_t leastReliableClass = 0
+        uint8_t leastReliableClass = 0;
         for(int i = 0; i < this->numClasses; i++){
             auto& entry = this->entries[i];
             if(entry.confidence < minConfidence){

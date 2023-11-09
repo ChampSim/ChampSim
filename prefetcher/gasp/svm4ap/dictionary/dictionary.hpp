@@ -1,5 +1,5 @@
 #pragma once
-#include "global.hpp"
+#include  "svm4ap/global.hpp"
 
 
 
@@ -10,4 +10,4 @@ class Dictionary{
         virtual uint8_t write(int64_t delta) = 0;
         virtual void clean() = 0;
         virtual void copyTo(shared_ptr<Dictionary>&) = 0;
-}
+};
