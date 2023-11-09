@@ -1,24 +1,60 @@
 #pragma once
-#include  "svm4ap/global.hpp"
+#include  "global.hpp"
 
 #include "cache.h"
 #include "msl/lru_table.h"
 
-struct OriginalInputBufferEntry {
+class OriginalInputBufferEntry {
+    public:
     uint64_t ip = 0;           
     uint64_t lastAddress = 0; 
-    vector<uint8_t> classSequence = vector<uint8_t>();  
+    vector<uint8_t> classSequence = vector<uint8_t>(); 
+    
+    OriginalInputBufferEntry(){
+
+    }
+
+    OriginalInputBufferEntry(uint64_t ip){
+        this->ip = ip;
+    }
+
+    OriginalInputBufferEntry(uint64_t ip, uint64_t lastAddress, vector<uint8_t> classSequence){
+        this->ip = ip;
+        this->lastAddress = lastAddress;
+        this->classSequence = vector<uint8_t>(classSequence);
+    }
 
     auto index() const { return ip; }
     auto tag() const { return ip; }
   };
 
-struct ConfidenceInputBufferEntry{
+class ConfidenceInputBufferEntry{
+    public:
     uint64_t ip = 0;           
     uint64_t lastAddress = 0; 
     vector<uint8_t> classSequence = vector<uint8_t>();  
     uint8_t predictedClass = 0;
     uint8_t confidence = 0;
+
+     
+    ConfidenceInputBufferEntry(){
+
+    }
+
+    ConfidenceInputBufferEntry(uint64_t ip){
+        this->ip = ip;
+    }
+
+    ConfidenceInputBufferEntry(uint64_t ip, uint64_t lastAddress, vector<uint8_t> classSequence,
+        uint8_t predictedClass,
+        uint8_t confidence){
+        this->ip = ip;
+        this->lastAddress = lastAddress;
+        this->classSequence = vector<uint8_t>(classSequence);
+        this->predictedClass = predictedClass;
+        this->confidence = confidence;
+    }
+
 
     auto index() const { return ip; }
     auto tag() const { return ip; }
@@ -48,8 +84,13 @@ class StandardInputBuffer : public InputBuffer<InputBufferEntry>{
             this->table = champsim::msl::lru_table<InputBufferEntry>(0,0);
         }
 
-        std::optional<InputBufferEntry> read(uint64_t ip); // IP = Instruction Pointer = Instruction Program Counter
-        void write (InputBufferEntry entry);
-        
+        std::optional<InputBufferEntry> read(uint64_t ip) // IP = Instruction Pointer = Instruction Program Counter
+        {
+            auto entry = this->table.check_hit(InputBufferEntry(ip));
+            return entry;
+        }
+        void write (InputBufferEntry entry){
+            this->table.fill(entry);
+        }
 };
 

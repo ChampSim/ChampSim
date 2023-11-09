@@ -1,5 +1,5 @@
 #include "dictionary_impls.hpp"
-
+/*
 std::optional<uint8_t> OriginalDictionary::read(int64_t delta){
     std::optional<uint8_t> res = std::nullopt;
     for(int i = 0; i < this->numClasses; i++){
@@ -59,3 +59,4 @@ uint8_t OriginalDictionary::write(int64_t delta){
 
     return res;
 }
+*/

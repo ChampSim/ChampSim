@@ -117,6 +117,7 @@ double computeCost(vector<double>& w, double b, vector<vector<double>>& x, vecto
     return (1 - c)*(dot_product / 2) + hingeLoss;
 }
 
+/*
 vector<double> SVMSGDClassifier::computeDistanceToPlane(vector<vector<double>>& x) {
     vector<double> res = vector<double>();
     for (int i = 0; i < x.size(); i++) {
@@ -131,6 +132,7 @@ vector<double> SVMSGDClassifier::computeDistanceToPlane(vector<vector<double>>& 
     }
     return res;
 }
+*/
 
 #define RESOLUCION_RAND 1000
 #define FACTOR_RAND 0.1

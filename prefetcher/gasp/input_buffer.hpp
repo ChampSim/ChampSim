@@ -1,5 +1,5 @@
 #pragma once
-#include  "svm4ap/global.hpp"
+#include  "global.hpp"
 template<typename InputBufferEntry>
 class InputBuffer{
     public:

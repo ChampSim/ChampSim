@@ -4,7 +4,7 @@
 #include <string>
 #include <time.h>
 #include "SVMClassifier.hpp"
-
+/*
 MultiSVMClassifier::MultiSVMClassifier() {
     this->numClasses = 0;
     this->c = 0;
@@ -14,6 +14,7 @@ MultiSVMClassifier::MultiSVMClassifier() {
     this->learningRate = 0;
 
 }
+*/
 
 MultiSVMClassifier::MultiSVMClassifier(int numFeatures, int numClasses, double c, unsigned int epochs, double learningRate){
     // MultiSVMClassifierType type) {
@@ -27,7 +28,7 @@ MultiSVMClassifier::MultiSVMClassifier(int numFeatures, int numClasses, double c
 
 }
 
-MultiSVMClassifierOneToAll::MultiSVMClassifierOneToAll() : MultiSVMClassifier() {}
+// MultiSVMClassifierOneToAll::MultiSVMClassifierOneToAll() : MultiSVMClassifier() {}
 
 MultiSVMClassifierOneToOne::MultiSVMClassifierOneToOne() : MultiSVMClassifier() {}
 
@@ -68,7 +69,7 @@ void MultiSVMClassifier::initWeights(int numFeatures) {
         svm.initWeights(numFeatures);
 }
 
-
+/*
 void MultiSVMClassifierOneToAll::fit(vector<vector<double>> & data, vector<int> & label) {
     
     // For each classifier, we build the real-label vector fpr the entirety of given data:
@@ -85,6 +86,7 @@ void MultiSVMClassifierOneToAll::fit(vector<vector<double>> & data, vector<int> 
     }
 
 }
+*/
 
 void MultiSVMClassifierOneToOne::fit(vector<vector<double>>& data, vector<int>& label) {
 
@@ -121,29 +123,10 @@ void MultiSVMClassifierOneToOne::fit(vector<vector<double>>& data, vector<int>& 
 
 }
 
-
+/*
 vector<int> MultiSVMClassifierOneToAll::predict(vector<vector<double>> & data) {
     vector<int> predicted_labels;
 
-    /*
-    vector<vector<int>> predictedLabelsPerPredictor;
-    // Each classifier gives its prediction for the given data:
-    for (int k = 0; k < SVMsTable.size(); k++) {
-        predictedLabelsPerPredictor.push_back(SVMsTable[k].predict(data));
-    }
-
-    // For each data sample, we append as label the first class which has been predicted against 
-    // the rest:
-    for (int i = 0; i < data.size(); i++) {
-        for (int k = 0; k < SVMsTable.size(); k++) {
-            if ((predictedLabelsPerPredictor[k][i] == -1)
-                || (k == (SVMsTable.size() - 1))) {
-                predicted_labels.push_back(k);
-                break;
-            }
-        }
-    }
-    */
     vector<vector<int>> predictedLabelsPerPredictor;
     vector<vector<double>> distancesPerPredictor;
     // Each classifier gives its prediction for the given data:
@@ -175,7 +158,7 @@ vector<int> MultiSVMClassifierOneToAll::predict(vector<vector<double>> & data) {
 
     return predicted_labels;
 }
-
+*/
 vector<int> MultiSVMClassifierOneToOne::predict(vector<vector<double>>& data) {
     vector<int> predicted_labels;
 

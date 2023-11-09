@@ -1,6 +1,6 @@
 #pragma once
-#include  "svm4ap/global.hpp"
-#include "backend/SVMClassifier.hpp"
+#include  "global.hpp"
+#include "SVMClassifier.hpp"
 
 
 class StandardSVM : public SVM{
@@ -53,7 +53,14 @@ class StandardSVM : public SVM{
             this->model.SVMsTable = vector<SVMSGDClassifier>();
         }
 
-        void fit(vector<double>& input, uint8_t output);
-        uint8_t predict(vector<double>& input);
+        void fit(vector<double>& input, uint8_t output){
+            auto in = vector<vector<double>>{ vector<double>(input.begin(), input.end()) };
+            auto out = vector<int>{ output };
+            this->model.fit(in, out);
+        }
+        uint8_t predict(vector<double>& input){
+            auto in = vector<vector<double>>{ vector<double>(input.begin(), input.end()) };
+            return this->model.predict(in)[0];
+        }
         
 };

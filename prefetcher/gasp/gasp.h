@@ -1,4 +1,4 @@
-#include "svm4ap/global.hpp"
+#include "global.hpp"
 
 class GASP{
     constexpr static std::size_t INPUT_BUFFER_SETS = 256;
@@ -76,13 +76,13 @@ class GASP{
           confidence = incrementConfidence(confidence);
           auto sequence_ = adaptSequenceForSVM(sequence);
           auto newPredictedClass = svm->predict(sequence_);
-          ConfidenceInputBufferEntry newInputBufferEntry = {
+          ConfidenceInputBufferEntry newInputBufferEntry = ConfidenceInputBufferEntry(
             ip,
             addr, 
             sequence,
             newPredictedClass,
             confidence
-          };
+          );
           if(confidence >= confidenceThreshold)
             return addr + dictionary->read(newPredictedClass).value();
           this->inputBuffer->write(newInputBufferEntry);
@@ -101,24 +101,24 @@ class GASP{
             if(confidence >= confidenceThreshold)
               return addr + dictionary->read(newPredictedClass).value();
           }
-          ConfidenceInputBufferEntry newInputBufferEntry = {
+          ConfidenceInputBufferEntry newInputBufferEntry = ConfidenceInputBufferEntry(
             ip,
             addr, 
             sequence,
             newPredictedClass,
             confidence
-          };
+          );
           this->inputBuffer->write(newInputBufferEntry);
         }
       }
       else{
-        ConfidenceInputBufferEntry inputBufferEntry = {
+        ConfidenceInputBufferEntry inputBufferEntry = ConfidenceInputBufferEntry(
             ip,
             addr, 
             vector<uint8_t>(NUM_CLASSES, SEQUENCE_SIZE),
             NUM_CLASSES,
             0
-        };
+        );
         this->inputBuffer->write(inputBufferEntry);
       }
       
