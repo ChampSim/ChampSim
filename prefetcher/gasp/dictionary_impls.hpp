@@ -107,6 +107,9 @@ public:
             }
 
             res = leastReliableClass;
+
+            cout << "Least reliable class: " << to_string(res) << " (" << to_string(delta) << ")" <<  "\n";
+
             this->entries[res].delta = delta;
             this->entries[res].confidence = this->initialConfidence;
         }

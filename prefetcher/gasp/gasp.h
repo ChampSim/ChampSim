@@ -1,5 +1,19 @@
 #include "global.hpp"
 
+template<typename T>
+string vectorToString(vector<T> v){
+  string res = "[";
+  for(size_t i = 0; i < v.size()-1; i++){
+    res += to_string(v[i]);
+    res += ", ";
+  }
+  res += to_string(v[v.size()-1]);
+  res += "]";
+  return res;
+}
+
+long z = 0;
+
 class GASP{
     constexpr static std::size_t INPUT_BUFFER_SETS = 256;
     constexpr static std::size_t INPUT_BUFFER_WAYS = 4;
@@ -64,7 +78,7 @@ class GASP{
 
         // 2) We update the dictionary and the sequence:
         auto class_ = dictionary->write(delta);
-        vector<uint8_t> sequence = inputBufferEntry.classSequence;
+        vector<uint8_t> sequence = vector<uint8_t>(inputBufferEntry.classSequence);
         for(int i = 1; i < sequence.size(); i++)
           sequence[i-1] = sequence[i];
         sequence[sequence.size()-1] = class_;
@@ -83,8 +97,19 @@ class GASP{
             newPredictedClass,
             confidence
           );
-          if(confidence >= confidenceThreshold)
+          if(confidence >= confidenceThreshold){
+            // if(z % 10000){
+              {
+              cout << "Hit!" << "\n";
+              cout << "PC: " << to_string(ip) << "\n";
+              cout << "True class: " << to_string(class_) << " (" << dictionary->read(class_).value() << ")" << "\n";
+              cout << "Sequence: " << vectorToString(sequence_) << "\n";
+              cout << "Previously predicted class: " << to_string(predictedClass) << " (" << dictionary->read(predictedClass).value() << ")" << "\n";
+              cout << "Predicted class: " << to_string(newPredictedClass) << " (" << dictionary->read(newPredictedClass).value() << ")" << "\n";
+              cout << "Confidence: " << to_string(confidence) << "\n";
+            }
             return addr + dictionary->read(newPredictedClass).value();
+          }
           this->inputBuffer->write(newInputBufferEntry);
         }
         else {
@@ -94,12 +119,32 @@ class GASP{
             auto sequence_ = adaptSequenceForSVM(inputBufferEntry.classSequence);
             svm->fit(sequence_, class_);
             newPredictedClass = NUM_CLASSES;
+            // if(z % 10000){
+              {
+              cout << "Miss!" << "\n";
+              cout << "PC: " << to_string(ip) << "\n";
+              cout << "True class: " << to_string(class_) << " (" << dictionary->read(class_).value() << ")" << "\n";
+              cout << "Sequence: " << vectorToString(sequence_)<< "\n";
+              cout << "Previously predicted class: " << to_string(predictedClass) << " (" << dictionary->read(predictedClass).value() << ")" << "\n";
+              cout << "Confidence: " << to_string(confidence) << "\n";
+            }
           }
           else{
             auto sequence_ = adaptSequenceForSVM(sequence);
             newPredictedClass = svm->predict(sequence_);
-            if(confidence >= confidenceThreshold)
+            if(confidence >= confidenceThreshold){
+              // if(z % 10000){
+              {
+                cout << "There was no prediction" << "\n";
+                cout << "PC: " << to_string(ip) << "\n";
+                cout << "True class: " << to_string(class_) << " (" << dictionary->read(class_).value() << ")" << "\n";
+                cout << "Sequence: " << vectorToString(sequence_)<< "\n";
+                cout << "Predicted class: " << to_string(newPredictedClass) << " (" << dictionary->read(newPredictedClass).value() << ")" << "\n";
+                cout << "Confidence: " << to_string(confidence) << "\n";
+              }
+              
               return addr + dictionary->read(newPredictedClass).value();
+            }
           }
           ConfidenceInputBufferEntry newInputBufferEntry = ConfidenceInputBufferEntry(
             ip,
@@ -121,6 +166,8 @@ class GASP{
         );
         this->inputBuffer->write(inputBufferEntry);
       }
+
+      z++;
       
       return nullopt;
     }
@@ -155,6 +202,8 @@ class GASP{
         // If the next step would exceed the degree or run off the page, stop
         if (cache->virtual_prefetch || (pf_address >> LOG2_PAGE_SIZE) == (old_pf_address >> LOG2_PAGE_SIZE)) {
           // check the MSHR occupancy to decide if we're going to prefetch to this level or not
+          // cout << "Bloque pedido: " << to_string(old_pf_address) << "\n";
+          // cout << "Bloque a precargar: " << to_string(pf_address) << "\n";
           bool success = cache->prefetch_line(pf_address, (cache->get_mshr_occupancy_ratio() < 0.5), 0);
           if (success)
             active_lookahead = {pf_address, stride, degree - 1};
