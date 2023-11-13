@@ -108,6 +108,7 @@ public:
 
             res = leastReliableClass;
 
+            if(false)
             cout << "Least reliable class: " << to_string(res) << " (" << to_string(delta) << ")" <<  "\n";
 
             this->entries[res].delta = delta;

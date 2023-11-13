@@ -15,10 +15,10 @@ string vectorToString(vector<T> v){
 long z = 0;
 
 class GASP{
-    constexpr static std::size_t INPUT_BUFFER_SETS = 256;
-    constexpr static std::size_t INPUT_BUFFER_WAYS = 4;
-    constexpr static std::size_t NUM_CLASSES = 4;
-    constexpr static std::size_t SEQUENCE_SIZE = 4;
+    constexpr static std::size_t INPUT_BUFFER_SETS = 512;
+    constexpr static std::size_t INPUT_BUFFER_WAYS = 6;
+    constexpr static std::size_t NUM_CLASSES = 6;
+    constexpr static std::size_t SEQUENCE_SIZE = 6;
     constexpr static int PREFETCH_DEGREE = 3;
 
     constexpr static uint8_t confidenceThreshold = 12;
@@ -44,7 +44,7 @@ class GASP{
         this->dictionary = shared_ptr<Dictionary>((Dictionary*)
             new OriginalDictionary(NUM_CLASSES));
         this->svm = shared_ptr<SVM>((SVM*)
-            new StandardSVM(SEQUENCE_SIZE, NUM_CLASSES));
+            new StandardSVM(SEQUENCE_SIZE, NUM_CLASSES, 1.0, 0.2));
 
     }
 
@@ -67,6 +67,7 @@ class GASP{
     }
 
     std::optional<uint64_t> predict(uint64_t ip, uint64_t addr){
+      std::optional<uint64_t> res = nullopt;
       // 1) We read the input buffer entry:
       std::optional<ConfidenceInputBufferEntry> inputBufferEntry_ = 
         this->inputBuffer->read(ip);
@@ -86,9 +87,11 @@ class GASP{
         // 3) We evaluate the prediction hit or miss:
         auto predictedClass = inputBufferEntry.predictedClass;
         auto confidence = inputBufferEntry.confidence;
+        // confidence = maxConfidence; // DEPURAR
         if(predictedClass == class_){
           confidence = incrementConfidence(confidence);
           auto sequence_ = adaptSequenceForSVM(sequence);
+          auto sequence__ = adaptSequenceForSVM(inputBufferEntry.classSequence);
           auto newPredictedClass = svm->predict(sequence_);
           ConfidenceInputBufferEntry newInputBufferEntry = ConfidenceInputBufferEntry(
             ip,
@@ -99,41 +102,53 @@ class GASP{
           );
           if(confidence >= confidenceThreshold){
             // if(z % 10000){
+              if(false)
               {
               cout << "Hit!" << "\n";
               cout << "PC: " << to_string(ip) << "\n";
               cout << "True class: " << to_string(class_) << " (" << dictionary->read(class_).value() << ")" << "\n";
               cout << "Sequence: " << vectorToString(sequence_) << "\n";
+              cout << "Previous sequence: " << vectorToString(sequence__) << "\n";
               cout << "Previously predicted class: " << to_string(predictedClass) << " (" << dictionary->read(predictedClass).value() << ")" << "\n";
               cout << "Predicted class: " << to_string(newPredictedClass) << " (" << dictionary->read(newPredictedClass).value() << ")" << "\n";
               cout << "Confidence: " << to_string(confidence) << "\n";
             }
-            return addr + dictionary->read(newPredictedClass).value();
+            res = addr + dictionary->read(newPredictedClass).value();
           }
           this->inputBuffer->write(newInputBufferEntry);
         }
         else {
           uint8_t newPredictedClass;
           if(predictedClass != NUM_CLASSES){
-            confidence = decrementConfidence(confidence);
-            auto sequence_ = adaptSequenceForSVM(inputBufferEntry.classSequence);
-            svm->fit(sequence_, class_);
+            auto sequence_ = adaptSequenceForSVM(sequence);
+            auto sequence__ = adaptSequenceForSVM(inputBufferEntry.classSequence);
+            auto prevPrediction =svm->predict(sequence__);
+            if(prevPrediction != class_)
+              confidence = decrementConfidence(confidence);
+            svm->fit(sequence__, class_);
             newPredictedClass = NUM_CLASSES;
             // if(z % 10000){
+              if(false)
               {
               cout << "Miss!" << "\n";
               cout << "PC: " << to_string(ip) << "\n";
               cout << "True class: " << to_string(class_) << " (" << dictionary->read(class_).value() << ")" << "\n";
               cout << "Sequence: " << vectorToString(sequence_)<< "\n";
+              cout << "Previous sequence: " << vectorToString(sequence__) << "\n";
               cout << "Previously predicted class: " << to_string(predictedClass) << " (" << dictionary->read(predictedClass).value() << ")" << "\n";
               cout << "Confidence: " << to_string(confidence) << "\n";
+              cout << "Previous prediction?: " << to_string(prevPrediction) << "\n";
+              cout << "New prediction?: " << to_string(svm->predict(sequence_)) << "\n";
             }
           }
           else{
             auto sequence_ = adaptSequenceForSVM(sequence);
+            // auto sequence__ = adaptSequenceForSVM(inputBufferEntry.classSequence);
+            // svm->fit(sequence__, class_);
             newPredictedClass = svm->predict(sequence_);
             if(confidence >= confidenceThreshold){
               // if(z % 10000){
+              if(false)
               {
                 cout << "There was no prediction" << "\n";
                 cout << "PC: " << to_string(ip) << "\n";
@@ -143,7 +158,7 @@ class GASP{
                 cout << "Confidence: " << to_string(confidence) << "\n";
               }
               
-              return addr + dictionary->read(newPredictedClass).value();
+              res = addr + dictionary->read(newPredictedClass).value();
             }
           }
           ConfidenceInputBufferEntry newInputBufferEntry = ConfidenceInputBufferEntry(
@@ -169,7 +184,7 @@ class GASP{
 
       z++;
       
-      return nullopt;
+      return res;
     }
 
     void initiate_lookahead(uint64_t ip, uint64_t cl_addr)

@@ -158,14 +158,14 @@ public:
 				vector<double> gradient_w = vector<double>();
 				double gradient_b = 0.0;
 				computeGradients(w, b, xi_, label_, c, gradient_w, &gradient_b);
-				cout << vectorToString(label_) << "\n";
+				// cout << vectorToString(label_) << "\n";
 				for (int j = 0; j < w.size(); j++) {
 					w[j] = w[j] - (this->learningRate * gradient_w[j]);
-					cout << to_string((this->learningRate * gradient_w[j])) << " ";
+					// cout << to_string((this->learningRate * gradient_w[j])) << " ";
 				}
 				b = b - (this->learningRate * gradient_b);
-				cout << "; " << to_string((this->learningRate * gradient_b)) << " ";
-				cout << "\n";
+				// cout << "; " << to_string((this->learningRate * gradient_b)) << " ";
+				// cout << "\n";
 			}
 
 

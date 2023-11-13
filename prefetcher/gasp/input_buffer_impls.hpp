@@ -30,19 +30,28 @@ class OriginalInputBufferEntry {
 
 class ConfidenceInputBufferEntry{
     public:
-    uint64_t ip = 0;           
-    uint64_t lastAddress = 0; 
-    vector<uint8_t> classSequence = vector<uint8_t>();  
-    uint8_t predictedClass = 0;
-    uint8_t confidence = 0;
+    uint64_t ip;
+    uint64_t lastAddress;
+    vector<uint8_t> classSequence;  
+    uint8_t predictedClass;
+    uint8_t confidence;
 
      
     ConfidenceInputBufferEntry(){
-
+        ip = 0;           
+        lastAddress = 0; 
+        classSequence = vector<uint8_t>();  
+        predictedClass = 0;
+        confidence = 0;
     }
 
     ConfidenceInputBufferEntry(uint64_t ip){
         this->ip = ip;
+        ip = 0;           
+        lastAddress = 0; 
+        classSequence = vector<uint8_t>();  
+        predictedClass = 0;
+        confidence = 0;
     }
 
     ConfidenceInputBufferEntry(uint64_t ip, uint64_t lastAddress, vector<uint8_t> classSequence,
