@@ -20,12 +20,12 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint8_t, uint32_t
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <limits>     // for numeric_limits
-#include <optional>   // for optional
+#include <limits>   // for numeric_limits
+#include <optional> // for optional
 #include <string>
 #include <vector> // for vector
 
+#include "bandwidth.h"
 #include "channel.h"
 #include "operable.h"
 #include "util/lru_table.h"
@@ -60,8 +60,8 @@ class PageTableWalker : public champsim::operable
     uint64_t v_address = 0;
     uint64_t data = 0;
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
-    std::vector<channel_type*> to_return{};
+    std::vector<uint64_t> instr_depend_on_me{};
+    std::vector<std::deque<response_type>*> to_return{};
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint32_t pf_metadata = 0;
@@ -89,7 +89,7 @@ class PageTableWalker : public champsim::operable
 public:
   const std::string NAME;
   const uint32_t MSHR_SIZE;
-  const long int MAX_READ, MAX_FILL;
+  champsim::bandwidth::maximum_type MAX_READ, MAX_FILL;
   const uint64_t HIT_LATENCY;
 
   std::vector<pscl_type> pscl;
@@ -99,7 +99,7 @@ public:
 
   explicit PageTableWalker(champsim::ptw_builder builder);
 
-  void operate() final;
+  long operate() final;
 
   void begin_phase() final;
   void print_deadlock() final;

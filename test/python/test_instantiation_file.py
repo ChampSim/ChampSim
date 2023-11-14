@@ -1,5 +1,7 @@
 import unittest
 import itertools
+import tempfile
+import os
 
 import config.instantiation_file
 
@@ -17,10 +19,7 @@ class VectorStringTest(unittest.TestCase):
 class CpuBuilderTest(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cpu = {
-            'name': 'test_cpu', '_index': 0, 'frequency': 1,
-            'L1I': 'test_l1i', 'L1D': 'test_l1d'
-        }
+        base_cpu = { 'name': 'test_cpu' }
         empty = list(config.instantiation_file.get_cpu_builder(base_cpu))
         modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -43,26 +42,29 @@ class CpuBuilderTest(unittest.TestCase):
     def test_sq_size(self):
         self.get_element_diff(['.sq_size(1)'], sq_size=1)
 
+    def test_fetch_width(self):
+        self.get_element_diff(['.fetch_width(champsim::bandwidth::maximum_type{1})'], fetch_width=1)
+
     def test_decode_width(self):
-        self.get_element_diff(['.decode_width(1)'], decode_width=1)
+        self.get_element_diff(['.decode_width(champsim::bandwidth::maximum_type{1})'], decode_width=1)
 
     def test_dispatch_width(self):
-        self.get_element_diff(['.dispatch_width(1)'], dispatch_width=1)
+        self.get_element_diff(['.dispatch_width(champsim::bandwidth::maximum_type{1})'], dispatch_width=1)
 
     def test_scheduler_size(self):
-        self.get_element_diff(['.schedule_width(1)'], scheduler_size=1)
+        self.get_element_diff(['.schedule_width(champsim::bandwidth::maximum_type{1})'], scheduler_size=1)
 
     def test_execute_width(self):
-        self.get_element_diff(['.execute_width(1)'], execute_width=1)
+        self.get_element_diff(['.execute_width(champsim::bandwidth::maximum_type{1})'], execute_width=1)
 
     def test_lq_width(self):
-        self.get_element_diff(['.lq_width(1)'], lq_width=1)
+        self.get_element_diff(['.lq_width(champsim::bandwidth::maximum_type{1})'], lq_width=1)
 
     def test_sq_width(self):
-        self.get_element_diff(['.sq_width(1)'], sq_width=1)
+        self.get_element_diff(['.sq_width(champsim::bandwidth::maximum_type{1})'], sq_width=1)
 
     def test_retire_width(self):
-        self.get_element_diff(['.retire_width(1)'], retire_width=1)
+        self.get_element_diff(['.retire_width(champsim::bandwidth::maximum_type{1})'], retire_width=1)
 
     def test_mispredict_penalty(self):
         self.get_element_diff(['.mispredict_penalty(1)'], mispredict_penalty=1)
@@ -98,22 +100,18 @@ class CpuBuilderTest(unittest.TestCase):
         self.get_element_diff(['.dib_window(1)'], DIB={ 'window_size': 1 })
 
     def test_branch_predictor(self):
-        self.get_element_diff(['.branch_predictor<O3_CPU::ba>()'], _branch_predictor_data=[{ 'name': 'a' }])
-        self.get_element_diff(['.branch_predictor<O3_CPU::ba | O3_CPU::bb>()'], _branch_predictor_data=[{ 'name': 'a' }, { 'name': 'b' }])
+        self.get_element_diff(['.branch_predictor<class a_class>()'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.branch_predictor<class a_class, class b_class>()'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
     def test_btb(self):
-        self.get_element_diff(['.btb<O3_CPU::ta>()'], _btb_data=[{ 'name': 'a' }])
-        self.get_element_diff(['.btb<O3_CPU::ta | O3_CPU::tb>()'], _btb_data=[{ 'name': 'a' }, { 'name': 'b' }])
+        self.get_element_diff(['.btb<class a_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.btb<class a_class, class b_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = {
-            'name': 'test_cache', 'lower_level': 'test_ll'
-        }
-        upper_levels = {
-            'test_cache': { 'upper_channels': [] }
-        }
+        base_cache = { 'name': 'test_cache' }
+        upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -140,10 +138,10 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.fill_latency(1)'], fill_latency=1)
 
     def test_max_tag_check(self):
-        self.get_element_diff(['.tag_bandwidth(1)'], max_tag_check=1)
+        self.get_element_diff(['.tag_bandwidth(champsim::bandwidth::maximum_type{1})'], max_tag_check=1)
 
     def test_max_fill(self):
-        self.get_element_diff(['.fill_bandwidth(1)'], max_fill=1)
+        self.get_element_diff(['.fill_bandwidth(champsim::bandwidth::maximum_type{1})'], max_fill=1)
 
     def test_prefetch_as_load(self):
         self.get_element_diff(['.set_prefetch_as_load()'], prefetch_as_load=True)
@@ -165,22 +163,18 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.lower_translate(&test_cache_to_test_lt_channel)'], lower_translate='test_lt')
 
     def test_prefetcher(self):
-        self.get_element_diff(['.prefetcher<CACHE::pa>()'], _prefetcher_data=[{ 'name': 'a' }])
-        self.get_element_diff(['.prefetcher<CACHE::pa | CACHE::pb>()'], _prefetcher_data=[{ 'name': 'a' }, { 'name': 'b' }])
+        self.get_element_diff(['.prefetcher<class a_class>()'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.prefetcher<class a_class, class b_class>()'], _prefetcher_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
     def test_replacement(self):
-        self.get_element_diff(['.replacement<CACHE::ra>()'], _replacement_data=[{ 'name': 'a' }])
-        self.get_element_diff(['.replacement<CACHE::ra | CACHE::rb>()'], _replacement_data=[{ 'name': 'a' }, { 'name': 'b' }])
+        self.get_element_diff(['.replacement<class a_class>()'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }])
+        self.get_element_diff(['.replacement<class a_class, class b_class>()'], _replacement_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = {
-            'name': 'test_ptw', 'lower_level': 'test_ll', 'cpu': 0
-        }
-        upper_levels = {
-            'test_ptw': { 'upper_channels': [] }
-        }
+        base_ptw = { 'name': 'test_ptw' }
+        upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
@@ -189,10 +183,10 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
         self.get_element_diff(['.mshr_size(1)'], mshr_size=1)
 
     def test_max_read(self):
-        self.get_element_diff(['.tag_bandwidth(1)'], max_read=1)
+        self.get_element_diff(['.tag_bandwidth(champsim::bandwidth::maximum_type{1})'], max_read=1)
 
     def test_max_write(self):
-        self.get_element_diff(['.fill_bandwidth(1)'], max_write=1)
+        self.get_element_diff(['.fill_bandwidth(champsim::bandwidth::maximum_type{1})'], max_write=1)
 
     def test_pscl5(self):
         self.get_element_diff(['.add_pscl(5, 1, 2)'], pscl5_set=1, pscl5_way=2)
@@ -206,3 +200,67 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
     def test_pscl2(self):
         self.get_element_diff(['.add_pscl(2, 1, 2)'], pscl2_set=1, pscl2_way=2)
 
+class UpperChannelCollectorTests(unittest.TestCase):
+
+    def test_single(self):
+        value = (('low', 'up'),)
+        self.assertEqual({'low': {'upper_channels': ['up_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+    def test_multiple(self):
+        value = (('low', 'up1'), ('low', 'up2'))
+        self.assertEqual({'low': {'upper_channels': ['up1_to_low_channel', 'up2_to_low_channel']}}, config.instantiation_file.upper_channel_collector(value))
+
+class GetUpperLevelsTests(unittest.TestCase):
+
+    def test_empty(self):
+        cores = []
+        caches = []
+        ptws = []
+        self.assertEqual([], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Is_are_upper_levels(self):
+        cores = [{'L1I': 'test_l1i', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1i', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_L1Ds_are_upper_levels(self):
+        cores = [{'L1D': 'test_l1d', 'name': 'test_cpu'}]
+        caches = []
+        ptws = []
+        self.assertEqual([('test_l1d', 'test_cpu')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_levels(self):
+        cores = []
+        caches = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_ptws_have_upper_levels(self):
+        cores = []
+        caches = []
+        ptws = [{'lower_level': 'test_ll', 'name': 'test_ul'}]
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+    def test_caches_have_upper_translations(self):
+        cores = []
+        caches = [{'lower_translate': 'test_ll', 'name': 'test_ul'}]
+        ptws = []
+        self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+class CheckHeaderCompilesForClassTests(unittest.TestCase):
+    def test_present(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertTrue(config.instantiation_file.check_header_compiles_for_class('A', fname))
+
+    def test_absent(self):
+        with tempfile.TemporaryDirectory() as dtemp:
+            fname = os.path.join(dtemp, 'test.h')
+            with open(fname, 'wt') as wfp:
+                print('struct A { explicit A(int*); };', file=wfp)
+
+            self.assertFalse(config.instantiation_file.check_header_compiles_for_class('B', fname))

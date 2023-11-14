@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 
 #include "ooo_cpu.h"
 #include "instr.h"
@@ -12,10 +11,10 @@ SCENARIO("The fetch bandwidth limits the number of packets issued each cycle") {
 
     do_nothing_MRC mock_L1I;
     do_nothing_MRC mock_L1D;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
+    O3_CPU uut{champsim::core_builder{}
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
-      .l1i_bandwidth(bandwidth)
+      .l1i_bandwidth(champsim::bandwidth::maximum_type{bandwidth})
     };
 
     std::array<champsim::operable*,3> elements = {&uut, &mock_L1I, &mock_L1D};

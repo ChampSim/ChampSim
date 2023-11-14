@@ -24,7 +24,7 @@
 
 #include "champsim.h"
 #include "instruction.h"
-#include "util/bits.h" // for to_underlying
+#include "util/to_underlying.h" // for to_underlying
 
 champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
@@ -55,7 +55,7 @@ bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_typ
     auto instr_copy = std::move(destination.instr_depend_on_me);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-                   std::back_inserter(destination.instr_depend_on_me), ooo_model_instr::program_order);
+                   std::back_inserter(destination.instr_depend_on_me));
   });
 }
 

@@ -6,7 +6,7 @@
 
 SCENARIO("The prefetch queue size limits the number of prefetches that can be issued") {
   GIVEN("An empty cache with a short prefetch queue") {
-    auto pq_size = GENERATE(as<std::size_t>(), 1, 3, 5, 16);
+    auto pq_size = GENERATE(as<unsigned>(), 1, 3, 5, 16);
     do_nothing_MRC mock_ll;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("426-uut-"+std::to_string(pq_size))

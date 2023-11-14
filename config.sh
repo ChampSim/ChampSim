@@ -56,6 +56,8 @@ if __name__ == '__main__':
     parser.add_argument('--compile-all-modules', action='store_true',
             help='Compile all modules in the search path')
 
+    parser.add_argument('-v', action='store_true', dest='verbose')
+
     parser.add_argument('files', nargs='*',
             help='A sequence of JSON files describing the configuration. The last file specified has the highest priority.')
 
@@ -71,12 +73,12 @@ if __name__ == '__main__':
     parsed_test = config.parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')], compile_all_modules=True)
 
     parsed_configs = (
-            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules)
+            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules, verbose=args.verbose)
         for c in config_files)
 
-    with config.filewrite.FileWriter(bindir_name, objdir_name) as wr:
+    with config.filewrite.FileWriter(bindir_name, objdir_name, verbose=args.verbose) as wr:
         for c in parsed_configs:
             wr.write_files(c)
-        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
+        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'), omit_main=True)
 
 # vim: set filetype=python:

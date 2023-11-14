@@ -5,6 +5,8 @@
 #include "champsim_constants.h"
 #include "defaults.hpp"
 
+#include "../../../prefetcher/va_ampm_lite/va_ampm_lite.h"
+
 struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
   int64_t stride;
 
@@ -33,7 +35,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+      .prefetcher<va_ampm_lite>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_lt, &mock_ul, &uut}};
@@ -122,7 +124,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .lower_translate(&mock_lt.queues)
-      .prefetcher<CACHE::pprefetcherDva_ampm_lite>()
+      .prefetcher<va_ampm_lite>()
     };
 
     std::array<champsim::operable*, 4> elements{{&mock_ll, &mock_ul, &mock_lt, &uut}};

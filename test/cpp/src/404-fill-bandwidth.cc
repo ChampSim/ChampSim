@@ -19,8 +19,8 @@ SCENARIO("The MSHR respects the fill bandwidth") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .tag_bandwidth(10)
-      .fill_bandwidth(fill_bandwidth)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{10})
+      .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
@@ -89,9 +89,9 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .tag_bandwidth(10)
+      .tag_bandwidth(champsim::bandwidth::maximum_type{10})
       .reset_wq_checks_full_addr()
-      .fill_bandwidth(fill_bandwidth)
+      .fill_bandwidth(champsim::bandwidth::maximum_type{fill_bandwidth})
     };
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_ll, &mock_ul}};
