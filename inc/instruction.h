@@ -38,6 +38,12 @@ enum branch_type {
   BRANCH_OTHER = 7
 };
 
+enum load_type {
+  DATA_LOAD = 0,
+  BYTECODE_LOAD = 1,
+  NOT_A_LOAD = 2,
+};
+
 struct ooo_model_instr {
   uint64_t instr_id = 0;
   uint64_t ip = 0;
@@ -47,6 +53,9 @@ struct ooo_model_instr {
   bool branch_taken = 0;
   bool branch_prediction = 0;
   bool branch_mispredicted = 0; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
+
+  // Having `NOT_A_LOAD` feels weird, but I'm not sure how we can otherwise filter non-load instructions.
+  load_type ld_type = NOT_A_LOAD;
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -73,7 +82,7 @@ struct ooo_model_instr {
 
 private:
   template <typename T>
-  ooo_model_instr(T instr, std::array<uint8_t, 2> local_asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), asid(local_asid)
+  ooo_model_instr(T instr, std::array<uint8_t, 2> local_asid) : ip(instr.ip), is_branch(instr.is_branch), branch_taken(instr.branch_taken), ld_type((load_type) instr.load_type), asid(local_asid)
   {
     std::remove_copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::back_inserter(this->destination_registers), 0);
     std::remove_copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::back_inserter(this->source_registers), 0);

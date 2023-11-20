@@ -45,6 +45,10 @@ struct input_instr {
 
   unsigned long long destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
   unsigned long long source_memory[NUM_INSTR_SOURCES];           // input memory
+
+  // What type of load the instruction is.
+  // NOTE: Adding this makes us unable to parse any pre-existing traces; is there a way to avoid that?
+  unsigned char load_type;
 };
 
 struct cloudsuite_instr {
@@ -62,6 +66,9 @@ struct cloudsuite_instr {
   unsigned long long source_memory[NUM_INSTR_SOURCES];                 // input memory
 
   unsigned char asid[2];
+
+  // What type of load the instruction is.
+  unsigned char load_type;
 };
 
 #endif
