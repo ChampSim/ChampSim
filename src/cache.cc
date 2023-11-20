@@ -57,8 +57,8 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
                  std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr));
   std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
                  std::back_inserter(merged_return));
-  std::set_union(std::begin(predecessor.inclusive_evict), std::end(predecessor.inclusive_evict), std::begin(successor.inclusive_evict), std::end(successor.inclusive_evict),
-                 std::back_inserter(merged_inclusive_evict));
+  //TODO std::set_union(std::begin(predecessor.inclusive_evict), std::end(predecessor.inclusive_evict), std::begin(successor.inclusive_evict), std::end(successor.inclusive_evict),
+  //               std::back_inserter(merged_inclusive_evict));
 
   mshr_type retval{(successor.type == access_type::PREFETCH) ? predecessor : successor};
   retval.instr_depend_on_me = merged_instr;
@@ -99,11 +99,6 @@ auto CACHE::matches_address(uint64_t addr) const
   return [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) {
     return (entry.address >> shamt) == match;
   };
-}
-
-auto CACHE::matches_address(uint64_t addr) const
-{
-  return [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; };
 }
 
 auto CACHE::in_set_finder(uint64_t addr) const
@@ -232,7 +227,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(*way), handle_pkt.ip, 0, handle_pkt.type, true);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
-    std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
+    //std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
 
     way->dirty |= (handle_pkt.type == access_type::WRITE);
 
@@ -357,12 +352,12 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
 
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
-        retval.to_return = {ul};
+        retval.to_return = {&ul->returned};
       }
 
-      if (entry.clusivity == champsim::inclusivity::inclusive) {
-        retval.inclusive_evict = {ul};
-      }
+      //if (entry.clusivity == champsim::inclusivity::inclusive) {
+      //  retval.inclusive_evict = {ul};
+      //}
     } else {
       (void)ul; // supress warning about ul being unused
     }
@@ -404,9 +399,9 @@ long CACHE::operate()
     lower_translate->returned.clear();
   }
 
-  std::for_each(std::cbegin(lower_level->invalidation_queue), std::cend(lower_level->invalidation_queue),
+  std::for_each(std::cbegin(lower_level->IQ), std::cend(lower_level->IQ),
                 [this](const auto& inv) { this->invalidate_entry(inv.address); });
-  lower_level->invalidation_queue.clear();
+  lower_level->IQ.clear();
 
   // Perform fills
   champsim::bandwidth fill_bw{MAX_FILL};
@@ -535,7 +530,14 @@ void CACHE::invalidate_entry(BLOCK& inval_block)
                get_set_index(inval_block.address), current_cycle);
   }
 
-  std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_block.address));
+  request_type inval_packet;
+  inval_packet.type = access_type::INVALIDATE;
+  inval_packet.cpu = cpu;
+  inval_packet.is_translated = true;
+  inval_packet.address = inval_block.address;
+  inval_packet.v_address = 0;
+
+  //std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_packet)); //channel_type::invalidator_for(inval_block.address));
 
   inval_block.valid = false;
 }

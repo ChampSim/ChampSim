@@ -27,6 +27,7 @@ enum class access_type : unsigned {
   WRITE,
   TRANSLATION,
   NUM_TYPES,
+  INVALIDATE,
 };
 
 using namespace std::literals::string_view_literals;

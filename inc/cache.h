@@ -158,6 +158,7 @@ private:
   uint64_t module_address(const T& element) const;
 
   auto matches_address(uint64_t address) const;
+  auto in_set_finder(uint64_t addr) const;
   std::pair<mshr_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
@@ -216,10 +217,15 @@ public:
   [[nodiscard]] std::vector<std::size_t> get_pq_size() const;
   [[nodiscard]] std::vector<double> get_pq_occupancy_ratio() const;
 
+  [[nodiscard]] std::vector<std::size_t> get_iq_occupancy() const;
+  [[nodiscard]] std::vector<std::size_t> get_iq_size() const;
+  [[nodiscard]] std::vector<double> get_iq_occupancy_ratio() const;
+
   [[deprecated("Use get_set_index() instead.")]] [[nodiscard]] uint64_t get_set(uint64_t address) const;
   [[deprecated("This function should not be used to access the blocks directly.")]] [[nodiscard]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   long invalidate_entry(uint64_t inval_addr);
+  void invalidate_entry(BLOCK& inval_block);
   bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] bool

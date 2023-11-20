@@ -86,9 +86,9 @@ class channel
     explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.instr_depend_on_me) {}
   };
 
-  struct invalidation_request {
-    uint64_t address;
-  };
+  //struct invalidation_request {
+  //  uint64_t address;
+  //};
 
   template <typename R>
   bool do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet);
@@ -96,50 +96,54 @@ class channel
   std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t WQ_SIZE = std::numeric_limits<std::size_t>::max();
+  std::size_t IQ_SIZE = std::numeric_limits<std::size_t>::max();
   unsigned OFFSET_BITS = 0;
   bool match_offset_bits = false;
 
 public:
   using response_type = response;
   using request_type = request;
-  using invalidation_request_type = invalidation_request;
+  using invalidation_request_type = request; //invalidation_request;
   using stats_type = cache_queue_stats;
 
-  std::deque<request_type> RQ{}, PQ{}, WQ{};
+  std::deque<request_type> RQ{}, PQ{}, WQ{}, IQ{};
   std::deque<response_type> returned{};
-  std::deque<invalidation_request_type> invalidation_queue{};
+  //std::deque<invalidation_request_type> invalidation_queue{};
 
   stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
-  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
+  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t iq_size, unsigned offset_bits, bool match_offset);
 
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);
   bool add_pq(const request_type& packet);
+  bool add_iq(const request_type& packet); 
 
   [[nodiscard]] std::size_t rq_occupancy() const;
   [[nodiscard]] std::size_t wq_occupancy() const;
   [[nodiscard]] std::size_t pq_occupancy() const;
+  [[nodiscard]] std::size_t iq_occupancy() const;
 
   [[nodiscard]] std::size_t rq_size() const;
   [[nodiscard]] std::size_t wq_size() const;
   [[nodiscard]] std::size_t pq_size() const;
+  [[nodiscard]] std::size_t iq_size() const;
 
   void check_collision();
 
   template <typename T>
   static auto invalidator_for(T&& request)
   {
-    return [req = invalidation_request_type{request}](channel* ul) {
-      ul->invalidation_queue.push_back(req);
+    return [req = request_type{request}](channel* ul) {
+      ul->IQ.push_back(req);
     };
   }
 
   template <typename T>
   static auto returner_for(T&& request)
   {
-    return [req = response_type{request}](channel* ul) {
+    return [req = request](channel* ul) {
       ul->returned.push_back(req);
     };
   }

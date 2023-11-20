@@ -325,7 +325,9 @@ void DRAM_CHANNEL::check_read_collision()
         response_type response{rq_it->value().address, rq_it->value().v_address, rq_it->value().data, rq_it->value().pf_metadata,
                                rq_it->value().instr_depend_on_me};
         response.data = wq_it->value().data;
-        std::for_each(std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return), champsim::channel::returner_for(response));
+        for (auto* ret : rq_it->value().to_return) {
+          ret->push_back(response);
+        }
 
         rq_it->reset();
       } else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
@@ -388,7 +390,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
     if (packet.response_requested) {
-      rq_it->value().to_return = {ul};
+      rq_it->value().to_return = {&ul->returned};
     }
 
     return true;
