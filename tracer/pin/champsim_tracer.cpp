@@ -21,6 +21,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
@@ -77,6 +78,7 @@ void ResetCurrentInstruction(VOID* ip)
 {
   curr_instr = {};
   curr_instr.ip = (unsigned long long int)ip;
+  curr_instr.load_type = 2;
 }
 
 BOOL ShouldWrite()
@@ -106,6 +108,23 @@ void WriteToSet(T* begin, T* end, UINT32 r)
   *found_reg = r;
 }
 
+// Determine what type of load the memory read is; currently just randomly
+// assigns it to be data or bytecode.
+void DataOrCode() {
+  // Initialize random number engine. NOTE: Really don't like doing this on
+  // every single instruction, but not sure how happy Pin will be if I alter the
+  // signature of Instruction().
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0.0, 1.0);
+  double p = dis(gen);
+  if (p > 0.5) {
+    curr_instr.load_type = 1;
+  } else {
+    curr_instr.load_type = 0;
+  }
+}
+
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
@@ -119,6 +138,10 @@ VOID Instruction(INS ins, VOID* v)
   // instrument branch instructions
   if (INS_IsBranch(ins))
     INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BranchOrNot, IARG_BRANCH_TAKEN, IARG_END);
+
+  if (INS_IsMemoryRead(ins)) {
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)DataOrCode, IARG_END);
+  }
 
   // instrument register reads
   UINT32 readRegCount = INS_MaxNumRRegs(ins);
