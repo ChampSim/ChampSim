@@ -28,7 +28,7 @@ def channel_name(*, lower, upper):
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
 vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
 
-queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
+queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {iq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
 core_builder_parts = {
     'frequency': '.frequency({frequency})',
@@ -74,6 +74,7 @@ cache_builder_parts = {
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
     'pq_size': '.pq_size({pq_size})',
+    'iq_size': '.iq_size({iq_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',
@@ -210,6 +211,7 @@ def cache_queue_defaults(cache):
         'rq_size': cache.get('rq_size', cache['_queue_factor']),
         'wq_size': cache.get('wq_size', cache['_queue_factor']),
         'pq_size': cache.get('pq_size', cache['_queue_factor']),
+        'iq_size': cache.get('iq_size', cache['_queue_factor']),
         '_offset_bits': cache['_offset_bits'],
         '_queue_check_full_addr': cache['_queue_check_full_addr']
     }
@@ -219,6 +221,7 @@ def ptw_queue_defaults(ptw):
         'rq_size': ptw.get('rq_size', ptw['_queue_factor']),
         'wq_size': 0,
         'pq_size': 0,
+        'iq_size': 0,
         '_offset_bits': 'champsim::lg2(PAGE_SIZE)',
         '_queue_check_full_addr': False
     }
@@ -330,6 +333,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                     'rq_size':'std::numeric_limits<std::size_t>::max()',
                     'wq_size':'std::numeric_limits<std::size_t>::max()',
                     'pq_size':'std::numeric_limits<std::size_t>::max()',
+                    'iq_size':'std::numeric_limits<std::size_t>::max()',
                     '_offset_bits':'champsim::lg2(BLOCK_SIZE)',
                     '_queue_check_full_addr':False
                 }

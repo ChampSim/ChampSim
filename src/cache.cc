@@ -138,7 +138,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
                access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.data_promise->pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
   }
 
-  const bool bypass = (way == set_end || fill_mshr.clusivity == champsim::inclusivity::exclusive);
+  const bool bypass = (way == set_end);// || fill_mshr.clusivity == champsim::inclusivity::exclusive
   assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
 
   if (!bypass && way->valid && way->dirty) {
@@ -227,6 +227,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(*way), handle_pkt.ip, 0, handle_pkt.type, true);
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
+    for (auto* ret : handle_pkt.to_return) {
+       ret->push_back(response);
+    }
     //std::for_each(std::begin(handle_pkt.to_return), std::end(handle_pkt.to_return), channel_type::returner_for(std::move(response)));
 
     way->dirty |= (handle_pkt.type == access_type::WRITE);

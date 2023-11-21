@@ -343,13 +343,13 @@ std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(u
       return t.btb_prediction(ip, branch_type);
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
       return t.btb_prediction(ip);
-    return std::pair{0ul, false};
+    return std::pair{0ull, false};
   };
 
   if constexpr (sizeof...(Ts) > 0) {
     return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
   }
-  return {0ul, false};
+  return {0ull, false};
 }
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE
