@@ -278,3 +278,28 @@ class YieldFromStar(unittest.TestCase):
         self.assertEqual(first, ['identity_first', 'identity_first'])
         self.assertEqual(second, ['identity_second', 'identity_second'])
 
+class ExplodeTests(unittest.TestCase):
+    def test_empty_list(self):
+        given = { 'dog': 'rough collie', 'test': [] }
+        expected = []
+        evaluated = config.util.explode(given, 'test')
+        self.assertEqual(expected, evaluated)
+
+    def test_single_element_list(self):
+        given = { 'dog': 'rough collie', 'test': ['good'] }
+        expected = [ { 'test': 'good', 'dog': 'rough collie' } ]
+        evaluated = config.util.explode(given, 'test')
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_element_list(self):
+        given = { 'dog': 'rough collie', 'test': ['good', 'bad'] }
+        expected = [ { 'test': 'good', 'dog': 'rough collie' },  { 'test': 'bad', 'dog': 'rough collie' } ]
+        evaluated = config.util.explode(given, 'test')
+        self.assertEqual(expected, evaluated)
+
+    def test_modify_key(self):
+        given = { 'dog': 'rough collie', 'test': ['good'] }
+        expected = [ { 'newkey': 'good', 'dog': 'rough collie' } ]
+        evaluated = config.util.explode(given, 'test', 'newkey')
+        self.assertEqual(expected, evaluated)
+
