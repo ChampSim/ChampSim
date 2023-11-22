@@ -353,8 +353,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'
+
     struct_body = itertools.chain(
-        *((queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels']) for v in upper_levels.values()),
+        (queue_fmtstr_result for formatted_queues in ((queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels']) for v in upper_levels.values()) for queue_fmtstr_result in formatted_queues),
 
         (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
         (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),
