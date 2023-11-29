@@ -248,6 +248,58 @@ class GetUpperLevelsTests(unittest.TestCase):
         ptws = []
         self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
 
+class DecorateQueuesTests(unittest.TestCase):
+    def test_levels_are_different(self):
+        caches = [
+            {'name': 'test_l1', 'lower_level': 'test_l2', 'rq_size': 1, 'wq_size': 1, 'pq_size': 1, '_offset_bits': 1, '_queue_check_full_addr': False, '_queue_factor': None},
+            {'name': 'test_l2', 'lower_level': 'test_l3', 'rq_size': 2, 'wq_size': 2, 'pq_size': 2, '_offset_bits': 2, '_queue_check_full_addr': False, '_queue_factor': None},
+            {'name': 'test_l3', 'lower_level': 'DRAM', 'rq_size': 3, 'wq_size': 3, 'pq_size': 3, '_offset_bits': 3, '_queue_check_full_addr': False, '_queue_factor': None}
+        ]
+        ptws = []
+
+        evaluated = config.instantiation_file.decorate_queues(caches, ptws, {'name': 'DRAM'})
+
+        self.assertEqual(evaluated.get('test_l2').get('rq_size'), 2)
+        self.assertEqual(evaluated.get('test_l2').get('wq_size'), 2)
+        self.assertEqual(evaluated.get('test_l2').get('pq_size'), 2)
+
+        self.assertEqual(evaluated.get('test_l3').get('rq_size'), 3)
+        self.assertEqual(evaluated.get('test_l3').get('wq_size'), 3)
+        self.assertEqual(evaluated.get('test_l3').get('pq_size'), 3)
+
+class GetQueueInfoTests(unittest.TestCase):
+    def test_single(self):
+        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog'] } }
+        given_decoration = { 'dog': { 'is_good_boy': True } }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True } ]
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_uppers(self):
+        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] } }
+        given_decoration = { 'dog': { 'is_good_boy': True } }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True }, { 'name': 'pig_to_dog', 'is_good_boy': True } ]
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_lowers(self):
+        given_uppers = {
+            'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] },
+            'cow': { 'upper_channels': ['cat_to_cow', 'pig_to_cow'] }
+        }
+        given_decoration = {
+            'dog': { 'is_good_boy': True },
+            'cow': { 'is_good_boy': False }
+        }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [
+            { 'name': 'cat_to_dog', 'is_good_boy': True },
+            { 'name': 'pig_to_dog', 'is_good_boy': True },
+            { 'name': 'cat_to_cow', 'is_good_boy': False },
+            { 'name': 'pig_to_cow', 'is_good_boy': False }
+        ]
+        self.assertEqual(expected, evaluated)
+
 class CheckHeaderCompilesForClassTests(unittest.TestCase):
     def test_present(self):
         with tempfile.TemporaryDirectory() as dtemp:
