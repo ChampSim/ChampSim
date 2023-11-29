@@ -63,8 +63,13 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
     local_dir_varname = f'{build_id}_dirs_{i}'
     local_obj_varname = f'{build_id}_objs_{i}'
 
-    rel_dest_dir = sanitize(os.path.abspath(os.path.join(dest_dir, os.path.relpath(base, src_dir))))
-    rel_src_dir = sanitize(os.path.abspath(src_dir))
+    prefix_len = len(os.path.commonprefix((base, src_dir)))
+    sub_dest_dir = src_dir[prefix_len:]
+    if sub_dest_dir:
+        rel_dest_dir = sanitize(os.path.join(dest_dir, sub_dest_dir))
+    else:
+        rel_dest_dir = sanitize(dest_dir)
+    rel_src_dir = sanitize(src_dir)
 
     yield from header({'Build ID': build_id, 'Source': rel_src_dir, 'Destination': rel_dest_dir})
     yield ''
@@ -72,7 +77,7 @@ def make_subpart(i, src_dir, base, dest_dir, build_id):
     # Define variables
     yield from assign_variable(local_dir_varname, sanitize(dest_dir))
 
-    map_source_to_obj = f'$(patsubst {rel_src_dir}/%.cc, {rel_dest_dir}/%.o, $(wildcard {rel_src_dir}/*.cc))'
+    map_source_to_obj = f'$(patsubst {os.path.join(rel_src_dir, "%.cc")}, {os.path.join(rel_dest_dir, "%.o")}, $(wildcard {os.path.join(rel_src_dir, "*.cc")}))'
     yield from assign_variable(local_obj_varname, map_source_to_obj)
 
     # Assign dependencies
@@ -95,7 +100,7 @@ def make_part(src_dirs, dest_dir, build_id):
     :param build_id: a unique identifier for this build
     :returns: a tuple of the list of directory make variable names and the object make variable names
     '''
-    source_base = itertools.chain.from_iterable([(s,b) for b,_,_ in os.walk(s)] for s in src_dirs)
+    source_base = itertools.chain.from_iterable([(os.path.abspath(s),os.path.abspath(b)) for b,_,_ in os.walk(s)] for s in src_dirs)
     counted_arg_list = ((i, *sb, dest_dir, build_id) for i,sb in enumerate(source_base))
 
     dir_varnames, obj_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
@@ -112,19 +117,21 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield ''
 
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    exec_fname = sanitize(os.path.abspath(executable))
 
+    yield from assign_variable('OBJ_ROOT', os.path.normpath(os.path.join(objdir, '..')), targets=[exec_fname])
+    yield ''
     ragged_dir_varnames, ragged_obj_varnames = yield from util.yield_from_star(make_part, (
-        (source_dirs, os.path.join(objdir, 'obj'), build_id),
-        *(((mod_info['path'],), os.path.join(objdir, name), build_id+'_'+name) for name, mod_info in module_info.items())
+        (source_dirs, os.path.join('$(OBJ_ROOT)', build_id), build_id),
+        *(((mod_info['path'],), os.path.join('$(OBJ_ROOT)', build_id, name), build_id+'_'+name) for name, mod_info in module_info.items())
     ), n=2)
 
     # Flatten varnames
     dir_varnames, obj_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames))
 
-    options_fname = sanitize(os.path.normpath(os.path.join(objdir, '..', 'absolute.options')))
+    options_fname = sanitize(os.path.join(champsim_root, 'absolute.options'))
     global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
     global_module_options_fname = sanitize(os.path.join(champsim_root, 'module.options'))
-    exec_fname = sanitize(os.path.abspath(executable))
 
     for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
         name, mod_info = item

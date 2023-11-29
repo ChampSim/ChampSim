@@ -16,6 +16,9 @@ test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 #  - $(dirs), the list of all directories that hold object files
 #  - $(objs), the list of all object files corresponding to sources
 #  - All dependencies and flags assigned according to the modules
+#
+# Customization points:
+#  - OBJ_ROOT: at make-time, override the object file directory
 include _configuration.mk
 
 all_execs: $(filter-out $(test_main_name), $(executable_name))

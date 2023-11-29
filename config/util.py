@@ -173,3 +173,15 @@ def yield_from_star(gen, args, n=2):
         for seq,return_value in zip(retvals, instance_retval):
             seq.append(return_value)
     return retvals
+
+def explode(d, in_key, out_key=None):
+    '''
+    Convert a dictionary with a list member to a list with dictionary members
+    :param d: the dictionary to be extracted
+    :param in_key: the key holding the list
+    :param out_key: the key to distinguish the resulting list elements
+    '''
+    if out_key is None:
+        out_key = in_key
+    extracted = d.pop(in_key)
+    return [ { out_key: e, **d } for e in extracted ]
