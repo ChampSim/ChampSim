@@ -16,6 +16,7 @@ import itertools
 import functools
 import operator
 import collections
+import os
 
 def iter_system(system, name, key='lower_level'):
     '''
@@ -153,11 +154,16 @@ def do_for_first(func, iterable):
     yield from map(func, head)
     yield from tail
 
+def batch(it, n):
+    it = iter(it)
+    val = tuple(itertools.islice(it, n))
+    while val:
+        yield val
+        val = tuple(itertools.islice(it, n))
+
 def multiline(long_line, length=1, indent=0, line_end=None):
     ''' Split a long string into lines with n words '''
-    grouped = [iter(long_line)] * length
-    grouped = itertools.zip_longest(*grouped, fillvalue='')
-    grouped = (' '.join(filter(None, group)) for group in grouped)
+    grouped = map(' '.join, batch(long_line, length))
     lines = append_except_last(grouped, line_end or '')
     indentation = itertools.chain(('',), itertools.repeat('  '*indent))
     yield from (i+l for i,l in zip(indentation,lines))
@@ -185,3 +191,20 @@ def explode(d, in_key, out_key=None):
         out_key = in_key
     extracted = d.pop(in_key)
     return [ { out_key: e, **d } for e in extracted ]
+
+def path_parts(p):
+    if not p:
+        return
+    head, tail = os.path.split(p)
+    yield from path_parts(head)
+    yield tail
+
+def path_ancestors(p):
+    yield from itertools.accumulate(path_parts(p), os.path.join)
+
+def sliding(iterable, n):
+    it = iter(iterable)
+    window = collections.deque(itertools.islice(it, n-1), maxlen=n)
+    for x in it:
+        window.append(x)
+        yield tuple(window)
