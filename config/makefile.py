@@ -93,7 +93,7 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     dep_wildcards = dependency([os.path.join(rel_deps_dir, '%.d')], rel_dest_dir, os.path.join(rel_src_dir, '%.cc'))
     yield from dependency([dereference(local_dep_varname)], *dep_wildcards)
 
-    yield 'ifeq (,$(filter clean configclean, $(MAKECMDGOALS)))'
+    yield 'ifeq (,$(filter clean configclean pytest, $(MAKECMDGOALS)))'
     yield f'-include $({local_dep_varname})'
     yield 'endif'
     yield ''
