@@ -143,7 +143,7 @@ public:
   template <typename T>
   static auto returner_for(T&& request)
   {
-    return [req = request](channel* ul) {
+    return [req = response_type{request}](channel* ul) {
       ul->returned.push_back(req);
     };
   }

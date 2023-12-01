@@ -74,7 +74,6 @@ cache_builder_parts = {
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
     'pq_size': '.pq_size({pq_size})',
-    'iq_size': '.iq_size({iq_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',
