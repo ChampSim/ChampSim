@@ -74,7 +74,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
   fwd_mshr.v_address = handle_pkt.address;
   if (handle_pkt.response_requested) {
-    fwd_mshr.to_return = {ul};
+    fwd_mshr.to_return = {&ul->returned};
   }
 
   if constexpr (champsim::debug_print) {
@@ -140,7 +140,7 @@ long PageTableWalker::operate()
                                                              [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle; });
   std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
     channel_type::response_type response{mshr_entry.v_address, mshr_entry.v_address, mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me};
-    std::for_each(std::begin(mshr_entry.to_return), std::end(mshr_entry.to_return), channel_type::returner_for(std::move(response)));
+    std::for_each(mshr_entry.to_return.begin(), mshr_entry.to_return.end(), channel_type::returner_for(response));
   });
   fill_bw.consume(std::distance(complete_begin, complete_end));
   completed.erase(complete_begin, complete_end);
