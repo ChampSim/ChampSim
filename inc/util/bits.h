@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+/*
 #ifdef CHAMPSIM_MODULE
 #error "Modules should include msl/bits.h"
 #endif
+*/
 
 #ifndef UTIL_BITS_H
 #define UTIL_BITS_H

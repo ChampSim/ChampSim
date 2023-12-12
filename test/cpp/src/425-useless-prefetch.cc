@@ -46,7 +46,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
       THEN("The issue is received") {
         CHECK(seed_result);
-        CHECK(mock_ll.packet_count() == 1);
+        CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr})));
       }
 
       AND_WHEN("A packet with a different address is sent") {
@@ -64,8 +64,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK(mock_ll.packet_count() == 2);
-          CHECK(mock_ll.addresses.back() == test_b.address);
+          CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr, test_b.address})));
         }
 
         for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
