@@ -180,7 +180,7 @@ auto champsim::cache_builder<P, R>::get_fill_latency() const -> uint64_t
 {
   if (m_fill_lat.has_value())
     return m_fill_lat.value();
-  return (get_total_latency()+1) / 2;
+  return (get_total_latency() + 1) / 2;
 }
 
 template <typename P, typename R>
@@ -190,9 +190,9 @@ auto champsim::cache_builder<P, R>::get_total_latency() const -> uint64_t
   if (m_latency.has_value()) {
     latency = m_latency.value();
   } else {
-    auto log_size = champsim::lg2(get_num_sets()*get_num_ways());
+    auto log_size = champsim::lg2(get_num_sets() * get_num_ways());
     if (log_size > 6) {
-      latency = 2*(log_size - 6);
+      latency = 2 * (log_size - 6);
     } else {
       latency = 1;
     }
