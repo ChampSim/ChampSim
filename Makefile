@@ -37,10 +37,6 @@ clean:
 configclean: clean
 	@-$(RM) -r $(dirs) _configuration.mk
 
-# Make directories that don't exist
-$(sort $(dirs)):
-	-mkdir $@
-
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
 %/absolute.options: | %
@@ -48,14 +44,12 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 
 # All .o files should be made like .cc files
 $(objs):
+	mkdir -p $(@D)
 	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 %.d:
-	@set -e; \
-	rm -f $@; \
-	$(CXX) -MM -MG -MF $@.$$$$ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^) &> /dev/null; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
+	mkdir -p $(@D)
+	$(CXX) -MM -MT $@ -MT $(objdep)/$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
@@ -67,6 +61,7 @@ endif
 
 # Link main executables
 $(executable_name):
+	mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run

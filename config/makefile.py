@@ -88,16 +88,13 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     yield from hard_assign_variable(local_dep_varname, map_source_to_dep)
 
     # Assign dependencies
-    for parent, child in util.sliding(util.path_ancestors(rel_dest_dir), 2):
-        yield from dependency([child], parent)
-    for parent, child in util.sliding(util.path_ancestors(rel_deps_dir), 2):
-        yield from dependency([child], parent)
-
     obj_wildcards = dependency([os.path.join(rel_dest_dir, '%.o')], os.path.join(rel_src_dir, '%.cc'))
-    yield from __do_dependency(obj_wildcards, [dereference(local_obj_varname)], [rel_dest_dir])
+    yield from dependency([dereference(local_obj_varname)], *obj_wildcards)
 
     dep_wildcards = dependency([os.path.join(rel_deps_dir, '%.d')], os.path.join(rel_src_dir, '%.cc'))
-    yield from __do_dependency(dep_wildcards, [dereference(local_dep_varname)], [rel_deps_dir])
+    yield from dependency([dereference(local_dep_varname)], *dep_wildcards)
+
+    yield from assign_variable('objdep', rel_dest_dir, targets=[dereference(local_dep_varname)])
 
     yield 'ifeq (,$(filter clean configclean, $(MAKECMDGOALS)))'
     yield f'-include $({local_dep_varname})'
@@ -163,11 +160,10 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     if omit_main:
         objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
 
-    yield from __do_dependency(objs, [exec_fname], [os.path.dirname(exec_fname)])
-    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
+    yield from dependency([exec_fname], *objs)
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
 
     yield from append_variable('executable_name', exec_fname)
-    yield from assign_variable('local_dirs', *map(dereference, dir_varnames), targets=[exec_fname])
     yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''
