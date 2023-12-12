@@ -29,6 +29,7 @@ namespace champsim
 {
 using msl::bitmask;
 using msl::lg2;
+using msl::next_pow2;
 using msl::splice_bits;
 } // namespace champsim
 
