@@ -130,8 +130,10 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield ''
 
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    exec_fname = sanitize(os.path.abspath(executable))
+    exec_dir, exec_fname = os.path.split(sanitize(os.path.abspath(executable)))
+    exec_fname = os.path.join('$(BIN_ROOT)', exec_fname)
 
+    yield from hard_assign_variable('BIN_ROOT', exec_dir)
     yield from hard_assign_variable('OBJ_ROOT', os.path.normpath(os.path.join(objdir, '..')))
     yield ''
     ragged_dir_varnames, ragged_obj_varnames, ragged_dep_varnames = yield from util.yield_from_star(make_part, (
