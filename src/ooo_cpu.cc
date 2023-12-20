@@ -334,7 +334,7 @@ long O3_CPU::dispatch_instruction()
   champsim::bandwidth available_dispatch_bandwidth{DISPATCH_WIDTH};
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
-  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle
+  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle <= current_cycle
          && std::size(ROB) != ROB_SIZE
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
@@ -343,6 +343,7 @@ long O3_CPU::dispatch_instruction()
     DISPATCH_BUFFER.pop_front();
     do_memory_scheduling(ROB.back());
 
+    ROB.back().event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
     available_dispatch_bandwidth.consume();
   }
 
@@ -354,7 +355,7 @@ long O3_CPU::schedule_instruction()
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
-    if (!rob_it->scheduled) {
+    if (!rob_it->scheduled && rob_it->event_cycle <= current_cycle) {
       do_scheduling(*rob_it);
       ++progress;
     }
@@ -388,7 +389,6 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   }
 
   instr.scheduled = true;
-  instr.event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
 }
 
 long O3_CPU::execute_instruction()
@@ -494,7 +494,7 @@ long O3_CPU::operate_lsq()
 
   for (auto& lq_entry : LQ) {
     if (load_bw.has_remaining() && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued
-        && lq_entry->event_cycle < current_cycle) {
+        && lq_entry->event_cycle <= current_cycle) {
       auto success = execute_load(*lq_entry);
       if (success) {
         load_bw.consume();

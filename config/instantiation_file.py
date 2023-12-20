@@ -71,8 +71,11 @@ cache_builder_parts = {
     'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
     'size': '.size({size})',
+    'log2_size': '.log2_size({log2_size})',
     'sets': '.sets({sets})',
+    'log2_sets': '.log2_sets({log2_sets})',
     'ways': '.ways({ways})',
+    'log2_ways': '.log2_ways({log2_ways})',
     'pq_size': '.pq_size({pq_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',
@@ -318,12 +321,8 @@ def module_include_files(datas):
 
     yield from (f'#include "{f}"' for _,f in filtered_candidates)
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
-    '''
-    Generate the lines for a C++ file that instantiates a configuration.
-    '''
-    upper_levels = util.chain(
-            *util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
+def decorate_queues(caches, ptws, pmem):
+    return util.chain(
             *({c['name']: cache_queue_defaults(c)} for c in caches),
             *({p['name']: ptw_queue_defaults(p)} for p in ptws),
             {pmem['name']: {
@@ -334,7 +333,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                     '_queue_check_full_addr':False
                 }
             }
-        )
+    )
+
+def get_queue_info(upper_levels, decoration):
+    queue_info = util.chain(upper_levels, decoration)
+    return list(itertools.chain(*(util.explode(v, 'upper_channels', 'name') for v in queue_info.values())))
+
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+    '''
+    Generate the lines for a C++ file that instantiates a configuration.
+    '''
+    upper_levels = util.chain(*util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector))
 
     yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
@@ -353,8 +362,9 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'
+
     struct_body = itertools.chain(
-        *((queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels']) for v in upper_levels.values()),
+        (queue_fmtstr.format(**v) for v in get_queue_info(upper_levels, decorate_queues(caches, ptws, pmem))),
 
         (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
         (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),
