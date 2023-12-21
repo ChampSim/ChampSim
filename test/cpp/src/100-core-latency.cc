@@ -16,8 +16,12 @@ SCENARIO("The total latency is the sum of the stage latency") {
     const auto num_instrs = GENERATE(1u, 2u, 5u);
     do_nothing_MRC mock_L1I, mock_L1D;
 
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .fetch_queues(&mock_L1I.queues)
+    O3_CPU uut{champsim::core_builder{}
+        .ifetch_buffer_size(16)
+        .decode_buffer_size(16)
+        .dispatch_buffer_size(16)
+        .rob_size(16)
+        .fetch_queues(&mock_L1I.queues)
         .data_queues(&mock_L1D.queues)
         .decode_latency(decode_latency)
         .dispatch_latency(dispatch_latency)
@@ -40,7 +44,7 @@ SCENARIO("The total latency is the sum of the stage latency") {
     {
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
-      for (unsigned int i=0; uut.num_retired < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
+      for (unsigned int i=0; static_cast<std::size_t>(uut.num_retired) < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
       {
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
@@ -63,8 +67,12 @@ SCENARIO("The minimum specified core latency is 1") {
     const auto num_instrs = GENERATE(1u, 2u, 5u);
     do_nothing_MRC mock_L1I, mock_L1D;
 
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .fetch_queues(&mock_L1I.queues)
+    O3_CPU uut{champsim::core_builder{}
+        .ifetch_buffer_size(16)
+        .decode_buffer_size(16)
+        .dispatch_buffer_size(16)
+        .rob_size(16)
+        .fetch_queues(&mock_L1I.queues)
         .data_queues(&mock_L1D.queues)
         .decode_latency(decode_latency)
         .dispatch_latency(dispatch_latency)
@@ -79,14 +87,14 @@ SCENARIO("The minimum specified core latency is 1") {
     uut.warmup = false;
     std::vector test_instructions(num_instrs, champsim::test::instruction_with_ip(1));
 
-    auto cycle_complete_pipeline = 9; // Fixed value for both 0 and 1
+    auto cycle_complete_pipeline = 9u; // Fixed value for both 0 and 1
     auto expected_cycle_when_done = cycle_complete_pipeline + (unsigned int) (test_instructions.size()-1);
 
     WHEN("The instructions are added to the core")
     {
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
-      for (unsigned int i=0; uut.num_retired < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
+      for (unsigned int i=0; static_cast<std::size_t>(uut.num_retired) < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
       {
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();

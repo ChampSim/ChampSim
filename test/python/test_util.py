@@ -40,6 +40,9 @@ class SubdictTests(unittest.TestCase):
     def test_subdict_does_not_fail_on_missing(self):
         self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b','d')), {'a':1, 'b':2})
 
+    def test_subdict_invert(self):
+        self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b'), invert=True), {'c':3})
+
 class CombineNamedTests(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(len(config.util.combine_named()), 0)
@@ -303,3 +306,108 @@ class ExplodeTests(unittest.TestCase):
         evaluated = config.util.explode(given, 'test', 'newkey')
         self.assertEqual(expected, evaluated)
 
+class PathPartsTests(unittest.TestCase):
+    def test_empty(self):
+        given = ''
+        expected = tuple()
+        evaluated = tuple(config.util.path_parts(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_no_dir(self):
+        given = 'cat'
+        expected = ('cat',)
+        evaluated = tuple(config.util.path_parts(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_two_parts(self):
+        given = 'cat/dog'
+        expected = ('cat', 'dog')
+        evaluated = tuple(config.util.path_parts(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_three_parts(self):
+        given = 'cat/dog/cow'
+        expected = ('cat', 'dog', 'cow')
+        evaluated = tuple(config.util.path_parts(given))
+        self.assertEqual(expected, evaluated)
+
+class PathAncestorsTests(unittest.TestCase):
+    def test_empty(self):
+        given = ''
+        expected = tuple()
+        evaluated = tuple(config.util.path_ancestors(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_no_dir(self):
+        given = 'cat'
+        expected = ('cat',)
+        evaluated = tuple(config.util.path_ancestors(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_two_parts(self):
+        given = 'cat/dog'
+        expected = ('cat', 'cat/dog')
+        evaluated = tuple(config.util.path_ancestors(given))
+        self.assertEqual(expected, evaluated)
+
+    def test_three_parts(self):
+        given = 'cat/dog/cow'
+        expected = ('cat', 'cat/dog', 'cat/dog/cow')
+        evaluated = tuple(config.util.path_ancestors(given))
+        self.assertEqual(expected, evaluated)
+
+class BatchTests(unittest.TestCase):
+    def test_empty(self):
+        given = tuple()
+        expected = tuple()
+        evaluated = tuple(config.util.batch(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_single_batch(self):
+        given = ('cat', 'dog')
+        expected = (('cat', 'dog'),)
+        evaluated = tuple(config.util.batch(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_batch(self):
+        given = ('cat', 'dog', 'pig', 'cow')
+        expected = (('cat', 'dog'), ('pig', 'cow'))
+        evaluated = tuple(config.util.batch(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_nonuniform(self):
+        given = ('cat', 'dog', 'pig')
+        expected = (('cat', 'dog'), ('pig',))
+        evaluated = tuple(config.util.batch(given, 2))
+        self.assertEqual(expected, evaluated)
+
+class SlidingTests(unittest.TestCase):
+    def test_empty(self):
+        given = tuple()
+        expected = tuple()
+        evaluated = tuple(config.util.sliding(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_underflow(self):
+        given = ('cat',)
+        expected = tuple()
+        evaluated = tuple(config.util.sliding(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_single_window(self):
+        given = ('cat', 'dog')
+        expected = (('cat', 'dog'),)
+        evaluated = tuple(config.util.sliding(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_batch(self):
+        given = ('cat', 'dog', 'pig')
+        expected = (('cat', 'dog'), ('dog', 'pig'))
+        evaluated = tuple(config.util.sliding(given, 2))
+        self.assertEqual(expected, evaluated)
+
+    def test_longer_window(self):
+        given = ('cat', 'dog', 'pig', 'cow')
+        expected = (('cat', 'dog', 'pig'), ('dog', 'pig', 'cow'))
+        evaluated = tuple(config.util.sliding(given, 3))
+        self.assertEqual(expected, evaluated)

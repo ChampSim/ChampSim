@@ -83,7 +83,7 @@ SCENARIO("The replacement policy can bypass") {
             elem->_operate();
 
         THEN("No blocks are evicted") {
-          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(1));
+          REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{test_b.address}));
         }
       }
     }
