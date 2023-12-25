@@ -77,6 +77,9 @@ class channel
     uint64_t v_address;
     uint64_t data;
     uint32_t pf_metadata = 0;
+
+    access_type type{access_type::ACK};
+
     std::vector<uint64_t> instr_depend_on_me{};
 
     response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<uint64_t> deps)
@@ -143,8 +146,8 @@ public:
   template <typename T>
   static auto returner_for(T&& request)
   {
-    return [req = response_type{request}](channel* ul) {
-      ul->returned.push_back(req);
+    return [req = response_type{request}](std::deque<response_type>* ret_ul) {
+      ret_ul->push_back(req);
     };
   }
 };

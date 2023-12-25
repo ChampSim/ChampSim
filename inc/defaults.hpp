@@ -21,6 +21,7 @@
 #include "../btb/basic_btb/basic_btb.h"
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
+#include "../state_model/weak/weak.h"
 #include "cache.h"
 #include "cache_builder.h"
 #include "core_builder.h"

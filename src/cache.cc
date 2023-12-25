@@ -516,6 +516,7 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 
 long CACHE::invalidate_entry(uint64_t inval_addr)
 {
+  fmt::print("Invalidating entry {inval_addr}\n");
   auto [begin, end] = get_set_span(inval_addr);
   auto inv_way = std::find_if(begin, end, matches_address(inval_addr));
 
@@ -540,7 +541,7 @@ void CACHE::invalidate_entry(BLOCK& inval_block)
   inval_packet.address = inval_block.address;
   inval_packet.v_address = 0;
 
-  //std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_packet)); //channel_type::invalidator_for(inval_block.address));
+  std::for_each(std::begin(upper_levels), std::end(upper_levels), channel_type::invalidator_for(inval_packet)); //channel_type::invalidator_for(inval_block.address));
 
   inval_block.valid = false;
 }
@@ -576,6 +577,9 @@ bool CACHE::prefetch_line(uint64_t /*deprecated*/, uint64_t /*deprecated*/, uint
 
 void CACHE::finish_packet(const response_type& packet)
 {
+  if constexpr (champsim::debug_print)
+    fmt::print("{} received response {}\n", NAME, int(packet.type));
+
   // check MSHR information
   auto mshr_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(packet.address));
   auto first_unreturned = std::find_if(MSHR.begin(), MSHR.end(), [](auto x) { return x.data_promise.has_unknown_readiness(); });

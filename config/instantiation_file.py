@@ -73,6 +73,7 @@ cache_builder_parts = {
     'size': '.size({size})',
     'sets': '.sets({sets})',
     'ways': '.ways({ways})',
+    'clusivity': '.clusivity({clusivity})',
     'pq_size': '.pq_size({pq_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',

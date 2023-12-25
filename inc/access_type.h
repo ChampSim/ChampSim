@@ -28,6 +28,8 @@ enum class access_type : unsigned {
   TRANSLATION,
   NUM_TYPES,
   INVALIDATE,
+  DATA,
+  ACK,
 };
 
 using namespace std::literals::string_view_literals;
