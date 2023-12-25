@@ -169,24 +169,24 @@ auto champsim::cache_builder<P, R, S>::get_fill_bandwidth() const -> champsim::b
   return m_max_fill.value_or(get_tag_bandwidth());
 }
 
-template <typename P, typename R>
-auto champsim::cache_builder<P, R>::get_hit_latency() const -> uint64_t
+template <typename P, typename R, typename S>
+auto champsim::cache_builder<P, R, S>::get_hit_latency() const -> uint64_t
 {
   if (m_hit_lat.has_value())
     return m_hit_lat.value();
   return get_total_latency() - get_fill_latency();
 }
 
-template <typename P, typename R>
-auto champsim::cache_builder<P, R>::get_fill_latency() const -> uint64_t
+template <typename P, typename R, typename S>
+auto champsim::cache_builder<P, R, S>::get_fill_latency() const -> uint64_t
 {
   if (m_fill_lat.has_value())
     return m_fill_lat.value();
   return (get_total_latency() + 1) / 2;
 }
 
-template <typename P, typename R>
-auto champsim::cache_builder<P, R>::get_total_latency() const -> uint64_t
+template <typename P, typename R, typename S>
+auto champsim::cache_builder<P, R, S>::get_total_latency() const -> uint64_t
 {
   uint64_t latency{0};
   if (m_latency.has_value()) {
@@ -237,7 +237,7 @@ auto champsim::cache_builder<P, R, S>::sets(uint32_t sets_) -> self_type&
   return *this;
 }
 
-template <typename P, typename R, S>
+template <typename P, typename R, typename S>
 auto champsim::cache_builder<P, R, S>::log2_sets(uint32_t log2_sets_) -> self_type&
 {
   m_sets = 1 << log2_sets_;
