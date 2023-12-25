@@ -32,6 +32,17 @@ constexpr T lg2(T n)
   return result;
 }
 
+template <typename T>
+constexpr T next_pow2(T n)
+{
+  n--;
+  for (int i = 0; i < lg2(std::numeric_limits<T>::digits); ++i) {
+    n |= n >> (1u << i);
+  }
+  n++;
+  return n;
+}
+
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
   if (begin - end >= std::numeric_limits<uint64_t>::digits) {

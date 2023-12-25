@@ -116,11 +116,23 @@ class CacheBuilderTests(unittest.TestCase):
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
+    def test_size(self):
+        self.get_element_diff(['.size(1)'], size=1)
+
+    def test_log2_size(self):
+        self.get_element_diff(['.log2_size(1)'], log2_size=1)
+
     def test_sets(self):
         self.get_element_diff(['.sets(1)'], sets=1)
 
+    def test_log2_sets(self):
+        self.get_element_diff(['.log2_sets(1)'], log2_sets=1)
+
     def test_ways(self):
         self.get_element_diff(['.ways(1)'], ways=1)
+
+    def test_log2_ways(self):
+        self.get_element_diff(['.log2_ways(1)'], log2_ways=1)
 
     def test_pq_size(self):
         self.get_element_diff(['.pq_size(1)'], pq_size=1)

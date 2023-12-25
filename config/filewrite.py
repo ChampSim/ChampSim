@@ -155,9 +155,19 @@ class Fragment:
         return Fragment(fileparts)
 
     @staticmethod
-    def from_config(parsed_config, bindir_name, srcdir_names, objdir_name, omit_main=False, verbose=False):
+    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False, verbose=False):
         ''' Produce a sequence of Fragments from the result of parse.parse_config(). '''
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        bindir_name = bindir_name or os.path.join(champsim_root, 'bin')
+        srcdir_names = srcdir_names or []
+        objdir_name = objdir_name or os.path.join(champsim_root, '.csconfig')
+
+        if verbose:
+            print('Configuring files to:')
+            print('Binary directory:', bindir_name)
+            print('Source directory:', srcdir_names)
+            print('Object directory:', objdir_name)
+
         makefile_sources = (*srcdir_names, os.path.join(champsim_root, 'src'))
 
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
