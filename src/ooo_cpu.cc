@@ -327,7 +327,7 @@ long O3_CPU::decode_instruction()
     db_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : this->DISPATCH_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", instr.instr_id, this->current_cycle);
+      fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, this->current_cycle);
     }
   });
 
