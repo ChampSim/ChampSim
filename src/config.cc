@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <numeric>
 #include <map>
 
 long champsim::config::int_or_prefixed_size(long val)
@@ -30,4 +31,25 @@ long champsim::config::int_or_prefixed_size(std::string_view val)
   std::string_view suffix{ptr, suffix_length};
   auto found_multiplier = std::find_if(std::begin(multipliers), std::end(multipliers), [suffix](auto x){ return x.first == suffix; })->second;
   return result*found_multiplier;
+}
+
+std::map<std::string, long> champsim::config::propogate(std::map<std::string, long> from, std::map<std::string, long> to, std::string key)
+{
+    auto from_it = from.find(key);
+    auto to_it = to.find(key);
+
+    if (to_it == std::end(to) && from_it != std::end(from)) {
+      auto to_return = to;
+      to_return[key] = from[key];
+      return to_return;
+    }
+
+    return to;
+}
+
+std::vector<std::map<std::string, long>> champsim::config::propogate_down(std::vector<std::map<std::string, long>> population, std::string key)
+{
+  std::vector<std::map<std::string, long>> result{};
+  std::inclusive_scan(std::begin(population), std::end(population), std::back_inserter(result), [key=key](const auto& last, const auto& value) { return propogate(last, value, key); });
+  return result;
 }
