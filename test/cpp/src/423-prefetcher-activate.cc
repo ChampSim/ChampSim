@@ -31,8 +31,10 @@ namespace
 SCENARIO("A prefetch does not trigger itself") {
   GIVEN("A single cache") {
     do_nothing_MRC mock_ll;
-    CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
+    CACHE uut{champsim::cache_builder{}
       .name("423a-uut")
+      .sets(1)
+      .ways(1)
       .lower_level(&mock_ll.queues)
       .prefetcher<::address_collector>()
     };

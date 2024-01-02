@@ -71,8 +71,11 @@ cache_builder_parts = {
     'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
     'size': '.size({size})',
+    'log2_size': '.log2_size({log2_size})',
     'sets': '.sets({sets})',
+    'log2_sets': '.log2_sets({log2_sets})',
     'ways': '.ways({ways})',
+    'log2_ways': '.log2_ways({log2_ways})',
     'pq_size': '.pq_size({pq_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',
@@ -183,7 +186,8 @@ def get_ptw_builder(ptw, upper_levels):
 
 def get_ref_vector_function(rtype, func_name, elements):
     '''
-    Generate a C++ function with the given name whose return type is a `std::vector` of `std::reference_wrapper`s to the given type.
+    Generate a C++ function with the given name whose return type is a
+    `std::vector` of `std::reference_wrapper`s to the given type.
     The members of the vector are references to the given elements.
     '''
 
@@ -222,16 +226,21 @@ def ptw_queue_defaults(ptw):
         '_queue_check_full_addr': False
     }
 
-def named_selector(elem, key):
-    return elem.get(key), elem.get('name')
-
 def upper_channel_collector(grouped_by_lower_level):
+    '''
+    Join a sequence of (lower_name, upper_name) into a dictionary with schema:
+    { lower_name: {'upper_channels': channel_name} }.
+    '''
     return util.chain(*(
         {lower_name: {'upper_channels': [channel_name(lower=lower_name, upper=upper_name)]}}
         for lower_name, upper_name in grouped_by_lower_level
     ))
 
 def get_upper_levels(cores, caches, ptws):
+    ''' Get a sequence of (lower_name, upper_name) for the given elements. '''
+    def named_selector(elem, key):
+        return elem.get(key), elem.get('name')
+
     return list(filter(lambda x: x[0] is not None, itertools.chain(
         map(functools.partial(named_selector, key='lower_level'), ptws),
         map(functools.partial(named_selector, key='lower_level'), caches),
@@ -316,9 +325,8 @@ def module_include_files(datas):
 
     yield from (f'#include "{f}"' for _,f in filtered_candidates)
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
-    upper_levels = util.chain(
-            *util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector),
+def decorate_queues(caches, ptws, pmem):
+    return util.chain(
             *({c['name']: cache_queue_defaults(c)} for c in caches),
             *({p['name']: ptw_queue_defaults(p)} for p in ptws),
             {pmem['name']: {
@@ -329,7 +337,17 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
                     '_queue_check_full_addr':False
                 }
             }
-        )
+    )
+
+def get_queue_info(upper_levels, decoration):
+    queue_info = util.chain(upper_levels, decoration)
+    return list(itertools.chain(*(util.explode(v, 'upper_channels', 'name') for v in queue_info.values())))
+
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+    '''
+    Generate the lines for a C++ file that instantiates a configuration.
+    '''
+    upper_levels = util.chain(*util.collect(get_upper_levels(cores, caches, ptws), operator.itemgetter(0), upper_channel_collector))
 
     yield '// NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers): generated magic numbers'
     yield '#include "environment.h"'
@@ -337,19 +355,20 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     yield '#include "module_def.inc"'
     yield '#endif'
 
-    datas = itertools.chain(
+    datas = itertools.filterfalse(operator.methodcaller('get', 'legacy', False), itertools.chain(
         *(c['_branch_predictor_data'] for c in cores),
         *(c['_btb_data'] for c in cores),
         *(c['_prefetcher_data'] for c in caches),
         *(c['_replacement_data'] for c in caches)
-    )
+    ))
     yield from module_include_files(datas)
 
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
     yield 'namespace champsim::configured {'
+
     struct_body = itertools.chain(
-        *((queue_fmtstr.format(name=ul_queues, **v) for ul_queues in v['upper_channels']) for v in upper_levels.values()),
+        (queue_fmtstr.format(**v) for v in get_queue_info(upper_levels, decorate_queues(caches, ptws, pmem))),
 
         (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
         (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),

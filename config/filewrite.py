@@ -33,13 +33,21 @@ warning_text = (
 )
 
 def contextualize_warning(prefix, line_prefix, suffix):
+    ''' Generate a warning contextualized with the given comment aspects. '''
     return (prefix, *(f' {line_prefix} {l}' for l in warning_text), suffix, '')
 
 def cxx_generated_warning():
+    ''' Generate a warning commented in a C++ style. '''
     return contextualize_warning('/***', '*', '***/')
 
 def make_generated_warning():
+    ''' Generate a warning commented in a Make style. '''
     return contextualize_warning('###', '#', '###')
+
+def cxx_file(lines):
+    ''' Generate a C++ file, with a warning header. '''
+    yield from cxx_generated_warning()
+    yield from lines
 
 def files_are_different(rfp, new_rfp, verbose=False):
     ''' Determine if the two files are different, excluding whitespace at the beginning or end of lines '''
@@ -83,10 +91,9 @@ def generate_legacy_module_information(containing_dir, module_info):
                 module_info['repl'].values()
             )
 
-        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), (*cxx_generated_warning(), *core_declarations)
-        yield os.path.join(containing_dir, 'cache_module_decl.inc'), (*cxx_generated_warning(), *cache_declarations)
-        yield os.path.join(containing_dir, 'module_def.inc'), (
-                *cxx_generated_warning(),
+        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), cxx_file(core_declarations)
+        yield os.path.join(containing_dir, 'cache_module_decl.inc'), cxx_file(cache_declarations)
+        yield os.path.join(containing_dir, 'module_def.inc'), cxx_file((
                 '#ifndef GENERATED_MODULES_INC',
                 '#define GENERATED_MODULES_INC',
                 '#include "modules.h"',
@@ -95,7 +102,7 @@ def generate_legacy_module_information(containing_dir, module_info):
                 *module_definitions,
                 '}',
                 '#endif'
-            )
+        ))
 
         joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
         for k,v in joined_info_items:
@@ -103,6 +110,10 @@ def generate_legacy_module_information(containing_dir, module_info):
             yield fname, modules.get_legacy_module_opts_lines(v)
 
 def try_int(val):
+    '''
+    Attempt to convert the value to a Python standard int.
+    For use with json.dump().
+    '''
     try:
         return int(val)
     except Exception as exc:
@@ -144,9 +155,20 @@ class Fragment:
         return Fragment(fileparts)
 
     @staticmethod
-    def from_config(parsed_config, bindir_name, srcdir_names, objdir_name, omit_main=False, verbose=False):
+    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False, verbose=False):
+        ''' Produce a sequence of Fragments from the result of parse.parse_config(). '''
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        core_sources = os.path.join(champsim_root, 'src')
+        bindir_name = bindir_name or os.path.join(champsim_root, 'bin')
+        srcdir_names = srcdir_names or []
+        objdir_name = objdir_name or os.path.join(champsim_root, '.csconfig')
+
+        if verbose:
+            print('Configuring files to:')
+            print('Binary directory:', bindir_name)
+            print('Source directory:', srcdir_names)
+            print('Object directory:', objdir_name)
+
+        makefile_sources = (*srcdir_names, os.path.join(champsim_root, 'src'))
 
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
@@ -175,10 +197,10 @@ class Fragment:
 
         fileparts = [
             # Instantiation file
-            (os.path.join(inc_dir, 'core_inst.inc'), (*cxx_generated_warning(), *get_instantiation_lines(**elements))),
+            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
 
             # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), (*cxx_generated_warning(), *get_constants_file(config_file, elements['pmem']))),
+            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
 
             # Module name mangling
             *generate_legacy_module_information(inc_dir, legacy_module_info),
@@ -186,14 +208,15 @@ class Fragment:
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
-                *get_makefile_lines(unique_obj_dir, build_id, executable, (*srcdir_names, core_sources), joined_module_info, omit_main)
+                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info, omit_main)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
 
     def write(self):
+        ''' Write the internal series of fragments to file. '''
         for fname, fcontents in self.fileparts:
-            write_if_different(fname, '\n'.join(fcontents))
+            write_if_different(fname, '\n'.join(l.rstrip() for l in fcontents))
 
     def file_parts(self):
         return self.fileparts
@@ -223,11 +246,14 @@ class FileWriter:
 
     def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False):
         ''' Apply defaults to get_file_lines() '''
-        local_bindir_name = bindir_name or self.bindir_name
-        local_srcdir_names = srcdir_names or []
-        local_objdir_name = os.path.abspath(objdir_name or self.objdir_name)
-
-        self.fragments.append(Fragment.from_config(parsed_config, local_bindir_name, local_srcdir_names, local_objdir_name, omit_main, verbose=self.verbose))
+        self.fragments.append(Fragment.from_config(
+            parsed_config,
+            bindir_name or self.bindir_name,
+            srcdir_names or [],
+            os.path.abspath(objdir_name or self.objdir_name),
+            omit_main,
+            verbose=self.verbose
+        ))
 
     @staticmethod
     def write_fragments(*fragments):

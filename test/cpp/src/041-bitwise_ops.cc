@@ -7,6 +7,18 @@ TEST_CASE("lg2 correctly identifies powers of 2") {
   REQUIRE(champsim::lg2((1ull << i)) == i);
 }
 
+TEST_CASE("next_pow2 correctly identifies powers of 2") {
+  auto i = GENERATE(range(0u,64u));
+  auto value = (1ull << i);
+  REQUIRE(champsim::next_pow2(value) == value);
+}
+
+TEST_CASE("next_pow2 promotes to powers of 2") {
+  auto i = GENERATE(range(2u,64u));
+  auto value = (1ull << i);
+  REQUIRE(champsim::next_pow2(value-1) == value);
+}
+
 TEST_CASE("bitmask correctly produces lower-order bits") {
   auto i = GENERATE(range(0u, 64u));
   REQUIRE(champsim::bitmask(i) < (1ull << i));

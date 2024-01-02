@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+/*
 #ifdef CHAMPSIM_MODULE
 #error "Modules should include msl/bits.h"
 #endif
+*/
 
 #ifndef UTIL_BITS_H
 #define UTIL_BITS_H
@@ -29,6 +31,7 @@ namespace champsim
 {
 using msl::bitmask;
 using msl::lg2;
+using msl::next_pow2;
 using msl::splice_bits;
 } // namespace champsim
 

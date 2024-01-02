@@ -53,7 +53,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-singlecore-results
         path: single_core_result.json
@@ -87,7 +87,7 @@ jobs:
 
     # We upload the generated files under github actions assets
     - name: Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: champsim-multicore-results
         path: multi_core_result.json

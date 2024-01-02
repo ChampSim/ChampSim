@@ -211,7 +211,8 @@ long O3_CPU::check_dib()
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
   // Check DIB to see if we recently fetched this line
-  if (auto dib_result = DIB.check_hit(instr.ip); dib_result) {
+  auto dib_result = DIB.check_hit(instr.ip);
+  if (dib_result) {
     // The cache line is in the L0, so we can mark this as complete
     instr.fetch_completed = true;
 
@@ -223,6 +224,10 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   }
 
   instr.dib_checked = true;
+
+  if constexpr (champsim::debug_print) {
+    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(), current_cycle);
+  }
 }
 
 long O3_CPU::fetch_instruction()
@@ -318,6 +323,10 @@ long O3_CPU::decode_instruction()
 
     // Add to dispatch
     db_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : this->DISPATCH_LATENCY);
+
+    if constexpr (champsim::debug_print) {
+      fmt::print("[DECODE] do_decode instr_id: {} cycle: {}\n", db_entry.instr_id, this->current_cycle);
+    }
   });
 
   std::move(window_begin, window_end, std::back_inserter(DISPATCH_BUFFER));
@@ -333,7 +342,7 @@ long O3_CPU::dispatch_instruction()
   champsim::bandwidth available_dispatch_bandwidth{DISPATCH_WIDTH};
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
-  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle
+  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle <= current_cycle
          && std::size(ROB) != ROB_SIZE
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
@@ -342,6 +351,7 @@ long O3_CPU::dispatch_instruction()
     DISPATCH_BUFFER.pop_front();
     do_memory_scheduling(ROB.back());
 
+    ROB.back().event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
     available_dispatch_bandwidth.consume();
   }
 
@@ -353,7 +363,7 @@ long O3_CPU::schedule_instruction()
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
-    if (!rob_it->scheduled) {
+    if (!rob_it->scheduled && rob_it->event_cycle <= current_cycle) {
       do_scheduling(*rob_it);
       ++progress;
     }
@@ -387,7 +397,6 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   }
 
   instr.scheduled = true;
-  instr.event_cycle = current_cycle + (warmup ? 0 : SCHEDULING_LATENCY);
 }
 
 long O3_CPU::execute_instruction()
@@ -461,8 +470,8 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   }
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
-               std::size(instr.destination_memory));
+    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
+               std::size(instr.destination_memory), current_cycle);
   }
 }
 
@@ -493,7 +502,7 @@ long O3_CPU::operate_lsq()
 
   for (auto& lq_entry : LQ) {
     if (load_bw.has_remaining() && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued
-        && lq_entry->event_cycle < current_cycle) {
+        && lq_entry->event_cycle <= current_cycle) {
       auto success = execute_load(*lq_entry);
       if (success) {
         load_bw.consume();
@@ -507,6 +516,10 @@ long O3_CPU::operate_lsq()
 
 void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 {
+  if constexpr (champsim::debug_print) {
+    fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, sq_entry.instr_id, sq_entry.virtual_address);
+  }
+
   sq_entry.finish(std::begin(ROB), std::end(ROB));
 
   // Release dependent loads
@@ -640,7 +653,8 @@ long O3_CPU::retire_rob()
       champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
   assert(std::distance(retire_begin, retire_end) >= 0); // end succeeds begin
   if constexpr (champsim::debug_print) {
-    std::for_each(retire_begin, retire_end, [](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired\n", x.instr_id); });
+    std::for_each(retire_begin, retire_end,
+                  [cycle = current_cycle](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle); });
   }
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;

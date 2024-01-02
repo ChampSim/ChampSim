@@ -158,7 +158,7 @@ def get_discriminator(variant_data, module_data, classname):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
     discriminator_classname = module_data['class'].split('::')[-1]
     body = itertools.chain(
-        (f'using {classname}::{classname}',),
+        (f'using {classname}::{classname};',),
         *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
     )
     yield from cxx.struct(discriminator_classname, body, superclass=classname)

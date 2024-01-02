@@ -167,7 +167,7 @@ jobs:
         --exclude $(pwd)/vcpkg_installed/\* \
         --output-file lcov_cpp.info
 
-    - uses: actions/upload-artifact@v3.1.2
+    - uses: actions/upload-artifact@v4
       if: ${{ matrix.config.coverage }}
       with:
         name: lcov-cpp
@@ -194,7 +194,7 @@ jobs:
         PYTHONPATH=$PYTHONPATH:$(pwd) coverage run --source=config -m unittest discover -v --start-directory='test/python'
         coverage lcov --include=config/\*.py --omit=*/__*__.py -o lcov_python.info
 
-    - uses: actions/upload-artifact@v3.1.2
+    - uses: actions/upload-artifact@v4
       with:
         name: lcov-python
         path: lcov_python.info
@@ -236,7 +236,7 @@ jobs:
         --include $(pwd)/inc/stats_printer.h \
         --output-file lcov_json.info
 
-    - uses: actions/upload-artifact@v3.1.2
+    - uses: actions/upload-artifact@v4
       with:
         name: lcov-json
         path: lcov_json.info
@@ -250,15 +250,15 @@ jobs:
     - name: Set Coverage Environment
       run: sudo apt-get install lcov
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: lcov-cpp
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: lcov-python
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: lcov-json
 

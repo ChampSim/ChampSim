@@ -164,7 +164,7 @@ long PageTableWalker::operate()
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
-  return fill_bw.amount_consumed() + tag_bw.amount_consumed();
+  return progress + fill_bw.amount_consumed() + tag_bw.amount_consumed();
 }
 
 void PageTableWalker::finish_packet(const response_type& packet)
