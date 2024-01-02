@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DoozyX/clang-format-lint-action@v0.16
+      - uses: DoozyX/clang-format-lint-action@v0.17
         with:
           source: 'src inc prefetcher branch replacement btb tracer'
           style: file
