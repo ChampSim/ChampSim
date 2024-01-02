@@ -81,10 +81,10 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     # Define variables
     yield from hard_assign_variable(local_dir_varname, *util.path_ancestors(rel_dest_dir), *util.path_ancestors(rel_deps_dir))
 
-    map_source_to_obj = f'$(patsubst {os.path.join(rel_src_dir, "%.cc")}, {os.path.join(rel_dest_dir, "%.o")}, $(wildcard {os.path.join(rel_src_dir, "*.cc")}))'
+    map_source_to_obj = f'$(call migrate,{rel_src_dir},{rel_dest_dir},.cc,.o)'
     yield from hard_assign_variable(local_obj_varname, map_source_to_obj)
 
-    map_source_to_dep = f'$(patsubst {os.path.join(rel_src_dir, "%.cc")}, {os.path.join(rel_deps_dir, "%.d")}, $(wildcard {os.path.join(rel_src_dir, "*.cc")}))'
+    map_source_to_dep = f'$(call migrate,{rel_src_dir},{rel_deps_dir},.cc,.d)'
     yield from hard_assign_variable(local_dep_varname, map_source_to_dep)
 
     # Assign dependencies
@@ -129,7 +129,6 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     })
     yield ''
 
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     exec_dir, exec_fname = os.path.split(sanitize(os.path.abspath(executable)))
     exec_fname = os.path.join('$(BIN_ROOT)', exec_fname)
 
@@ -144,9 +143,9 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     # Flatten varnames
     dir_varnames, obj_varnames, dep_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames)), list(itertools.chain(*ragged_dep_varnames))
 
-    options_fname = sanitize(os.path.join(champsim_root, 'absolute.options'))
-    global_options_fname = sanitize(os.path.join(champsim_root, 'global.options'))
-    global_module_options_fname = sanitize(os.path.join(champsim_root, 'module.options'))
+    options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'absolute.options'))
+    global_options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'global.options'))
+    global_module_options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'module.options'))
 
     for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
         name, mod_info = item
