@@ -79,7 +79,7 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
   buildA.upper_levels(std::move(channel_pointers));
   buildA.sets_factor((double)sets_factor);
 
-  buildA.sets(8);
+  buildA.sets(8u);
 
   CACHE uut{buildA};
 
@@ -167,11 +167,11 @@ TEST_CASE("Specifying the MSHR size overrides the inferred MSHR size") {
 
 TEST_CASE("If no bandwidth is specified, it is derived from the number of sets") {
   auto [num_sets, expected_bandwidth] = GENERATE(
-      std::pair{16, 1},
-      std::pair{64, 1},
-      std::pair{1024, 2},
-      std::pair{4*1024, 8},
-      std::pair{32*1024, 64}
+      std::pair{16u, 1},
+      std::pair{64u, 1},
+      std::pair{1024u, 2},
+      std::pair{4u*1024u, 8},
+      std::pair{32u*1024u, 64}
   );
   champsim::cache_builder buildA{};
   buildA.sets(num_sets);
@@ -183,7 +183,7 @@ TEST_CASE("If no bandwidth is specified, it is derived from the number of sets")
 }
 
 TEST_CASE("Specifying the tag bandwidth overrides inference from the number of sets") {
-  auto num_sets = 1024;
+  auto num_sets = 1024u;
   champsim::cache_builder buildA{};
   buildA.sets(num_sets);
   buildA.tag_bandwidth(champsim::bandwidth::maximum_type{6});
@@ -197,9 +197,9 @@ TEST_CASE("Specifying the tag bandwidth overrides inference from the number of s
 
 TEST_CASE("If no latency is specified, it is derived from the size") {
   auto [size, hit_latency, fill_latency] = GENERATE(
-      std::tuple{32*1024, 3ull, 3ull},
-      std::tuple{512*1024, 7ull, 7ull},
-      std::tuple{8*1024*1024, 11ull, 11ull}
+      std::tuple{32u*1024u, 3ull, 3ull},
+      std::tuple{512u*1024u, 7ull, 7ull},
+      std::tuple{8u*1024u*1024u, 11ull, 11ull}
   );
   champsim::cache_builder buildA{};
   buildA.size(size);
