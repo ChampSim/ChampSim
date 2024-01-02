@@ -64,7 +64,6 @@ def append_variable(var, head_val, *tail_val, targets=None):
 
 def make_subpart(i, base, sub_src, sub_dest, build_id):
     ''' Map a single directory of sources to destinations. '''
-    local_dir_varname = f'{build_id}_dirs_{i}'
     local_obj_varname = f'{build_id}_objs_{i}'
     local_dep_varname = f'{build_id}_deps_{i}'
 
@@ -79,7 +78,7 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     yield ''
 
     # Define variables
-    yield from hard_assign_variable(local_dir_varname, *util.path_ancestors(rel_dest_dir), *util.path_ancestors(rel_deps_dir))
+    yield from append_variable('dirs', *util.path_ancestors(rel_dest_dir), *util.path_ancestors(rel_deps_dir))
 
     map_source_to_obj = f'$(call migrate,{rel_src_dir},{rel_dest_dir},.cc,.o)'
     yield from hard_assign_variable(local_obj_varname, map_source_to_obj)
@@ -91,17 +90,15 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     obj_wildcards = dependency([os.path.join(rel_dest_dir, '%.o')], os.path.join(rel_src_dir, '%.cc'))
     yield from dependency([dereference(local_obj_varname)], *obj_wildcards)
 
-    dep_wildcards = dependency([os.path.join(rel_deps_dir, '%.d')], os.path.join(rel_src_dir, '%.cc'))
+    dep_wildcards = dependency([os.path.join(rel_deps_dir, '%.d')], rel_dest_dir, os.path.join(rel_src_dir, '%.cc'))
     yield from dependency([dereference(local_dep_varname)], *dep_wildcards)
-
-    yield from assign_variable('objdep', rel_dest_dir, targets=[dereference(local_dep_varname)])
 
     yield 'ifeq (,$(filter clean configclean, $(MAKECMDGOALS)))'
     yield f'-include $({local_dep_varname})'
     yield 'endif'
     yield ''
 
-    return local_dir_varname, local_obj_varname, local_dep_varname
+    return local_obj_varname, local_dep_varname
 
 def make_part(src_dirs, dest_dir, build_id):
     '''
@@ -116,8 +113,8 @@ def make_part(src_dirs, dest_dir, build_id):
     source_base = itertools.chain.from_iterable([(os.path.abspath(s),os.path.relpath(b,s)) for b,_,_ in os.walk(s)] for s in src_dirs)
     counted_arg_list = ((i, source, base, dest_dir, build_id) for i,(source, base) in enumerate(source_base))
 
-    dir_varnames, obj_varnames, dep_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=3)
-    return dir_varnames, obj_varnames, dep_varnames
+    obj_varnames, dep_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
+    return obj_varnames, dep_varnames
 
 def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
@@ -135,13 +132,13 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield from hard_assign_variable('BIN_ROOT', exec_dir)
     yield from hard_assign_variable('OBJ_ROOT', os.path.normpath(os.path.join(objdir, '..')))
     yield ''
-    ragged_dir_varnames, ragged_obj_varnames, ragged_dep_varnames = yield from util.yield_from_star(make_part, (
+    ragged_obj_varnames, ragged_dep_varnames = yield from util.yield_from_star(make_part, (
         (source_dirs, build_id, build_id),
         *(((mod_info['path'],), os.path.join(build_id, name), build_id+'_'+name) for name, mod_info in module_info.items())
-    ), n=3)
+    ), n=2)
 
     # Flatten varnames
-    dir_varnames, obj_varnames, dep_varnames = list(itertools.chain(*ragged_dir_varnames)), list(itertools.chain(*ragged_obj_varnames)), list(itertools.chain(*ragged_dep_varnames))
+    obj_varnames, dep_varnames = list(itertools.chain(*ragged_obj_varnames)), list(itertools.chain(*ragged_dep_varnames))
 
     options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'absolute.options'))
     global_options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'global.options'))
@@ -165,6 +162,6 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
 
     yield from append_variable('executable_name', exec_fname)
-    yield from append_variable('dirs', *map(dereference, dir_varnames), os.path.dirname(exec_fname))
+    yield from append_variable('dirs', os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
     yield ''

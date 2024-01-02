@@ -10,6 +10,7 @@ LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 executable_name:=
+dirs:=
 
 # Migrate names from a source directory (and suffix) to a target directory (and suffix)
 # $1 - source directory
@@ -57,7 +58,7 @@ $(objs):
 
 %.d:
 	mkdir -p $(@D)
-	$(CXX) -MM -MT $@ -MT $(objdep)/$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
