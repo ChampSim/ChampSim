@@ -152,7 +152,8 @@ auto champsim::cache_builder<P, R>::get_num_ways() const -> uint32_t
 template <typename P, typename R>
 auto champsim::cache_builder<P, R>::get_num_mshrs() const -> uint32_t
 {
-  auto default_count = (get_num_sets() * get_fill_latency() * static_cast<unsigned long>(champsim::to_underlying(get_fill_bandwidth()))) >> 4; // fill bandwidth should not be greater than 2^63
+  auto default_count = (get_num_sets() * get_fill_latency() * static_cast<unsigned long>(champsim::to_underlying(get_fill_bandwidth())))
+                       >> 4; // fill bandwidth should not be greater than 2^63
   return std::max(m_mshr_size.value_or(default_count), 1u);
 }
 
