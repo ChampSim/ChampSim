@@ -22,6 +22,7 @@ import json
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
 from . import modules
+from . import legacy
 from . import util
 
 makefile_file_name = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_configuration.mk')
@@ -79,34 +80,6 @@ def write_if_different(fname, new_file_string, file=None, verbose=False):
                 wfp.write(new_file_string)
         else:
             file.write(new_file_string)
-
-def generate_legacy_module_information(containing_dir, module_info):
-    ''' Generates all of the include-files with module information '''
-    if any(module_info.values()):
-        core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
-                module_info['branch'].values(),
-                module_info['btb'].values(),
-                module_info['pref'].values(),
-                module_info['repl'].values()
-            )
-
-        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), cxx_file(core_declarations)
-        yield os.path.join(containing_dir, 'cache_module_decl.inc'), cxx_file(cache_declarations)
-        yield os.path.join(containing_dir, 'module_def.inc'), cxx_file((
-                '#ifndef GENERATED_MODULES_INC',
-                '#define GENERATED_MODULES_INC',
-                '#include "modules.h"',
-                'namespace champsim::modules::generated',
-                '{',
-                *module_definitions,
-                '}',
-                '#endif'
-        ))
-
-        joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
-        for k,v in joined_info_items:
-            fname = os.path.join(containing_dir, k+'.options')
-            yield fname, modules.get_legacy_module_opts_lines(v)
 
 def try_int(val):
     '''
@@ -201,7 +174,7 @@ class Fragment:
             (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(env=config_file, **elements))),
 
             # Module name mangling
-            *generate_legacy_module_information(inc_dir, legacy_module_info),
+            *legacy.generate_module_information(inc_dir, legacy_module_info),
 
             # Makefile generation
             (makefile_file_name, (
