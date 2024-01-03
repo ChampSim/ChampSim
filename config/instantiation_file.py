@@ -107,13 +107,19 @@ def vector_string(iterable):
         return hoisted[0]
     return '{'+', '.join(hoisted)+'}'
 
+def get_module_class_string(data, kind):
+    name = f'class {data["class"]}'
+    if data.get('legacy'):
+        name = name + f'<champsim::modules::kind::{kind}>'
+    return name
+
 def get_cpu_builder(cpu):
     required_parts = [
     ]
 
     local_params = {
-        '^branch_predictor_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_branch_predictor_data',[])),
-        '^btb_string': ', '.join(f'class {k["class"]}' for k in cpu.get('_btb_data',[])),
+        '^branch_predictor_string': ', '.join(get_module_class_string(k,'branch_predictor') for k in cpu.get('_branch_predictor_data',[])),
+        '^btb_string': ', '.join(get_module_class_string(k,'btb') for k in cpu.get('_btb_data',[])),
         '^fetch_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1I')),
         '^data_queues': channel_name(upper=cpu.get('name'), lower=cpu.get('L1D'))
     }
@@ -144,8 +150,8 @@ def get_cache_builder(elem, upper_levels):
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
-        '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
-        '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^replacement_string': ', '.join(get_module_class_string(k,'prefetcher') for k in elem.get('_replacement_data',[])),
+        '^prefetcher_string': ', '.join(get_module_class_string(k,'replacement') for k in elem.get('_prefetcher_data',[])),
         '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
         '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }

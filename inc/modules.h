@@ -33,6 +33,10 @@ template <typename T>
 {
 }
 
+enum class kind {
+  branch_predictor, btb, prefetcher, replacement
+};
+
 struct branch_predictor {
   O3_CPU* intern_;
   explicit branch_predictor(O3_CPU* cpu) : intern_(cpu) {}

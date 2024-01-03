@@ -18,9 +18,13 @@ def mangled_declaration(fname, args, rtype, module_data):
     argstring = ', '.join(a[0] for a in args)
     return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
-def variant_function_body(fname, args, module_data):
+def variant_function_body(fname, args, module_data, module_kind):
     argnamestring = ', '.join(a[1] for a in args)
-    body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
+    body = [
+        f'if constexpr (kind == champsim::module::kind::{module_kind}) {{',
+        f'  return intern_->{module_data["func_map"][fname]}({argnamestring});',
+        '}'
+    ]
     yield from cxx.function(fname, body, args=args)
     yield ''
 
@@ -29,8 +33,9 @@ def get_discriminator(variant_data, module_data, classname):
     discriminator_classname = module_data['class'].split('::')[-1]
     body = itertools.chain(
         (f'using {classname}::{classname};',),
-        *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
+        *(variant_function_body(n,a,module_data,classname) for n,a,_ in variant_data)
     )
+    yield 'template <champsim::modules::kind kind>'
     yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
