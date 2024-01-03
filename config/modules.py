@@ -14,10 +14,8 @@
 
 import os
 import itertools
-import functools
 
 from . import util
-from . import cxx
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
@@ -131,69 +129,3 @@ repl_variant_data = [
 def get_repl_data(module_data):
     func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
     return util.chain(module_data, { 'func_map': func_map })
-
-###
-# Legacy module support below
-###
-
-def get_legacy_module_opts_lines(module_data):
-    '''
-    Generate an iterable of the compiler options for a particular module
-    '''
-    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
-    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
-
-def mangled_declaration(fname, args, rtype, module_data):
-    ''' Generate C++ code giving the mangled module specialization functions. '''
-    argstring = ', '.join(a[0] for a in args)
-    return f'{rtype} {module_data["func_map"][fname]}({argstring});'
-
-def variant_function_body(fname, args, module_data):
-    argnamestring = ', '.join(a[1] for a in args)
-    body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
-    yield from cxx.function(fname, body, args=args)
-    yield ''
-
-def get_discriminator(variant_data, module_data, classname):
-    ''' For a given module function, generate C++ code defining the discriminator struct. '''
-    discriminator_classname = module_data['class'].split('::')[-1]
-    body = itertools.chain(
-        (f'using {classname}::{classname};',),
-        *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
-    )
-    yield from cxx.struct(discriminator_classname, body, superclass=classname)
-    yield ''
-
-def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
-    '''
-    Create three generators:
-      - The first generates C++ code declaring all functions for the O3_CPU modules,
-      - The second generates C++ code declaring all functions for the CACHE modules,
-      - The third generates C++ code defining the functions.
-    '''
-    branch_discriminator = functools.partial(get_discriminator, branch_variant_data, classname='branch_predictor')
-    btb_discriminator = functools.partial(get_discriminator, btb_variant_data, classname='btb')
-    repl_discriminator = functools.partial(get_discriminator, repl_variant_data, classname='replacement')
-
-    def pref_discriminator(v):
-        local_branch_variant_data = pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
-        return get_discriminator([*pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
-
-    return (
-        (mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(branch_variant_data, branch_data),
-            itertools.product(btb_variant_data, btb_data)
-        )),
-
-        (mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(pref_nonbranch_variant_data + pref_branch_variant_data, pref_data),
-            itertools.product(repl_variant_data, repl_data)
-        )),
-
-        itertools.chain(
-            *map(branch_discriminator, branch_data),
-            *map(btb_discriminator, btb_data),
-            *map(pref_discriminator, pref_data),
-            *map(repl_discriminator, repl_data)
-        )
-       )

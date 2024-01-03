@@ -81,34 +81,6 @@ def write_if_different(fname, new_file_string, file=None, verbose=False):
         else:
             file.write(new_file_string)
 
-def generate_legacy_module_information(containing_dir, module_info):
-    ''' Generates all of the include-files with module information '''
-    if any(module_info.values()):
-        core_declarations, cache_declarations, module_definitions = modules.get_legacy_module_lines(
-                module_info['branch'].values(),
-                module_info['btb'].values(),
-                module_info['pref'].values(),
-                module_info['repl'].values()
-            )
-
-        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), cxx_file(core_declarations)
-        yield os.path.join(containing_dir, 'cache_module_decl.inc'), cxx_file(cache_declarations)
-        yield os.path.join(containing_dir, 'module_def.inc'), cxx_file((
-                '#ifndef GENERATED_MODULES_INC',
-                '#define GENERATED_MODULES_INC',
-                '#include "modules.h"',
-                'namespace champsim::modules::generated',
-                '{',
-                *module_definitions,
-                '}',
-                '#endif'
-        ))
-
-        joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
-        for k,v in joined_info_items:
-            fname = os.path.join(containing_dir, k+'.options')
-            yield fname, modules.get_legacy_module_opts_lines(v)
-
 def try_int(val):
     '''
     Attempt to convert the value to a Python standard int.
@@ -203,7 +175,7 @@ class Fragment:
             (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
 
             # Module name mangling
-            *generate_legacy_module_information(inc_dir, legacy_module_info),
+            *legacy.generate_module_information(inc_dir, legacy_module_info),
 
             # Makefile generation
             (makefile_file_name, (
