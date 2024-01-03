@@ -9,6 +9,15 @@ LDLIBS   += -llzma -lz -lbz2 -lfmt
 .PHONY: all clean configclean test
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
+executable_name:=
+dirs:=
+
+# Migrate names from a source directory (and suffix) to a target directory (and suffix)
+# $1 - source directory
+# $2 - target directory
+# $3 - source suffix
+# $4 - target suffix
+migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
@@ -49,7 +58,7 @@ $(objs):
 
 %.d:
 	mkdir -p $(@D)
-	$(CXX) -MM -MT $@ -MT $(objdep)/$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
