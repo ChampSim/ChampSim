@@ -35,7 +35,7 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 # $3 - executable name
 # $4 - (optional) additional options files
 define make_part
-$(subst /,D,$2)_objs = $$(call migrate,$1,$$(OBJ_ROOT)/$2,.cc,%.o)
+$(subst /,D,$2)_objs = $$(call migrate,$1,$$(OBJ_ROOT)/$2,.cc,.o)
 $$($(subst /,D,$2)_objs): $$(OBJ_ROOT)/$2/%.o: $1/%.cc
 $$($(subst /,D,$2)_objs): $$(ROOT_DIR)/global.options $4
 $$($(subst /,D,$2)_objs): CPPFLAGS += -I$$(abspath $$(OBJ_ROOT)/$2/..) -I$1
