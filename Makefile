@@ -23,11 +23,10 @@ $(subst /,D,$2)_objs = $$(patsubst $1/%.cc, $(OBJ_ROOT)/$2/%.o, $$(wildcard $1/*
 $$($(subst /,D,$2)_objs): $(OBJ_ROOT)/$2/%.o: $1/%.cc
 $$($(subst /,D,$2)_objs): $(ROOT_DIR)/global.options $4
 $$($(subst /,D,$2)_objs): CPPFLAGS += -I$(abspath $(OBJ_ROOT)/$2/..) -I$1
+$$($(subst /,D,$2)_objs): depdir = $(DEP_ROOT)/$2
 
 $(subst /,D,$2)_deps = $$(patsubst $1/%.cc, $(DEP_ROOT)/$2/%.d, $$(wildcard $1/*.cc))
 $$($(subst /,D,$2)_deps): $(DEP_ROOT)/$2/%.d: $1/%.cc
-$$($(subst /,D,$2)_deps): objdep = $(OBJ_ROOT)/$2
-$$($(subst /,D,$2)_deps): CPPFLAGS += -I$(abspath $(OBJ_ROOT)/$2/..) -I$1
 
 ifeq (__legacy__,$$(findstring __legacy__,$$(wildcard $1/*)))
 $$($(subst /,D,$2)_objs): $1/legacy.options
@@ -39,16 +38,16 @@ $(abspath $(OBJ_ROOT)/$2/../)/module_def.inc: | $1/__legacy__
 endif
 
 ifeq (,$$(filter clean configclean, $$(MAKECMDGOALS)))
-include $$($(subst /,D,$2)_deps)
+-include $$($(subst /,D,$2)_deps)
 endif
 
 dirs += $(OBJ_ROOT)/$2 $(DEP_ROOT)/$2
 objs += $$($(subst /,D,$2)_objs)
 
+$(call make_all_parts,$(sort $(dir $(wildcard $1/*/))),$2x,$3,$4)
 $3: $$($(subst /,D,$2)_objs)
 
 
-$(call make_all_parts,$(sort $(dir $(wildcard $1/*/))),$2x,$3,$4)
 endef
 
 make_all_parts = \
@@ -65,7 +64,7 @@ $(call make_part,$(firstword $1),$2,$3,$4)$(call $0,$(wordlist 2,$(words $1),$1)
 # $(exe)
 # $(opts)
 $(DEP_ROOT)/%.mkpart: $(source_roots)
-	mkdir -p $(@D)
+	mkdir -p $(@D) $(OBJ_ROOT)/$*/obj
 	$(file >$@,$(call make_all_parts,$(source_roots),$*/obj,$(exe),$(opts)))
 
 # Generated configuration makefile contains:
@@ -175,12 +174,10 @@ endif
 
 # All .o files should be made like .cc files
 %.o:
-	mkdir -p $(@D)
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	mkdir -p $(@D) $(depdir)
+	$(CXX) -MMD -MT $@ -MF $(depdir)/$(*F).d $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
-%.d:
-	mkdir -p $(@D)
-	$(CXX) -MM -MG -MT $@ -MT $(objdep)/$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+%.d: ;
 
 # legacy module support
 define legacy_options
