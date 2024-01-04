@@ -41,7 +41,7 @@ def append_variable(var, head_val, *tail_val, targets=None):
     ''' Append the given values space-separated to the given variable, conditionally for the given targets '''
     yield from __do_assign_variable('+=', var, (head_val, *tail_val), targets)
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main):
+def get_makefile_lines(build_id, executable, source_dirs, module_info):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({
         'Build ID': build_id,
@@ -50,7 +50,8 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
         'Module Names': tuple(module_info.keys())
     })
     yield ''
-    yield f'$(DEP_ROOT)/{build_id}.mkpart: source_roots = {" ".join(source_dirs)} {" ".join("MODULE "+m["path"] for m in module_info.values())}'
+    source_string = ' '.join(itertools.chain(source_dirs, ("MODULE "+m["path"] for m in module_info.values())))
+    yield f'$(DEP_ROOT)/{build_id}.mkpart: source_roots = {source_string}'
     yield f'$(DEP_ROOT)/{build_id}.mkpart: exe = {executable}'
     yield f'include $(DEP_ROOT)/{build_id}.mkpart'
 

@@ -20,11 +20,7 @@ import os
 import json
 
 from .makefile import get_makefile_lines
-from .instantiation_file import get_instantiation_lines
-#from .constants_file import get_constants_file
-from . import modules
 from . import util
-from . import legacy
 
 makefile_file_name = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_configuration.mk')
 
@@ -128,7 +124,7 @@ class Fragment:
         return Fragment(fileparts)
 
     @staticmethod
-    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False, verbose=False):
+    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, verbose=False):
         ''' Produce a sequence of Fragments from the result of parse.parse_config(). '''
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         bindir_name = bindir_name or os.path.join(champsim_root, 'bin')
@@ -145,43 +141,21 @@ class Fragment:
 
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
-        executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
+        executable_basename, _, modules_to_compile, module_info, _ = parsed_config
 
-        unique_obj_dir = os.path.join(objdir_name, build_id)
-        inc_dir = os.path.join(unique_obj_dir, 'inc')
-
-        legacy_module_info = {
-            mod_type: {
-                k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
-            } for mod_type, mod_set in module_info.items()
-        }
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
             print('For Executable', executable)
-            if any(legacy_module_info.values()):
-                print('Legacy modules detected:')
-                for module in itertools.chain.from_iterable(v.values() for v in legacy_module_info.values()):
-                    print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Modules:')
             for module in joined_module_info.values():
                 print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
-            print('Writing objects to', unique_obj_dir)
 
         fileparts = [
-            # Instantiation file
-            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
-
-            # Constants header
-            #(os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
-
-            # Module name mangling
-            *legacy.generate_module_information(inc_dir, legacy_module_info),
-
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
-                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info, omit_main)
+                *get_makefile_lines(build_id, executable, makefile_sources, joined_module_info)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
@@ -217,14 +191,13 @@ class FileWriter:
         self.fragments = []
         return self
 
-    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False):
+    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
         ''' Apply defaults to get_file_lines() '''
         self.fragments.append(Fragment.from_config(
             parsed_config,
             bindir_name or self.bindir_name,
             srcdir_names or [],
             os.path.abspath(objdir_name or self.objdir_name),
-            omit_main,
             verbose=self.verbose
         ))
 

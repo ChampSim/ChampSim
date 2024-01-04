@@ -2,16 +2,8 @@ import itertools
 import functools
 import os
 
-from . import util
 from . import cxx
 from . import modules
-
-def get_legacy_module_opts_lines(module_data):
-    '''
-    Generate an iterable of the compiler options for a particular module
-    '''
-    full_funcmap = util.chain(module_data['func_map'], module_data.get('deprecated_func_map', {}))
-    yield from  (f'-D{k}={v}' for k,v in full_funcmap.items())
 
 def mangled_declaration(fname, args, rtype, module_data):
     ''' Generate C++ code giving the mangled module specialization functions. '''
@@ -28,7 +20,7 @@ def discriminator(full_variant_data, module_data):
     }
     discriminator_classname = module_data['class'].split('::')[-1]
     body = itertools.chain(
-        (f'using champsim::modules::legacy_module::legacy_module;',),
+        ('using champsim::modules::legacy_module::legacy_module;',),
         *(cxx.function(fname, [
             f'if constexpr (kind == champsim::module::kind::{module_kind}) {{',
             f'  return {intern_name_map[module_kind]}->{module_data["func_map"][fname]}({", ".join(a[1] for a in args)});',
@@ -71,44 +63,15 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
         get_discriminator(itertools.chain(branch_data, btb_data, pref_data, repl_data))
        )
 
-def generate_module_information(containing_dir, module_info):
-    ''' Generates all of the include-files with module information '''
-    if any(module_info.values()):
-        core_declarations, cache_declarations, module_definitions = get_legacy_module_lines(
-                module_info['branch'].values(),
-                module_info['btb'].values(),
-                module_info['pref'].values(),
-                module_info['repl'].values()
-            )
-
-        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), cxx_file(core_declarations)
-        yield os.path.join(containing_dir, 'cache_module_decl.inc'), cxx_file(cache_declarations)
-        yield os.path.join(containing_dir, 'module_def.inc'), cxx_file((
-                '#ifndef GENERATED_MODULES_INC',
-                '#define GENERATED_MODULES_INC',
-                '#include "modules.h"',
-                'namespace champsim::modules::generated',
-                '{',
-                *module_definitions,
-                '}',
-                '#endif'
-        ))
-
-        joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
-        for k,v in joined_info_items:
-            fname = os.path.join(containing_dir, k+'.options')
-            yield fname, get_legacy_module_opts_lines(v)
-
-
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
     parser.add_argument('--prefix', required=True)
     parser.add_argument('legacyfiles', action='append')
-    args = parser.parse_args()
+    main_args = parser.parse_args()
 
-    paths = map(os.path.dirname, args.legacyfiles)
+    paths = map(os.path.dirname, main_args.legacyfiles)
     infos = [{
         'name': modules.get_module_name(p),
         'path': p,
@@ -122,19 +85,19 @@ if __name__ == '__main__':
     infos = map(modules.get_repl_data, infos)
     infos = list(infos)
 
-    with open(os.path.join(args.prefix, 'ooo_cpu_module_decl.inc'), 'wt') as wfp:
+    with open(os.path.join(main_args.prefix, 'ooo_cpu_module_decl.inc'), 'wt') as wfp:
         print('\n'.join(mangled_declaration(*var, data) for var,data in itertools.chain(
                 itertools.product(modules.branch_variant_data, infos),
                 itertools.product(modules.btb_variant_data, infos)
         )), file=wfp)
 
-    with open(os.path.join(args.prefix, 'cache_module_decl.inc'), 'wt') as wfp:
+    with open(os.path.join(main_args.prefix, 'cache_module_decl.inc'), 'wt') as wfp:
         print('\n'.join(mangled_declaration(*var, data) for var,data in itertools.chain(
                 itertools.product(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data, infos),
                 itertools.product(modules.repl_variant_data, infos)
         )), file=wfp)
 
-    with open(os.path.join(args.prefix, 'module_def.inc'), 'wt') as wfp:
+    with open(os.path.join(main_args.prefix, 'module_def.inc'), 'wt') as wfp:
         print('\n'.join((
                 '#ifndef GENERATED_MODULES_INC',
                 '#define GENERATED_MODULES_INC',
@@ -145,4 +108,3 @@ if __name__ == '__main__':
                 '}',
                 '#endif'
         )), file=wfp)
-

@@ -180,7 +180,7 @@ def yield_from_star(gen, args, n=2):
             seq.append(return_value)
     return retvals
 
-def explode(d, in_key, out_key=None):
+def explode(value, in_key, out_key=None):
     '''
     Convert a dictionary with a list member to a list with dictionary members
     :param d: the dictionary to be extracted
@@ -189,22 +189,22 @@ def explode(d, in_key, out_key=None):
     '''
     if out_key is None:
         out_key = in_key
-    extracted = d.pop(in_key)
-    return [ { out_key: e, **d } for e in extracted ]
+    extracted = value.pop(in_key)
+    return [ { out_key: e, **value } for e in extracted ]
 
-def path_parts(p):
-    if not p:
+def path_parts(path):
+    if not path:
         return
-    head, tail = os.path.split(p)
+    head, tail = os.path.split(path)
     yield from path_parts(head)
     yield tail
 
-def path_ancestors(p):
-    yield from itertools.accumulate(path_parts(p), os.path.join)
+def path_ancestors(path):
+    yield from itertools.accumulate(path_parts(path), os.path.join)
 
 def sliding(iterable, n):
     it = iter(iterable)
     window = collections.deque(itertools.islice(it, n-1), maxlen=n)
-    for x in it:
-        window.append(x)
+    for elem in it:
+        window.append(elem)
         yield tuple(window)
