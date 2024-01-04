@@ -227,8 +227,7 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   instr.dib_checked = true;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip,
-               dib_result.has_value(), current_cycle);
+    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(), current_cycle);
   }
 }
 
@@ -654,7 +653,8 @@ long O3_CPU::retire_rob()
   auto [retire_begin, retire_end] =
       champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
   if constexpr (champsim::debug_print) {
-    std::for_each(retire_begin, retire_end, [cycle=current_cycle](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle); });
+    std::for_each(retire_begin, retire_end,
+                  [cycle = current_cycle](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle); });
   }
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;

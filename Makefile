@@ -16,6 +16,15 @@ LDLIBS   += -llzma -lz -lbz2 -lfmt
 .PHONY: all clean configclean test
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
+executable_name:=
+dirs:=
+
+# Migrate names from a source directory (and suffix) to a target directory (and suffix)
+# $1 - source directory
+# $2 - target directory
+# $3 - source suffix
+# $4 - target suffix
+migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 
 # Reverse the order of the inputs
 # $1 - a sequence of words
@@ -26,13 +35,13 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 # $3 - executable name
 # $4 - (optional) additional options files
 define make_part
-$(subst /,D,$2)_objs = $$(patsubst $1/%.cc, $$(OBJ_ROOT)/$2/%.o, $$(wildcard $1/*.cc))
+$(subst /,D,$2)_objs = $$(call migrate,$1,$$(OBJ_ROOT)/$2,.cc,%.o)
 $$($(subst /,D,$2)_objs): $$(OBJ_ROOT)/$2/%.o: $1/%.cc
 $$($(subst /,D,$2)_objs): $$(ROOT_DIR)/global.options $4
 $$($(subst /,D,$2)_objs): CPPFLAGS += -I$$(abspath $$(OBJ_ROOT)/$2/..) -I$1
 $$($(subst /,D,$2)_objs): depdir = $$(DEP_ROOT)/$2
 
-$(subst /,D,$2)_deps = $$(patsubst $1/%.cc, $$(DEP_ROOT)/$2/%.d, $$(wildcard $1/*.cc))
+$(subst /,D,$2)_deps = $$(call migrate,$1,$$(DEP_ROOT)/$2,.cc,.d)
 $$($(subst /,D,$2)_deps): $$(DEP_ROOT)/$2/%.d: $1/%.cc
 
 ifeq (__legacy__,$$(findstring __legacy__,$$(wildcard $1/*)))

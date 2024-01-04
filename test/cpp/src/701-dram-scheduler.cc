@@ -81,13 +81,13 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
             r.address = 0;
             r.v_address = 0;
             offset += LOG2_BLOCK_SIZE;
-            r.address += 0 << offset;
+            r.address += 0UL << offset;
             offset += champsim::lg2(DRAM_CHANNELS);
             r.address += bak_access[i] << offset;
             offset += champsim::lg2(DRAM_BANKS);
             r.address += col_access[i] << offset;
             offset += champsim::lg2(DRAM_COLUMNS);
-            r.address += 0 << offset;
+            r.address += 0UL << offset;
             offset += champsim::lg2(DRAM_RANKS);
             r.address += row_access[i] << offset;
             r.instr_id = i;
