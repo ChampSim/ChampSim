@@ -19,8 +19,12 @@ from . import util
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
-    fname_translation_table = str.maketrans('./-','_DH')
-    return os.path.relpath(path, start=start).translate(fname_translation_table)
+    #fname_translation_table = str.maketrans('./-','_DH')
+    #return os.path.relpath(path, start=start).translate(fname_translation_table)
+    _, name = os.path.split(path)
+    if not name:
+        _, name = os.path.split(name)
+    return name
 
 class ModuleSearchContext:
     def __init__(self, paths, verbose=False):
@@ -91,31 +95,29 @@ pref_branch_variant_data = [
     ('prefetcher_branch_operate', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')), 'void')
 ]
 def get_pref_data(module_data):
-    prefix = 'ipref' if module_data.get('_is_instruction_prefetcher', False) else 'pref'
-    func_map = { v[0]: f'{prefix}_{module_data["name"]}_{v[0]}'
-        for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data) }
+    func_map = { v[0]: f'p_{module_data["name"]}_{v[0]}' for v in itertools.chain(pref_branch_variant_data, pref_nonbranch_variant_data) }
 
     return util.chain(module_data,
         { 'func_map': func_map },
         { 'deprecated_func_map' : {
-                'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l2c_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'llc_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
-                'l1i_prefetcher_cache_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l1d_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l2c_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'llc_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
-                'l1i_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l1d_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l2c_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'llc_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
-                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cycle_operate')),
-                'l1i_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l1d_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l2c_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'llc_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
-                'l1i_prefetcher_branch_operate': '_'.join((prefix, module_data['name'], 'prefetcher_branch_operate'))
+                'l1i_prefetcher_initialize': f'p_{module_data["name"]}_prefetcher_initialize',
+                'l1d_prefetcher_initialize': f'p_{module_data["name"]}_prefetcher_initialize',
+                'l2c_prefetcher_initialize': f'p_{module_data["name"]}_prefetcher_initialize',
+                'llc_prefetcher_initialize': f'p_{module_data["name"]}_prefetcher_initialize',
+                'l1i_prefetcher_cache_operate': f'p_{module_data["name"]}_prefetcher_cache_operate',
+                'l1d_prefetcher_operate': f'p_{module_data["name"]}_prefetcher_cache_operate',
+                'l2c_prefetcher_operate': f'p_{module_data["name"]}_prefetcher_cache_operate',
+                'llc_prefetcher_operate': f'p_{module_data["name"]}_prefetcher_cache_operate',
+                'l1i_prefetcher_cache_fill': f'p_{module_data["name"]}_prefetcher_cache_fill',
+                'l1d_prefetcher_cache_fill': f'p_{module_data["name"]}_prefetcher_cache_fill',
+                'l2c_prefetcher_cache_fill': f'p_{module_data["name"]}_prefetcher_cache_fill',
+                'llc_prefetcher_cache_fill': f'p_{module_data["name"]}_prefetcher_cache_fill',
+                'l1i_prefetcher_cycle_operate': f'p_{module_data["name"]}_prefetcher_cycle_operate',
+                'l1i_prefetcher_final_stats': f'p_{module_data["name"]}_prefetcher_final_stats',
+                'l1d_prefetcher_final_stats': f'p_{module_data["name"]}_prefetcher_final_stats',
+                'l2c_prefetcher_final_stats': f'p_{module_data["name"]}_prefetcher_final_stats',
+                'llc_prefetcher_final_stats': f'p_{module_data["name"]}_prefetcher_final_stats',
+                'l1i_prefetcher_branch_operate': f'p_{module_data["name"]}_prefetcher_branch_operate'
             }
         }
     )

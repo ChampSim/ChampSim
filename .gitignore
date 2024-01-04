@@ -18,3 +18,4 @@ vcpkg_installed/
 **/_build
 
 absolute.options
+legacy.options

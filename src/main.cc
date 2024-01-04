@@ -31,7 +31,6 @@
 
 #include "cache.h" // for CACHE
 #include "champsim.h"
-#include "core_inst.inc"
 #include "defaults.hpp"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
@@ -48,6 +47,7 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
+#ifndef CHAMPSIM_TEST_BUILD
 int main(int argc, char** argv)
 {
   champsim::configured::generated_environment gen_environment{};
@@ -139,3 +139,4 @@ int main(int argc, char** argv)
 
   return 0;
 }
+#endif

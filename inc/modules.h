@@ -37,6 +37,13 @@ enum class kind {
   branch_predictor, btb, prefetcher, replacement
 };
 
+struct legacy_module {
+  O3_CPU* intern_core_;
+  CACHE* intern_cache_;
+  explicit legacy_module(O3_CPU* cpu) : intern_core_(cpu) {}
+  explicit legacy_module(CACHE* cache) : intern_cache_(cache) {}
+};
+
 struct branch_predictor {
   O3_CPU* intern_;
   explicit branch_predictor(O3_CPU* cpu) : intern_(cpu) {}
