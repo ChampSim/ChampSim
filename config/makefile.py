@@ -52,7 +52,6 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield ''
     yield f'$(DEP_ROOT)/{build_id}.mkpart: source_roots = {" ".join(source_dirs)} {" ".join("MODULE "+m["path"] for m in module_info.values())}'
     yield f'$(DEP_ROOT)/{build_id}.mkpart: exe = {executable}'
-    yield f'$(DEP_ROOT)/{build_id}.mkpart: $(source_roots)'
     yield f'include $(DEP_ROOT)/{build_id}.mkpart'
 
     yield from append_variable('executable_name', executable)

@@ -1,6 +1,11 @@
 override ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
-DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
+
+# Customization points:
+#  - OBJ_ROOT: at make-time, override the object file directory
+#  - DEP_ROOT: at make-time, override the dependency file directory
 OBJ_ROOT = $(ROOT_DIR)/.csconfig
+DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
+$(shell mkdir -p $(OBJ_ROOT) $(DEP_ROOT))
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
@@ -8,40 +13,42 @@ CPPFLAGS += -I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include
 LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.PHONY: all clean configclean test make_dep_hack
+.PHONY: all clean configclean test
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 
-%/__legacy__: ;
+# Reverse the order of the inputs
+# $1 - a sequence of words
+reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
 # $1 - source dir
 # $2 - hash
 # $3 - executable name
 # $4 - (optional) additional options files
 define make_part
-$(subst /,D,$2)_objs = $$(patsubst $1/%.cc, $(OBJ_ROOT)/$2/%.o, $$(wildcard $1/*.cc))
-$$($(subst /,D,$2)_objs): $(OBJ_ROOT)/$2/%.o: $1/%.cc
-$$($(subst /,D,$2)_objs): $(ROOT_DIR)/global.options $4
-$$($(subst /,D,$2)_objs): CPPFLAGS += -I$(abspath $(OBJ_ROOT)/$2/..) -I$1
-$$($(subst /,D,$2)_objs): depdir = $(DEP_ROOT)/$2
+$(subst /,D,$2)_objs = $$(patsubst $1/%.cc, $$(OBJ_ROOT)/$2/%.o, $$(wildcard $1/*.cc))
+$$($(subst /,D,$2)_objs): $$(OBJ_ROOT)/$2/%.o: $1/%.cc
+$$($(subst /,D,$2)_objs): $$(ROOT_DIR)/global.options $4
+$$($(subst /,D,$2)_objs): CPPFLAGS += -I$$(abspath $$(OBJ_ROOT)/$2/..) -I$1
+$$($(subst /,D,$2)_objs): depdir = $$(DEP_ROOT)/$2
 
-$(subst /,D,$2)_deps = $$(patsubst $1/%.cc, $(DEP_ROOT)/$2/%.d, $$(wildcard $1/*.cc))
-$$($(subst /,D,$2)_deps): $(DEP_ROOT)/$2/%.d: $1/%.cc
+$(subst /,D,$2)_deps = $$(patsubst $1/%.cc, $$(DEP_ROOT)/$2/%.d, $$(wildcard $1/*.cc))
+$$($(subst /,D,$2)_deps): $$(DEP_ROOT)/$2/%.d: $1/%.cc
 
 ifeq (__legacy__,$$(findstring __legacy__,$$(wildcard $1/*)))
 $$($(subst /,D,$2)_objs): $1/legacy.options
-$$($(subst /,D,$2)_deps): | $(abspath $(OBJ_ROOT)/$2/../)/cache_module_decl.inc $(abspath $(OBJ_ROOT)/$2/../)/core_module_decl.inc $(abspath $(OBJ_ROOT)/$2/../)/module_def.inc
+$$($(subst /,D,$2)_deps): | $$(abspath $$(OBJ_ROOT)/$2/../)/cache_module_decl.inc $$(abspath $$(OBJ_ROOT)/$2/../)/core_module_decl.inc $$(abspath $$(OBJ_ROOT)/$2/../)/module_def.inc
 
-$(abspath $(OBJ_ROOT)/$2/../)/cache_module_decl.inc: | $1/__legacy__
-$(abspath $(OBJ_ROOT)/$2/../)/core_module_decl.inc: | $1/__legacy__
-$(abspath $(OBJ_ROOT)/$2/../)/module_def.inc: | $1/__legacy__
+$$(abspath $$(OBJ_ROOT)/$2/../)/cache_module_decl.inc: | $1/__legacy__
+$$(abspath $$(OBJ_ROOT)/$2/../)/core_module_decl.inc: | $1/__legacy__
+$$(abspath $$(OBJ_ROOT)/$2/../)/module_def.inc: | $1/__legacy__
 endif
 
 ifeq (,$$(filter clean configclean, $$(MAKECMDGOALS)))
 -include $$($(subst /,D,$2)_deps)
 endif
 
-dirs += $(OBJ_ROOT)/$2 $(DEP_ROOT)/$2
+dirs += $$(OBJ_ROOT)/$2 $(DEP_ROOT)/$2
 objs += $$($(subst /,D,$2)_objs)
 
 $(call make_all_parts,$(sort $(dir $(wildcard $1/*/))),$2x,$3,$4)
@@ -50,14 +57,15 @@ $3: $$($(subst /,D,$2)_objs)
 
 endef
 
+# $1 - a sequence of source directories
+# $2 - hash
+# $3 - executable name
+# $4 - (optional) additional options files
 make_all_parts = \
 $(if $1,$(if $(findstring MODULE,$(firstword $1)),\
 $(call make_part,$(word 2,$1),$2,$3,$4 $(ROOT_DIR)/module.options)$(call $0,$(wordlist 3,$(words $1),$1),$2_,$3,$4),\
 $(call make_part,$(firstword $1),$2,$3,$4)$(call $0,$(wordlist 2,$(words $1),$1),$2_,$3,$4)\
 ))
-
-%/cache_module_decl.inc %/core_module_decl.inc %/module_def.inc &:
-	python3 -m config.legacy --prefix=$* $|
 
 # Requires:
 # $(source_root)
@@ -67,23 +75,10 @@ $(DEP_ROOT)/%.mkpart: $(source_roots)
 	mkdir -p $(@D) $(OBJ_ROOT)/$*/obj
 	$(file >$@,$(call make_all_parts,$(source_roots),$*/obj,$(exe),$(opts)))
 
-# Generated configuration makefile contains:
-#  - $(executable_name), the list of all executables in the configuration
-#  - $(dirs), the list of all directories that hold object files
-#  - $(objs), the list of all object files corresponding to sources
-#  - All dependencies and flags assigned according to the modules
-#
-# Customization points:
-#  - OBJ_ROOT: at make-time, override the object file directory
-include _configuration.mk
-
-all: $(executable_name)
-
-.DEFAULT_GOAL := all
-
 # Remove all intermediate files
 clean:
 	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find .csconfig \( -name cache_module_decl.inc -o -name ooo_cpu_module_decl.inc -o -name module_def.inc \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
 	@-$(RM) inc/ooo_cpu_modules.h
@@ -94,92 +89,34 @@ clean:
 configclean: clean
 	@-$(RM) -r $(dirs) _configuration.mk
 
-reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
-
 # Link test executable
 $(test_main_name): CPPFLAGS += -DCHAMPSIM_TEST_BUILD -I$(ROOT_DIR)/test/cpp/src
 $(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
 
-#$(ROOT_DIR)/prefetcher/spp_dev FIXME legacy
 $(DEP_ROOT)/test_src.mkpart: source_roots = $(ROOT_DIR)/test/cpp/src $(ROOT_DIR)/src MODULE $(ROOT_DIR)/btb MODULE $(ROOT_DIR)/branch MODULE $(ROOT_DIR)/prefetcher MODULE $(ROOT_DIR)/replacement
 $(DEP_ROOT)/test_src.mkpart: exe = $(test_main_name)
 include $(DEP_ROOT)/test_src.mkpart
 
-$(DEP_ROOT)/test_src.mkpart: | make_dep_hack
+# Generated configuration makefile contains:
+#  - Copies of the prior lines as setup for additional mkpart files
+#  - $(executable_name), the name of the configured executables
+-include _configuration.mk
 
-#TODO delete this nonsense soon
-define make_dep_hack_constants
-/***
- * THIS FILE IS AUTOMATICALLY GENERATED
- * Do not edit this file. It will be overwritten when the configure script is run.
-***/
+all: $(executable_name)
 
-#ifndef CHAMPSIM_CONSTANTS_H
-#define CHAMPSIM_CONSTANTS_H
-#ifdef CHAMPSIM_MODULE
-#define SET_ASIDE_CHAMPSIM_MODULE
-#undef CHAMPSIM_MODULE
-#endif
-#include <cstdlib>
-#include "util/bits.h"
-inline constexpr unsigned BLOCK_SIZE = 64;
-inline constexpr unsigned PAGE_SIZE = 4096;
-inline constexpr uint64_t STAT_PRINTING_PERIOD = 10000000;
-inline constexpr std::size_t NUM_CPUS = 1;
-inline constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);
-inline constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
-inline constexpr uint64_t DRAM_IO_FREQ = 3200;
-inline constexpr std::size_t DRAM_CHANNELS = 1;
-inline constexpr std::size_t DRAM_RANKS = 1;
-inline constexpr std::size_t DRAM_BANKS = 8;
-inline constexpr std::size_t DRAM_ROWS = 65536;
-inline constexpr std::size_t DRAM_COLUMNS = 128;
-inline constexpr std::size_t DRAM_CHANNEL_WIDTH = 8;
-inline constexpr std::size_t DRAM_WQ_SIZE = 64;
-inline constexpr std::size_t DRAM_RQ_SIZE = 64;
-#ifdef SET_ASIDE_CHAMPSIM_MODULE
-#undef SET_ASIDE_CHAMPSIM_MODULE
-#define CHAMPSIM_MODULE
-#endif
-#endif
-endef
-
-$(OBJ_ROOT)/%/inc/champsim_constants.h:
-	mkdir -p $(@D)
-	$(file >$@,$(make_dep_hack_constants))
-
-define make_dep_hack_inst
-#include "environment.h"
-namespace champsim::configured { struct generated_environment final : public champsim::environment {
-  auto cpu_view() -> std::vector<std::reference_wrapper<O3_CPU>> override { return {}; }
-  auto cache_view() -> std::vector<std::reference_wrapper<CACHE>> override { return {}; }
-  auto ptw_view() -> std::vector<std::reference_wrapper<PageTableWalker>> override { return {}; }
-  auto operable_view() -> std::vector<std::reference_wrapper<champsim::operable>> override { return {}; }
-  auto dram_view() -> MEMORY_CONTROLLER& override { MEMORY_CONTROLLER DRAM(1, 1, 1, 1, 1, 1, {}); return DRAM; }
-}; }
-endef
-
-$(OBJ_ROOT)/%/inc/core_inst.inc:
-	mkdir -p $(@D)
-	$(file >$@,$(make_dep_hack_inst))
-
-make_dep_hack: $(OBJ_ROOT)/test_srcD/inc/champsim_constants.h $(OBJ_ROOT)/test_srcD/inc/core_inst.inc $(OBJ_ROOT)/test_srcDDDDx/inc/champsim_constants.h $(OBJ_ROOT)/test_srcDDDDxD/inc/champsim_constants.h $(OBJ_ROOT)/test_srcDDDDxDDD/inc/champsim_constants.h
-
-#END hack
-
-ifdef POSTBUILD_CLEAN
-.INTERMEDIATE: $(objs) $($(OBJS):.o=.d)
-endif
+.DEFAULT_GOAL := all
 
 # All .o files should be made like .cc files
 %.o:
-	mkdir -p $(@D) $(depdir)
+	@mkdir -p $(@D) $(depdir)
 	$(CXX) -MMD -MT $@ -MF $(depdir)/$(*F).d $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 %.d: ;
 
-# legacy module support
+###
+# Legacy module support
+###
 define legacy_options
 -Dinitialize_branch_predictor=b_$1_initialize_branch_predictor
 -Dlast_branch_result=b_$1_last_branch_result
@@ -219,20 +156,15 @@ endef
 %/legacy.options: | %/__legacy__
 	$(file >$@,$(call legacy_options,$(lastword $(subst /, ,$*))))
 
-define legacy_cache_decl
-void p_$*_prefetcher_initialize();
-uint32_t p_$*_prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, bool, uint8_t, uint32_t);
-uint32_t p_$*_prefetcher_cache_fill(uint64_t, uint32_t, uint32_t, uint8_t, uint64_t, uint32_t);
-void p_$*_prefetcher_cycle_operate();
-void p_$*_prefetcher_final_stats();
-void p_$*_prefetcher_branch_operate
-void p_$*_initialize_replacement();
-uint32_t p_$*_find_victim(uint32_t, uint64_t, uint32_t, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t, uint8_t);
-void p_$*_update_replacement_state(uint32_t, uint32_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, uint8_t);
-void p_$*_replacement_final_stats();
-endef
+%/cache_module_decl.inc %/core_module_decl.inc %/module_def.inc &:
+	mkdir -p $(@D)
+	python3 -m config.legacy --prefix=$* $|
 
-# Link main executables
+%/__legacy__: ;
+###
+# END Legacy module support
+###
+
 $(executable_name):
 	mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
