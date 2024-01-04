@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <array>
 #include <algorithm>
 #include <charconv>
 #include <numeric>

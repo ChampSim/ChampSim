@@ -9,9 +9,9 @@ $(shell mkdir -p $(OBJ_ROOT) $(DEP_ROOT))
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-CPPFLAGS += -I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include
-LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+override CPPFLAGS += -I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 .PHONY: all clean configclean test
 
@@ -132,7 +132,7 @@ all: $(executable_name)
 # All .o files should be made like .cc files
 %.o:
 	@mkdir -p $(@D) $(depdir)
-	$(CXX) -MMD -MT $@ -MF $(depdir)/$(*F).d $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) -MMD -MT $@ -MF $(depdir)/$(*F).d $(addprefix @,$(filter %.options, $^)) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 %.d: ;
 
