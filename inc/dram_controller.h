@@ -27,7 +27,7 @@
 #include <string>
 #include <vector> // for vector, vector<>::iterator
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "channel.h"
 #include "operable.h"
 

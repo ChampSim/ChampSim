@@ -28,7 +28,7 @@
 #include <fmt/ostream.h>
 
 #include "cache.h"              // for CACHE::stats_type, CACHE
-#include "champsim_constants.h" // for NUM_CPUS
+#include "champsim.h" // for NUM_CPUS
 #include "channel.h"            // for access_type, access_type::LOAD, acce...
 #include "dram_controller.h"    // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
 #include "instruction.h"        // for branch_type, BRANCH_CONDITIONAL, BRA...

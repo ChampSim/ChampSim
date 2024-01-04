@@ -30,7 +30,7 @@
 #include <fmt/core.h>
 
 #include "cache.h" // for CACHE
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "core_inst.inc"
 #include "defaults.hpp"
 #include "ooo_cpu.h" // for O3_CPU

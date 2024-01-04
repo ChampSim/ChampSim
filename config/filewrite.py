@@ -21,9 +21,10 @@ import json
 
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
-from .constants_file import get_constants_file
+#from .constants_file import get_constants_file
 from . import modules
 from . import util
+from . import legacy
 
 makefile_file_name = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_configuration.mk')
 
@@ -172,7 +173,7 @@ class Fragment:
             (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
 
             # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
+            #(os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
 
             # Module name mangling
             *legacy.generate_module_information(inc_dir, legacy_module_info),

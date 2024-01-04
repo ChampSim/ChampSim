@@ -2,7 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 
 SCENARIO("A prefetch can be issued that creates an MSHR") {
   GIVEN("An empty cache") {

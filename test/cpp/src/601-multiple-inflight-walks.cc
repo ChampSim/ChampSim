@@ -2,7 +2,7 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"

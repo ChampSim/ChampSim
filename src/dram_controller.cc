@@ -22,7 +22,7 @@
 #include <utility> // for move
 #include <fmt/core.h>
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h" // for lg2, bitmask

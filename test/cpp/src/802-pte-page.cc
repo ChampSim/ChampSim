@@ -3,7 +3,7 @@
 
 #include <cmath>
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "dram_controller.h"
 
 struct AdjDiffMatcher : Catch::Matchers::MatcherGenericBase {

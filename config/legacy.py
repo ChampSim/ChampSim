@@ -2,9 +2,9 @@ import itertools
 import functools
 import os
 
-import util
-import cxx
-import modules
+from . import util
+from . import cxx
+from . import modules
 
 def get_legacy_module_opts_lines(module_data):
     '''
@@ -18,25 +18,25 @@ def mangled_declaration(fname, args, rtype, module_data):
     argstring = ', '.join(a[0] for a in args)
     return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
-def variant_function_body(fname, args, module_data, module_kind):
-    argnamestring = ', '.join(a[1] for a in args)
-    body = [
-        f'if constexpr (kind == champsim::module::kind::{module_kind}) {{',
-        f'  return intern_->{module_data["func_map"][fname]}({argnamestring});',
-        '}'
-    ]
-    yield from cxx.function(fname, body, args=args)
-    yield ''
-
-def get_discriminator(variant_data, module_data, classname):
+def get_discriminator(full_variant_data, module_data):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
+    intern_name_map = {
+        'branch_predictor': 'intern_core_',
+        'btb': 'intern_core_',
+        'prefetcher': 'intern_cache_',
+        'replacement': 'intern_cache_'
+    }
     discriminator_classname = module_data['class'].split('::')[-1]
     body = itertools.chain(
-        (f'using {classname}::{classname};',),
-        *(variant_function_body(n,a,module_data,classname) for n,a,_ in variant_data)
+        (f'using champsim::modules::legacy_module::legacy_module;',),
+        *(cxx.function(fname, [
+            f'if constexpr (kind == champsim::module::kind::{module_kind}) {{',
+            f'  return {intern_name_map[kind]}->{module_data["func_map"][fname]}({", ".join(a[1] for a in args)});',
+            '}'
+        ], args=args) for kind,(fname,args,_) in full_variant_data)
     )
     yield 'template <champsim::modules::kind kind>'
-    yield from cxx.struct(discriminator_classname, body, superclass=classname)
+    yield from cxx.struct(discriminator_classname, body, superclass='champsim::modules::legacy_module')
     yield ''
 
 def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
@@ -46,14 +46,13 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
       - The second generates C++ code declaring all functions for the CACHE modules,
       - The third generates C++ code defining the functions.
     '''
-    branch_discriminator = functools.partial(get_discriminator, modules.branch_variant_data, classname='branch_predictor')
-    btb_discriminator = functools.partial(get_discriminator, modules.btb_variant_data, classname='btb')
-    repl_discriminator = functools.partial(get_discriminator, modules.repl_variant_data, classname='replacement')
-
-    def pref_discriminator(v):
-        local_branch_variant_data = modules.pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
-        return get_discriminator([*modules.pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
-
+    discriminator = functools.partial(get_discriminator, itertools.chain(
+        zip(itertools.repeat('branch_predictor'), modules.branch_variant_data),
+        zip(itertools.repeat('btb'), modules.btb_variant_data),
+        zip(itertools.repeat('prefetcher'), modules.pref_branch_variant_data),
+        zip(itertools.repeat('prefetcher'), modules.pref_nonbranch_variant_data),
+        zip(itertools.repeat('replacement'), modules.repl_variant_data)
+    ))
     return (
         (mangled_declaration(*var, data) for var,data in itertools.chain(
             itertools.product(modules.branch_variant_data, branch_data),
@@ -65,12 +64,7 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
             itertools.product(modules.repl_variant_data, repl_data)
         )),
 
-        itertools.chain(
-            *map(branch_discriminator, branch_data),
-            *map(btb_discriminator, btb_data),
-            *map(pref_discriminator, pref_data),
-            *map(repl_discriminator, repl_data)
-        )
+        map(discriminator, itertools.chain(branch_data, btb_data, pref_data, repl_data))
        )
 
 def generate_module_information(containing_dir, module_info):
@@ -106,6 +100,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
+    parser.add_argument('--prefix', required=True)
     parser.add_argument('legacyfiles', action='append')
     args = parser.parse_args()
 
@@ -116,5 +111,9 @@ if __name__ == '__main__':
         'legacy': True,
         'class': f'champsim::modules::generated::{p}'
     } for p in paths]
+
+    for fname, fcontents in itertools.islice(generate_module_information(args.prefix, infos), 3):
+        with open(fname, 'wt') as wfp:
+            print('\n'.join(fcontents), file=wfp)
 
 

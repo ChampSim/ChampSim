@@ -24,7 +24,7 @@
 #include <tuple>   // for tuple
 #include <utility> // for pair
 
-#include "champsim_constants.h"
+#include "champsim.h"
 
 class MEMORY_CONTROLLER;
 

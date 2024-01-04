@@ -5,7 +5,7 @@
 #include <bitset>
 #include <cstdint>
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "modules.h"
 
 struct va_ampm_lite : champsim::modules::prefetcher {

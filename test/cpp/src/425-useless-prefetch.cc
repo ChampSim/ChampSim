@@ -1,7 +1,7 @@
 #include <catch.hpp>
 #include "mocks.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "defaults.hpp"
 
 #include <cstdlib>

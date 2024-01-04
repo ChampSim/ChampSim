@@ -28,7 +28,6 @@
 
 #include "bandwidth.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/algorithm.h"

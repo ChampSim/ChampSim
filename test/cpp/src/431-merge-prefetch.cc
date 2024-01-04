@@ -3,7 +3,7 @@
 #include "defaults.hpp"
 
 #include "cache.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 
 struct merge_testbed
 {

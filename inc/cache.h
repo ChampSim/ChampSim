@@ -37,7 +37,7 @@
 #include "bandwidth.h"
 #include "block.h"
 #include "cache_builder.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "channel.h"
 #include "modules.h"
 #include "operable.h"

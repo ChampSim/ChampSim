@@ -21,7 +21,6 @@
 #include <fmt/core.h>
 
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "dram_controller.h"
 #include "util/bits.h" // for lg2, splice_bits, bitmask
 

@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "bandwidth.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "instruction.h"

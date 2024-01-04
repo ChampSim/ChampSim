@@ -1,7 +1,7 @@
 #include <catch.hpp>
 #include "mocks.hpp"
 #include "channel.h"
-#include "champsim_constants.h"
+#include "champsim.h"
 
 template <typename Q>
 bool issue_wq (Q& uut, typename Q::request_type pkt)
