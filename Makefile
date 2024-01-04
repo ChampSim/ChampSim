@@ -26,9 +26,23 @@ dirs:=
 # $4 - target suffix
 migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 
+# Remove the first word from the sequence
+# $1 - a sequence of words
+tail = $(wordlist 2,$(words $1),$1)
+
 # Reverse the order of the inputs
 # $1 - a sequence of words
-reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
+reverse = $(if $1,$(call $0,$(call tail,$1)) $(firstword $1))
+
+# Return a nonempty string if the sequence starts with the given word
+# $1 - The word to find
+# $2 - The sequence to find in
+startswith = $(findstring $1,$(firstword $2))
+
+# Return a sequence with (copies of) the given word removed
+# $1 - The word to remove
+# $2 - The sequence to drop from
+dropwhile = $(if $(call startswith,$1,$2),$(call $0,$1,$(call tail,$2)),$2)
 
 # $1 - source dir
 # $2 - hash
@@ -57,7 +71,7 @@ ifeq (,$$(filter clean configclean, $$(MAKECMDGOALS)))
 -include $$($(subst /,D,$2)_deps)
 endif
 
-dirs += $$(OBJ_ROOT)/$2 $(DEP_ROOT)/$2
+dirs += $$(OBJ_ROOT)/$2 $$(DEP_ROOT)/$2
 objs += $$($(subst /,D,$2)_objs)
 
 $(call make_all_parts,$(sort $(dir $(wildcard $1/*/))),$2x,$3,$4)
@@ -70,11 +84,10 @@ endef
 # $2 - hash
 # $3 - executable name
 # $4 - (optional) additional options files
-make_all_parts = \
-$(if $1,$(if $(findstring MODULE,$(firstword $1)),\
-$(call make_part,$(word 2,$1),$2,$3,$4 $(ROOT_DIR)/module.options)$(call $0,$(wordlist 3,$(words $1),$1),$2_,$3,$4),\
-$(call make_part,$(firstword $1),$2,$3,$4)$(call $0,$(wordlist 2,$(words $1),$1),$2_,$3,$4)\
-))
+make_all_parts =$(if $1,\
+$(call make_part,$(firstword $(call dropwhile,MODULE,$1)),$2,$3,$4$(if $(call startswith,MODULE,$1), $(ROOT_DIR)/module.options))\
+$(call $0,$(wordlist 2,$(words $1),$(call dropwhile,MODULE,$1)),$2_,$3,$4)\
+)
 
 # Requires:
 # $(source_root)
@@ -86,7 +99,7 @@ $(DEP_ROOT)/%.mkpart: $(source_roots)
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig branch btb prefetcher replacement $(dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-find .csconfig \( -name cache_module_decl.inc -o -name ooo_cpu_module_decl.inc -o -name module_def.inc \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
