@@ -39,6 +39,7 @@
 #include "champsim.h"
 #include "channel.h"
 #include "core_builder.h"
+#include "event_counter.h"
 #include "instruction.h"
 #include "modules.h"
 #include "operable.h"
@@ -72,8 +73,8 @@ struct cpu_stats {
   uint64_t end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
-  std::array<long long, 8> total_branch_types = {};
-  std::array<long long, 8> branch_type_misses = {};
+  champsim::stats::event_counter<branch_type> total_branch_types = {};
+  champsim::stats::event_counter<branch_type> branch_type_misses = {};
 
   [[nodiscard]] auto instrs() const { return end_instrs - begin_instrs; }
   [[nodiscard]] auto cycles() const { return end_cycles - begin_cycles; }
