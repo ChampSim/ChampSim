@@ -28,9 +28,6 @@
 
 class MEMORY_CONTROLLER;
 
-// reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ULL << 20);
-
 inline constexpr std::size_t PTE_BYTES = 8;
 
 class VirtualMemory

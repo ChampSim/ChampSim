@@ -16,7 +16,6 @@ public:
   static constexpr unsigned maxRRPV = 3;
   static constexpr std::size_t NUM_POLICY = 2;
   static constexpr std::size_t SDM_SIZE = 32;
-  static constexpr std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
   static constexpr unsigned BIP_MAX = 32;
   static constexpr unsigned PSEL_WIDTH = 10;
 
@@ -24,7 +23,7 @@ public:
 
   unsigned bip_counter;
   std::vector<std::size_t> rand_sets;
-  std::array<champsim::msl::fwcounter<PSEL_WIDTH>, NUM_CPUS> PSEL;
+  std::vector<champsim::msl::fwcounter<PSEL_WIDTH>> PSEL;
   std::vector<unsigned> rrpv;
 
   drrip(CACHE* cache);

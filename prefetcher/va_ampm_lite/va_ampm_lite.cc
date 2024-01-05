@@ -20,7 +20,7 @@ bool va_ampm_lite::check_cl_access(uint64_t v_addr)
   auto [vpn, page_offset] = page_and_offset(v_addr);
   auto region = std::find_if(std::begin(regions), std::end(regions), [vpn = vpn](auto x) { return x.vpn == vpn; });
 
-  return (region != std::end(regions)) && region->access_map.test(page_offset);
+  return (region != std::end(regions)) && region->access_map.at(page_offset);
 }
 
 bool va_ampm_lite::check_cl_prefetch(uint64_t v_addr)
@@ -28,7 +28,7 @@ bool va_ampm_lite::check_cl_prefetch(uint64_t v_addr)
   auto [vpn, page_offset] = page_and_offset(v_addr);
   auto region = std::find_if(std::begin(regions), std::end(regions), [vpn = vpn](auto x) { return x.vpn == vpn; });
 
-  return (region != std::end(regions)) && region->prefetch_map.test(page_offset);
+  return (region != std::end(regions)) && region->prefetch_map.at(page_offset);
 }
 
 uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
@@ -44,7 +44,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint
   }
 
   // mark this demand access
-  demand_region->access_map.set(page_offset);
+  demand_region->access_map.at(page_offset) = true;
 
   // attempt to prefetch in the positive, then negative direction
   for (auto direction : {1, -1}) {
@@ -67,7 +67,7 @@ uint32_t va_ampm_lite::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint
               *pf_region = region_type{pf_vpn};
             }
 
-            pf_region->prefetch_map.set(pf_page_offset);
+            pf_region->prefetch_map.at(pf_page_offset) = true;
             prefetches_issued++;
           }
         }

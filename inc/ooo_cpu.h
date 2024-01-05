@@ -110,7 +110,7 @@ public:
   long long finish_phase_instr = 0;
   uint64_t last_heartbeat_cycle = 0;
   long long last_heartbeat_instr = 0;
-  long long next_print_instruction = STAT_PRINTING_PERIOD;
+  long long last_print_instruction = 0;
 
   // instruction
   long long num_retired = 0;

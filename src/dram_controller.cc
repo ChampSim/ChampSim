@@ -131,7 +131,7 @@ void DRAM_CHANNEL::swap_write_mode()
   if ((!write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
       || (write_mode && (wq_occu == 0 || (rq_occu > 0 && wq_occu < DRAM_WRITE_LOW_WM)))) {
     // Reset scheduled requests
-    for (auto* it = std::begin(bank_request); it != std::end(bank_request); ++it) {
+    for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it) {
       // Leave active request on the data bus
       if (it != active_request && it->valid) {
         // Leave rows charged
@@ -163,7 +163,7 @@ long DRAM_CHANNEL::populate_dbus()
 {
   long progress{0};
 
-  auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
+  auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                              [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
   if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_cycle) {
@@ -438,7 +438,7 @@ unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const { return c
 
 unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
 {
-  int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  auto shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
   return (address >> shift) & champsim::bitmask(champsim::lg2(BANKS));
 }
 

@@ -66,9 +66,9 @@ struct DRAM_CHANNEL final : public champsim::operable {
   queue_type RQ{DRAM_RQ_SIZE};
 
   // these values control when to send out a burst of writes
-  constexpr static std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
-  constexpr static std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
-  constexpr static std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
+  std::size_t DRAM_WRITE_HIGH_WM = ((DRAM_WQ_SIZE * 7) >> 3);         // 7/8th
+  std::size_t DRAM_WRITE_LOW_WM = ((DRAM_WQ_SIZE * 6) >> 3);          // 6/8th
+  std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((DRAM_WQ_SIZE * 1) >> 2); // 1/4
 
   struct BANK_REQUEST {
     bool valid = false, row_buffer_hit = false;
@@ -80,8 +80,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
     queue_type::iterator pkt;
   };
 
-  using request_array_type = std::array<BANK_REQUEST, DRAM_RANKS * DRAM_BANKS>;
-  request_array_type bank_request = {};
+  using request_array_type = std::vector<BANK_REQUEST>;
+  request_array_type bank_request{DRAM_RANKS * DRAM_BANKS};
   request_array_type::iterator active_request = std::end(bank_request);
 
   bool write_mode = false;

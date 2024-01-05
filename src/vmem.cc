@@ -24,6 +24,9 @@
 #include "dram_controller.h"
 #include "util/bits.h" // for lg2, splice_bits, bitmask
 
+// reserve 1MB or one page of space
+const auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ULL << 20);
+
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ULL << (LOG2_PAGE_SIZE + champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
       minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)

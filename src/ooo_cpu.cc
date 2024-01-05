@@ -31,6 +31,8 @@
 #include "trace_instruction.h" // for REG_STACK_POINTER, REG_FLAGS, REG_INS...
 #include "util/span.h"
 
+const long long STAT_PRINTING_PERIOD = 10000000;
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -53,7 +55,7 @@ long O3_CPU::operate()
   initialize_instruction();
 
   // heartbeat
-  if (show_heartbeat && (num_retired >= next_print_instruction)) {
+  if (show_heartbeat && (num_retired >= (last_print_instruction + STAT_PRINTING_PERIOD))) {
     auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
     auto heartbeat_cycle{std::ceil(current_cycle - last_heartbeat_cycle)};
 
@@ -62,7 +64,7 @@ long O3_CPU::operate()
 
     fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
                num_retired, current_cycle, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
-    next_print_instruction += STAT_PRINTING_PERIOD;
+    last_print_instruction = num_retired;
 
     last_heartbeat_instr = num_retired;
     last_heartbeat_cycle = current_cycle;

@@ -17,7 +17,7 @@ public:
   static constexpr int maxRRPV = 3;
   static constexpr std::size_t SHCT_SIZE = 16384;
   static constexpr unsigned SHCT_PRIME = 16381;
-  static constexpr std::size_t SAMPLER_SET = (256 * NUM_CPUS);
+  static constexpr std::size_t SAMPLER_SET_FACTOR = 256;
   static constexpr unsigned SHCT_MAX = 7;
 
   // sampler structure
@@ -39,7 +39,7 @@ public:
   std::vector<int> rrpv_values;
 
   // prediction table structure
-  std::array<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>, NUM_CPUS> SHCT;
+  std::vector<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>> SHCT;
 
   explicit ship(CACHE* cache);
 

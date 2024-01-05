@@ -4,6 +4,7 @@
 #include <array>
 #include <bitset>
 #include <cstdint>
+#include <vector>
 
 #include "champsim.h"
 #include "modules.h"
@@ -15,14 +16,14 @@ struct va_ampm_lite : champsim::modules::prefetcher {
 
   struct region_type {
     uint64_t vpn;
-    std::bitset<PAGE_SIZE / BLOCK_SIZE> access_map{};
-    std::bitset<PAGE_SIZE / BLOCK_SIZE> prefetch_map{};
+    std::vector<bool> access_map;
+    std::vector<bool> prefetch_map;
     uint64_t lru;
 
     static uint64_t region_lru;
 
     region_type() : region_type(0) {}
-    explicit region_type(uint64_t allocate_vpn) : vpn(allocate_vpn), lru(region_lru++) {}
+    explicit region_type(uint64_t allocate_vpn) : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++) {}
   };
 
   using prefetcher::prefetcher;
