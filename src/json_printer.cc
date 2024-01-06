@@ -41,12 +41,12 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
   constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
                              branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
 
-  auto total_mispredictions = std::ceil(std::accumulate(
-      std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
 
   std::map<std::string, std::size_t> mpki{};
   for (auto type : types) {
-    mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.at(champsim::to_underlying(type)));
+    mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.value_or(type, 0));
   }
 
   j = nlohmann::json{{"instructions", stats.instrs()},
@@ -57,6 +57,9 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 
 void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
 {
+  using hits_value_type = typename decltype(stats.hits)::value_type;
+  using misses_value_type = typename decltype(stats.misses)::value_type;
+
   std::map<std::string, nlohmann::json> statsmap;
   statsmap.emplace("prefetch requested", stats.pf_requested);
   statsmap.emplace("prefetch issued", stats.pf_issued);
@@ -64,8 +67,15 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
   statsmap.emplace("useless prefetch", stats.pf_useless);
   statsmap.emplace("miss latency", stats.avg_miss_latency);
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)),
-                     nlohmann::json{{"hit", stats.hits.at(champsim::to_underlying(type))}, {"miss", stats.misses.at(champsim::to_underlying(type))}});
+    std::vector<hits_value_type> hits;
+    std::vector<misses_value_type> misses;
+
+    for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
+      hits.push_back(stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}));
+      misses.push_back(stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
+    }
+
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}});
   }
 
   j = statsmap;
