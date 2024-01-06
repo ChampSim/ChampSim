@@ -88,6 +88,7 @@ cache_builder_parts = {
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
     '_replacement_data': '.replacement<{^replacement_string}>()',
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
+    '_state_model_data': '.state_model<{^state_model_string}>()',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
     'lower_level': '.lower_level(&{^lower_level_queues})'
 }
@@ -147,6 +148,7 @@ def get_cache_builder(elem, upper_levels):
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
         '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^state_model_string': ', '.join(f'class {k["class"]}' for k in elem.get('_state_model_data',[])),
         '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
         '^lower_level_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_level'))
     }
@@ -359,7 +361,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         *(c['_branch_predictor_data'] for c in cores),
         *(c['_btb_data'] for c in cores),
         *(c['_prefetcher_data'] for c in caches),
-        *(c['_replacement_data'] for c in caches)
+        *(c['_replacement_data'] for c in caches),
+        *(c['_state_model_data'] for c in caches)
     ))
     yield from module_include_files(datas)
 

@@ -12,8 +12,6 @@ struct weak : champsim::modules::replacement {
   explicit weak(CACHE* cache);
   weak(CACHE* cache, long sets, long ways);
 
-  
-
 };
 
 #endif

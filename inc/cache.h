@@ -260,6 +260,13 @@ public:
     virtual void impl_replacement_final_stats() = 0;
   };
 
+  struct state_module_concept {
+    virtual ~state_module_concept() = default;
+
+    virtual void impl_initialize_state() = 0;
+    virtual void impl_state_final_stats() = 0;
+  };
+
   template <typename... Ps>
   struct prefetcher_module_model final : prefetcher_module_concept {
     std::tuple<Ps...> intern_;
@@ -288,6 +295,15 @@ public:
     void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
                                        bool hit) final;
     void impl_replacement_final_stats() final;
+  };
+
+  template <typename... Ss>
+  struct state_module_model final : state_module_concept {
+    std::tuple<Ss...> intern_;
+    explicit state_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
+
+    void impl_initialize_state() final;
+    void impl_state_final_stats() final;
   };
 
   std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;

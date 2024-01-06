@@ -132,6 +132,13 @@ def get_repl_data(module_data):
     func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
     return util.chain(module_data, { 'func_map': func_map })
 
+sm_variant_data = [
+    ('initialize_state_model', tuple(), 'void'),
+]
+def get_sm_data(module_data): 
+    func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
+
 ###
 # Legacy module support below
 ###
@@ -174,6 +181,7 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
     branch_discriminator = functools.partial(get_discriminator, branch_variant_data, classname='branch_predictor')
     btb_discriminator = functools.partial(get_discriminator, btb_variant_data, classname='btb')
     repl_discriminator = functools.partial(get_discriminator, repl_variant_data, classname='replacement')
+    sm_discriminator = functools.partial(get_discriminator, repl_variant_data, classname='state_model')
 
     def pref_discriminator(v):
         local_branch_variant_data = pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
