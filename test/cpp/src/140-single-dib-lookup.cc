@@ -10,8 +10,8 @@ SCENARIO("A late-added instruction does not miss the IFB") {
     O3_CPU uut{champsim::core_builder{}
       .dib_window(4)
       .ifetch_buffer_size(2)
-      .l1i_bandwidth(10)
-      .l1d_bandwidth(10)
+      .l1i_bandwidth(champsim::bandwidth::maximum_type{10})
+      .l1d_bandwidth(champsim::bandwidth::maximum_type{10})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };

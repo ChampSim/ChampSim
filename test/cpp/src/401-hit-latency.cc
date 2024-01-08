@@ -35,10 +35,6 @@ SCENARIO("A cache returns a hit after the specified latency") {
       elem->begin_phase();
     }
 
-    THEN("The number of hits starts at zero") {
-      REQUIRE(uut.sim_stats.hits.at(champsim::to_underlying(type)).at(0) == 0);
-    }
-
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
@@ -64,6 +60,8 @@ SCENARIO("A cache returns a hit after the specified latency") {
         auto test = seed;
         test.instr_id = id++;
 
+        const auto initial_hits = uut.sim_stats.hits.value_or(std::pair{test.type, test.cpu}, 0);
+
         auto test_result = mock_ul.issue(test);
         THEN("This issue is received") {
           REQUIRE(test_result);
@@ -79,7 +77,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
         }
 
         THEN("The number of hits increases") {
-          REQUIRE(uut.sim_stats.hits.at(champsim::to_underlying(type)).at(0) == 1);
+          REQUIRE(uut.sim_stats.hits.value_or(std::pair{test.type, test.cpu},0) == initial_hits + 1);
         }
       }
     }

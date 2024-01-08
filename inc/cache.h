@@ -23,7 +23,6 @@
 #define CACHE_H
 
 #include <array>
-#include <cmath>
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
@@ -35,11 +34,13 @@
 #include <utility> // for pair
 #include <vector>
 
+#include "bandwidth.h"
 #include "block.h"
 #include "cache_builder.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
+#include "event_counter.h"
 #include "modules.h"
 #include "operable.h"
 #include "util/to_underlying.h" // for to_underlying
@@ -56,8 +57,8 @@ struct cache_stats {
   uint64_t pf_useless = 0;
   uint64_t pf_fill = 0;
 
-  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> hits = {};
-  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> misses = {};
+  champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> hits = {};
+  champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> misses = {};
 
   double avg_miss_latency = 0;
   champsim::chrono::clock::duration total_miss_latency{};
@@ -176,7 +177,7 @@ public:
   const champsim::chrono::clock::duration FILL_LATENCY;
   const unsigned OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
-  const long int MAX_TAG, MAX_FILL;
+  champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
@@ -227,7 +228,9 @@ public:
 
   void print_deadlock() final;
 
+#if __has_include("cache_module_decl.inc")
 #include "cache_module_decl.inc"
+#endif
 
   struct prefetcher_module_concept {
     virtual ~prefetcher_module_concept() = default;
@@ -304,12 +307,9 @@ public:
 
   template <typename... Ps, typename... Rs>
   explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
-      : champsim::operable(b.m_clock_period), upper_levels(std::move(b.m_uls)), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name),
-        NUM_SET(b.m_sets.value_or(std::lround(b.m_sets_factor * std::floor(std::size(upper_levels))))), NUM_WAY(b.m_ways),
-        MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))), PQ_SIZE(b.m_pq_size),
-        HIT_LATENCY(b.m_clock_period * (b.m_hit_lat.value_or(b.m_latency - b.m_fill_lat))), FILL_LATENCY(b.m_clock_period * b.m_fill_lat),
-        OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.m_max_tag.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))),
-        MAX_FILL(b.m_max_fill.value_or(std::lround(b.m_bandwidth_factor * std::floor(std::size(upper_levels))))), prefetch_as_load(b.m_pref_load),
+      : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
+        NUM_WAY(b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size), HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period),
+        OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
   {

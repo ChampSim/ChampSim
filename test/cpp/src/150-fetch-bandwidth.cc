@@ -14,7 +14,7 @@ SCENARIO("The fetch bandwidth limits the number of packets issued each cycle") {
     O3_CPU uut{champsim::core_builder{}
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
-      .l1i_bandwidth(bandwidth)
+      .l1i_bandwidth(champsim::bandwidth::maximum_type{bandwidth})
     };
 
     std::array<champsim::operable*,3> elements = {&uut, &mock_L1I, &mock_L1D};

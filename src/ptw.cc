@@ -40,8 +40,8 @@
 PageTableWalker::PageTableWalker(champsim::ptw_builder b)
     : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name),
       MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
-      MAX_READ(b.m_max_tag_check.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))),
-      MAX_FILL(b.m_max_fill.value_or(b.m_bandwidth_factor * std::floor(std::size(upper_levels)))), HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem),
+      MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
+      MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})), HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem),
       CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
 {
   std::vector<decltype(b.m_pscl)::value_type> local_pscl_dims{};
@@ -138,15 +138,14 @@ long PageTableWalker::operate()
 
   std::vector<mshr_type> next_steps{};
 
-  auto fill_bw = MAX_FILL;
+  champsim::bandwidth fill_bw{MAX_FILL};
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, is_ready);
   std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
     for (auto ret : mshr_entry.to_return) {
       ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, *mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
     }
   });
-  fill_bw -= std::distance(complete_begin, complete_end);
-  progress += std::distance(complete_begin, complete_end);
+  fill_bw.consume(std::distance(complete_begin, complete_end));
   completed.erase(complete_begin, complete_end);
 
   auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, is_ready);
@@ -157,10 +156,10 @@ long PageTableWalker::operate()
     }
     return result.has_value();
   });
-  progress += std::distance(mshr_begin, mshr_end);
+  fill_bw.consume(std::distance(mshr_begin, mshr_end));
   finished.erase(mshr_begin, mshr_end);
 
-  auto tag_bw = MAX_READ;
+  champsim::bandwidth tag_bw{MAX_READ};
   for (auto* ul : upper_levels) {
     auto [rq_begin, rq_end] = champsim::get_span_p(std::cbegin(ul->RQ), std::cend(ul->RQ), tag_bw, [&next_steps, ul, this](const auto& pkt) {
       auto result = this->handle_read(pkt, ul);
@@ -169,13 +168,12 @@ long PageTableWalker::operate()
       }
       return result.has_value();
     });
-    tag_bw -= std::distance(rq_begin, rq_end);
-    progress += std::distance(rq_begin, rq_end);
+    tag_bw.consume(std::distance(rq_begin, rq_end));
     ul->RQ.erase(rq_begin, rq_end);
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
-  return progress;
+  return progress + fill_bw.amount_consumed() + tag_bw.amount_consumed();
 }
 
 void PageTableWalker::finish_packet(const response_type& packet)

@@ -36,10 +36,6 @@ SCENARIO("A cache returns a miss after the specified latency") {
       elem->begin_phase();
     }
 
-    THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 0);
-    }
-
     THEN("The MSHR occupancy starts at zero") {
       CHECK(uut.get_mshr_occupancy() == 0);
       CHECK(uut.get_mshr_occupancy_ratio() == 0);
@@ -53,6 +49,8 @@ SCENARIO("A cache returns a miss after the specified latency") {
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
+
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0);
 
       // Issue it to the uut
       auto test_result = mock_ul.issue(test);
@@ -81,11 +79,17 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu},0) == initial_misses + 1);
       }
 
       THEN("The average miss latency increases") {
         REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
+      }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
+        REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
       }
     }
   }
@@ -125,10 +129,6 @@ SCENARIO("A cache completes a fill after the specified latency") {
       elem->begin_phase();
     }
 
-    THEN("The number of misses starts at zero") {
-      REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 0);
-    }
-
     WHEN("A " + std::string{str} + " packet is issued") {
       // Create a test packet
       static uint64_t id = 1;
@@ -137,6 +137,8 @@ SCENARIO("A cache completes a fill after the specified latency") {
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
+
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu}, 0);
 
       // Issue it to the uut
       auto test_result = mock_ul.issue(test);
@@ -157,7 +159,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(type)).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu},0) == initial_misses + 1);
       }
 
       THEN("The average miss latency increases") {
@@ -165,6 +167,17 @@ SCENARIO("A cache completes a fill after the specified latency") {
           REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
         else
           REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (fill_latency-1)); // -1 due to ordering of elements
+      }
+
+      THEN("The end-of-phase average miss latency increases") {
+        uut.end_phase(0);
+        if (match_offset) {
+          REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
+          REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+        } else {
+          REQUIRE(uut.sim_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
+          REQUIRE(uut.roi_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
+        }
       }
     }
   }
@@ -215,6 +228,8 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
       test_b.type = access_type::LOAD;
       test_b.instr_id = id++;
 
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_b.type, test_b.cpu}, 0);
+
       auto test_b_result = mock_ul_test.issue(test_b);
 
       THEN("The issue is received") {
@@ -231,7 +246,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
       }
 
       THEN("The number of misses did not increase") {
-        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(access_type::LOAD)).at(0) == 1);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{access_type::LOAD, 0},0) == initial_misses);
       }
     }
   }
@@ -263,6 +278,8 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
       test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
 
+      const auto initial_misses = uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.cpu}, 0);
+
       auto test_a_result = mock_ul.issue(test_a);
 
       for (uint64_t i = 0; i < 100; ++i)
@@ -279,7 +296,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
           elem->_operate();
 
       THEN("The number of misses did not increase") {
-        REQUIRE(uut.sim_stats.misses.at(champsim::to_underlying(access_type::LOAD)).at(0) == 0);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{test_a.type, test_a.cpu}, 0) == initial_misses);
       }
     }
   }

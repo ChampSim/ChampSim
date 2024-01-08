@@ -26,6 +26,7 @@
 #include <vector> // for vector
 
 #include "champsim_constants.h"
+#include "bandwidth.h"
 #include "channel.h"
 #include "operable.h"
 #include "util/lru_table.h"
@@ -89,7 +90,7 @@ class PageTableWalker : public champsim::operable
 public:
   const std::string NAME;
   const uint32_t MSHR_SIZE;
-  const long int MAX_READ, MAX_FILL;
+  champsim::bandwidth::maximum_type MAX_READ, MAX_FILL;
   const champsim::chrono::clock::duration HIT_LATENCY;
 
   std::vector<pscl_type> pscl;

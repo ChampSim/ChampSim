@@ -8,7 +8,7 @@ SCENARIO("An empty ROB does not retire any instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
     O3_CPU uut{champsim::core_builder{}
-      .retire_width(retire_bandwidth)
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -33,7 +33,7 @@ SCENARIO("A completed instruction can be retired") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 1;
     O3_CPU uut{champsim::core_builder{}
-      .retire_width(retire_bandwidth)
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -72,7 +72,7 @@ SCENARIO("Completed instructions are retired in order") {
     do_nothing_MRC mock_L1I, mock_L1D;
     constexpr long retire_bandwidth = 2;
     O3_CPU uut{champsim::core_builder{}
-      .retire_width(retire_bandwidth)
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -118,7 +118,7 @@ SCENARIO("The retire bandwidth limits the number of retirements per cycle") {
     constexpr long retire_bandwidth = 1;
     constexpr long num_instrs = 2 * retire_bandwidth;
     O3_CPU uut{champsim::core_builder{}
-      .retire_width(retire_bandwidth)
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -138,8 +138,8 @@ SCENARIO("The retire bandwidth limits the number of retirements per cycle") {
         op->_operate();
 
       THEN("The bandwidth of instructions are retired") {
-        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-static_cast<std::size_t>(uut.RETIRE_WIDTH)));
-        REQUIRE(uut.num_retired == old_num_retired+uut.RETIRE_WIDTH);
+        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-retire_bandwidth));
+        REQUIRE(uut.num_retired == old_num_retired+retire_bandwidth);
       }
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})

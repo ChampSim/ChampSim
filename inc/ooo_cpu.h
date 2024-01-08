@@ -35,14 +35,17 @@
 #include <utility> // for pair
 #include <vector>
 
+#include "bandwidth.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "core_builder.h"
+#include "event_counter.h"
 #include "instruction.h"
 #include "modules.h"
 #include "operable.h"
 #include "util/bits.h" // for lg2
 #include "util/lru_table.h"
+#include "util/to_underlying.h"
 
 class CACHE;
 class CacheBus
@@ -70,8 +73,8 @@ struct cpu_stats {
   long long end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
-  std::array<long long, 8> total_branch_types = {};
-  std::array<long long, 8> branch_type_misses = {};
+  champsim::stats::event_counter<branch_type> total_branch_types = {};
+  champsim::stats::event_counter<branch_type> branch_type_misses = {};
 
   [[nodiscard]] auto instrs() const { return end_instrs - begin_instrs; }
   [[nodiscard]] auto cycles() const { return end_cycles - begin_cycles; }
@@ -139,20 +142,20 @@ public:
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
-  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
-  const long int LQ_WIDTH, SQ_WIDTH;
-  const long int RETIRE_WIDTH;
+  champsim::bandwidth::maximum_type FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
+  champsim::bandwidth::maximum_type LQ_WIDTH, SQ_WIDTH;
+  champsim::bandwidth::maximum_type RETIRE_WIDTH;
   champsim::chrono::clock::duration BRANCH_MISPREDICT_PENALTY;
   champsim::chrono::clock::duration DISPATCH_LATENCY;
   champsim::chrono::clock::duration DECODE_LATENCY;
   champsim::chrono::clock::duration SCHEDULING_LATENCY;
   champsim::chrono::clock::duration EXEC_LATENCY;
-  const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
+  champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
   champsim::chrono::clock::time_point fetch_resume_time{};
 
-  const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
+  const long IN_QUEUE_SIZE;
   std::deque<ooo_model_instr> input_queue;
 
   CacheBus L1I_bus, L1D_bus;
@@ -198,7 +201,9 @@ public:
 
   void print_deadlock() final;
 
+#if __has_include("ooo_cpu_module_decl.inc")
 #include "ooo_cpu_module_decl.inc"
+#endif
 
   struct branch_module_concept {
     virtual ~branch_module_concept() = default;
@@ -262,8 +267,8 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty * b.m_clock_period), DISPATCH_LATENCY(b.m_dispatch_latency * b.m_clock_period),
         DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),
-        EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw), L1I_bus(b.m_cpu, b.m_fetch_queues),
-        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
+        EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
+        IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
         branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)), btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {
   }
@@ -344,13 +349,13 @@ std::pair<uint64_t, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(u
       return t.btb_prediction(ip, branch_type);
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
       return t.btb_prediction(ip);
-    return std::pair{0ul, false};
+    return std::pair{uint64_t{0}, false};
   };
 
   if constexpr (sizeof...(Ts) > 0) {
     return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
   }
-  return {0ul, false};
+  return {uint64_t{0}, false};
 }
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE

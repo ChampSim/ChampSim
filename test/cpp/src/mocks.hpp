@@ -204,8 +204,7 @@ struct queue_issue_MRP : public champsim::operable
     }
 
     void assert_returned(int cycles, int epsilon) {
-      REQUIRE(return_time >= issue_time + cycles - epsilon);
-      REQUIRE(return_time <= issue_time + cycles + epsilon);
+      assert_relative_returned(*this, cycles, epsilon);
     }
 
     void assert_returned(int cycles) {
