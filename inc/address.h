@@ -563,7 +563,7 @@ struct fmt::formatter<champsim::address_slice<Extent>>
   {
     auto [ret_ptr, ec] = std::from_chars(ctx.begin(), ctx.end(), len);
     // Check if reached the end of the range:
-    if (ec == std::errc::result_out_of_range || (ret_ptr != ctx.end() && *ret_ptr != '}')) fmt::throw_format_error("invalid format");
+    if (ec == std::errc::result_out_of_range || (ret_ptr != ctx.end() && *ret_ptr != '}')) throw fmt::format_error("invalid format");
     return ret_ptr;
   }
 
