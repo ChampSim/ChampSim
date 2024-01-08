@@ -10,9 +10,9 @@ namespace test
     uint32_t cpu;
     long set;
     long way;
-    uint64_t full_addr;
-    uint64_t ip;
-    uint64_t victim_addr;
+    champsim::address full_addr;
+    champsim::address ip;
+    champsim::address victim_addr;
     access_type type;
     uint8_t hit;
   };

@@ -19,13 +19,12 @@
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
-#include <utility> // for move
 #include <fmt/core.h>
 
 #include "champsim_constants.h"
 #include "deadlock.h"
 #include "instruction.h"
-#include "util/bits.h" // for lg2, bitmask
+#include "util/bits.h"
 #include "util/span.h"
 
 uint64_t cycles(double time, int io_freq)
@@ -296,8 +295,8 @@ void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [addr = wq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt) {
-        return pkt.has_value() && (pkt->address >> offset) == (addr >> offset);
+      auto checker = [check_val = champsim::block_number{wq_it->value().address}](const auto& pkt){
+        return pkt.has_value() && champsim::block_number{pkt->address} == check_val;
       };
 
       auto found = std::find_if(std::begin(WQ), wq_it, checker); // Forward check
@@ -318,13 +317,10 @@ void DRAM_CHANNEL::check_read_collision()
 {
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [addr = rq_it->value().address, offset = LOG2_BLOCK_SIZE](const auto& pkt) {
-        return pkt.has_value() && (pkt->address >> offset) == (addr >> offset);
-      };
+      auto checker = [check_val = champsim::block_number{rq_it->value().address}](const auto& x){ return x.has_value() && champsim::block_number{x->address} == check_val; };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
-        response_type response{rq_it->value().address, rq_it->value().v_address, rq_it->value().data, rq_it->value().pf_metadata,
-                               rq_it->value().instr_depend_on_me};
-        response.data = wq_it->value().data;
+        response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
+          rq_it->value().instr_depend_on_me};
         for (auto* ret : rq_it->value().to_return) {
           ret->push_back(response);
         }
@@ -384,8 +380,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
-      rq_it != std::end(channel.RQ)) {
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); }); rq_it != std::end(channel.RQ)) {
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
@@ -422,42 +417,50 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
  * offset |
  */
 
-unsigned long MEMORY_CONTROLLER::dram_get_channel(uint64_t address) const
+namespace {
+template <typename T>
+T get_dram_address_slice(champsim::address addr, std::size_t lower, std::size_t size)
 {
-  int shift = LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(DRAM_CHANNELS));
+  return addr.slice(champsim::sized_extent{lower, size}).to<T>();
+}
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(uint64_t address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
-
-unsigned long MEMORY_CONTROLLER::dram_get_column(uint64_t address) const { return channels.at(dram_get_channel(address)).get_column(address); }
-
-unsigned long MEMORY_CONTROLLER::dram_get_rank(uint64_t address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
-
-unsigned long MEMORY_CONTROLLER::dram_get_row(uint64_t address) const { return channels.at(dram_get_channel(address)).get_row(address); }
-
-unsigned long DRAM_CHANNEL::get_bank(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
-  int shift = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(BANKS));
+  const auto lower = LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_CHANNELS));
 }
 
-unsigned long DRAM_CHANNEL::get_column(uint64_t address) const
+unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
+
+unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const { return channels.at(dram_get_channel(address)).get_column(address); }
+
+unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
+
+unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
+
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const
 {
-  auto shift = champsim::lg2(BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(COLUMNS));
+  const auto lower = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_BANKS));
 }
 
-unsigned long DRAM_CHANNEL::get_rank(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const
 {
-  auto shift = champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(RANKS));
+  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_COLUMNS));
 }
 
-unsigned long DRAM_CHANNEL::get_row(uint64_t address) const
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const
 {
-  auto shift = champsim::lg2(RANKS) + champsim::lg2(BANKS) + champsim::lg2(COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return (address >> shift) & champsim::bitmask(champsim::lg2(ROWS));
+  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_RANKS));
+}
+
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
+{
+  const auto lower = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
+  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_ROWS));
 }
 
 std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }

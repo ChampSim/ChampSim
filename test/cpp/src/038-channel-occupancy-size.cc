@@ -14,7 +14,7 @@ TEST_CASE("Adding something to the channel's RQ increases its occupancy") {
   champsim::channel uut{};
 
   champsim::channel::request_type packet{};
-  packet.address = 0xdeadbeef;
+  packet.address = champsim::address{0xdeadbeef};
   uut.add_rq(packet);
 
   CHECK(uut.rq_occupancy() == 1);
@@ -26,7 +26,7 @@ TEST_CASE("Adding something to the channel's WQ increases its occupancy") {
   champsim::channel uut{};
 
   champsim::channel::request_type packet{};
-  packet.address = 0xdeadbeef;
+  packet.address = champsim::address{0xdeadbeef};
   uut.add_wq(packet);
 
   CHECK(uut.rq_occupancy() == 0);
@@ -38,7 +38,7 @@ TEST_CASE("Adding something to the channel's PQ increases its occupancy") {
   champsim::channel uut{};
 
   champsim::channel::request_type packet{};
-  packet.address = 0xdeadbeef;
+  packet.address = champsim::address{0xdeadbeef};
   uut.add_pq(packet);
 
   CHECK(uut.rq_occupancy() == 0);

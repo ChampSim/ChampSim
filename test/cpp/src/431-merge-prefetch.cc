@@ -8,7 +8,7 @@
 struct merge_testbed
 {
   constexpr static uint64_t hit_latency = 5;
-  constexpr static uint64_t address_that_will_hit = 0xcafebabe;
+  champsim::address address_that_will_hit{0xcafebabe};
   filter_MRC mock_ll{address_that_will_hit};
   to_rq_MRP seed_ul, test_ul;
   CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -25,8 +25,8 @@ struct merge_testbed
   void issue_type(MRP& ul, access_type type, uint64_t delay = hit_latency+1)
   {
     typename MRP::request_type pkt;
-    pkt.address = 0xdeadbeef;
-    pkt.v_address = 0xdeadbeef;
+    pkt.address = champsim::address{0xdeadbeef};
+    pkt.v_address = champsim::address{0xdeadbeef};
     pkt.type = type;
     pkt.instr_id = pkt_id++;
     pkt.cpu = 0;

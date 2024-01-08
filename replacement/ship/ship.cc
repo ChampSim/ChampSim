@@ -17,7 +17,7 @@ ship::ship(CACHE* cache)
 int& ship::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
 
 // find replacement victim
-long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type)
+long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip, champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv_values), set * NUM_WAY);
@@ -35,8 +35,8 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 }
 
 // called on every cache hit and cache fill
-void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                    uint8_t hit)
+void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type,
+                                     uint8_t hit)
 {
   // handle writeback access
   if (access_type{type} == access_type::WRITE) {
@@ -54,16 +54,19 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
 
     // check hit
     auto match = std::find_if(s_set_begin, s_set_end,
-                              [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && (x.address >> shamt) == (addr >> shamt); });
+                              [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) { return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt); });
     if (match != s_set_end) {
-      SHCT[triggering_cpu][match->ip % SHCT_PRIME]--;
+      auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+      SHCT[triggering_cpu][SHCT_idx]--;
 
       match->used = true;
     } else {
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
-      if (match->used)
-        SHCT[triggering_cpu][match->ip % SHCT_PRIME]++;
+      if (match->used) {
+        auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+        SHCT[triggering_cpu][SHCT_idx]++;
+      }
 
       match->valid = true;
       match->address = full_addr;
@@ -79,8 +82,10 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     get_rrpv(set, way) = 0;
   else {
     // SHIP prediction
+    auto SHCT_idx = ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+
     get_rrpv(set, way) = maxRRPV - 1;
-    if (SHCT[triggering_cpu][ip % SHCT_PRIME].is_max())
+    if (SHCT[triggering_cpu][SHCT_idx].is_max())
       get_rrpv(set, way) = maxRRPV;
   }
 }

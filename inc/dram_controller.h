@@ -18,6 +18,7 @@
 #define DRAM_H
 
 #include <array>
+#include <cmath>
 #include <cstddef>  // for size_t
 #include <cstdint>  // for uint64_t, uint32_t, uint8_t
 #include <deque>    // for deque
@@ -25,13 +26,11 @@
 #include <limits>
 #include <optional>
 #include <string>
-#include <vector> // for vector, vector<>::iterator
 
+#include "address.h"
 #include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
-
-struct ooo_model_instr;
 
 struct dram_stats {
   std::string name{};
@@ -50,9 +49,9 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
     uint32_t pf_metadata = 0;
 
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
     std::vector<uint64_t> instr_depend_on_me{};
@@ -110,10 +109,10 @@ struct DRAM_CHANNEL final : public champsim::operable {
   void end_phase(unsigned cpu) final;
   void print_deadlock() final;
 
-  unsigned long get_rank(uint64_t address) const;
-  unsigned long get_bank(uint64_t address) const;
-  unsigned long get_row(uint64_t address) const;
-  unsigned long get_column(uint64_t address) const;
+  unsigned long get_rank(champsim::address address) const;
+  unsigned long get_bank(champsim::address address) const;
+  unsigned long get_row(champsim::address address) const;
+  unsigned long get_column(champsim::address address) const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
@@ -140,11 +139,11 @@ public:
 
   [[nodiscard]] std::size_t size() const;
 
-  unsigned long dram_get_channel(uint64_t address) const;
-  unsigned long dram_get_rank(uint64_t address) const;
-  unsigned long dram_get_bank(uint64_t address) const;
-  unsigned long dram_get_row(uint64_t address) const;
-  unsigned long dram_get_column(uint64_t address) const;
+  unsigned long dram_get_channel(champsim::address address) const;
+  unsigned long dram_get_rank(champsim::address address) const;
+  unsigned long dram_get_bank(champsim::address address) const;
+  unsigned long dram_get_row(champsim::address address) const;
+  unsigned long dram_get_column(champsim::address address) const;
 };
 
 #endif

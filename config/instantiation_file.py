@@ -253,10 +253,14 @@ def check_header_compiles_for_class(clazz, file):
     ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
+    vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
+    _, triplet_dirs, _ = next(os.walk(vcpkg_parent))
+    triplet_dir = os.path.join(vcpkg_parent, next(filter(lambda x: x != 'vcpkg', triplet_dirs), None), 'include')
 
     with tempfile.TemporaryDirectory() as dtemp:
         args = (
             f'-I{include_dir}',
+            f'-I{triplet_dir}',
             f'-I{dtemp}',
 
             # patch constants

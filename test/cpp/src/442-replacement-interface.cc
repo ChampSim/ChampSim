@@ -18,12 +18,12 @@ struct update_state_collector : champsim::modules::replacement
 {
   using replacement::replacement;
 
-  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t, uint32_t)
+  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address, uint32_t)
   {
     return 0;
   }
 
-  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type, uint8_t hit)
   {
     auto usc_it = test::replacement_update_state_collector.try_emplace(intern_);
     usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, access_type{type}, hit});
@@ -63,7 +63,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       test::replacement_update_state_collector[&uut].clear();
 
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.is_translated = true;
       test.cpu = 0;
       test.type = type;
@@ -134,7 +134,8 @@ SCENARIO("The replacement policy is triggered on a hit") {
     }
 
     decltype(mock_ul)::request_type test;
-    test.address = 0xdeadbeef;
+    test.address = champsim::address{0xdeadbeef};
+    test.address = champsim::address{0xdeadbeef};
     test.cpu = 0;
     test.type = type;
     auto test_result = mock_ul.issue(test);
@@ -205,8 +206,8 @@ SCENARIO("The replacement policy notes the correct eviction information") {
     WHEN("A packet is issued") {
       uint64_t id = 0;
       decltype(mock_ul_seed)::request_type seed;
-      seed.address = 0xdeadbeef;
-      seed.v_address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
+      seed.v_address = champsim::address{0xdeadbeef};
       seed.cpu = 0;
       seed.instr_id = id++;
       seed.type = access_type::WRITE;
@@ -225,7 +226,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
         test::replacement_update_state_collector[&uut].clear();
 
         decltype(mock_ul_test)::request_type test = seed;
-        test.address = 0xcafebabe;
+        test.address = champsim::address{0xcafebabe};
         test.instr_id = id++;
         test.type = access_type::LOAD;
         auto test_result = mock_ul_test.issue(test);
