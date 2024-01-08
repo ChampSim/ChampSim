@@ -17,13 +17,12 @@
 #ifndef VMEM_H
 #define VMEM_H
 
-#include <algorithm> // for max
-#include <cstddef>   // for size_t
 #include <cstdint>
 #include <map>
-#include <tuple>   // for tuple
-#include <utility> // for pair
+#include <optional>
 
+#include "address.h"
+#include "champsim.h"
 #include "chrono.h"
 #include "champsim_constants.h"
 
@@ -37,15 +36,16 @@ inline constexpr std::size_t PTE_BYTES = 8;
 class VirtualMemory
 {
 private:
-  std::map<std::pair<uint32_t, uint64_t>, uint64_t> vpage_to_ppage_map;
-  std::map<std::tuple<uint32_t, uint64_t, uint32_t>, uint64_t> page_table;
+  std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
+  std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
 
-  uint64_t next_pte_page = 0;
+  champsim::page_number active_pte_page{};
+  champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  uint64_t next_ppage;
-  uint64_t last_ppage;
+  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY / PAGE_SIZE};
+  champsim::page_number last_ppage;
 
-  [[nodiscard]] uint64_t ppage_front() const;
+  [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
 
 public:
@@ -56,10 +56,10 @@ public:
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
   VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram);
   [[nodiscard]] uint64_t shamt(std::size_t level) const;
-  [[nodiscard]] uint64_t get_offset(uint64_t vaddr, std::size_t level) const;
+  [[nodiscard]] uint64_t get_offset(champsim::address vaddr, std::size_t level) const;
   [[nodiscard]] std::size_t available_ppages() const;
-  std::pair<uint64_t, champsim::chrono::clock::duration> va_to_pa(uint32_t cpu_num, uint64_t vaddr);
-  std::pair<uint64_t, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level);
+  std::pair<champsim::address, champsim::chrono::clock::duration> va_to_pa(uint32_t cpu_num, champsim::address vaddr);
+  std::pair<champsim::address, champsim::chrono::clock::duration> get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level);
 };
 
 #endif

@@ -16,13 +16,14 @@ class do_nothing_MRC : public champsim::operable
     int event_cycle = std::numeric_limits<int>::max();
   };
   std::deque<packet> packets, ready_packets;
-  uint64_t ret_data = 0x11111111;
+  champsim::address ret_data_base{0x11111111};
   int cycle_count = 0;
+  int steps = 0;
   int latency = 0;
 
   public:
     champsim::channel queues{};
-    std::deque<uint64_t> addresses{};
+    std::deque<champsim::address> addresses{};
     do_nothing_MRC(int lat) : champsim::operable(), latency(lat) {}
     do_nothing_MRC() : do_nothing_MRC(0) {}
 
@@ -31,7 +32,8 @@ class do_nothing_MRC : public champsim::operable
       auto add_pkt = [&](auto pkt) {
         packet to_insert{pkt};
         to_insert.event_cycle = cycle_count + latency;
-        to_insert.data = ++ret_data;
+        to_insert.data = ret_data_base + steps;
+        ++steps;
         addresses.push_back(to_insert.address);
         packets.push_back(to_insert);
       };
@@ -70,15 +72,15 @@ class filter_MRC : public champsim::operable
     int event_cycle = std::numeric_limits<int>::max();
   };
   std::deque<packet> packets, ready_packets;
-  const uint64_t ret_addr;
+  const champsim::address ret_addr;
   int cycle_count = 0;
   int latency = 0;
   std::size_t mpacket_count = 0;
 
   public:
     champsim::channel queues{};
-    filter_MRC(uint64_t ret_addr_, int lat) : champsim::operable(), ret_addr(ret_addr_), latency(lat) {}
-    filter_MRC(uint64_t ret_addr_) : filter_MRC(ret_addr_, 0) {}
+    filter_MRC(champsim::address ret_addr_, int lat) : champsim::operable(), ret_addr(ret_addr_), latency(lat) {}
+    filter_MRC(champsim::address ret_addr_) : filter_MRC(ret_addr_, 0) {}
 
     long operate() override {
       ++cycle_count;
@@ -121,7 +123,7 @@ class release_MRC : public champsim::operable
 {
   std::deque<champsim::channel::request_type> packets;
   std::size_t mpacket_count = 0;
-  uint64_t ret_data = 0x11111111;
+  champsim::address ret_data{0x11111111};
 
   public:
     champsim::channel queues{};
@@ -156,7 +158,7 @@ class release_MRC : public champsim::operable
       packets.clear();
     }
 
-    void release(uint64_t addr)
+    void release(champsim::address addr)
     {
         auto pkt_it = std::partition(std::begin(packets), std::end(packets), [addr](auto x){ return x.address != addr; });
         std::for_each(pkt_it, std::end(packets), [&](const auto& pkt) {

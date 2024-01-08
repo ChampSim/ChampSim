@@ -8,7 +8,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
   constexpr auto fill_latency = 1;
   constexpr auto fill_bandwidth = 2;
 
-  auto size = GENERATE(range<int>(1, 3*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 3*fill_bandwidth));
 
   GIVEN("An empty cache") {
     release_MRC mock_ll;
@@ -32,18 +32,18 @@ SCENARIO("The MSHR respects the fill bandwidth") {
     }
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<decltype(mock_ul)::request_type> seeds;
 
-    for (auto i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       decltype(mock_ul)::request_type seed;
-      seed.address = seed_base_addr + (uint64_t)i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     WHEN(std::to_string(size) + " packets are sent") {
       for (auto &seed : seeds) {
@@ -64,7 +64,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      int cycle{(size-1)/fill_bandwidth};
+      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         mock_ul.packets.back().assert_returned(100 + fill_latency + cycle, 1);
@@ -78,7 +78,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
   constexpr auto fill_latency = 1;
   constexpr auto fill_bandwidth = 2;
 
-  auto size = GENERATE(range<int>(1, 4*fill_bandwidth));
+  auto size = GENERATE(range<long>(1, 4*fill_bandwidth));
 
   GIVEN("An empty cache") {
     do_nothing_MRC mock_ll{20};
@@ -104,19 +104,19 @@ SCENARIO("Writebacks respect the fill bandwidth") {
     }
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<decltype(mock_ul)::request_type> seeds;
 
-    for (auto i = 0; i < size; ++i) {
+    for (long i = 0; i < size; ++i) {
       decltype(mock_ul)::request_type seed;
-      seed.address = seed_base_addr + (uint64_t)i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.type = access_type::WRITE;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     WHEN(std::to_string(size) + " packets are sent") {
       for (auto &seed : seeds) {
@@ -129,7 +129,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      int cycle{(size-1)/fill_bandwidth};
+      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
 
       THEN("No packets were forwarded to the lower level") {
         REQUIRE(mock_ll.packet_count() == 0);

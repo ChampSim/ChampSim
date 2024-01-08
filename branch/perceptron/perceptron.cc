@@ -40,11 +40,11 @@
 
 #include <cmath>
 
-bool perceptron::predict_branch(uint64_t ip)
+bool perceptron::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
-  auto index = ip % NUM_PERCEPTRONS;
-  auto output = perceptrons[index].predict(spec_global_history);
+  const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
+  const auto output = perceptrons[index].predict(spec_global_history);
 
   bool prediction = (output >= 0);
 
@@ -59,7 +59,7 @@ bool perceptron::predict_branch(uint64_t ip)
   return prediction;
 }
 
-void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type)
+void perceptron::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   auto state = std::find_if(std::begin(perceptron_state_buf), std::end(perceptron_state_buf), [ip](auto x) { return x.ip == ip; });
   if (state == std::end(perceptron_state_buf))
@@ -67,8 +67,6 @@ void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, bool ta
 
   auto [_ip, prediction, output, history] = *state;
   perceptron_state_buf.erase(state);
-
-  auto index = ip % NUM_PERCEPTRONS;
 
   // update the real global history shift register
   global_history <<= 1;
@@ -82,7 +80,9 @@ void perceptron::last_branch_result(uint64_t ip, uint64_t branch_target, bool ta
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
-  const long THETA = std::lround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
-  if ((output <= THETA && output >= -THETA) || (prediction != taken))
+  const auto THETA = std::lround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
+  if ((output <= THETA && output >= -THETA) || (prediction != taken)) {
+    const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
     perceptrons[index].update(taken, history);
+  }
 }

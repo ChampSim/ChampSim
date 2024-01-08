@@ -45,7 +45,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
@@ -133,7 +133,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
@@ -205,7 +205,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
     uint64_t id = 1;
     decltype(mock_ul_seed)::request_type test_a;
-    test_a.address = 0xdeadbeef;
+    test_a.address = champsim::address{0xdeadbeef};
     test_a.cpu = 0;
     test_a.type = access_type::LOAD;
     test_a.instr_id = id++;
@@ -223,7 +223,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
     WHEN("A packet with a different address is sent before the fill has completed") {
       decltype(mock_ul_test)::request_type test_b;
-      test_b.address = 0xcafebabe;
+      test_b.address = champsim::address{0xcafebabe};
       test_b.cpu = 0;
       test_b.type = access_type::LOAD;
       test_b.instr_id = id++;
@@ -273,7 +273,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
     WHEN("A packet is sent") {
       uint64_t id = 1;
       decltype(mock_ul)::request_type test_a;
-      test_a.address = 0xdeadbeef;
+      test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = access_type::LOAD;
       test_a.instr_id = id++;

@@ -31,8 +31,8 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.is_translated = false;
       test.cpu = 0;
 
@@ -55,7 +55,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
 
       THEN("The packet is translated") {
         REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
+        REQUIRE(mock_ll.addresses.front() == champsim::address{0x11111eef});
         REQUIRE(mock_ul.packets.front().pkt.v_address == test.v_address);
       }
 

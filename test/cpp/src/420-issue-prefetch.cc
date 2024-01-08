@@ -16,7 +16,7 @@ struct hit_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
   {
     ::prefetch_hit_collector[intern_].push_back({addr, ip, cache_hit, useful_prefetch, type, metadata_in});
     return metadata_in;
@@ -62,7 +62,7 @@ SCENARIO("A prefetch can be issued") {
     }
 
     WHEN("A prefetch is issued") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
@@ -91,7 +91,7 @@ SCENARIO("A prefetch can be issued") {
 
         // Create a test packet
         decltype(mock_ul)::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
         test.cpu = 0;
 
         auto test_result = mock_ul.issue(test);
@@ -99,7 +99,7 @@ SCENARIO("A prefetch can be issued") {
           REQUIRE(test_result);
         }
 
-        for (auto i = 0; i < 2*hit_latency; ++i)
+        for (uint64_t i = 0; i < 2*hit_latency; ++i)
           for (auto elem : elements)
             elem->_operate();
 

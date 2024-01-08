@@ -17,24 +17,24 @@
 #include "vmem.h"
 
 #include <cassert>
-#include <limits> // for numeric_limits, numeric_limits<>::di...
 #include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "dram_controller.h"
-#include "util/bits.h" // for lg2, splice_bits, bitmask
+#include "util/bits.h"
 
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram)
-    : next_ppage(VMEM_RESERVE_CAPACITY), last_ppage(1ULL << (LOG2_PAGE_SIZE + champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
-      minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
+    : next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size)}, 0),
+      last_ppage(1ULL << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)), minor_fault_penalty(minor_penalty),
+      pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ULL << champsim::lg2(page_table_page_size)));
-  assert(last_ppage > VMEM_RESERVE_CAPACITY);
+  assert(last_ppage > next_ppage);
 
-  auto required_bits = champsim::lg2(last_ppage);
-  if (required_bits > std::numeric_limits<uint64_t>::digits) {
+  auto required_bits = LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>());
+  if (required_bits > champsim::address::bits) {
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
   if (required_bits > champsim::lg2(dram.size())) {
@@ -44,66 +44,67 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
 
 uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
 
-uint64_t VirtualMemory::get_offset(uint64_t vaddr, std::size_t level) const
+uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
 {
-  return (vaddr >> shamt(level)) & champsim::bitmask(champsim::lg2(pte_page_size / PTE_BYTES));
+  const auto lower = shamt(level);
+  return vaddr.slice(champsim::sized_extent{lower, champsim::lg2(pte_page_size / PTE_BYTES)}).to<uint64_t>();
 }
 
-uint64_t VirtualMemory::ppage_front() const
+champsim::page_number VirtualMemory::ppage_front() const
 {
   assert(available_ppages() > 0);
   return next_ppage;
 }
 
-void VirtualMemory::ppage_pop() { next_ppage += PAGE_SIZE; }
+void VirtualMemory::ppage_pop() { ++next_ppage; }
 
-std::size_t VirtualMemory::available_ppages() const { return (last_ppage - next_ppage) / PAGE_SIZE; }
-
-std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, uint64_t vaddr)
+std::size_t VirtualMemory::available_ppages() const
 {
-  auto [ppage, fault] = vpage_to_ppage_map.insert({{cpu_num, vaddr >> LOG2_PAGE_SIZE}, ppage_front()});
+  assert(next_ppage <= last_ppage);
+  return static_cast<std::size_t>(champsim::offset(next_ppage, last_ppage)); // Cast protected by prior assert
+}
+
+std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
+{
+  auto [ppage, fault] = vpage_to_ppage_map.try_emplace({cpu_num, champsim::page_number{vaddr}}, ppage_front());
 
   // this vpage doesn't yet have a ppage mapping
   if (fault) {
     ppage_pop();
   }
 
-  auto paddr = champsim::splice_bits(ppage->second, vaddr, LOG2_PAGE_SIZE);
+  auto paddr = champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr});
   auto penalty = minor_fault_penalty;
   if (!fault) {
     penalty = champsim::chrono::clock::duration::zero();
   }
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} fault: {}\n", __func__, paddr, vaddr, fault);
+    fmt::print("[VMEM] {} paddr: {} vaddr: {} fault: {}\n", __func__, paddr, vaddr, fault);
   }
 
   return {paddr, penalty};
 }
 
-std::pair<uint64_t, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, uint64_t vaddr, std::size_t level)
+std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)
 {
-  if (next_pte_page == 0) {
-    next_pte_page = ppage_front();
+  if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
+    active_pte_page = ppage_front();
     ppage_pop();
   }
 
-  std::tuple key{cpu_num, vaddr >> shamt(level), level};
-  auto [ppage, fault] = page_table.insert({key, next_pte_page});
+  auto [ppage, fault] = page_table.try_emplace({cpu_num, level, vaddr.slice_upper(shamt(level))}, champsim::splice(active_pte_page, next_pte_page));
 
   // this PTE doesn't yet have a mapping
   if (fault) {
-    next_pte_page += pte_page_size;
-    if (next_pte_page % PAGE_SIZE == 0) {
-      next_pte_page = ppage_front();
-      ppage_pop();
-    }
+    next_pte_page++;
   }
 
   auto offset = get_offset(vaddr, level);
-  auto paddr = champsim::splice_bits(ppage->second, offset * PTE_BYTES, champsim::lg2(pte_page_size));
+  champsim::address paddr{
+      champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::lg2(pte_page_size), champsim::lg2(PTE_BYTES)}, offset})};
   if constexpr (champsim::debug_print) {
-    fmt::print("[VMEM] {} paddr: {:x} vaddr: {:x} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
+    fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
 
   auto penalty = minor_fault_penalty;

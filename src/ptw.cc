@@ -16,15 +16,8 @@
 
 #include "ptw.h"
 
-#include <algorithm> // for for_each, partition, partition_copy
-#include <array>     // for array, get, swap
 #include <cmath>
-#include <iterator> // for back_insert_iterator, begin, end, size
-#include <memory>   // for allocator_traits<>::value_type
 #include <numeric>
-#include <string_view> // for string_view
-#include <tuple>       // for tie, tuple
-#include <utility>     // for tuple_element<>::type, pair
 #include <fmt/core.h>
 #include <fmt/chrono.h>
 
@@ -42,7 +35,7 @@ PageTableWalker::PageTableWalker(champsim::ptw_builder b)
       MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
       MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
       MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})), HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem),
-      CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, 0, b.m_vmem->pt_levels).first)
+      CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::address{}, b.m_vmem->pt_levels).first)
 {
   std::vector<decltype(b.m_pscl)::value_type> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
@@ -69,18 +62,18 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-  auto walk_offset = vmem->get_offset(handle_pkt.address, walk_init.level) * PTE_BYTES;
+  champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, champsim::lg2(PTE_BYTES)>> walk_offset{vmem->get_offset(handle_pkt.address, walk_init.level)};
 
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
-  fwd_mshr.address = champsim::splice_bits(walk_init.ptw_addr, walk_offset, LOG2_PAGE_SIZE);
+  fwd_mshr.address = champsim::splice(champsim::page_number{walk_init.ptw_addr}, champsim::page_offset{walk_offset});
   fwd_mshr.v_address = handle_pkt.address;
   if (handle_pkt.response_requested) {
     fwd_mshr.to_return = {&ul->returned};
   }
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
-               walk_offset / PTE_BYTES, walk_init.level);
+    fmt::print("[{}] {} address: {} v_address: {} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
+               walk_offset.to<int>(), walk_init.level);
   }
 
   return step_translation(fwd_mshr);
@@ -89,8 +82,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
-               fill_mshr.v_address, *fill_mshr.data, (*fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
+    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
+               fill_mshr.v_address, *fill_mshr.data, fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>(),
                fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
   }
 
@@ -117,7 +110,6 @@ auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional
   packet.type = access_type::TRANSLATION;
 
   bool success = lower_level->add_rq(packet);
-
   if (success) {
     return source;
   }
@@ -182,7 +174,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+      fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
                  ppage, mshr_entry.translation_level, penalty);
     }
 
@@ -193,15 +185,15 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
                  ppage, mshr_entry.translation_level, penalty);
     }
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };
 
-  auto matches_addr = [addr = packet.address](auto x) {
-    return (x.address >> LOG2_BLOCK_SIZE) == (addr >> LOG2_BLOCK_SIZE);
+  auto matches_addr = [block = champsim::block_number{packet.address}](auto x) {
+    return champsim::block_number{x.address} == block;
   };
   auto is_last_step = [](auto x) {
     return x.translation_level > 0;
@@ -229,7 +221,7 @@ void PageTableWalker::begin_phase()
 // LCOV_EXCL_START Exclude the following function from LCOV
 void PageTableWalker::print_deadlock()
 {
-  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {:#x} v_addr: {:#x} translation_level: {}", [](const auto& entry) {
+  champsim::range_print_deadlock(MSHR, NAME + "_MSHR", "address: {} v_address: {} translation_level: {}", [](const auto& entry) {
     return std::tuple{entry.address, entry.v_address, entry.translation_level};
   });
 }

@@ -9,7 +9,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
   constexpr auto fill_latency = 1;
   constexpr auto tag_bandwidth = 2;
 
-  auto size = GENERATE(range<int>(1, 4*tag_bandwidth));
+  auto size = GENERATE(range<long>(1, 4*tag_bandwidth));
 
   GIVEN("A cache with a few elements") {
     do_nothing_MRC mock_ll;
@@ -33,18 +33,18 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
     }
 
     // Get a list of packets
-    uint64_t seed_base_addr = 0xdeadbeef;
+    champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<typename TestType::request_type> seeds;
 
     for (auto i = 0; i < size; ++i) {
       typename TestType::request_type seed;
-      seed.address = seed_base_addr + (uint64_t)i*BLOCK_SIZE;
+      seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
       seed.cpu = 0;
 
       seeds.push_back(seed);
     }
-    REQUIRE(seeds.back().address == seed_base_addr + (std::size(seeds)-1)*BLOCK_SIZE);
+    REQUIRE(seeds.back().address == champsim::address{seed_base_addr + (size-1)});
 
     for (auto &seed : seeds) {
       auto seed_result = mock_ul.issue(seed);
@@ -70,7 +70,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
         for (auto elem : elements)
           elem->_operate();
 
-      int cycle{(size-1)/tag_bandwidth};
+      auto cycle = ((uint64_t)size-1)/tag_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         mock_ul.packets.back().assert_returned(hit_latency + cycle, 1);

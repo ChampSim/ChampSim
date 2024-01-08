@@ -32,7 +32,7 @@ SCENARIO("Duplicate prefetches do not count each other as useful") {
     }
 
     WHEN("A prefetch is issued") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
