@@ -29,4 +29,3 @@ void direct_predictor::update(champsim::address ip, champsim::address branch_tar
     BTB.fill(opt_entry.value_or(btb_entry_t{ip, branch_target, type}));
   }
 }
-

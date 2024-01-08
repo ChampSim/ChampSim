@@ -22,44 +22,36 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace champsim {
-struct dynamic_extent
+namespace champsim
 {
+struct dynamic_extent {
   std::size_t upper;
   std::size_t lower;
 
-  constexpr dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low)
-  {
-    assert(upper >= lower);
-  }
+  constexpr dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low) { assert(upper >= lower); }
 };
 
-struct sized_extent
-{
+struct sized_extent {
   std::size_t upper;
   std::size_t lower;
 
-  constexpr sized_extent(std::size_t low, std::size_t size) : upper(low+size), lower(low)
-  {
-    assert(upper >= lower);
-  }
+  constexpr sized_extent(std::size_t low, std::size_t size) : upper(low + size), lower(low) { assert(upper >= lower); }
 };
 
 template <std::size_t UP, std::size_t LOW>
-struct static_extent
-{
+struct static_extent {
   constexpr static std::size_t upper{UP};
   constexpr static std::size_t lower{LOW};
 };
 
 namespace detail
 {
-  template <typename E>
-  constexpr bool extent_is_static = false;
+template <typename E>
+constexpr bool extent_is_static = false;
 
-  template <std::size_t UP, std::size_t LOW>
-  constexpr bool extent_is_static<static_extent<UP, LOW>> = true;
-}
+template <std::size_t UP, std::size_t LOW>
+constexpr bool extent_is_static<static_extent<UP, LOW>> = true;
+} // namespace detail
 
 template <typename LHS_EXTENT, typename RHS_EXTENT>
 auto extent_union(LHS_EXTENT lhs, RHS_EXTENT rhs)
@@ -90,7 +82,8 @@ template <std::size_t UP, auto SUB_UP, auto SUB_LOW>
 constexpr bool bounded_upper_v<UP, static_extent<SUB_UP, SUB_LOW>> = (SUB_UP <= UP);
 
 template <std::size_t UP, typename EXTENT>
-struct bounded_upper : std::bool_constant<bounded_upper_v<UP, EXTENT>> {};
+struct bounded_upper : std::bool_constant<bounded_upper_v<UP, EXTENT>> {
+};
 
 template <std::size_t LOW, typename EXTENT>
 constexpr bool bounded_lower_v = false;
@@ -99,7 +92,8 @@ template <std::size_t LOW, auto SUB_UP, auto SUB_LOW>
 constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <= LOW);
 
 template <std::size_t LOW, typename EXTENT>
-struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {};
-}
+struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {
+};
+} // namespace champsim
 
 #endif

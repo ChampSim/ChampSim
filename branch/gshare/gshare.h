@@ -23,4 +23,3 @@ struct gshare : champsim::modules::branch_predictor {
 };
 
 #endif
-

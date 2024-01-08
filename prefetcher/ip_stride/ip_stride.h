@@ -11,9 +11,9 @@
 
 struct ip_stride : champsim::modules::prefetcher {
   struct tracker_entry {
-    champsim::address ip{};           // the IP we're tracking
-    champsim::block_number last_cl_addr{}; // the last address accessed by this IP
-    champsim::block_number::difference_type last_stride{};   // the stride between the last two addresses accessed by this IP
+    champsim::address ip{};                                // the IP we're tracking
+    champsim::block_number last_cl_addr{};                 // the last address accessed by this IP
+    champsim::block_number::difference_type last_stride{}; // the stride between the last two addresses accessed by this IP
 
     auto index() const { return ip.slice_upper<2>(); }
     auto tag() const { return ip.slice_upper<2>(); }
@@ -36,7 +36,8 @@ struct ip_stride : champsim::modules::prefetcher {
 public:
   using champsim::modules::prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in);
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                    uint32_t metadata_in);
   uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
   void prefetcher_cycle_operate();
 };

@@ -1,6 +1,7 @@
 #include "va_ampm_lite.h"
 
 #include <algorithm>
+
 #include "cache.h"
 
 uint64_t va_ampm_lite::region_type::region_lru = 0;
@@ -27,7 +28,8 @@ bool va_ampm_lite::check_cl_prefetch(champsim::block_number v_addr)
   return (region != std::end(regions)) && region->prefetch_map.test(page_offset.to<std::size_t>());
 }
 
-uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+uint32_t va_ampm_lite::prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                                uint32_t metadata_in)
 {
   auto [current_vpn, page_offset] = page_and_offset(addr);
   champsim::block_number block_addr{addr};

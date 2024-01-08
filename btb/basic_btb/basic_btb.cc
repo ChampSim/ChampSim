@@ -7,6 +7,7 @@
  */
 
 #include "basic_btb.h"
+
 #include "instruction.h"
 
 std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)

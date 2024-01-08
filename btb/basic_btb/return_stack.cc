@@ -32,4 +32,3 @@ void return_stack::calibrate_call_size(champsim::address branch_target)
     }
   }
 }
-

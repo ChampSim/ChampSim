@@ -295,7 +295,7 @@ void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [check_val = champsim::block_number{wq_it->value().address}](const auto& pkt){
+      auto checker = [check_val = champsim::block_number{wq_it->value().address}](const auto& pkt) {
         return pkt.has_value() && champsim::block_number{pkt->address} == check_val;
       };
 
@@ -317,10 +317,12 @@ void DRAM_CHANNEL::check_read_collision()
 {
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [check_val = champsim::block_number{rq_it->value().address}](const auto& x){ return x.has_value() && champsim::block_number{x->address} == check_val; };
+      auto checker = [check_val = champsim::block_number{rq_it->value().address}](const auto& x) {
+        return x.has_value() && champsim::block_number{x->address} == check_val;
+      };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
-          rq_it->value().instr_depend_on_me};
+                               rq_it->value().instr_depend_on_me};
         for (auto* ret : rq_it->value().to_return) {
           ret->push_back(response);
         }
@@ -380,7 +382,8 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); }); rq_it != std::end(channel.RQ)) {
+  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
+      rq_it != std::end(channel.RQ)) {
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
@@ -417,13 +420,14 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
  * offset |
  */
 
-namespace {
+namespace
+{
 template <typename T>
 T get_dram_address_slice(champsim::address addr, std::size_t lower, std::size_t size)
 {
   return addr.slice(champsim::sized_extent{lower, size}).to<T>();
 }
-}
+} // namespace
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {

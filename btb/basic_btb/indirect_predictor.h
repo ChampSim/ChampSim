@@ -6,12 +6,11 @@
 #include <cstdint>
 #include <utility>
 
-#include "champsim.h"
 #include "address.h"
+#include "champsim.h"
 #include "msl/bits.h"
 
-struct indirect_predictor
-{
+struct indirect_predictor {
   static constexpr std::size_t size = 4096;
   std::array<champsim::address, size> predictor = {};
   std::bitset<champsim::msl::lg2(size)> conditional_history = {};

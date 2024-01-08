@@ -682,7 +682,10 @@ void O3_CPU::impl_update_btb(champsim::address ip, champsim::address predicted_t
   btb_module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
 }
 
-std::pair<champsim::address, bool> O3_CPU::impl_btb_prediction(champsim::address ip, uint8_t branch_type) const { return btb_module_pimpl->impl_btb_prediction(ip, branch_type); }
+std::pair<champsim::address, bool> O3_CPU::impl_btb_prediction(champsim::address ip, uint8_t branch_type) const
+{
+  return btb_module_pimpl->impl_btb_prediction(ip, branch_type);
+}
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void O3_CPU::print_deadlock()

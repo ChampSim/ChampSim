@@ -25,8 +25,9 @@
 #include "util/bits.h"
 
 VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
-    : next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size)}, 0), last_ppage(1ULL << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)),
-      minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
+    : next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size)}, 0),
+      last_ppage(1ULL << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)), minor_fault_penalty(minor_penalty),
+      pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
   assert(page_table_page_size > 1024);
   assert(page_table_page_size == (1ULL << champsim::lg2(page_table_page_size)));
@@ -57,7 +58,8 @@ champsim::page_number VirtualMemory::ppage_front() const
 
 void VirtualMemory::ppage_pop() { ++next_ppage; }
 
-std::size_t VirtualMemory::available_ppages() const {
+std::size_t VirtualMemory::available_ppages() const
+{
   assert(next_ppage <= last_ppage);
   return static_cast<std::size_t>(champsim::offset(next_ppage, last_ppage)); // Cast protected by prior assert
 }
@@ -94,7 +96,8 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
   }
 
   auto offset = get_offset(vaddr, level);
-  champsim::address paddr{champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::lg2(pte_page_size), champsim::lg2(PTE_BYTES)}, offset})};
+  champsim::address paddr{
+      champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::lg2(pte_page_size), champsim::lg2(PTE_BYTES)}, offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }

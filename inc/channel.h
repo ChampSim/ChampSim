@@ -24,8 +24,8 @@
 #include <string_view>
 #include <vector>
 
-#include "address.h"
 #include "access_type.h"
+#include "address.h"
 #include "champsim.h"
 
 struct ooo_model_instr;

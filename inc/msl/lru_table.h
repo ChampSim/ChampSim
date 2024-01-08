@@ -52,8 +52,8 @@ struct table_tagger {
   auto operator()(const T& t) const { return t.tag(); }
 };
 
-template< class T, class U >
-constexpr bool cmp_equal( T t, U u ) noexcept
+template <class T, class U>
+constexpr bool cmp_equal(T t, U u) noexcept
 {
   using UT = std::make_unsigned_t<T>;
   using UU = std::make_unsigned_t<U>;
@@ -97,7 +97,7 @@ private:
       set_idx = static_cast<diff_type>(set_projection(elem));
     }
     if (set_idx < 0)
-      throw std::range_error{"Set projection produced negative set index: "+std::to_string(set_idx)};
+      throw std::range_error{"Set projection produced negative set index: " + std::to_string(set_idx)};
     diff_type raw_idx{(set_idx % NUM_SET) * NUM_WAY};
     auto begin = std::next(std::begin(block), raw_idx);
     auto end = std::next(begin, NUM_WAY);
@@ -166,7 +166,7 @@ public:
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
-      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(static_cast<diff_type>(sets)), NUM_WAY(static_cast<diff_type>(ways)), block(sets*ways)
+      : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(static_cast<diff_type>(sets)), NUM_WAY(static_cast<diff_type>(ways)), block(sets * ways)
   {
     if (!detail::cmp_equal(sets, static_cast<diff_type>(sets)))
       throw std::overflow_error{"Sets is out of bounds"};
@@ -174,7 +174,7 @@ public:
       throw std::overflow_error{"Ways is out of bounds"};
     if (sets <= 0)
       throw std::range_error{"Sets is not positive"};
-    if ((sets & (sets-1)) != 0)
+    if ((sets & (sets - 1)) != 0)
       throw std::range_error{"Sets is not a power of 2"};
   }
 

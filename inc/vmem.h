@@ -21,9 +21,9 @@
 #include <map>
 #include <optional>
 
+#include "address.h"
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "address.h"
 
 class MEMORY_CONTROLLER;
 
@@ -41,7 +41,7 @@ private:
   champsim::page_number active_pte_page{};
   champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY/PAGE_SIZE};
+  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY / PAGE_SIZE};
   champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;

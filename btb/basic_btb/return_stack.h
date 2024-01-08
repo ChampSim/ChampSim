@@ -6,11 +6,10 @@
 #include <cstdint>
 #include <deque>
 
-#include "champsim.h"
 #include "address.h"
+#include "champsim.h"
 
-struct return_stack
-{
+struct return_stack {
   static constexpr std::size_t max_size = 64;
   static constexpr std::size_t num_call_size_trackers = 1024;
 
@@ -22,10 +21,7 @@ struct return_stack
    */
   std::array<typename champsim::address::difference_type, num_call_size_trackers> call_size_trackers;
 
-  return_stack()
-  {
-    std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4);
-  }
+  return_stack() { std::fill(std::begin(call_size_trackers), std::end(call_size_trackers), 4); }
 
   std::pair<champsim::address, bool> prediction();
   void push(champsim::address ip);

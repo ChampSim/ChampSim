@@ -108,7 +108,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i], champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, pf_addr}.to<uint32_t>(), delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i],
+                               champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, pf_addr}.to<uint32_t>(), delta_q[i]);
           }
         }
 

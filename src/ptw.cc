@@ -22,8 +22,8 @@
 
 #include "champsim.h"
 #include "champsim_constants.h"
-#include "instruction.h"
 #include "deadlock.h"
+#include "instruction.h"
 #include "ptw_builder.h" // for ptw_builder
 #include "util/bits.h"   // for bitmask, lg2, splice_bits
 #include "util/span.h"
@@ -81,8 +81,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
-               fill_mshr.address, fill_mshr.v_address, fill_mshr.data, fill_mshr.data.slice<LOG2_PAGE_SIZE+champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>(),
+    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__, fill_mshr.address,
+               fill_mshr.v_address, fill_mshr.data, fill_mshr.data.slice<LOG2_PAGE_SIZE + champsim::lg2(PTE_BYTES), LOG2_PAGE_SIZE>().to<int>(),
                fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
@@ -186,13 +186,13 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {}\n", this->NAME, mshr_entry.address,
-                 mshr_entry.v_address, mshr_entry.data, mshr_entry.translation_level);
+      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
   };
 
-  auto last_finished =
-      std::partition(std::begin(MSHR), std::end(MSHR), [match = champsim::block_number{packet.address}](auto x) { return champsim::block_number{x.address} == match; });
+  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR),
+                                      [match = champsim::block_number{packet.address}](auto x) { return champsim::block_number{x.address} == match; });
 
   std::for_each(std::begin(MSHR), last_finished, [finish_step, finish_last_step](auto& mshr_entry) {
     if (mshr_entry.translation_level > 0) {

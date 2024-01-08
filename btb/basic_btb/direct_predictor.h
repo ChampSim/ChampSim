@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <optional>
 
-#include "champsim.h"
 #include "address.h"
+#include "champsim.h"
 #include "msl/lru_table.h"
 
 struct direct_predictor {

@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "champsim.h"
 #include "address.h"
+#include "champsim.h"
 
 namespace spp
 {

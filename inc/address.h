@@ -24,10 +24,10 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
-#include <cstddef>
-#include <cstdint>
 #include <cassert>
 #include <charconv>
+#include <cstddef>
+#include <cstdint>
 #include <ios>
 #include <limits>
 #include <stdexcept>
@@ -39,7 +39,8 @@
 #include "extent.h"
 #include "util/bits.h"
 
-namespace champsim {
+namespace champsim
+{
 template <typename Extent>
 class address_slice;
 
@@ -47,15 +48,16 @@ template <typename Extent>
 [[nodiscard]] constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type;
 
 template <typename Extent>
-[[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
+[[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other)
+    -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
 
 template <typename... Extents>
 [[nodiscard]] constexpr auto splice(address_slice<Extents>... slices);
 
 namespace detail
 {
-  template <typename Extent>
-  struct splice_fold_wrapper;
+template <typename Extent>
+struct splice_fold_wrapper;
 }
 
 /**
@@ -170,289 +172,291 @@ namespace detail
 template <typename EXTENT>
 class address_slice
 {
-  public:
-    using extent_type = EXTENT;
-    using underlying_type = uint64_t;
-    using difference_type = std::make_signed_t<underlying_type>;
+public:
+  using extent_type = EXTENT;
+  using underlying_type = uint64_t;
+  using difference_type = std::make_signed_t<underlying_type>;
 
-  private:
-    using self_type = address_slice<extent_type>;
-    constexpr static bool is_static = detail::extent_is_static<extent_type>;
+private:
+  using self_type = address_slice<extent_type>;
+  constexpr static bool is_static = detail::extent_is_static<extent_type>;
 
-    extent_type extent;
+  extent_type extent;
 
-    underlying_type value{};
+  underlying_type value{};
 
-    template <typename OTHER_EXT>
-    static extent_type maybe_dynamic(OTHER_EXT other) noexcept
-    {
-      if constexpr (is_static) {
-        (void)other;
-        return extent_type{};
-      } else {
-        return extent_type{other.upper, other.lower};
+  template <typename OTHER_EXT>
+  static extent_type maybe_dynamic(OTHER_EXT other) noexcept
+  {
+    if constexpr (is_static) {
+      (void)other;
+      return extent_type{};
+    } else {
+      return extent_type{other.upper, other.lower};
+    }
+  }
+
+  template <typename>
+  friend class address_slice;
+  friend class detail::splice_fold_wrapper<extent_type>;
+
+  template <typename E>
+  friend constexpr auto offset(address_slice<E> base, address_slice<E> other) -> typename address_slice<E>::difference_type;
+
+  template <typename E>
+  friend constexpr auto uoffset(address_slice<E> base, address_slice<E> other) -> std::make_unsigned_t<typename address_slice<E>::difference_type>;
+
+public:
+  /**
+   * Default-initialize the slice. This constructor is invalid for dynamically-sized extents.
+   */
+  constexpr address_slice() noexcept(is_static) : address_slice(extent_type{}, underlying_type{}) {}
+
+  /**
+   * Initialize the slice with the given raw value. This constructor is invalid for dynamically-sized extents.
+   */
+  constexpr explicit address_slice(underlying_type val) noexcept(is_static) : address_slice(extent_type{}, val) {}
+
+  /**
+   * Initialize the slice with the given slice, shifting and masking if necessary.
+   * If this extent is dynamic, it will have the same bounds as the given slice.
+   * If the conversion is a widening, the widened bits will be 0.
+   */
+  template <typename OTHER_EXT>
+  constexpr explicit address_slice(const address_slice<OTHER_EXT>& val) noexcept(is_static) : address_slice(maybe_dynamic(val.extent), val)
+  {
+  }
+
+  /**
+   * Initialize the slice with the given slice, shifting and masking if necessary.
+   * The extent type can be deduced from the first argument.
+   * If the conversion is a widening, the widened bits will be 0.
+   */
+  template <typename OTHER_EXT>
+  constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) noexcept(is_static)
+      : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
+  {
+    if constexpr (!is_static) {
+      if (ext.upper > bits) {
+        throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
+      }
+      if (ext.lower > bits) {
+        throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
       }
     }
+  }
 
-    template <typename> friend class address_slice;
-    friend class detail::splice_fold_wrapper<extent_type>;
-
-    template <typename E>
-      friend constexpr auto offset(address_slice<E> base, address_slice<E> other) -> typename address_slice<E>::difference_type;
-
-    template <typename E>
-      friend constexpr auto uoffset(address_slice<E> base, address_slice<E> other) -> std::make_unsigned_t<typename address_slice<E>::difference_type>;
-
-  public:
-    /**
-     * Default-initialize the slice. This constructor is invalid for dynamically-sized extents.
-     */
-    constexpr address_slice() noexcept(is_static) : address_slice(extent_type{}, underlying_type{}) {}
-
-    /**
-     * Initialize the slice with the given raw value. This constructor is invalid for dynamically-sized extents.
-     */
-    constexpr explicit address_slice(underlying_type val) noexcept(is_static) : address_slice(extent_type{}, val) {}
-
-    /**
-     * Initialize the slice with the given slice, shifting and masking if necessary.
-     * If this extent is dynamic, it will have the same bounds as the given slice.
-     * If the conversion is a widening, the widened bits will be 0.
-     */
-    template <typename OTHER_EXT>
-    constexpr explicit address_slice(const address_slice<OTHER_EXT>& val) noexcept(is_static) : address_slice(maybe_dynamic(val.extent), val) {}
-
-    /**
-     * Initialize the slice with the given slice, shifting and masking if necessary.
-     * The extent type can be deduced from the first argument.
-     * If the conversion is a widening, the widened bits will be 0.
-     */
-    template <typename OTHER_EXT>
-    constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) noexcept(is_static) : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
-    {
-      if constexpr (!is_static) {
-        if (ext.upper > bits) {
-          throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
-        }
-        if (ext.lower > bits) {
-          throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
-        }
+  /**
+   * Initialize the slice with the given value.
+   * The extent type can be deduced from the first argument.
+   * If the conversion is a widening, the widened bits will be 0.
+   */
+  constexpr address_slice(extent_type ext, underlying_type val) noexcept(is_static) : extent(ext), value(val & bitmask(ext.upper - ext.lower))
+  {
+    if constexpr (!is_static) {
+      if (ext.upper > bits) {
+        throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
+      }
+      if (ext.lower > bits) {
+        throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
       }
     }
+  }
 
-    /**
-     * Initialize the slice with the given value.
-     * The extent type can be deduced from the first argument.
-     * If the conversion is a widening, the widened bits will be 0.
-     */
-    constexpr address_slice(extent_type ext, underlying_type val) noexcept(is_static) : extent(ext), value(val & bitmask(ext.upper-ext.lower))
-    {
-      if constexpr (!is_static) {
-        if (ext.upper > bits) {
-          throw std::invalid_argument{"Upper bound is not representable in the underlying type"};
-        }
-        if (ext.lower > bits) {
-          throw std::invalid_argument{"Lower bound is not representable in the underlying type"};
-        }
+  constexpr static int bits = std::numeric_limits<underlying_type>::digits;
+  static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
+
+  template <typename Ostr, typename ST>
+  friend Ostr& operator<<(Ostr& stream, const address_slice<ST>& addr);
+
+  /**
+   * Unwrap the value of this slice as a raw integer value.
+   */
+  template <typename T>
+  [[nodiscard]] constexpr T to() const
+  {
+    static_assert(std::is_integral_v<T>);
+    if (value > std::numeric_limits<T>::max())
+      throw std::domain_error{"Contained value overflows the target type"};
+    if (static_cast<T>(value) < std::numeric_limits<T>::min())
+      throw std::domain_error{"Contained value underflows the target type"};
+    return static_cast<T>(value);
+  }
+
+  /**
+   * Compare with another address slice for equality.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator==(self_type other) const noexcept(is_static)
+  {
+    if constexpr (!is_static) {
+      if (upper_extent() != other.upper_extent()) {
+        throw std::invalid_argument{"Upper bounds do not match"};
+      }
+      if (lower_extent() != other.lower_extent()) {
+        throw std::invalid_argument{"Lower bounds do not match"};
       }
     }
+    return value == other.value;
+  }
 
-    constexpr static int bits = std::numeric_limits<underlying_type>::digits;
-    static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
-
-    template <typename Ostr, typename ST>
-    friend Ostr& operator<<(Ostr& stream, const address_slice<ST>& addr);
-
-    /**
-     * Unwrap the value of this slice as a raw integer value.
-     */
-    template <typename T>
-    [[nodiscard]] constexpr T to() const
-    {
-      static_assert(std::is_integral_v<T>);
-      if (value > std::numeric_limits<T>::max())
-        throw std::domain_error{"Contained value overflows the target type"};
-      if (static_cast<T>(value) < std::numeric_limits<T>::min())
-        throw std::domain_error{"Contained value underflows the target type"};
-      return static_cast<T>(value);
-    }
-
-    /**
-     * Compare with another address slice for equality.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator==(self_type other) const noexcept(is_static)
-    {
-      if constexpr (!is_static) {
-        if (upper_extent() != other.upper_extent()) {
-          throw std::invalid_argument{"Upper bounds do not match"};
-        }
-        if (lower_extent() != other.lower_extent()) {
-          throw std::invalid_argument{"Lower bounds do not match"};
-        }
+  /**
+   * Compare with another address slice for ordering.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator<(self_type other) const noexcept(is_static)
+  {
+    if constexpr (!is_static) {
+      if (upper_extent() != other.upper_extent()) {
+        throw std::invalid_argument{"Upper bounds do not match"};
       }
-      return value == other.value;
-    }
-
-    /**
-     * Compare with another address slice for ordering.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator< (self_type other) const noexcept(is_static)
-    {
-      if constexpr (!is_static) {
-        if (upper_extent() != other.upper_extent()) {
-          throw std::invalid_argument{"Upper bounds do not match"};
-        }
-        if (lower_extent() != other.lower_extent()) {
-          throw std::invalid_argument{"Lower bounds do not match"};
-        }
-      }
-      return value < other.value;
-    }
-
-    /**
-     * Compare with another address slice for inequality.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator!=(self_type other) const noexcept(is_static) { return !(*this == other); }
-
-    /**
-     * Compare with another address slice for ordering.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator<=(self_type other) const noexcept(is_static) { return *this < other || *this == other; }
-
-    /**
-     * Compare with another address slice for ordering.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator> (self_type other) const noexcept(is_static) { return !(value <= other.value); }
-
-    /**
-     * Compare with another address slice for ordering.
-     *
-     * \throws std::invalid_argument If the extents do not match
-     */
-    [[nodiscard]] constexpr bool operator>=(self_type other) const noexcept(is_static) { return *this > other || *this == other; }
-
-    constexpr self_type& operator+=(difference_type delta)
-    {
-      value += static_cast<underlying_type>(delta);
-      value &= bitmask(upper_extent() - lower_extent());
-      return *this;
-    }
-
-    [[nodiscard]] constexpr self_type operator+(difference_type delta) const
-    {
-      self_type retval = *this;
-      retval += delta;
-      return retval;
-    }
-
-    constexpr self_type& operator-=(difference_type delta) { return operator+=(-delta); }
-    [[nodiscard]] constexpr self_type operator-(difference_type delta) const { return operator+(-delta); }
-
-    constexpr self_type& operator++() { return operator+=(1); }
-    constexpr self_type  operator++(int) {
-      self_type retval = *this;
-      operator++();
-      return retval;
-    }
-
-    constexpr self_type& operator--() { return operator-=(1); }
-    constexpr self_type  operator--(int) {
-      self_type retval = *this;
-      operator--();
-      return retval;
-    }
-
-    /**
-     * Perform a slice on this address. The given extent should be relative to this slice's extent.
-     * If either this extent or the subextent are runtime-sized, the result will have a runtime-sized extent.
-     * Otherwise, the extent will be statically-sized.
-     */
-    template <typename SUB_EXTENT>
-    [[nodiscard]] auto slice(SUB_EXTENT subextent) const noexcept(is_static && detail::extent_is_static<SUB_EXTENT>)
-    {
-      auto new_ext = relative_extent(extent, subextent);
-      return address_slice<decltype(new_ext)>{new_ext, value >> subextent.lower};
-    }
-
-    /**
-     * Perform a slice on this address. The given extent should be relative to this slice's extent.
-     * This is a synonym for ``slice(static_extent<new_upper, new_lower>{})``.
-     */
-    template <std::size_t new_upper, std::size_t new_lower>
-    [[nodiscard]] auto slice() const noexcept
-    {
-      return slice(static_extent<new_upper, new_lower>{});
-    }
-
-    /**
-     * Slice the upper bits, ending with the given bit relative to the lower extent of this.
-     * If this slice is statically-sized, the result will be statically-sized.
-     */
-    template <std::size_t new_lower>
-    [[nodiscard]] auto slice_upper() const noexcept
-    {
-      return slice<bits, new_lower>();
-    }
-
-    /**
-     * Slice the lower bits, ending with the given bit relative to the lower extent of this.
-     * If this slice is statically-sized, the result will be statically-sized.
-     */
-    template <std::size_t new_upper>
-    [[nodiscard]] auto slice_lower() const noexcept
-    {
-      return slice<new_upper, 0>();
-    }
-
-    /**
-     * Slice the upper bits, ending with the given bit relative to the lower extent of this.
-     * The result of this will always be runtime-sized.
-     */
-    [[nodiscard]] auto slice_upper(std::size_t new_lower) const
-    {
-      return slice(dynamic_extent{bits, new_lower});
-    }
-
-    /**
-     * Slice the lower bits, ending with the given bit relative to the lower extent of this.
-     * The result of this will always be runtime-sized.
-     */
-    [[nodiscard]] auto slice_lower(std::size_t new_upper) const
-    {
-      return slice(dynamic_extent{new_upper, 0});
-    }
-
-    /**
-     * Get the upper portion of the extent.
-     */
-    [[nodiscard]] constexpr auto upper_extent() const noexcept {
-      if constexpr (is_static) {
-        return extent_type::upper;
-      } else {
-        return extent.upper;
+      if (lower_extent() != other.lower_extent()) {
+        throw std::invalid_argument{"Lower bounds do not match"};
       }
     }
+    return value < other.value;
+  }
 
-    /**
-     * Get the lower portion of the extent.
-     */
-    [[nodiscard]] constexpr auto lower_extent() const noexcept {
-      if constexpr (is_static) {
-        return extent_type::lower;
-      } else {
-        return extent.lower;
-      }
+  /**
+   * Compare with another address slice for inequality.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator!=(self_type other) const noexcept(is_static) { return !(*this == other); }
+
+  /**
+   * Compare with another address slice for ordering.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator<=(self_type other) const noexcept(is_static) { return *this < other || *this == other; }
+
+  /**
+   * Compare with another address slice for ordering.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator>(self_type other) const noexcept(is_static) { return !(value <= other.value); }
+
+  /**
+   * Compare with another address slice for ordering.
+   *
+   * \throws std::invalid_argument If the extents do not match
+   */
+  [[nodiscard]] constexpr bool operator>=(self_type other) const noexcept(is_static) { return *this > other || *this == other; }
+
+  constexpr self_type& operator+=(difference_type delta)
+  {
+    value += static_cast<underlying_type>(delta);
+    value &= bitmask(upper_extent() - lower_extent());
+    return *this;
+  }
+
+  [[nodiscard]] constexpr self_type operator+(difference_type delta) const
+  {
+    self_type retval = *this;
+    retval += delta;
+    return retval;
+  }
+
+  constexpr self_type& operator-=(difference_type delta) { return operator+=(-delta); }
+  [[nodiscard]] constexpr self_type operator-(difference_type delta) const { return operator+(-delta); }
+
+  constexpr self_type& operator++() { return operator+=(1); }
+  constexpr self_type operator++(int)
+  {
+    self_type retval = *this;
+    operator++();
+    return retval;
+  }
+
+  constexpr self_type& operator--() { return operator-=(1); }
+  constexpr self_type operator--(int)
+  {
+    self_type retval = *this;
+    operator--();
+    return retval;
+  }
+
+  /**
+   * Perform a slice on this address. The given extent should be relative to this slice's extent.
+   * If either this extent or the subextent are runtime-sized, the result will have a runtime-sized extent.
+   * Otherwise, the extent will be statically-sized.
+   */
+  template <typename SUB_EXTENT>
+  [[nodiscard]] auto slice(SUB_EXTENT subextent) const noexcept(is_static&& detail::extent_is_static<SUB_EXTENT>)
+  {
+    auto new_ext = relative_extent(extent, subextent);
+    return address_slice<decltype(new_ext)>{new_ext, value >> subextent.lower};
+  }
+
+  /**
+   * Perform a slice on this address. The given extent should be relative to this slice's extent.
+   * This is a synonym for ``slice(static_extent<new_upper, new_lower>{})``.
+   */
+  template <std::size_t new_upper, std::size_t new_lower>
+  [[nodiscard]] auto slice() const noexcept
+  {
+    return slice(static_extent<new_upper, new_lower>{});
+  }
+
+  /**
+   * Slice the upper bits, ending with the given bit relative to the lower extent of this.
+   * If this slice is statically-sized, the result will be statically-sized.
+   */
+  template <std::size_t new_lower>
+  [[nodiscard]] auto slice_upper() const noexcept
+  {
+    return slice<bits, new_lower>();
+  }
+
+  /**
+   * Slice the lower bits, ending with the given bit relative to the lower extent of this.
+   * If this slice is statically-sized, the result will be statically-sized.
+   */
+  template <std::size_t new_upper>
+  [[nodiscard]] auto slice_lower() const noexcept
+  {
+    return slice<new_upper, 0>();
+  }
+
+  /**
+   * Slice the upper bits, ending with the given bit relative to the lower extent of this.
+   * The result of this will always be runtime-sized.
+   */
+  [[nodiscard]] auto slice_upper(std::size_t new_lower) const { return slice(dynamic_extent{bits, new_lower}); }
+
+  /**
+   * Slice the lower bits, ending with the given bit relative to the lower extent of this.
+   * The result of this will always be runtime-sized.
+   */
+  [[nodiscard]] auto slice_lower(std::size_t new_upper) const { return slice(dynamic_extent{new_upper, 0}); }
+
+  /**
+   * Get the upper portion of the extent.
+   */
+  [[nodiscard]] constexpr auto upper_extent() const noexcept
+  {
+    if constexpr (is_static) {
+      return extent_type::upper;
+    } else {
+      return extent.upper;
     }
+  }
+
+  /**
+   * Get the lower portion of the extent.
+   */
+  [[nodiscard]] constexpr auto lower_extent() const noexcept
+  {
+    if constexpr (is_static) {
+      return extent_type::lower;
+    } else {
+      return extent.lower;
+    }
+  }
 };
 
 /**
@@ -492,37 +496,29 @@ constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) 
 
 namespace detail
 {
-  template <typename Extent>
-  struct splice_fold_wrapper
+template <typename Extent>
+struct splice_fold_wrapper {
+  using extent_type = Extent;
+  using value_type = typename address_slice<extent_type>::underlying_type;
+
+  extent_type extent;
+  value_type underlying;
+
+  explicit splice_fold_wrapper(address_slice<extent_type> addr) noexcept : splice_fold_wrapper(addr.extent, addr.value) {}
+  splice_fold_wrapper(extent_type ext, value_type und) noexcept : extent(ext), underlying(und) {}
+
+  template <typename OtherExtent>
+  auto operator+(splice_fold_wrapper<OtherExtent> other) const
   {
-    using extent_type = Extent;
-    using value_type = typename address_slice<extent_type>::underlying_type;
+    auto return_extent = extent_union(this->extent, other.extent);
+    return splice_fold_wrapper<decltype(return_extent)>{
+        return_extent, splice_bits(underlying << (extent.lower - return_extent.lower), other.underlying << (other.extent.lower - return_extent.lower),
+                                   other.extent.upper - return_extent.lower, other.extent.lower - return_extent.lower)};
+  }
 
-    extent_type extent;
-    value_type underlying;
-
-    explicit splice_fold_wrapper(address_slice<extent_type> addr) noexcept : splice_fold_wrapper(addr.extent, addr.value) {}
-    splice_fold_wrapper(extent_type ext, value_type und) noexcept : extent(ext), underlying(und) {}
-
-    template <typename OtherExtent>
-    auto operator+(splice_fold_wrapper<OtherExtent> other) const {
-        auto return_extent = extent_union(this->extent, other.extent);
-        return splice_fold_wrapper<decltype(return_extent)>{
-            return_extent,
-            splice_bits(
-                underlying << (extent.lower - return_extent.lower),
-                other.underlying << (other.extent.lower - return_extent.lower),
-                other.extent.upper - return_extent.lower, other.extent.lower - return_extent.lower
-            )
-        };
-    }
-
-    auto address() const noexcept
-    {
-      return address_slice{extent, underlying};
-    }
-  };
-}
+  auto address() const noexcept { return address_slice{extent, underlying}; }
+};
+} // namespace detail
 
 /**
  * Join address slices together. Later slices will overwrite bits from earlier slices.
@@ -536,10 +532,10 @@ constexpr auto splice(address_slice<Extents>... slices)
 }
 
 template <typename Ostr, typename extent_type>
-Ostr& operator<<(Ostr& stream, const champsim::address_slice<extent_type> &addr)
+Ostr& operator<<(Ostr& stream, const champsim::address_slice<extent_type>& addr)
 {
   auto addr_flags = std::ios_base::hex | std::ios_base::showbase | std::ios_base::internal;
-  auto addr_mask  = std::ios_base::basefield | std::ios_base::showbase | std::ios_base::adjustfield;
+  auto addr_mask = std::ios_base::basefield | std::ios_base::showbase | std::ios_base::adjustfield;
 
   auto oldflags = stream.setf(addr_flags, addr_mask);
   auto oldfill = stream.fill('0');
@@ -551,11 +547,10 @@ Ostr& operator<<(Ostr& stream, const champsim::address_slice<extent_type> &addr)
 
   return stream;
 }
-}
+} // namespace champsim
 
 template <typename Extent>
-struct fmt::formatter<champsim::address_slice<Extent>>
-{
+struct fmt::formatter<champsim::address_slice<Extent>> {
   using addr_type = champsim::address_slice<Extent>;
   std::size_t len = std::numeric_limits<std::size_t>::max();
 
@@ -563,7 +558,8 @@ struct fmt::formatter<champsim::address_slice<Extent>>
   {
     auto [ret_ptr, ec] = std::from_chars(ctx.begin(), ctx.end(), len);
     // Check if reached the end of the range:
-    if (ec == std::errc::result_out_of_range || (ret_ptr != ctx.end() && *ret_ptr != '}')) throw fmt::format_error("invalid format");
+    if (ec == std::errc::result_out_of_range || (ret_ptr != ctx.end() && *ret_ptr != '}'))
+      throw fmt::format_error("invalid format");
     return ret_ptr;
   }
 

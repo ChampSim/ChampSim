@@ -1,11 +1,10 @@
 #ifndef BRANCH_BIMODAL_H
 #define BRANCH_BIMODAL_H
 
-#include "modules.h"
-
 #include <array>
 
 #include "address.h"
+#include "modules.h"
 #include "msl/fwcounter.h"
 
 struct bimodal : champsim::modules::branch_predictor {
@@ -19,7 +18,7 @@ struct bimodal : champsim::modules::branch_predictor {
 
   [[nodiscard]] static constexpr auto hash(champsim::address ip) { return ip.to<unsigned long>() % PRIME; }
 
-  //void initialize_branch_predictor();
+  // void initialize_branch_predictor();
   bool predict_branch(champsim::address ip);
   void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
 };
