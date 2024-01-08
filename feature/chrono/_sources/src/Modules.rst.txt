@@ -49,7 +49,9 @@ A branch predictor module may implement three functions.
 
    This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
+.. cpp:function:: bool predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
 .. cpp:function:: bool predict_branch(uint64_t ip, uint64_t predicted_target, bool always_taken, uint8_t branch_type)
+.. cpp:function:: bool predict_branch(champsim::address ip)
 .. cpp:function:: bool predict_branch(uint64_t ip)
 
    This function is called when a prediction is needed.
@@ -71,6 +73,7 @@ A branch predictor module may implement three functions.
 
    :return: This function must return true if the branch is predicted taken, and false otherwise.
 
+.. cpp:function:: void last_branch_result(champsim::address ip, champsim::address branch_target, uint8_t taken, uint8_t branch_type)
 .. cpp:function:: void last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 
    This function is called when a branch is resolved. The parameters are the same as in the previous hook, except that the last three are guaranteed to be correct.
@@ -85,8 +88,10 @@ A BTB module may implement three functions.
 
    This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-.. cpp:function:: std::pair<uint64_t, bool> btb_prediction(uint64_t ip, uint8_t branch_type)
-.. cpp:function:: std::pair<uint64_t, bool> btb_prediction(uint64_t ip)
+.. cpp:function:: std::pair<champsim::address, bool> btb_prediction(champsim::address ip, uint8_t branch_type)
+.. cpp:function:: std::pair<champsim::address, bool> btb_prediction(champsim::address ip)
+.. cpp:function:: std::pair<champsim::address, bool> btb_prediction(uint64_t ip, uint8_t branch_type)
+.. cpp:function:: std::pair<champsim::address, bool> btb_prediction(uint64_t ip)
 
    This function is called when a prediction is needed.
 
@@ -102,9 +107,10 @@ A BTB module may implement three functions.
      * ``BRANCH_OTHER``: If the branch type cannot be determined
 
    :return: The function should return a pair containing the predicted address and a boolean that describes if the branch is known to be always taken.
-       If the prediction fails, the function should return a default-initialized address, e.g. ``uint64_t{}``.
+       If the prediction fails, the function should return a default-initialized address, e.g. ``champsim::address{}``.
 
-.. cpp:function:: void update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+.. cpp:function:: void update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
+.. cpp:function:: void update_btb(uint64_t ip, uint64_t branch_target, bool taken, uint8_t branch_type)
 
    This function is called when a branch is resolved.
 
@@ -131,8 +137,8 @@ A prefetcher module may implement five or six functions.
 
    This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.
 
-.. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
-.. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
 .. cpp:function:: uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, bool cache_hit, uint8_t type, uint32_t metadata_in)
 
    This function is called when a tag is checked in the cache.
@@ -158,7 +164,8 @@ A prefetcher module may implement five or six functions.
 
    :return: The function should return metadata that will be stored alongside the block.
 
-.. cpp:function:: uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_way, uint8_t prefetch, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_fill(champsim::address addr, uint32_t set, uint32_way, bool prefetch, champsim::address evicted_address, uint32_t metadata_in)
+.. cpp:function:: uint32_t prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_way, bool prefetch, uint64_t evicted_address, uint32_t metadata_in)
 
    This function is called when a miss is filled in the cache.
 
@@ -170,6 +177,10 @@ A prefetcher module may implement five or six functions.
    :param set: the set that the fill occurred in
    :param way: the way that the fill occurred in, or ``this->NUM_WAY`` if a bypass occurred
    :param prefetch: if this tag check hit a prior prefetch, this value is true.
+   :param evicted_address: the address of the evicted block.
+       If the fill was a bypass, this value will be default-constructed.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
    :param metadata_in: the metadata carried along by the packet.
 
    :return: The function should return metadata that will be stored alongside the block.
@@ -185,6 +196,7 @@ A prefetcher module may implement five or six functions.
    This function is called at the end of the simulation and can be used to print statistics.
 
 
+.. cpp:function:: void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target)
 .. cpp:function:: void prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
 
 
