@@ -202,7 +202,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
 
   if (hit) {
-    ++sim_stats.hits.at(champsim::to_underlying(handle_pkt.type)).at(handle_pkt.cpu);
+    sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
     // update replacement policy
     const auto way_idx = std::distance(set_begin, way);
@@ -295,7 +295,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
   }
 
-  ++sim_stats.misses.at(champsim::to_underlying(handle_pkt.type)).at(handle_pkt.cpu);
+  sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
   return true;
 }
@@ -312,7 +312,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   to_allocate.data_promise.ready_at(current_cycle + (warmup ? 0 : FILL_LATENCY));
   inflight_writes.push_back(to_allocate);
 
-  ++sim_stats.misses.at(champsim::to_underlying(handle_pkt.type)).at(handle_pkt.cpu);
+  sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
   return true;
 }
@@ -771,19 +771,15 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  auto total_miss = 0ULL;
-  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    total_miss = std::accumulate(std::begin(sim_stats.misses.at(champsim::to_underlying(type))), std::end(sim_stats.misses.at(champsim::to_underlying(type))),
-                                 total_miss);
-  }
-  sim_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(total_miss);
+  sim_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(sim_stats.misses.total());
 
   roi_stats.total_miss_latency = sim_stats.total_miss_latency;
-  roi_stats.avg_miss_latency = std::ceil(roi_stats.total_miss_latency) / std::ceil(total_miss);
+  roi_stats.avg_miss_latency = std::ceil(roi_stats.total_miss_latency) / std::ceil(sim_stats.misses.total());
 
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    roi_stats.hits.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.hits.at(champsim::to_underlying(type)).at(finished_cpu);
-    roi_stats.misses.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.misses.at(champsim::to_underlying(type)).at(finished_cpu);
+    std::pair key{type, finished_cpu};
+    roi_stats.hits.set(key, sim_stats.hits.value_or(key, 0));
+    roi_stats.misses.set(key, sim_stats.misses.value_or(key, 0));
   }
 
   roi_stats.pf_requested = sim_stats.pf_requested;
