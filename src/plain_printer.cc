@@ -76,16 +76,16 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     hits_value_type total_hits = 0;
     misses_value_type total_misses = 0;
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-      total_hits += stats.hits.at(std::pair{type, cpu});
-      total_misses += stats.misses.at(std::pair{type, cpu});
+      total_hits += stats.hits.value_or(std::pair{type, cpu}, hits_value_type{});
+      total_misses += stats.misses.value_or(std::pair{type, cpu}, misses_value_type{});
     }
 
     fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n"};
     fmt::print(stream, hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses);
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       fmt::print(stream, hitmiss_fmtstr, stats.name, access_type_names.at(champsim::to_underlying(type)),
-                 stats.hits.at(std::pair{type, cpu}) + stats.misses.at(std::pair{type, cpu}), stats.hits.at(std::pair{type, cpu}),
-                 stats.misses.at(std::pair{type, cpu}));
+                 stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}) + stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}),
+                 stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}), stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
     }
 
     fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
