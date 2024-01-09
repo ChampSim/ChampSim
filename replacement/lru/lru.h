@@ -6,11 +6,12 @@
 #include "cache.h"
 #include "modules.h"
 
-struct lru : champsim::modules::replacement {
-  std::size_t NUM_SET, NUM_WAY;
+class lru : champsim::modules::replacement {
+  long NUM_WAY;
   std::vector<uint64_t> last_used_cycles;
   uint64_t cycle = 0;
 
+  public:
   explicit lru(CACHE* cache);
   lru(CACHE* cache, long sets, long ways);
 

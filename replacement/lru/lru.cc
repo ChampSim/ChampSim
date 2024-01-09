@@ -5,7 +5,7 @@
 
 lru::lru(CACHE* cache) : lru(cache, cache->NUM_SET, cache->NUM_WAY) {}
 
-lru::lru(CACHE* cache, long sets, long ways) : replacement(cache), NUM_SET(sets), NUM_WAY(ways), last_used_cycles(static_cast<std::size_t>(sets * ways), 0) {}
+lru::lru(CACHE* cache, long sets, long ways) : replacement(cache), NUM_WAY(ways), last_used_cycles(static_cast<std::size_t>(sets * ways), 0) {}
 
 long lru::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                       champsim::address full_addr, access_type type)

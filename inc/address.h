@@ -198,7 +198,7 @@ private:
 
   template <typename>
   friend class address_slice;
-  friend class detail::splice_fold_wrapper<extent_type>;
+  friend struct detail::splice_fold_wrapper<extent_type>;
 
   template <typename E>
   friend constexpr auto offset(address_slice<E> base, address_slice<E> other) -> typename address_slice<E>::difference_type;

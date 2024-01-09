@@ -32,7 +32,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
     VirtualMemory uut{pte_page_size, 5, 200, dram};
 
-    uint64_t dist = PAGE_SIZE;
+    champsim::address::difference_type dist{PAGE_SIZE};
     for (std::size_t i = 0; i < level; ++i)
       dist *= pte_page_size;
     std::vector<champsim::address> req_pages{};

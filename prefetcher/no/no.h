@@ -6,7 +6,8 @@
 #include "champsim.h"
 #include "modules.h"
 
-struct no : champsim::modules::prefetcher {
+class no : champsim::modules::prefetcher {
+  public:
   using prefetcher::prefetcher;
 
   // void prefetcher_initialize() {}

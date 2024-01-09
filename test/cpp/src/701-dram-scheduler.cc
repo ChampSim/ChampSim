@@ -41,7 +41,7 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
             //found newly scheduled request
             if (chunk_begin != chunk_end)
             {
-               scheduled_order.push_back(std::distance(std::begin(next_scheduled), chunk_begin));
+               scheduled_order.push_back(static_cast<uint64_t>(std::distance(std::begin(next_scheduled), chunk_begin)));
                break;
             }
         }
