@@ -770,10 +770,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  sim_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(sim_stats.misses.total());
-
   roi_stats.total_miss_latency = sim_stats.total_miss_latency;
-  roi_stats.avg_miss_latency = std::ceil(roi_stats.total_miss_latency) / std::ceil(sim_stats.misses.total());
 
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::pair key{type, finished_cpu};

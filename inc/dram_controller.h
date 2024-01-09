@@ -30,14 +30,8 @@
 #include "address.h"
 #include "champsim_constants.h"
 #include "channel.h"
+#include "dram_stats.h"
 #include "operable.h"
-
-struct dram_stats {
-  std::string name{};
-  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
-
-  unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
-};
 
 struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;

@@ -23,9 +23,9 @@
 #include <string_view>
 #include <vector>
 
-#include "cache.h"
-#include "dram_controller.h"
-#include "ooo_cpu.h"
+#include "cache_stats.h"
+#include "core_stats.h"
+#include "dram_stats.h"
 
 namespace champsim
 {

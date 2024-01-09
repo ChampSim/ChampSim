@@ -38,32 +38,14 @@
 #include "bandwidth.h"
 #include "block.h"
 #include "cache_builder.h"
+#include "cache_stats.h"
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "channel.h"
-#include "event_counter.h"
 #include "modules.h"
 #include "operable.h"
 #include "util/to_underlying.h" // for to_underlying
 #include "waitable.h"
-
-struct ooo_model_instr;
-
-struct cache_stats {
-  std::string name;
-  // prefetch stats
-  uint64_t pf_requested = 0;
-  uint64_t pf_issued = 0;
-  uint64_t pf_useful = 0;
-  uint64_t pf_useless = 0;
-  uint64_t pf_fill = 0;
-
-  champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> hits = {};
-  champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> misses = {};
-
-  double avg_miss_latency = 0;
-  uint64_t total_miss_latency = 0;
-};
 
 class CACHE : public champsim::operable
 {
