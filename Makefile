@@ -61,7 +61,7 @@ $(objs):
 	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
-$(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
+$(test_main_name): CXXFLAGS += -g3 -Og
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
 
 ifdef POSTBUILD_CLEAN

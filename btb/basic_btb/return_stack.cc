@@ -26,7 +26,7 @@ void return_stack::calibrate_call_size(champsim::address branch_target)
     auto call_ip = stack.back();
     stack.pop_back();
 
-    auto estimated_call_instr_size = champsim::uoffset(call_ip, branch_target);
+    auto estimated_call_instr_size = champsim::offset(call_ip, branch_target);
     if (estimated_call_instr_size <= 10) {
       call_size_trackers[call_ip.slice_lower<champsim::msl::lg2(num_call_size_trackers)>().to<std::size_t>()] = estimated_call_instr_size;
     }
