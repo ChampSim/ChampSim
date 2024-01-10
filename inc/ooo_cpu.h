@@ -281,31 +281,32 @@ void O3_CPU::branch_module_model<Bs...>::impl_last_branch_result(champsim::addre
 template <typename... Bs>
 bool O3_CPU::branch_module_model<Bs...>::impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type)
 {
+  using return_type = bool;
   [[maybe_unused]] auto process_one = [&](auto& b) {
     using namespace champsim::modules;
     /* Strong addresses, full size */
     if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address, champsim::address, bool, uint8_t>)
-      return b.predict_branch(ip, predicted_target, always_taken, branch_type);
+      return return_type{b.predict_branch(ip, predicted_target, always_taken, branch_type)};
 
     /* Raw integer addresses, full size */
     if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t, uint64_t, bool, uint8_t>)
-      return b.predict_branch(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), always_taken, branch_type);
+      return return_type{b.predict_branch(ip.to<uint64_t>(), predicted_target.to<uint64_t>(), always_taken, branch_type)};
 
     /* Strong addresses, short size */
     if constexpr (branch_predictor::has_predict_branch<decltype(b), champsim::address>)
-      return b.predict_branch(ip);
+      return return_type{b.predict_branch(ip)};
 
     /* Raw integer addresses, short size */
     if constexpr (branch_predictor::has_predict_branch<decltype(b), uint64_t>)
-      return b.predict_branch(ip.to<uint64_t>());
+      return return_type{b.predict_branch(ip.to<uint64_t>())};
 
-    return false;
+    return return_type{};
   };
 
   if constexpr (sizeof...(Bs)) {
     return std::apply([&](auto&... b) { return (..., process_one(b)); }, intern_);
   }
-  return false;
+  return return_type{};
 }
 
 template <typename... Ts>
@@ -337,32 +338,33 @@ void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, cham
 template <typename... Ts>
 std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip, uint8_t branch_type)
 {
+  using return_type = std::pair<uint64_t, bool>;
   [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
 
     /* Strong addresses, full size */
     if constexpr (btb::has_btb_prediction<decltype(t), champsim::address, uint8_t>)
-      return t.btb_prediction(ip, branch_type);
+      return return_type{t.btb_prediction(ip, branch_type)};
 
     /* Strong addresses, short size */
     if constexpr (btb::has_btb_prediction<decltype(t), champsim::address>)
-      return t.btb_prediction(ip);
+      return return_type{t.btb_prediction(ip)};
 
     /* Raw integer addresses, full size */
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t, uint8_t>)
-      return t.btb_prediction(ip.to<uint64_t>(), branch_type);
+      return return_type{t.btb_prediction(ip.to<uint64_t>(), branch_type)};
 
     /* Raw integer addresses, short size */
     if constexpr (btb::has_btb_prediction<decltype(t), uint64_t>)
-      return t.btb_prediction(ip.to<uint64_t>());
+      return return_type{t.btb_prediction(ip.to<uint64_t>())};
 
-    return std::pair{champsim::address{}, false};
+    return return_type{};
   };
 
   if constexpr (sizeof...(Ts) > 0) {
     return std::apply([&](auto&... t) { return (..., process_one(t)); }, intern_);
   }
-  return {champsim::address{}, false};
+  return return_type{};
 }
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE

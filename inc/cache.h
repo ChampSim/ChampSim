@@ -328,40 +328,42 @@ template <typename... Ps>
 uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_operate(champsim::address addr, champsim::address ip, bool cache_hit,
                                                                               bool useful_prefetch, access_type type, uint32_t metadata_in)
 {
+  using return_type = uint32_t;
   [[maybe_unused]] auto process_one = [&](auto& p) {
     using namespace champsim::modules;
     /* Strong addresses */
     if constexpr (prefetcher::has_cache_operate<decltype(p), champsim::address, champsim::address, bool, bool, access_type, uint32_t>)
-      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, type, metadata_in)};
 
     /* Strong addresses, raw integer access type */
     if constexpr (prefetcher::has_cache_operate<decltype(p), champsim::address, champsim::address, bool, bool, std::underlying_type_t<access_type>, uint32_t>)
-      return p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr, ip, cache_hit, useful_prefetch, champsim::to_underlying(type), metadata_in)};
 
     /* Raw integer addresses, no useful_prefetch parameter, raw integer access type */
     if constexpr (prefetcher::has_cache_operate<decltype(p), uint64_t, uint64_t, bool, std::underlying_type_t<access_type>, uint32_t>)
-      return p.prefetcher_cache_operate(addr.to<uint64_t>(), ip.to<uint64_t>(), cache_hit, champsim::to_underlying(type), metadata_in);
+      return return_type{p.prefetcher_cache_operate(addr.to<uint64_t>(), ip.to<uint64_t>(), cache_hit, champsim::to_underlying(type), metadata_in)};
 
-    return 0u;
+    return return_type{};
   };
 
-  return std::apply([&](auto&... p) { return (0u ^ ... ^ process_one(p)); }, intern_);
+  return std::apply([&](auto&... p) { return (return_type{} ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
 uint32_t CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_cache_fill(champsim::address addr, long set, long way, bool prefetch,
                                                                            champsim::address evicted_addr, uint32_t metadata_in)
 {
+  using return_type = uint32_t;
   [[maybe_unused]] auto process_one = [&](auto& p) {
     using namespace champsim::modules;
     if constexpr (prefetcher::has_cache_fill<decltype(p), champsim::address, long, long, bool, champsim::address, uint32_t>)
-      return p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in);
+      return return_type{p.prefetcher_cache_fill(addr, set, way, prefetch, evicted_addr, metadata_in)};
     if constexpr (prefetcher::has_cache_fill<decltype(p), uint64_t, long, long, bool, uint64_t, uint32_t>)
-      return p.prefetcher_cache_fill(addr.to<uint64_t>(), set, way, prefetch, evicted_addr.to<uint64_t>(), metadata_in);
-    return 0u;
+      return return_type{p.prefetcher_cache_fill(addr.to<uint64_t>(), set, way, prefetch, evicted_addr.to<uint64_t>(), metadata_in)};
+    return return_type{};
   };
 
-  return std::apply([&](auto&... p) { return (0u ^ ... ^ process_one(p)); }, intern_);
+  return std::apply([&](auto&... p) { return (return_type{} ^ ... ^ process_one(p)); }, intern_);
 }
 
 template <typename... Ps>
@@ -418,29 +420,30 @@ template <typename... Rs>
 long CACHE::replacement_module_model<Rs...>::impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set,
                                                               champsim::address ip, champsim::address full_addr, access_type type)
 {
+  using return_type = long;
   [[maybe_unused]] auto process_one = [&](auto& r) {
     using namespace champsim::modules;
 
     /* Strong addresses */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, champsim::address, champsim::address, access_type>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type);
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, type)};
 
     /* Raw integer addresses */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, champsim::address, champsim::address,
                                                std::underlying_type_t<access_type>>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type));
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip, full_addr, champsim::to_underlying(type))};
 
     /* Raw integer addresses, raw integer access type */
     if constexpr (replacement::has_find_victim<decltype(r), uint32_t, uint64_t, long, const BLOCK*, uint64_t, uint64_t, std::underlying_type_t<access_type>>)
-      return r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), champsim::to_underlying(type));
+      return return_type{r.find_victim(triggering_cpu, instr_id, set, current_set, ip.to<uint64_t>(), full_addr.to<uint64_t>(), champsim::to_underlying(type))};
 
-    return 0L;
+    return return_type{};
   };
 
   if constexpr (sizeof...(Rs) > 0) {
     return std::apply([&](auto&... r) { return (..., process_one(r)); }, intern_);
   }
-  return 0;
+  return return_type{};
 }
 
 template <typename... Rs>
