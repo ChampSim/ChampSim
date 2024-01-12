@@ -16,6 +16,12 @@ def get_constants_file(env, pmem):
     yield from (
         '#ifndef CHAMPSIM_CONSTANTS_H',
         '#define CHAMPSIM_CONSTANTS_H',
+
+        '#ifdef CHAMPSIM_MODULE',
+        '#define SET_ASIDE_CHAMPSIM_MODULE',
+        '#undef CHAMPSIM_MODULE',
+        '#endif',
+
         '#include <cstdlib>',
         '#include "util/bits.h"',
         '#include "util/units.h"',
@@ -41,4 +47,10 @@ def get_constants_file(env, pmem):
         f'inline constexpr std::size_t DRAM_CHANNEL_WIDTH = {pmem["channel_width"]};',
         f'inline constexpr std::size_t DRAM_WQ_SIZE = {pmem["wq_size"]};',
         f'inline constexpr std::size_t DRAM_RQ_SIZE = {pmem["rq_size"]};',
+
+        '#ifdef SET_ASIDE_CHAMPSIM_MODULE',
+        '#undef SET_ASIDE_CHAMPSIM_MODULE',
+        '#define CHAMPSIM_MODULE',
+        '#endif',
+
         '#endif')

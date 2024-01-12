@@ -1,5 +1,10 @@
 #include "instr.h"
 
+ooo_model_instr champsim::test::instruction_with_ip(champsim::address ip)
+{
+  return instruction_with_ip(ip.to<uint64_t>());
+}
+
 ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
 {
   input_instr i;

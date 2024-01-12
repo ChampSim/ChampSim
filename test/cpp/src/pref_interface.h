@@ -5,11 +5,11 @@ namespace test
 {
   struct pref_cache_operate_interface
   {
-    uint64_t addr;
-    uint64_t ip;
+    champsim::address addr;
+    champsim::address ip;
     uint8_t cache_hit;
     bool useful_prefetch;
-    uint8_t type;
+    access_type type;
     uint32_t metadata_in;
   };
 }

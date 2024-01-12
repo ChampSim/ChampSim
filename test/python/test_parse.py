@@ -77,6 +77,72 @@ class SplitStringOrListTests(unittest.TestCase):
     def test_string_strip(self):
         self.assertEqual(config.parse.split_string_or_list('a, b'), ['a','b'])
 
+class IntOrPrefixedSizeTests(unittest.TestCase):
+
+    def test_integer(self):
+        self.assertEqual(config.parse.int_or_prefixed_size(1), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size(10), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size(100), 100)
+
+    def test_string_with_prefix(self):
+        self.assertEqual(config.parse.int_or_prefixed_size('1B'), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size('10B'), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size('100B'), 100)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1k'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10k'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100k'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1kB'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10kB'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100kB'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1kiB'), 1*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('10kiB'), 10*1024)
+        self.assertEqual(config.parse.int_or_prefixed_size('100kiB'), 100*1024)
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1M'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10M'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100M'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1MB'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10MB'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100MB'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1MiB'), 1*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('10MiB'), 10*(1024**2))
+        self.assertEqual(config.parse.int_or_prefixed_size('100MiB'), 100*(1024**2))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1G'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10G'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100G'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1GB'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10GB'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100GB'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1GiB'), 1*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('10GiB'), 10*(1024**3))
+        self.assertEqual(config.parse.int_or_prefixed_size('100GiB'), 100*(1024**3))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1T'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10T'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100T'), 100*(1024**4))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1TB'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10TB'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100TB'), 100*(1024**4))
+
+        self.assertEqual(config.parse.int_or_prefixed_size('1TiB'), 1*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('10TiB'), 10*(1024**4))
+        self.assertEqual(config.parse.int_or_prefixed_size('100TiB'), 100*(1024**4))
+
+
+    def test_string_without_prefix(self):
+        self.assertEqual(config.parse.int_or_prefixed_size('1'), 1)
+        self.assertEqual(config.parse.int_or_prefixed_size('10'), 10)
+        self.assertEqual(config.parse.int_or_prefixed_size('100'), 100)
+
 class FilterInaccessibleTests(unittest.TestCase):
 
     def test_empty_system(self):
@@ -114,7 +180,7 @@ class FilterInaccessibleTests(unittest.TestCase):
 
 class PassthroughContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
         return [] # FIXME
@@ -468,6 +534,35 @@ class MergeConfigurationsTests(unittest.TestCase):
         seed_config.merge(test_config)
         self.assertEqual(seed_config.caches['test'].get('sets'), test_val)
 
+class ExtractElementTests(unittest.TestCase):
+
+    def test_key_not_present(self):
+        self.assertEqual(config.parse.extract_element('absent', {}, {}), {})
+        self.assertEqual(config.parse.extract_element('absent', {'other': 1}, {'other': 2}), {})
+
+    def test_key_present_in_first(self):
+        testcore = { 'key': { 'test': 10 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, {}), { 'test': 10 })
+
+    def test_key_present_in_second(self):
+        testconfig = { 'key': { 'test': 10 } }
+        self.assertEqual(config.parse.extract_element('key', {}, testconfig), { 'test': 10 })
+
+    def test_first_takes_priority(self):
+        testcore = { 'key': { 'test': 10 } }
+        testconfig = { 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'test': 10 })
+
+    def test_key_can_receive_name(self):
+        testcore = { 'name': 'first', 'key': { 'test': 10 } }
+        testconfig = { 'name': 'second', 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'name': 'first_key', 'test': 10 })
+
+    def test_nondicts_are_ignored(self):
+        testcore = { 'key': 'poison' }
+        testconfig = { 'key': { 'test': 20 } }
+        self.assertEqual(config.parse.extract_element('key', testcore, testconfig), { 'test': 20 })
+
 class DefaultFrequenciesTest(unittest.TestCase):
 
     def test_first_level_caches_inherit_core_frequency(self):
@@ -579,38 +674,6 @@ class CoreDefaultNamesTests(unittest.TestCase):
                 result = config.parse.core_default_names(testval)
                 self.assertEqual(result.get(name), testval.get(name))
 
-class EnvironmentParseTests(unittest.TestCase):
-
-    def test_cc_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CC': 'cc' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_cxx_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CXX': 'cxx' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_cppflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CPPFLAGS': 'cppflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_cxxflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'CXXFLAGS': 'cxxflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_ldflags_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'LDFLAGS': 'ldflags' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
-    def test_ldlibs_passes_through(self):
-        test_config = config.parse.NormalizedConfiguration({ 'LDLIBS': 'ldlibs' })
-        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
-        self.assertEqual(test_config.root, result[3])
-
 class ConfigRootPassthroughParseTests(unittest.TestCase):
 
     def test_block_size_passes_through(self):
@@ -639,10 +702,10 @@ class ConfigRootPassthroughParseTests(unittest.TestCase):
 
 class FoundMoreContext:
     def find(self, module):
-        return {'name': module, 'fname': 'xxyzzy/'+module, '_is_instruction_prefetcher': module.endswith('_instr')}
+        return {'name': module, 'fname': 'xxyzzy/'+module}
 
     def find_all(self):
-        return [{'name': 'extra', 'fname': 'aaaabbbb/extra', '_is_instruction_prefetcher': False}]
+        return [{'name': 'extra', 'fname': 'aaaabbbb/extra'}]
 
 class PathEndInTests(unittest.TestCase):
     def test_path_end(self):

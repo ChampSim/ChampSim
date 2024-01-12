@@ -15,6 +15,8 @@
 import itertools
 import functools
 import operator
+import collections
+import os
 
 def iter_system(system, name, key='lower_level'):
     '''
@@ -63,7 +65,7 @@ def chain(*dicts):
         list_merges = merge(operator.concat, list, lhs, rhs)
         return dict(itertools.chain(rhs.items(), lhs.items(), dict_merges.items(), list_merges.items()))
 
-    return functools.reduce(merge_dicts, dicts)
+    return functools.reduce(merge_dicts, dicts, {})
 
 def star(func):
     ''' Convert a function object that takes a starred parameter into one that takes an iterable parameter '''
@@ -76,9 +78,9 @@ def extend_each(lhs,rhs):
     merges = {k: (*lhs[k],*rhs[k]) for k in lhs if k in rhs}
     return {**lhs, **rhs, **merges}
 
-def subdict(whole_dict, keys):
+def subdict(whole_dict, keys, invert=False):
     ''' Extract only the given keys from a dictionary. If they keys are not present, they are not defaulted. '''
-    return {k:v for k,v in whole_dict.items() if k in keys}
+    return {k:v for k,v in whole_dict.items() if (k in keys) != invert}
 
 def combine_named(*iterables):
     '''
@@ -116,35 +118,93 @@ def propogate_down(path, key):
         else:
             yield from ({ **element, key: value } for element in chunk)
 
+def cut(iterable, n=-1):
+    '''
+    Split an iterable into a head and a tail. The head should be completely consumed before the tail is accesssed.
+
+    :param iterable: An iterable
+    :param n: The length of the head or, if the value is negative, the length of the tail.
+    '''
+    it = iter(iterable)
+    if n >= 0:
+        return itertools.islice(it, n), it
+
+    tail = collections.deque(itertools.islice(it, -1*n))
+    def head_iterator():
+        for elem in it:
+            yield tail.popleft()
+            tail.append(elem)
+    def tail_iterator():
+        yield from tail
+
+    return head_iterator(), tail_iterator()
+
 def append_except_last(iterable, suffix):
     ''' Append a string to each element of the iterable except the last one. '''
-    retval = None
-    first = True
-    for element in iterable:
-        if not first:
-            yield retval + suffix
-        retval = element
-        first = False
-
-    if retval is not None:
-        yield retval
+    head, tail = cut(iterable, n=-1)
+    yield from map(operator.concat, head, itertools.repeat(suffix))
+    yield from tail
 
 def do_for_first(func, iterable):
     '''
     Evaluate the function for the first element in the iterable and yield it.
     Then yield the rest of the iterable.
     '''
-    iterator = iter(iterable)
-    first = next(iterator, None)
-    if first is not None:
-        yield func(first)
-        yield from iterator
+    head, tail = cut(iterable, n=1)
+    yield from map(func, head)
+    yield from tail
 
-def multiline(long_line, length=1, indent=0, line_end=' \\'):
+def batch(it, n):
+    it = iter(it)
+    val = tuple(itertools.islice(it, n))
+    while val:
+        yield val
+        val = tuple(itertools.islice(it, n))
+
+def multiline(long_line, length=1, indent=0, line_end=None):
     ''' Split a long string into lines with n words '''
-    grouped = [iter(long_line)] * length
-    grouped = itertools.zip_longest(*grouped, fillvalue='')
-    grouped = (' '.join(filter(None, group)) for group in grouped)
-    lines = append_except_last(grouped, f'{line_end}')
+    grouped = map(' '.join, batch(long_line, length))
+    lines = append_except_last(grouped, line_end or '')
     indentation = itertools.chain(('',), itertools.repeat('  '*indent))
     yield from (i+l for i,l in zip(indentation,lines))
+
+def yield_from_star(gen, args, n=2):
+    '''
+    Python generators can return values when they are finished.
+    This adaptor yields the values from the generators and collects the returned values into a list.
+    '''
+    retvals = [[] for _ in range(n)]
+    for argument in args:
+        instance_retval = yield from gen(*argument)
+        for seq,return_value in zip(retvals, instance_retval):
+            seq.append(return_value)
+    return retvals
+
+def explode(d, in_key, out_key=None):
+    '''
+    Convert a dictionary with a list member to a list with dictionary members
+    :param d: the dictionary to be extracted
+    :param in_key: the key holding the list
+    :param out_key: the key to distinguish the resulting list elements
+    '''
+    if out_key is None:
+        out_key = in_key
+    extracted = d.pop(in_key)
+    return [ { out_key: e, **d } for e in extracted ]
+
+def path_parts(p):
+    if not p:
+        return
+    head, tail = os.path.split(p)
+    yield from path_parts(head)
+    yield tail
+
+def path_ancestors(p):
+    yield from itertools.accumulate(path_parts(p), os.path.join)
+
+def sliding(iterable, n):
+    it = iter(iterable)
+    window = collections.deque(itertools.islice(it, n-1), maxlen=n)
+    for x in it:
+        window.append(x)
+        yield tuple(window)

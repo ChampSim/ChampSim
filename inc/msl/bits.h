@@ -32,6 +32,17 @@ constexpr T lg2(T n)
   return result;
 }
 
+template <typename T>
+constexpr T next_pow2(T n)
+{
+  n--;
+  for (int i = 0; i < lg2(std::numeric_limits<T>::digits); ++i) {
+    n |= n >> (1u << i);
+  }
+  n++;
+  return n;
+}
+
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
   if (begin - end >= std::numeric_limits<uint64_t>::digits) {
@@ -41,9 +52,15 @@ constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 }
 
 template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
+{
+  return (upper & ~bitmask(bits_upper, bits_lower)) | (lower & bitmask(bits_upper, bits_lower));
+}
+
+template <typename T>
 constexpr auto splice_bits(T upper, T lower, std::size_t bits)
 {
-  return (upper & ~bitmask(bits)) | (lower & bitmask(bits));
+  return splice_bits(upper, lower, bits, 0);
 }
 } // namespace champsim::msl
 

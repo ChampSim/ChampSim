@@ -37,7 +37,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
         elem->_operate();
 
     WHEN("A packet is sent") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      const champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
@@ -46,12 +46,12 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
       THEN("The issue is received") {
         CHECK(seed_result);
-        CHECK(mock_ll.packet_count() == 1);
+        CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr})));
       }
 
       AND_WHEN("A packet with a different address is sent") {
         decltype(mock_ul_test)::request_type test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
@@ -64,8 +64,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
         THEN("The issue is received") {
           CHECK(test_b_result);
-          CHECK(mock_ll.packet_count() == 2);
-          CHECK(mock_ll.addresses.back() == test_b.address);
+          CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr, test_b.address})));
         }
 
         for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
