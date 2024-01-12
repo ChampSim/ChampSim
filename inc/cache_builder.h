@@ -41,7 +41,7 @@ namespace detail
 struct cache_builder_base {
   std::string m_name{};
   double m_freq_scale{1};
-  std::optional<uint64_t> m_size{};
+  std::optional<champsim::data::bytes> m_size{};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
   std::optional<uint32_t> m_ways{};
@@ -92,7 +92,7 @@ public:
 
   self_type& name(std::string name_);
   self_type& frequency(double freq_scale_);
-  self_type& size(uint64_t size_);
+  self_type& size(champsim::data::bytes size_);
   self_type& log2_size(uint64_t log2_size_);
   self_type& sets(uint32_t sets_);
   self_type& log2_sets(uint32_t log2_sets_);
@@ -133,7 +133,7 @@ auto champsim::cache_builder<P, R>::get_num_sets() const -> uint32_t
   if (m_sets.has_value())
     value = m_sets.value();
   else if (m_size.has_value() && m_ways.has_value())
-    value = static_cast<uint32_t>(m_size.value() / (m_ways.value() * (1 << m_offset_bits))); // casting the result of division
+    value = static_cast<uint32_t>(m_size.value().count() / (m_ways.value() * (1 << m_offset_bits))); // casting the result of division
   else
     value = scaled_by_ul_size(m_sets_factor);
   return champsim::next_pow2(value);
@@ -145,7 +145,7 @@ auto champsim::cache_builder<P, R>::get_num_ways() const -> uint32_t
   if (m_ways.has_value())
     return m_ways.value();
   if (m_size.has_value())
-    return static_cast<uint32_t>(m_size.value() / (get_num_sets() * (1 << m_offset_bits))); // casting the result of division
+    return static_cast<uint32_t>(m_size.value().count() / (get_num_sets() * (1 << m_offset_bits))); // casting the result of division
   return 1;
 }
 
@@ -217,7 +217,7 @@ auto champsim::cache_builder<P, R>::frequency(double freq_scale_) -> self_type&
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::size(uint64_t size_) -> self_type&
+auto champsim::cache_builder<P, R>::size(champsim::data::bytes size_) -> self_type&
 {
   m_size = size_;
   return *this;
@@ -226,7 +226,7 @@ auto champsim::cache_builder<P, R>::size(uint64_t size_) -> self_type&
 template <typename P, typename R>
 auto champsim::cache_builder<P, R>::log2_size(uint64_t log2_size_) -> self_type&
 {
-  m_size = 1 << log2_size_;
+  m_size = champsim::data::bytes{1 << log2_size_};
   return *this;
 }
 

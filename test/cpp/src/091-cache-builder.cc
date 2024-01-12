@@ -87,7 +87,7 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
 }
 
 TEST_CASE("Specifying the size infers the cache's number of sets") {
-  CACHE uut{champsim::cache_builder{}.size(16*1024).ways(16).offset_bits(6)};
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).ways(16).offset_bits(6)};
   REQUIRE(uut.NUM_SET == 16);
 }
 
@@ -97,7 +97,7 @@ TEST_CASE("Specifying the logarithm of the size infers the cache's number of set
 }
 
 TEST_CASE("Specifying the size infers the cache's number of ways") {
-  CACHE uut{champsim::cache_builder{}.size(16*1024).sets(16).offset_bits(6)};
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).sets(16).offset_bits(6)};
   REQUIRE(uut.NUM_WAY == 16);
 }
 
@@ -197,9 +197,9 @@ TEST_CASE("Specifying the tag bandwidth overrides inference from the number of s
 
 TEST_CASE("If no latency is specified, it is derived from the size") {
   auto [size, hit_latency, fill_latency] = GENERATE(
-      std::tuple{32u*1024u, 3ull, 3ull},
-      std::tuple{512u*1024u, 7ull, 7ull},
-      std::tuple{8u*1024u*1024u, 11ull, 11ull}
+      std::tuple{champsim::data::kibibytes{32}, 3ull, 3ull},
+      std::tuple{champsim::data::kibibytes{512}, 7ull, 7ull},
+      std::tuple{champsim::data::kibibytes{8*1024}, 11ull, 11ull}
   );
   champsim::cache_builder buildA{};
   buildA.size(size);

@@ -70,7 +70,7 @@ dib_builder_parts = {
 cache_builder_parts = {
     'name': '.name("{name}")',
     'frequency': '.frequency({frequency})',
-    'size': '.size({size})',
+    'size': '.size(champsim::data::bytes{{{size}}})',
     'log2_size': '.log2_size({log2_size})',
     'sets': '.sets({sets})',
     'log2_sets': '.log2_sets({log2_sets})',
