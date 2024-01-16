@@ -43,18 +43,18 @@ class address_slice;
 
 namespace data
 {
-  template <typename Rep, typename Unit>
-    class size;
+template <typename Rep, typename Unit>
+class size;
 
-  // Convenience definitions
-  using bytes     = size<long long, std::ratio<1>>;
-  using kibibytes = size<long long, kibi>;
-  using mebibytes = size<long long, mebi>;
-  using gibibytes = size<long long, gibi>;
-  using tebibytes = size<long long, tebi>;
-  using blocks    = size<long long, std::ratio<BLOCK_SIZE>>;
-  using pages     = size<long long, std::ratio<PAGE_SIZE>>;
-}
+// Convenience definitions
+using bytes = size<long long, std::ratio<1>>;
+using kibibytes = size<long long, kibi>;
+using mebibytes = size<long long, mebi>;
+using gibibytes = size<long long, gibi>;
+using tebibytes = size<long long, tebi>;
+using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
+using pages = size<long long, std::ratio<PAGE_SIZE>>;
+} // namespace data
 
 // Convenience definitions
 using address = address_slice<static_extent<std::numeric_limits<uint64_t>::digits, 0>>;

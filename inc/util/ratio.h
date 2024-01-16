@@ -19,13 +19,14 @@
 
 #include <ratio>
 
-namespace champsim {
+namespace champsim
+{
 using kibi = std::ratio<(1LL << 10)>;
 using mebi = std::ratio<(1LL << 20)>;
 using gibi = std::ratio<(1LL << 30)>;
 using tebi = std::ratio<(1LL << 40)>;
 using pebi = std::ratio<(1LL << 50)>;
 using exbi = std::ratio<(1LL << 60)>;
-}
+} // namespace champsim
 
 #endif

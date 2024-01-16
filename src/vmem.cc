@@ -29,9 +29,10 @@ inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
     : minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
-    next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))}, 0),
-    next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
-    last_ppage(champsim::lowest_address_for_size(champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
+      next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))}, 0),
+      next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
+      last_ppage(champsim::lowest_address_for_size(
+          champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
 {
   assert(page_table_page_size > champsim::data::kibibytes{1});
   assert(champsim::is_power_of_2(page_table_page_size.count()));
@@ -101,8 +102,10 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
   }
 
   auto offset = get_offset(vaddr, level);
-  champsim::address paddr{
-      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::lg2(pte_entry::byte_multiple), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))}, offset})};
+  champsim::address paddr{champsim::splice(
+      ppage->second,
+      champsim::address_slice{champsim::sized_extent{champsim::lg2(pte_entry::byte_multiple), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
+                              offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }

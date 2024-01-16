@@ -18,9 +18,9 @@
 
 namespace champsim::data::data_literals
 {
-    bytes     operator""_B  (unsigned long long val) { return bytes{static_cast<typename bytes::rep>(val)}; }
-    kibibytes operator""_kiB(unsigned long long val) { return kibibytes{static_cast<typename kibibytes::rep>(val)}; }
-    mebibytes operator""_MiB(unsigned long long val) { return mebibytes{static_cast<typename mebibytes::rep>(val)}; }
-    gibibytes operator""_GiB(unsigned long long val) { return gibibytes{static_cast<typename gibibytes::rep>(val)}; }
-    tebibytes operator""_TiB(unsigned long long val) { return tebibytes{static_cast<typename tebibytes::rep>(val)}; }
-}
+bytes operator""_B(unsigned long long val) { return bytes{static_cast<typename bytes::rep>(val)}; }
+kibibytes operator""_kiB(unsigned long long val) { return kibibytes{static_cast<typename kibibytes::rep>(val)}; }
+mebibytes operator""_MiB(unsigned long long val) { return mebibytes{static_cast<typename mebibytes::rep>(val)}; }
+gibibytes operator""_GiB(unsigned long long val) { return gibibytes{static_cast<typename gibibytes::rep>(val)}; }
+tebibytes operator""_TiB(unsigned long long val) { return tebibytes{static_cast<typename tebibytes::rep>(val)}; }
+} // namespace champsim::data::data_literals

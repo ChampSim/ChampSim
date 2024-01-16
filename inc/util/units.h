@@ -24,240 +24,229 @@
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
-#include "champsim.h"
 #include "bits.h"
+#include "champsim.h"
 #include "ratio.h"
 
 namespace champsim
 {
-  namespace data
+namespace data
+{
+template <typename Rep, typename Unit>
+class size
+{
+public:
+  using rep = Rep;
+  using unit = typename Unit::type;
+  constexpr static auto byte_multiple{unit::num};
+
+private:
+  rep m_count{};
+
+  template <typename Rep2, typename Unit2>
+  friend class size;
+
+public:
+  size() = default;
+  size(const size<Rep, Unit>& other) = default;
+  size<Rep, Unit>& operator=(const size<Rep, Unit>& other) = default;
+
+  constexpr explicit size(rep other) : m_count(other) {}
+
+  template <typename Rep2, typename Unit2>
+  constexpr size(const size<Rep2, Unit2>& other)
   {
-    template <typename Rep, typename Unit>
-    class size
-    {
-      public:
-      using rep = Rep;
-      using unit = typename Unit::type;
-      constexpr static auto byte_multiple{unit::num};
-
-      private:
-      rep m_count{};
-
-      template <typename Rep2, typename Unit2>
-      friend class size;
-
-      public:
-      size() = default;
-      size(const size<Rep, Unit>& other) = default;
-      size<Rep, Unit>& operator=(const size<Rep, Unit>& other) = default;
-
-      constexpr explicit size(rep other) : m_count(other) {}
-
-      template <typename Rep2, typename Unit2>
-      constexpr size(const size<Rep2, Unit2>& other)
-      {
-        using conversion = typename std::ratio_divide<Unit2, Unit>::type;
-        m_count = other.m_count * conversion::num / conversion::den;
-      }
-
-      constexpr auto count() const { return m_count; }
-
-      constexpr size<Rep, Unit> operator+() const
-      {
-        return *this;
-      }
-
-      constexpr size<Rep, Unit> operator-() const
-      {
-        return size<Rep, Unit>{-m_count};
-      }
-
-      constexpr size<Rep, Unit>& operator+=(const size<Rep, Unit>& other)
-      {
-        m_count += other.count();
-        return *this;
-      }
-
-      constexpr size<Rep, Unit>& operator-=(const size<Rep, Unit>& other)
-      {
-        m_count -= other.count();
-        return *this;
-      }
-
-      constexpr size<Rep, Unit>& operator*=(const rep& other)
-      {
-        m_count *= other;
-        return *this;
-      }
-
-      constexpr size<Rep, Unit>& operator/=(const rep& other)
-      {
-        m_count /= other;
-        return *this;
-      }
-
-      constexpr size<Rep, Unit>& operator%=(const rep& other)
-      {
-        m_count %= other;
-        return *this;
-      }
-
-      constexpr size<Rep, Unit>& operator%=(const size<Rep, Unit>& other)
-      {
-        m_count %= other.count();
-        return *this;
-      }
-    };
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator+(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      result_type retval{lhs};
-      retval += rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator-(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      result_type retval{lhs};
-      retval -= rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2>
-    auto constexpr operator*(const size<Rep1,Unit1>& lhs, const Rep2& rhs)
-    {
-      using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
-      result_type retval{lhs};
-      retval *= rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Rep2, class Unit2>
-    auto constexpr operator*(const Rep1& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      return rhs * lhs;
-    }
-
-    template<class Rep1, class Unit1, class Rep2>
-    auto constexpr operator/(const size<Rep1,Unit1>& lhs, const Rep2& rhs)
-    {
-      using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
-      result_type retval{lhs};
-      retval /= rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator/(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      result_type retval{lhs};
-      retval /= rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2>
-    auto constexpr operator%(const size<Rep1,Unit1>& lhs, const Rep2& rhs)
-    {
-      using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
-      result_type retval{lhs};
-      retval %= result_type{rhs};
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator%(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      result_type retval{lhs};
-      retval %= rhs;
-      return retval;
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator==(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      return comparison_type{lhs}.count() == comparison_type{rhs}.count();
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator!=(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      return !(lhs == rhs);
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator<(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
-      return comparison_type{lhs}.count() < comparison_type{rhs}.count();
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator<=(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      return lhs < rhs || lhs == rhs;
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator>(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      return !(lhs <= rhs);
-    }
-
-    template<class Rep1, class Unit1, class Rep2, class Unit2>
-    auto constexpr operator>=(const size<Rep1,Unit1>& lhs, const size<Rep2,Unit2>& rhs)
-    {
-      return !(lhs < rhs);
-    }
-
-    namespace data_literals
-    {
-      champsim::data::bytes     operator""_B  (unsigned long long val);
-      champsim::data::kibibytes operator""_kiB(unsigned long long val);
-      champsim::data::mebibytes operator""_MiB(unsigned long long val);
-      champsim::data::gibibytes operator""_GiB(unsigned long long val);
-      champsim::data::tebibytes operator""_TiB(unsigned long long val);
-    }
+    using conversion = typename std::ratio_divide<Unit2, Unit>::type;
+    m_count = other.m_count * conversion::num / conversion::den;
   }
+
+  constexpr auto count() const { return m_count; }
+
+  constexpr size<Rep, Unit> operator+() const { return *this; }
+
+  constexpr size<Rep, Unit> operator-() const { return size<Rep, Unit>{-m_count}; }
+
+  constexpr size<Rep, Unit>& operator+=(const size<Rep, Unit>& other)
+  {
+    m_count += other.count();
+    return *this;
+  }
+
+  constexpr size<Rep, Unit>& operator-=(const size<Rep, Unit>& other)
+  {
+    m_count -= other.count();
+    return *this;
+  }
+
+  constexpr size<Rep, Unit>& operator*=(const rep& other)
+  {
+    m_count *= other;
+    return *this;
+  }
+
+  constexpr size<Rep, Unit>& operator/=(const rep& other)
+  {
+    m_count /= other;
+    return *this;
+  }
+
+  constexpr size<Rep, Unit>& operator%=(const rep& other)
+  {
+    m_count %= other;
+    return *this;
+  }
+
+  constexpr size<Rep, Unit>& operator%=(const size<Rep, Unit>& other)
+  {
+    m_count %= other.count();
+    return *this;
+  }
+};
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator+(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  result_type retval{lhs};
+  retval += rhs;
+  return retval;
 }
 
-template<class Rep1, class Unit1, class Rep2, class Unit2>
-struct std::common_type<champsim::data::size<Rep1, Unit1>, champsim::data::size<Rep2, Unit2>>
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator-(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using type = champsim::data::size<
-    typename std::common_type<Rep1, Rep2>::type,
-    typename std::ratio<
-      std::gcd(Unit1::num, Unit2::num),
-      std::lcm(Unit1::den, Unit2::den)
-    >::type
-  >;
+  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  result_type retval{lhs};
+  retval -= rhs;
+  return retval;
+}
+
+template <class Rep1, class Unit1, class Rep2>
+auto constexpr operator*(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
+{
+  using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
+  result_type retval{lhs};
+  retval *= rhs;
+  return retval;
+}
+
+template <class Rep1, class Rep2, class Unit2>
+auto constexpr operator*(const Rep1& lhs, const size<Rep2, Unit2>& rhs)
+{
+  return rhs * lhs;
+}
+
+template <class Rep1, class Unit1, class Rep2>
+auto constexpr operator/(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
+{
+  using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
+  result_type retval{lhs};
+  retval /= rhs;
+  return retval;
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator/(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  result_type retval{lhs};
+  retval /= rhs;
+  return retval;
+}
+
+template <class Rep1, class Unit1, class Rep2>
+auto constexpr operator%(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
+{
+  using result_type = size<typename std::common_type<Rep1, Rep2>::type, Unit1>;
+  result_type retval{lhs};
+  retval %= result_type{rhs};
+  return retval;
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator%(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  result_type retval{lhs};
+  retval %= rhs;
+  return retval;
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator==(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  return comparison_type{lhs}.count() == comparison_type{rhs}.count();
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator!=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  return !(lhs == rhs);
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator<(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  return comparison_type{lhs}.count() < comparison_type{rhs}.count();
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator<=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  return lhs < rhs || lhs == rhs;
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator>(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  return !(lhs <= rhs);
+}
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+auto constexpr operator>=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
+{
+  return !(lhs < rhs);
+}
+
+namespace data_literals
+{
+champsim::data::bytes operator""_B(unsigned long long val);
+champsim::data::kibibytes operator""_kiB(unsigned long long val);
+champsim::data::mebibytes operator""_MiB(unsigned long long val);
+champsim::data::gibibytes operator""_GiB(unsigned long long val);
+champsim::data::tebibytes operator""_TiB(unsigned long long val);
+} // namespace data_literals
+} // namespace data
+} // namespace champsim
+
+template <class Rep1, class Unit1, class Rep2, class Unit2>
+struct std::common_type<champsim::data::size<Rep1, Unit1>, champsim::data::size<Rep2, Unit2>> {
+  using type = champsim::data::size<typename std::common_type<Rep1, Rep2>::type,
+                                    typename std::ratio<std::gcd(Unit1::num, Unit2::num), std::lcm(Unit1::den, Unit2::den)>::type>;
 };
 
 template <typename Rep, typename Unit>
 struct fmt::formatter<champsim::data::size<Rep, Unit>> {
   using value_type = champsim::data::size<Rep, Unit>;
-  constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+  constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator
+  {
     // Check if reached the end of the range:
-    if (ctx.begin() != ctx.end()) ctx.on_error("invalid format");
+    if (ctx.begin() != ctx.end())
+      ctx.on_error("invalid format");
 
     // Return an iterator past the end of the parsed range:
     return ctx.end();
   }
 
-  auto format(const value_type& val, format_context& ctx) const -> format_context::iterator {
-    const static std::map<unsigned long long, std::string_view> suffix_map{
-      {champsim::data::bytes::byte_multiple, std::string_view{"B"}},
-      {champsim::data::kibibytes::byte_multiple, std::string_view{"kiB"}},
-      {champsim::data::mebibytes::byte_multiple, std::string_view{"MiB"}},
-      {champsim::data::gibibytes::byte_multiple, std::string_view{"GiB"}},
-      {champsim::data::tebibytes::byte_multiple, std::string_view{"TiB"}}
-    };
+  auto format(const value_type& val, format_context& ctx) const -> format_context::iterator
+  {
+    const static std::map<unsigned long long, std::string_view> suffix_map{{champsim::data::bytes::byte_multiple, std::string_view{"B"}},
+                                                                           {champsim::data::kibibytes::byte_multiple, std::string_view{"kiB"}},
+                                                                           {champsim::data::mebibytes::byte_multiple, std::string_view{"MiB"}},
+                                                                           {champsim::data::gibibytes::byte_multiple, std::string_view{"GiB"}},
+                                                                           {champsim::data::tebibytes::byte_multiple, std::string_view{"TiB"}}};
 
     auto suffix_it = suffix_map.find(value_type::byte_multiple);
     std::string_view suffix{};

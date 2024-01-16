@@ -1,11 +1,11 @@
 #ifndef CORE_STATS_H
 #define CORE_STATS_H
 
-#include "instruction.h"
-#include "event_counter.h"
-
 #include <cstdint>
 #include <string>
+
+#include "event_counter.h"
+#include "instruction.h"
 
 struct cpu_stats {
   std::string name;

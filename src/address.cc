@@ -1,4 +1,5 @@
 #include "address.h"
+
 #include "champsim.h"
 #include "util/units.h"
 

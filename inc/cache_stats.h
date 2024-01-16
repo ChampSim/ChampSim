@@ -1,13 +1,13 @@
 #ifndef CACHE_STATS_H
 #define CACHE_STATS_H
 
-#include "channel.h"
-#include "event_counter.h"
-
 #include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
+
+#include "channel.h"
+#include "event_counter.h"
 
 struct cache_stats {
   std::string name;

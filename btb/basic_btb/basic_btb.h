@@ -7,12 +7,13 @@
 #include "modules.h"
 #include "return_stack.h"
 
-class basic_btb : champsim::modules::btb {
+class basic_btb : champsim::modules::btb
+{
   return_stack ras{};
   indirect_predictor indirect{};
   direct_predictor direct{};
 
-  public:
+public:
   using btb::btb;
   basic_btb() : btb(nullptr) {}
 

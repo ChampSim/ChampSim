@@ -56,8 +56,7 @@ constexpr bool is_power_of_2(T n)
 constexpr long long static ipow(long long base, unsigned exp)
 {
   long long result = 1;
-  for (;;)
-  {
+  for (;;) {
     if (exp & 1)
       result *= base;
     exp >>= 1;

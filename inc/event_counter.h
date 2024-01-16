@@ -84,9 +84,8 @@ public:
 
   event_counter<key_type>& operator+=(const event_counter<key_type>& rhs)
   {
-    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values), [&rhs](auto val, auto key) {
-      return val + rhs.value_or(key, value_type{});
-    });
+    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values),
+                   [&rhs](auto val, auto key) { return val + rhs.value_or(key, value_type{}); });
     return *this;
   }
 
@@ -98,9 +97,8 @@ public:
 
   event_counter<key_type>& operator-=(const event_counter<key_type>& rhs)
   {
-    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values), [&rhs](auto val, auto key) {
-      return val - rhs.value_or(key, value_type{});
-    });
+    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values),
+                   [&rhs](auto val, auto key) { return val - rhs.value_or(key, value_type{}); });
     return *this;
   }
 
