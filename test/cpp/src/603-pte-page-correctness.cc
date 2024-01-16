@@ -14,7 +14,7 @@ SCENARIO("The page table steps have correct offsets") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
-    VirtualMemory vmem{1<<12, levels, std::chrono::nanoseconds{640}, dram};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
@@ -56,7 +56,7 @@ SCENARIO("The page table steps have correct offsets") {
 
       THEN("The " + std::to_string(level) + "th request has the correct offset") {
         REQUIRE(mock_ll.packet_count() == levels);
-        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12).to<std::size_t>() == level * PTE_BYTES);
+        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12).to<std::size_t>() == level * pte_entry::byte_multiple);
       }
     }
   }

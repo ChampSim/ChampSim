@@ -1,5 +1,5 @@
 /*
- *    Copyright 2023 The ChampSim Contributors
+ *    Copyright 2024 The ChampSim Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,19 @@
  * limitations under the License.
  */
 
-/*
-#ifdef CHAMPSIM_MODULE
-#error "Modules should include msl/bits.h"
-#endif
-*/
+#ifndef UTIL_RATIO_H
+#define UTIL_RATIO_H
 
-#ifndef UTIL_BITS_H
-#define UTIL_BITS_H
-
-#include <utility>
-
-#include "../msl/bits.h"
+#include <ratio>
 
 namespace champsim
 {
-using msl::bitmask;
-using msl::ipow;
-using msl::is_power_of_2;
-using msl::lg2;
-using msl::next_pow2;
-using msl::splice_bits;
+using kibi = std::ratio<(1LL << 10)>;
+using mebi = std::ratio<(1LL << 20)>;
+using gibi = std::ratio<(1LL << 30)>;
+using tebi = std::ratio<(1LL << 40)>;
+using pebi = std::ratio<(1LL << 50)>;
+using exbi = std::ratio<(1LL << 60)>;
 } // namespace champsim
 
 #endif

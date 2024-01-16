@@ -26,7 +26,7 @@ def channel_name(*, lower, upper):
     return f'{upper}_to_{lower}_channel'
 
 pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}}};'
-vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}}};'
+vmem_fmtstr = 'VirtualMemory vmem{{champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}}};'
 
 queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
 
@@ -68,7 +68,7 @@ dib_builder_parts = {
 }
 
 cache_builder_parts = {
-    'size': '.size({size})',
+    'size': '.size(champsim::data::bytes{{{size}}})',
     'log2_size': '.log2_size({log2_size})',
     'sets': '.sets({sets})',
     'log2_sets': '.log2_sets({log2_sets})',

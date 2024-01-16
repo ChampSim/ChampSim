@@ -14,7 +14,7 @@ class event_counter
 {
 public:
   using key_type = std::remove_cv_t<Key>;
-  using value_type = uint64_t;
+  using value_type = long;
 
 private:
   std::vector<key_type> keys{};
@@ -81,6 +81,32 @@ public:
   }
 
   auto total() const { return std::accumulate(std::begin(values), std::end(values), value_type{}); }
+
+  event_counter<key_type>& operator+=(const event_counter<key_type>& rhs)
+  {
+    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values),
+                   [&rhs](auto val, auto key) { return val + rhs.value_or(key, value_type{}); });
+    return *this;
+  }
+
+  friend auto operator+(event_counter<key_type> lhs, const event_counter<key_type>& rhs)
+  {
+    lhs += rhs;
+    return lhs;
+  }
+
+  event_counter<key_type>& operator-=(const event_counter<key_type>& rhs)
+  {
+    std::transform(std::begin(values), std::end(values), std::cbegin(keys), std::begin(values),
+                   [&rhs](auto val, auto key) { return val - rhs.value_or(key, value_type{}); });
+    return *this;
+  }
+
+  friend auto operator-(event_counter<key_type> lhs, const event_counter<key_type>& rhs)
+  {
+    lhs -= rhs;
+    return lhs;
+  }
 };
 } // namespace champsim::stats
 

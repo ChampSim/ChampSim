@@ -6,7 +6,7 @@
 SCENARIO("The virtual memory remove PA asked by PTE") {
   GIVEN("A large virtual memory") {
     constexpr unsigned levels = 5;
-    constexpr uint64_t pte_page_size = 1ull << 12;
+    constexpr champsim::data::bytes pte_page_size{1ull << 12};
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory uut{pte_page_size, levels, std::chrono::nanoseconds{6400}, dram};
 

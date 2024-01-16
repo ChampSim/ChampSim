@@ -25,19 +25,19 @@ struct AdjDiffMatcher : Catch::Matchers::MatcherGenericBase {
 };
 
 SCENARIO("The virtual memory issues references to blocks within a page if they are in the same level") {
-  auto pte_page_size = (1ull << 11);
+  champsim::data::bytes pte_page_size{1LL << 11};
   auto level = GENERATE(as<std::size_t>{}, 2,3,4);
 
   GIVEN("A large virtual memory") {
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory uut{pte_page_size, 5, std::chrono::nanoseconds{6400}, dram};
 
-    champsim::address::difference_type dist{PAGE_SIZE};
+    champsim::data::bytes dist{champsim::data::pages{1}};
     for (std::size_t i = 0; i < level; ++i)
-      dist *= pte_page_size;
+      dist *= pte_page_size.count();
     std::vector<champsim::address> req_pages{};
     req_pages.push_back(champsim::address{0xcccc000000000000});
-    for (std::size_t i = 1; i < (PAGE_SIZE / pte_page_size); ++i)
+    for (auto i = pte_page_size; i < champsim::data::pages{1}; i += pte_page_size)
       req_pages.push_back(req_pages.back() + dist);
 
     WHEN("A full set of requests for PTE entries at level " + std::to_string(level) + " are called for") {
@@ -52,7 +52,7 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
       }
 
       THEN("The entries are spaced by pte_page_size") {
-        REQUIRE_THAT(given_pages, AdjDiffMatcher{(int64_t)pte_page_size});
+        REQUIRE_THAT(given_pages, AdjDiffMatcher{pte_page_size.count()});
       }
     }
   }

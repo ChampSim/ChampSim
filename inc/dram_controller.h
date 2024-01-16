@@ -31,15 +31,8 @@
 #include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
+#include "dram_stats.h"
 #include "operable.h"
-
-struct dram_stats {
-  std::string name{};
-  champsim::chrono::clock::duration dbus_cycle_congested{};
-  uint64_t dbus_count_congested = 0;
-
-  unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
-};
 
 struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;
@@ -140,7 +133,7 @@ public:
   void end_phase(unsigned cpu) final;
   void print_deadlock() final;
 
-  [[nodiscard]] std::size_t size() const;
+  [[nodiscard]] champsim::data::bytes size() const;
 
   unsigned long dram_get_channel(champsim::address address) const;
   unsigned long dram_get_rank(champsim::address address) const;

@@ -24,8 +24,9 @@
 #include "champsim_constants.h"
 #include "deadlock.h"
 #include "instruction.h"
-#include "util/bits.h"
+#include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
+#include "util/units.h"
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul)
@@ -245,12 +246,12 @@ long DRAM_CHANNEL::schedule_packets()
 
 void MEMORY_CONTROLLER::initialize()
 {
-  long long int dram_size = DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE / 1024 / 1024; // in MiB
+  champsim::data::mebibytes dram_size{this->size()};
   fmt::print("Off-chip DRAM Size: ");
-  if (dram_size > 1024) {
-    fmt::print("{} GiB", dram_size / 1024);
+  if (dram_size > champsim::data::mebibytes{1024}) {
+    fmt::print("{}", champsim::data::gibibytes{dram_size});
   } else {
-    fmt::print("{} MiB", dram_size);
+    fmt::print("{}", dram_size);
   }
   fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, std::chrono::microseconds{1} / clock_period);
 }
@@ -462,7 +463,7 @@ unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
   return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_ROWS));
 }
 
-std::size_t MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * BLOCK_SIZE; }
+champsim::data::bytes MEMORY_CONTROLLER::size() const { return champsim::data::blocks{DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS}; }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()

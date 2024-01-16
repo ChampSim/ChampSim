@@ -19,19 +19,14 @@
 
 #include <cstdint>
 #include <map>
-#include <optional>
 
 #include "address.h"
 #include "champsim.h"
 #include "chrono.h"
-#include "champsim_constants.h"
 
 class MEMORY_CONTROLLER;
 
-// reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<uint64_t>(PAGE_SIZE, 1ULL << 20);
-
-inline constexpr std::size_t PTE_BYTES = 8;
+using pte_entry = champsim::data::size<long long, std::ratio<8>>;
 
 class VirtualMemory
 {
@@ -39,22 +34,24 @@ private:
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
 
+public:
+  const champsim::chrono::clock::duration minor_fault_penalty;
+  const std::size_t pt_levels;
+  const pte_entry pte_page_size; // Size of a PTE page
+
+private:
   champsim::page_number active_pte_page{};
   champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY / PAGE_SIZE};
+  champsim::page_number next_ppage;
   champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
 
 public:
-  const champsim::chrono::clock::duration minor_fault_penalty;
-  const std::size_t pt_levels;
-  const uint64_t pte_page_size; // Size of a PTE page
-
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram);
+  VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram);
   [[nodiscard]] uint64_t shamt(std::size_t level) const;
   [[nodiscard]] uint64_t get_offset(champsim::address vaddr, std::size_t level) const;
   [[nodiscard]] std::size_t available_ppages() const;
