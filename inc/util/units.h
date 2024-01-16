@@ -106,7 +106,7 @@ public:
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator+(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   result_type retval{lhs};
   retval += rhs;
   return retval;
@@ -115,7 +115,7 @@ auto constexpr operator+(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& 
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator-(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   result_type retval{lhs};
   retval -= rhs;
   return retval;
@@ -148,7 +148,7 @@ auto constexpr operator/(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator/(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   result_type retval{lhs};
   retval /= rhs;
   return retval;
@@ -166,7 +166,7 @@ auto constexpr operator%(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator%(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   result_type retval{lhs};
   retval %= rhs;
   return retval;
@@ -175,7 +175,7 @@ auto constexpr operator%(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& 
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator==(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using comparison_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   return comparison_type{lhs}.count() == comparison_type{rhs}.count();
 }
 
@@ -188,7 +188,7 @@ auto constexpr operator!=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>&
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator<(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using comparison_type = typename std::common_type<decltype(lhs), decltype(rhs)>::type;
+  using comparison_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
   return comparison_type{lhs}.count() < comparison_type{rhs}.count();
 }
 
