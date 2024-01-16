@@ -18,8 +18,8 @@
 
 #include <cmath>
 #include <numeric>
-#include <fmt/core.h>
 #include <fmt/chrono.h>
+#include <fmt/core.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -34,8 +34,8 @@ PageTableWalker::PageTableWalker(champsim::ptw_builder b)
     : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name),
       MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
       MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
-      MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})), HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem),
-      CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::address{}, b.m_vmem->pt_levels).first)
+      MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
+      HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::address{}, b.m_vmem->pt_levels).first)
 {
   std::vector<decltype(b.m_pscl)::value_type> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
@@ -84,8 +84,9 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
 {
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
-               fill_mshr.v_address, *fill_mshr.data, fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple), LOG2_PAGE_SIZE>().to<int>(),
-               fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
+               fill_mshr.v_address, *fill_mshr.data,
+               fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple), LOG2_PAGE_SIZE>().to<int>(), fill_mshr.translation_level,
+               current_time.time_since_epoch() / clock_period);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;

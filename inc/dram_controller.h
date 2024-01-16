@@ -88,8 +88,9 @@ struct DRAM_CHANNEL final : public champsim::operable {
   const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
   const std::size_t ROWS, COLUMNS, RANKS, BANKS;
 
-  DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd, champsim::chrono::picoseconds t_cas,
-    champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
+  DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+               champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns, std::size_t ranks,
+               std::size_t banks);
 
   void check_write_collision();
   void check_read_collision();

@@ -51,7 +51,8 @@ private:
 
 public:
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram);
+  VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
+                MEMORY_CONTROLLER& dram);
   [[nodiscard]] uint64_t shamt(std::size_t level) const;
   [[nodiscard]] uint64_t get_offset(champsim::address vaddr, std::size_t level) const;
   [[nodiscard]] std::size_t available_ppages() const;

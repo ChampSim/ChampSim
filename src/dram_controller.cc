@@ -37,11 +37,13 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   }
 }
 
-DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd, champsim::chrono::picoseconds t_cas,
-    champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
+DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns,
+                           std::size_t ranks, std::size_t banks)
     : champsim::operable(clock_period_), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
-      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))),
-          ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
+      DRAM_DBUS_RETURN_TIME(
+          std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))),
+      ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
 {
 }
 
@@ -157,7 +159,7 @@ long DRAM_CHANNEL::populate_dbus()
   long progress{0};
 
   auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-      [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
+                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
@@ -232,7 +234,7 @@ long DRAM_CHANNEL::schedule_packets()
 
       // this bank is now busy
       bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row},
-                                      current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
+                              current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
 
       iter_next_schedule->value().scheduled = true;
       iter_next_schedule->value().ready_time = champsim::chrono::clock::time_point::max();

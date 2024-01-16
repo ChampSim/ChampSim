@@ -23,10 +23,10 @@ namespace champsim
 {
 namespace chrono
 {
-using std::chrono::seconds;
-using std::chrono::milliseconds;
 using std::chrono::microseconds;
+using std::chrono::milliseconds;
 using std::chrono::nanoseconds;
+using std::chrono::seconds;
 using picoseconds = std::chrono::duration<std::intmax_t, std::pico>;
 
 class clock

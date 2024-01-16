@@ -227,7 +227,8 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   instr.dib_checked = true;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(), current_time.time_since_epoch()/clock_period);
+    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(),
+               current_time.time_since_epoch() / clock_period);
   }
 }
 
@@ -344,7 +345,8 @@ long O3_CPU::dispatch_instruction()
   champsim::bandwidth available_dispatch_bandwidth{DISPATCH_WIDTH};
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
-  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().ready_time <= current_time && std::size(ROB) != ROB_SIZE
+  while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().ready_time <= current_time
+         && std::size(ROB) != ROB_SIZE
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
@@ -472,7 +474,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
   if constexpr (champsim::debug_print) {
     fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {} cycle: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
-               std::size(instr.destination_memory), current_time.time_since_epoch()/clock_period);
+               std::size(instr.destination_memory), current_time.time_since_epoch() / clock_period);
   }
 }
 
@@ -654,8 +656,9 @@ long O3_CPU::retire_rob()
       champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
   assert(std::distance(retire_begin, retire_end) >= 0); // end succeeds begin
   if constexpr (champsim::debug_print) {
-    std::for_each(retire_begin, retire_end,
-                  [cycle = current_time.time_since_epoch()/clock_period](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle); });
+    std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {
+      fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
+    });
   }
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
@@ -694,8 +697,14 @@ void O3_CPU::print_deadlock()
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_time.time_since_epoch() / clock_period);
 
   auto instr_pack = [period = clock_period](const auto& entry) {
-    return std::tuple{entry.instr_id,   entry.fetch_issued, entry.fetch_completed,    entry.scheduled,
-                      entry.executed,   entry.completed,    +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops,
+    return std::tuple{entry.instr_id,
+                      entry.fetch_issued,
+                      entry.fetch_completed,
+                      entry.scheduled,
+                      entry.executed,
+                      entry.completed,
+                      +entry.num_reg_dependent,
+                      entry.num_mem_ops() - entry.completed_mem_ops,
                       entry.ready_time.time_since_epoch() / period};
   };
   std::string_view instr_fmt{
