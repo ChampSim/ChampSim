@@ -31,13 +31,11 @@ class MEMORY_CONTROLLER;
 // reserve 1MB or one page of space
 inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, champsim::data::mebibytes{1});
 
-inline constexpr std::size_t PTE_BYTES = 8;
+using pte_entry = champsim::data::size<long long, std::ratio<8>>;
 
 class VirtualMemory
 {
 private:
-  using pte_entry = champsim::data::size<long long, std::ratio<PTE_BYTES>>;
-
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
 

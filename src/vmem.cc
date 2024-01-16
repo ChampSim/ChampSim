@@ -96,7 +96,7 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
 
   auto offset = get_offset(vaddr, level);
   champsim::address paddr{
-      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::lg2(PTE_BYTES), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))}, offset})};
+      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::lg2(pte_entry::byte_multiple), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))}, offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }

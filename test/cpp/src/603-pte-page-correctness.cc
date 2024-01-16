@@ -55,7 +55,7 @@ SCENARIO("The page table steps have correct offsets") {
 
       THEN("The " + std::to_string(level) + "th request has the correct offset") {
         REQUIRE(mock_ll.packet_count() == levels);
-        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12).to<std::size_t>() == level * PTE_BYTES);
+        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12).to<std::size_t>() == level * pte_entry::byte_multiple);
       }
     }
   }
