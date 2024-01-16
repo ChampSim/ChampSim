@@ -32,7 +32,6 @@
 #include "channel.h"
 #include "dram_stats.h"
 #include "operable.h"
-#include "util/units.h"
 
 struct DRAM_CHANNEL final : public champsim::operable {
   using response_type = typename champsim::channel::response_type;

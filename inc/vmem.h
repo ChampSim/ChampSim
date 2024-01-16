@@ -19,17 +19,11 @@
 
 #include <cstdint>
 #include <map>
-#include <optional>
 
 #include "address.h"
 #include "champsim.h"
-#include "champsim_constants.h"
-#include "util/units.h"
 
 class MEMORY_CONTROLLER;
-
-// reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, champsim::data::mebibytes{1});
 
 using pte_entry = champsim::data::size<long long, std::ratio<8>>;
 
@@ -46,12 +40,10 @@ public:
 
 private:
   champsim::page_number active_pte_page{};
-  champsim::address_slice<champsim::dynamic_extent> next_pte_page{champsim::dynamic_extent{LOG2_PAGE_SIZE,
-    static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))
-  }, 0};
+  champsim::address_slice<champsim::dynamic_extent> next_pte_page;
 
-  champsim::page_number next_ppage{champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)};
-  champsim::page_number last_ppage{champsim::lowest_address_for_size(champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})}; // cast protected by assert in constructor
+  champsim::page_number next_ppage;
+  champsim::page_number last_ppage;
 
   [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
