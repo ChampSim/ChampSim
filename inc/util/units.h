@@ -234,7 +234,7 @@ struct fmt::formatter<champsim::data::size<Rep, Unit>> {
   {
     // Check if reached the end of the range:
     if (ctx.begin() != ctx.end())
-      ctx.on_error("invalid format");
+      throw fmt::format_error{"invalid format"};
 
     // Return an iterator past the end of the parsed range:
     return ctx.end();
