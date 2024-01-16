@@ -117,7 +117,7 @@ class CacheBuilderTests(unittest.TestCase):
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
     def test_size(self):
-        self.get_element_diff(['.size(1)'], size=1)
+        self.get_element_diff(['.size(champsim::data::bytes{1})'], size=1)
 
     def test_log2_size(self):
         self.get_element_diff(['.log2_size(1)'], log2_size=1)
