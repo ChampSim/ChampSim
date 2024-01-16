@@ -1,6 +1,7 @@
 #include <catch.hpp>
 #include "util/bits.h"
 #include <bitset>
+#include <limits>
 
 TEST_CASE("lg2 correctly identifies powers of 2") {
   auto i = GENERATE(range(0u,64u));
@@ -25,6 +26,33 @@ TEST_CASE("bitmask correctly produces lower-order bits") {
   REQUIRE(std::bitset<64>{champsim::bitmask(i)}.count() == i);
 }
 
+TEMPLATE_TEST_CASE("is_power_of_2 correctly identifies powers", "",
+    char, unsigned char, short, unsigned short, int, unsigned int, long, unsigned long) {
+  auto shamt = GENERATE(range(2,std::numeric_limits<TestType>::digits-1));
+  auto val = TestType{1} << shamt; // certainly fits within the type
+  REQUIRE_FALSE(champsim::is_power_of_2(val-1));
+  REQUIRE(champsim::is_power_of_2(val));
+  REQUIRE_FALSE(champsim::is_power_of_2(val+1));
+}
+
+TEST_CASE("ipow takes 0 exponent to 1") {
+  auto base = GENERATE(range(0, 64));
+  REQUIRE(champsim::ipow(base, 0) == 1);
+}
+
+TEST_CASE("ipow takes 1 exponent to the base") {
+  auto base = GENERATE(range(0, 64));
+  REQUIRE(champsim::ipow(base, 1) == base);
+}
+
+TEST_CASE("ipow operates correctly for higher powers") {
+  CHECK(champsim::ipow(2, 2) == 4);
+  CHECK(champsim::ipow(2, 3) == 8);
+  CHECK(champsim::ipow(3, 2) == 9);
+  CHECK(champsim::ipow(3, 3) == 27);
+  CHECK(champsim::ipow(16, 4) == 65536);
+  CHECK(champsim::ipow(512, 4) == (1ll << (9*4)));
+}
 
 TEST_CASE("bitmask correctly produces slice masks") {
   auto i = GENERATE(table<unsigned, unsigned>({

@@ -32,6 +32,8 @@ namespace champsim
 using msl::bitmask;
 using msl::lg2;
 using msl::next_pow2;
+using msl::is_power_of_2;
+using msl::ipow;
 using msl::splice_bits;
 } // namespace champsim
 

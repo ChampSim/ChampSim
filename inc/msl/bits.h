@@ -43,6 +43,32 @@ constexpr T next_pow2(T n)
   return n;
 }
 
+template <typename T>
+constexpr bool is_power_of_2(T n)
+{
+  return (n == T{1} << lg2(n));
+}
+
+/**
+ * Compute an integer power
+ * This function may overflow very easily. Use only for small bases or very small exponents.
+ */
+constexpr long long static ipow(long long base, unsigned exp)
+{
+  long long result = 1;
+  for (;;)
+  {
+    if (exp & 1)
+      result *= base;
+    exp >>= 1;
+    if (!exp)
+      break;
+    base *= base;
+  }
+
+  return result;
+}
+
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
   if (begin - end >= std::numeric_limits<uint64_t>::digits) {
