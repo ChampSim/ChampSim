@@ -51,8 +51,7 @@ namespace champsim
       size(const size<Rep, Unit>& other) = default;
       size<Rep, Unit>& operator=(const size<Rep, Unit>& other) = default;
 
-      template <typename Rep2>
-      constexpr explicit size(const Rep2& other) : m_count(other) {}
+      constexpr explicit size(rep other) : m_count(other) {}
 
       template <typename Rep2, typename Unit2>
       constexpr size(const size<Rep2, Unit2>& other)
@@ -61,7 +60,7 @@ namespace champsim
         m_count = other.m_count * conversion::num / conversion::den;
       }
 
-      auto count() const { return m_count; }
+      constexpr auto count() const { return m_count; }
 
       constexpr size<Rep, Unit> operator+() const
       {

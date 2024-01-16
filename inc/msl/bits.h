@@ -23,9 +23,9 @@
 namespace champsim::msl
 {
 template <typename T>
-constexpr T lg2(T n)
+constexpr auto lg2(T n)
 {
-  T result = 0;
+  std::make_unsigned_t<T> result{};
   while (n >>= 1) {
     ++result;
   }
@@ -36,7 +36,7 @@ template <typename T>
 constexpr T next_pow2(T n)
 {
   n--;
-  for (int i = 0; i < lg2(std::numeric_limits<T>::digits); ++i) {
+  for (unsigned i = 0; i < lg2(std::numeric_limits<T>::digits); ++i) {
     n |= n >> (1u << i);
   }
   n++;

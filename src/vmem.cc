@@ -45,7 +45,7 @@ uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE +
 uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
 {
   const auto lower = shamt(level);
-  const std::size_t size = champsim::lg2(pte_page_size.count());
+  const auto size = static_cast<std::size_t>(champsim::lg2(pte_page_size.count()));
   return vaddr.slice(champsim::sized_extent{lower, size}).to<uint64_t>();
 }
 

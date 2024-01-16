@@ -468,7 +468,7 @@ unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
   return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_ROWS));
 }
 
-champsim::data::bytes MEMORY_CONTROLLER::size() const { return DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS * champsim::data::blocks{1}; }
+champsim::data::bytes MEMORY_CONTROLLER::size() const { return champsim::data::blocks{DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS}; }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()
