@@ -14,7 +14,7 @@ SCENARIO("The page table steps have correct offsets") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
     MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, 200, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}

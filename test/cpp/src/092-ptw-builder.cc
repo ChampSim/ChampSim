@@ -10,7 +10,7 @@
 
 TEST_CASE("The MSHR factor uses the number of upper levels to determine the PTW's default number of MSHRs") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = GENERATE(1u,2u,4u,6u);
   auto mshr_factor = 2u;
@@ -29,7 +29,7 @@ TEST_CASE("The MSHR factor uses the number of upper levels to determine the PTW'
 
 TEST_CASE("The MSHR factor can control the PTW's default number of MSHRs") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = 2u;
   auto mshr_factor = GENERATE(1u,2u,4u,6u);
@@ -48,7 +48,7 @@ TEST_CASE("The MSHR factor can control the PTW's default number of MSHRs") {
 
 TEST_CASE("Specifying the PTW's MSHR size overrides the MSHR factor") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = 2u;
   auto mshr_factor = 2u;
@@ -69,7 +69,7 @@ TEST_CASE("Specifying the PTW's MSHR size overrides the MSHR factor") {
 
 TEST_CASE("The bandwidth factor uses the number of upper levels to determine the PTW's default tag and fill bandwidth") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = GENERATE(1u,2u,4u,6u);
   auto bandwidth_factor = 2u;
@@ -89,7 +89,7 @@ TEST_CASE("The bandwidth factor uses the number of upper levels to determine the
 
 TEST_CASE("The bandwidth factor can control the PTW's default tag bandwidth") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = 2u;
   auto bandwidth_factor = GENERATE(1u,2u,4u,6u);
@@ -109,7 +109,7 @@ TEST_CASE("The bandwidth factor can control the PTW's default tag bandwidth") {
 
 TEST_CASE("Specifying the tag bandwidth overrides the PTW's bandwidth factor") {
   MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-  VirtualMemory vmem{1<<12, 4, 200, dram};
+  VirtualMemory vmem{champsim::data::bytes{1<<12}, 4, 200, dram};
 
   auto num_uls = 2u;
   auto bandwidth_factor = 2u;

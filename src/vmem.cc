@@ -24,13 +24,11 @@
 #include "dram_controller.h"
 #include "util/bits.h"
 
-VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
-    : next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, champsim::lg2(page_table_page_size)}, 0),
-      last_ppage(1ULL << (champsim::lg2(page_table_page_size / PTE_BYTES) * page_table_levels)), minor_fault_penalty(minor_penalty),
-      pt_levels(page_table_levels), pte_page_size(page_table_page_size)
+VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
+    : minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size)
 {
-  assert(page_table_page_size > 1024);
-  assert(page_table_page_size == (1ULL << champsim::lg2(page_table_page_size)));
+  assert(page_table_page_size > champsim::data::kibibytes{1});
+  assert(champsim::is_power_of_2(page_table_page_size.count()));
   assert(last_ppage > next_ppage);
 
   auto required_bits = LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>());
@@ -42,12 +40,13 @@ VirtualMemory::VirtualMemory(uint64_t page_table_page_size, std::size_t page_tab
   }
 }
 
-uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size / PTE_BYTES) * (level - 1); }
+uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size.count()) * (level - 1); }
 
 uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
 {
   const auto lower = shamt(level);
-  return vaddr.slice(champsim::sized_extent{lower, champsim::lg2(pte_page_size / PTE_BYTES)}).to<uint64_t>();
+  const std::size_t size = champsim::lg2(pte_page_size.count());
+  return vaddr.slice(champsim::sized_extent{lower, size}).to<uint64_t>();
 }
 
 champsim::page_number VirtualMemory::ppage_front() const
@@ -97,7 +96,7 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
 
   auto offset = get_offset(vaddr, level);
   champsim::address paddr{
-      champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::lg2(pte_page_size), champsim::lg2(PTE_BYTES)}, offset})};
+      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::lg2(PTE_BYTES), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))}, offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }

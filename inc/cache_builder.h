@@ -23,7 +23,7 @@
 #include <limits>
 #include <optional>
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "channel.h"
 #include "util/bits.h"
 #include "util/to_underlying.h"

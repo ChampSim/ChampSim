@@ -24,15 +24,12 @@
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
+#include "champsim.h"
 #include "bits.h"
+#include "ratio.h"
 
 namespace champsim
 {
-  using kibi = std::ratio<1024ULL>;
-  using mebi = std::ratio<1024*1024ULL>;
-  using gibi = std::ratio<1024*1024*1024ULL>;
-  using tebi = std::ratio<1024*1024*1024*1024ULL>;
-
   namespace data
   {
     template <typename Rep, typename Unit>
@@ -220,19 +217,13 @@ namespace champsim
       return !(lhs < rhs);
     }
 
-    using bytes     = size<long long, std::ratio<1>>;
-    using kibibytes = size<long long, kibi>;
-    using mebibytes = size<long long, mebi>;
-    using gibibytes = size<long long, gibi>;
-    using tebibytes = size<long long, tebi>;
-
     namespace data_literals
     {
-      bytes     operator""_B  (unsigned long long val);
-      kibibytes operator""_kiB(unsigned long long val);
-      mebibytes operator""_MiB(unsigned long long val);
-      gibibytes operator""_GiB(unsigned long long val);
-      tebibytes operator""_TiB(unsigned long long val);
+      champsim::data::bytes     operator""_B  (unsigned long long val);
+      champsim::data::kibibytes operator""_kiB(unsigned long long val);
+      champsim::data::mebibytes operator""_MiB(unsigned long long val);
+      champsim::data::gibibytes operator""_GiB(unsigned long long val);
+      champsim::data::tebibytes operator""_TiB(unsigned long long val);
     }
   }
 }

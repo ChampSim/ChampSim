@@ -24,6 +24,7 @@
 #include "address.h"
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "util/units.h"
 
 class MEMORY_CONTROLLER;
 
@@ -35,25 +36,31 @@ inline constexpr std::size_t PTE_BYTES = 8;
 class VirtualMemory
 {
 private:
+  using pte_entry = champsim::data::size<long long, std::ratio<PTE_BYTES>>;
+
   std::map<std::pair<uint32_t, champsim::page_number>, champsim::address> vpage_to_ppage_map;
   std::map<std::tuple<uint32_t, uint32_t, champsim::address_slice<champsim::dynamic_extent>>, champsim::address> page_table;
 
-  champsim::page_number active_pte_page{};
-  champsim::address_slice<champsim::dynamic_extent> next_pte_page;
+public:
+  const uint64_t minor_fault_penalty;
+  const std::size_t pt_levels;
+  const pte_entry pte_page_size; // Size of a PTE page
 
-  champsim::page_number next_ppage{VMEM_RESERVE_CAPACITY / PAGE_SIZE};
-  champsim::page_number last_ppage;
+private:
+  champsim::page_number active_pte_page{};
+  champsim::address_slice<champsim::dynamic_extent> next_pte_page{champsim::dynamic_extent{LOG2_PAGE_SIZE,
+    static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))
+  }, 0};
+
+  champsim::page_number next_ppage{champsim::lowest_address_for_size(champsim::data::bytes{VMEM_RESERVE_CAPACITY})};
+  champsim::page_number last_ppage{champsim::lowest_address_for_size(champsim::data::pages{champsim::ipow(pte_page_size.count(), pt_levels)})};
 
   [[nodiscard]] champsim::page_number ppage_front() const;
   void ppage_pop();
 
 public:
-  const uint64_t minor_fault_penalty;
-  const std::size_t pt_levels;
-  const uint64_t pte_page_size; // Size of a PTE page
-
   // capacity and pg_size are measured in bytes, and capacity must be a multiple of pg_size
-  VirtualMemory(uint64_t page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
+  VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram);
   [[nodiscard]] uint64_t shamt(std::size_t level) const;
   [[nodiscard]] uint64_t get_offset(champsim::address vaddr, std::size_t level) const;
   [[nodiscard]] std::size_t available_ppages() const;

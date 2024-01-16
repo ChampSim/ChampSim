@@ -38,6 +38,12 @@ TEST_CASE("A data size is move-assignable") {
   REQUIRE(test.count() == 2016);
 }
 
+TEST_CASE("A data size is converting constructible") {
+  champsim::data::kibibytes seed{2};
+  champsim::data::bytes test{seed};
+  REQUIRE(seed.count()*1024 == test.count());
+}
+
 TEST_CASE("Data size literals work") {
   using champsim::data::data_literals::operator""_B;
   using champsim::data::data_literals::operator""_kiB;

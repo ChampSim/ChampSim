@@ -38,6 +38,7 @@
 
 #include "extent.h"
 #include "util/bits.h"
+#include "util/units.h"
 
 namespace champsim
 {
@@ -353,6 +354,10 @@ public:
     value &= bitmask(upper_extent() - lower_extent());
     return *this;
   }
+  constexpr self_type& operator+=(champsim::data::bytes delta)
+  {
+    return operator+=(delta.count());
+  }
 
   [[nodiscard]] constexpr self_type operator+(difference_type delta) const
   {
@@ -360,9 +365,15 @@ public:
     retval += delta;
     return retval;
   }
+  [[nodiscard]] constexpr self_type operator+(champsim::data::bytes delta) const
+  {
+    return operator+(delta.count());
+  }
 
   constexpr self_type& operator-=(difference_type delta) { return operator+=(-delta); }
+  constexpr self_type& operator-=(champsim::data::bytes delta) { return operator-=(delta.count()); }
   [[nodiscard]] constexpr self_type operator-(difference_type delta) const { return operator+(-delta); }
+  [[nodiscard]] constexpr self_type operator-(champsim::data::bytes delta) const { return operator-(delta.count()); }
 
   constexpr self_type& operator++() { return operator+=(1); }
   constexpr self_type operator++(int)
