@@ -110,7 +110,7 @@ class CpuBuilderTest(unittest.TestCase):
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = { 'name': 'test_cache' }
+        base_cache = { 'name': 'test_cache', 'frequency': 250 }
         upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
@@ -185,7 +185,7 @@ class CacheBuilderTests(unittest.TestCase):
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = { 'name': 'test_ptw' }
+        base_ptw = { 'name': 'test_ptw', 'frequency': 250 }
         upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))

@@ -27,7 +27,7 @@
 // reserve 1MB or one page of space
 inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, champsim::data::mebibytes{1});
 
-VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, uint64_t minor_penalty, MEMORY_CONTROLLER& dram)
+VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty, MEMORY_CONTROLLER& dram)
     : minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
       next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))}, 0),
       next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
@@ -70,7 +70,7 @@ std::size_t VirtualMemory::available_ppages() const
   return static_cast<std::size_t>(champsim::offset(next_ppage, last_ppage)); // Cast protected by prior assert
 }
 
-std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
+std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::va_to_pa(uint32_t cpu_num, champsim::address vaddr)
 {
   auto [ppage, fault] = vpage_to_ppage_map.try_emplace({cpu_num, champsim::page_number{vaddr}}, ppage_front());
 
@@ -80,14 +80,19 @@ std::pair<champsim::address, uint64_t> VirtualMemory::va_to_pa(uint32_t cpu_num,
   }
 
   auto paddr = champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr});
+  auto penalty = minor_fault_penalty;
+  if (!fault) {
+    penalty = champsim::chrono::clock::duration::zero();
+  }
+
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} fault: {}\n", __func__, paddr, vaddr, fault);
   }
 
-  return {paddr, fault ? minor_fault_penalty : 0};
+  return {paddr, penalty};
 }
 
-std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)
+std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::get_pte_pa(uint32_t cpu_num, champsim::address vaddr, std::size_t level)
 {
   if (champsim::page_offset{next_pte_page} == champsim::page_offset{0}) {
     active_pte_page = ppage_front();
@@ -110,5 +115,10 @@ std::pair<champsim::address, uint64_t> VirtualMemory::get_pte_pa(uint32_t cpu_nu
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
 
-  return {paddr, fault ? minor_fault_penalty : 0};
+  auto penalty = minor_fault_penalty;
+  if (!fault) {
+    penalty = champsim::chrono::clock::duration::zero();
+  }
+
+  return {paddr, penalty};
 }

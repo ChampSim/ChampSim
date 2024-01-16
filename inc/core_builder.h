@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "chrono.h"
+
 class CACHE;
 class O3_CPU;
 namespace champsim
@@ -33,7 +35,7 @@ namespace detail
 {
 struct core_builder_base {
   uint32_t m_cpu{};
-  double m_freq_scale{1};
+  champsim::chrono::picoseconds m_clock_period{250};
   std::size_t m_dib_set{1};
   std::size_t m_dib_way{1};
   std::size_t m_dib_window{1};
@@ -81,7 +83,7 @@ public:
   core_builder() = default;
 
   self_type& index(uint32_t cpu_);
-  self_type& frequency(double freq_scale_);
+  self_type& clock_period(champsim::chrono::picoseconds clock_period_);
   self_type& dib_set(std::size_t dib_set_);
   self_type& dib_way(std::size_t dib_way_);
   self_type& dib_window(std::size_t dib_window_);
@@ -125,9 +127,9 @@ auto champsim::core_builder<B, T>::index(uint32_t cpu_) -> self_type&
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::frequency(double freq_scale_) -> self_type&
+auto champsim::core_builder<B, T>::clock_period(champsim::chrono::picoseconds clock_period_) -> self_type&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 

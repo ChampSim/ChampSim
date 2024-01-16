@@ -4,9 +4,9 @@
 #include "cache.h"
 
 SCENARIO("The MSHR respects the fill bandwidth") {
-  constexpr uint64_t hit_latency = 4;
-  constexpr uint64_t fill_latency = 1;
-  constexpr std::size_t fill_bandwidth = 2;
+  constexpr auto hit_latency = 4;
+  constexpr auto fill_latency = 1;
+  constexpr auto fill_bandwidth = 2;
 
   auto size = GENERATE(range<long>(1, 3*fill_bandwidth));
 
@@ -60,23 +60,23 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         mock_ll.release(pkt.address);
 
       // Give the cache enough time to fill
-      for (uint64_t i = 0; i < 100; ++i)
+      for (auto i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 
       auto cycle = ((uint64_t)size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        REQUIRE(mock_ul.packets.back().return_time == 100 + fill_latency + cycle);
+        mock_ul.packets.back().assert_returned(100 + fill_latency + cycle, 1);
       }
     }
   }
 }
 
 SCENARIO("Writebacks respect the fill bandwidth") {
-  constexpr uint64_t hit_latency = 4;
-  constexpr uint64_t fill_latency = 1;
-  constexpr std::size_t fill_bandwidth = 2;
+  constexpr auto hit_latency = 4;
+  constexpr auto fill_latency = 1;
+  constexpr auto fill_bandwidth = 2;
 
   auto size = GENERATE(range<long>(1, 4*fill_bandwidth));
 
@@ -136,7 +136,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       }
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + fill_latency + cycle);
+        mock_ul.packets.back().assert_returned(hit_latency + fill_latency + cycle, 1);
       }
     }
   }

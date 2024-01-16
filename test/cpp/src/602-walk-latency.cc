@@ -13,13 +13,14 @@ SCENARIO("The issued steps incur appropriate latencies") {
   GIVEN("A 5-level virtual memory primed for "+std::to_string(level)+" accesses") {
     constexpr std::size_t vmem_levels = 5;
     champsim::address access_address{0xdeadbeef};
-    constexpr uint64_t penalty = 200;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
+    constexpr std::chrono::nanoseconds penalty{640};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
     VirtualMemory vmem{champsim::data::bytes{1<<12}, vmem_levels, penalty, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("602-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -53,7 +54,7 @@ SCENARIO("The issued steps incur appropriate latencies") {
           elem->_operate();
 
       THEN("The "+std::to_string(level-1)+"th packet responds to the delays imposed") {
-        REQUIRE(mock_ul.packets.back().return_time == (penalty*(vmem_levels-level+1) + 6));
+        mock_ul.packets.back().assert_returned(200*(vmem_levels-level+1) + 6, 1);
       }
     }
   }

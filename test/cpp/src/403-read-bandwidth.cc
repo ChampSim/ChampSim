@@ -5,9 +5,9 @@
 #include "champsim_constants.h"
 
 TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, to_wq_MRP, to_pq_MRP) {
-  constexpr uint64_t hit_latency = 4;
-  constexpr uint64_t fill_latency = 1;
-  constexpr std::size_t tag_bandwidth = 2;
+  constexpr auto hit_latency = 4;
+  constexpr auto fill_latency = 1;
+  constexpr auto tag_bandwidth = 2;
 
   auto size = GENERATE(range<long>(1, 4*tag_bandwidth));
 
@@ -36,7 +36,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
     champsim::block_number seed_base_addr{0xdeadbeef};
     std::vector<typename TestType::request_type> seeds;
 
-    for (long i = 0; i < size; ++i) {
+    for (auto i = 0; i < size; ++i) {
       typename TestType::request_type seed;
       seed.address = champsim::address{seed_base_addr + i};
       seed.instr_id = (uint64_t)i;
@@ -66,14 +66,14 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
         REQUIRE(test_result);
       }
 
-      for (uint64_t i = 0; i < 100; ++i)
+      for (auto i = 0; i < 100; ++i)
         for (auto elem : elements)
           elem->_operate();
 
       auto cycle = ((uint64_t)size-1)/tag_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + cycle);
+        mock_ul.packets.back().assert_returned(hit_latency + cycle, 1);
       }
     }
   }

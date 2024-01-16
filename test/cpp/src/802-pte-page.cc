@@ -29,8 +29,8 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
   auto level = GENERATE(as<std::size_t>{}, 2,3,4);
 
   GIVEN("A large virtual memory") {
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory uut{pte_page_size, 5, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
+    VirtualMemory uut{pte_page_size, 5, std::chrono::nanoseconds{6400}, dram};
 
     champsim::data::bytes dist{champsim::data::pages{1}};
     for (std::size_t i = 0; i < level; ++i)

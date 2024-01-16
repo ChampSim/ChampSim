@@ -10,9 +10,9 @@
 struct cpu_stats {
   std::string name;
   long long begin_instrs = 0;
-  uint64_t begin_cycles = 0;
+  long long begin_cycles = 0;
   long long end_instrs = 0;
-  uint64_t end_cycles = 0;
+  long long end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
   champsim::stats::event_counter<branch_type> total_branch_types = {};

@@ -39,7 +39,6 @@
 #include "channel.h"
 #include "core_builder.h"
 #include "core_stats.h"
-#include "event_counter.h"
 #include "instruction.h"
 #include "modules.h"
 #include "operable.h"
@@ -68,7 +67,7 @@ struct LSQ_ENTRY {
   champsim::address virtual_address{};
   uint64_t instr_id = 0;
   champsim::address ip{};
-  uint64_t event_cycle = 0;
+  champsim::chrono::clock::time_point ready_time{};
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
@@ -88,11 +87,11 @@ public:
   uint32_t cpu = 0;
 
   // cycle
-  uint64_t begin_phase_cycle = 0;
+  champsim::chrono::clock::time_point begin_phase_time{};
   long long begin_phase_instr = 0;
-  uint64_t finish_phase_cycle = 0;
+  champsim::chrono::clock::time_point finish_phase_time{};
   long long finish_phase_instr = 0;
-  uint64_t last_heartbeat_cycle = 0;
+  champsim::chrono::clock::time_point last_heartbeat_time{};
   long long last_heartbeat_instr = 0;
   long long next_print_instruction = STAT_PRINTING_PERIOD;
 
@@ -129,11 +128,15 @@ public:
   champsim::bandwidth::maximum_type FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
   champsim::bandwidth::maximum_type LQ_WIDTH, SQ_WIDTH;
   champsim::bandwidth::maximum_type RETIRE_WIDTH;
-  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
+  champsim::chrono::clock::duration BRANCH_MISPREDICT_PENALTY;
+  champsim::chrono::clock::duration DISPATCH_LATENCY;
+  champsim::chrono::clock::duration DECODE_LATENCY;
+  champsim::chrono::clock::duration SCHEDULING_LATENCY;
+  champsim::chrono::clock::duration EXEC_LATENCY;
   champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
-  uint64_t fetch_resume_cycle = 0;
+  champsim::chrono::clock::time_point fetch_resume_time{};
 
   const long IN_QUEUE_SIZE;
   std::deque<ooo_model_instr> input_queue;
@@ -177,7 +180,7 @@ public:
   [[nodiscard]] auto roi_instr() const { return roi_stats.instrs(); }
   [[nodiscard]] auto roi_cycle() const { return roi_stats.cycles(); }
   [[nodiscard]] auto sim_instr() const { return num_retired - begin_phase_instr; }
-  [[nodiscard]] auto sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
+  [[nodiscard]] auto sim_cycle() const { return (current_time.time_since_epoch() / clock_period) - sim_stats.begin_cycles; }
 
   void print_deadlock() final;
 
@@ -236,12 +239,13 @@ public:
 
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
-      : champsim::operable(b.m_freq_scale), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
+      : champsim::operable(b.m_clock_period), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
-        BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
-        SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
+        BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty * b.m_clock_period), DISPATCH_LATENCY(b.m_dispatch_latency * b.m_clock_period),
+        DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),
+        EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
         IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
         branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)), btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {

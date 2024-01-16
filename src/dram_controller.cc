@@ -28,27 +28,20 @@
 #include "util/span.h"
 #include "util/units.h"
 
-uint64_t cycles(double time, int io_freq)
-{
-  std::fesetround(FE_UPWARD);
-  auto result = std::lrint(time * io_freq);
-  return result < 0 ? 0 : static_cast<uint64_t>(result);
-}
-
-MEMORY_CONTROLLER::MEMORY_CONTROLLER(double freq_scale, int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround,
-                                     std::vector<channel_type*>&& ul)
-    : champsim::operable(freq_scale), queues(std::move(ul))
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul)
+    : champsim::operable(clock_period_), queues(std::move(ul))
 {
   for (std::size_t i{0}; i < DRAM_CHANNELS; ++i) {
-    channels.emplace_back(io_freq, t_rp, t_rcd, t_cas, turnaround, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS);
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS);
   }
 }
 
-DRAM_CHANNEL::DRAM_CHANNEL(int io_freq, double t_rp, double t_rcd, double t_cas, double turnaround, std::size_t rows, std::size_t columns, std::size_t ranks,
-                           std::size_t banks)
-    : champsim::operable(1.0), tRP(cycles(t_rp / 1000, io_freq)), tRCD(cycles(t_rcd / 1000, io_freq)), tCAS(cycles(t_cas / 1000, io_freq)),
-      DRAM_DBUS_TURN_AROUND_TIME(cycles(turnaround / 1000, io_freq)), DRAM_DBUS_RETURN_TIME(cycles(std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH), 1)),
-      ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
+DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd, champsim::chrono::picoseconds t_cas,
+    champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
+    : champsim::operable(clock_period_), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))),
+          ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
 {
 }
 
@@ -104,7 +97,7 @@ long DRAM_CHANNEL::finish_dbus_request()
 {
   long progress{0};
 
-  if (active_request != std::end(bank_request) && active_request->event_cycle <= current_cycle) {
+  if (active_request != std::end(bank_request) && active_request->ready_time <= current_time) {
     response_type response{active_request->pkt->value().address, active_request->pkt->value().v_address, active_request->pkt->value().data,
                            active_request->pkt->value().pf_metadata, active_request->pkt->value().instr_depend_on_me};
     for (auto* ret : active_request->pkt->value().to_return) {
@@ -135,22 +128,22 @@ void DRAM_CHANNEL::swap_write_mode()
       // Leave active request on the data bus
       if (it != active_request && it->valid) {
         // Leave rows charged
-        if (it->event_cycle < (current_cycle + tCAS)) {
+        if (it->ready_time < (current_time + tCAS)) {
           it->open_row.reset();
         }
 
         // This bank is ready for another DRAM request
         it->valid = false;
         it->pkt->value().scheduled = false;
-        it->pkt->value().event_cycle = current_cycle;
+        it->pkt->value().ready_time = current_time;
       }
     }
 
     // Add data bus turn-around time
     if (active_request != std::end(bank_request)) {
-      dbus_cycle_available = active_request->event_cycle + DRAM_DBUS_TURN_AROUND_TIME; // After ongoing finish
+      dbus_cycle_available = active_request->ready_time + DRAM_DBUS_TURN_AROUND_TIME; // After ongoing finish
     } else {
-      dbus_cycle_available = current_cycle + DRAM_DBUS_TURN_AROUND_TIME;
+      dbus_cycle_available = current_time + DRAM_DBUS_TURN_AROUND_TIME;
     }
 
     // Invert the mode
@@ -164,13 +157,13 @@ long DRAM_CHANNEL::populate_dbus()
   long progress{0};
 
   auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.event_cycle < rhs.event_cycle); });
-  if (iter_next_process->valid && iter_next_process->event_cycle <= current_cycle) {
-    if (active_request == std::end(bank_request) && dbus_cycle_available <= current_cycle) {
+      [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
+  if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
+    if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
       // Put this request on the data bus
       active_request = iter_next_process;
-      active_request->event_cycle = current_cycle + DRAM_DBUS_RETURN_TIME;
+      active_request->ready_time = current_time + DRAM_DBUS_RETURN_TIME;
 
       if (iter_next_process->row_buffer_hit) {
         if (write_mode) {
@@ -188,9 +181,9 @@ long DRAM_CHANNEL::populate_dbus()
     } else {
       // Bus is congested
       if (active_request != std::end(bank_request)) {
-        sim_stats.dbus_cycle_congested += (active_request->event_cycle - current_cycle);
+        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time);
       } else {
-        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_cycle);
+        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time);
       }
       ++sim_stats.dbus_count_congested;
     }
@@ -218,7 +211,7 @@ long DRAM_CHANNEL::schedule_packets()
     auto rop_idx = this->get_rank(rhs.value().address) * this->BANKS + this->get_bank(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid;
     auto lready = !this->bank_request[lop_idx].valid;
-    return (rready && lready) ? lhs.value().event_cycle < rhs.value().event_cycle : lready;
+    return (rready && lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
   };
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
@@ -227,7 +220,7 @@ long DRAM_CHANNEL::schedule_packets()
     iter_next_schedule = std::min_element(std::begin(RQ), std::end(RQ), next_schedule);
   }
 
-  if (iter_next_schedule->has_value() && iter_next_schedule->value().event_cycle <= current_cycle) {
+  if (iter_next_schedule->has_value() && iter_next_schedule->value().ready_time <= current_time) {
     auto op_rank = get_rank(iter_next_schedule->value().address);
     auto op_bank = get_bank(iter_next_schedule->value().address);
     auto op_row = get_row(iter_next_schedule->value().address);
@@ -238,9 +231,11 @@ long DRAM_CHANNEL::schedule_packets()
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
 
       // this bank is now busy
-      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row}, current_cycle + tCAS + (row_buffer_hit ? 0 : tRP + tRCD), iter_next_schedule};
+      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row},
+                                      current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
+
       iter_next_schedule->value().scheduled = true;
-      iter_next_schedule->value().event_cycle = std::numeric_limits<uint64_t>::max();
+      iter_next_schedule->value().ready_time = champsim::chrono::clock::time_point::max();
 
       ++progress;
     }
@@ -258,7 +253,7 @@ void MEMORY_CONTROLLER::initialize()
   } else {
     fmt::print("{}", dram_size);
   }
-  fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, DRAM_IO_FREQ);
+  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, std::chrono::microseconds{1} / clock_period);
 }
 
 void DRAM_CHANNEL::initialize() {}
@@ -387,7 +382,7 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
       rq_it != std::end(channel.RQ)) {
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
-    rq_it->value().event_cycle = current_cycle;
+    rq_it->value().ready_time = current_time;
     if (packet.response_requested) {
       rq_it->value().to_return = {&ul->returned};
     }
@@ -407,7 +402,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
       wq_it != std::end(channel.WQ)) {
     *wq_it = DRAM_CHANNEL::request_type{packet};
     wq_it->value().forward_checked = false;
-    wq_it->value().event_cycle = current_cycle;
+    wq_it->value().ready_time = current_time;
 
     return true;
   }

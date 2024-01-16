@@ -35,14 +35,6 @@ ptw_deprecation_keys = {
     'ptw_rq_size': 'rq_size'
 }
 
-# Scale frequencies
-def scale_frequencies(iterable):
-    ''' Convert each element's 'frequency' member into a factor n where n >= 1 is the ratio above the highest frequency '''
-    it_a, it_b = itertools.tee(iterable, 2)
-    max_freq = max(element['frequency'] for element in it_a)
-    for element in it_b:
-        element['frequency'] = max_freq / element['frequency']
-
 def executable_name(*config_list):
     ''' Produce the executable name from a list of configurations '''
     name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
@@ -420,9 +412,6 @@ class NormalizedConfiguration:
              } for c in cores),
             ).values()
         )
-
-        pmem['io_freq'] = pmem['frequency'] # Save value
-        scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
         elements = {
             'cores': cores,

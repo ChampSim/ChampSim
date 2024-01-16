@@ -4,9 +4,12 @@
 #include <cstdint>
 #include <string>
 
+#include "chrono.h"
+
 struct dram_stats {
   std::string name{};
-  uint64_t dbus_cycle_congested = 0, dbus_count_congested = 0;
+  champsim::chrono::clock::duration dbus_cycle_congested{};
+  uint64_t dbus_count_congested = 0;
 
   unsigned WQ_ROW_BUFFER_HIT = 0, WQ_ROW_BUFFER_MISS = 0, RQ_ROW_BUFFER_HIT = 0, RQ_ROW_BUFFER_MISS = 0, WQ_FULL = 0;
 };

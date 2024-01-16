@@ -24,11 +24,13 @@
 #include <string>
 
 #include "address.h"
+#include "champsim_constants.h"
 #include "bandwidth.h"
 #include "channel.h"
 #include "operable.h"
 #include "ptw_builder.h"
 #include "util/lru_table.h"
+#include "waitable.h"
 
 class VirtualMemory;
 class PageTableWalker : public champsim::operable
@@ -52,12 +54,11 @@ class PageTableWalker : public champsim::operable
   struct mshr_type {
     champsim::address address{};
     champsim::address v_address{};
-    champsim::address data{};
+    champsim::waitable<champsim::address> data{};
 
     std::vector<uint64_t> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -84,7 +85,7 @@ public:
   const std::string NAME;
   const uint32_t MSHR_SIZE;
   champsim::bandwidth::maximum_type MAX_READ, MAX_FILL;
-  const uint64_t HIT_LATENCY;
+  const champsim::chrono::clock::duration HIT_LATENCY;
 
   std::vector<pscl_type> pscl;
   VirtualMemory* vmem;

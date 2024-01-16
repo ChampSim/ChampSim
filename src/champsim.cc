@@ -37,16 +37,16 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index)
+long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
-            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
+            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.current_time < rhs.current_time; });
 
   // Operate
   long progress{0};
   for (champsim::operable& op : operables) {
-    progress += op._operate();
+    progress += op.operate_on(global_clock);
   }
 
   // Read from trace
@@ -60,21 +60,27 @@ long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<st
   return progress;
 }
 
-phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces)
+phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces, champsim::chrono::clock& global_clock)
 {
+  auto operables = env.operable_view();
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
 
   // Initialize phase
-  for (champsim::operable& op : env.operable_view()) {
+  for (champsim::operable& op : operables) {
     op.warmup = is_warmup;
     op.begin_phase();
   }
+
+  const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
+                                            [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
 
   // Perform phase
   int stalled_cycle{0};
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
-    auto progress = do_cycle(env, traces, trace_index);
+    global_clock.tick(time_quantum);
+
+    auto progress = do_cycle(env, traces, trace_index, global_clock);
 
     if (progress == 0) {
       ++stalled_cycle;
@@ -83,7 +89,6 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     }
 
     if (stalled_cycle >= DEADLOCK_CYCLE) {
-      auto operables = env.operable_view();
       std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
       abort();
     }
@@ -103,7 +108,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
 
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
-        for (champsim::operable& op : env.operable_view()) {
+        for (champsim::operable& op : operables) {
           op.end_phase(cpu.cpu);
         }
 
@@ -151,9 +156,10 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
     op.initialize();
   }
 
+  champsim::chrono::clock global_clock;
   std::vector<phase_stats> results;
   for (auto phase : phases) {
-    auto stats = do_phase(phase, env, traces);
+    auto stats = do_phase(phase, env, traces, global_clock);
     if (!phase.is_warmup) {
       results.push_back(stats);
     }

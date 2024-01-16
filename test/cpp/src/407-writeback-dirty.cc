@@ -92,7 +92,7 @@ SCENARIO("Blocks that have been written are marked dirty") {
               elem->_operate();
 
           THEN("It takes exactly the specified cycles to return") {
-            REQUIRE(mock_ul_test.packets.back().return_time == mock_ul_test.packets.back().issue_time + (miss_latency + hit_latency + 1));
+            mock_ul_test.packets.back().assert_returned(miss_latency + hit_latency + 1, 1);
           }
 
           THEN("The first block is evicted") {

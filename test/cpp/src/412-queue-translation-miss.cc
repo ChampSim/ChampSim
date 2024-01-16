@@ -6,8 +6,8 @@
 
 TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache with a translator") {
-    constexpr uint64_t hit_latency = 10;
-    constexpr uint64_t fill_latency = 3;
+    constexpr auto hit_latency = 10;
+    constexpr auto fill_latency = 3;
     do_nothing_MRC mock_translator{2*hit_latency};
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
@@ -48,7 +48,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
         REQUIRE(mock_translator.packet_count() == 1);
       }
 
-      for (int i = 0; i < 100; ++i) {
+      for (auto i = 0; i < 100; ++i) {
         for (auto elem : elements)
           elem->_operate();
       }
@@ -61,7 +61,7 @@ TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP,
 
       THEN("The packet restarted the tag lookup") {
         REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + 3*hit_latency+fill_latency+2); // latency = translator_time + hit_latency + fill_latency + 2 (clocking delay)
+        mock_ul.packets.front().assert_returned(3*hit_latency + fill_latency + 2, 1); // latency = translator_time + hit_latency + fill_latency + 2 (clocking delay)
       }
     }
   }

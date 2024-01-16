@@ -26,6 +26,7 @@
 #include "bandwidth.h"
 #include "champsim.h"
 #include "champsim_constants.h"
+#include "chrono.h"
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/algorithm.h"
@@ -38,9 +39,9 @@ CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref
 {
 }
 
-CACHE::mshr_type::mshr_type(const tag_lookup_type& req, uint64_t cycle)
+CACHE::mshr_type::mshr_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued)
     : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu), type(req.type),
-      prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+      prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
 {
 }
 
@@ -119,9 +120,10 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   const auto way_idx = std::distance(set_begin, way);             // cast protected by earlier assertion
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {} v_address: {} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n", NAME, __func__,
-               fill_mshr.instr_id, fill_mshr.address, fill_mshr.v_address, get_set_index(fill_mshr.address), way_idx,
-               access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.data_promise->pf_metadata, fill_mshr.cycle_enqueued, current_cycle);
+    fmt::print("[{}] {} instr_id: {} address: {} v_address: {} set: {} way: {} type: {} prefetch_metadata: {} cycle_enqueued: {} cycle: {}\n", NAME,
+               __func__, fill_mshr.instr_id, fill_mshr.address, fill_mshr.v_address, get_set_index(fill_mshr.address), way_idx,
+               access_type_names.at(champsim::to_underlying(fill_mshr.type)), fill_mshr.data_promise->pf_metadata,
+               (fill_mshr.time_enqueued.time_since_epoch()) / clock_period, (current_time.time_since_epoch()) / clock_period);
   }
 
   if (way != set_end && way->valid && way->dirty) {
@@ -170,7 +172,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   // COLLECT STATS
-  sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
+  sim_stats.total_miss_latency += current_time - (fill_mshr.time_enqueued + clock_period);
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data_promise->data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
@@ -191,9 +193,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} instr_id: {} address: {} v_address: {} data: {} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
-               handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way),
-               hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_cycle);
+    fmt::print("[{}] {} instr_id: {} address: {} v_address: {} data: {} set: {} way: {} ({}) type: {} cycle: {}\n", NAME, __func__,
+               handle_pkt.instr_id, handle_pkt.address, handle_pkt.v_address, handle_pkt.data, get_set_index(handle_pkt.address), std::distance(set_begin, way),
+               hit ? "HIT" : "MISS", access_type_names.at(champsim::to_underlying(handle_pkt.type)), current_time.time_since_epoch() / clock_period);
   }
 
   auto metadata_thru = handle_pkt.pf_metadata;
@@ -228,7 +230,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
 auto CACHE::mshr_and_forward_packet(const tag_lookup_type& handle_pkt) -> std::pair<mshr_type, request_type>
 {
-  mshr_type to_allocate{handle_pkt, current_cycle};
+  mshr_type to_allocate{handle_pkt, current_time};
 
   request_type fwd_pkt;
 
@@ -255,10 +257,10 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
-               current_cycle);
+               current_time.time_since_epoch() / clock_period);
   }
 
-  mshr_type to_allocate{handle_pkt, current_cycle};
+  mshr_type to_allocate{handle_pkt, current_time};
 
   cpu = handle_pkt.cpu;
 
@@ -306,11 +308,11 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
-               current_cycle);
+               current_time.time_since_epoch() / clock_period);
   }
 
-  mshr_type to_allocate{handle_pkt, current_cycle};
-  to_allocate.data_promise.ready_at(current_cycle + (warmup ? 0 : FILL_LATENCY));
+  mshr_type to_allocate{handle_pkt, current_time};
+  to_allocate.data_promise.ready_at(current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
   inflight_writes.push_back(to_allocate);
 
   sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
@@ -321,9 +323,9 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 template <bool UpdateRequest>
 auto CACHE::initiate_tag_check(champsim::channel* ul)
 {
-  return [cycle = current_cycle + (warmup ? 0 : HIT_LATENCY), ul](const auto& entry) {
+  return [time = current_time + (warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY), ul](const auto& entry) {
     CACHE::tag_lookup_type retval{entry};
-    retval.event_cycle = cycle;
+    retval.event_cycle = time;
 
     if constexpr (UpdateRequest) {
       if (entry.response_requested) {
@@ -334,8 +336,9 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {} event: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return), retval.event_cycle);
+      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {} event: {}\n", retval.instr_id,
+                 retval.address, retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return),
+                 time);
     }
 
     return retval;
@@ -346,8 +349,8 @@ long CACHE::operate()
 {
   long progress{0};
 
-  auto is_ready = [cycle = current_cycle](const auto& entry) {
-    return entry.event_cycle <= cycle;
+  auto is_ready = [time = current_time](const auto& entry) {
+    return entry.event_cycle <= time;
   };
   auto is_translated = [](const auto& entry) {
     return entry.is_translated;
@@ -372,15 +375,15 @@ long CACHE::operate()
   // Perform fills
   champsim::bandwidth fill_bw{MAX_FILL};
   for (auto q : {std::ref(MSHR), std::ref(inflight_writes)}) {
-    auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw,
-                                                       [cycle = current_cycle](const auto& x) { return x.data_promise.is_ready_at(cycle); });
+    auto [fill_begin, fill_end] =
+        champsim::get_span_p(std::cbegin(q.get()), std::cend(q.get()), fill_bw, [time = current_time](const auto& x) { return x.data_promise.is_ready_at(time); });
     auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
     fill_bw.consume(std::distance(fill_begin, complete_end));
     q.get().erase(fill_begin, complete_end);
   }
 
   // Initiate tag checks
-  const champsim::bandwidth::maximum_type bandwidth_from_tag_checks{champsim::to_underlying(MAX_TAG) * (long)HIT_LATENCY - (long)std::size(inflight_tag_check)};
+  const champsim::bandwidth::maximum_type bandwidth_from_tag_checks{champsim::to_underlying(MAX_TAG) * (long)(HIT_LATENCY / clock_period) - (long)std::size(inflight_tag_check)};
   champsim::bandwidth initiate_tag_bw{std::clamp(bandwidth_from_tag_checks, champsim::bandwidth::maximum_type{0}, MAX_TAG)};
   auto can_translate = [avail = (std::size(translation_stash) < static_cast<std::size_t>(MSHR_SIZE))](const auto& entry) {
     return avail || entry.is_translated;
@@ -432,7 +435,7 @@ long CACHE::operate()
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
-               NAME, __func__, current_cycle, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed,
+               NAME, __func__, current_time.time_since_epoch() / clock_period, tag_check_bw.amount_consumed(), std::size(inflight_tag_check), stash_bandwidth_consumed,
                std::size(translation_stash), channels_bandwidth_consumed, pq_bandwidth_consumed, initiate_tag_bw.amount_remaining());
   }
 
@@ -535,10 +538,10 @@ void CACHE::finish_packet(const response_type& packet)
 
   // MSHR holds the most updated information about this request
   mshr_type::returned_value finished_value{packet.data, packet.pf_metadata};
-  mshr_entry->data_promise = champsim::waitable{finished_value, current_cycle + (warmup ? 0 : FILL_LATENCY)};
+  mshr_entry->data_promise = champsim::waitable{finished_value, current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY)};
   if constexpr (champsim::debug_print) {
     fmt::print("[{}_MSHR] finish_packet instr_id: {} address: {} data: {} type: {} current: {}\n", this->NAME, mshr_entry->instr_id, mshr_entry->address,
-               mshr_entry->data_promise->data, access_type_names.at(champsim::to_underlying(mshr_entry->type)), current_cycle);
+               mshr_entry->data_promise->data, access_type_names.at(champsim::to_underlying(mshr_entry->type)), current_time.time_since_epoch() / clock_period);
   }
 
   // Order this entry after previously-returned entries, but before non-returned
@@ -556,7 +559,8 @@ void CACHE::finish_translation(const response_type& packet)
     entry.is_translated = true;                                                       // This entry is now translated
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_TRANSLATE] finish_translation paddr: {} vaddr: {} cycle: {}\n", this->NAME, entry.address, entry.v_address, this->current_cycle);
+      fmt::print("[{}_TRANSLATE] finish_translation paddr: {} vaddr: {} cycle: {}\n", this->NAME, entry.address, entry.v_address,
+          this->current_time.time_since_epoch() / this->clock_period);
     }
   };
 
@@ -813,14 +817,14 @@ bool CACHE::should_activate_prefetcher(const T& pkt) const
 void CACHE::print_deadlock()
 {
   std::string_view mshr_write{"instr_id: {} address: {} v_addr: {} type: {} ready: {}"};
-  auto mshr_pack = [cycle = current_cycle](const auto& entry) {
+  auto mshr_pack = [time = current_time](const auto& entry) {
     return std::tuple{entry.instr_id, entry.address, entry.v_address, access_type_names.at(champsim::to_underlying(entry.type)),
-                      entry.data_promise.is_ready_at(cycle)};
+                      entry.data_promise.is_ready_at(time)};
   };
 
   std::string_view tag_check_write{"instr_id: {} address: {} v_addr: {} is_translated: {} translate_issued: {} event_cycle: {}"};
-  auto tag_check_pack = [](const auto& entry) {
-    return std::tuple{entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle};
+  auto tag_check_pack = [period = clock_period](const auto& entry) {
+    return std::tuple{entry.instr_id, entry.address, entry.v_address, entry.is_translated, entry.translate_issued, entry.event_cycle.time_since_epoch() / period};
   };
 
   champsim::range_print_deadlock(MSHR, NAME + "_MSHR", mshr_write, mshr_pack);

@@ -25,6 +25,7 @@
 
 #include "champsim.h"
 #include "channel.h"
+#include "chrono.h"
 #include "util/bits.h"
 #include "util/to_underlying.h"
 
@@ -40,7 +41,7 @@ namespace detail
 {
 struct cache_builder_base {
   std::string m_name{};
-  double m_freq_scale{1};
+  chrono::picoseconds m_clock_period{250};
   std::optional<champsim::data::bytes> m_size{};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
@@ -91,7 +92,7 @@ public:
   cache_builder() = default;
 
   self_type& name(std::string name_);
-  self_type& frequency(double freq_scale_);
+  self_type& clock_period(champsim::chrono::picoseconds clock_period_);
   self_type& size(champsim::data::bytes size_);
   self_type& log2_size(uint64_t log2_size_);
   self_type& sets(uint32_t sets_);
@@ -210,9 +211,9 @@ auto champsim::cache_builder<P, R>::name(std::string name_) -> self_type&
 }
 
 template <typename P, typename R>
-auto champsim::cache_builder<P, R>::frequency(double freq_scale_) -> self_type&
+auto champsim::cache_builder<P, R>::clock_period(champsim::chrono::picoseconds clock_period_) -> self_type&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 

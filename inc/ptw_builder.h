@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "bandwidth.h"
+#include "chrono.h"
 
 class VirtualMemory;
 class PageTableWalker;
@@ -33,7 +34,7 @@ class channel;
 class ptw_builder
 {
   std::string_view m_name{};
-  double m_freq_scale{1};
+  chrono::picoseconds m_clock_period{250};
   uint32_t m_cpu{0};
   std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
   std::optional<uint32_t> m_mshr_size{};
@@ -52,7 +53,7 @@ class ptw_builder
 
 public:
   ptw_builder& name(std::string_view name_);
-  ptw_builder& frequency(double freq_scale_);
+  ptw_builder& clock_period(champsim::chrono::picoseconds clock_period_);
   ptw_builder& cpu(uint32_t cpu_);
   ptw_builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way);
   ptw_builder& mshr_size(uint32_t mshr_size_);

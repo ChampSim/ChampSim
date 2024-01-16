@@ -12,12 +12,13 @@
 SCENARIO("The number of issued steps matches the virtual memory levels") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600a-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -52,12 +53,13 @@ SCENARIO("The number of issued steps matches the virtual memory levels") {
 SCENARIO("Issuing a PTW fills the PSCLs") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600b-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -98,12 +100,13 @@ SCENARIO("Issuing a PTW fills the PSCLs") {
 SCENARIO("PSCLs can reduce the number of issued translation requests") {
   GIVEN("A 5-level virtual memory and one issued packet") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("600c-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)

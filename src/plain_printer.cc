@@ -19,6 +19,7 @@
 #include <string_view> // for string_view
 #include <utility>
 #include <vector>
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
@@ -78,7 +79,7 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
     fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
                stats.pf_useful, stats.pf_useless);
 
-    fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, std::ceil(stats.total_miss_latency) / std::ceil(stats.misses.total()));
+    fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, std::ceil(stats.total_miss_latency.count()) / std::ceil(stats.misses.total()));
   }
 }
 
@@ -86,7 +87,7 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
 {
   fmt::print(stream, "\n{} RQ ROW_BUFFER_HIT: {:10}\n  ROW_BUFFER_MISS: {:10}\n", stats.name, stats.RQ_ROW_BUFFER_HIT, stats.RQ_ROW_BUFFER_MISS);
   if (stats.dbus_count_congested > 0) {
-    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
+    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", stats.dbus_cycle_congested / std::ceil(stats.dbus_count_congested));
   } else {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
   }

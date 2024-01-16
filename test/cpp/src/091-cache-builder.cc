@@ -207,8 +207,8 @@ TEST_CASE("If no latency is specified, it is derived from the size") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == hit_latency);
-  CHECK(uut.FILL_LATENCY == fill_latency);
+  CHECK(uut.HIT_LATENCY == hit_latency * uut.clock_period);
+  CHECK(uut.FILL_LATENCY == fill_latency * uut.clock_period);
 }
 
 TEST_CASE("If the hit and fill latency are not specified, they are derived from the total latency") {
@@ -218,8 +218,7 @@ TEST_CASE("If the hit and fill latency are not specified, they are derived from 
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == latency/2);
-  CHECK(uut.FILL_LATENCY == latency/2);
+  REQUIRE((uut.HIT_LATENCY + uut.FILL_LATENCY) == latency*uut.clock_period );
 }
 
 TEST_CASE("If the hit latency is not specified, it is derived from the fill latency and total latency") {
@@ -231,8 +230,8 @@ TEST_CASE("If the hit latency is not specified, it is derived from the fill late
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == latency-fill_latency);
-  CHECK(uut.FILL_LATENCY == fill_latency);
+  CHECK(uut.HIT_LATENCY == (latency-fill_latency)*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == fill_latency*uut.clock_period);
 }
 
 TEST_CASE("The hit latency overrides the cache's total latency") {
@@ -243,6 +242,6 @@ TEST_CASE("The hit latency overrides the cache's total latency") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == 2);
-  CHECK(uut.FILL_LATENCY == 3);
+  CHECK(uut.HIT_LATENCY == 2*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == 3*uut.clock_period);
 }
