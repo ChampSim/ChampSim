@@ -19,7 +19,6 @@ void CACHE::prefetcher_initialize()
   std::cout << "ST_SET: " << spp::ST_SET << std::endl;
   std::cout << "ST_WAY: " << spp::ST_WAY << std::endl;
   std::cout << "ST_TAG_BIT: " << spp::ST_TAG_BIT << std::endl;
-  std::cout << "ST_TAG_MASK: " << std::hex << spp::ST_TAG_MASK << std::dec << std::endl;
 
   std::cout << std::endl << "Initialize PATTERN TABLE" << std::endl;
   std::cout << "PT_SET: " << spp::PT_SET << std::endl;
@@ -38,12 +37,11 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
 {
   champsim::address addr{raw_addr};
   champsim::page_number page{addr};
-  champsim::address_slice page_offset{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, addr};
   uint32_t last_sig = 0, curr_sig = 0, depth = 0;
   std::vector<uint32_t> confidence_q(MSHR_SIZE);
 
-  int32_t delta = 0;
-  std::vector<int32_t> delta_q(MSHR_SIZE);
+  typename spp::offset_type::difference_type delta = 0;
+  std::vector<typename spp::offset_type::difference_type> delta_q(MSHR_SIZE);
 
   for (uint32_t i = 0; i < MSHR_SIZE; i++) {
     confidence_q[i] = 0;
@@ -54,7 +52,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
     std::cout << std::endl << "[ChampSim] " << __func__ << " addr: " << addr;
-    std::cout << " page: " << page << " page_offset: " << page_offset << std::endl;
+    std::cout << " page: " << page << std::endl;
   }
 
   // Stage 1: Read and update a sig stored in ST
@@ -108,8 +106,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
           if constexpr (spp::GHR_ON) {
             // Store this prefetch request in GHR to bootstrap SPP learning when
             // we see a ST miss (i.e., accessing a new page)
-            ::GHR.update_entry(curr_sig, confidence_q[i],
-                               champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, pf_addr}.to<uint32_t>(), delta_q[i]);
+            ::GHR.update_entry(curr_sig, confidence_q[i], spp::offset_type{pf_addr}, delta_q[i]);
           }
         }
 
@@ -128,7 +125,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t raw_addr, uint64_t ip, uint8_t
       // int sig_delta = (PT.delta[set][lookahead_way] < 0) ? ((((-1) *
       // PT.delta[set][lookahead_way]) & 0x3F) + 0x40) :
       // PT.delta[set][lookahead_way];
-      int sig_delta =
+      auto sig_delta =
           (::PT.delta[set][lookahead_way] < 0) ? (((-1) * ::PT.delta[set][lookahead_way]) + (1 << (spp::SIG_DELTA_BIT - 1))) : ::PT.delta[set][lookahead_way];
       curr_sig = ((curr_sig << spp::SIG_SHIFT) ^ sig_delta) & spp::SIG_MASK;
     }
@@ -178,14 +175,14 @@ uint64_t get_hash(uint64_t key)
 }
 } // namespace spp
 
-void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta)
+void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta)
 {
   auto set = get_hash(champsim::page_number{addr}.to<uint64_t>()) % ST_SET;
   auto match = ST_WAY;
-  auto partial_page = champsim::page_number{addr}.to<uint64_t>() & ST_TAG_MASK;
-  auto page_offset = champsim::address_slice{champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>{}, addr}.to<uint32_t>();
+  tag_type partial_page{addr};
+  offset_type page_offset{addr};
   uint8_t ST_hit = 0;
-  int sig_delta = 0;
+  long sig_delta = 0;
 
   if constexpr (spp::SPP_DEBUG_PRINT) {
     std::cout << "[ST] " << __func__ << " page: " << champsim::page_number{addr} << " partial_page: " << std::hex << partial_page << std::dec << std::endl;
@@ -196,7 +193,7 @@ void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t&
     for (match = 0; match < ST_WAY; match++) {
       if (valid[set][match] && (tag[set][match] == partial_page)) {
         last_sig = sig[set][match];
-        delta = page_offset - last_offset[set][match];
+        delta = champsim::offset(last_offset[set][match], page_offset);
 
         if (delta) {
           // Build a new sig based on 7-bit sign magnitude representation of delta
@@ -299,7 +296,7 @@ void spp::SIGNATURE_TABLE::read_and_update_sig(champsim::address addr, uint32_t&
   lru[set][match] = 0; // Promote to the MRU position
 }
 
-void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
+void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_type::difference_type curr_delta)
 {
   // Update (sig, delta) correlation
   uint32_t set = get_hash(last_sig) % spp::PT_SET, match = 0;
@@ -359,7 +356,7 @@ void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, int curr_delta)
   }
 }
 
-void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<int>& delta_q, std::vector<uint32_t>& confidence_q, uint32_t& lookahead_way,
+void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q, uint32_t& lookahead_way,
                                       uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
@@ -500,7 +497,7 @@ bool spp::PREFETCH_FILTER::check(champsim::address check_addr, FILTER_REQUEST fi
   return true;
 }
 
-void spp::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta)
+void spp::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence, offset_type pf_offset, typename offset_type::difference_type pf_delta)
 {
   // NOTE: GHR implementation is slightly different from the original paper
   // Instead of matching (last_offset + delta), GHR simply stores and matches the pf_offset
@@ -554,7 +551,7 @@ void spp::GLOBAL_REGISTER::update_entry(uint32_t pf_sig, uint32_t pf_confidence,
   delta[victim_way] = pf_delta;
 }
 
-uint32_t spp::GLOBAL_REGISTER::check_entry(uint32_t page_offset)
+uint32_t spp::GLOBAL_REGISTER::check_entry(offset_type page_offset)
 {
   uint32_t max_conf = 0, max_conf_way = MAX_GHR_ENTRY;
 
