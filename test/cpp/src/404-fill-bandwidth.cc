@@ -64,7 +64,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
+      auto cycle = (size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         mock_ul.packets.back().assert_returned(100 + fill_latency + cycle, 1);
@@ -129,7 +129,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = ((uint64_t)size-1)/fill_bandwidth;
+      auto cycle = (size-1)/fill_bandwidth;
 
       THEN("No packets were forwarded to the lower level") {
         REQUIRE(mock_ll.packet_count() == 0);

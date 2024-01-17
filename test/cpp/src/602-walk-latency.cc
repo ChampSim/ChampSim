@@ -54,7 +54,7 @@ SCENARIO("The issued steps incur appropriate latencies") {
           elem->_operate();
 
       THEN("The "+std::to_string(level-1)+"th packet responds to the delays imposed") {
-        mock_ul.packets.back().assert_returned(200*(vmem_levels-level+1) + 6, 1);
+        mock_ul.packets.back().assert_returned(200*static_cast<int>(vmem_levels-level+1) + 6, 1);
       }
     }
   }

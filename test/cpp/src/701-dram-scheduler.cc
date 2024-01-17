@@ -41,7 +41,7 @@ std::vector<uint64_t> dram_test(MEMORY_CONTROLLER* uut, std::vector<champsim::ch
             //found newly scheduled request
             if (chunk_begin != chunk_end)
             {
-                scheduled_order[static_cast<uint64_t>(std::distance(std::begin(next_scheduled), chunk_begin))] = uut->current_time.time_since_epoch() / uut->clock_period;
+                scheduled_order[static_cast<uint64_t>(std::distance(std::begin(next_scheduled), chunk_begin))] = static_cast<uint64_t>(uut->current_time.time_since_epoch() / uut->clock_period);
                break;
             }
         }

@@ -70,7 +70,7 @@ TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, t
         for (auto elem : elements)
           elem->_operate();
 
-      auto cycle = ((uint64_t)size-1)/tag_bandwidth;
+      auto cycle = (size-1)/tag_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
         mock_ul.packets.back().assert_returned(hit_latency + cycle, 1);
