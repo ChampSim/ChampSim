@@ -24,8 +24,9 @@
 #include "dram_controller.h"
 #include "util/bits.h"
 
+using namespace champsim::data::data_literals;
 // reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, champsim::data::mebibytes{1});
+inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, 1_MiB);
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
                              MEMORY_CONTROLLER& dram)
@@ -35,7 +36,7 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
       last_ppage(champsim::lowest_address_for_size(
           champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
 {
-  assert(page_table_page_size > champsim::data::kibibytes{1});
+  assert(page_table_page_size > 1_kiB);
   assert(champsim::is_power_of_2(page_table_page_size.count()));
   assert(last_ppage > next_ppage);
 

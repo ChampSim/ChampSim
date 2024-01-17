@@ -32,6 +32,9 @@ namespace champsim
 {
 namespace data
 {
+  /**
+   * A class to represent data sizes as they are passed around the program
+   */
 template <typename Rep, typename Unit>
 class size
 {
@@ -51,8 +54,19 @@ public:
   size(const size<Rep, Unit>& other) = default;
   size<Rep, Unit>& operator=(const size<Rep, Unit>& other) = default;
 
+  /**
+   * Construct the size with the given value
+   */
   constexpr explicit size(rep other) : m_count(other) {}
 
+  /**
+   * Implicitly convert between data sizes.
+   *
+   * This permits constructions like
+   *
+   *     void func(champsim::data::kibibytes x);
+   *     func(champsim::data::bytes{1024});
+   */
   template <typename Rep2, typename Unit2>
   constexpr size(const size<Rep2, Unit2>& other)
   {
@@ -60,6 +74,9 @@ public:
     m_count = other.m_count * conversion::num / conversion::den;
   }
 
+  /**
+   * Unwrap the underlying value.
+   */
   constexpr auto count() const { return m_count; }
 
   constexpr size<Rep, Unit> operator+() const { return *this; }
@@ -210,13 +227,18 @@ auto constexpr operator>=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>&
   return !(lhs < rhs);
 }
 
+/**
+ * Provides a set of literals to the user.
+ *
+ *     1024_kiB => champsim::data::kibibytes{1024}
+ */
 namespace data_literals
 {
-champsim::data::bytes operator""_B(unsigned long long val);
-champsim::data::kibibytes operator""_kiB(unsigned long long val);
-champsim::data::mebibytes operator""_MiB(unsigned long long val);
-champsim::data::gibibytes operator""_GiB(unsigned long long val);
-champsim::data::tebibytes operator""_TiB(unsigned long long val);
+constexpr champsim::data::bytes operator""_B(unsigned long long val) { return bytes{static_cast<typename bytes::rep>(val)}; }
+constexpr champsim::data::kibibytes operator""_kiB(unsigned long long val) { return kibibytes{static_cast<typename kibibytes::rep>(val)}; }
+constexpr champsim::data::mebibytes operator""_MiB(unsigned long long val) { return mebibytes{static_cast<typename mebibytes::rep>(val)}; }
+constexpr champsim::data::gibibytes operator""_GiB(unsigned long long val) { return gibibytes{static_cast<typename gibibytes::rep>(val)}; }
+constexpr champsim::data::tebibytes operator""_TiB(unsigned long long val) { return tebibytes{static_cast<typename tebibytes::rep>(val)}; }
 } // namespace data_literals
 } // namespace data
 } // namespace champsim
@@ -253,7 +275,7 @@ struct fmt::formatter<champsim::data::size<Rep, Unit>> {
     if (suffix_it != std::end(suffix_map)) {
       suffix = suffix_it->second;
     }
-    return fmt::format_to(ctx.out(), "{}{}", val.count(), suffix);
+    return fmt::format_to(ctx.out(), "{} {}", val.count(), suffix);
   }
 };
 
