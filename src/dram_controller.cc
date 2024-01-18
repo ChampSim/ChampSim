@@ -248,7 +248,17 @@ long DRAM_CHANNEL::schedule_packets()
 
 void MEMORY_CONTROLLER::initialize()
 {
-  fmt::print("Off-chip DRAM Size: {}", this->size());
+  using namespace champsim::data::data_literals;
+  auto sz = this->size();
+  if (champsim::data::gibibytes gb_sz{sz}; gb_sz > 1_GiB) {
+    fmt::print("Off-chip DRAM Size: {}", gb_sz);
+  } else if (champsim::data::mebibytes mb_sz{sz}; mb_sz > 1_MiB) {
+    fmt::print("Off-chip DRAM Size: {}", mb_sz);
+  } else if (champsim::data::kibibytes kb_sz{sz}; kb_sz > 1_kiB) {
+    fmt::print("Off-chip DRAM Size: {}", kb_sz);
+  } else {
+    fmt::print("Off-chip DRAM Size: {}", sz);
+  }
   fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, std::chrono::microseconds{1} / clock_period);
 }
 

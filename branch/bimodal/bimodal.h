@@ -7,8 +7,8 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-struct bimodal : champsim::modules::branch_predictor {
-  using branch_predictor::branch_predictor;
+class bimodal : champsim::modules::branch_predictor {
+  [[nodiscard]] static constexpr auto hash(champsim::address ip) { return ip.to<unsigned long>() % PRIME; }
 
   static constexpr std::size_t TABLE_SIZE = 16384;
   static constexpr std::size_t PRIME = 16381;
@@ -16,7 +16,8 @@ struct bimodal : champsim::modules::branch_predictor {
 
   std::array<champsim::msl::fwcounter<BITS>, TABLE_SIZE> bimodal_table;
 
-  [[nodiscard]] static constexpr auto hash(champsim::address ip) { return ip.to<unsigned long>() % PRIME; }
+  public:
+  using branch_predictor::branch_predictor;
 
   // void initialize_branch_predictor();
   bool predict_branch(champsim::address ip);
