@@ -28,8 +28,6 @@
 #include "address.h"
 #include "champsim.h"
 
-struct ooo_model_instr;
-
 namespace champsim
 {
 
