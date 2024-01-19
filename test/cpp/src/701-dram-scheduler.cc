@@ -83,13 +83,13 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         };
         auto start_after_first_access = cycles_for_first_bank_access[1] + tcas_cycles + trp_cycles + trcd_cycles;
         std::vector<uint64_t> cycles_for_second_bank_access = {
-            start_after_first_access + 2*(trp_cycles + trcd_cycles),
-            start_after_first_access + 1*(trp_cycles + trcd_cycles),
-            start_after_first_access + 3*(trp_cycles + trcd_cycles),
-            start_after_first_access + 4*(trp_cycles + trcd_cycles),
-            start_after_first_access + 5*(trp_cycles + trcd_cycles),
-            start_after_first_access + 6*(trp_cycles + trcd_cycles),
-            start_after_first_access + 7*(trp_cycles + trcd_cycles)
+            start_after_first_access + 1*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + trcd_cycles,
+            start_after_first_access + 2*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 3*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 4*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 5*(trp_cycles + trcd_cycles) + trcd_cycles,
+            start_after_first_access + 6*(trp_cycles + trcd_cycles) + trcd_cycles
         };
         auto start_after_second_bank_access = cycles_for_second_bank_access[0] + tcas_cycles;
         std::vector<uint64_t> cycles_for_third_bank_access = {

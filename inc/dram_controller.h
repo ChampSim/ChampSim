@@ -100,6 +100,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   bool write_mode = false;
 
   std::size_t refresh_row = 0;
+  champsim::chrono::clock::time_point last_refresh{};
   champsim::chrono::clock::time_point dbus_cycle_available{};
 
 
@@ -107,7 +108,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
   stats_type roi_stats, sim_stats;
 
   // Latencies
-  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+
   const std::size_t ROWS, COLUMNS, RANKS, BANKS;
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
