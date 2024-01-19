@@ -25,14 +25,14 @@ TEST_CASE("Tag checks do not break when translation misses back up") {
     elem->begin_phase();
   }
 
-  std::array<uint64_t, 12> addresses;
-  std::iota(std::begin(addresses), std::end(addresses), 0xdeadbeef);
+  std::array<champsim::page_number, 12> addresses;
+  std::iota(std::begin(addresses), std::end(addresses), champsim::page_number{0xdeadb});
 
   std::vector<decltype(mock_ul)::request_type> packets;
   std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr){
       // Create a test packet
       decltype(mock_ul)::request_type test;
-      test.address = addr << LOG2_PAGE_SIZE;
+      test.address = champsim::address{addr};
       test.v_address = test.address;
       test.is_translated = false;
       test.cpu = 0;
@@ -83,14 +83,14 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
     elem->begin_phase();
   }
 
-  std::array<uint64_t, 12> addresses;
-  std::iota(std::begin(addresses), std::end(addresses), 0xdeadbeef);
+  std::array<champsim::page_number, 12> addresses;
+  std::iota(std::begin(addresses), std::end(addresses), champsim::page_number{0xdeadbeef});
 
   std::vector<decltype(seed_ul)::request_type> packets;
   std::transform(std::begin(addresses), std::end(addresses), std::back_inserter(packets), [](auto addr){
       // Create a test packet
       decltype(seed_ul)::request_type test;
-      test.address = addr << LOG2_PAGE_SIZE;
+      test.address = champsim::address{addr};
       test.v_address = test.address;
       test.is_translated = false;
       test.cpu = 0;
@@ -106,8 +106,8 @@ TEST_CASE("Backed up translation misses do not prevent translated packets from a
   }
 
   decltype(mock_ul)::request_type test;
-  test.address = 0xcafebabe;
-  test.v_address = 0xfeedfeed;
+  test.address = champsim::address{0xcafebabe};
+  test.v_address = champsim::address{0xfeedfeed};
   test.is_translated = true;
   test.cpu = 0;
   test.response_requested = true;

@@ -24,13 +24,14 @@ def get_constants_file(env, pmem):
 
         '#include <cstdlib>',
         '#include "util/bits.h"',
-        f'inline constexpr unsigned BLOCK_SIZE = {env["block_size"]};',
-        f'inline constexpr unsigned PAGE_SIZE = {env["page_size"]};',
+
         f'inline constexpr uint64_t STAT_PRINTING_PERIOD = {env["heartbeat_frequency"]};',
         f'inline constexpr std::size_t NUM_CPUS = {env["num_cores"]};',
+
+        f'inline constexpr auto BLOCK_SIZE = {env["block_size"]};',
+        f'inline constexpr auto PAGE_SIZE = {env["page_size"]};',
         'inline constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);',
         'inline constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);',
-        f'inline constexpr uint64_t DRAM_IO_FREQ = {pmem["io_freq"]};',
         f'inline constexpr std::size_t DRAM_CHANNELS = {pmem["channels"]};',
         f'inline constexpr std::size_t DRAM_RANKS = {pmem["ranks"]};',
         f'inline constexpr std::size_t DRAM_BANKS = {pmem["banks"]};',

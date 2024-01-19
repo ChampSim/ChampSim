@@ -89,7 +89,7 @@ SCENARIO("A cache can examine the RQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {
@@ -127,7 +127,7 @@ SCENARIO("A cache can examine the WQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {
@@ -165,7 +165,7 @@ SCENARIO("A cache can examine the PQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {

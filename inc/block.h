@@ -17,6 +17,8 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
+#include "champsim.h"
+
 namespace champsim
 {
 struct cache_block {
@@ -24,9 +26,9 @@ struct cache_block {
   bool prefetch = false;
   bool dirty = false;
 
-  uint64_t address = 0;
-  uint64_t v_address = 0;
-  uint64_t data = 0;
+  champsim::address address{};
+  champsim::address v_address{};
+  champsim::address data{};
 
   uint32_t pf_metadata = 0;
 };

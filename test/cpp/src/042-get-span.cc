@@ -34,9 +34,10 @@ TEST_CASE("get_span_p() returns a span capped by the size parameter") {
 }
 
 TEST_CASE("get_span_p() returns a span capped by the function parameter") {
-  std::vector<int> test_vec(400, -1);
+  auto size = 400;
+  std::vector<int> test_vec((std::size_t)size, -1);
   test_vec.at(10) = 1;
-  auto [begin, end] = champsim::get_span_p(std::begin(test_vec), std::end(test_vec), champsim::bandwidth{champsim::bandwidth::maximum_type{400}}, [](auto x){ return x < 0; });
+  auto [begin, end] = champsim::get_span_p(std::begin(test_vec), std::end(test_vec), champsim::bandwidth{champsim::bandwidth::maximum_type{size}}, [](auto x){ return x < 0; });
   REQUIRE(std::distance(begin, end) == 10);
 }
 

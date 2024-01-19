@@ -14,37 +14,25 @@
  * limitations under the License.
  */
 
-#include <algorithm> // for transform
-#include <array>     // for array
-#include <cmath>     // for ceil
-#include <cstddef>   // for size_t
-#include <iterator>  // for back_insert_iterator, begin, end
 #include <numeric>
 #include <ratio>
 #include <string_view> // for string_view
 #include <utility>
 #include <vector>
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
-#include "cache.h"              // for CACHE::stats_type, CACHE
-#include "champsim_constants.h" // for NUM_CPUS
-#include "channel.h"            // for access_type, access_type::LOAD, acce...
-#include "dram_controller.h"    // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
-#include "instruction.h"        // for branch_type, BRANCH_CONDITIONAL, BRA...
-#include "ooo_cpu.h"            // for O3_CPU::stats_type, O3_CPU
-#include "phase_info.h"         // for phase_stats
 #include "stats_printer.h"
-#include "util/bits.h" // for to_underlying
 
 void champsim::plain_printer::print(O3_CPU::stats_type stats)
 {
   constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
                              branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
-  auto total_branch = std::ceil(std::accumulate(std::begin(types), std::end(types), 0LL,
-                                                [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.at(champsim::to_underlying(next)); }));
-  auto total_mispredictions = std::ceil(std::accumulate(
-      std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.at(champsim::to_underlying(next)); }));
+  auto total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ULL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.value_or(next, 0); }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0ULL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
 
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
@@ -52,42 +40,46 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (std::kilo::num * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
-  std::vector<double> mpkis;
-  std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
-                 [instrs = stats.instrs()](auto x) { return std::kilo::num * std::ceil(x) / std::ceil(instrs); });
-
   fmt::print(stream, "Branch type MPKI\n");
   for (auto idx : types) {
-    fmt::print(stream, "{}: {:.3}\n", branch_type_names.at(champsim::to_underlying(idx)), mpkis.at(champsim::to_underlying(idx)));
+    fmt::print(stream, "{}: {:.3}\n", branch_type_names.at(champsim::to_underlying(idx)),
+               std::kilo::num * std::ceil(stats.branch_type_misses.value_or(idx, 0)) / std::ceil(stats.instrs()));
   }
   fmt::print(stream, "\n");
 }
 
 void champsim::plain_printer::print(CACHE::stats_type stats)
 {
-  using hits_value_type = typename decltype(stats.hits)::value_type::value_type;
-  using misses_value_type = typename decltype(stats.misses)::value_type::value_type;
+  using hits_value_type = typename decltype(stats.hits)::value_type;
+  using misses_value_type = typename decltype(stats.misses)::value_type;
+
+  for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
+    for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
+      stats.hits.allocate(std::pair{type, cpu});
+      stats.misses.allocate(std::pair{type, cpu});
+    }
+  }
 
   for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
     hits_value_type total_hits = 0;
     misses_value_type total_misses = 0;
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-      total_hits += stats.hits.at(champsim::to_underlying(type)).at(cpu);
-      total_misses += stats.misses.at(champsim::to_underlying(type)).at(cpu);
+      total_hits += stats.hits.value_or(std::pair{type, cpu}, hits_value_type{});
+      total_misses += stats.misses.value_or(std::pair{type, cpu}, misses_value_type{});
     }
 
     fmt::format_string<std::string_view, std::string_view, int, int, int> hitmiss_fmtstr{"{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n"};
     fmt::print(stream, hitmiss_fmtstr, stats.name, "TOTAL", total_hits + total_misses, total_hits, total_misses);
     for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
       fmt::print(stream, hitmiss_fmtstr, stats.name, access_type_names.at(champsim::to_underlying(type)),
-                 stats.hits.at(champsim::to_underlying(type)).at(cpu) + stats.misses.at(champsim::to_underlying(type)).at(cpu),
-                 stats.hits.at(champsim::to_underlying(type)).at(cpu), stats.misses.at(champsim::to_underlying(type)).at(cpu));
+                 stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}) + stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}),
+                 stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}), stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
     }
 
     fmt::print(stream, "{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}\n", stats.name, stats.pf_requested, stats.pf_issued,
                stats.pf_useful, stats.pf_useless);
 
-    fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, stats.avg_miss_latency);
+    fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, std::ceil(stats.total_miss_latency.count()) / std::ceil(stats.misses.total()));
   }
 }
 
@@ -98,7 +90,7 @@ void champsim::plain_printer::print(DRAM_CHANNEL::stats_type stats)
              stats.WQ_FULL);
   fmt::print(stream, " REFRESHES ISSUED: {:13}\n",stats.refresh_cycles);
   if (stats.dbus_count_congested > 0) {
-    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested));
+    fmt::print(stream, " AVG DBUS CONGESTED CYCLE: {:.4g}\n", stats.dbus_cycle_congested / std::ceil(stats.dbus_count_congested));
   } else {
     fmt::print(stream, " AVG DBUS CONGESTED CYCLE: -\n");
   }

@@ -23,14 +23,6 @@ from . import defaults
 from . import modules
 from . import util
 
-default_root = { 'block_size': "64B", 'page_size': "4kB", 'heartbeat_frequency': 10000000, 'num_cores': 1 }
-default_pmem = {
-    'name': 'DRAM', 'model': 'champsim', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128,
-    'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5,
-    'turn_around_time': 7.5
-}
-default_vmem = { 'pte_page_size': "4kB", 'num_levels': 5, 'minor_fault_penalty': 200 }
-
 cache_deprecation_keys = {
     'max_read': 'max_tag_check',
     'max_write': 'max_fill'
@@ -42,14 +34,6 @@ ptw_deprecation_keys = {
     'ptw_max_write': 'max_write',
     'ptw_rq_size': 'rq_size'
 }
-
-# Scale frequencies
-def scale_frequencies(iterable):
-    ''' Convert each element's 'frequency' member into a factor n where n >= 1 is the ratio above the highest frequency '''
-    it_a, it_b = itertools.tee(iterable, 2)
-    max_freq = max(element['frequency'] for element in it_a)
-    for element in it_b:
-        element['frequency'] = max_freq / element['frequency']
 
 def executable_name(*config_list):
     ''' Produce the executable name from a list of configurations '''
@@ -167,15 +151,12 @@ def default_frequencies(cores, caches):
     paths = itertools.chain.from_iterable(util.propogate_down(p, 'frequency') for p in paths)
 
     # Collect caches in multiple paths together
-    # The frequency is the maximum of the frequencies seen
     # Note if the frequency was provided, it was never overwritten
-    def max_joiner(chunk):
-        first = next(chunk, None)
-        if first is None:
-            return {}
-        return { 'name': first['name'], 'frequency': max(x['frequency'] for x in itertools.chain((first,), chunk)) }
+    def max_joiner(lhs, rhs):
+        ''' The frequency is the maximum of the frequencies seen. '''
+        return { 'name': lhs['name'], 'frequency': max(lhs['frequency'], rhs['frequency']) }
 
-    yield from util.collect(paths, operator.itemgetter('name'), max_joiner)
+    yield from util.collect(paths, operator.itemgetter('name'), functools.partial(functools.reduce, max_joiner))
 
 def do_deprecation(element, deprecation_map):
     '''
@@ -324,27 +305,38 @@ class NormalizedConfiguration:
         def transform_for_keys(element, keys, transform_func):
             return { k:transform_func(v) for k,v in util.subdict(element, keys).items() }
 
-        root_config = util.chain(self.root, default_root)
-        root_config = util.chain(transform_for_keys(root_config, ('block_size', 'page_size'), int_or_prefixed_size), root_config)
+        root_config = util.chain(
+            transform_for_keys(self.root, ('block_size', 'page_size'), int_or_prefixed_size),
+            self.root,
+            {
+                'block_size': int_or_prefixed_size("64B"),
+                'page_size': int_or_prefixed_size("4kB"),
+                'heartbeat_frequency': 10000000
+            }
+        )
 
-        pmem = util.chain(self.pmem, default_pmem)
-        vmem = util.chain(self.vmem, default_vmem)
-        vmem = util.chain(transform_for_keys(vmem, ('pte_page_size',), int_or_prefixed_size), vmem)
+        pmem = util.chain(self.pmem, {
+            'name': 'DRAM', 'frequency': 3200, 'channels': 1, 'ranks': 1, 'banks': 8, 'rows': 65536, 'columns': 128,
+            'lines_per_column': 8, 'channel_width': 8, 'wq_size': 64, 'rq_size': 64, 'tRP': 12.5, 'tRCD': 12.5, 'tCAS': 12.5,
+            'turn_around_time': 7.5
+        })
+        vmem = util.chain(
+            transform_for_keys(self.vmem, ('pte_page_size',), int_or_prefixed_size),
+            self.vmem,
+            { 'pte_page_size': int_or_prefixed_size("4kB"), 'num_levels': 5, 'minor_fault_penalty': 200 }
+        )
 
         # Give cores numeric indices and default cache names
         cores = [{'_index': i, **core_default_names(cpu)} for i,cpu in enumerate(self.cores)]
 
-        l1i_path_names = tuple(cpu['L1I'] for cpu in cores)
-        l1d_path_names = tuple(cpu['L1D'] for cpu in cores)
-        itlb_path_names = tuple(cpu['ITLB'] for cpu in cores)
-        dtlb_path_names = tuple(cpu['DTLB'] for cpu in cores)
+        path_root_names = tuple(tuple(cpu[name] for cpu in cores) for name in ('L1I', 'L1D', 'ITLB', 'DTLB'))
 
         # Instantiate any missing default caches
         caches = util.combine_named(self.caches.values(), ({ 'name': 'LLC' },), *map(defaults.cache_core_defaults, cores))
         ptws = util.combine_named(self.ptws.values(), *map(defaults.ptw_core_defaults, cores))
 
         # Remove caches that are inaccessible
-        caches = filter_inaccessible(caches, (*l1i_path_names, *l1d_path_names, *itlb_path_names, *dtlb_path_names))
+        caches = filter_inaccessible(caches, itertools.chain(*path_root_names))
 
         # Follow paths and apply default sizings
         caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches))
@@ -358,8 +350,8 @@ class NormalizedConfiguration:
                 **module_parse(mod_name, prefetcher_context)
             }
 
-        tlb_path = itertools.chain(*(util.iter_system(caches, name) for name in (*itlb_path_names, *dtlb_path_names)))
-        data_path = itertools.chain(*(util.iter_system(caches, name) for name in (*l1i_path_names, *l1d_path_names)))
+        tlb_path = itertools.chain(*(util.iter_system(caches, name) for name in itertools.chain(*path_root_names[2:])))
+        data_path = itertools.chain(*(util.iter_system(caches, name) for name in itertools.chain(*path_root_names[:2])))
         caches = util.combine_named(
             # Set prefetcher_activate
             ({ 'name': k,
@@ -420,9 +412,6 @@ class NormalizedConfiguration:
              } for c in cores),
             ).values()
         )
-
-        pmem['io_freq'] = pmem['frequency'] # Save value
-        scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
 
         elements = {
             'cores': cores,

@@ -16,14 +16,11 @@
 
 #include "tracereader.h"
 
-#include <algorithm> // for transform
 #include <fstream>
 #include <string>
-#include <string_view> // for basic_string_view
 
 #include "inf_stream.h"
 #include "repeatable.h"
-#include "trace_instruction.h" // for cloudsuite_instr, input_instr
 
 namespace champsim
 {
@@ -31,7 +28,7 @@ uint64_t tracereader::instr_unique_id = 0; // NOLINT(cppcoreguidelines-avoid-non
 
 ooo_model_instr apply_branch_target(ooo_model_instr branch, const ooo_model_instr& target)
 {
-  branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : 0;
+  branch.branch_target = (branch.is_branch && branch.branch_taken) ? target.ip : champsim::address{};
   return branch;
 }
 

@@ -110,17 +110,29 @@ class CpuBuilderTest(unittest.TestCase):
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = { 'name': 'test_cache' }
+        base_cache = { 'name': 'test_cache', 'frequency': 250 }
         upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
+    def test_size(self):
+        self.get_element_diff(['.size(champsim::data::bytes{1})'], size=1)
+
+    def test_log2_size(self):
+        self.get_element_diff(['.log2_size(1)'], log2_size=1)
+
     def test_sets(self):
         self.get_element_diff(['.sets(1)'], sets=1)
 
+    def test_log2_sets(self):
+        self.get_element_diff(['.log2_sets(1)'], log2_sets=1)
+
     def test_ways(self):
         self.get_element_diff(['.ways(1)'], ways=1)
+
+    def test_log2_ways(self):
+        self.get_element_diff(['.log2_ways(1)'], log2_ways=1)
 
     def test_pq_size(self):
         self.get_element_diff(['.pq_size(1)'], pq_size=1)
@@ -173,7 +185,7 @@ class CacheBuilderTests(unittest.TestCase):
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = { 'name': 'test_ptw' }
+        base_ptw = { 'name': 'test_ptw', 'frequency': 250 }
         upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))
@@ -247,6 +259,58 @@ class GetUpperLevelsTests(unittest.TestCase):
         caches = [{'lower_translate': 'test_ll', 'name': 'test_ul'}]
         ptws = []
         self.assertEqual([('test_ll', 'test_ul')], config.instantiation_file.get_upper_levels(cores, caches, ptws))
+
+class DecorateQueuesTests(unittest.TestCase):
+    def test_levels_are_different(self):
+        caches = [
+            {'name': 'test_l1', 'lower_level': 'test_l2', 'rq_size': 1, 'wq_size': 1, 'pq_size': 1, '_offset_bits': 1, '_queue_check_full_addr': False, '_queue_factor': None},
+            {'name': 'test_l2', 'lower_level': 'test_l3', 'rq_size': 2, 'wq_size': 2, 'pq_size': 2, '_offset_bits': 2, '_queue_check_full_addr': False, '_queue_factor': None},
+            {'name': 'test_l3', 'lower_level': 'DRAM', 'rq_size': 3, 'wq_size': 3, 'pq_size': 3, '_offset_bits': 3, '_queue_check_full_addr': False, '_queue_factor': None}
+        ]
+        ptws = []
+
+        evaluated = config.instantiation_file.decorate_queues(caches, ptws, {'name': 'DRAM'})
+
+        self.assertEqual(evaluated.get('test_l2').get('rq_size'), 2)
+        self.assertEqual(evaluated.get('test_l2').get('wq_size'), 2)
+        self.assertEqual(evaluated.get('test_l2').get('pq_size'), 2)
+
+        self.assertEqual(evaluated.get('test_l3').get('rq_size'), 3)
+        self.assertEqual(evaluated.get('test_l3').get('wq_size'), 3)
+        self.assertEqual(evaluated.get('test_l3').get('pq_size'), 3)
+
+class GetQueueInfoTests(unittest.TestCase):
+    def test_single(self):
+        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog'] } }
+        given_decoration = { 'dog': { 'is_good_boy': True } }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True } ]
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_uppers(self):
+        given_uppers = { 'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] } }
+        given_decoration = { 'dog': { 'is_good_boy': True } }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [ { 'name': 'cat_to_dog', 'is_good_boy': True }, { 'name': 'pig_to_dog', 'is_good_boy': True } ]
+        self.assertEqual(expected, evaluated)
+
+    def test_multiple_lowers(self):
+        given_uppers = {
+            'dog': { 'upper_channels': ['cat_to_dog', 'pig_to_dog'] },
+            'cow': { 'upper_channels': ['cat_to_cow', 'pig_to_cow'] }
+        }
+        given_decoration = {
+            'dog': { 'is_good_boy': True },
+            'cow': { 'is_good_boy': False }
+        }
+        evaluated = config.instantiation_file.get_queue_info(given_uppers, given_decoration)
+        expected = [
+            { 'name': 'cat_to_dog', 'is_good_boy': True },
+            { 'name': 'pig_to_dog', 'is_good_boy': True },
+            { 'name': 'cat_to_cow', 'is_good_boy': False },
+            { 'name': 'pig_to_cow', 'is_good_boy': False }
+        ]
+        self.assertEqual(expected, evaluated)
 
 class CheckHeaderCompilesForClassTests(unittest.TestCase):
     def test_present(self):
