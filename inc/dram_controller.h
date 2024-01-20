@@ -175,14 +175,9 @@ class MEMORY_CONTROLLER : public champsim::operable
   #ifdef RAMULATOR
   Ramulator::IFrontEnd* ramulator2_frontend;
   Ramulator::IMemorySystem* ramulator2_memorysystem;
+  YAML::Node config;
 
-  struct RAMULATOR_Q_ENTRY
-  {
-    long addr;
-    DRAM_CHANNEL::request_type pkt;
-  };
-  //queue needed to manage packet return requests
-  std::vector<RAMULATOR_Q_ENTRY> RAMULATOR_RQ;
+  void return_packet_rq_rr(Ramulator::Request& req, DRAM_CHANNEL::request_type pkt);
 
   template <typename T>
   ramulator::MemoryBase* create_memory_controller();
