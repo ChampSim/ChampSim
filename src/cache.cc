@@ -552,15 +552,16 @@ void CACHE::finish_packet(const response_type& packet)
 void CACHE::finish_translation(const response_type& packet)
 {
   auto matches_vpage = [page_num = champsim::page_number{packet.v_address}](const auto& entry) {
-    return ((entry.v_address >> LOG2_PAGE_SIZE) == page_num) && !entry.is_translated;
+    return (champsim::page_number{entry.v_address} == page_num) && !entry.is_translated;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
+    auto old_address = entry.address;
     entry.address = champsim::splice(p_page, champsim::page_offset{entry.v_address}); // translated address
     entry.is_translated = true;                                                       // This entry is now translated
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_TRANSLATE] finish_translation paddr: {} vaddr: {} cycle: {}\n", this->NAME, entry.address, entry.v_address,
-                 this->current_time.time_since_epoch() / this->clock_period);
+      fmt::print("[{}_TRANSLATE] finish_translation old: {} paddr: {} vaddr: {} type: {} cycle: {}\n", this->NAME, old_address, entry.address, entry.v_address,
+                 access_type_names.at(champsim::to_underlying(entry.type)), this->current_time.time_since_epoch() / this->clock_period);
     }
   };
 
