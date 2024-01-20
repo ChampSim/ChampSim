@@ -533,7 +533,7 @@ void CACHE::finish_translation(const response_type& packet)
     entry.address = champsim::splice_bits(p_page, entry.v_address, LOG2_PAGE_SIZE); // translated address
     entry.is_translated = true;                                                     // This entry is now translated
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_TRANSLATE] finish_translation paddr: {:#x} vaddr: {:#x} data: {:#x} cycle: {}\n", this->NAME, entry.address, entry.v_address, p_page,this->current_cycle);
+      fmt::print("[{}_TRANSLATE] finish_translation paddr: {:#x} vaddr: {:#x} cycle: {}\n", this->NAME, entry.address, entry.v_address, this->current_cycle);
     }
   };
   // Restart stashed translations
