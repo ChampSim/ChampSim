@@ -552,7 +552,7 @@ void CACHE::finish_packet(const response_type& packet)
 void CACHE::finish_translation(const response_type& packet)
 {
   auto matches_vpage = [page_num = champsim::page_number{packet.v_address}](const auto& entry) {
-    return champsim::page_number{entry.v_address} == page_num;
+    return ((entry.v_address >> LOG2_PAGE_SIZE) == page_num) && !entry.is_translated;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
     entry.address = champsim::splice(p_page, champsim::page_offset{entry.v_address}); // translated address
