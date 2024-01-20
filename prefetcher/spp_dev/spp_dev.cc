@@ -356,8 +356,8 @@ void spp::PATTERN_TABLE::update_pattern(uint32_t last_sig, typename offset_type:
   }
 }
 
-void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q, uint32_t& lookahead_way,
-                                      uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
+void spp::PATTERN_TABLE::read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& delta_q, std::vector<uint32_t>& confidence_q,
+                                      uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth)
 {
   // Update (sig, delta) correlation
   uint32_t set = get_hash(curr_sig) % spp::PT_SET, local_conf = 0, pf_conf = 0, max_conf = 0;

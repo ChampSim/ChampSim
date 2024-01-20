@@ -32,9 +32,9 @@ namespace champsim
 {
 namespace data
 {
-  /**
-   * A class to represent data sizes as they are passed around the program
-   */
+/**
+ * A class to represent data sizes as they are passed around the program
+ */
 template <typename Rep, typename Unit>
 class size
 {

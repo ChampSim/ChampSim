@@ -171,7 +171,7 @@ long PageTableWalker::operate()
 
   if (progress > 0) {
     std::vector<champsim::address> mshr_addresses{};
-    std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x){ return x.address; });
+    std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x) { return x.address; });
     fmt::print("[{}] {} MSHR contents: {} cycle: {}\n", NAME, __func__, mshr_addresses, current_time.time_since_epoch() / clock_period);
   }
 
@@ -184,8 +184,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+      fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", NAME, mshr_entry.address,
+                 mshr_entry.v_address, ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period,
+                 penalty / this->clock_period);
     }
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
@@ -195,8 +196,9 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} clock: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
+      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} clock: {} penalty: {}\n", NAME, mshr_entry.address,
+                 mshr_entry.v_address, ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period,
+                 penalty / this->clock_period);
     }
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};

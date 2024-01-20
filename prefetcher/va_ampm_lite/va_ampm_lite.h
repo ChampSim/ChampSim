@@ -9,8 +9,9 @@
 #include "champsim_constants.h"
 #include "modules.h"
 
-class va_ampm_lite : champsim::modules::prefetcher {
-  public:
+class va_ampm_lite : champsim::modules::prefetcher
+{
+public:
   static constexpr std::size_t REGION_COUNT = 128;
   static constexpr int MAX_DISTANCE = 256;
   static constexpr int PREFETCH_DEGREE = 2;

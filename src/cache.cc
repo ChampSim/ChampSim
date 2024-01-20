@@ -336,8 +336,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {}\n", this->NAME, retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return));
+      fmt::print("[{}_TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {}\n", this->NAME, retval.instr_id,
+                 retval.address, retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return));
     }
 
     return retval;

@@ -93,8 +93,8 @@ public:
   }
 
   void update_pattern(uint32_t last_sig, typename offset_type::difference_type curr_delta);
-  void read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>&prefetch_delta, std::vector<uint32_t>&confidence_q,
-                                                                       uint32_t&lookahead_way, uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
+  void read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& prefetch_delta, std::vector<uint32_t>& confidence_q,
+                    uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth);
 };
 
 class PREFETCH_FILTER
