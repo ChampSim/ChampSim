@@ -169,10 +169,13 @@ long PageTableWalker::operate()
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
   progress += fill_bw.amount_consumed() + tag_bw.amount_consumed();
 
-  if (progress > 0) {
-    std::vector<champsim::address> mshr_addresses{};
-    std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x) { return x.address; });
-    fmt::print("[{}] {} MSHR contents: {} cycle: {}\n", NAME, __func__, mshr_addresses, current_time.time_since_epoch() / clock_period);
+  if constexpr (champsim::debug_print)
+  {
+    if (progress > 0) {
+      std::vector<champsim::address> mshr_addresses{};
+      std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x){ return x.address; });
+      fmt::print("[{}] {} MSHR contents: {} cycle: {}\n", NAME, __func__, mshr_addresses, current_time.time_since_epoch() / clock_period);
+    }
   }
 
   return progress;
