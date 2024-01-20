@@ -73,8 +73,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   }
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {} v_address: {} pt_page_offset: {} translation_level: {}\n", NAME, __func__, walk_init.vaddr, handle_pkt.v_address,
-               walk_offset.to<int>(), walk_init.level);
+    fmt::print("[{}] {} address: {} v_address: {} pt_page_offset: {} translation_level: {} cycle: {}\n", NAME, __func__, fwd_mshr.address, handle_pkt.v_address,
+               walk_offset.to<int>(), walk_init.level, current_time.time_since_epoch() / clock_period);
   }
 
   return step_translation(fwd_mshr);
@@ -83,7 +83,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
-    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} current: {}\n", NAME, __func__, fill_mshr.address,
+    fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", NAME, __func__, fill_mshr.address,
                fill_mshr.v_address, *fill_mshr.data,
                fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple), LOG2_PAGE_SIZE>().to<int>(), fill_mshr.translation_level,
                current_time.time_since_epoch() / clock_period);
@@ -167,7 +167,15 @@ long PageTableWalker::operate()
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
-  return progress + fill_bw.amount_consumed() + tag_bw.amount_consumed();
+  progress += fill_bw.amount_consumed() + tag_bw.amount_consumed();
+
+  if (progress > 0) {
+    std::vector<champsim::address> mshr_addresses{};
+    std::transform(std::begin(MSHR), std::end(MSHR), std::back_inserter(mshr_addresses), [](const auto& x){ return x.address; });
+    fmt::print("[{}] {} MSHR contents: {} cycle: {}\n", NAME, __func__, mshr_addresses, current_time.time_since_epoch() / clock_period);
+  }
+
+  return progress;
 }
 
 void PageTableWalker::finish_packet(const response_type& packet)
@@ -176,8 +184,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 ppage, mshr_entry.translation_level, penalty);
+      fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
     }
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
@@ -187,8 +195,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 ppage, mshr_entry.translation_level, penalty);
+      fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} clock: {} penalty: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 ppage, mshr_entry.translation_level, this->current_time.time_since_epoch() / this->clock_period, penalty / this->clock_period);
     }
 
     return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
