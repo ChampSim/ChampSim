@@ -33,15 +33,6 @@ def get_constants_file(env, pmem):
         'inline constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);',
         'inline constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);',
 
-        f'inline constexpr std::size_t DRAM_CHANNELS = {pmem["channels"]};',
-        f'inline constexpr std::size_t DRAM_RANKS = {pmem["ranks"]};',
-        f'inline constexpr std::size_t DRAM_BANKS = {pmem["banks"]};',
-        f'inline constexpr std::size_t DRAM_ROWS = {pmem["rows"]};',
-        f'inline constexpr std::size_t DRAM_COLUMNS = {pmem["columns"]};',
-        f'inline constexpr std::size_t DRAM_CHANNEL_WIDTH = {pmem["channel_width"]};',
-        f'inline constexpr std::size_t DRAM_WQ_SIZE = {pmem["wq_size"]};',
-        f'inline constexpr std::size_t DRAM_RQ_SIZE = {pmem["rq_size"]};',
-
         '#ifdef SET_ASIDE_CHAMPSIM_MODULE',
         '#undef SET_ASIDE_CHAMPSIM_MODULE',
         '#define CHAMPSIM_MODULE',

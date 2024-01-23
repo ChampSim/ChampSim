@@ -57,7 +57,12 @@ SCENARIO("A series of reads arrive at the memory controller and are reordered") 
         const uint64_t trp_cycles = 4;
         const uint64_t trcd_cycles = 4;
         const uint64_t tcas_cycles = 80;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}};
+        const std::size_t DRAM_CHANNELS = 1;
+        const std::size_t DRAM_BANKS = 8;
+        const std::size_t DRAM_RANKS = 8;
+        const std::size_t DRAM_COLUMNS = 8;
+        const std::size_t DRAM_ROWS = 8;
+        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         //test
         uut.warmup = false;
         uut.channels[0].warmup = false;
