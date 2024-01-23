@@ -119,6 +119,11 @@ TEST_CASE("Data sizes can be divided") {
   REQUIRE(2_kiB / 2 == 1_kiB);
 }
 
+TEST_CASE("Data sizes can be divided by sizes") {
+  using champsim::data::data_literals::operator""_kiB;
+  REQUIRE(2_kiB / 1_kiB == 2);
+}
+
 TEST_CASE("Data sizes are ordered") {
   using champsim::data::data_literals::operator""_MiB;
   CHECK(1_MiB == 1_MiB);

@@ -33,6 +33,11 @@ namespace champsim
 namespace data
 {
 /**
+ * The size of a byte
+ */
+inline constexpr unsigned bits_per_byte = 8;
+
+/**
  * A class to represent data sizes as they are passed around the program
  */
 template <typename Rep, typename Unit>
@@ -165,10 +170,8 @@ auto constexpr operator/(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator/(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
-  result_type retval{lhs};
-  retval /= rhs;
-  return retval;
+  using joined_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
+  return joined_type{lhs}.count() / joined_type{rhs}.count();
 }
 
 template <class Rep1, class Unit1, class Rep2>
