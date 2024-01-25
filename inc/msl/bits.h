@@ -20,6 +20,9 @@
 #include <cstdint>
 #include <limits>
 
+#include "util/units.h"
+#include "util/to_underlying.h"
+
 namespace champsim::msl
 {
 template <typename T>
@@ -68,24 +71,50 @@ constexpr long long static ipow(long long base, unsigned exp)
   return result;
 }
 
+constexpr uint64_t bitmask(champsim::data::bits begin, champsim::data::bits end)
+{
+  using underlying_type = std::underlying_type_t<champsim::data::bits>;
+  auto begin_val = champsim::to_underlying(begin);
+  auto end_val = champsim::to_underlying(end);
+
+  if (begin_val - end_val >= std::numeric_limits<underlying_type>::digits) {
+    return std::numeric_limits<underlying_type>::max();
+  }
+  return ((underlying_type{1} << (begin_val - end_val)) - 1) << end_val;
+}
+
+constexpr uint64_t bitmask(champsim::data::bits begin)
+{
+  return bitmask(begin, champsim::data::bits{});
+}
+
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
 {
-  if (begin - end >= std::numeric_limits<uint64_t>::digits) {
-    return std::numeric_limits<uint64_t>::max();
-  }
-  return ((1ULL << (begin - end)) - 1) << end;
+  return bitmask(champsim::data::bits{begin}, champsim::data::bits{end});
 }
 
 template <typename T>
-constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
+constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits_upper, champsim::data::bits bits_lower)
 {
   return (upper & ~bitmask(bits_upper, bits_lower)) | (lower & bitmask(bits_upper, bits_lower));
 }
 
 template <typename T>
+constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits)
+{
+  return splice_bits(upper, lower, bits, champsim::data::bits{});
+}
+
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
+{
+  return splice_bits(upper, lower, champsim::data::bits{bits_upper}, champsim::data::bits{bits_lower});
+}
+
+template <typename T>
 constexpr auto splice_bits(T upper, T lower, std::size_t bits)
 {
-  return splice_bits(upper, lower, bits, 0);
+  return splice_bits(upper, lower, champsim::data::bits{bits});
 }
 } // namespace champsim::msl
 

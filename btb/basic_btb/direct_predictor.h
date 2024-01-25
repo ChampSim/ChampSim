@@ -24,8 +24,14 @@ struct direct_predictor {
     champsim::address target{};
     branch_info type = branch_info::ALWAYS_TAKEN;
 
-    auto index() const { return ip_tag.slice_upper<2>(); }
-    auto tag() const { return ip_tag.slice_upper<2>(); }
+    auto index() const {
+      using namespace champsim::data::data_literals;
+      return ip_tag.slice_upper<2_b>();
+    }
+    auto tag() const {
+      using namespace champsim::data::data_literals;
+      return ip_tag.slice_upper<2_b>();
+    }
   };
 
   champsim::msl::lru_table<btb_entry_t> BTB{sets, ways};

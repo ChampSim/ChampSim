@@ -47,7 +47,7 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim
                            champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width,
                            std::size_t rq_size, std::size_t wq_size,
                            champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request((get<1>(slice).upper - get<1>(slice).lower) * (get<0>(slice).upper - get<0>(slice).lower)), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::blocks{1} / width))),
       address_slicer(slice)
 {
@@ -209,7 +209,7 @@ std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
 {
   auto op_rank = get_rank(addr);
   auto op_bank = get_bank(addr);
-  return op_rank * (get<0>(address_slicer).upper - get<0>(address_slicer).lower) + op_bank;
+  return op_rank * champsim::size(get<0>(address_slicer)) + op_bank;
 }
 
 // Look for queued packets that have not been scheduled
@@ -435,7 +435,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
-  return address.slice(champsim::sized_extent{LOG2_BLOCK_SIZE, champsim::lg2(std::size(channels))}).to<unsigned long>();
+  return address.slice(champsim::sized_extent{champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::lg2(std::size(channels))}).to<unsigned long>();
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }

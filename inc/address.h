@@ -36,6 +36,7 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
+#include "champsim.h"
 #include "extent.h"
 #include "util/bits.h"
 #include "util/units.h"
@@ -94,25 +95,25 @@ struct splice_fold_wrapper;
  *
  * .. code-block:: cpp
  *
- *    address_slice st_full_addr{static_extent<64,0>{},0xffff'ffff};
- *    address_slice st_block{static_extent<64, LOG2_BLOCK_SIZE>{}, st_full_addr}; // 0xffff'ffc0
- *    address_slice st_page{static_extent<64, LOG2_PAGE_SIZE>{}, st_full_addr}; // 0xffff'f000
+ *    address_slice st_full_addr{static_extent<64_b,0_b>{},0xffff'ffff};
+ *    address_slice st_block{static_extent<64_b, champsim::data::bits{LOG2_BLOCK_SIZE}>{}, st_full_addr}; // 0xffff'ffc0
+ *    address_slice st_page{static_extent<64_b, champsim::data::bits{LOG2_PAGE_SIZE}>{}, st_full_addr}; // 0xffff'f000
  *
- *    address_slice dyn_full_addr{dynamic_extent{64,0},0xffff'ffff};
- *    address_slice dyn_block{dynamic_extent{64, LOG2_BLOCK_SIZE}, dyn_full_addr}; // 0xffff'ffc0
- *    address_slice dyn_page{dynamic_extent{64, LOG2_PAGE_SIZE}, dyn_full_addr}; // 0xffff'f000
+ *    address_slice dyn_full_addr{dynamic_extent{64_b,0_b},0xffff'ffff};
+ *    address_slice dyn_block{dynamic_extent{64_b, champsim::data::bits{LOG2_BLOCK_SIZE}}, dyn_full_addr}; // 0xffff'ffc0
+ *    address_slice dyn_page{dynamic_extent{64_b, champsim::data::bits{LOG2_PAGE_SIZE}}, dyn_full_addr}; // 0xffff'f000
  *
- *    address_slice szd_full_addr{sized_extent{0, 64},0xffff'ffff};
- *    address_slice szd_block_offset{sized_extent{0, LOG2_BLOCK_SIZE}, szd_full_addr}; // 0x3f
- *    address_slice szd_page_offset{sized_extent{0, LOG2_PAGE_SIZE}, szd_full_addr}; // 0xfff
+ *    address_slice szd_full_addr{sized_extent{0_b, 64_b},0xffff'ffff};
+ *    address_slice szd_block_offset{sized_extent{0_b, champsim::data::bits{LOG2_BLOCK_SIZE}}, szd_full_addr}; // 0x3f
+ *    address_slice szd_page_offset{sized_extent{0_b, champsim::data::bits{LOG2_PAGE_SIZE}}, szd_full_addr}; // 0xfff
  *
  * For static extents, it can be useful to explicitly specify the template parameter.
  *
  * .. code-block:: cpp
  *
- *    address_slice<static_extent<64,0>> st_full_addr{0xffff'ffff};
- *    address_slice<static_extent<LOG2_BLOCK_SIZE, 0>> st_block{st_full_addr}; // 0x3f
- *    address_slice<static_extent<LOG2_PAGE_SIZE, 0>> st_page{st_full_addr}; // 0xfff
+ *    address_slice<static_extent<64_b,0_b>> st_full_addr{0xffff'ffff};
+ *    address_slice<static_extent<champsim::data::bits{LOG2_BLOCK_SIZE}, 0_b>> st_block{st_full_addr}; // 0x3f
+ *    address_slice<static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, 0_b>> st_page{st_full_addr}; // 0xfff
  *
  * The address slices have a constructor that accepts a uint64_t.
  * No bit shifting is performed in these constructors.
@@ -126,10 +127,10 @@ struct splice_fold_wrapper;
  *
  * .. code-block:: cpp
  *
- *    address_slice<static_extent<24,12>>::slice(static_extent<8,4>{}) -> address_slice<static_extent<20,16>>
- *    address_slice<static_extent<24,12>>::slice<8,4>() -> address_slice<static_extent<20,16>>
- *    address_slice<static_extent<24,12>>::slice_upper<4>() -> address_slice<static_extent<24,16>>
- *    address_slice<static_extent<24,12>>::slice_lower<8>() -> address_slice<static_extent<20,12>>
+ *    address_slice<static_extent<24_b,12_b>>::slice(static_extent<8_b,4_b>{}) -> address_slice<static_extent<20_b,16_b>>
+ *    address_slice<static_extent<24_b,12_b>>::slice<8_b,4_b>() -> address_slice<static_extent<20_b,16_b>>
+ *    address_slice<static_extent<24_b,12_b>>::slice_upper<4_b>() -> address_slice<static_extent<24_b,16_b>>
+ *    address_slice<static_extent<24_b,12_b>>::slice_lower<8_b>() -> address_slice<static_extent<20_b,12_b>>
  *
  * The offset between two addresses can be found with
  *
@@ -166,7 +167,7 @@ struct splice_fold_wrapper;
  *    champsim::address addr{0xffff'ffff};
  *    class Foo {};
  *    std::array<Foo, 256> foos = {};
- *    auto the_foo = foos.at(addr.slice_lower<8>().to<std::size_t>());
+ *    auto the_foo = foos.at(addr.slice_lower<8_b>().to<std::size_t>());
  *
  * \tparam EXTENT One of ``champsim::static_extent<>``, ``champsim::dynamic_extent``, or ``champsim::sized_extent``.
  */
@@ -235,7 +236,7 @@ public:
    */
   template <typename OTHER_EXT>
   constexpr address_slice(extent_type ext, const address_slice<OTHER_EXT>& val) noexcept(is_static)
-      : extent(ext), value(((val.value << val.lower_extent()) & bitmask(ext.upper, ext.lower)) >> ext.lower)
+      : extent(ext), value(((val.value << to_underlying(val.lower_extent())) & bitmask(ext.upper, ext.lower)) >> to_underlying(ext.lower))
   {
     if constexpr (!is_static) {
       if (ext.upper > bits) {
@@ -252,7 +253,7 @@ public:
    * The extent type can be deduced from the first argument.
    * If the conversion is a widening, the widened bits will be 0.
    */
-  constexpr address_slice(extent_type ext, underlying_type val) noexcept(is_static) : extent(ext), value(val & bitmask(ext.upper - ext.lower))
+  constexpr address_slice(extent_type ext, underlying_type val) noexcept(is_static) : extent(ext), value(val & bitmask(data::bits{size(ext)}))
   {
     if constexpr (!is_static) {
       if (ext.upper > bits) {
@@ -264,7 +265,7 @@ public:
     }
   }
 
-  constexpr static int bits = std::numeric_limits<underlying_type>::digits;
+  constexpr static champsim::data::bits bits{std::numeric_limits<underlying_type>::digits};
   static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
 
   template <typename Ostr, typename ST>
@@ -351,7 +352,7 @@ public:
   constexpr self_type& operator+=(difference_type delta)
   {
     value += static_cast<underlying_type>(delta);
-    value &= bitmask(upper_extent() - lower_extent());
+    value &= bitmask(data::bits{size(extent)});
     return *this;
   }
   constexpr self_type& operator+=(champsim::data::bytes delta) { return operator+=(delta.count()); }
@@ -394,14 +395,14 @@ public:
   [[nodiscard]] auto slice(SUB_EXTENT subextent) const noexcept(is_static&& detail::extent_is_static<SUB_EXTENT>)
   {
     auto new_ext = relative_extent(extent, subextent);
-    return address_slice<decltype(new_ext)>{new_ext, value >> subextent.lower};
+    return address_slice<decltype(new_ext)>{new_ext, value >> to_underlying(subextent.lower)};
   }
 
   /**
    * Perform a slice on this address. The given extent should be relative to this slice's extent.
    * This is a synonym for ``slice(static_extent<new_upper, new_lower>{})``.
    */
-  template <std::size_t new_upper, std::size_t new_lower>
+  template <champsim::data::bits new_upper, champsim::data::bits new_lower>
   [[nodiscard]] auto slice() const noexcept
   {
     return slice(static_extent<new_upper, new_lower>{});
@@ -411,7 +412,7 @@ public:
    * Slice the upper bits, ending with the given bit relative to the lower extent of this.
    * If this slice is statically-sized, the result will be statically-sized.
    */
-  template <std::size_t new_lower>
+  template <champsim::data::bits new_lower>
   [[nodiscard]] auto slice_upper() const noexcept
   {
     return slice<bits, new_lower>();
@@ -421,23 +422,24 @@ public:
    * Slice the lower bits, ending with the given bit relative to the lower extent of this.
    * If this slice is statically-sized, the result will be statically-sized.
    */
-  template <std::size_t new_upper>
+  template <champsim::data::bits new_upper>
   [[nodiscard]] auto slice_lower() const noexcept
   {
-    return slice<new_upper, 0>();
+    using namespace champsim::data::data_literals;
+    return slice<new_upper, 0_b>();
   }
 
   /**
    * Slice the upper bits, ending with the given bit relative to the lower extent of this.
    * The result of this will always be runtime-sized.
    */
-  [[nodiscard]] auto slice_upper(std::size_t new_lower) const { return slice(dynamic_extent{bits, new_lower}); }
+  [[nodiscard]] auto slice_upper(champsim::data::bits new_lower) const { return slice(dynamic_extent{bits, new_lower}); }
 
   /**
    * Slice the lower bits, ending with the given bit relative to the lower extent of this.
    * The result of this will always be runtime-sized.
    */
-  [[nodiscard]] auto slice_lower(std::size_t new_upper) const { return slice(dynamic_extent{new_upper, 0}); }
+  [[nodiscard]] auto slice_lower(champsim::data::bits new_upper) const { return slice(dynamic_extent{new_upper, champsim::data::bits{}}); }
 
   /**
    * Get the upper portion of the extent.
@@ -517,8 +519,8 @@ struct splice_fold_wrapper {
   {
     auto return_extent = extent_union(this->extent, other.extent);
     return splice_fold_wrapper<decltype(return_extent)>{
-        return_extent, splice_bits(underlying << (extent.lower - return_extent.lower), other.underlying << (other.extent.lower - return_extent.lower),
-                                   other.extent.upper - return_extent.lower, other.extent.lower - return_extent.lower)};
+        return_extent, splice_bits(underlying << (to_underlying(extent.lower) - to_underlying(return_extent.lower)), other.underlying << (to_underlying(other.extent.lower) - to_underlying(return_extent.lower)),
+                                   to_underlying(other.extent.upper) - to_underlying(return_extent.lower), to_underlying(other.extent.lower) - to_underlying(return_extent.lower))};
   }
 
   auto address() const noexcept { return address_slice{extent, underlying}; }

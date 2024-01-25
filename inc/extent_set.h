@@ -6,6 +6,8 @@
 
 #include "address.h"
 #include "extent.h"
+#include "util/bit_enum.h"
+#include "util/to_underlying.h"
 
 namespace champsim
 {
@@ -28,9 +30,7 @@ class extent_set
   [[nodiscard]] constexpr static auto size() { return std::tuple_size_v<extent_container_type>; }
 
   [[nodiscard]] auto bit_size() const {
-    return std::apply([](auto... exts) {
-      return (... + (exts.upper - exts.lower));
-    }, extents);
+    return std::apply([](auto... exts) { return (... + champsim::size(exts)); }, extents);
   }
 
   template <std::size_t I>
@@ -41,7 +41,7 @@ class extent_set
 
 namespace detail {
   template <std::size_t... i>
-  auto dynamic_extent_array_initializer(std::index_sequence<i...>) { return std::array{((void)i, champsim::dynamic_extent{0,0})...}; }
+  auto dynamic_extent_array_initializer(std::index_sequence<i...>) { return std::array{((void)i, champsim::dynamic_extent{champsim::data::bits{},champsim::data::bits{}})...}; }
 }
 
 template <typename... Szs>
@@ -56,7 +56,7 @@ template <typename... Szs>
   std::partial_sum(std::begin(arr), std::end(arr), std::begin(lowers));
 
   std::array<champsim::dynamic_extent, sz_len-1> extents{detail::dynamic_extent_array_initializer(std::make_index_sequence<sz_len-1>{})};
-  std::transform(std::next(std::cbegin(lowers)), std::cend(lowers), std::cbegin(lowers), std::begin(extents), [](auto up, auto low) { return champsim::dynamic_extent{up, low}; });
+  std::transform(std::next(std::cbegin(lowers)), std::cend(lowers), std::cbegin(lowers), std::begin(extents), [](auto up, auto low) { return champsim::dynamic_extent{champsim::data::bits{up}, champsim::data::bits{low}}; });
   return std::apply([](auto... x) { return extent_set(x...); }, extents);
 }
 }

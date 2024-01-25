@@ -11,7 +11,7 @@ TEST_CASE("The virtual memory evaluates the correct shift amounts") {
   MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
   VirtualMemory uut{champsim::data::bytes{1 << log2_pte_page_size}, 5, champsim::chrono::nanoseconds{6400}, dram};
 
-  auto expected_value = LOG2_PAGE_SIZE + (log2_pte_page_size-champsim::lg2(pte_entry::byte_multiple))*(level-1);
+  champsim::data::bits expected_value{LOG2_PAGE_SIZE + (log2_pte_page_size-champsim::lg2(pte_entry::byte_multiple))*(level-1)};
   REQUIRE(uut.shamt(level) == expected_value);
 }
 

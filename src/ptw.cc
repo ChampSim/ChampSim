@@ -62,7 +62,7 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-  champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, champsim::lg2(pte_entry::byte_multiple)>> walk_offset{
+  champsim::address_slice<champsim::static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)}>> walk_offset{
       vmem->get_offset(handle_pkt.address, walk_init.level)};
 
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
@@ -85,7 +85,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", NAME, __func__, fill_mshr.address,
                fill_mshr.v_address, *fill_mshr.data,
-               fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple), LOG2_PAGE_SIZE>().to<int>(), fill_mshr.translation_level,
+               fill_mshr.data->slice<champsim::data::bits{LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple)}, champsim::data::bits{LOG2_PAGE_SIZE}>().to<int>(), fill_mshr.translation_level,
                current_time.time_since_epoch() / clock_period);
   }
 

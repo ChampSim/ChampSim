@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include "champsim.h"
 #include "util/units.h"
 
 TEST_CASE("A data size is default-constructible, with default value zero") {

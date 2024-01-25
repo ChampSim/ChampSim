@@ -49,11 +49,11 @@ constexpr std::size_t MAX_GHR_ENTRY = 8;
 enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
 
-using offset_type = champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>>;
+using offset_type = champsim::address_slice<champsim::static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}>>;
 class SIGNATURE_TABLE
 {
 public:
-  using tag_type = champsim::address_slice<champsim::static_extent<ST_TAG_BIT + LOG2_PAGE_SIZE, LOG2_PAGE_SIZE>>;
+  using tag_type = champsim::address_slice<champsim::static_extent<champsim::data::bits{ST_TAG_BIT + LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_PAGE_SIZE}>>;
 
   bool valid[ST_SET][ST_WAY];
   tag_type tag[ST_SET][ST_WAY];

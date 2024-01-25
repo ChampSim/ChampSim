@@ -100,7 +100,7 @@ template <typename T>
 champsim::address CACHE::module_address(const T& element) const
 {
   auto address = virtual_prefetch ? element.v_address : element.address;
-  return champsim::address{address.slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
+  return champsim::address{address.slice_upper(match_offset_bits ? champsim::data::bits{} : OFFSET_BITS)};
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)

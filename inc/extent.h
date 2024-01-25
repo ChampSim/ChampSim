@@ -22,37 +22,63 @@
 #include <cstddef>
 #include <type_traits>
 
+#include "util/units.h"
+#include "util/to_underlying.h"
+
 namespace champsim
 {
+/**
+ * An extent with runtime size
+ */
 struct dynamic_extent {
-  std::size_t upper;
-  std::size_t lower;
+  champsim::data::bits upper;
+  champsim::data::bits lower;
 
-  constexpr dynamic_extent(std::size_t up, std::size_t low) : upper(up), lower(low) { assert(upper >= lower); }
+  constexpr dynamic_extent(champsim::data::bits up, champsim::data::bits low) : upper(up), lower(low) { assert(upper >= lower); }
 };
 
+/**
+ * A runtime-sized extent that is constructed from its lower bound and width
+ */
 struct sized_extent {
-  std::size_t upper;
-  std::size_t lower;
+  champsim::data::bits upper;
+  champsim::data::bits lower;
 
-  constexpr sized_extent(std::size_t low, std::size_t size) : upper(low + size), lower(low) { assert(upper >= lower); }
+  constexpr sized_extent(champsim::data::bits low, std::size_t size) : upper(low + champsim::data::bits{size}), lower(low) { assert(upper >= lower); }
 };
 
-template <std::size_t UP, std::size_t LOW>
+/**
+ * An extent with compile-time size
+ */
+template <champsim::data::bits UP, champsim::data::bits LOW>
 struct static_extent {
-  constexpr static std::size_t upper{UP};
-  constexpr static std::size_t lower{LOW};
+  constexpr static champsim::data::bits upper{UP};
+  constexpr static champsim::data::bits lower{LOW};
 };
+
+/**
+ * Give the width of the extent. For static_extent, this function can be constexpr.
+ */
+std::size_t size(dynamic_extent ext);
+std::size_t size(sized_extent ext);
+
+template <champsim::data::bits UP, champsim::data::bits LOW>
+constexpr std::size_t size(static_extent<UP, LOW> ext) {
+  return to_underlying(ext.upper) - to_underlying(ext.lower);
+}
 
 namespace detail
 {
 template <typename E>
 constexpr bool extent_is_static = false;
 
-template <std::size_t UP, std::size_t LOW>
+template <champsim::data::bits UP, champsim::data::bits LOW>
 constexpr bool extent_is_static<static_extent<UP, LOW>> = true;
 } // namespace detail
 
+/**
+ * Find the smallest extent that contains both given extents
+ */
 template <typename LHS_EXTENT, typename RHS_EXTENT>
 auto extent_union(LHS_EXTENT lhs, RHS_EXTENT rhs)
 {
@@ -63,35 +89,48 @@ auto extent_union(LHS_EXTENT lhs, RHS_EXTENT rhs)
   }
 }
 
+/**
+ * Select a portion of the superextent
+ */
 template <typename LHS_EXTENT, typename RHS_EXTENT>
 auto relative_extent(LHS_EXTENT superextent, RHS_EXTENT subextent)
 {
   if constexpr (detail::extent_is_static<std::decay_t<LHS_EXTENT>> && detail::extent_is_static<std::decay_t<RHS_EXTENT>>) {
-    constexpr auto superextent_size = superextent.upper - superextent.lower;
-    return static_extent<superextent.lower + std::min(subextent.upper, superextent_size), superextent.lower + std::min(subextent.lower, superextent_size)>{};
+    constexpr data::bits superextent_size{size(superextent)};
+    constexpr data::bits superextent_upper{superextent.lower + std::min(subextent.upper, superextent_size)};
+    constexpr data::bits superextent_lower{superextent.lower + std::min(subextent.lower, superextent_size)};
+    return static_extent<superextent_upper, superextent_lower>{};
   } else {
-    const auto superextent_size = superextent.upper - superextent.lower;
-    return dynamic_extent{superextent.lower + std::min(subextent.upper, superextent_size), superextent.lower + std::min(subextent.lower, superextent_size)};
+    const data::bits superextent_size{size(superextent)};
+    const data::bits superextent_upper{superextent.lower + std::min(subextent.upper, superextent_size)};
+    const data::bits superextent_lower{superextent.lower + std::min(subextent.lower, superextent_size)};
+    return dynamic_extent{superextent_upper, superextent_lower};
   }
 }
 
-template <std::size_t UP, typename EXTENT>
+/**
+ * True if the extent is statically known to be bounded above by the given value
+ */
+template <auto UP, typename EXTENT>
 constexpr bool bounded_upper_v = false;
 
-template <std::size_t UP, auto SUB_UP, auto SUB_LOW>
-constexpr bool bounded_upper_v<UP, static_extent<SUB_UP, SUB_LOW>> = (SUB_UP <= UP);
+template <auto UP, champsim::data::bits SUB_UP, champsim::data::bits SUB_LOW>
+constexpr bool bounded_upper_v<UP, static_extent<SUB_UP, SUB_LOW>> = (SUB_UP <= champsim::data::bits{UP});
 
-template <std::size_t UP, typename EXTENT>
+template <auto UP, typename EXTENT>
 struct bounded_upper : std::bool_constant<bounded_upper_v<UP, EXTENT>> {
 };
 
-template <std::size_t LOW, typename EXTENT>
+/**
+ * True if the extent is statically known to be bounded below by the given value
+ */
+template <auto LOW, typename EXTENT>
 constexpr bool bounded_lower_v = false;
 
-template <std::size_t LOW, auto SUB_UP, auto SUB_LOW>
-constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <= LOW);
+template <auto LOW, champsim::data::bits SUB_UP, champsim::data::bits SUB_LOW>
+constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <= champsim::data::bits{LOW});
 
-template <std::size_t LOW, typename EXTENT>
+template <auto LOW, typename EXTENT>
 struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {
 };
 } // namespace champsim
