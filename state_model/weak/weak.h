@@ -1,12 +1,16 @@
-#ifndef REPLACEMENT_WEAK_H
-#define REPLACEMENT_WEAK_H
+#ifndef STATE_MODEL_WEAK_H
+#define STATE_MODEL_WEAK_H
 
 #include <vector>
 
 #include "cache.h"
 #include "modules.h"
 
-struct weak : champsim::modules::replacement {
+enum class STATE { MODIFIED, INVALID };
+
+struct weak : champsim::modules::state_model {
+  long NUM_SET, NUM_WAY;
+  std::vector<STATE> cache_state;
   uint64_t cycle = 0;
 
   explicit weak(CACHE* cache);

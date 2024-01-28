@@ -128,6 +128,10 @@ int main(int argc, char** argv)
     cache.impl_replacement_final_stats();
   }
 
+  for (CACHE& cache : gen_environment.cache_view()) {
+    cache.impl_state_model_final_stats();
+  }
+
   if (json_option->count() > 0) {
     if (json_file_name.empty()) {
       champsim::json_printer{std::cout}.print(phase_stats);

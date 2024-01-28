@@ -36,7 +36,6 @@ class do_nothing_MRC : public champsim::operable
 
       std::for_each(std::begin(queues.RQ), std::end(queues.RQ), add_pkt);
       std::for_each(std::begin(queues.WQ), std::end(queues.WQ), add_pkt);
-      std::for_each(std::begin(queues.PQ), std::end(queues.PQ), add_pkt);
 
       queues.RQ.clear();
       queues.WQ.clear();
@@ -48,19 +47,21 @@ class do_nothing_MRC : public champsim::operable
 
       for (auto &pkt : ready_packets) {
         if (pkt.response_requested)
-          queues.returned.push_back(champsim::channel::response_type{pkt});
+          queues.IQ.push_back(champsim::channel::request_type{pkt});
       }
+
       ready_packets.clear();
+      queues.IQ.clear();
 
       return 1; // never deadlock
     }
 
     std::size_t packet_count() const { return std::size(addresses); }
 
-    void invalidate(uint64_t inval_addr)
-    {
-      queues.invalidation_queue.push_back(champsim::channel::invalidation_request_type{inval_addr});
-    }
+    //void invalidate(uint64_t inval_addr)
+    //{
+    //  queues.IQ.push_back(champsim::channel::invalidation_request_type{inval_addr});
+    //}
 };
 
 /*

@@ -254,7 +254,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
 SCENARIO("A lower-level queue refusal limits the number of outstanding misses") {
   GIVEN("An empty cache") {
-    champsim::channel refusal_channel{0,0,0,0,0}; // Refuses all packets
+    champsim::channel refusal_channel{0,0,0,0,0,0}; // Refuses all packets
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402c-uut")

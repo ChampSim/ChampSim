@@ -190,9 +190,14 @@ struct state_model {
   static auto initialize_member_impl(int) -> decltype(std::declval<T>().initialize_state_model(std::declval<Args>()...), std::true_type{});
   template <typename, typename...>
   static auto initialize_member_impl(long) -> std::false_type;
+
+  template <typename T, typename... Args>
+  static auto final_stats_member_impl(int) -> decltype(std::declval<T>().state_model_final_stats(std::declval<Args>()...), std::true_type{});
+  template <typename, typename...>
+  static auto final_stats_member_impl(long) -> std::false_type;
+
   template <typename T, typename... Args>
   constexpr static bool has_initialize = decltype(initialize_member_impl<T, Args...>(0))::value;
-
 
   template <typename T, typename... Args>
   constexpr static bool has_final_stats = decltype(final_stats_member_impl<T, Args...>(0))::value;

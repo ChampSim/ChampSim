@@ -157,6 +157,21 @@ bool champsim::channel::add_rq(const request_type& packet)
   return result;
 }
 
+bool champsim::channel::add_iq(const request_type& packet)
+{
+  sim_stats.IQ_ACCESS++;
+
+  auto result = do_add_queue(IQ, IQ_SIZE, packet);
+
+  if (result) {
+    sim_stats.IQ_TO_CACHE++;
+  } else {
+    sim_stats.IQ_FULL++;
+  }
+
+  return result;
+}
+
 bool champsim::channel::add_wq(const request_type& packet)
 {
   sim_stats.WQ_ACCESS++;
@@ -189,11 +204,15 @@ bool champsim::channel::add_pq(const request_type& packet)
 
 std::size_t champsim::channel::rq_occupancy() const { return std::size(RQ); }
 
+std::size_t champsim::channel::iq_occupancy() const { return std::size(IQ); }
+
 std::size_t champsim::channel::wq_occupancy() const { return std::size(WQ); }
 
 std::size_t champsim::channel::pq_occupancy() const { return std::size(PQ); }
 
 std::size_t champsim::channel::rq_size() const { return RQ_SIZE; }
+
+std::size_t champsim::channel::iq_size() const { return IQ_SIZE; }
 
 std::size_t champsim::channel::wq_size() const { return WQ_SIZE; }
 

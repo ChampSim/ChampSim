@@ -37,7 +37,7 @@
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), clusivity(req.clusivity), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated),
+      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated),
       instr_depend_on_me(req.instr_depend_on_me)
 {
 }
@@ -667,6 +667,13 @@ std::vector<std::size_t> CACHE::get_rq_occupancy() const
   return retval;
 }
 
+std::vector<std::size_t> CACHE::get_iq_occupancy() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->iq_occupancy(); });
+  return retval;
+}
+
 std::vector<std::size_t> CACHE::get_wq_occupancy() const
 {
   std::vector<std::size_t> retval;
@@ -698,6 +705,13 @@ std::vector<std::size_t> CACHE::get_rq_size() const
 {
   std::vector<std::size_t> retval;
   std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->rq_size(); });
+  return retval;
+}
+
+std::vector<std::size_t> CACHE::get_iq_size() const
+{
+  std::vector<std::size_t> retval;
+  std::transform(std::begin(upper_levels), std::end(upper_levels), std::back_inserter(retval), [](auto ulptr) { return ulptr->iq_size(); });
   return retval;
 }
 
@@ -783,10 +797,16 @@ void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, lon
 
 void CACHE::impl_replacement_final_stats() const { repl_module_pimpl->impl_replacement_final_stats(); }
 
+
+void CACHE::impl_initialize_state_model() const { sm_module_pimpl->impl_initialize_state_model(); }
+
+void CACHE::impl_state_model_final_stats() const { sm_module_pimpl->impl_state_model_final_stats(); }
+
 void CACHE::initialize()
 {
   impl_prefetcher_initialize();
   impl_initialize_replacement();
+  impl_initialize_state_model();
 }
 
 void CACHE::begin_phase()

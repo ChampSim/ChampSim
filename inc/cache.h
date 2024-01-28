@@ -84,7 +84,6 @@ class CACHE : public champsim::operable
     uint32_t cpu;
 
     access_type type;
-    champsim::inclusivity clusivity{champsim::inclusivity::weak};
     bool prefetch_from_this;
     bool skip_fill;
     bool is_translated;
@@ -115,7 +114,6 @@ class CACHE : public champsim::operable
     uint32_t cpu;
 
     access_type type;
-    champsim::inclusivity clusivity{champsim::inclusivity::weak};
     bool prefetch_from_this;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -261,11 +259,11 @@ public:
     virtual void impl_replacement_final_stats() = 0;
   };
 
-  struct state_module_concept {
-    virtual ~state_module_concept() = default;
+  struct state_model_module_concept {
+    virtual ~state_model_module_concept() = default;
 
-    virtual void impl_initialize_state() = 0;
-    virtual void impl_state_final_stats() = 0;
+    virtual void impl_initialize_state_model() = 0;
+    virtual void impl_state_model_final_stats() = 0;
   };
 
   template <typename... Ps>
@@ -299,16 +297,18 @@ public:
   };
 
   template <typename... Ss>
-  struct state_module_model final : state_module_concept {
-    std::tuple<Ss...> intern_;
-    explicit state_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
+  struct state_model_module_model final : state_model_module_concept {
 
-    void impl_initialize_state() final;
-    void impl_state_final_stats() final;
+    std::tuple<Ss...> intern_;
+    explicit state_model_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
+
+    void impl_initialize_state_model() final;
+    void impl_state_model_final_stats() final;
   };
 
   std::unique_ptr<prefetcher_module_concept> pref_module_pimpl;
   std::unique_ptr<replacement_module_concept> repl_module_pimpl;
+  std::unique_ptr<state_model_module_concept> sm_module_pimpl;
 
   // NOLINTBEGIN(readability-make-member-function-const): legacy modules use non-const hooks
   void impl_prefetcher_initialize() const;
@@ -327,13 +327,16 @@ public:
   void impl_replacement_final_stats() const;
   // NOLINTEND(readability-make-member-function-const)
 
-  template <typename... Ps, typename... Rs>
-  explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
+  void impl_initialize_state_model() const; 
+  void impl_state_model_final_stats() const;
+
+  template <typename... Ps, typename... Rs, typename... Ss>
+  explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>, champsim::cache_builder_module_type_holder<Ss...>> b)
       : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
         NUM_WAY(b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size), HIT_LATENCY(b.get_hit_latency()), FILL_LATENCY(b.get_fill_latency()),
         OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()), prefetch_as_load(b.m_pref_load),
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
-        pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
+        pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this)), sm_module_pimpl(std::make_unique<state_model_module_model<Ss...>>(this))
   {
   }
 };
@@ -475,6 +478,31 @@ void CACHE::replacement_module_model<Rs...>::impl_replacement_final_stats()
 
   std::apply([&](auto&... r) { (..., process_one(r)); }, intern_);
 }
+
+template <typename... Ss>
+void CACHE::state_model_module_model<Ss...>::impl_initialize_state_model()
+{
+  [[maybe_unused]] auto process_one = [&](auto& s) {
+    using namespace champsim::modules;
+    if constexpr (state_model::has_initialize<decltype(s)>)
+      s.initialize_state_model();
+  };
+
+  std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
+}
+
+template <typename... Ss>
+void CACHE::state_model_module_model<Ss...>::impl_state_model_final_stats()
+{
+  [[maybe_unused]] auto process_one = [&](auto& s) {
+    using namespace champsim::modules;
+    if constexpr (state_model::has_final_stats<decltype(s)>)
+      s.state_model_final_stats();
+  };
+
+  std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
+}
+
 #endif
 
 #ifdef SET_ASIDE_CHAMPSIM_MODULE

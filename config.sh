@@ -52,6 +52,8 @@ if __name__ == '__main__':
             help='A directory to search for prefetchers')
     search_group.add_argument('--replacement-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for replacement policies')
+    search_group.add_argument('--state_model_dir', action='append', default=[], metavar='DIR',
+            help='A directory to search for state_models')
 
     parser.add_argument('--compile-all-modules', action='store_true',
             help='Compile all modules in the search path')
@@ -73,7 +75,7 @@ if __name__ == '__main__':
     parsed_test = config.parse.parse_config({'executable_name': '000-test-main'}, module_dir=[os.path.join(test_root, 'cpp', 'modules')], compile_all_modules=True)
 
     parsed_configs = (
-            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, compile_all_modules=args.compile_all_modules, verbose=args.verbose)
+            config.parse.parse_config(*c, module_dir=args.module_dir, branch_dir=args.branch_dir, btb_dir=args.btb_dir, pref_dir=args.prefetcher_dir, repl_dir=args.replacement_dir, sm_dir=args.state_model_dir, compile_all_modules=args.compile_all_modules, verbose=args.verbose)
         for c in config_files)
 
     with config.filewrite.FileWriter(bindir_name, objdir_name, verbose=args.verbose) as wr:

@@ -353,6 +353,7 @@ class NormalizedConfiguration:
         btb_parse = functools.partial(module_parse, context=btb_context)
         replacement_parse = functools.partial(module_parse, context=replacement_context)
         state_model_parse = functools.partial(module_parse, context=state_model_context)
+
         def prefetcher_parse(mod_name, cache):
             return {
                 '_is_instruction_prefetcher': cache.get('_is_instruction_cache', False),
@@ -436,7 +437,7 @@ class NormalizedConfiguration:
         module_info = {
             'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
             'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
-            'sm': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_state_model_data'] for c in caches.values()), state_model_context.find_all()).items()},
+            'sm': {k:modules.get_sm_data(v) for k,v in util.combine_named(*(c['_state_model_data'] for c in caches.values()), state_model_context.find_all()).items()},
             'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
             'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
         }

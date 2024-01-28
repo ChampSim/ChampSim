@@ -38,6 +38,10 @@ struct cache_queue_stats {
   uint64_t RQ_MERGED = 0;
   uint64_t RQ_FULL = 0;
   uint64_t RQ_TO_CACHE = 0;
+  uint64_t IQ_ACCESS = 0;
+  uint64_t IQ_MERGED = 0;
+  uint64_t IQ_FULL = 0;
+  uint64_t IQ_TO_CACHE = 0;
   uint64_t PQ_ACCESS = 0;
   uint64_t PQ_MERGED = 0;
   uint64_t PQ_FULL = 0;
