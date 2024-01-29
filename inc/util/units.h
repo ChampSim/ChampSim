@@ -276,11 +276,12 @@ struct fmt::formatter<champsim::data::size<Rep, Unit>> {
 
   auto format(const value_type& val, format_context& ctx) const -> format_context::iterator
   {
-    const static std::map<unsigned long long, std::string_view> suffix_map{{champsim::data::size<long long, std::ratio<1>>::byte_multiple, std::string_view{"B"}},
-                                                                           {champsim::data::size<long long, champsim::kibi>::byte_multiple, std::string_view{"kiB"}},
-                                                                           {champsim::data::size<long long, champsim::mebi>::byte_multiple, std::string_view{"MiB"}},
-                                                                           {champsim::data::size<long long, champsim::gibi>::byte_multiple, std::string_view{"GiB"}},
-                                                                           {champsim::data::size<long long, champsim::tebi>::byte_multiple, std::string_view{"TiB"}}};
+    const static std::map<unsigned long long, std::string_view> suffix_map{
+        {champsim::data::size<long long, std::ratio<1>>::byte_multiple, std::string_view{"B"}},
+        {champsim::data::size<long long, champsim::kibi>::byte_multiple, std::string_view{"kiB"}},
+        {champsim::data::size<long long, champsim::mebi>::byte_multiple, std::string_view{"MiB"}},
+        {champsim::data::size<long long, champsim::gibi>::byte_multiple, std::string_view{"GiB"}},
+        {champsim::data::size<long long, champsim::tebi>::byte_multiple, std::string_view{"TiB"}}};
 
     auto suffix_it = suffix_map.find(value_type::byte_multiple);
     std::string_view suffix{};

@@ -57,7 +57,8 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
     const auto last_word = hist_len % champsim::msl::lg2(TABLE_SIZE);  // the last word is fewer than 12 bits
 
     // seed in the PC to spread accesses around (like gshare) XOR in the last word
-    auto x = pc.slice_lower<champsim::data::bits{champsim::msl::lg2(TABLE_SIZE)}>().to<uint64_t>() ^ (ghist_words[most_words] & champsim::msl::bitmask(last_word));
+    auto x =
+        pc.slice_lower<champsim::data::bits{champsim::msl::lg2(TABLE_SIZE)}>().to<uint64_t>() ^ (ghist_words[most_words] & champsim::msl::bitmask(last_word));
 
     // XOR up to the next-to-the-last word
     x = std::accumulate(std::begin(ghist_words), std::next(std::begin(ghist_words), static_cast<long>(most_words)), x, std::bit_xor<>{});

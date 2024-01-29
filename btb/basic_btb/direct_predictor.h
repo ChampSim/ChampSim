@@ -24,11 +24,13 @@ struct direct_predictor {
     champsim::address target{};
     branch_info type = branch_info::ALWAYS_TAKEN;
 
-    auto index() const {
+    auto index() const
+    {
       using namespace champsim::data::data_literals;
       return ip_tag.slice_upper<2_b>();
     }
-    auto tag() const {
+    auto tag() const
+    {
       using namespace champsim::data::data_literals;
       return ip_tag.slice_upper<2_b>();
     }

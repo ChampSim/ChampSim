@@ -1,8 +1,8 @@
 #include "address.h"
 
 #include "champsim.h"
-#include "util/units.h"
 #include "util/to_underlying.h"
+#include "util/units.h"
 
 auto champsim::lowest_address_for_size(champsim::data::bytes sz) -> champsim::address
 {

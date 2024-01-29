@@ -519,8 +519,10 @@ struct splice_fold_wrapper {
   {
     auto return_extent = extent_union(this->extent, other.extent);
     return splice_fold_wrapper<decltype(return_extent)>{
-        return_extent, splice_bits(underlying << (to_underlying(extent.lower) - to_underlying(return_extent.lower)), other.underlying << (to_underlying(other.extent.lower) - to_underlying(return_extent.lower)),
-                                   to_underlying(other.extent.upper) - to_underlying(return_extent.lower), to_underlying(other.extent.lower) - to_underlying(return_extent.lower))};
+        return_extent, splice_bits(underlying << (to_underlying(extent.lower) - to_underlying(return_extent.lower)),
+                                   other.underlying << (to_underlying(other.extent.lower) - to_underlying(return_extent.lower)),
+                                   to_underlying(other.extent.upper) - to_underlying(return_extent.lower),
+                                   to_underlying(other.extent.lower) - to_underlying(return_extent.lower))};
   }
 
   auto address() const noexcept { return address_slice{extent, underlying}; }
