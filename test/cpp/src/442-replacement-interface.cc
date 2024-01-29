@@ -9,9 +9,10 @@
 #include <map>
 #include <vector>
 
-namespace test
+namespace
 {
-  std::map<CACHE*, std::vector<repl_update_interface>> replacement_update_state_collector;
+  std::map<CACHE*, std::vector<test::repl_update_interface>> replacement_update_state_collector;
+  std::map<CACHE*, std::vector<test::repl_fill_interface>> replacement_cache_fill_collector;
 }
 
 struct update_state_collector : champsim::modules::replacement
@@ -23,14 +24,20 @@ struct update_state_collector : champsim::modules::replacement
     return 0;
   }
 
-  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, uint32_t type, uint8_t hit)
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, access_type type, bool hit)
   {
-    auto usc_it = test::replacement_update_state_collector.try_emplace(intern_);
-    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, access_type{type}, hit});
+    auto usc_it = ::replacement_update_state_collector.try_emplace(intern_);
+    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, type, hit});
+  }
+
+  void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type)
+  {
+    auto cfc_it = ::replacement_cache_fill_collector.try_emplace(intern_);
+    cfc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type});
   }
 };
 
-SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
+SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
   using namespace std::literals;
   auto [type, str] = GENERATE(table<access_type, std::string_view>({std::pair{access_type::LOAD, "load"sv}, std::pair{access_type::RFO, "RFO"sv}, std::pair{access_type::PREFETCH, "prefetch"sv}, std::pair{access_type::WRITE, "write"sv}, std::pair{access_type::TRANSLATION, "translation"sv}}));
   GIVEN("A single cache") {
@@ -60,7 +67,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
     }
 
     WHEN("A " + std::string{str} + " is issued") {
-      test::replacement_update_state_collector[&uut].clear();
+      ::replacement_update_state_collector[&uut].clear();
 
       decltype(mock_ul)::request_type test;
       test.address = champsim::address{0xdeadbeef};
@@ -78,8 +85,14 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
         for (auto elem : elements)
           elem->_operate();
 
-      THEN("The replacement policy is not called") {
-        REQUIRE(std::size(test::replacement_update_state_collector[&uut]) == 0);
+      THEN("The replacement policy is called with information from the issued packet") {
+        REQUIRE_THAT(::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
+        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
+        CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
+        CHECK(::replacement_update_state_collector[&uut].at(0).way == 1);
+        CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
+        CHECK(::replacement_update_state_collector[&uut].at(0).type == test.type);
+        CHECK(::replacement_update_state_collector[&uut].at(0).hit == false);
       }
 
       AND_WHEN("The packet is returned") {
@@ -90,14 +103,8 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
           for (auto elem : elements)
             elem->_operate();
 
-        THEN("The replacement policy is called with information from the issued packet") {
-          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-          CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
-          CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
-          CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
-          CHECK(test::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
-          CHECK(test::replacement_update_state_collector[&uut].at(0).type == test.type);
-          CHECK(test::replacement_update_state_collector[&uut].at(0).hit == false);
+        THEN("The replacement policy is not called") {
+          REQUIRE_THAT(::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
         }
       }
     }
@@ -150,7 +157,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
         elem->_operate();
 
     WHEN("A packet with the same address is issued") {
-      test::replacement_update_state_collector[&uut].clear();
+      ::replacement_update_state_collector[&uut].clear();
       auto repeat_test_result = mock_ul.issue(test);
 
       THEN("The issue is received") {
@@ -163,13 +170,13 @@ SCENARIO("The replacement policy is triggered on a hit") {
           elem->_operate();
 
       THEN("The replacement policy is called with information from the issued packet") {
-        REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-        CHECK(test::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
-        CHECK(test::replacement_update_state_collector[&uut].at(0).set == 0);
-        CHECK(test::replacement_update_state_collector[&uut].at(0).way == 0);
-        CHECK(test::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
-        CHECK(test::replacement_update_state_collector[&uut].at(0).type == test.type);
-        CHECK(test::replacement_update_state_collector[&uut].at(0).hit == true);
+        REQUIRE_THAT(::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
+        CHECK(::replacement_update_state_collector[&uut].at(0).cpu == test.cpu);
+        CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
+        CHECK(::replacement_update_state_collector[&uut].at(0).way == 0);
+        CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
+        CHECK(::replacement_update_state_collector[&uut].at(0).type == test.type);
+        CHECK(::replacement_update_state_collector[&uut].at(0).hit == true);
       }
     }
   }
@@ -223,7 +230,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
           elem->_operate();
 
       AND_WHEN("A packet with a different address is issued") {
-        test::replacement_update_state_collector[&uut].clear();
+        ::replacement_cache_fill_collector[&uut].clear();
 
         decltype(mock_ul_test)::request_type test = seed;
         test.address = champsim::address{0xcafebabe};
@@ -252,14 +259,13 @@ SCENARIO("The replacement policy notes the correct eviction information") {
         }
 
         THEN("The replacement policy is called with information from the evicted packet") {
-          REQUIRE_THAT(test::replacement_update_state_collector[&uut], Catch::Matchers::SizeIs(1));
-          CHECK(test::replacement_update_state_collector[&uut].back().cpu == test.cpu);
-          CHECK(test::replacement_update_state_collector[&uut].back().set == 0);
-          CHECK(test::replacement_update_state_collector[&uut].back().way == 0);
-          CHECK(test::replacement_update_state_collector[&uut].back().full_addr == test.address);
-          CHECK(test::replacement_update_state_collector[&uut].back().type == access_type::LOAD);
-          CHECK(test::replacement_update_state_collector[&uut].back().victim_addr == seed.address);
-          CHECK(test::replacement_update_state_collector[&uut].back().hit == false);
+          REQUIRE_THAT(::replacement_cache_fill_collector[&uut], Catch::Matchers::SizeIs(1));
+          CHECK(::replacement_cache_fill_collector[&uut].back().cpu == test.cpu);
+          CHECK(::replacement_cache_fill_collector[&uut].back().set == 0);
+          CHECK(::replacement_cache_fill_collector[&uut].back().way == 0);
+          CHECK(::replacement_cache_fill_collector[&uut].back().full_addr == test.address);
+          CHECK(::replacement_cache_fill_collector[&uut].back().type == access_type::LOAD);
+          CHECK(::replacement_cache_fill_collector[&uut].back().victim_addr == seed.address);
         }
       }
     }
