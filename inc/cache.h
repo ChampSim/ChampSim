@@ -263,6 +263,8 @@ public:
     virtual ~state_model_module_concept() = default;
 
     virtual void impl_initialize_state_model() = 0;
+    virtual bool impl_state_model_handle_request(request_type req) = 0;
+    virtual bool impl_state_model_handle_response(response_type resp) = 0;
     virtual void impl_state_model_final_stats() = 0;
   };
 
@@ -303,6 +305,8 @@ public:
     explicit state_model_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
 
     void impl_initialize_state_model() final;
+    bool impl_state_model_handle_request(request_type req) final;
+    bool impl_state_model_handle_response(response_type resp) final;
     void impl_state_model_final_stats() final;
   };
 
@@ -328,6 +332,8 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   void impl_initialize_state_model() const; 
+  bool impl_state_model_handle_request(request_type req) const;
+  bool impl_state_model_handle_response(response_type resp) const;
   void impl_state_model_final_stats() const;
 
   template <typename... Ps, typename... Rs, typename... Ss>
