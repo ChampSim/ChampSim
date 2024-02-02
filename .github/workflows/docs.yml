@@ -17,12 +17,14 @@ jobs:
 
     steps:
       - name: Set Up Environment
-        run: python3 -m pip install sphinx sphinx-rtd-theme sphinx-multiversion
+        run: python3 -m pip install -r docs/requirements.txt
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build Documentation
-        run: sphinx-multiversion docs _build
+        run: sphinx-multiversion -c docs docs/src _build
 
       - uses: actions/checkout@v4
         with:
