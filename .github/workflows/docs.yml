@@ -16,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set Up Environment
-        run: python3 -m pip install -r docs/requirements.txt
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set Up Environment
+        run: python3 -m pip install -r docs/requirements.txt
 
       - name: Build Documentation
         run: sphinx-multiversion -c docs docs/src _build
