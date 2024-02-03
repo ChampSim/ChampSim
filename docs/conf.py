@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('./src'))
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -24,11 +24,16 @@ author = 'The ChampSim Contributors'
 
 # -- General configuration ---------------------------------------------------
 
+# The environment variable CHAMPSIM_DOCS_USE_REMOTE, if defined to a nonempty
+# string, will cause this script to properly build for GitHub Actions
+local = 'CHAMPSIM_DOCS_USE_REMOTE' not in os.environ
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
     'sphinx.ext.githubpages',
+    'sphinx.ext.autodoc',
     'sphinx_multiversion'
 ]
 
@@ -46,7 +51,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # -- sphinx-multiversion configuration ---------------------------------------
 smv_branch_whitelist = r'^(master|develop|feature/.*|release/.*)$'
 smv_remote_whitelist = r'^origin$'
-smv_prefer_remote_refs = True
+if not local:
+    smv_prefer_remote_refs = True
 
 # -- Options for HTML output -------------------------------------------------
 

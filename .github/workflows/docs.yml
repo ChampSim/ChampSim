@@ -28,6 +28,8 @@ jobs:
 
       - name: Build Documentation
         run: sphinx-multiversion -c docs docs/src _build
+        env:
+          CHAMPSIM_DOCS_USE_REMOTE: yes
 
       - uses: actions/checkout@v4
         with:
