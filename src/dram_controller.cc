@@ -198,9 +198,9 @@ long DRAM_CHANNEL::populate_dbus()
     } else {
       // Bus is congested
       if (active_request != std::end(bank_request)) {
-        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time);
+        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time) / clock_period;
       } else {
-        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time);
+        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time) / clock_period;
       }
       ++sim_stats.dbus_count_congested;
     }

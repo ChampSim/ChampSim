@@ -12,6 +12,6 @@ cache_stats operator-(cache_stats lhs, cache_stats rhs)
   result.hits = lhs.hits - rhs.hits;
   result.misses = lhs.misses - rhs.misses;
 
-  result.total_miss_latency = lhs.total_miss_latency - rhs.total_miss_latency;
+  result.total_miss_latency_cycles = lhs.total_miss_latency_cycles- rhs.total_miss_latency_cycles;
   return result;
 }
