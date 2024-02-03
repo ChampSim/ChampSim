@@ -38,7 +38,6 @@ public:
   static std::vector<std::string> format(CACHE::stats_type stats);
   static std::vector<std::string> format(DRAM_CHANNEL::stats_type stats);
   static std::vector<std::string> format(phase_stats& stats);
-
 };
 
 class json_printer
