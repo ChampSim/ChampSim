@@ -45,6 +45,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # -- sphinx-multiversion configuration ---------------------------------------
 smv_branch_whitelist = r'^(master|develop|feature/.*|release/.*)$'
+smv_remote_whitelist = r'^origin$'
+smv_prefer_remote_refs = True
 
 # -- Options for HTML output -------------------------------------------------
 
