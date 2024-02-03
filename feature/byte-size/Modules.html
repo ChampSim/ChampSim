@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The ChampSim Module System &mdash; ChampSim  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Creating a Configuration File" href="Creating-a-configuration-file.html" />
+    <link rel="prev" title="Welcome to the ChampSim wiki!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ChampSim
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The ChampSim Module System</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#branch-predictors">Branch Predictors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv427initialize_branch_predictorv"><code class="docutils literal notranslate"><span class="pre">initialize_branch_predictor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414predict_branchN8champsim7addressEN8champsim7addressEb7uint8_t"><code class="docutils literal notranslate"><span class="pre">predict_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414predict_branch8uint64_t8uint64_tb7uint8_t"><code class="docutils literal notranslate"><span class="pre">predict_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414predict_branchN8champsim7addressE"><code class="docutils literal notranslate"><span class="pre">predict_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414predict_branch8uint64_t"><code class="docutils literal notranslate"><span class="pre">predict_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv418last_branch_resultN8champsim7addressEN8champsim7addressE7uint8_t7uint8_t"><code class="docutils literal notranslate"><span class="pre">last_branch_result()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv418last_branch_result8uint64_t8uint64_t7uint8_t7uint8_t"><code class="docutils literal notranslate"><span class="pre">last_branch_result()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#branch-target-buffers">Branch Target Buffers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414initialize_btbv"><code class="docutils literal notranslate"><span class="pre">initialize_btb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414btb_predictionN8champsim7addressE7uint8_t"><code class="docutils literal notranslate"><span class="pre">btb_prediction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414btb_predictionN8champsim7addressE"><code class="docutils literal notranslate"><span class="pre">btb_prediction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414btb_prediction8uint64_t7uint8_t"><code class="docutils literal notranslate"><span class="pre">btb_prediction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv414btb_prediction8uint64_t"><code class="docutils literal notranslate"><span class="pre">btb_prediction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv410update_btbN8champsim7addressEN8champsim7addressEb7uint8_t"><code class="docutils literal notranslate"><span class="pre">update_btb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv410update_btb8uint64_t8uint64_tb7uint8_t"><code class="docutils literal notranslate"><span class="pre">update_btb()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-prefetchers">Memory Prefetchers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv421prefetcher_initializev"><code class="docutils literal notranslate"><span class="pre">prefetcher_initialize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb11access_type8uint32_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_cache_operate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb7uint8_t8uint32_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_cache_operate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv424prefetcher_cache_operate8uint64_t8uint64_tb7uint8_t8uint32_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_cache_operate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv421prefetcher_cache_fillN8champsim7addressE8uint32_t10uint32_waybN8champsim7addressE8uint32_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_cache_fill()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv421prefetcher_cache_fill8uint64_t8uint32_t10uint32_wayb8uint64_t8uint32_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_cache_fill()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv424prefetcher_cycle_operatev"><code class="docutils literal notranslate"><span class="pre">prefetcher_cycle_operate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv422prefetcher_final_statsv"><code class="docutils literal notranslate"><span class="pre">prefetcher_final_stats()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv425prefetcher_branch_operateN8champsim7addressE7uint8_tN8champsim7addressE"><code class="docutils literal notranslate"><span class="pre">prefetcher_branch_operate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv425prefetcher_branch_operate8uint64_t7uint8_t8uint64_t"><code class="docutils literal notranslate"><span class="pre">prefetcher_branch_operate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#replacement-policies">Replacement Policies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv422initialize_replacementv"><code class="docutils literal notranslate"><span class="pre">initialize_replacement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t11access_type"><code class="docutils literal notranslate"><span class="pre">find_victim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t8uint32_t"><code class="docutils literal notranslate"><span class="pre">find_victim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv424update_replacement_state8uint32_t8uint32_t8uint32_t8uint64_t8uint64_t8uint64_t7uint8_t"><code class="docutils literal notranslate"><span class="pre">update_replacement_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#_CPPv423replacement_final_statsv"><code class="docutils literal notranslate"><span class="pre">replacement_final_stats()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Creating-a-configuration-file.html">Creating a Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Legacy-modules.html">The Legacy ChampSim Module System</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ChampSim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">The ChampSim Module System</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Modules.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="the-champsim-module-system">
+<span id="modules"></span><h1>The ChampSim Module System<a class="headerlink" href="#the-champsim-module-system" title="Link to this heading"></a></h1>
+<p>ChampSim uses four kinds of modules:</p>
+<ul class="simple">
+<li><p>Branch Direction Predictors</p></li>
+<li><p>Branch Target Predictors</p></li>
+<li><p>Memory Prefetchers</p></li>
+<li><p>Cache Replacement Policies</p></li>
+</ul>
+<p>Modules are implemented as C++ objects.
+The module should inherit from one of the following classes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">champsim::modules::branch_predictor</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">champsim::modules::btb</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">champsim::modules::prefetcher</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">champsim::modules::replacement</span></code></p></li>
+</ul>
+<p>The module must be constructible with a <code class="docutils literal notranslate"><span class="pre">O3_CPU*</span></code> (for branch predictors and BTBs) or a <code class="docutils literal notranslate"><span class="pre">CACHE*</span></code> (for prefetchers and replacement policies).
+Such a constructor must call the superclass constructor of the same kind, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">my_pref</span> <span class="p">:</span> <span class="n">champsim</span><span class="p">::</span><span class="n">modules</span><span class="p">::</span><span class="n">prefetcher</span>
+<span class="p">{</span>
+    <span class="n">public</span><span class="p">:</span>
+    <span class="n">explicit</span> <span class="n">my_pref</span><span class="p">(</span><span class="n">CACHE</span><span class="o">*</span> <span class="n">cache</span><span class="p">)</span> <span class="p">:</span> <span class="n">champsim</span><span class="p">::</span><span class="n">modules</span><span class="p">::</span><span class="n">prefetcher</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span> <span class="p">{}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>One way to do this, if your module’s constructor has an empty body, is to inherit the constructors of the superclass, as with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">my_pref</span> <span class="p">:</span> <span class="n">champsim</span><span class="p">::</span><span class="n">modules</span><span class="p">::</span><span class="n">prefetcher</span>
+<span class="p">{</span>
+    <span class="n">public</span><span class="p">:</span>
+    <span class="n">using</span> <span class="n">champsim</span><span class="p">::</span><span class="n">modules</span><span class="p">::</span><span class="n">prefetcher</span><span class="p">::</span><span class="n">prefetcher</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>A module may implement any of the listed member functions.
+If a member function has overloads listed, any of them may be implemented, and the simulator will select the first candidate overload in the list.</p>
+<section id="branch-predictors">
+<h2>Branch Predictors<a class="headerlink" href="#branch-predictors" title="Link to this heading"></a></h2>
+<p>A branch predictor module may implement three functions.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv427initialize_branch_predictorv">
+<span id="_CPPv327initialize_branch_predictorv"></span><span id="_CPPv227initialize_branch_predictorv"></span><span id="initialize_branch_predictor"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">initialize_branch_predictor</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427initialize_branch_predictorv" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or <code class="docutils literal notranslate"><span class="pre">std::map</span></code>.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414predict_branchN8champsim7addressEN8champsim7addressEb7uint8_t">
+<span id="_CPPv314predict_branchN8champsim7addressEN8champsim7addressEb7uint8_t"></span><span id="_CPPv214predict_branchN8champsim7addressEN8champsim7addressEb7uint8_t"></span><span id="predict_branch__champsim::address.champsim::address.b.uint8_t"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">predict_branch</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">predicted_target</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">always_taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414predict_branchN8champsim7addressEN8champsim7addressEb7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414predict_branch8uint64_t8uint64_tb7uint8_t">
+<span id="_CPPv314predict_branch8uint64_t8uint64_tb7uint8_t"></span><span id="_CPPv214predict_branch8uint64_t8uint64_tb7uint8_t"></span><span id="predict_branch__uint64_t.uint64_t.b.uint8_t"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">predict_branch</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">predicted_target</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">always_taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414predict_branch8uint64_t8uint64_tb7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414predict_branchN8champsim7addressE">
+<span id="_CPPv314predict_branchN8champsim7addressE"></span><span id="_CPPv214predict_branchN8champsim7addressE"></span><span id="predict_branch__champsim::address"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">predict_branch</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414predict_branchN8champsim7addressE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414predict_branch8uint64_t">
+<span id="_CPPv314predict_branch8uint64_t"></span><span id="_CPPv214predict_branch8uint64_t"></span><span id="predict_branch__uint64_t"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">predict_branch</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414predict_branch8uint64_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a prediction is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – The instruction pointer of the branch</p></li>
+<li><p><strong>predicted_target</strong> – The predicted target of the branch.
+This is passed directly from the branch target predictor module and may be incorrect.</p></li>
+<li><p><strong>always_taken</strong> – A boolean value.
+This parameter will be nonzero if the branch target predictor determines that the branch is always taken.</p></li>
+<li><p><strong>branch_type</strong> – <p>One of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_JUMP</span></code>: Direct non-call, unconditional branches, whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT</span></code>: Indirect non-call, unconditional branches, whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_CONDITIONAL</span></code>: A direct conditional branch</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_CALL</span></code>: A call to a procedure whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT_CALL</span></code>: A call to a procedure whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_RETURN</span></code>: A return to a calling procedure</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_OTHER</span></code>: If the branch type cannot be determined</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>This function must return true if the branch is predicted taken, and false otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418last_branch_resultN8champsim7addressEN8champsim7addressE7uint8_t7uint8_t">
+<span id="_CPPv318last_branch_resultN8champsim7addressEN8champsim7addressE7uint8_t7uint8_t"></span><span id="_CPPv218last_branch_resultN8champsim7addressEN8champsim7addressE7uint8_t7uint8_t"></span><span id="last_branch_result__champsim::address.champsim::address.uint8_t.uint8_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">last_branch_result</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418last_branch_resultN8champsim7addressEN8champsim7addressE7uint8_t7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418last_branch_result8uint64_t8uint64_t7uint8_t7uint8_t">
+<span id="_CPPv318last_branch_result8uint64_t8uint64_t7uint8_t7uint8_t"></span><span id="_CPPv218last_branch_result8uint64_t8uint64_t7uint8_t7uint8_t"></span><span id="last_branch_result__uint64_t.uint64_t.uint8_t.uint8_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">last_branch_result</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418last_branch_result8uint64_t8uint64_t7uint8_t7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a branch is resolved. The parameters are the same as in the previous hook, except that the last three are guaranteed to be correct.</p>
+</dd></dl>
+
+</section>
+<section id="branch-target-buffers">
+<h2>Branch Target Buffers<a class="headerlink" href="#branch-target-buffers" title="Link to this heading"></a></h2>
+<p>A BTB module may implement three functions.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414initialize_btbv">
+<span id="_CPPv314initialize_btbv"></span><span id="_CPPv214initialize_btbv"></span><span id="initialize_btb"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">initialize_btb</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414initialize_btbv" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or <code class="docutils literal notranslate"><span class="pre">std::map</span></code>.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414btb_predictionN8champsim7addressE7uint8_t">
+<span id="_CPPv314btb_predictionN8champsim7addressE7uint8_t"></span><span id="_CPPv214btb_predictionN8champsim7addressE7uint8_t"></span><span id="btb_prediction__champsim::address.uint8_t"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">btb_prediction</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414btb_predictionN8champsim7addressE7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414btb_predictionN8champsim7addressE">
+<span id="_CPPv314btb_predictionN8champsim7addressE"></span><span id="_CPPv214btb_predictionN8champsim7addressE"></span><span id="btb_prediction__champsim::address"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">btb_prediction</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414btb_predictionN8champsim7addressE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414btb_prediction8uint64_t7uint8_t">
+<span id="_CPPv314btb_prediction8uint64_t7uint8_t"></span><span id="_CPPv214btb_prediction8uint64_t7uint8_t"></span><span id="btb_prediction__uint64_t.uint8_t"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">btb_prediction</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414btb_prediction8uint64_t7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414btb_prediction8uint64_t">
+<span id="_CPPv314btb_prediction8uint64_t"></span><span id="_CPPv214btb_prediction8uint64_t"></span><span id="btb_prediction__uint64_t"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">btb_prediction</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414btb_prediction8uint64_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a prediction is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – The instruction pointer of the branch</p></li>
+<li><p><strong>branch_type</strong> – <p>One of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_JUMP</span></code>: Direct non-call, unconditional branches, whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT</span></code>: Indirect non-call, unconditional branches, whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_CONDITIONAL</span></code>: A direct conditional branch</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_CALL</span></code>: A call to a procedure whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT_CALL</span></code>: A call to a procedure whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_RETURN</span></code>: A return to a calling procedure</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_OTHER</span></code>: If the branch type cannot be determined</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The function should return a pair containing the predicted address and a boolean that describes if the branch is known to be always taken.
+If the prediction fails, the function should return a default-initialized address, e.g. <code class="docutils literal notranslate"><span class="pre">champsim::address{}</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv410update_btbN8champsim7addressEN8champsim7addressEb7uint8_t">
+<span id="_CPPv310update_btbN8champsim7addressEN8champsim7addressEb7uint8_t"></span><span id="_CPPv210update_btbN8champsim7addressEN8champsim7addressEb7uint8_t"></span><span id="update_btb__champsim::address.champsim::address.b.uint8_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">update_btb</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv410update_btbN8champsim7addressEN8champsim7addressEb7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv410update_btb8uint64_t8uint64_tb7uint8_t">
+<span id="_CPPv310update_btb8uint64_t8uint64_tb7uint8_t"></span><span id="_CPPv210update_btb8uint64_t8uint64_tb7uint8_t"></span><span id="update_btb__uint64_t.uint64_t.b.uint8_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">update_btb</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">taken</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv410update_btb8uint64_t8uint64_tb7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a branch is resolved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – The instruction pointer of the branch</p></li>
+<li><p><strong>branch_target</strong> – The correct target of the branch.</p></li>
+<li><p><strong>taken</strong> – A boolean value. This parameter will be nonzero if the branch was taken.</p></li>
+<li><p><strong>branch_type</strong> – <p>One of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_JUMP</span></code>: Direct non-call, unconditional branches, whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT</span></code>: Indirect non-call, unconditional branches, whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_CONDITIONAL</span></code>: A direct conditional branch</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_CALL</span></code>: A call to a procedure whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT_CALL</span></code>: A call to a procedure whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_RETURN</span></code>: A return to a calling procedure</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_OTHER</span></code>: If the branch type cannot be determined</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="memory-prefetchers">
+<h2>Memory Prefetchers<a class="headerlink" href="#memory-prefetchers" title="Link to this heading"></a></h2>
+<p>A prefetcher module may implement five or six functions.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv421prefetcher_initializev">
+<span id="_CPPv321prefetcher_initializev"></span><span id="_CPPv221prefetcher_initializev"></span><span id="prefetcher_initialize"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_initialize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv421prefetcher_initializev" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or <code class="docutils literal notranslate"><span class="pre">std::map</span></code>.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb11access_type8uint32_t">
+<span id="_CPPv324prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb11access_type8uint32_t"></span><span id="_CPPv224prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb11access_type8uint32_t"></span><span id="prefetcher_cache_operate__champsim::address.champsim::address.b.b.access_type.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cache_operate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cache_hit</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">useful_prefetch</span></span>, <span class="n"><span class="pre">access_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metadata_in</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb11access_type8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb7uint8_t8uint32_t">
+<span id="_CPPv324prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb7uint8_t8uint32_t"></span><span id="_CPPv224prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb7uint8_t8uint32_t"></span><span id="prefetcher_cache_operate__champsim::address.champsim::address.b.b.uint8_t.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cache_operate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cache_hit</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">useful_prefetch</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metadata_in</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424prefetcher_cache_operateN8champsim7addressEN8champsim7addressEbb7uint8_t8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424prefetcher_cache_operate8uint64_t8uint64_tb7uint8_t8uint32_t">
+<span id="_CPPv324prefetcher_cache_operate8uint64_t8uint64_tb7uint8_t8uint32_t"></span><span id="_CPPv224prefetcher_cache_operate8uint64_t8uint64_tb7uint8_t8uint32_t"></span><span id="prefetcher_cache_operate__uint64_t.uint64_t.b.uint8_t.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cache_operate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cache_hit</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metadata_in</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424prefetcher_cache_operate8uint64_t8uint64_tb7uint8_t8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a tag is checked in the cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>addr</strong> – the address of the packet.
+If this is the first-level cache, the offset bits are included.
+Otherwise, the offset bits are zero.
+If the cache was configured with <code class="docutils literal notranslate"><span class="pre">&quot;virtual_prefetch&quot;:</span> <span class="pre">true</span></code>, this address will be a virtual address.
+Otherwise, this is a physical address.</p></li>
+<li><p><strong>ip</strong> – the address of the instruction that initiated the demand.
+If the packet is a prefetch from another level, this value will be 0.</p></li>
+<li><p><strong>cache_hit</strong> – if this tag check is a hit, this value is true.</p></li>
+<li><p><strong>useful_prefetch</strong> – if this tag check hit a prior prefetch, this value is true.</p></li>
+<li><p><strong>type</strong> – <p>one of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::LOAD</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::RFO</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::PREFETCH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::WRITE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::TRANSLATION</span></code></p></li>
+</ul>
+</p></li>
+<li><p><strong>metadata_in</strong> – the metadata carried along by the packet.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The function should return metadata that will be stored alongside the block.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv421prefetcher_cache_fillN8champsim7addressE8uint32_t10uint32_waybN8champsim7addressE8uint32_t">
+<span id="_CPPv321prefetcher_cache_fillN8champsim7addressE8uint32_t10uint32_waybN8champsim7addressE8uint32_t"></span><span id="_CPPv221prefetcher_cache_fillN8champsim7addressE8uint32_t10uint32_waybN8champsim7addressE8uint32_t"></span><span id="prefetcher_cache_fill__champsim::address.uint32_t.uint32_way.b.champsim::address.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cache_fill</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">set</span></span>, <span class="n"><span class="pre">uint32_way</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">prefetch</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">evicted_address</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metadata_in</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv421prefetcher_cache_fillN8champsim7addressE8uint32_t10uint32_waybN8champsim7addressE8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv421prefetcher_cache_fill8uint64_t8uint32_t10uint32_wayb8uint64_t8uint32_t">
+<span id="_CPPv321prefetcher_cache_fill8uint64_t8uint32_t10uint32_wayb8uint64_t8uint32_t"></span><span id="_CPPv221prefetcher_cache_fill8uint64_t8uint32_t10uint32_wayb8uint64_t8uint32_t"></span><span id="prefetcher_cache_fill__uint64_t.uint32_t.uint32_way.b.uint64_t.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cache_fill</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">set</span></span>, <span class="n"><span class="pre">uint32_way</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">prefetch</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">evicted_address</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metadata_in</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv421prefetcher_cache_fill8uint64_t8uint32_t10uint32_wayb8uint64_t8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a miss is filled in the cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>addr</strong> – the address of the packet.
+If this is the first-level cache, the offset bits are included.
+Otherwise, the offset bits are zero.
+If the cache was configured with <code class="docutils literal notranslate"><span class="pre">&quot;virtual_prefetch&quot;:</span> <span class="pre">true</span></code>, this address will be a virtual address.
+Otherwise, this is a physical address.</p></li>
+<li><p><strong>set</strong> – the set that the fill occurred in</p></li>
+<li><p><strong>way</strong> – the way that the fill occurred in, or <code class="docutils literal notranslate"><span class="pre">this-&gt;NUM_WAY</span></code> if a bypass occurred</p></li>
+<li><p><strong>prefetch</strong> – if this tag check hit a prior prefetch, this value is true.</p></li>
+<li><p><strong>evicted_address</strong> – the address of the evicted block.
+If the fill was a bypass, this value will be default-constructed.
+If the cache was configured with <code class="docutils literal notranslate"><span class="pre">&quot;virtual_prefetch&quot;:</span> <span class="pre">true</span></code>, this address will be a virtual address.
+Otherwise, this is a physical address.</p></li>
+<li><p><strong>metadata_in</strong> – the metadata carried along by the packet.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The function should return metadata that will be stored alongside the block.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424prefetcher_cycle_operatev">
+<span id="_CPPv324prefetcher_cycle_operatev"></span><span id="_CPPv224prefetcher_cycle_operatev"></span><span id="prefetcher_cycle_operate"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_cycle_operate</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424prefetcher_cycle_operatev" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called each cycle, after all other operation has completed.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv422prefetcher_final_statsv">
+<span id="_CPPv322prefetcher_final_statsv"></span><span id="_CPPv222prefetcher_final_statsv"></span><span id="prefetcher_final_stats"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_final_stats</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv422prefetcher_final_statsv" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called at the end of the simulation and can be used to print statistics.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425prefetcher_branch_operateN8champsim7addressE7uint8_tN8champsim7addressE">
+<span id="_CPPv325prefetcher_branch_operateN8champsim7addressE7uint8_tN8champsim7addressE"></span><span id="_CPPv225prefetcher_branch_operateN8champsim7addressE7uint8_tN8champsim7addressE"></span><span id="prefetcher_branch_operate__champsim::address.uint8_t.champsim::address"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_branch_operate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span>, <span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">address</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425prefetcher_branch_operateN8champsim7addressE7uint8_tN8champsim7addressE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425prefetcher_branch_operate8uint64_t7uint8_t8uint64_t">
+<span id="_CPPv325prefetcher_branch_operate8uint64_t7uint8_t8uint64_t"></span><span id="_CPPv225prefetcher_branch_operate8uint64_t7uint8_t8uint64_t"></span><span id="prefetcher_branch_operate__uint64_t.uint8_t.uint64_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">prefetcher_branch_operate</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_type</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">branch_target</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425prefetcher_branch_operate8uint64_t7uint8_t8uint64_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function may be implemented by instruction prefetchers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – The instruction pointer of the branch</p></li>
+<li><p><strong>branch_type</strong> – <p>One of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_JUMP</span></code>: Direct non-call, unconditional branches, whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT</span></code>: Indirect non-call, unconditional branches, whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_CONDITIONAL</span></code>: A direct conditional branch</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_DIRECT_CALL</span></code>: A call to a procedure whose target is encoded in the instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_INDIRECT_CALL</span></code>: A call to a procedure whose target is stored in a register</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_RETURN</span></code>: A return to a calling procedure</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BRANCH_OTHER</span></code>: If the branch type cannot be determined</p></li>
+</ul>
+</p></li>
+<li><p><strong>branch_target</strong> – The instruction pointer of the target</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="replacement-policies">
+<h2>Replacement Policies<a class="headerlink" href="#replacement-policies" title="Link to this heading"></a></h2>
+<p>A replacement policy module may implement four functions.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv422initialize_replacementv">
+<span id="_CPPv322initialize_replacementv"></span><span id="_CPPv222initialize_replacementv"></span><span id="initialize_replacement"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">initialize_replacement</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv422initialize_replacementv" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when the cache is initialized. You can use it to initialize elements of dynamic structures, such as <code class="docutils literal notranslate"><span class="pre">std::vector</span></code> or <code class="docutils literal notranslate"><span class="pre">std::map</span></code>.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t11access_type">
+<span id="_CPPv311find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t11access_type"></span><span id="_CPPv211find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t11access_type"></span><span id="find_victim__uint32_t.uint64_t.uint32_t.BLOCKCP.uint64_t.uint64_t.access_type"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">find_victim</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">triggering_cpu</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">instr_id</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">set</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">BLOCK</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">current_set</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">access_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t11access_type" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t8uint32_t">
+<span id="_CPPv311find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t8uint32_t"></span><span id="_CPPv211find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t8uint32_t"></span><span id="find_victim__uint32_t.uint64_t.uint32_t.BLOCKCP.uint64_t.uint64_t.uint32_t"></span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">find_victim</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">triggering_cpu</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">instr_id</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">set</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">BLOCK</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">current_set</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv411find_victim8uint32_t8uint64_t8uint32_tPK5BLOCK8uint64_t8uint64_t8uint32_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a tag is checked in the cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>triggering_cpu</strong> – the core index that initiated this fill</p></li>
+<li><p><strong>instr_id</strong> – an instruction count that can be used to examine the program order of requests.</p></li>
+<li><p><strong>set</strong> – the set that the fill occurred in.</p></li>
+<li><p><strong>current_set</strong> – a pointer to the beginning of the set being accessed.</p></li>
+<li><p><strong>ip</strong> – the address of the instruction that initiated the demand.
+If the packet is a prefetch from another level, this value will be 0.</p></li>
+<li><p><strong>addr</strong> – the address of the packet.
+If this is the first-level cache, the offset bits are included.
+Otherwise, the offset bits are zero.
+If the cache was configured with <code class="docutils literal notranslate"><span class="pre">&quot;virtual_prefetch&quot;:</span> <span class="pre">true</span></code>, this address will be a virtual address.
+Otherwise, this is a physical address.</p></li>
+<li><p><strong>type</strong> – <p>one of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::LOAD</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::RFO</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::PREFETCH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::WRITE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::TRANSLATION</span></code></p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The function should return the way index that should be evicted, or <code class="docutils literal notranslate"><span class="pre">this-&gt;NUM_WAY</span></code> to indicate that a bypass should occur.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424update_replacement_state8uint32_t8uint32_t8uint32_t8uint64_t8uint64_t8uint64_t7uint8_t">
+<span id="_CPPv324update_replacement_state8uint32_t8uint32_t8uint32_t8uint64_t8uint64_t8uint64_t7uint8_t"></span><span id="_CPPv224update_replacement_state8uint32_t8uint32_t8uint32_t8uint64_t8uint64_t8uint64_t7uint8_t"></span><span id="update_replacement_state__uint32_t.uint32_t.uint32_t.uint64_t.uint64_t.uint64_t.uint8_t"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">update_replacement_state</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">triggering_cpu</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">set</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">way</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">addr</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ip</span></span>, <span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">victim_addr</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">hit</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424update_replacement_state8uint32_t8uint32_t8uint32_t8uint64_t8uint64_t8uint64_t7uint8_t" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called when a hit occurs or a miss is filled in the cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>triggering_cpu</strong> – the core index that initiated this fill</p></li>
+<li><p><strong>set</strong> – the set that the fill occurred in.</p></li>
+<li><p><strong>way</strong> – the way that the fill occurred in.</p></li>
+<li><p><strong>addr</strong> – the address of the packet.
+If this is the first-level cache, the offset bits are included.
+Otherwise, the offset bits are zero.
+If the cache was configured with <code class="docutils literal notranslate"><span class="pre">&quot;virtual_prefetch&quot;:</span> <span class="pre">true</span></code>, this address will be a virtual address.
+Otherwise, this is a physical address.</p></li>
+<li><p><strong>ip</strong> – the address of the instruction that initiated the demand.
+If the packet is a prefetch from another level, this value will be 0.</p></li>
+<li><p><strong>victim_addr</strong> – the address of the evicted block, if this is a miss.
+If this is a hit, the value is 0.</p></li>
+<li><p><strong>type</strong> – <p>one of the following</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::LOAD</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::RFO</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::PREFETCH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::WRITE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">access_type::TRANSLATION</span></code></p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv423replacement_final_statsv">
+<span id="_CPPv323replacement_final_statsv"></span><span id="_CPPv223replacement_final_statsv"></span><span id="replacement_final_stats"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">replacement_final_stats</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423replacement_final_statsv" title="Link to this definition"></a><br /></dt>
+<dd><p>This function is called at the end of the simulation and can be used to print statistics.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to the ChampSim wiki!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Creating-a-configuration-file.html" class="btn btn-neutral float-right" title="Creating a Configuration File" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, The ChampSim Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: feature/byte-size
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../develop/Modules.html">develop</a></dd>
+      <dd><a href="Modules.html">feature/byte-size</a></dd>
+      <dd><a href="../docs/Modules.html">feature/docs</a></dd>
+      <dd><a href="../replacement-cache-fill/Modules.html">feature/replacement-cache-fill</a></dd>
+      <dd><a href="../runtime-config/Modules.html">feature/runtime-config</a></dd>
+      <dd><a href="../../master/Modules.html">master</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
