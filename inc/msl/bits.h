@@ -20,30 +20,95 @@
 #include <cstdint>
 #include <limits>
 
+#include "util/to_underlying.h"
+#include "util/units.h"
+
 namespace champsim::msl
 {
 template <typename T>
-constexpr T lg2(T n)
+constexpr auto lg2(T n)
 {
-  T result = 0;
+  std::make_unsigned_t<T> result{};
   while (n >>= 1) {
     ++result;
   }
   return result;
 }
 
-constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
+template <typename T>
+constexpr T next_pow2(T n)
 {
-  if (begin - end >= std::numeric_limits<uint64_t>::digits) {
-    return std::numeric_limits<uint64_t>::max();
+  n--;
+  for (unsigned i = 0; i < lg2(std::numeric_limits<T>::digits); ++i) {
+    n |= n >> (1u << i);
   }
-  return ((1ULL << (begin - end)) - 1) << end;
+  n++;
+  return n;
+}
+
+template <typename T>
+constexpr bool is_power_of_2(T n)
+{
+  return (n == T{1} << lg2(n));
+}
+
+/**
+ * Compute an integer power
+ * This function may overflow very easily. Use only for small bases or very small exponents.
+ */
+constexpr long long static ipow(long long base, unsigned exp)
+{
+  long long result = 1;
+  for (;;) {
+    if (exp & 1)
+      result *= base;
+    exp >>= 1;
+    if (!exp)
+      break;
+    base *= base;
+  }
+
+  return result;
+}
+
+constexpr uint64_t bitmask(champsim::data::bits begin, champsim::data::bits end)
+{
+  using underlying_type = std::underlying_type_t<champsim::data::bits>;
+  auto begin_val = champsim::to_underlying(begin);
+  auto end_val = champsim::to_underlying(end);
+
+  if (begin_val - end_val >= std::numeric_limits<underlying_type>::digits) {
+    return std::numeric_limits<underlying_type>::max();
+  }
+  return ((underlying_type{1} << (begin_val - end_val)) - 1) << end_val;
+}
+
+constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, champsim::data::bits{}); }
+
+constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0) { return bitmask(champsim::data::bits{begin}, champsim::data::bits{end}); }
+
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits_upper, champsim::data::bits bits_lower)
+{
+  return (upper & ~bitmask(bits_upper, bits_lower)) | (lower & bitmask(bits_upper, bits_lower));
+}
+
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits)
+{
+  return splice_bits(upper, lower, bits, champsim::data::bits{});
+}
+
+template <typename T>
+constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
+{
+  return splice_bits(upper, lower, champsim::data::bits{bits_upper}, champsim::data::bits{bits_lower});
 }
 
 template <typename T>
 constexpr auto splice_bits(T upper, T lower, std::size_t bits)
 {
-  return (upper & ~bitmask(bits)) | (lower & bitmask(bits));
+  return splice_bits(upper, lower, champsim::data::bits{bits});
 }
 } // namespace champsim::msl
 

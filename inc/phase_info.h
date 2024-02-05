@@ -23,9 +23,9 @@
 #include <string_view>
 #include <vector>
 
-#include "cache.h"
-#include "dram_controller.h"
-#include "ooo_cpu.h"
+#include "cache_stats.h"
+#include "core_stats.h"
+#include "dram_stats.h"
 
 namespace champsim
 {
@@ -33,7 +33,7 @@ namespace champsim
 struct phase_info {
   std::string name;
   bool is_warmup;
-  uint64_t length;
+  long long length;
   std::vector<std::size_t> trace_index;
   std::vector<std::string> trace_names;
 };

@@ -16,29 +16,28 @@
 
 #include "channel.h"
 
-#include <algorithm> // for find_if, set_union
 #include <cassert>
-#include <iterator> // for back_insert_iterator, begin, end, size, bac...
-#include <utility>  // for move
 #include <fmt/core.h>
 
+#include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
-#include "util/bits.h" // for to_underlying
+#include "util/to_underlying.h" // for to_underlying
 
-champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
+champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, champsim::data::bits offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
 {
 }
 
 template <typename Iter, typename F>
-bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt, F&& func)
+bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt, F&& func)
 {
   // We make sure that both merge packet address have been translated. If
   // not this can happen: package with address virtual and physical X
   // (not translated) is inserted, package with physical address
   // (already translated) X.
-  if (auto found = std::find_if(begin, end, [addr = packet.address, shamt](const auto& x) { return (x.address >> shamt) == (addr >> shamt); });
+  if (auto found =
+          std::find_if(begin, end, [match = packet.address.slice_upper(shamt), shamt](const auto& x) { return x.address.slice_upper(shamt) == match; });
       found != end && packet.is_translated == found->is_translated) {
     func(packet, *found);
     return true;
@@ -48,19 +47,19 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
 }
 
 template <typename Iter>
-bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
+bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
     destination.response_requested |= source.response_requested;
     auto instr_copy = std::move(destination.instr_depend_on_me);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-                   std::back_inserter(destination.instr_depend_on_me), ooo_model_instr::program_order);
+                   std::back_inserter(destination.instr_depend_on_me));
   });
 }
 
 template <typename Iter>
-bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt,
+bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt,
                              std::deque<champsim::channel::response_type>& returned)
 {
   return do_collision_for(begin, end, packet, shamt, [&](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
@@ -72,7 +71,7 @@ bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_ty
 
 void champsim::channel::check_collision()
 {
-  auto write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
+  auto write_shamt = match_offset_bits ? champsim::data::bits{} : OFFSET_BITS;
   auto read_shamt = OFFSET_BITS;
 
   // Check WQ for duplicates, merging if they are found
@@ -118,20 +117,9 @@ void champsim::channel::check_collision()
 template <typename R>
 bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typename R::value_type& packet)
 {
-  assert(packet.address != 0);
-
   // check occupancy
   if (std::size(queue) >= queue_size) {
-    if constexpr (champsim::debug_print) {
-      fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {} FULL\n", __func__, packet.instr_id, packet.address, packet.v_address,
-                 access_type_names.at(champsim::to_underlying(packet.type)));
-    }
     return false; // cannot handle this request
-  }
-
-  if constexpr (champsim::debug_print) {
-    fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
-               access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   // Insert the packet ahead of the translation misses
@@ -144,6 +132,11 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
 
 bool champsim::channel::add_rq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    fmt::print("[channel_rq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
+  }
+
   sim_stats.RQ_ACCESS++;
 
   auto result = do_add_queue(RQ, RQ_SIZE, packet);
@@ -159,6 +152,11 @@ bool champsim::channel::add_rq(const request_type& packet)
 
 bool champsim::channel::add_wq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    fmt::print("[channel_wq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
+  }
+
   sim_stats.WQ_ACCESS++;
 
   auto result = do_add_queue(WQ, WQ_SIZE, packet);
@@ -174,6 +172,11 @@ bool champsim::channel::add_wq(const request_type& packet)
 
 bool champsim::channel::add_pq(const request_type& packet)
 {
+  if constexpr (champsim::debug_print) {
+    fmt::print("[channel_pq] {} instr_id: {} address: {} v_address: {} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
+               access_type_names.at(champsim::to_underlying(packet.type)));
+  }
+
   sim_stats.PQ_ACCESS++;
 
   auto fwd_pkt = packet;

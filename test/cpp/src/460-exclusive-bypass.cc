@@ -33,7 +33,7 @@ SCENARIO("An exclusive load does not fill the lower level") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul_seed)::request_type seed;
-      seed.address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
       seed.cpu = 0;
       seed.instr_id = id++;
       seed.clusivity = champsim::inclusivity::exclusive;

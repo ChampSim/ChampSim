@@ -1,15 +1,14 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 #include "ooo_cpu.h"
 #include "instr.h"
 
-SCENARIO("Completed instructions are retired") {
+SCENARIO("An empty ROB does not retire any instructions") {
   GIVEN("An empty ROB") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .retire_width(retire_bandwidth)
+    constexpr long retire_bandwidth = 1;
+    O3_CPU uut{champsim::core_builder{}
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -27,12 +26,14 @@ SCENARIO("Completed instructions are retired") {
       }
     }
   }
+}
 
+SCENARIO("A completed instruction can be retired") {
   GIVEN("A ROB with a single instruction") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .retire_width(retire_bandwidth)
+    constexpr long retire_bandwidth = 1;
+    O3_CPU uut{champsim::core_builder{}
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -64,12 +65,14 @@ SCENARIO("Completed instructions are retired") {
       }
     }
   }
+}
 
+SCENARIO("Completed instructions are retired in order") {
   GIVEN("A ROB with two instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    constexpr std::size_t retire_bandwidth = 2;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .retire_width(retire_bandwidth)
+    constexpr long retire_bandwidth = 2;
+    O3_CPU uut{champsim::core_builder{}
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
@@ -103,21 +106,24 @@ SCENARIO("Completed instructions are retired") {
 
       THEN("Both instructions are retired") {
         REQUIRE(std::size(uut.ROB) == 0);
-        REQUIRE(uut.num_retired == old_num_retired+std::size(test_instructions));
+        REQUIRE(uut.num_retired == old_num_retired+retire_bandwidth);
       }
     }
   }
+}
 
+SCENARIO("The retire bandwidth limits the number of retirements per cycle") {
   GIVEN("A ROB with twice as many instructions as retire bandwidth") {
     do_nothing_MRC mock_L1I, mock_L1D;
-    constexpr std::size_t retire_bandwidth = 1;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .retire_width(retire_bandwidth)
+    constexpr long retire_bandwidth = 1;
+    constexpr long num_instrs = 2 * retire_bandwidth;
+    O3_CPU uut{champsim::core_builder{}
+      .retire_width(champsim::bandwidth::maximum_type{retire_bandwidth})
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
     };
 
-    std::vector test_instructions( 2*retire_bandwidth, champsim::test::instruction_with_ip(1) );
+    std::vector test_instructions( num_instrs, champsim::test::instruction_with_ip(1) );
 
     uut.ROB.insert(std::end(uut.ROB), std::begin(test_instructions), std::end(test_instructions));
 
@@ -132,8 +138,8 @@ SCENARIO("Completed instructions are retired") {
         op->_operate();
 
       THEN("The bandwidth of instructions are retired") {
-        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-static_cast<std::size_t>(uut.RETIRE_WIDTH)));
-        REQUIRE(uut.num_retired == old_num_retired+static_cast<std::size_t>(uut.RETIRE_WIDTH));
+        REQUIRE_THAT(uut.ROB, Catch::Matchers::SizeIs(old_rob_occupancy-retire_bandwidth));
+        REQUIRE(uut.num_retired == old_num_retired+retire_bandwidth);
       }
 
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
@@ -141,7 +147,7 @@ SCENARIO("Completed instructions are retired") {
 
       AND_THEN("The remaining instructions are retired") {
         REQUIRE(std::size(uut.ROB) == 0);
-        REQUIRE(uut.num_retired == old_num_retired+std::size(test_instructions));
+        REQUIRE(uut.num_retired == old_num_retired+num_instrs);
       }
     }
   }

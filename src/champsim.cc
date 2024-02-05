@@ -18,25 +18,18 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>      // for ceil
-#include <cstdlib>    // for size_t, abort
-#include <deque>      // for deque
-#include <functional> // for reference_wrapper, logical_and
-#include <iterator>   // for back_insert_iterator, begin, end, back_...
 #include <numeric>
-#include <string> // for string, basic_string
 #include <vector>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
-#include "cache.h"           // for CACHE::stats_type, CACHE
-#include "dram_controller.h" // for DRAM_CHANNEL::stats_type, MEMORY_CONTRO...
 #include "environment.h"
-#include "instruction.h" // for ooo_model_instr
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "phase_info.h"
 #include "tracereader.h"
+
+constexpr int DEADLOCK_CYCLE{500};
 
 const auto start_time = std::chrono::steady_clock::now();
 
@@ -44,27 +37,16 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index)
+long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
   auto operables = env.operable_view();
   std::sort(std::begin(operables), std::end(operables),
-            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
+            [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.current_time < rhs.current_time; });
 
   // Operate
+  long progress{0};
   for (champsim::operable& op : operables) {
-    try {
-      op._operate();
-    } catch (champsim::deadlock& dl) {
-      // env.cpu_view()[dl.which].print_deadlock();
-      // std::cout << std::endl;
-      // for (auto c : caches)
-      for (champsim::operable& c : operables) {
-        c.print_deadlock();
-        fmt::print("\n");
-      }
-
-      abort();
-    }
+    progress += op.operate_on(global_clock);
   }
 
   // Read from trace
@@ -74,30 +56,48 @@ void do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<st
       cpu.input_queue.push_back(trace());
     }
   }
+
+  return progress;
 }
 
-phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces)
+phase_stats do_phase(const phase_info& phase, environment& env, std::vector<tracereader>& traces, champsim::chrono::clock& global_clock)
 {
+  auto operables = env.operable_view();
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
 
   // Initialize phase
-  for (champsim::operable& op : env.operable_view()) {
+  for (champsim::operable& op : operables) {
     op.warmup = is_warmup;
     op.begin_phase();
   }
 
-  // Perform cycles
+  const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
+                                            [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
+
+  // Perform phase
+  int stalled_cycle{0};
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
-    do_cycle(env, traces, trace_index);
+    global_clock.tick(time_quantum);
+
+    auto progress = do_cycle(env, traces, trace_index, global_clock);
+
+    if (progress == 0) {
+      ++stalled_cycle;
+    } else {
+      stalled_cycle = 0;
+    }
+
+    if (stalled_cycle >= DEADLOCK_CYCLE) {
+      std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
+      abort();
+    }
 
     auto next_phase_complete = phase_complete;
 
     // If any trace reaches EOF, terminate all phases
-    for (const auto& tr : traces) {
-      if (tr.eof()) {
-        std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
-      }
+    if (std::any_of(std::begin(traces), std::end(traces), [](const auto& tr) { return tr.eof(); })) {
+      std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
     }
 
     // Check for phase finish
@@ -108,7 +108,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
 
     for (O3_CPU& cpu : env.cpu_view()) {
       if (next_phase_complete[cpu.cpu] != phase_complete[cpu.cpu]) {
-        for (champsim::operable& op : env.operable_view()) {
+        for (champsim::operable& op : operables) {
           op.end_phase(cpu.cpu);
         }
 
@@ -156,9 +156,10 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
     op.initialize();
   }
 
+  champsim::chrono::clock global_clock;
   std::vector<phase_stats> results;
   for (auto phase : phases) {
-    auto stats = do_phase(phase, env, traces);
+    auto stats = do_phase(phase, env, traces, global_clock);
     if (!phase.is_warmup) {
       results.push_back(stats);
     }

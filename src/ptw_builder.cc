@@ -16,6 +16,7 @@
 
 #include "ptw_builder.h"
 
+#include <cmath>
 #include <utility>
 
 auto champsim::ptw_builder::name(std::string_view name_) -> ptw_builder&
@@ -24,9 +25,9 @@ auto champsim::ptw_builder::name(std::string_view name_) -> ptw_builder&
   return *this;
 }
 
-auto champsim::ptw_builder::frequency(double freq_scale_) -> ptw_builder&
+auto champsim::ptw_builder::clock_period(champsim::chrono::picoseconds clock_period_) -> ptw_builder&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 
@@ -54,13 +55,13 @@ auto champsim::ptw_builder::mshr_factor(double mshr_factor_) -> ptw_builder&
   return *this;
 }
 
-auto champsim::ptw_builder::tag_bandwidth(uint32_t max_read_) -> ptw_builder&
+auto champsim::ptw_builder::tag_bandwidth(champsim::bandwidth::maximum_type max_read_) -> ptw_builder&
 {
   m_max_tag_check = max_read_;
   return *this;
 }
 
-auto champsim::ptw_builder::fill_bandwidth(uint32_t max_fill_) -> ptw_builder&
+auto champsim::ptw_builder::fill_bandwidth(champsim::bandwidth::maximum_type max_fill_) -> ptw_builder&
 {
   m_max_fill = max_fill_;
   return *this;
@@ -94,4 +95,9 @@ auto champsim::ptw_builder::virtual_memory(VirtualMemory* vmem_) -> ptw_builder&
 {
   m_vmem = vmem_;
   return *this;
+}
+
+auto champsim::ptw_builder::scaled_by_ul_size(double factor) const -> uint32_t
+{
+  return factor < 0 ? 0 : static_cast<uint32_t>(std::lround(factor * std::floor(std::size(m_uls))));
 }

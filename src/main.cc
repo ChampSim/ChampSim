@@ -15,47 +15,37 @@
  */
 
 #include <algorithm>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint8_t
-#include <functional> // for reference_wrapper
-#include <iostream>   // for cout, ofstream
-#include <iterator>   // for size, back_insert_iterator, begin
-#include <limits>     // for numeric_limits
-#include <memory>     // for allocator_traits<>::value_type
+#include <fstream>
 #include <numeric>
-#include <stdexcept> // for invalid_argument, out_of_range
 #include <string>
 #include <vector>
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
-#include "cache.h" // for CACHE
+#include "champsim.h"
 #include "champsim_constants.h"
 #include "core_inst.inc"
+#include "defaults.hpp"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-
-namespace champsim
-{
-struct environment;
-}
+#include "vmem.h"
 
 namespace champsim
 {
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
   champsim::configured::generated_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
 
   bool knob_cloudsuite{false};
-  uint64_t warmup_instructions = 0;
-  uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
+  long long warmup_instructions = 0;
+  long long simulation_instructions = std::numeric_limits<long long>::max();
   std::string json_file_name;
   std::vector<std::string> trace_names;
 
@@ -94,6 +84,8 @@ int main(int argc, char** argv)
   }
 
   if (simulation_given && !warmup_given) {
+    // Warmup is 20% by default
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     warmup_instructions = simulation_instructions / 5;
   }
 

@@ -4,16 +4,34 @@
 #include "cache.h"
 #include "champsim_constants.h"
 #include "pref_interface.h"
+#include <map>
+#include <vector>
 
-namespace test
+namespace
 {
-  extern std::map<CACHE*, std::vector<pref_cache_operate_interface>> prefetch_hit_collector;
+  std::map<CACHE*, std::vector<test::pref_cache_operate_interface>> prefetch_hit_collector;
 }
+
+struct hit_collector : champsim::modules::prefetcher
+{
+  using prefetcher::prefetcher;
+
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in)
+  {
+    ::prefetch_hit_collector[intern_].push_back({addr, ip, cache_hit, useful_prefetch, type, metadata_in});
+    return metadata_in;
+  }
+
+  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
+  {
+    return metadata_in;
+  }
+};
 
 SCENARIO("A prefetch can be issued") {
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 2;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 2;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -22,7 +40,7 @@ SCENARIO("A prefetch can be issued") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .prefetcher<CACHE::ptestDcppDmodulesDprefetcherDprefetch_hit_collector>()
+      .prefetcher<hit_collector>()
     };
 
     std::array<champsim::operable*, 3> elements{{&mock_ll, &mock_ul, &uut}};
@@ -44,7 +62,7 @@ SCENARIO("A prefetch can be issued") {
     }
 
     WHEN("A prefetch is issued") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
       THEN("The issue is accepted") {
@@ -69,11 +87,11 @@ SCENARIO("A prefetch can be issued") {
       }
 
       AND_WHEN("A packet with the same address is sent") {
-        test::prefetch_hit_collector.insert_or_assign(&uut, std::vector<test::pref_cache_operate_interface>{});
+        ::prefetch_hit_collector.insert_or_assign(&uut, std::vector<test::pref_cache_operate_interface>{});
 
         // Create a test packet
         decltype(mock_ul)::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
         test.cpu = 0;
 
         auto test_result = mock_ul.issue(test);
@@ -86,7 +104,7 @@ SCENARIO("A prefetch can be issued") {
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency + 1);
+          mock_ul.packets.back().assert_returned(hit_latency + 1, 1);
         }
 
         THEN("The number of useful prefetches is incremented") {
@@ -95,7 +113,7 @@ SCENARIO("A prefetch can be issued") {
         }
 
         THEN("The packet is shown to be a prefetch hit") {
-          REQUIRE_THAT(test::prefetch_hit_collector.at(&uut), Catch::Matchers::SizeIs(1) && Catch::Matchers::AllMatch(
+          REQUIRE_THAT(::prefetch_hit_collector.at(&uut), Catch::Matchers::SizeIs(1) && Catch::Matchers::AllMatch(
                 Catch::Matchers::Predicate<test::pref_cache_operate_interface>(
                   [](test::pref_cache_operate_interface x){ return x.useful_prefetch; },
                   "is prefetch hit"

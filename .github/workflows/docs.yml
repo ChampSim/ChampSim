@@ -1,0 +1,52 @@
+name: Update Documentation
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - feature/*
+      - release/*
+
+permissions:
+  contents: write
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Environment
+        run: python3 -m pip install -r docs/requirements.txt
+
+      - name: Generate Doxygen
+        uses: mattnotmitt/doxygen-action@v1.9.5
+        with:
+          working-directory: docs
+
+      - name: Build Documentation
+        run: sphinx-build -v -c docs docs/src _build
+
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          clean: false
+
+      - name: Install HTML sources
+        run: rsync --mkpath -av _build/ ${{ github.ref_name }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          pull: '--rebase --autostash'
+          default_author: github_actions
+          message: |
+            Update documentation for ${{ github.ref }}.
+
+            Author: ${{ github.event.head_commit.author.name }}
+            Committer: ${{ github.event.head_commit.committer.name }}
+
+            ${{ github.event.head_commit.message }}
+
+

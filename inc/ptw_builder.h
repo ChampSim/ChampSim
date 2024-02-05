@@ -23,6 +23,9 @@
 #include <string_view>
 #include <vector>
 
+#include "bandwidth.h"
+#include "chrono.h"
+
 class VirtualMemory;
 class PageTableWalker;
 namespace champsim
@@ -31,13 +34,13 @@ class channel;
 class ptw_builder
 {
   std::string_view m_name{};
-  double m_freq_scale{1};
+  chrono::picoseconds m_clock_period{250};
   uint32_t m_cpu{0};
   std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
   std::optional<uint32_t> m_mshr_size{};
   double m_mshr_factor{1};
-  std::optional<uint32_t> m_max_tag_check{};
-  std::optional<uint32_t> m_max_fill{};
+  std::optional<champsim::bandwidth::maximum_type> m_max_tag_check{};
+  std::optional<champsim::bandwidth::maximum_type> m_max_fill{};
   double m_bandwidth_factor{1};
   unsigned m_latency{};
   std::vector<champsim::channel*> m_uls{};
@@ -46,15 +49,17 @@ class ptw_builder
 
   friend class ::PageTableWalker;
 
+  uint32_t scaled_by_ul_size(double factor) const;
+
 public:
   ptw_builder& name(std::string_view name_);
-  ptw_builder& frequency(double freq_scale_);
+  ptw_builder& clock_period(champsim::chrono::picoseconds clock_period_);
   ptw_builder& cpu(uint32_t cpu_);
   ptw_builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way);
   ptw_builder& mshr_size(uint32_t mshr_size_);
   ptw_builder& mshr_factor(double mshr_factor_);
-  ptw_builder& tag_bandwidth(uint32_t max_read_);
-  ptw_builder& fill_bandwidth(uint32_t max_fill_);
+  ptw_builder& tag_bandwidth(champsim::bandwidth::maximum_type max_read_);
+  ptw_builder& fill_bandwidth(champsim::bandwidth::maximum_type max_fill_);
   ptw_builder& bandwidth_factor(double bandwidth_factor_);
   ptw_builder& latency(unsigned latency_);
   ptw_builder& upper_levels(std::vector<champsim::channel*>&& uls_);

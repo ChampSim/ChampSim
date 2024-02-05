@@ -17,37 +17,33 @@
 #ifndef PTW_H
 #define PTW_H
 
-#include <cstddef> // for size_t
-#include <cstdint> // for uint64_t, uint8_t, uint32_t
+#include <array>
 #include <deque>
-#include <functional> // for reference_wrapper
-#include <limits>     // for numeric_limits
-#include <optional>   // for optional
+#include <limits>   // for numeric_limits
+#include <optional> // for optional
 #include <string>
-#include <vector> // for vector
 
+#include "address.h"
+#include "bandwidth.h"
+#include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
+#include "ptw_builder.h"
 #include "util/lru_table.h"
-
-namespace champsim
-{
-class ptw_builder;
-}
-struct ooo_model_instr;
+#include "waitable.h"
 
 class VirtualMemory;
 class PageTableWalker : public champsim::operable
 {
   struct pscl_entry {
-    uint64_t vaddr;
-    uint64_t ptw_addr;
+    champsim::address vaddr;
+    champsim::address ptw_addr;
     std::size_t level;
   };
 
   struct pscl_indexer {
-    std::size_t shamt;
-    auto operator()(const pscl_entry& entry) const { return entry.vaddr >> shamt; }
+    champsim::data::bits shamt;
+    auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 
   using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
@@ -56,14 +52,13 @@ class PageTableWalker : public champsim::operable
   using response_type = typename channel_type::response_type;
 
   struct mshr_type {
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::waitable<champsim::address> data{};
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
     std::vector<channel_type*> to_return{};
 
-    uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -89,17 +84,17 @@ class PageTableWalker : public champsim::operable
 public:
   const std::string NAME;
   const uint32_t MSHR_SIZE;
-  const long int MAX_READ, MAX_FILL;
-  const uint64_t HIT_LATENCY;
+  champsim::bandwidth::maximum_type MAX_READ, MAX_FILL;
+  const champsim::chrono::clock::duration HIT_LATENCY;
 
   std::vector<pscl_type> pscl;
   VirtualMemory* vmem;
 
-  const uint64_t CR3_addr;
+  const champsim::address CR3_addr;
 
   explicit PageTableWalker(champsim::ptw_builder builder);
 
-  void operate() final;
+  long operate() final;
 
   void begin_phase() final;
   void print_deadlock() final;

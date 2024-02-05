@@ -18,27 +18,15 @@
 #define CHANNEL_H
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <limits>
 #include <string_view>
 #include <vector>
 
-struct ooo_model_instr;
-
-enum class access_type : unsigned {
-  LOAD = 0,
-  RFO,
-  PREFETCH,
-  WRITE,
-  TRANSLATION,
-  NUM_TYPES,
-};
-
-using namespace std::literals::string_view_literals;
-inline constexpr std::array access_type_names{"LOAD"sv, "RFO"sv, "PREFETCH"sv, "WRITE"sv, "TRANSLATION"sv};
+#include "access_type.h"
+#include "address.h"
+#include "champsim.h"
 
 namespace champsim
 {
@@ -74,23 +62,23 @@ class channel
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
 
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
     uint64_t instr_id = 0;
-    uint64_t ip = 0;
+    champsim::address ip{};
 
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
   };
 
   struct response {
-    uint64_t address;
-    uint64_t v_address;
-    uint64_t data;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
     uint32_t pf_metadata = 0;
-    std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
+    std::vector<uint64_t> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
+    response(champsim::address addr, champsim::address v_addr, champsim::address data_, uint32_t pf_meta, std::vector<uint64_t> deps)
         : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
     {
     }
@@ -98,7 +86,7 @@ class channel
   };
 
   struct invalidation_request {
-    uint64_t address;
+    champsim::address address;
   };
 
   template <typename R>
@@ -107,7 +95,7 @@ class channel
   std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t WQ_SIZE = std::numeric_limits<std::size_t>::max();
-  unsigned OFFSET_BITS = 0;
+  champsim::data::bits OFFSET_BITS{};
   bool match_offset_bits = false;
 
 public:
@@ -123,7 +111,7 @@ public:
   stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
-  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
+  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, champsim::data::bits offset_bits, bool match_offset);
 
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);

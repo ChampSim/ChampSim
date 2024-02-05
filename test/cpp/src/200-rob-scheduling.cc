@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "mocks.hpp"
-#include "defaults.hpp"
 #include "ooo_cpu.h"
 #include "instr.h"
 
@@ -10,8 +9,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
+    O3_CPU uut{champsim::core_builder{}
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -19,9 +18,9 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     uut.ROB.push_back(champsim::test::instruction_with_ip(1));
     for (auto &instr : uut.ROB)
-      instr.event_cycle = uut.current_cycle;
+      instr.ready_time = champsim::chrono::clock::time_point{};
 
-    //auto old_cycle = uut.current_cycle;
+    //auto old_cycle = uut.current_cycle();
 
     WHEN("The instruction is not scheduled") {
       uut.ROB.front().scheduled = 0;
@@ -41,8 +40,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
+    O3_CPU uut{champsim::core_builder{}
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -52,9 +51,9 @@ SCENARIO("The scheduler can detect RAW hazards") {
 
     std::copy(std::begin(test_instructions), std::end(test_instructions), std::back_inserter(uut.ROB));
     for (auto &instr : uut.ROB)
-      instr.event_cycle = uut.current_cycle;
+      instr.ready_time = champsim::chrono::clock::time_point{};
 
-    //auto old_cycle = uut.current_cycle;
+    //auto old_cycle = uut.current_cycle();
 
     WHEN("None of the instructions are scheduled") {
       for (auto &instr : uut.ROB)
@@ -79,8 +78,8 @@ SCENARIO("The scheduler can detect RAW hazards") {
     constexpr unsigned schedule_latency = 1;
 
     do_nothing_MRC mock_L1I, mock_L1D;
-    O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
-      .schedule_width(schedule_width)
+    O3_CPU uut{champsim::core_builder{}
+      .schedule_width(champsim::bandwidth::maximum_type{schedule_width})
       .schedule_latency(schedule_latency)
       .fetch_queues(&mock_L1I.queues)
       .data_queues(&mock_L1D.queues)
@@ -92,10 +91,10 @@ SCENARIO("The scheduler can detect RAW hazards") {
     uint64_t id = 0;
     for (auto &instr : uut.ROB) {
       instr.instr_id = id++;
-      instr.event_cycle = uut.current_cycle;
+      instr.ready_time = champsim::chrono::clock::time_point{};
     }
 
-    //auto old_cycle = uut.current_cycle;
+    //auto old_cycle = uut.current_cycle();
 
     WHEN("None of the instructions are scheduled") {
       for (auto &instr : uut.ROB) {

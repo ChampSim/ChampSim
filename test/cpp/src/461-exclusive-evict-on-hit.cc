@@ -32,7 +32,7 @@ SCENARIO("An exclusive load causes an eviction") {
     // Create a test packet
     static uint64_t id = 1;
     decltype(mock_ul_seed)::request_type seed_a;
-    seed_a.address = 0xdeadbeef;
+    seed_a.address = champsim::address{0xdeadbeef};
     seed_a.cpu = 0;
     seed_a.instr_id = id++;
 

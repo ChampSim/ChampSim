@@ -23,6 +23,7 @@
 #include <limits>
 #include <optional>
 
+#include "chrono.h"
 #include "util/type_traits.h"
 
 namespace champsim
@@ -32,14 +33,14 @@ class waitable
 {
 public:
   using value_type = T;
-  using time_type = uint64_t;
+  using time_type = champsim::chrono::clock::time_point;
 
 private:
   T m_value;
   std::optional<time_type> event_cycle{};
 
   // a time value that is greater than all possible times
-  constexpr static time_type time_sentinel = std::numeric_limits<time_type>::max();
+  constexpr static time_type time_sentinel = time_type::max();
 
 public:
   waitable() = default;
