@@ -7,9 +7,9 @@
       {% if branch == current_version %}
         <li><strong>{{ branch }}</strong></li>
       {% elif branch in versions[pagename] %}
-        <li><a href="{{ pathto(branch + "/" + pagename + ".html", 1) }}">{{ branch }}</a></li>
+        <li><a href="{{ pathto("../" + branch + "/" + pagename + ".html", 1) }}">{{ branch }}</a></li>
       {% else %}
-        <li><a href="{{ pathto(branch + "/index.html", 1) }}">{{ branch }}</a></li>
+        <li><a href="{{ pathto("../" + branch + "/index.html", 1) }}">{{ branch }}</a></li>
       {% endif %}
     {%- endfor %}
   </ul>
