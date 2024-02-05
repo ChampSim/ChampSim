@@ -24,10 +24,10 @@ struct update_state_collector : champsim::modules::replacement
     return 0;
   }
 
-  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, access_type type, bool hit)
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type, bool hit)
   {
     auto usc_it = ::replacement_update_state_collector.try_emplace(intern_);
-    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, type, hit});
+    usc_it.first->second.push_back({triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit});
   }
 
   void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type)
@@ -91,6 +91,7 @@ SCENARIO("The replacement policy is triggered on a miss, not on a fill") {
         CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).way == 1);
         CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
+        CHECK(::replacement_update_state_collector[&uut].at(0).victim_addr == champsim::address{});
         CHECK(::replacement_update_state_collector[&uut].at(0).type == test.type);
         CHECK(::replacement_update_state_collector[&uut].at(0).hit == false);
       }
@@ -175,6 +176,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
         CHECK(::replacement_update_state_collector[&uut].at(0).set == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).way == 0);
         CHECK(::replacement_update_state_collector[&uut].at(0).full_addr == test.address);
+        CHECK(::replacement_update_state_collector[&uut].at(0).victim_addr == champsim::address{});
         CHECK(::replacement_update_state_collector[&uut].at(0).type == test.type);
         CHECK(::replacement_update_state_collector[&uut].at(0).hit == true);
       }

@@ -12,6 +12,7 @@ namespace test
     long way;
     champsim::address full_addr;
     champsim::address ip;
+    champsim::address victim_addr;
     access_type type;
     bool hit;
   };

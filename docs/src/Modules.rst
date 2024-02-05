@@ -219,7 +219,7 @@ A prefetcher module may implement five or six functions.
 Replacement Policies
 -----------------------------------
 
-A replacement policy module may implement four functions.
+A replacement policy module may implement five functions.
 
 .. cpp:function:: void initialize_replacement()
 
@@ -251,14 +251,16 @@ A replacement policy module may implement four functions.
 
    :return: The function should return the way index that should be evicted, or ``this->NUM_WAY`` to indicate that a bypass should occur.
 
-.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t addr, uint64_t ip, uint64_t victim_addr, uint8_t hit)
+.. cpp:function:: void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr, access_type type)
 
-   This function is called when a hit occurs or a miss is filled in the cache.
+    This function is called when a block is filled in the cache.
+    It is called with the same timing as ``find_victim()``, but is additionally called when filling an invalid way.
+    Use of this function should be careful not to misinterpret fills to invalid ways.
 
    :param triggering_cpu: the core index that initiated this fill
    :param set: the set that the fill occurred in.
    :param way: the way that the fill occurred in.
-   :param addr: the address of the packet.
+   :param full_addr: the address of the packet.
        If this is the first-level cache, the offset bits are included.
        Otherwise, the offset bits are zero.
        If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
@@ -274,6 +276,36 @@ A replacement policy module may implement four functions.
      * ``access_type::PREFETCH``
      * ``access_type::WRITE``
      * ``access_type::TRANSLATION``
+
+.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address addr, champsim::address ip, access_type type, bool hit)
+.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address addr, champsim::address ip, champsim::address victim_addr, access_type type, bool hit)
+.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address addr, champsim::address ip, champsim::address victim_addr, uint32_t type, bool hit)
+.. cpp:function:: void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t addr, uint64_t ip, uint64_t victim_addr, bool hit)
+
+   This function has different behavior depending on whether ``replacement_cache_fill()`` is defined.
+   If it is defined, this function is called when a tag check completes, whether the check is a hit or a miss.
+   If it is not defined, this function is called on hits and when a miss is filled (that is, with the same timing as ``replacement_cache_fill()``).
+
+   :param triggering_cpu: the core index that initiated this fill
+   :param set: the set that the fill occurred in.
+   :param way: the way that the fill occurred in.
+   :param addr: the address of the packet.
+       If this is the first-level cache, the offset bits are included.
+       Otherwise, the offset bits are zero.
+       If the cache was configured with ``"virtual_prefetch": true``, this address will be a virtual address.
+       Otherwise, this is a physical address.
+   :param ip: the address of the instruction that initiated the demand.
+       If the packet is a prefetch from another level, this value will be 0.
+   :param victim_addr: This value will be 0 unless ``replacement_cache_fill()`` is not defined and ``hit`` is false.
+       If so, this parameter is the address of the evicted block.
+   :param type: one of the following
+
+     * ``access_type::LOAD``
+     * ``access_type::RFO``
+     * ``access_type::PREFETCH``
+     * ``access_type::WRITE``
+     * ``access_type::TRANSLATION``
+   :param hit: true if the packet hit the cache, false otherwise.
 
 .. cpp:function:: void replacement_final_stats()
 
