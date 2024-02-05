@@ -22,8 +22,8 @@
 #include <cstddef>
 #include <type_traits>
 
-#include "util/units.h"
 #include "util/to_underlying.h"
+#include "util/units.h"
 
 namespace champsim
 {
@@ -63,7 +63,8 @@ std::size_t size(dynamic_extent ext);
 std::size_t size(sized_extent ext);
 
 template <champsim::data::bits UP, champsim::data::bits LOW>
-constexpr std::size_t size(static_extent<UP, LOW> ext) {
+constexpr std::size_t size(static_extent<UP, LOW> ext)
+{
   return to_underlying(ext.upper) - to_underlying(ext.lower);
 }
 

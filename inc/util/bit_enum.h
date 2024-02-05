@@ -28,16 +28,14 @@ namespace data
  * A strong type to represent a bit width. Being an enum prevents arbitrary arithmetic from being performed.
  */
 enum class bits : unsigned long long {};
-}
-}
+} // namespace data
+} // namespace champsim
 
-constexpr champsim::data::bits operator+(champsim::data::bits lhs, champsim::data::bits rhs) {
+constexpr champsim::data::bits operator+(champsim::data::bits lhs, champsim::data::bits rhs)
+{
   return champsim::data::bits{champsim::to_underlying(lhs) + champsim::to_underlying(rhs)};
 }
 
-constexpr champsim::data::bits operator*(unsigned long long lhs, champsim::data::bits rhs) {
-  return champsim::data::bits{lhs * champsim::to_underlying(rhs)};
-}
-
+constexpr champsim::data::bits operator*(unsigned long long lhs, champsim::data::bits rhs) { return champsim::data::bits{lhs * champsim::to_underlying(rhs)}; }
 
 #endif

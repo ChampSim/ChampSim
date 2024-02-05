@@ -15,11 +15,13 @@ struct ip_stride : champsim::modules::prefetcher {
     champsim::block_number last_cl_addr{};                 // the last address accessed by this IP
     champsim::block_number::difference_type last_stride{}; // the stride between the last two addresses accessed by this IP
 
-    auto index() const {
+    auto index() const
+    {
       using namespace champsim::data::data_literals;
       return ip.slice_upper<2_b>();
     }
-    auto tag() const {
+    auto tag() const
+    {
       using namespace champsim::data::data_literals;
       return ip.slice_upper<2_b>();
     }

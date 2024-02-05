@@ -55,10 +55,10 @@ long O3_CPU::operate()
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
     using double_duration = std::chrono::duration<double, typename champsim::chrono::picoseconds::period>;
     auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
-    auto heartbeat_cycle{double_duration{current_time - last_heartbeat_time}.count()};
+    auto heartbeat_cycle{double_duration{current_time - last_heartbeat_time} / clock_period};
 
     auto phase_instr{std::ceil(num_retired - begin_phase_instr)};
-    auto phase_cycle{double_duration{current_time - begin_phase_time}.count()};
+    auto phase_cycle{double_duration{current_time - begin_phase_time} / clock_period};
 
     fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
                num_retired, current_time.time_since_epoch() / clock_period, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());

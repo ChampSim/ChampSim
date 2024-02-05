@@ -30,11 +30,14 @@
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                                      champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
-                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks)
+                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
+                                     std::size_t columns, std::size_t ranks, std::size_t banks)
     : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
 {
   for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size, champsim::make_contiguous_extent_set(LOG2_BLOCK_SIZE + champsim::lg2(chans), champsim::lg2(banks), champsim::lg2(columns), champsim::lg2(ranks), champsim::lg2(rows)));
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size,
+                          champsim::make_contiguous_extent_set(LOG2_BLOCK_SIZE + champsim::lg2(chans), champsim::lg2(banks), champsim::lg2(columns),
+                                                               champsim::lg2(ranks), champsim::lg2(rows)));
   }
 }
 
@@ -44,10 +47,11 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
  */
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width,
-                           std::size_t rq_size, std::size_t wq_size,
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
+                           std::size_t wq_size,
                            champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp),
+      tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::blocks{1} / width))),
       address_slicer(slice)
 {
@@ -125,9 +129,9 @@ long DRAM_CHANNEL::finish_dbus_request()
 void DRAM_CHANNEL::swap_write_mode()
 {
   // these values control when to send out a burst of writes
-  const std::size_t DRAM_WRITE_HIGH_WM = ((std::size(WQ) * 7) >> 3);         // 7/8th
-  const std::size_t DRAM_WRITE_LOW_WM = ((std::size(WQ) * 6) >> 3);          // 6/8th
-  //const std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((std::size(WQ) * 1) >> 2); // 1/4
+  const std::size_t DRAM_WRITE_HIGH_WM = ((std::size(WQ) * 7) >> 3); // 7/8th
+  const std::size_t DRAM_WRITE_LOW_WM = ((std::size(WQ) * 6) >> 3);  // 6/8th
+  // const std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((std::size(WQ) * 1) >> 2); // 1/4
 
   // Check queue occupancy
   auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.has_value(); }));
@@ -170,7 +174,7 @@ long DRAM_CHANNEL::populate_dbus()
   long progress{0};
 
   auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
+                                            [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
@@ -194,9 +198,9 @@ long DRAM_CHANNEL::populate_dbus()
     } else {
       // Bus is congested
       if (active_request != std::end(bank_request)) {
-        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time);
+        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time) / clock_period;
       } else {
-        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time);
+        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time) / clock_period;
       }
       ++sim_stats.dbus_count_congested;
     }
@@ -275,7 +279,8 @@ void MEMORY_CONTROLLER::initialize()
   } else {
     fmt::print("Off-chip DRAM Size: {}", sz);
   }
-  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(), 1us / clock_period);
+  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(),
+             1us / clock_period);
 }
 
 void DRAM_CHANNEL::initialize() {}
@@ -446,27 +451,18 @@ unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const 
 
 unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
 
-unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const
-{
-  return std::get<0>(address_slicer(address)).to<unsigned long>();
-}
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const { return std::get<0>(address_slicer(address)).to<unsigned long>(); }
 
-unsigned long DRAM_CHANNEL::get_column(champsim::address address) const
-{
-  return std::get<1>(address_slicer(address)).to<unsigned long>();
-}
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const { return std::get<1>(address_slicer(address)).to<unsigned long>(); }
 
-unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const
-{
-  return std::get<2>(address_slicer(address)).to<unsigned long>();
-}
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const { return std::get<2>(address_slicer(address)).to<unsigned long>(); }
 
-unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
-{
-  return std::get<3>(address_slicer(address)).to<unsigned long>();
-}
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const { return std::get<3>(address_slicer(address)).to<unsigned long>(); }
 
-champsim::data::bytes MEMORY_CONTROLLER::size() const { return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::blocks{}, [](auto acc, const auto& x){ return acc + x.size(); }); }
+champsim::data::bytes MEMORY_CONTROLLER::size() const
+{
+  return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::blocks{}, [](auto acc, const auto& x) { return acc + x.size(); });
+}
 champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::blocks{1 << address_slicer.bit_size()}; }
 
 // LCOV_EXCL_START Exclude the following function from LCOV

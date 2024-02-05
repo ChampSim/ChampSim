@@ -20,8 +20,8 @@
 #include <cstdint>
 #include <limits>
 
-#include "util/units.h"
 #include "util/to_underlying.h"
+#include "util/units.h"
 
 namespace champsim::msl
 {
@@ -83,15 +83,9 @@ constexpr uint64_t bitmask(champsim::data::bits begin, champsim::data::bits end)
   return ((underlying_type{1} << (begin_val - end_val)) - 1) << end_val;
 }
 
-constexpr uint64_t bitmask(champsim::data::bits begin)
-{
-  return bitmask(begin, champsim::data::bits{});
-}
+constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, champsim::data::bits{}); }
 
-constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)
-{
-  return bitmask(champsim::data::bits{begin}, champsim::data::bits{end});
-}
+constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0) { return bitmask(champsim::data::bits{begin}, champsim::data::bits{end}); }
 
 template <typename T>
 constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits_upper, champsim::data::bits bits_lower)
