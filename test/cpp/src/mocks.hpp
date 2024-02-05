@@ -200,16 +200,16 @@ struct queue_issue_MRP : public champsim::operable
     int issue_time;
     int return_time;
 
-    void assert_relative_returned(const result_data& other, int cycles, int epsilon) {
+    void assert_relative_returned(const result_data& other, long cycles, long epsilon) {
       REQUIRE(return_time >= other.issue_time + cycles - epsilon);
       REQUIRE(return_time <= other.issue_time + cycles + epsilon);
     }
 
-    void assert_returned(int cycles, int epsilon) {
+    void assert_returned(long cycles, long epsilon) {
       assert_relative_returned(*this, cycles, epsilon);
     }
 
-    void assert_returned(int cycles) {
+    void assert_returned(long cycles) {
       assert_returned(cycles, 0);
     }
   };

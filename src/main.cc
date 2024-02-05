@@ -37,7 +37,7 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
   champsim::configured::generated_environment gen_environment{};
 
@@ -84,6 +84,8 @@ int main(int argc, char** argv)
   }
 
   if (simulation_given && !warmup_given) {
+    // Warmup is 20% by default
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     warmup_instructions = simulation_instructions / 5;
   }
 

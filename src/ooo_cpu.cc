@@ -55,10 +55,10 @@ long O3_CPU::operate()
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
     using double_duration = std::chrono::duration<double, typename champsim::chrono::picoseconds::period>;
     auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
-    auto heartbeat_cycle{double_duration{current_time - last_heartbeat_time}.count()};
+    auto heartbeat_cycle{double_duration{current_time - last_heartbeat_time} / clock_period};
 
     auto phase_instr{std::ceil(num_retired - begin_phase_instr)};
-    auto phase_cycle{double_duration{current_time - begin_phase_time}.count()};
+    auto phase_cycle{double_duration{current_time - begin_phase_time} / clock_period};
 
     fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
                num_retired, current_time.time_since_epoch() / clock_period, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
@@ -722,7 +722,7 @@ void O3_CPU::print_deadlock()
     }
     return std::tuple{entry->instr_id, entry->virtual_address, entry->fetch_issued, entry->ready_time.time_since_epoch() / period, depend_id};
   };
-  std::string_view lq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} waits on {}"};
+  std::string_view lq_fmt{"instr_id: {} address: {} fetch_issued: {} event_cycle: {} waits on {}"};
 
   auto sq_pack = [period = clock_period](const auto& entry) {
     std::vector<uint64_t> depend_ids;
@@ -730,7 +730,7 @@ void O3_CPU::print_deadlock()
                    [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
     return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.ready_time.time_since_epoch() / period, depend_ids};
   };
-  std::string_view sq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
+  std::string_view sq_fmt{"instr_id: {} address: {} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
   champsim::range_print_deadlock(LQ, "cpu" + std::to_string(cpu) + "_LQ", lq_fmt, lq_pack);
   champsim::range_print_deadlock(SQ, "cpu" + std::to_string(cpu) + "_SQ", sq_fmt, sq_pack);
 }

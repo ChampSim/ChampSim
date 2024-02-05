@@ -24,13 +24,13 @@
 #include "instruction.h"
 #include "util/to_underlying.h" // for to_underlying
 
-champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)
+champsim::channel::channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, champsim::data::bits offset_bits, bool match_offset)
     : RQ_SIZE(rq_size), PQ_SIZE(pq_size), WQ_SIZE(wq_size), OFFSET_BITS(offset_bits), match_offset_bits(match_offset)
 {
 }
 
 template <typename Iter, typename F>
-bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt, F&& func)
+bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt, F&& func)
 {
   // We make sure that both merge packet address have been translated. If
   // not this can happen: package with address virtual and physical X
@@ -47,7 +47,7 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
 }
 
 template <typename Iter>
-bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt)
+bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt)
 {
   return do_collision_for(begin, end, packet, shamt, [](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
     destination.response_requested |= source.response_requested;
@@ -59,7 +59,7 @@ bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_typ
 }
 
 template <typename Iter>
-bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, unsigned shamt,
+bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_type& packet, champsim::data::bits shamt,
                              std::deque<champsim::channel::response_type>& returned)
 {
   return do_collision_for(begin, end, packet, shamt, [&](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
@@ -71,7 +71,7 @@ bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_ty
 
 void champsim::channel::check_collision()
 {
-  auto write_shamt = match_offset_bits ? 0 : OFFSET_BITS;
+  auto write_shamt = match_offset_bits ? champsim::data::bits{} : OFFSET_BITS;
   auto read_shamt = OFFSET_BITS;
 
   // Check WQ for duplicates, merging if they are found

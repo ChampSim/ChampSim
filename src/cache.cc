@@ -62,11 +62,11 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
 
   if constexpr (champsim::debug_print) {
     if (successor.type == access_type::PREFETCH) {
-      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, successor.address,
+      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, successor.address,
                  access_type_names.at(champsim::to_underlying(successor.type)), predecessor.address,
                  access_type_names.at(champsim::to_underlying(successor.type)));
     } else {
-      fmt::print("[MSHR] {} address {:#x} type: {} into address {:#x} type: {}\n", __func__, predecessor.address,
+      fmt::print("[MSHR] {} address {} type: {} into address {} type: {}\n", __func__, predecessor.address,
                  access_type_names.at(champsim::to_underlying(predecessor.type)), successor.address,
                  access_type_names.at(champsim::to_underlying(successor.type)));
     }
@@ -100,7 +100,7 @@ template <typename T>
 champsim::address CACHE::module_address(const T& element) const
 {
   auto address = virtual_prefetch ? element.v_address : element.address;
-  return champsim::address{address.slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
+  return champsim::address{address.slice_upper(match_offset_bits ? champsim::data::bits{} : OFFSET_BITS)};
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
@@ -172,7 +172,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   // COLLECT STATS
-  sim_stats.total_miss_latency += current_time - (fill_mshr.time_enqueued + clock_period);
+  sim_stats.total_miss_latency_cycles += (current_time - (fill_mshr.time_enqueued + clock_period)) / clock_period;
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data_promise->data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
@@ -336,8 +336,8 @@ auto CACHE::initiate_tag_check(champsim::channel* ul)
     }
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {} event: {}\n", retval.instr_id, retval.address,
-                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return), time);
+      fmt::print("[TAG] initiate_tag_check instr_id: {} address: {} v_address: {} type: {} response_requested: {}\n", retval.instr_id, retval.address,
+                 retval.v_address, access_type_names.at(champsim::to_underlying(retval.type)), !std::empty(retval.to_return));
     }
 
     return retval;
@@ -555,12 +555,13 @@ void CACHE::finish_translation(const response_type& packet)
     return champsim::page_number{entry.v_address} == page_num;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
+    auto old_address = entry.address;
     entry.address = champsim::splice(p_page, champsim::page_offset{entry.v_address}); // translated address
     entry.is_translated = true;                                                       // This entry is now translated
 
     if constexpr (champsim::debug_print) {
-      fmt::print("[{}_TRANSLATE] finish_translation paddr: {} vaddr: {} cycle: {}\n", this->NAME, entry.address, entry.v_address,
-                 this->current_time.time_since_epoch() / this->clock_period);
+      fmt::print("[{}_TRANSLATE] finish_translation old: {} paddr: {} vaddr: {} type: {} cycle: {}\n", this->NAME, old_address, entry.address, entry.v_address,
+                 access_type_names.at(champsim::to_underlying(entry.type)), this->current_time.time_since_epoch() / this->clock_period);
     }
   };
 
@@ -774,7 +775,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  roi_stats.total_miss_latency = sim_stats.total_miss_latency;
+  roi_stats.total_miss_latency_cycles = sim_stats.total_miss_latency_cycles;
 
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::pair key{type, finished_cpu};

@@ -31,8 +31,10 @@
 
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul)
-    : champsim::operable(clock_period_), queues(std::move(ul))
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
+                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
+                                     std::size_t columns, std::size_t ranks, std::size_t banks)
+    : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
 {
   #ifdef RAMULATOR
   //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
@@ -64,21 +66,27 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   clock_period = clock_period * 2;
 
   #else
-  for (std::size_t i{0}; i < DRAM_CHANNELS; ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS);
+  for (std::size_t i{0}; i < chans; ++i) {
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size,
+                          champsim::make_contiguous_extent_set(LOG2_BLOCK_SIZE + champsim::lg2(chans), champsim::lg2(banks), champsim::lg2(columns),
+                                                               champsim::lg2(ranks), champsim::lg2(rows)));
   }
   #endif
 }
 
+/*
+ * | row address | rank index | column address | bank index | channel | block
+ * offset |
+ */
+
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::size_t rows, std::size_t columns,
-                           std::size_t ranks, std::size_t banks)
-    : champsim::operable(clock_period_), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), 
-      tREF(champsim::chrono::picoseconds{64000000000 / (DRAM_ROWS/8)}),
-      DRAM_DBUS_TURN_AROUND_TIME(turnaround),
-      DRAM_DBUS_RETURN_TIME(
-          std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(BLOCK_SIZE) / std::ceil(DRAM_CHANNEL_WIDTH))),
-      ROWS(rows), COLUMNS(columns), RANKS(ranks), BANKS(banks)
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
+                           std::size_t wq_size,
+                           champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice)
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp),
+      tRCD(t_rcd), tCAS(t_cas), tREF(champsim::chrono::picoseconds{64000000000 / (DRAM_ROWS/8)}), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::blocks{1} / width))),
+      address_slicer(slice)
 {
 }
 
@@ -207,7 +215,12 @@ long DRAM_CHANNEL::schedule_refresh()
 
 void DRAM_CHANNEL::swap_write_mode()
 {
-    // Check queue occupancy
+  // these values control when to send out a burst of writes
+  const std::size_t DRAM_WRITE_HIGH_WM = ((std::size(WQ) * 7) >> 3); // 7/8th
+  const std::size_t DRAM_WRITE_LOW_WM = ((std::size(WQ) * 6) >> 3);  // 6/8th
+  // const std::size_t MIN_DRAM_WRITES_PER_SWITCH = ((std::size(WQ) * 1) >> 2); // 1/4
+
+  // Check queue occupancy
   auto wq_occu = static_cast<std::size_t>(std::count_if(std::begin(WQ), std::end(WQ), [](const auto& x) { return x.has_value(); }));
   auto rq_occu = static_cast<std::size_t>(std::count_if(std::begin(RQ), std::end(RQ), [](const auto& x) { return x.has_value(); }));
 
@@ -215,7 +228,7 @@ void DRAM_CHANNEL::swap_write_mode()
   if ((!write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
       || (write_mode && (wq_occu == 0 || (rq_occu > 0 && wq_occu < DRAM_WRITE_LOW_WM)))) {
     // Reset scheduled requests
-    for (auto* it = std::begin(bank_request); it != std::end(bank_request); ++it) {
+    for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it) {
       // Leave active request on the data bus
       if (it != active_request && it->valid) {
         // Leave rows charged
@@ -247,8 +260,8 @@ long DRAM_CHANNEL::populate_dbus()
 {
  long progress{0};
 
-  auto* iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
-                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
+  auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
+                                            [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
     if (active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
       // Bus is available
@@ -272,15 +285,22 @@ long DRAM_CHANNEL::populate_dbus()
     } else {
       // Bus is congested
       if (active_request != std::end(bank_request)) {
-        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time);
+        sim_stats.dbus_cycle_congested += (active_request->ready_time - current_time) / clock_period;
       } else {
-        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time);
+        sim_stats.dbus_cycle_congested += (dbus_cycle_available - current_time) / clock_period;
       }
       ++sim_stats.dbus_count_congested;
     }
   }
 
   return progress;
+}
+
+std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
+{
+  auto op_rank = get_rank(addr);
+  auto op_bank = get_bank(addr);
+  return op_rank * champsim::size(get<0>(address_slicer)) + op_bank;
 }
 
 // Look for queued packets that have not been scheduled
@@ -297,11 +317,13 @@ DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
       return false;
     }
 
+
     auto lop_idx = this->get_rank(lhs.value().address) * this->BANKS + this->get_bank(lhs.value().address);
     auto rop_idx = this->get_rank(rhs.value().address) * this->BANKS + this->get_bank(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid && !this->bank_request[rop_idx].under_refresh;
     auto lready = !this->bank_request[lop_idx].valid && !this->bank_request[lop_idx].under_refresh;
     return !(rready ^ lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
+
   };
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
@@ -320,8 +342,6 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
     auto op_rank = get_rank(pkt->value().address);
     auto op_bank = get_bank(pkt->value().address);
     auto op_row = get_row(pkt->value().address);
-
-
     auto op_idx = op_rank * DRAM_BANKS + op_bank;
 
     if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
@@ -349,16 +369,20 @@ void MEMORY_CONTROLLER::initialize()
   em << config;
   fmt::print("{}\n",em.c_str());
   #else
-  champsim::data::mebibytes dram_size{this->size()};
-
-  fmt::print("Off-chip DRAM Size: ");
-  if (dram_size > champsim::data::mebibytes{1024}) {
-    fmt::print("{}", champsim::data::gibibytes{dram_size});
+  using namespace champsim::data::data_literals;
+  using namespace std::literals::chrono_literals;
+  auto sz = this->size();
+  if (champsim::data::gibibytes gb_sz{sz}; gb_sz > 1_GiB) {
+    fmt::print("Off-chip DRAM Size: {}", gb_sz);
+  } else if (champsim::data::mebibytes mb_sz{sz}; mb_sz > 1_MiB) {
+    fmt::print("Off-chip DRAM Size: {}", mb_sz);
+  } else if (champsim::data::kibibytes kb_sz{sz}; kb_sz > 1_kiB) {
+    fmt::print("Off-chip DRAM Size: {}", kb_sz);
   } else {
-    fmt::print("{}", dram_size);
+    fmt::print("Off-chip DRAM Size: {}", sz);
   }
-
-  fmt::print(" Channels: {} Width: {}-bit Data Race: {} MT/s\n", DRAM_CHANNELS, 8 * DRAM_CHANNEL_WIDTH, std::chrono::microseconds{1} / clock_period);
+  fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(),
+             1us / clock_period);
   #endif
 }
 
@@ -585,18 +609,8 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
  * offset |
  */
 
-
 //These are all inaccurate and will need to be updated when using Ramulator. We can grab some of these values from the config
 //others are part of spec that aren't as easily obtained
-
-namespace
-{
-template <typename T>
-T get_dram_address_slice(champsim::address addr, std::size_t lower, std::size_t size)
-{
-  return addr.slice(champsim::sized_extent{lower, size}).to<T>();
-}
-} // namespace
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
@@ -604,8 +618,8 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) con
   //this is a sanity check, prevent use of non-applicable command
   assert(false);
   #endif
-  const auto lower = LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_CHANNELS));
+  return address.slice(champsim::sized_extent{champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::lg2(std::size(channels))}).to<unsigned long>();
+
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
@@ -616,50 +630,39 @@ unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const 
 
 unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
 
-unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const {
+  #ifdef RAMULATOR assert(false); #endif 
+  return std::get<0>(address_slicer(address)).to<unsigned long>(); 
+}
+
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const {
+  #ifdef RAMULATOR assert(false); #endif
+  return std::get<1>(address_slicer(address)).to<unsigned long>(); 
+}
+
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const {
+  #ifdef RAMULATOR assert(false); #endif
+  return std::get<2>(address_slicer(address)).to<unsigned long>(); 
+}
+
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const {
+  #ifdef RAMULATOR assert(false); #endif
+  return std::get<3>(address_slicer(address)).to<unsigned long>(); 
+}
+
+champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
   #ifdef RAMULATOR
   assert(false);
   #endif
-  const auto lower = champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_BANKS));
-
+  return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::blocks{}, [](auto acc, const auto& x) { return acc + x.size(); });
 }
-
-unsigned long DRAM_CHANNEL::get_column(champsim::address address) const
-{
+champsim::data::bytes DRAM_CHANNEL::size() const {
   #ifdef RAMULATOR
   assert(false);
   #endif
-  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_COLUMNS));
+  return champsim::data::blocks{1 << address_slicer.bit_size()}; 
 }
-
-unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const
-{
-  #ifdef RAMULATOR
-  assert(false);
-  #endif
-  const auto lower = champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_RANKS));
-}
-
-unsigned long DRAM_CHANNEL::get_row(champsim::address address) const
-{
-  #ifdef RAMULATOR
-  assert(false);
-  #endif
-  const auto lower = champsim::lg2(DRAM_RANKS) + champsim::lg2(DRAM_BANKS) + champsim::lg2(DRAM_COLUMNS) + champsim::lg2(DRAM_CHANNELS) + LOG2_BLOCK_SIZE;
-  return ::get_dram_address_slice<unsigned long>(address, lower, champsim::lg2(DRAM_ROWS));
-}
-
-champsim::data::bytes MEMORY_CONTROLLER::size() const { 
-  #ifdef RAMULATOR
-  assert(false);
-  #endif
-  return champsim::data::blocks{DRAM_CHANNELS * DRAM_RANKS * DRAM_BANKS * DRAM_ROWS * DRAM_COLUMNS}; 
-}
-
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()

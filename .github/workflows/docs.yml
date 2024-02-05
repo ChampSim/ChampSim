@@ -21,8 +21,13 @@ jobs:
       - name: Set Up Environment
         run: python3 -m pip install -r docs/requirements.txt
 
+      - name: Generate Doxygen
+        uses: mattnotmitt/doxygen-action@v1.9.5
+        with:
+          working-directory: docs
+
       - name: Build Documentation
-        run: sphinx-multiversion docs _build
+        run: sphinx-build -c docs docs/src _build
 
       - uses: actions/checkout@v4
         with:
@@ -30,13 +35,13 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: rsync -av _build/ .
+        run: rsync -av _build/ ${{ github.ref_name }}
 
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
           message: |
-            Update documentation for branch ${{ github.ref }}.
+            Update documentation for ${{ github.ref }}.
 
             Author: ${{ github.event.head_commit.author.name }}
             Committer: ${{ github.event.head_commit.committer.name }}
