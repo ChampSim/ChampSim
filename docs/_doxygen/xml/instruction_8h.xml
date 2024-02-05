@@ -1,0 +1,342 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="instruction_8h" kind="file" language="C++">
+    <compoundname>instruction.h</compoundname>
+    <includes local="no">algorithm</includes>
+    <includes local="no">array</includes>
+    <includes local="no">cstdint</includes>
+    <includes local="no">functional</includes>
+    <includes local="no">limits</includes>
+    <includes local="no">vector</includes>
+    <includes refid="trace__instruction_8h" local="yes">trace_instruction.h</includes>
+    <includedby refid="cache_8cc" local="yes">cache.cc</includedby>
+    <includedby refid="channel_8cc" local="yes">channel.cc</includedby>
+    <includedby refid="dram__controller_8cc" local="yes">dram_controller.cc</includedby>
+    <includedby refid="ooo__cpu_8cc" local="yes">ooo_cpu.cc</includedby>
+    <includedby refid="ooo__cpu_8h" local="yes">ooo_cpu.h</includedby>
+    <includedby refid="ptw_8cc" local="yes">ptw.cc</includedby>
+    <includedby refid="repeatable_8h" local="yes">repeatable.h</includedby>
+    <includedby refid="tracereader_8h" local="yes">tracereader.h</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>instruction.h</label>
+        <link refid="instruction_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>trace_instruction.h</label>
+        <link refid="trace__instruction_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>algorithm</label>
+      </node>
+      <node id="3">
+        <label>array</label>
+      </node>
+      <node id="4">
+        <label>cstdint</label>
+      </node>
+      <node id="5">
+        <label>functional</label>
+      </node>
+      <node id="6">
+        <label>limits</label>
+      </node>
+      <node id="7">
+        <label>vector</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="3">
+        <label>defaults.hpp</label>
+        <link refid="defaults_8hpp_source"/>
+      </node>
+      <node id="4">
+        <label>environment.h</label>
+        <link refid="environment_8h_source"/>
+      </node>
+      <node id="1">
+        <label>instruction.h</label>
+        <link refid="instruction_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>ooo_cpu.h</label>
+        <link refid="ooo__cpu_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>phase_info.h</label>
+        <link refid="phase__info_8h_source"/>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>repeatable.h</label>
+        <link refid="repeatable_8h_source"/>
+      </node>
+      <node id="6">
+        <label>stats_printer.h</label>
+        <link refid="stats__printer_8h_source"/>
+      </node>
+      <node id="8">
+        <label>tracereader.h</label>
+        <link refid="tracereader_8h_source"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structooo__model__instr" prot="public">ooo_model_instr</innerclass>
+      <sectiondef kind="enum">
+      <memberdef kind="enum" id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5e" prot="public" static="no" strong="no">
+        <type></type>
+        <name>branch_type</name>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5ea37ba3a91043a48f2aef8a78806194515" prot="public">
+          <name>NOT_BRANCH</name>
+          <initializer>= 0</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5ea744bb3f4ca2fe2560c365a6c727177da" prot="public">
+          <name>BRANCH_DIRECT_JUMP</name>
+          <initializer>= 1</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5eae5e75f5730c30b38e3d5e3398bab6b10" prot="public">
+          <name>BRANCH_INDIRECT</name>
+          <initializer>= 2</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5eacfd0d336eece485adcd2708e1f8bb5ea" prot="public">
+          <name>BRANCH_CONDITIONAL</name>
+          <initializer>= 3</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5ea81be858e590c9840eca00415668e14d2" prot="public">
+          <name>BRANCH_DIRECT_CALL</name>
+          <initializer>= 4</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5ea089c56d2c14fd417e6a80d2d72bba2bb" prot="public">
+          <name>BRANCH_INDIRECT_CALL</name>
+          <initializer>= 5</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5eaa759c32ea11b14b10ca5e6244aae5446" prot="public">
+          <name>BRANCH_RETURN</name>
+          <initializer>= 6</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="instruction_8h_1a8e3c9ad09efe21bf2f8b83cba460bc5ea259d61a721ccc384ffe9fec9a1b456db" prot="public">
+          <name>BRANCH_OTHER</name>
+          <initializer>= 7</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="30" column="1" bodyfile="/github/workspace/inc/instruction.h" bodystart="30" bodyend="39"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">/*</highlight></codeline>
+<codeline lineno="2"><highlight class="comment"><sp/>*<sp/><sp/><sp/><sp/>Copyright<sp/>2023<sp/>The<sp/>ChampSim<sp/>Contributors</highlight></codeline>
+<codeline lineno="3"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="4"><highlight class="comment"><sp/>*<sp/>Licensed<sp/>under<sp/>the<sp/>Apache<sp/>License,<sp/>Version<sp/>2.0<sp/>(the<sp/>&quot;License&quot;);</highlight></codeline>
+<codeline lineno="5"><highlight class="comment"><sp/>*<sp/>you<sp/>may<sp/>not<sp/>use<sp/>this<sp/>file<sp/>except<sp/>in<sp/>compliance<sp/>with<sp/>the<sp/>License.</highlight></codeline>
+<codeline lineno="6"><highlight class="comment"><sp/>*<sp/>You<sp/>may<sp/>obtain<sp/>a<sp/>copy<sp/>of<sp/>the<sp/>License<sp/>at</highlight></codeline>
+<codeline lineno="7"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="8"><highlight class="comment"><sp/>*<sp/>http://www.apache.org/licenses/LICENSE-2.0</highlight></codeline>
+<codeline lineno="9"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="10"><highlight class="comment"><sp/>*<sp/>Unless<sp/>required<sp/>by<sp/>applicable<sp/>law<sp/>or<sp/>agreed<sp/>to<sp/>in<sp/>writing,<sp/>software</highlight></codeline>
+<codeline lineno="11"><highlight class="comment"><sp/>*<sp/>distributed<sp/>under<sp/>the<sp/>License<sp/>is<sp/>distributed<sp/>on<sp/>an<sp/>&quot;AS<sp/>IS&quot;<sp/>BASIS,</highlight></codeline>
+<codeline lineno="12"><highlight class="comment"><sp/>*<sp/>WITHOUT<sp/>WARRANTIES<sp/>OR<sp/>CONDITIONS<sp/>OF<sp/>ANY<sp/>KIND,<sp/>either<sp/>express<sp/>or<sp/>implied.</highlight></codeline>
+<codeline lineno="13"><highlight class="comment"><sp/>*<sp/>See<sp/>the<sp/>License<sp/>for<sp/>the<sp/>specific<sp/>language<sp/>governing<sp/>permissions<sp/>and</highlight></codeline>
+<codeline lineno="14"><highlight class="comment"><sp/>*<sp/>limitations<sp/>under<sp/>the<sp/>License.</highlight></codeline>
+<codeline lineno="15"><highlight class="comment"><sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>INSTRUCTION_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>INSTRUCTION_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="19"><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;algorithm&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;array&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;cstdint&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;functional&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;limits&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;vector&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;trace_instruction.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal"></highlight><highlight class="comment">//<sp/>branch<sp/>types</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/>branch_type<sp/>{</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"><sp/><sp/>NOT_BRANCH<sp/>=<sp/>0,</highlight></codeline>
+<codeline lineno="32"><highlight class="normal"><sp/><sp/>BRANCH_DIRECT_JUMP<sp/>=<sp/>1,</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/>BRANCH_INDIRECT<sp/>=<sp/>2,</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"><sp/><sp/>BRANCH_CONDITIONAL<sp/>=<sp/>3,</highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/>BRANCH_DIRECT_CALL<sp/>=<sp/>4,</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"><sp/><sp/>BRANCH_INDIRECT_CALL<sp/>=<sp/>5,</highlight></codeline>
+<codeline lineno="37"><highlight class="normal"><sp/><sp/>BRANCH_RETURN<sp/>=<sp/>6,</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"><sp/><sp/>BRANCH_OTHER<sp/>=<sp/>7</highlight></codeline>
+<codeline lineno="39"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight></codeline>
+<codeline lineno="41" refid="structooo__model__instr" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref><sp/>{</highlight></codeline>
+<codeline lineno="42"><highlight class="normal"><sp/><sp/>uint64_t<sp/>instr_id<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/>uint64_t<sp/>ip<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="44"><highlight class="normal"><sp/><sp/>uint64_t<sp/>event_cycle<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"></highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>is_branch<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>branch_taken<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>branch_prediction<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>branch_mispredicted<sp/>=<sp/>0;<sp/></highlight><highlight class="comment">//<sp/>A<sp/>branch<sp/>can<sp/>be<sp/>mispredicted<sp/>even<sp/>if<sp/>the<sp/>direction<sp/>prediction<sp/>is<sp/>correct<sp/>when<sp/>the<sp/>predicted<sp/>target<sp/>is<sp/>not<sp/>correct</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="50"><highlight class="normal"></highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/>std::array&lt;uint8_t,<sp/>2&gt;<sp/>asid<sp/>=<sp/>{std::numeric_limits&lt;uint8_t&gt;::max(),<sp/>std::numeric_limits&lt;uint8_t&gt;::max()};</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"></highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/>uint8_t<sp/>branch_type<sp/>=<sp/>NOT_BRANCH;</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/>uint64_t<sp/>branch_target<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"></highlight></codeline>
+<codeline lineno="56"><highlight class="normal"><sp/><sp/>uint8_t<sp/>dib_checked<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/>uint8_t<sp/>fetched<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/>uint8_t<sp/>decoded<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/>uint8_t<sp/>scheduled<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/>uint8_t<sp/>executed<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"></highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/>completed_mem_ops<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>num_reg_dependent<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="64"><highlight class="normal"></highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/>std::vector&lt;uint8_t&gt;<sp/>destination_registers<sp/>=<sp/>{};<sp/></highlight><highlight class="comment">//<sp/>output<sp/>registers</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/>std::vector&lt;uint8_t&gt;<sp/>source_registers<sp/>=<sp/>{};<sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>input<sp/>registers</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="67"><highlight class="normal"></highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/>std::vector&lt;uint64_t&gt;<sp/>destination_memory<sp/>=<sp/>{};</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/>std::vector&lt;uint64_t&gt;<sp/>source_memory<sp/>=<sp/>{};</highlight></codeline>
+<codeline lineno="70"><highlight class="normal"></highlight></codeline>
+<codeline lineno="71"><highlight class="normal"><sp/><sp/></highlight><highlight class="comment">//<sp/>these<sp/>are<sp/>indices<sp/>of<sp/>instructions<sp/>in<sp/>the<sp/>ROB<sp/>that<sp/>depend<sp/>on<sp/>me</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/>std::vector&lt;std::reference_wrapper&lt;ooo_model_instr&gt;&gt;<sp/>registers_instrs_depend_on_me;</highlight></codeline>
+<codeline lineno="73"><highlight class="normal"></highlight></codeline>
+<codeline lineno="74"><highlight class="normal"></highlight><highlight class="keyword">private</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">template</highlight><highlight class="normal"><sp/>&lt;</highlight><highlight class="keyword">typename</highlight><highlight class="normal"><sp/>T&gt;</highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>(T<sp/>instr,<sp/>std::array&lt;uint8_t,<sp/>2&gt;<sp/>local_asid)<sp/>:<sp/>ip(instr.ip),<sp/>is_branch(instr.is_branch),<sp/>branch_taken(instr.branch_taken),<sp/>asid(local_asid)</highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/>{</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/>std::remove_copy(std::begin(instr.destination_registers),<sp/>std::end(instr.destination_registers),<sp/>std::back_inserter(this-&gt;destination_registers),<sp/>0);</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/>std::remove_copy(std::begin(instr.source_registers),<sp/>std::end(instr.source_registers),<sp/>std::back_inserter(this-&gt;source_registers),<sp/>0);</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/>std::remove_copy(std::begin(instr.destination_memory),<sp/>std::end(instr.destination_memory),<sp/>std::back_inserter(this-&gt;destination_memory),<sp/>0);</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/>std::remove_copy(std::begin(instr.source_memory),<sp/>std::end(instr.source_memory),<sp/>std::back_inserter(this-&gt;source_memory),<sp/>0);</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"></highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>writes_sp<sp/>=<sp/>std::count(std::begin(destination_registers),<sp/>std::end(destination_registers),<sp/>champsim::REG_STACK_POINTER);</highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>writes_ip<sp/>=<sp/>std::count(std::begin(destination_registers),<sp/>std::end(destination_registers),<sp/>champsim::REG_INSTRUCTION_POINTER);</highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>reads_sp<sp/>=<sp/>std::count(std::begin(source_registers),<sp/>std::end(source_registers),<sp/>champsim::REG_STACK_POINTER);</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>reads_flags<sp/>=<sp/>std::count(std::begin(source_registers),<sp/>std::end(source_registers),<sp/>champsim::REG_FLAGS);</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>reads_ip<sp/>=<sp/>std::count(std::begin(source_registers),<sp/>std::end(source_registers),<sp/>champsim::REG_INSTRUCTION_POINTER);</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>reads_other<sp/>=<sp/>std::count_if(std::begin(source_registers),<sp/>std::end(source_registers),<sp/>[](uint8_t<sp/>r)<sp/>{</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>r<sp/>!=<sp/>champsim::REG_STACK_POINTER<sp/>&amp;&amp;<sp/>r<sp/>!=<sp/>champsim::REG_FLAGS<sp/>&amp;&amp;<sp/>r<sp/>!=<sp/>champsim::REG_INSTRUCTION_POINTER;</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/>});</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>determine<sp/>what<sp/>kind<sp/>of<sp/>branch<sp/>this<sp/>is,<sp/>if<sp/>any</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!reads_sp<sp/>&amp;&amp;<sp/>!reads_flags<sp/>&amp;&amp;<sp/>writes_ip<sp/>&amp;&amp;<sp/>!reads_other)<sp/>{</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>direct<sp/>jump</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_DIRECT_JUMP;</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!reads_sp<sp/>&amp;&amp;<sp/>!reads_flags<sp/>&amp;&amp;<sp/>writes_ip<sp/>&amp;&amp;<sp/>reads_other)<sp/>{</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>indirect<sp/>branch</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_INDIRECT;</highlight></codeline>
+<codeline lineno="103"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!reads_sp<sp/>&amp;&amp;<sp/>reads_ip<sp/>&amp;&amp;<sp/>!writes_sp<sp/>&amp;&amp;<sp/>writes_ip<sp/>&amp;&amp;<sp/>reads_flags<sp/>&amp;&amp;<sp/>!reads_other)<sp/>{</highlight></codeline>
+<codeline lineno="104"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>conditional<sp/>branch</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/>instr.branch_taken;<sp/></highlight><highlight class="comment">//<sp/>don&apos;t<sp/>change<sp/>this</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_CONDITIONAL;</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(reads_sp<sp/>&amp;&amp;<sp/>reads_ip<sp/>&amp;&amp;<sp/>writes_sp<sp/>&amp;&amp;<sp/>writes_ip<sp/>&amp;&amp;<sp/>!reads_flags<sp/>&amp;&amp;<sp/>!reads_other)<sp/>{</highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>direct<sp/>call</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="110"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="111"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="112"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_DIRECT_CALL;</highlight></codeline>
+<codeline lineno="113"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(reads_sp<sp/>&amp;&amp;<sp/>reads_ip<sp/>&amp;&amp;<sp/>writes_sp<sp/>&amp;&amp;<sp/>writes_ip<sp/>&amp;&amp;<sp/>!reads_flags<sp/>&amp;&amp;<sp/>reads_other)<sp/>{</highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>indirect<sp/>call</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="115"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_INDIRECT_CALL;</highlight></codeline>
+<codeline lineno="118"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(reads_sp<sp/>&amp;&amp;<sp/>!reads_ip<sp/>&amp;&amp;<sp/>writes_sp<sp/>&amp;&amp;<sp/>writes_ip)<sp/>{</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>return</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_RETURN;</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(writes_ip)<sp/>{</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>some<sp/>other<sp/>branch<sp/>type<sp/>that<sp/>doesn&apos;t<sp/>fit<sp/>the<sp/>above<sp/>categories</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>is_branch<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/>instr.branch_taken;<sp/></highlight><highlight class="comment">//<sp/>don&apos;t<sp/>change<sp/>this</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_type<sp/>=<sp/>BRANCH_OTHER;</highlight></codeline>
+<codeline lineno="128"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="129"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>branch_taken<sp/>=<sp/></highlight><highlight class="keyword">false</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="130"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="131"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="132"><highlight class="normal"></highlight></codeline>
+<codeline lineno="133"><highlight class="normal"></highlight><highlight class="keyword">public</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>(uint8_t<sp/>cpu,<sp/><ref refid="structinput__instr" kindref="compound">input_instr</ref><sp/>instr)<sp/>:<sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>(instr,<sp/>{cpu,<sp/>cpu})<sp/>{}</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>(uint8_t,<sp/><ref refid="structcloudsuite__instr" kindref="compound">cloudsuite_instr</ref><sp/>instr)<sp/>:<sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>(instr,<sp/>{instr.asid[0],<sp/>instr.asid[1]})<sp/>{}</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"></highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/>std::size_t<sp/>num_mem_ops()</highlight><highlight class="keyword"><sp/>const<sp/></highlight><highlight class="normal">{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>std::size(destination_memory)<sp/>+<sp/>std::size(source_memory);<sp/>}</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"></highlight></codeline>
+<codeline lineno="139"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>program_order(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>&amp;<sp/>lhs,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref>&amp;<sp/>rhs)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>lhs.instr_id<sp/>&lt;<sp/>rhs.instr_id;<sp/>}</highlight></codeline>
+<codeline lineno="140"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"></highlight></codeline>
+<codeline lineno="142"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="/github/workspace/inc/instruction.h"/>
+  </compounddef>
+</doxygen>

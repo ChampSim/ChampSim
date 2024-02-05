@@ -1,0 +1,196 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classchampsim_1_1bulk__tracereader" kind="class" language="C++" prot="public">
+    <compoundname>champsim::bulk_tracereader</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+      <param>
+        <type>typename F</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1aee7532a6297cacb5d9ac5a55c96d0a3a" prot="private" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t champsim::bulk_tracereader&lt; T, F &gt;::cpu</definition>
+        <argsstring></argsstring>
+        <name>cpu</name>
+        <qualifiedname>champsim::bulk_tracereader::cpu</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="81" column="11" bodyfile="/github/workspace/inc/tracereader.h" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1a5cc10cb197be0410b3e38e5201e473dc" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool champsim::bulk_tracereader&lt; T, F &gt;::eof_</definition>
+        <argsstring></argsstring>
+        <name>eof_</name>
+        <qualifiedname>champsim::bulk_tracereader::eof_</qualifiedname>
+        <initializer>= false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="82" column="8" bodyfile="/github/workspace/inc/tracereader.h" bodystart="82" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1a193c1286849f946e7de3260e9c7c9a88" prot="private" static="no" mutable="no">
+        <type>F</type>
+        <definition>F champsim::bulk_tracereader&lt; T, F &gt;::trace_file</definition>
+        <argsstring></argsstring>
+        <name>trace_file</name>
+        <qualifiedname>champsim::bulk_tracereader::trace_file</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="83" column="5" bodyfile="/github/workspace/inc/tracereader.h" bodystart="83" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1ac01cde45510973496742f4834a82b6d7" prot="private" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; champsim::bulk_tracereader&lt; T, F &gt;::instr_buffer</definition>
+        <argsstring></argsstring>
+        <name>instr_buffer</name>
+        <qualifiedname>champsim::bulk_tracereader::instr_buffer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="87" column="14" bodyfile="/github/workspace/inc/tracereader.h" bodystart="87" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1a41a553c8472c841776774aab9169fa86" prot="private" static="yes" constexpr="yes" mutable="no">
+        <type>constexpr std::size_t</type>
+        <definition>constexpr std::size_t champsim::bulk_tracereader&lt; T, F &gt;::buffer_size</definition>
+        <argsstring></argsstring>
+        <name>buffer_size</name>
+        <qualifiedname>champsim::bulk_tracereader::buffer_size</qualifiedname>
+        <initializer>= 128</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="85" column="32" bodyfile="/github/workspace/inc/tracereader.h" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1bulk__tracereader_1abfcaaae962efd0202a7e6a12858711e2" prot="private" static="yes" constexpr="yes" mutable="no">
+        <type>constexpr std::size_t</type>
+        <definition>constexpr std::size_t champsim::bulk_tracereader&lt; T, F &gt;::refresh_thresh</definition>
+        <argsstring></argsstring>
+        <name>refresh_thresh</name>
+        <qualifiedname>champsim::bulk_tracereader::refresh_thresh</qualifiedname>
+        <initializer>= 1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="86" column="32" bodyfile="/github/workspace/inc/tracereader.h" bodystart="86" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classchampsim_1_1bulk__tracereader_1aeecb76169462ce8f98c9fcc6c33877e5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref></type>
+        <definition>ooo_model_instr champsim::bulk_tracereader&lt; T, F &gt;::operator()</definition>
+        <argsstring>()</argsstring>
+        <name>operator()</name>
+        <qualifiedname>champsim::bulk_tracereader::operator()</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="90" column="19" bodyfile="/github/workspace/inc/tracereader.h" bodystart="108" bodyend="136"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1bulk__tracereader_1a396803bb4f2242b4dc2bd8ab7fd74e5a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::bulk_tracereader&lt; T, F &gt;::bulk_tracereader</definition>
+        <argsstring>(uint8_t cpu_idx, std::string tf)</argsstring>
+        <name>bulk_tracereader</name>
+        <qualifiedname>champsim::bulk_tracereader::bulk_tracereader</qualifiedname>
+        <param>
+          <type>uint8_t</type>
+          <declname>cpu_idx</declname>
+        </param>
+        <param>
+          <type>std::string</type>
+          <declname>tf</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="92" column="3" bodyfile="/github/workspace/inc/tracereader.h" bodystart="92" bodyend="92"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1bulk__tracereader_1a3bdb60478842aaa743e21ee3f6a5a4f4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::bulk_tracereader&lt; T, F &gt;::bulk_tracereader</definition>
+        <argsstring>(uint8_t cpu_idx, F &amp;&amp;file)</argsstring>
+        <name>bulk_tracereader</name>
+        <qualifiedname>champsim::bulk_tracereader::bulk_tracereader</qualifiedname>
+        <param>
+          <type>uint8_t</type>
+          <declname>cpu_idx</declname>
+        </param>
+        <param>
+          <type>F &amp;&amp;</type>
+          <declname>file</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="93" column="3" bodyfile="/github/workspace/inc/tracereader.h" bodystart="93" bodyend="93"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1bulk__tracereader_1acc6f884c1e2de49f371f8c7eb1ba492e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool champsim::bulk_tracereader&lt; T, F &gt;::eof</definition>
+        <argsstring>() const</argsstring>
+        <name>eof</name>
+        <qualifiedname>champsim::bulk_tracereader::eof</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="95" column="8" bodyfile="/github/workspace/inc/tracereader.h" bodystart="95" bodyend="95"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/tracereader.h" line="76" column="1" bodyfile="/github/workspace/inc/tracereader.h" bodystart="77" bodyend="96"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1bulk__tracereader_1a41a553c8472c841776774aab9169fa86" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>buffer_size</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1a396803bb4f2242b4dc2bd8ab7fd74e5a" prot="public" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>bulk_tracereader</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1a3bdb60478842aaa743e21ee3f6a5a4f4" prot="public" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>bulk_tracereader</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1aee7532a6297cacb5d9ac5a55c96d0a3a" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>cpu</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1acc6f884c1e2de49f371f8c7eb1ba492e" prot="public" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>eof</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1a5cc10cb197be0410b3e38e5201e473dc" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>eof_</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1ac01cde45510973496742f4834a82b6d7" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>instr_buffer</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1aeecb76169462ce8f98c9fcc6c33877e5" prot="public" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>operator()</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1abfcaaae962efd0202a7e6a12858711e2" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>refresh_thresh</name></member>
+      <member refid="classchampsim_1_1bulk__tracereader_1a193c1286849f946e7de3260e9c7c9a88" prot="private" virt="non-virtual"><scope>champsim::bulk_tracereader</scope><name>trace_file</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

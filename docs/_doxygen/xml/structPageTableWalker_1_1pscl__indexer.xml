@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structPageTableWalker_1_1pscl__indexer" kind="struct" language="C++" prot="private">
+    <compoundname>PageTableWalker::pscl_indexer</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structPageTableWalker_1_1pscl__indexer_1a5de9b61deacae39136041b5cc6178a75" prot="public" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t PageTableWalker::pscl_indexer::shamt</definition>
+        <argsstring></argsstring>
+        <name>shamt</name>
+        <qualifiedname>PageTableWalker::pscl_indexer::shamt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="38" column="17" bodyfile="/github/workspace/inc/ptw.h" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structPageTableWalker_1_1pscl__indexer_1aff963fd900ce051383e0eaf98ccc8bac" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>auto</type>
+        <definition>auto PageTableWalker::pscl_indexer::operator()</definition>
+        <argsstring>(const pscl_entry &amp;entry) const</argsstring>
+        <name>operator()</name>
+        <qualifiedname>PageTableWalker::pscl_indexer::operator()</qualifiedname>
+        <param>
+          <type>const pscl_entry &amp;</type>
+          <declname>entry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="39" column="10" bodyfile="/github/workspace/inc/ptw.h" bodystart="39" bodyend="39"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/ptw.h" line="37" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="37" bodyend="40"/>
+    <listofallmembers>
+      <member refid="structPageTableWalker_1_1pscl__indexer_1aff963fd900ce051383e0eaf98ccc8bac" prot="public" virt="non-virtual"><scope>PageTableWalker::pscl_indexer</scope><name>operator()</name></member>
+      <member refid="structPageTableWalker_1_1pscl__indexer_1a5de9b61deacae39136041b5cc6178a75" prot="public" virt="non-virtual"><scope>PageTableWalker::pscl_indexer</scope><name>shamt</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

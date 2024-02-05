@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structchampsim_1_1tracereader_1_1reader__concept" kind="struct" language="C++" prot="private" abstract="yes">
+    <compoundname>champsim::tracereader::reader_concept</compoundname>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__concept_1acbe867040670e23345c30e8ebc4ea5c2" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type></type>
+        <definition>virtual champsim::tracereader::reader_concept::~reader_concept</definition>
+        <argsstring>()=default</argsstring>
+        <name>~reader_concept</name>
+        <qualifiedname>champsim::tracereader::reader_concept::~reader_concept</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="35" column="13"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__concept_1aee24f4e8e73385a7d530b353f4281d12" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref></type>
+        <definition>virtual ooo_model_instr champsim::tracereader::reader_concept::operator()</definition>
+        <argsstring>()=0</argsstring>
+        <name>operator()</name>
+        <qualifiedname>champsim::tracereader::reader_concept::operator()</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="36" column="29"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__concept_1ae67d1235635b7c2fa9917c84f116ca3d" prot="public" static="no" const="yes" explicit="no" inline="no" virt="pure-virtual">
+        <type>bool</type>
+        <definition>virtual bool champsim::tracereader::reader_concept::eof</definition>
+        <argsstring>() const =0</argsstring>
+        <name>eof</name>
+        <qualifiedname>champsim::tracereader::reader_concept::eof</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="37" column="18"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/tracereader.h" line="34" column="3" bodyfile="/github/workspace/inc/tracereader.h" bodystart="34" bodyend="38"/>
+    <listofallmembers>
+      <member refid="structchampsim_1_1tracereader_1_1reader__concept_1ae67d1235635b7c2fa9917c84f116ca3d" prot="public" virt="pure-virtual"><scope>champsim::tracereader::reader_concept</scope><name>eof</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__concept_1aee24f4e8e73385a7d530b353f4281d12" prot="public" virt="pure-virtual"><scope>champsim::tracereader::reader_concept</scope><name>operator()</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__concept_1acbe867040670e23345c30e8ebc4ea5c2" prot="public" virt="virtual"><scope>champsim::tracereader::reader_concept</scope><name>~reader_concept</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

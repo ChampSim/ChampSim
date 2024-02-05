@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classchampsim_1_1json__printer" kind="class" language="C++" prot="public">
+    <compoundname>champsim::json_printer</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1json__printer_1a07652a1332c00cfe6701983ac5ba64e2" prot="private" static="no" mutable="no">
+        <type>std::ostream &amp;</type>
+        <definition>std::ostream&amp; champsim::json_printer::stream</definition>
+        <argsstring></argsstring>
+        <name>stream</name>
+        <qualifiedname>champsim::json_printer::stream</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/stats_printer.h" line="50" column="16" bodyfile="/github/workspace/inc/stats_printer.h" bodystart="50" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classchampsim_1_1json__printer_1ae643ccbde8bd297866ae74bf09683c2a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::json_printer::json_printer</definition>
+        <argsstring>(std::ostream &amp;str)</argsstring>
+        <name>json_printer</name>
+        <qualifiedname>champsim::json_printer::json_printer</qualifiedname>
+        <param>
+          <type>std::ostream &amp;</type>
+          <declname>str</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/stats_printer.h" line="53" column="3" bodyfile="/github/workspace/inc/stats_printer.h" bodystart="53" bodyend="53"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1json__printer_1a927fdc3cb2813e26f2bdb199bb7bf68c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void champsim::json_printer::print</definition>
+        <argsstring>(std::vector&lt; phase_stats &gt; &amp;stats)</argsstring>
+        <name>print</name>
+        <qualifiedname>champsim::json_printer::print</qualifiedname>
+        <param>
+          <type>std::vector&lt; <ref refid="structchampsim_1_1phase__stats" kindref="compound">phase_stats</ref> &gt; &amp;</type>
+          <declname>stats</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/stats_printer.h" line="54" column="8" bodyfile="/github/workspace/src/json_printer.cc" bodystart="95" bodyend="95"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/stats_printer.h" line="48" column="1" bodyfile="/github/workspace/inc/stats_printer.h" bodystart="49" bodyend="55"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1json__printer_1ae643ccbde8bd297866ae74bf09683c2a" prot="public" virt="non-virtual"><scope>champsim::json_printer</scope><name>json_printer</name></member>
+      <member refid="classchampsim_1_1json__printer_1a927fdc3cb2813e26f2bdb199bb7bf68c" prot="public" virt="non-virtual"><scope>champsim::json_printer</scope><name>print</name></member>
+      <member refid="classchampsim_1_1json__printer_1a07652a1332c00cfe6701983ac5ba64e2" prot="private" virt="non-virtual"><scope>champsim::json_printer</scope><name>stream</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

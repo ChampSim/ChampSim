@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structchampsim_1_1deadlock" kind="struct" language="C++" prot="public">
+    <compoundname>champsim::deadlock</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::exception</basecompoundref>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structchampsim_1_1deadlock_1a491307553a8d47426c0aaf69065e3744" prot="public" static="no" mutable="no">
+        <type>const uint32_t</type>
+        <definition>const uint32_t champsim::deadlock::which</definition>
+        <argsstring></argsstring>
+        <name>which</name>
+        <qualifiedname>champsim::deadlock::which</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/champsim.h" line="26" column="18" bodyfile="/github/workspace/inc/champsim.h" bodystart="26" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structchampsim_1_1deadlock_1a0a339c0b6f516461fdbfd35998a56a52" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::deadlock::deadlock</definition>
+        <argsstring>(uint32_t cpu)</argsstring>
+        <name>deadlock</name>
+        <qualifiedname>champsim::deadlock::deadlock</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>cpu</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/champsim.h" line="27" column="12" bodyfile="/github/workspace/inc/champsim.h" bodystart="27" bodyend="27"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>champsim::deadlock</label>
+        <link refid="structchampsim_1_1deadlock"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>std::exception</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1">
+        <label>champsim::deadlock</label>
+        <link refid="structchampsim_1_1deadlock"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>std::exception</label>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/champsim.h" line="25" column="1" bodyfile="/github/workspace/inc/champsim.h" bodystart="25" bodyend="28"/>
+    <listofallmembers>
+      <member refid="structchampsim_1_1deadlock_1a0a339c0b6f516461fdbfd35998a56a52" prot="public" virt="non-virtual"><scope>champsim::deadlock</scope><name>deadlock</name></member>
+      <member refid="structchampsim_1_1deadlock_1a491307553a8d47426c0aaf69065e3744" prot="public" virt="non-virtual"><scope>champsim::deadlock</scope><name>which</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,504 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classchampsim_1_1channel" kind="class" language="C++" prot="public">
+    <compoundname>champsim::channel</compoundname>
+    <innerclass refid="structchampsim_1_1channel_1_1request" prot="private">champsim::channel::request</innerclass>
+    <innerclass refid="structchampsim_1_1channel_1_1response" prot="private">champsim::channel::response</innerclass>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classchampsim_1_1channel_1a4f48a13bc0016f7d3524ea90e748e3e1" prot="public" static="no">
+        <type>response</type>
+        <definition>using champsim::channel::response_type =  response</definition>
+        <argsstring></argsstring>
+        <name>response_type</name>
+        <qualifiedname>champsim::channel::response_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="109" column="3" bodyfile="/github/workspace/inc/channel.h" bodystart="109" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1channel_1affce5111e32a205401e95a0cab51855b" prot="public" static="no">
+        <type>request</type>
+        <definition>using champsim::channel::request_type =  request</definition>
+        <argsstring></argsstring>
+        <name>request_type</name>
+        <qualifiedname>champsim::channel::request_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="110" column="3" bodyfile="/github/workspace/inc/channel.h" bodystart="110" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1channel_1acddc029389b4304546dee2dce911fc76" prot="public" static="no">
+        <type><ref refid="structchampsim_1_1cache__queue__stats" kindref="compound">cache_queue_stats</ref></type>
+        <definition>using champsim::channel::stats_type =  cache_queue_stats</definition>
+        <argsstring></argsstring>
+        <name>stats_type</name>
+        <qualifiedname>champsim::channel::stats_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="111" column="3" bodyfile="/github/workspace/inc/channel.h" bodystart="111" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1channel_1ace87f69c940b5fdc254ea42eac986867" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::RQ_SIZE</definition>
+        <argsstring></argsstring>
+        <name>RQ_SIZE</name>
+        <qualifiedname>champsim::channel::RQ_SIZE</qualifiedname>
+        <initializer>= std::numeric_limits&lt;std::size_t&gt;::max()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="102" column="15" bodyfile="/github/workspace/inc/channel.h" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1afc3b99dd88129cd45a41a7170a366bf4" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::PQ_SIZE</definition>
+        <argsstring></argsstring>
+        <name>PQ_SIZE</name>
+        <qualifiedname>champsim::channel::PQ_SIZE</qualifiedname>
+        <initializer>= std::numeric_limits&lt;std::size_t&gt;::max()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="103" column="15" bodyfile="/github/workspace/inc/channel.h" bodystart="103" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a2ebb6a0779b69334b4de13f77cc3c059" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::WQ_SIZE</definition>
+        <argsstring></argsstring>
+        <name>WQ_SIZE</name>
+        <qualifiedname>champsim::channel::WQ_SIZE</qualifiedname>
+        <initializer>= std::numeric_limits&lt;std::size_t&gt;::max()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="104" column="15" bodyfile="/github/workspace/inc/channel.h" bodystart="104" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a6d40d1d5782abb627a16be2bec0e3823" prot="private" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned champsim::channel::OFFSET_BITS</definition>
+        <argsstring></argsstring>
+        <name>OFFSET_BITS</name>
+        <qualifiedname>champsim::channel::OFFSET_BITS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="105" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="105" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a374a4b4c7f434bec97003106d5400a81" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool champsim::channel::match_offset_bits</definition>
+        <argsstring></argsstring>
+        <name>match_offset_bits</name>
+        <qualifiedname>champsim::channel::match_offset_bits</qualifiedname>
+        <initializer>= false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="106" column="8" bodyfile="/github/workspace/inc/channel.h" bodystart="106" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a97468c915e4c7cc2b6d4a7433b5be86a" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; request_type &gt;</type>
+        <definition>std::deque&lt;request_type&gt; champsim::channel::RQ</definition>
+        <argsstring></argsstring>
+        <name>RQ</name>
+        <qualifiedname>champsim::channel::RQ</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="113" column="14" bodyfile="/github/workspace/inc/channel.h" bodystart="113" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1ad9643f6628ca79c5c314c8d956974e80" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; request_type &gt;</type>
+        <definition>std::deque&lt;request_type&gt; champsim::channel::PQ</definition>
+        <argsstring></argsstring>
+        <name>PQ</name>
+        <qualifiedname>champsim::channel::PQ</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="113" column="17" bodyfile="/github/workspace/inc/channel.h" bodystart="113" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a5c0f714ecf8bc8bb412a4f13de4cf523" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; request_type &gt;</type>
+        <definition>std::deque&lt;request_type&gt; champsim::channel::WQ</definition>
+        <argsstring></argsstring>
+        <name>WQ</name>
+        <qualifiedname>champsim::channel::WQ</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="113" column="20" bodyfile="/github/workspace/inc/channel.h" bodystart="113" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1acef8154066701acab85c730063b580cd" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; response_type &gt;</type>
+        <definition>std::deque&lt;response_type&gt; champsim::channel::returned</definition>
+        <argsstring></argsstring>
+        <name>returned</name>
+        <qualifiedname>champsim::channel::returned</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="114" column="14" bodyfile="/github/workspace/inc/channel.h" bodystart="114" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1a668b814c494b5cc754198a070997d23c" prot="public" static="no" mutable="no">
+        <type><ref refid="structchampsim_1_1cache__queue__stats" kindref="compound">stats_type</ref></type>
+        <definition>stats_type champsim::channel::sim_stats</definition>
+        <argsstring></argsstring>
+        <name>sim_stats</name>
+        <qualifiedname>champsim::channel::sim_stats</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="116" column="14" bodyfile="/github/workspace/inc/channel.h" bodystart="116" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1channel_1afb4aacec0c0a6be52088d6448fee3aa4" prot="public" static="no" mutable="no">
+        <type><ref refid="structchampsim_1_1cache__queue__stats" kindref="compound">stats_type</ref></type>
+        <definition>stats_type champsim::channel::roi_stats</definition>
+        <argsstring></argsstring>
+        <name>roi_stats</name>
+        <qualifiedname>champsim::channel::roi_stats</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="116" column="24" bodyfile="/github/workspace/inc/channel.h" bodystart="116" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classchampsim_1_1channel_1a2c3ac05fd4b7aacd011be84ec30f911f" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename R</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool champsim::channel::do_add_queue</definition>
+        <argsstring>(R &amp;queue, std::size_t queue_size, const typename R::value_type &amp;packet)</argsstring>
+        <name>do_add_queue</name>
+        <qualifiedname>champsim::channel::do_add_queue</qualifiedname>
+        <param>
+          <type>R &amp;</type>
+          <declname>queue</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>queue_size</declname>
+        </param>
+        <param>
+          <type>const typename R::value_type &amp;</type>
+          <declname>packet</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="100" column="8" bodyfile="/github/workspace/src/channel.cc" bodystart="115" bodyend="139"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classchampsim_1_1channel_1a1896d2203c03d8bd7541f66bdfa216cb" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>champsim::channel::channel</definition>
+        <argsstring>()=default</argsstring>
+        <name>channel</name>
+        <qualifiedname>champsim::channel::channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="118" column="3"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1ab17f2662a49540d013d0ce401c956e50" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>champsim::channel::channel</definition>
+        <argsstring>(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset)</argsstring>
+        <name>channel</name>
+        <qualifiedname>champsim::channel::channel</qualifiedname>
+        <param>
+          <type>std::size_t</type>
+          <declname>rq_size</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>pq_size</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>wq_size</declname>
+        </param>
+        <param>
+          <type>unsigned</type>
+          <declname>offset_bits</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>match_offset</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="119" column="3" bodyfile="/github/workspace/src/channel.cc" bodystart="26" bodyend="29"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a54f62fbc8501d3b1fcbfc6c78e78a6d3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool champsim::channel::add_rq</definition>
+        <argsstring>(const request_type &amp;packet)</argsstring>
+        <name>add_rq</name>
+        <qualifiedname>champsim::channel::add_rq</qualifiedname>
+        <param>
+          <type>const request_type &amp;</type>
+          <declname>packet</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="121" column="8" bodyfile="/github/workspace/src/channel.cc" bodystart="141" bodyend="153"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a416b8463e087232c4a8d52c4aefdaa55" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool champsim::channel::add_wq</definition>
+        <argsstring>(const request_type &amp;packet)</argsstring>
+        <name>add_wq</name>
+        <qualifiedname>champsim::channel::add_wq</qualifiedname>
+        <param>
+          <type>const request_type &amp;</type>
+          <declname>packet</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="122" column="8" bodyfile="/github/workspace/src/channel.cc" bodystart="155" bodyend="167"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a8f9296a620bc560b7f7583080c89c4a0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool champsim::channel::add_pq</definition>
+        <argsstring>(const request_type &amp;packet)</argsstring>
+        <name>add_pq</name>
+        <qualifiedname>champsim::channel::add_pq</qualifiedname>
+        <param>
+          <type>const request_type &amp;</type>
+          <declname>packet</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="123" column="8" bodyfile="/github/workspace/src/channel.cc" bodystart="169" bodyend="181"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1ae5f6e2492c6c3d52dfda7ebcd52930df" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::rq_occupancy</definition>
+        <argsstring>() const</argsstring>
+        <name>rq_occupancy</name>
+        <qualifiedname>champsim::channel::rq_occupancy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="125" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="183" bodyend="183"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a5f9e68a8ed5f9950b65e9ae6a996bbd2" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::wq_occupancy</definition>
+        <argsstring>() const</argsstring>
+        <name>wq_occupancy</name>
+        <qualifiedname>champsim::channel::wq_occupancy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="126" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="185" bodyend="185"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a4c2f3ca913cc6d67e67976eadeb86b63" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::pq_occupancy</definition>
+        <argsstring>() const</argsstring>
+        <name>pq_occupancy</name>
+        <qualifiedname>champsim::channel::pq_occupancy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="127" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="187" bodyend="187"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a462715a106d69801e05443cf094302c4" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::rq_size</definition>
+        <argsstring>() const</argsstring>
+        <name>rq_size</name>
+        <qualifiedname>champsim::channel::rq_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="129" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="189" bodyend="189"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1af5a5bc8c8ab258941437f1a6535e9c9a" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::wq_size</definition>
+        <argsstring>() const</argsstring>
+        <name>wq_size</name>
+        <qualifiedname>champsim::channel::wq_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="130" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="191" bodyend="191"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1a27001939846a546060fd3d2ad9b76b51" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::channel::pq_size</definition>
+        <argsstring>() const</argsstring>
+        <name>pq_size</name>
+        <qualifiedname>champsim::channel::pq_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="131" column="15" bodyfile="/github/workspace/src/channel.cc" bodystart="193" bodyend="193"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1channel_1acb6c5ea77f1d1252fedcdd81b7a36428" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void champsim::channel::check_collision</definition>
+        <argsstring>()</argsstring>
+        <name>check_collision</name>
+        <qualifiedname>champsim::channel::check_collision</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="133" column="8" bodyfile="/github/workspace/src/channel.cc" bodystart="69" bodyend="112"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>champsim::cache_queue_stats</label>
+        <link refid="structchampsim_1_1cache__queue__stats"/>
+      </node>
+      <node id="1">
+        <label>champsim::channel</label>
+        <link refid="classchampsim_1_1channel"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>roi_stats</edgelabel>
+          <edgelabel>sim_stats</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/channel.h" line="63" column="1" bodyfile="/github/workspace/inc/channel.h" bodystart="64" bodyend="134"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1channel_1a8f9296a620bc560b7f7583080c89c4a0" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>add_pq</name></member>
+      <member refid="classchampsim_1_1channel_1a54f62fbc8501d3b1fcbfc6c78e78a6d3" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>add_rq</name></member>
+      <member refid="classchampsim_1_1channel_1a416b8463e087232c4a8d52c4aefdaa55" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>add_wq</name></member>
+      <member refid="classchampsim_1_1channel_1a1896d2203c03d8bd7541f66bdfa216cb" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>channel</name></member>
+      <member refid="classchampsim_1_1channel_1ab17f2662a49540d013d0ce401c956e50" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>channel</name></member>
+      <member refid="classchampsim_1_1channel_1acb6c5ea77f1d1252fedcdd81b7a36428" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>check_collision</name></member>
+      <member refid="classchampsim_1_1channel_1a2c3ac05fd4b7aacd011be84ec30f911f" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>do_add_queue</name></member>
+      <member refid="classchampsim_1_1channel_1a374a4b4c7f434bec97003106d5400a81" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>match_offset_bits</name></member>
+      <member refid="classchampsim_1_1channel_1a6d40d1d5782abb627a16be2bec0e3823" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>OFFSET_BITS</name></member>
+      <member refid="classchampsim_1_1channel_1ad9643f6628ca79c5c314c8d956974e80" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>PQ</name></member>
+      <member refid="classchampsim_1_1channel_1a4c2f3ca913cc6d67e67976eadeb86b63" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>pq_occupancy</name></member>
+      <member refid="classchampsim_1_1channel_1a27001939846a546060fd3d2ad9b76b51" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>pq_size</name></member>
+      <member refid="classchampsim_1_1channel_1afc3b99dd88129cd45a41a7170a366bf4" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>PQ_SIZE</name></member>
+      <member refid="classchampsim_1_1channel_1affce5111e32a205401e95a0cab51855b" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>request_type</name></member>
+      <member refid="classchampsim_1_1channel_1a4f48a13bc0016f7d3524ea90e748e3e1" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>response_type</name></member>
+      <member refid="classchampsim_1_1channel_1acef8154066701acab85c730063b580cd" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>returned</name></member>
+      <member refid="classchampsim_1_1channel_1afb4aacec0c0a6be52088d6448fee3aa4" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>roi_stats</name></member>
+      <member refid="classchampsim_1_1channel_1a97468c915e4c7cc2b6d4a7433b5be86a" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>RQ</name></member>
+      <member refid="classchampsim_1_1channel_1ae5f6e2492c6c3d52dfda7ebcd52930df" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>rq_occupancy</name></member>
+      <member refid="classchampsim_1_1channel_1ace87f69c940b5fdc254ea42eac986867" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>RQ_SIZE</name></member>
+      <member refid="classchampsim_1_1channel_1a462715a106d69801e05443cf094302c4" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>rq_size</name></member>
+      <member refid="classchampsim_1_1channel_1a668b814c494b5cc754198a070997d23c" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>sim_stats</name></member>
+      <member refid="classchampsim_1_1channel_1acddc029389b4304546dee2dce911fc76" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>stats_type</name></member>
+      <member refid="classchampsim_1_1channel_1a5c0f714ecf8bc8bb412a4f13de4cf523" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>WQ</name></member>
+      <member refid="classchampsim_1_1channel_1a5f9e68a8ed5f9950b65e9ae6a996bbd2" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>wq_occupancy</name></member>
+      <member refid="classchampsim_1_1channel_1a2ebb6a0779b69334b4de13f77cc3c059" prot="private" virt="non-virtual"><scope>champsim::channel</scope><name>WQ_SIZE</name></member>
+      <member refid="classchampsim_1_1channel_1af5a5bc8c8ab258941437f1a6535e9c9a" prot="public" virt="non-virtual"><scope>champsim::channel</scope><name>wq_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

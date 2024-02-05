@@ -1,0 +1,868 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classCACHE_1_1Builder" kind="class" language="C++" prot="public">
+    <compoundname>CACHE::Builder</compoundname>
+    <templateparamlist>
+      <param>
+        <type>unsigned long long</type>
+        <declname>P_FLAG</declname>
+        <defname>P_FLAG</defname>
+        <defval>0</defval>
+      </param>
+      <param>
+        <type>unsigned long long</type>
+        <declname>R_FLAG</declname>
+        <defname>R_FLAG</defname>
+        <defval>0</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classCACHE_1_1Builder_1a1c5678f20108535b65f078a491de7890" prot="private" static="no">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">Builder</ref>&lt; P_FLAG, R_FLAG &gt;</type>
+        <definition>using CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::self_type =  Builder&lt;P_FLAG, R_FLAG&gt;</definition>
+        <argsstring></argsstring>
+        <name>self_type</name>
+        <qualifiedname>CACHE::Builder::self_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="297" column="5" bodyfile="/github/workspace/inc/cache.h" bodystart="297" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a23d773917ec822854b17481af34a81b9" prot="private" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_name</definition>
+        <argsstring></argsstring>
+        <name>m_name</name>
+        <qualifiedname>CACHE::Builder::m_name</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="299" column="17" bodyfile="/github/workspace/inc/cache.h" bodystart="299" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1adb5130fa282be6caf9b0dfed620a6e6c" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_freq_scale</definition>
+        <argsstring></argsstring>
+        <name>m_freq_scale</name>
+        <qualifiedname>CACHE::Builder::m_freq_scale</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="300" column="12" bodyfile="/github/workspace/inc/cache.h" bodystart="300" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a86396eb9981efdf17a5620ea5ba134ed" prot="private" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_sets</definition>
+        <argsstring></argsstring>
+        <name>m_sets</name>
+        <qualifiedname>CACHE::Builder::m_sets</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="301" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="301" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1afd4b0930ca7a6395790b8ad14ba0af8f" prot="private" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_ways</definition>
+        <argsstring></argsstring>
+        <name>m_ways</name>
+        <qualifiedname>CACHE::Builder::m_ways</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="302" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="302" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a33f01ad427844a9f363cb0ac2c7cbfc3" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_pq_size</definition>
+        <argsstring></argsstring>
+        <name>m_pq_size</name>
+        <qualifiedname>CACHE::Builder::m_pq_size</qualifiedname>
+        <initializer>{std::numeric_limits&lt;std::size_t&gt;::max()}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="303" column="17" bodyfile="/github/workspace/inc/cache.h" bodystart="303" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1ad2452a659c539d511f77ea6118ea783a" prot="private" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_mshr_size</definition>
+        <argsstring></argsstring>
+        <name>m_mshr_size</name>
+        <qualifiedname>CACHE::Builder::m_mshr_size</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="304" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="304" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a1d8603e59b4758ed214cf15ca2a0fb5a" prot="private" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_hit_lat</definition>
+        <argsstring></argsstring>
+        <name>m_hit_lat</name>
+        <qualifiedname>CACHE::Builder::m_hit_lat</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="305" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="305" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a9101e7bdc5701d86fc62fa13c4b0be98" prot="private" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_fill_lat</definition>
+        <argsstring></argsstring>
+        <name>m_fill_lat</name>
+        <qualifiedname>CACHE::Builder::m_fill_lat</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="306" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="306" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1ad57c1911e4af5b9ce576b6b310132079" prot="private" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_latency</definition>
+        <argsstring></argsstring>
+        <name>m_latency</name>
+        <qualifiedname>CACHE::Builder::m_latency</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="307" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="307" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a6542ff2fa42a2848ff737f9c94239ffb" prot="private" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_max_tag</definition>
+        <argsstring></argsstring>
+        <name>m_max_tag</name>
+        <qualifiedname>CACHE::Builder::m_max_tag</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="308" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="308" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a5d85934d1c16e62e4089e5cbb4af2a3e" prot="private" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_max_fill</definition>
+        <argsstring></argsstring>
+        <name>m_max_fill</name>
+        <qualifiedname>CACHE::Builder::m_max_fill</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="309" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="309" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a31508e2649615d9b5da51eddc32f54a6" prot="private" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_offset_bits</definition>
+        <argsstring></argsstring>
+        <name>m_offset_bits</name>
+        <qualifiedname>CACHE::Builder::m_offset_bits</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="310" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="310" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1af88b446ded356052c4548b4850e058d6" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_pref_load</definition>
+        <argsstring></argsstring>
+        <name>m_pref_load</name>
+        <qualifiedname>CACHE::Builder::m_pref_load</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="311" column="10" bodyfile="/github/workspace/inc/cache.h" bodystart="311" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a403a96986799dae62241cdbcabd2876a" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_wq_full_addr</definition>
+        <argsstring></argsstring>
+        <name>m_wq_full_addr</name>
+        <qualifiedname>CACHE::Builder::m_wq_full_addr</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="312" column="10" bodyfile="/github/workspace/inc/cache.h" bodystart="312" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a944e71d618290e61f5d7021d83f9eeb6" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_va_pref</definition>
+        <argsstring></argsstring>
+        <name>m_va_pref</name>
+        <qualifiedname>CACHE::Builder::m_va_pref</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="313" column="10" bodyfile="/github/workspace/inc/cache.h" bodystart="313" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a3ba5b2931cd7b9863e481a29d4449ff5" prot="private" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_pref_act_mask</definition>
+        <argsstring></argsstring>
+        <name>m_pref_act_mask</name>
+        <qualifiedname>CACHE::Builder::m_pref_act_mask</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="315" column="14" bodyfile="/github/workspace/inc/cache.h" bodystart="315" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1af5046b776e205e34910a2a0ec0015a3e" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; <ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> * &gt;</type>
+        <definition>std::vector&lt;CACHE::channel_type*&gt; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_uls</definition>
+        <argsstring></argsstring>
+        <name>m_uls</name>
+        <qualifiedname>CACHE::Builder::m_uls</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="316" column="17" bodyfile="/github/workspace/inc/cache.h" bodystart="316" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a8a871e2182be8c69f1db12bd5aedeaac" prot="private" static="no" mutable="no">
+        <type><ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> *</type>
+        <definition>CACHE::channel_type* CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_ll</definition>
+        <argsstring></argsstring>
+        <name>m_ll</name>
+        <qualifiedname>CACHE::Builder::m_ll</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="317" column="25" bodyfile="/github/workspace/inc/cache.h" bodystart="317" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classCACHE_1_1Builder_1a47b7b9a46782d2f6500b7170d611e446" prot="private" static="no" mutable="no">
+        <type><ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> *</type>
+        <definition>CACHE::channel_type* CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::m_lt</definition>
+        <argsstring></argsstring>
+        <name>m_lt</name>
+        <qualifiedname>CACHE::Builder::m_lt</qualifiedname>
+        <initializer>{nullptr}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="318" column="25" bodyfile="/github/workspace/inc/cache.h" bodystart="318" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classCACHE_1_1Builder_1a40a22afebee585ee5ff150731255e757" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>class</type>
+        <definition>friend class CACHE</definition>
+        <argsstring></argsstring>
+        <name>CACHE</name>
+        <qualifiedname>CACHE::Builder::CACHE</qualifiedname>
+        <param>
+          <type><ref refid="classCACHE" kindref="compound">CACHE</ref></type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="320" column="18" bodyfile="/github/workspace/inc/cache.h" bodystart="320" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a5973c56e10990ec95745c55c216f4332" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>unsigned long long</type>
+            <declname>OTHER_P</declname>
+            <defname>OTHER_P</defname>
+          </param>
+          <param>
+            <type>unsigned long long</type>
+            <declname>OTHER_R</declname>
+            <defname>OTHER_R</defname>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::Builder</definition>
+        <argsstring>(builder_conversion_tag, const Builder&lt; OTHER_P, OTHER_R &gt; &amp;other)</argsstring>
+        <name>Builder</name>
+        <qualifiedname>CACHE::Builder::Builder</qualifiedname>
+        <param>
+          <type><ref refid="classCACHE_1_1builder__conversion__tag" kindref="compound">builder_conversion_tag</ref></type>
+        </param>
+        <param>
+          <type>const <ref refid="classCACHE_1_1Builder" kindref="compound">Builder</ref>&lt; OTHER_P, OTHER_R &gt; &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="323" column="5" bodyfile="/github/workspace/inc/cache.h" bodystart="323" bodyend="329"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a3dcc340cf699a45fdcabc5ee488a274f" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::Builder</definition>
+        <argsstring>()=default</argsstring>
+        <name>Builder</name>
+        <qualifiedname>CACHE::Builder::Builder</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="332" column="5"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1aae61d8dd0e237f0e36a7b02b7fb7182f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::name</definition>
+        <argsstring>(std::string name_)</argsstring>
+        <name>name</name>
+        <qualifiedname>CACHE::Builder::name</qualifiedname>
+        <param>
+          <type>std::string</type>
+          <declname>name_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="334" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="334" bodyend="338"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1adc45091c8cd8dd490459436d8cba50c6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::frequency</definition>
+        <argsstring>(double freq_scale_)</argsstring>
+        <name>frequency</name>
+        <qualifiedname>CACHE::Builder::frequency</qualifiedname>
+        <param>
+          <type>double</type>
+          <declname>freq_scale_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="339" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="339" bodyend="343"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1acf80a5b7c399ce0ea2aab188f2b8fb9b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::sets</definition>
+        <argsstring>(uint32_t sets_)</argsstring>
+        <name>sets</name>
+        <qualifiedname>CACHE::Builder::sets</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>sets_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="344" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="344" bodyend="348"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a2a6c671c86f6b6d3be3bb5147dc4cf57" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::ways</definition>
+        <argsstring>(uint32_t ways_)</argsstring>
+        <name>ways</name>
+        <qualifiedname>CACHE::Builder::ways</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>ways_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="349" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="349" bodyend="353"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1aa2612ce083269b5a8bcb96aed96ed9bd" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::pq_size</definition>
+        <argsstring>(uint32_t pq_size_)</argsstring>
+        <name>pq_size</name>
+        <qualifiedname>CACHE::Builder::pq_size</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>pq_size_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="354" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="354" bodyend="358"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1ac284d4556be44634423eccae2bfa99da" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::mshr_size</definition>
+        <argsstring>(uint32_t mshr_size_)</argsstring>
+        <name>mshr_size</name>
+        <qualifiedname>CACHE::Builder::mshr_size</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>mshr_size_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="359" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="359" bodyend="363"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a1de142bd75a3cdaa3da2b056b58079c9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::latency</definition>
+        <argsstring>(uint64_t lat_)</argsstring>
+        <name>latency</name>
+        <qualifiedname>CACHE::Builder::latency</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>lat_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="364" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="364" bodyend="368"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a21c2eda3e6bc8d93cdaf7ac76f6ae727" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::hit_latency</definition>
+        <argsstring>(uint64_t hit_lat_)</argsstring>
+        <name>hit_latency</name>
+        <qualifiedname>CACHE::Builder::hit_latency</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>hit_lat_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="369" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="369" bodyend="373"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a1c0bc9f510e73daf4ad98c2e269faaa6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::fill_latency</definition>
+        <argsstring>(uint64_t fill_lat_)</argsstring>
+        <name>fill_latency</name>
+        <qualifiedname>CACHE::Builder::fill_latency</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>fill_lat_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="374" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="374" bodyend="378"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a649126772f3028d173ae6b35de481439" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::tag_bandwidth</definition>
+        <argsstring>(uint32_t max_read_)</argsstring>
+        <name>tag_bandwidth</name>
+        <qualifiedname>CACHE::Builder::tag_bandwidth</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>max_read_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="379" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="379" bodyend="383"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a63a7529f7d5f3dd442d781960895e7e9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::fill_bandwidth</definition>
+        <argsstring>(uint32_t max_write_)</argsstring>
+        <name>fill_bandwidth</name>
+        <qualifiedname>CACHE::Builder::fill_bandwidth</qualifiedname>
+        <param>
+          <type>uint32_t</type>
+          <declname>max_write_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="384" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="384" bodyend="388"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1abf10bca651a48eba76cecb7a29de2a94" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::offset_bits</definition>
+        <argsstring>(unsigned offset_bits_)</argsstring>
+        <name>offset_bits</name>
+        <qualifiedname>CACHE::Builder::offset_bits</qualifiedname>
+        <param>
+          <type>unsigned</type>
+          <declname>offset_bits_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="389" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="389" bodyend="393"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a4e5239c2c9eed91ed53aa370822ef52c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::set_prefetch_as_load</definition>
+        <argsstring>()</argsstring>
+        <name>set_prefetch_as_load</name>
+        <qualifiedname>CACHE::Builder::set_prefetch_as_load</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="394" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="394" bodyend="398"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1aa1f46f518e9edd1099dd911e93ca2122" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::reset_prefetch_as_load</definition>
+        <argsstring>()</argsstring>
+        <name>reset_prefetch_as_load</name>
+        <qualifiedname>CACHE::Builder::reset_prefetch_as_load</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="399" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="399" bodyend="403"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a5316a797f216d6e98bafa0812f8fea52" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::set_wq_checks_full_addr</definition>
+        <argsstring>()</argsstring>
+        <name>set_wq_checks_full_addr</name>
+        <qualifiedname>CACHE::Builder::set_wq_checks_full_addr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="404" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="404" bodyend="408"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a964e3e65d1a2a5381aaf4d12d2127c49" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::reset_wq_checks_full_addr</definition>
+        <argsstring>()</argsstring>
+        <name>reset_wq_checks_full_addr</name>
+        <qualifiedname>CACHE::Builder::reset_wq_checks_full_addr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="409" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="409" bodyend="413"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a9b4fda3488a7701fb7ee8cec8d24d0b9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::set_virtual_prefetch</definition>
+        <argsstring>()</argsstring>
+        <name>set_virtual_prefetch</name>
+        <qualifiedname>CACHE::Builder::set_virtual_prefetch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="414" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="414" bodyend="418"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1af4144f4dee70d261ebfc096419179e34" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::reset_virtual_prefetch</definition>
+        <argsstring>()</argsstring>
+        <name>reset_virtual_prefetch</name>
+        <qualifiedname>CACHE::Builder::reset_virtual_prefetch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="419" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="419" bodyend="423"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1aa5c2c8196cc5c81e80df20a593a698cf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename...</type>
+            <declname>Elems</declname>
+            <defname>Elems</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::prefetch_activate</definition>
+        <argsstring>(Elems... pref_act_elems)</argsstring>
+        <name>prefetch_activate</name>
+        <qualifiedname>CACHE::Builder::prefetch_activate</qualifiedname>
+        <param>
+          <type>Elems...</type>
+          <declname>pref_act_elems</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="425" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="425" bodyend="429"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1ad2738069d0635dcf88424083658ff578" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::upper_levels</definition>
+        <argsstring>(std::vector&lt; CACHE::channel_type * &gt; &amp;&amp;uls_)</argsstring>
+        <name>upper_levels</name>
+        <qualifiedname>CACHE::Builder::upper_levels</qualifiedname>
+        <param>
+          <type>std::vector&lt; <ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> * &gt; &amp;&amp;</type>
+          <declname>uls_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="430" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="430" bodyend="434"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a3ac94f8de2550418a760751b6e2bf47f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::lower_level</definition>
+        <argsstring>(CACHE::channel_type *ll_)</argsstring>
+        <name>lower_level</name>
+        <qualifiedname>CACHE::Builder::lower_level</qualifiedname>
+        <param>
+          <type><ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> *</type>
+          <declname>ll_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="435" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="435" bodyend="439"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1ab7c32231faa1c154a319e99a562d88c4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">self_type</ref> &amp;</type>
+        <definition>self_type &amp; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::lower_translate</definition>
+        <argsstring>(CACHE::channel_type *lt_)</argsstring>
+        <name>lower_translate</name>
+        <qualifiedname>CACHE::Builder::lower_translate</qualifiedname>
+        <param>
+          <type><ref refid="classchampsim_1_1channel" kindref="compound">CACHE::channel_type</ref> *</type>
+          <declname>lt_</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="440" column="15" bodyfile="/github/workspace/inc/cache.h" bodystart="440" bodyend="444"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1aae557c22cafb0bf6995bb33998e9b372" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>unsigned long long</type>
+            <declname>P</declname>
+            <defname>P</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">Builder</ref>&lt; P, R_FLAG &gt;</type>
+        <definition>Builder&lt; P, R_FLAG &gt; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::prefetcher</definition>
+        <argsstring>()</argsstring>
+        <name>prefetcher</name>
+        <qualifiedname>CACHE::Builder::prefetcher</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="446" column="13" bodyfile="/github/workspace/inc/cache.h" bodystart="446" bodyend="449"/>
+      </memberdef>
+      <memberdef kind="function" id="classCACHE_1_1Builder_1a1ada0cdd61d12cbd6b6e389c4ca97fad" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>unsigned long long</type>
+            <declname>R</declname>
+            <defname>R</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classCACHE_1_1Builder" kindref="compound">Builder</ref>&lt; P_FLAG, R &gt;</type>
+        <definition>Builder&lt; P_FLAG, R &gt; CACHE::Builder&lt; P_FLAG, R_FLAG &gt;::replacement</definition>
+        <argsstring>()</argsstring>
+        <name>replacement</name>
+        <qualifiedname>CACHE::Builder::replacement</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/cache.h" line="451" column="13" bodyfile="/github/workspace/inc/cache.h" bodystart="451" bodyend="454"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/cache.h" line="295" column="3" bodyfile="/github/workspace/inc/cache.h" bodystart="296" bodyend="455"/>
+    <listofallmembers>
+      <member refid="classCACHE_1_1Builder_1a5973c56e10990ec95745c55c216f4332" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>Builder</name></member>
+      <member refid="classCACHE_1_1Builder_1a3dcc340cf699a45fdcabc5ee488a274f" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>Builder</name></member>
+      <member refid="classCACHE_1_1Builder_1a40a22afebee585ee5ff150731255e757" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>CACHE</name></member>
+      <member refid="classCACHE_1_1Builder_1a63a7529f7d5f3dd442d781960895e7e9" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>fill_bandwidth</name></member>
+      <member refid="classCACHE_1_1Builder_1a1c0bc9f510e73daf4ad98c2e269faaa6" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>fill_latency</name></member>
+      <member refid="classCACHE_1_1Builder_1adc45091c8cd8dd490459436d8cba50c6" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>frequency</name></member>
+      <member refid="classCACHE_1_1Builder_1a21c2eda3e6bc8d93cdaf7ac76f6ae727" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>hit_latency</name></member>
+      <member refid="classCACHE_1_1Builder_1a1de142bd75a3cdaa3da2b056b58079c9" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>latency</name></member>
+      <member refid="classCACHE_1_1Builder_1a3ac94f8de2550418a760751b6e2bf47f" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>lower_level</name></member>
+      <member refid="classCACHE_1_1Builder_1ab7c32231faa1c154a319e99a562d88c4" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>lower_translate</name></member>
+      <member refid="classCACHE_1_1Builder_1a9101e7bdc5701d86fc62fa13c4b0be98" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_fill_lat</name></member>
+      <member refid="classCACHE_1_1Builder_1adb5130fa282be6caf9b0dfed620a6e6c" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_freq_scale</name></member>
+      <member refid="classCACHE_1_1Builder_1a1d8603e59b4758ed214cf15ca2a0fb5a" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_hit_lat</name></member>
+      <member refid="classCACHE_1_1Builder_1ad57c1911e4af5b9ce576b6b310132079" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_latency</name></member>
+      <member refid="classCACHE_1_1Builder_1a8a871e2182be8c69f1db12bd5aedeaac" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_ll</name></member>
+      <member refid="classCACHE_1_1Builder_1a47b7b9a46782d2f6500b7170d611e446" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_lt</name></member>
+      <member refid="classCACHE_1_1Builder_1a5d85934d1c16e62e4089e5cbb4af2a3e" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_max_fill</name></member>
+      <member refid="classCACHE_1_1Builder_1a6542ff2fa42a2848ff737f9c94239ffb" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_max_tag</name></member>
+      <member refid="classCACHE_1_1Builder_1ad2452a659c539d511f77ea6118ea783a" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_mshr_size</name></member>
+      <member refid="classCACHE_1_1Builder_1a23d773917ec822854b17481af34a81b9" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_name</name></member>
+      <member refid="classCACHE_1_1Builder_1a31508e2649615d9b5da51eddc32f54a6" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_offset_bits</name></member>
+      <member refid="classCACHE_1_1Builder_1a33f01ad427844a9f363cb0ac2c7cbfc3" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_pq_size</name></member>
+      <member refid="classCACHE_1_1Builder_1a3ba5b2931cd7b9863e481a29d4449ff5" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_pref_act_mask</name></member>
+      <member refid="classCACHE_1_1Builder_1af88b446ded356052c4548b4850e058d6" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_pref_load</name></member>
+      <member refid="classCACHE_1_1Builder_1a86396eb9981efdf17a5620ea5ba134ed" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_sets</name></member>
+      <member refid="classCACHE_1_1Builder_1af5046b776e205e34910a2a0ec0015a3e" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_uls</name></member>
+      <member refid="classCACHE_1_1Builder_1a944e71d618290e61f5d7021d83f9eeb6" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_va_pref</name></member>
+      <member refid="classCACHE_1_1Builder_1afd4b0930ca7a6395790b8ad14ba0af8f" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_ways</name></member>
+      <member refid="classCACHE_1_1Builder_1a403a96986799dae62241cdbcabd2876a" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>m_wq_full_addr</name></member>
+      <member refid="classCACHE_1_1Builder_1ac284d4556be44634423eccae2bfa99da" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>mshr_size</name></member>
+      <member refid="classCACHE_1_1Builder_1aae61d8dd0e237f0e36a7b02b7fb7182f" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>name</name></member>
+      <member refid="classCACHE_1_1Builder_1abf10bca651a48eba76cecb7a29de2a94" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>offset_bits</name></member>
+      <member refid="classCACHE_1_1Builder_1aa2612ce083269b5a8bcb96aed96ed9bd" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>pq_size</name></member>
+      <member refid="classCACHE_1_1Builder_1aa5c2c8196cc5c81e80df20a593a698cf" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>prefetch_activate</name></member>
+      <member refid="classCACHE_1_1Builder_1aae557c22cafb0bf6995bb33998e9b372" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>prefetcher</name></member>
+      <member refid="classCACHE_1_1Builder_1a1ada0cdd61d12cbd6b6e389c4ca97fad" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>replacement</name></member>
+      <member refid="classCACHE_1_1Builder_1aa1f46f518e9edd1099dd911e93ca2122" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>reset_prefetch_as_load</name></member>
+      <member refid="classCACHE_1_1Builder_1af4144f4dee70d261ebfc096419179e34" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>reset_virtual_prefetch</name></member>
+      <member refid="classCACHE_1_1Builder_1a964e3e65d1a2a5381aaf4d12d2127c49" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>reset_wq_checks_full_addr</name></member>
+      <member refid="classCACHE_1_1Builder_1a1c5678f20108535b65f078a491de7890" prot="private" virt="non-virtual"><scope>CACHE::Builder</scope><name>self_type</name></member>
+      <member refid="classCACHE_1_1Builder_1a4e5239c2c9eed91ed53aa370822ef52c" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>set_prefetch_as_load</name></member>
+      <member refid="classCACHE_1_1Builder_1a9b4fda3488a7701fb7ee8cec8d24d0b9" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>set_virtual_prefetch</name></member>
+      <member refid="classCACHE_1_1Builder_1a5316a797f216d6e98bafa0812f8fea52" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>set_wq_checks_full_addr</name></member>
+      <member refid="classCACHE_1_1Builder_1acf80a5b7c399ce0ea2aab188f2b8fb9b" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>sets</name></member>
+      <member refid="classCACHE_1_1Builder_1a649126772f3028d173ae6b35de481439" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>tag_bandwidth</name></member>
+      <member refid="classCACHE_1_1Builder_1ad2738069d0635dcf88424083658ff578" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>upper_levels</name></member>
+      <member refid="classCACHE_1_1Builder_1a2a6c671c86f6b6d3be3bb5147dc4cf57" prot="public" virt="non-virtual"><scope>CACHE::Builder</scope><name>ways</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

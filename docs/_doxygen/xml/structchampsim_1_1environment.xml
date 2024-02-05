@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structchampsim_1_1environment" kind="struct" language="C++" prot="public" abstract="yes">
+    <compoundname>champsim::environment</compoundname>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structchampsim_1_1environment_1ac8036ee2d5aeb6eca8e5b84a29adb3db" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::vector&lt; std::reference_wrapper&lt; <ref refid="classO3__CPU" kindref="compound">O3_CPU</ref> &gt; &gt;</type>
+        <definition>virtual std::vector&lt; std::reference_wrapper&lt; O3_CPU &gt; &gt; champsim::environment::cpu_view</definition>
+        <argsstring>()=0</argsstring>
+        <name>cpu_view</name>
+        <qualifiedname>champsim::environment::cpu_view</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/environment.h" line="32" column="23"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1environment_1a03feb94eb343e781321dff6d2daa88f9" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::vector&lt; std::reference_wrapper&lt; <ref refid="classCACHE" kindref="compound">CACHE</ref> &gt; &gt;</type>
+        <definition>virtual std::vector&lt; std::reference_wrapper&lt; CACHE &gt; &gt; champsim::environment::cache_view</definition>
+        <argsstring>()=0</argsstring>
+        <name>cache_view</name>
+        <qualifiedname>champsim::environment::cache_view</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/environment.h" line="33" column="23"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1environment_1a1e1b8cb79e6bdcb1b39bb8d50929aeb0" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::vector&lt; std::reference_wrapper&lt; <ref refid="classPageTableWalker" kindref="compound">PageTableWalker</ref> &gt; &gt;</type>
+        <definition>virtual std::vector&lt; std::reference_wrapper&lt; PageTableWalker &gt; &gt; champsim::environment::ptw_view</definition>
+        <argsstring>()=0</argsstring>
+        <name>ptw_view</name>
+        <qualifiedname>champsim::environment::ptw_view</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/environment.h" line="34" column="23"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1environment_1a3b0c12ce29f83bae74a6006964c70076" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type><ref refid="classMEMORY__CONTROLLER" kindref="compound">MEMORY_CONTROLLER</ref> &amp;</type>
+        <definition>virtual MEMORY_CONTROLLER &amp; champsim::environment::dram_view</definition>
+        <argsstring>()=0</argsstring>
+        <name>dram_view</name>
+        <qualifiedname>champsim::environment::dram_view</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/environment.h" line="35" column="29"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1environment_1a2794fa29be49e8091455718a4014ae15" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>std::vector&lt; std::reference_wrapper&lt; <ref refid="classchampsim_1_1operable" kindref="compound">operable</ref> &gt; &gt;</type>
+        <definition>virtual std::vector&lt; std::reference_wrapper&lt; operable &gt; &gt; champsim::environment::operable_view</definition>
+        <argsstring>()=0</argsstring>
+        <name>operable_view</name>
+        <qualifiedname>champsim::environment::operable_view</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/environment.h" line="36" column="23"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/environment.h" line="31" column="1" bodyfile="/github/workspace/inc/environment.h" bodystart="31" bodyend="37"/>
+    <listofallmembers>
+      <member refid="structchampsim_1_1environment_1a03feb94eb343e781321dff6d2daa88f9" prot="public" virt="pure-virtual"><scope>champsim::environment</scope><name>cache_view</name></member>
+      <member refid="structchampsim_1_1environment_1ac8036ee2d5aeb6eca8e5b84a29adb3db" prot="public" virt="pure-virtual"><scope>champsim::environment</scope><name>cpu_view</name></member>
+      <member refid="structchampsim_1_1environment_1a3b0c12ce29f83bae74a6006964c70076" prot="public" virt="pure-virtual"><scope>champsim::environment</scope><name>dram_view</name></member>
+      <member refid="structchampsim_1_1environment_1a2794fa29be49e8091455718a4014ae15" prot="public" virt="pure-virtual"><scope>champsim::environment</scope><name>operable_view</name></member>
+      <member refid="structchampsim_1_1environment_1a1e1b8cb79e6bdcb1b39bb8d50929aeb0" prot="public" virt="pure-virtual"><scope>champsim::environment</scope><name>ptw_view</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

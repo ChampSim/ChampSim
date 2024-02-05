@@ -1,0 +1,1593 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classO3__CPU" kind="class" language="C++" prot="public">
+    <compoundname>O3_CPU</compoundname>
+    <basecompoundref refid="classchampsim_1_1operable" prot="public" virt="non-virtual">champsim::operable</basecompoundref>
+    <innerclass refid="classO3__CPU_1_1Builder" prot="public">O3_CPU::Builder</innerclass>
+    <innerclass refid="classO3__CPU_1_1builder__conversion__tag" prot="public">O3_CPU::builder_conversion_tag</innerclass>
+    <innerclass refid="structO3__CPU_1_1dib__shift" prot="public">O3_CPU::dib_shift</innerclass>
+    <innerclass refid="structO3__CPU_1_1module__concept" prot="public">O3_CPU::module_concept</innerclass>
+    <innerclass refid="structO3__CPU_1_1module__model" prot="public">O3_CPU::module_model</innerclass>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classO3__CPU_1abcfbaf8b66d91e4ec8711e156fcfd8e4" prot="public" static="no">
+        <type><ref refid="structcpu__stats" kindref="compound">cpu_stats</ref></type>
+        <definition>using O3_CPU::stats_type =  cpu_stats</definition>
+        <argsstring></argsstring>
+        <name>stats_type</name>
+        <qualifiedname>O3_CPU::stats_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="113" column="3" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="113" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classO3__CPU_1a82312302c9e130ff1f39ffc6b31719fd" prot="public" static="no">
+        <type>champsim::lru_table&lt; uint64_t, <ref refid="structO3__CPU_1_1dib__shift" kindref="compound">dib_shift</ref>, <ref refid="structO3__CPU_1_1dib__shift" kindref="compound">dib_shift</ref> &gt;</type>
+        <definition>using O3_CPU::dib_type =  champsim::lru_table&lt;uint64_t, dib_shift, dib_shift&gt;</definition>
+        <argsstring></argsstring>
+        <name>dib_type</name>
+        <qualifiedname>O3_CPU::dib_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="122" column="3" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="122" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classO3__CPU_1aaa6f3db1ef7b2e60fb1d0919715f72f7" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t O3_CPU::cpu</definition>
+        <argsstring></argsstring>
+        <name>cpu</name>
+        <qualifiedname>O3_CPU::cpu</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="97" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="97" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a31eea43a61992dc6f62ca919ccead65c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::begin_phase_cycle</definition>
+        <argsstring></argsstring>
+        <name>begin_phase_cycle</name>
+        <qualifiedname>O3_CPU::begin_phase_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="100" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="100" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ac40be957036ce0ecc5480205e1a09586" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::begin_phase_instr</definition>
+        <argsstring></argsstring>
+        <name>begin_phase_instr</name>
+        <qualifiedname>O3_CPU::begin_phase_instr</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="101" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="101" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a41ebba65295b6d9f1cbbbd8fd67860f0" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::finish_phase_cycle</definition>
+        <argsstring></argsstring>
+        <name>finish_phase_cycle</name>
+        <qualifiedname>O3_CPU::finish_phase_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="102" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a66017ad87a450fe679c2be0e7aff0d8f" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::finish_phase_instr</definition>
+        <argsstring></argsstring>
+        <name>finish_phase_instr</name>
+        <qualifiedname>O3_CPU::finish_phase_instr</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="103" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="103" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a9edcf834ed70602f15d6e43ffcd675c4" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::last_heartbeat_cycle</definition>
+        <argsstring></argsstring>
+        <name>last_heartbeat_cycle</name>
+        <qualifiedname>O3_CPU::last_heartbeat_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="104" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="104" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a0f45b612a59fb5bf2b57621998f7390d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::last_heartbeat_instr</definition>
+        <argsstring></argsstring>
+        <name>last_heartbeat_instr</name>
+        <qualifiedname>O3_CPU::last_heartbeat_instr</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="105" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="105" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ad4bf4f900d6e82f7cd5b1241f78d3f80" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::next_print_instruction</definition>
+        <argsstring></argsstring>
+        <name>next_print_instruction</name>
+        <qualifiedname>O3_CPU::next_print_instruction</qualifiedname>
+        <initializer>= STAT_PRINTING_PERIOD</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="106" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="106" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1af038f22c02b6f1dabc6de5319faf5aea" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::num_retired</definition>
+        <argsstring></argsstring>
+        <name>num_retired</name>
+        <qualifiedname>O3_CPU::num_retired</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="109" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="109" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a47fcab87c6c75497931055afcec52826" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool O3_CPU::show_heartbeat</definition>
+        <argsstring></argsstring>
+        <name>show_heartbeat</name>
+        <qualifiedname>O3_CPU::show_heartbeat</qualifiedname>
+        <initializer>= true</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="111" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="111" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a18726bbb51b44c849e227ae10da7273f" prot="public" static="no" mutable="no">
+        <type><ref refid="structcpu__stats" kindref="compound">stats_type</ref></type>
+        <definition>stats_type O3_CPU::roi_stats</definition>
+        <argsstring></argsstring>
+        <name>roi_stats</name>
+        <qualifiedname>O3_CPU::roi_stats</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="115" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="115" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a3dfd31b572ab9bb6f9a8adeca419f5b6" prot="public" static="no" mutable="no">
+        <type><ref refid="structcpu__stats" kindref="compound">stats_type</ref></type>
+        <definition>stats_type O3_CPU::sim_stats</definition>
+        <argsstring></argsstring>
+        <name>sim_stats</name>
+        <qualifiedname>O3_CPU::sim_stats</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="115" column="24" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="115" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a5b8c993e6da56923101df43edecfe677" prot="public" static="no" mutable="no">
+        <type>dib_type</type>
+        <definition>dib_type O3_CPU::DIB</definition>
+        <argsstring></argsstring>
+        <name>DIB</name>
+        <qualifiedname>O3_CPU::DIB</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="123" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="123" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a06da7d5d053c990526654743f28cfd44" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; O3_CPU::IFETCH_BUFFER</definition>
+        <argsstring></argsstring>
+        <name>IFETCH_BUFFER</name>
+        <qualifiedname>O3_CPU::IFETCH_BUFFER</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="126" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="126" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1aab8e9c020c443973db7446021bb7cfe1" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; O3_CPU::DISPATCH_BUFFER</definition>
+        <argsstring></argsstring>
+        <name>DISPATCH_BUFFER</name>
+        <qualifiedname>O3_CPU::DISPATCH_BUFFER</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="127" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="127" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a6413c6e56e0b143bd15bc74874d9114f" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; O3_CPU::DECODE_BUFFER</definition>
+        <argsstring></argsstring>
+        <name>DECODE_BUFFER</name>
+        <qualifiedname>O3_CPU::DECODE_BUFFER</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="128" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="128" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1af61ae17ffbe4ab3b1017c2d867535ac7" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; O3_CPU::ROB</definition>
+        <argsstring></argsstring>
+        <name>ROB</name>
+        <qualifiedname>O3_CPU::ROB</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="129" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="129" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1abba31cb45bf0beeee90ef96ea158a76a" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; std::optional&lt; <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &gt; &gt;</type>
+        <definition>std::vector&lt;std::optional&lt;LSQ_ENTRY&gt; &gt; O3_CPU::LQ</definition>
+        <argsstring></argsstring>
+        <name>LQ</name>
+        <qualifiedname>O3_CPU::LQ</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="131" column="15" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="131" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ac126ac33a3fc7c3928d22baa0bcd3ad7" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &gt;</type>
+        <definition>std::deque&lt;LSQ_ENTRY&gt; O3_CPU::SQ</definition>
+        <argsstring></argsstring>
+        <name>SQ</name>
+        <qualifiedname>O3_CPU::SQ</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="132" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="132" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a8113deef9350a66835d074b3403f9b9e" prot="public" static="no" mutable="no">
+        <type>std::array&lt; std::vector&lt; std::reference_wrapper&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt; &gt;, std::numeric_limits&lt; uint8_t &gt;::max()+1 &gt;</type>
+        <definition>std::array&lt;std::vector&lt;std::reference_wrapper&lt;ooo_model_instr&gt; &gt;, std::numeric_limits&lt;uint8_t&gt;::max() + 1&gt; O3_CPU::reg_producers</definition>
+        <argsstring></argsstring>
+        <name>reg_producers</name>
+        <qualifiedname>O3_CPU::reg_producers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="134" column="15" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="134" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1adbd091f8d2158316eafb97399efe4dce" prot="public" static="no" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t O3_CPU::IFETCH_BUFFER_SIZE</definition>
+        <argsstring></argsstring>
+        <name>IFETCH_BUFFER_SIZE</name>
+        <qualifiedname>O3_CPU::IFETCH_BUFFER_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="137" column="21" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a1ca136cd90005fae77a75e7685c43468" prot="public" static="no" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t O3_CPU::DISPATCH_BUFFER_SIZE</definition>
+        <argsstring></argsstring>
+        <name>DISPATCH_BUFFER_SIZE</name>
+        <qualifiedname>O3_CPU::DISPATCH_BUFFER_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="137" column="40" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a8759ddac1bc04b4cbffbe3c5be397a42" prot="public" static="no" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t O3_CPU::DECODE_BUFFER_SIZE</definition>
+        <argsstring></argsstring>
+        <name>DECODE_BUFFER_SIZE</name>
+        <qualifiedname>O3_CPU::DECODE_BUFFER_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="137" column="61" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a354bcb2087dee7bc0ff243ebb5e942c1" prot="public" static="no" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t O3_CPU::ROB_SIZE</definition>
+        <argsstring></argsstring>
+        <name>ROB_SIZE</name>
+        <qualifiedname>O3_CPU::ROB_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="137" column="80" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1af9d3f93089addce495da8556a83602e3" prot="public" static="no" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t O3_CPU::SQ_SIZE</definition>
+        <argsstring></argsstring>
+        <name>SQ_SIZE</name>
+        <qualifiedname>O3_CPU::SQ_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="137" column="89" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a6b6a04e016725c9deceb5665dd9cda2a" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::FETCH_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>FETCH_WIDTH</name>
+        <qualifiedname>O3_CPU::FETCH_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="138" column="18" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a063ffc7200d91dd959b5d76031f6df8e" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::DECODE_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>DECODE_WIDTH</name>
+        <qualifiedname>O3_CPU::DECODE_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="138" column="30" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a8c0b7335948e1211b99eab5b23fef4ce" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::DISPATCH_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>DISPATCH_WIDTH</name>
+        <qualifiedname>O3_CPU::DISPATCH_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="138" column="43" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a08a29d13b948f1e37d285f317a8e92d3" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::SCHEDULER_SIZE</definition>
+        <argsstring></argsstring>
+        <name>SCHEDULER_SIZE</name>
+        <qualifiedname>O3_CPU::SCHEDULER_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="138" column="58" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1aef8e05f05fc55aa6ba21acf332be2af1" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::EXEC_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>EXEC_WIDTH</name>
+        <qualifiedname>O3_CPU::EXEC_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="138" column="73" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a05f9f36016f725868de026246a1344e8" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::LQ_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>LQ_WIDTH</name>
+        <qualifiedname>O3_CPU::LQ_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="139" column="18" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="139" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1afb316b43eaa884fcf405e2d9c5441c3a" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::SQ_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>SQ_WIDTH</name>
+        <qualifiedname>O3_CPU::SQ_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="139" column="27" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="139" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ade87f0f21daf3eead5ef7a7b245ab877" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::RETIRE_WIDTH</definition>
+        <argsstring></argsstring>
+        <name>RETIRE_WIDTH</name>
+        <qualifiedname>O3_CPU::RETIRE_WIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="140" column="18" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="140" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a526a30ee6327c03d4520572ba08f852f" prot="public" static="no" mutable="no">
+        <type>const unsigned</type>
+        <definition>const unsigned O3_CPU::BRANCH_MISPREDICT_PENALTY</definition>
+        <argsstring></argsstring>
+        <name>BRANCH_MISPREDICT_PENALTY</name>
+        <qualifiedname>O3_CPU::BRANCH_MISPREDICT_PENALTY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="141" column="18" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a686edcf08a5dd341c16e8efb5efcd348" prot="public" static="no" mutable="no">
+        <type>const unsigned</type>
+        <definition>const unsigned O3_CPU::DISPATCH_LATENCY</definition>
+        <argsstring></argsstring>
+        <name>DISPATCH_LATENCY</name>
+        <qualifiedname>O3_CPU::DISPATCH_LATENCY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="141" column="44" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a9c2575b8709670ffc7c0c9ecdcbd163c" prot="public" static="no" mutable="no">
+        <type>const unsigned</type>
+        <definition>const unsigned O3_CPU::DECODE_LATENCY</definition>
+        <argsstring></argsstring>
+        <name>DECODE_LATENCY</name>
+        <qualifiedname>O3_CPU::DECODE_LATENCY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="141" column="61" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a31b447d69eb4de2d64379455eaf9ef59" prot="public" static="no" mutable="no">
+        <type>const unsigned</type>
+        <definition>const unsigned O3_CPU::SCHEDULING_LATENCY</definition>
+        <argsstring></argsstring>
+        <name>SCHEDULING_LATENCY</name>
+        <qualifiedname>O3_CPU::SCHEDULING_LATENCY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="141" column="76" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1afc1678357873313e77e63577b8ba8ec4" prot="public" static="no" mutable="no">
+        <type>const unsigned</type>
+        <definition>const unsigned O3_CPU::EXEC_LATENCY</definition>
+        <argsstring></argsstring>
+        <name>EXEC_LATENCY</name>
+        <qualifiedname>O3_CPU::EXEC_LATENCY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="141" column="95" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a7467b8b0500e85af06af882eafbbfda2" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::L1I_BANDWIDTH</definition>
+        <argsstring></argsstring>
+        <name>L1I_BANDWIDTH</name>
+        <qualifiedname>O3_CPU::L1I_BANDWIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="142" column="18" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="142" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ae5a56c8d09954be798c449538e7e72f4" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int O3_CPU::L1D_BANDWIDTH</definition>
+        <argsstring></argsstring>
+        <name>L1D_BANDWIDTH</name>
+        <qualifiedname>O3_CPU::L1D_BANDWIDTH</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="142" column="32" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="142" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1aec7cac9a55aa9a83fbb2a13504f3e033" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::fetch_resume_cycle</definition>
+        <argsstring></argsstring>
+        <name>fetch_resume_cycle</name>
+        <qualifiedname>O3_CPU::fetch_resume_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="145" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="145" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a7d01204dc338e02da30740c1e58f541a" prot="public" static="no" mutable="no">
+        <type>const long</type>
+        <definition>const long O3_CPU::IN_QUEUE_SIZE</definition>
+        <argsstring></argsstring>
+        <name>IN_QUEUE_SIZE</name>
+        <qualifiedname>O3_CPU::IN_QUEUE_SIZE</qualifiedname>
+        <initializer>= 2 * FETCH_WIDTH</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="147" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="147" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a2f7a98616ecd94b63edb02d893f5698f" prot="public" static="no" mutable="no">
+        <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;</type>
+        <definition>std::deque&lt;ooo_model_instr&gt; O3_CPU::input_queue</definition>
+        <argsstring></argsstring>
+        <name>input_queue</name>
+        <qualifiedname>O3_CPU::input_queue</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="148" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="148" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1a7b241d79056d9723cc0097a1dd2308df" prot="public" static="no" mutable="no">
+        <type><ref refid="classCacheBus" kindref="compound">CacheBus</ref></type>
+        <definition>CacheBus O3_CPU::L1I_bus</definition>
+        <argsstring></argsstring>
+        <name>L1I_bus</name>
+        <qualifiedname>O3_CPU::L1I_bus</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="150" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="150" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ac8b41ff25d0260a8f871d66d4140b6e7" prot="public" static="no" mutable="no">
+        <type><ref refid="classCacheBus" kindref="compound">CacheBus</ref></type>
+        <definition>CacheBus O3_CPU::L1D_bus</definition>
+        <argsstring></argsstring>
+        <name>L1D_bus</name>
+        <qualifiedname>O3_CPU::L1D_bus</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="150" column="20" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="150" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1af65b5ccdae1041dd801c5e2f6523d978" prot="public" static="no" mutable="no">
+        <type><ref refid="classCACHE" kindref="compound">CACHE</ref> *</type>
+        <definition>CACHE* O3_CPU::l1i</definition>
+        <argsstring></argsstring>
+        <name>l1i</name>
+        <qualifiedname>O3_CPU::l1i</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="151" column="9" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="151" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classO3__CPU_1ab354eaf15532af4beb519372e89b26a8" prot="public" static="no" mutable="no">
+        <type>std::unique_ptr&lt; <ref refid="structO3__CPU_1_1module__concept" kindref="compound">module_concept</ref> &gt;</type>
+        <definition>std::unique_ptr&lt;module_concept&gt; O3_CPU::module_pimpl</definition>
+        <argsstring></argsstring>
+        <name>module_pimpl</name>
+        <qualifiedname>O3_CPU::module_pimpl</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="221" column="19" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="221" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classO3__CPU_1a4b28a70f445af09e40248397b8e59f13" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void O3_CPU::initialize</definition>
+        <argsstring>() override final</argsstring>
+        <name>initialize</name>
+        <qualifiedname>O3_CPU::initialize</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1aadc42488425d7b667c423bb30198c827">initialize</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="153" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="73" bodyend="78"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ad4cf28e3995dc85d06425acf0f6558de" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>long</type>
+        <definition>long O3_CPU::operate</definition>
+        <argsstring>() override final</argsstring>
+        <name>operate</name>
+        <qualifiedname>O3_CPU::operate</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1ad061945ce3179fa00d77a6e30e97ad84">operate</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="154" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="35" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a94764669541a5568100aa2697317a2a2" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void O3_CPU::begin_phase</definition>
+        <argsstring>() override final</argsstring>
+        <name>begin_phase</name>
+        <qualifiedname>O3_CPU::begin_phase</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1a4f44b35a5dbd9855d7dde0fcd45e39d4">begin_phase</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="155" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="80" bodyend="91"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a5c172860e0784db0feb59a9352fdf526" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void O3_CPU::end_phase</definition>
+        <argsstring>(unsigned cpu) override final</argsstring>
+        <name>end_phase</name>
+        <qualifiedname>O3_CPU::end_phase</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1a2942511f46fbf590b7531d299fe60dac">end_phase</reimplements>
+        <param>
+          <type>unsigned</type>
+          <declname>cpu</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="156" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="93" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a954399eb1c51dedcd785f0f4420a0325" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::initialize_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>initialize_instruction</name>
+        <qualifiedname>O3_CPU::initialize_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="158" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="107" bodyend="124"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a00afb88596267ffc29cc9e2b19ab7d2a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::check_dib</definition>
+        <argsstring>()</argsstring>
+        <name>check_dib</name>
+        <qualifiedname>O3_CPU::check_dib</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="159" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="200" bodyend="207"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a430a71c7792655639db8a77830235310" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::fetch_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>fetch_instruction</name>
+        <qualifiedname>O3_CPU::fetch_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="160" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="226" bodyend="257"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ab1064ddc760d9df79d88e67169f77c6b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::promote_to_decode</definition>
+        <argsstring>()</argsstring>
+        <name>promote_to_decode</name>
+        <qualifiedname>O3_CPU::promote_to_decode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="161" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="275" bodyend="288"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a712969a5e8d076066aae5916fe4e6d1d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::decode_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>decode_instruction</name>
+        <qualifiedname>O3_CPU::decode_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="162" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="290" bodyend="321"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a13ac16b09d3c1d384cec881f041fcbb1" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::dispatch_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>dispatch_instruction</name>
+        <qualifiedname>O3_CPU::dispatch_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="163" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="325" bodyend="342"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1afd140d571d30f0cc38ebac93b0a3f236" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::schedule_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>schedule_instruction</name>
+        <qualifiedname>O3_CPU::schedule_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="164" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="344" bodyend="359"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ad644dba0ea73b56b7dd333dd7ac853f2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::execute_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>execute_instruction</name>
+        <qualifiedname>O3_CPU::execute_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="165" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="385" bodyend="396"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a7171926ace273d181ad8a1deb8260d11" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::operate_lsq</definition>
+        <argsstring>()</argsstring>
+        <name>operate_lsq</name>
+        <qualifiedname>O3_CPU::operate_lsq</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="166" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="458" bodyend="495"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a6fa9cd7c5a0402f0e32280bac8ff0c78" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::complete_inflight_instruction</definition>
+        <argsstring>()</argsstring>
+        <name>complete_inflight_instruction</name>
+        <qualifiedname>O3_CPU::complete_inflight_instruction</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="167" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="563" bodyend="575"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a754c6b399e98f92af95256d447ec3f2b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::handle_memory_return</definition>
+        <argsstring>()</argsstring>
+        <name>handle_memory_return</name>
+        <qualifiedname>O3_CPU::handle_memory_return</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="168" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="577" bodyend="620"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1aefd487ac3b63a6a326692ade0a9ed44b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>long</type>
+        <definition>long O3_CPU::retire_rob</definition>
+        <argsstring>()</argsstring>
+        <name>retire_rob</name>
+        <qualifiedname>O3_CPU::retire_rob</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="169" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="622" bodyend="633"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a752b3770b2b581fa2eb92e4f406a881a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool O3_CPU::do_init_instruction</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_init_instruction</name>
+        <qualifiedname>O3_CPU::do_init_instruction</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="171" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="188" bodyend="198"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a3813950d763654431daf5aa56d1f864a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool O3_CPU::do_predict_branch</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_predict_branch</name>
+        <qualifiedname>O3_CPU::do_predict_branch</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="172" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="148" bodyend="186"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a7bc34824747b6b3a1c756560804cebde" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_check_dib</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_check_dib</name>
+        <qualifiedname>O3_CPU::do_check_dib</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="173" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="209" bodyend="224"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a2329218f4aee42e6df2bff194d65c482" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool O3_CPU::do_fetch_instruction</definition>
+        <argsstring>(std::deque&lt; ooo_model_instr &gt;::iterator begin, std::deque&lt; ooo_model_instr &gt;::iterator end)</argsstring>
+        <name>do_fetch_instruction</name>
+        <qualifiedname>O3_CPU::do_fetch_instruction</qualifiedname>
+        <param>
+          <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;::iterator</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;::iterator</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="174" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="259" bodyend="273"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1aa641eb22e198a5548bdc5b0a652859b2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_dib_update</definition>
+        <argsstring>(const ooo_model_instr &amp;instr)</argsstring>
+        <name>do_dib_update</name>
+        <qualifiedname>O3_CPU::do_dib_update</qualifiedname>
+        <param>
+          <type>const <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="175" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="323" bodyend="323"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1af60c422171e73169719f37a80927271e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_scheduling</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_scheduling</name>
+        <qualifiedname>O3_CPU::do_scheduling</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="176" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="361" bodyend="383"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1af866eb55df93f75efd4133b0f4869d19" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_execution</definition>
+        <argsstring>(ooo_model_instr &amp;rob_it)</argsstring>
+        <name>do_execution</name>
+        <qualifiedname>O3_CPU::do_execution</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>rob_it</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="177" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="398" bodyend="416"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a9f644ee51d92d3846e17e1b3aebf400c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_memory_scheduling</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_memory_scheduling</name>
+        <qualifiedname>O3_CPU::do_memory_scheduling</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="178" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="418" bodyend="456"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a92765cb51f3ede8719c8bf194df869a5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_complete_execution</definition>
+        <argsstring>(ooo_model_instr &amp;instr)</argsstring>
+        <name>do_complete_execution</name>
+        <qualifiedname>O3_CPU::do_complete_execution</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="179" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="539" bodyend="561"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ac082e3ec61c631118c12ab15916b1fef" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_sq_forward_to_lq</definition>
+        <argsstring>(LSQ_ENTRY &amp;sq_entry, LSQ_ENTRY &amp;lq_entry)</argsstring>
+        <name>do_sq_forward_to_lq</name>
+        <qualifiedname>O3_CPU::do_sq_forward_to_lq</qualifiedname>
+        <param>
+          <type><ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &amp;</type>
+          <declname>sq_entry</declname>
+        </param>
+        <param>
+          <type><ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &amp;</type>
+          <declname>lq_entry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="180" column="8"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1aaeaea99f1eba80a638c4f761578e8241" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::do_finish_store</definition>
+        <argsstring>(const LSQ_ENTRY &amp;sq_entry)</argsstring>
+        <name>do_finish_store</name>
+        <qualifiedname>O3_CPU::do_finish_store</qualifiedname>
+        <param>
+          <type>const <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &amp;</type>
+          <declname>sq_entry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="182" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="497" bodyend="509"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a6c0e46df97929c9f3f23cea98507ca94" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool O3_CPU::do_complete_store</definition>
+        <argsstring>(const LSQ_ENTRY &amp;sq_entry)</argsstring>
+        <name>do_complete_store</name>
+        <qualifiedname>O3_CPU::do_complete_store</qualifiedname>
+        <param>
+          <type>const <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &amp;</type>
+          <declname>sq_entry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="183" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="511" bodyend="523"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a5633c0d41157d2c5b2b8a10e78a4ed30" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool O3_CPU::execute_load</definition>
+        <argsstring>(const LSQ_ENTRY &amp;lq_entry)</argsstring>
+        <name>execute_load</name>
+        <qualifiedname>O3_CPU::execute_load</qualifiedname>
+        <param>
+          <type>const <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &amp;</type>
+          <declname>lq_entry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="184" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="525" bodyend="537"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1aaed505aa01b2be96c704449bcbb0999f" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::roi_instr</definition>
+        <argsstring>() const</argsstring>
+        <name>roi_instr</name>
+        <qualifiedname>O3_CPU::roi_instr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="186" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="186" bodyend="186"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1acfe93b766862d58f04235ee935935fd4" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::roi_cycle</definition>
+        <argsstring>() const</argsstring>
+        <name>roi_cycle</name>
+        <qualifiedname>O3_CPU::roi_cycle</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="187" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="187" bodyend="187"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ab124e603c00c46820b1e414679dba640" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::sim_instr</definition>
+        <argsstring>() const</argsstring>
+        <name>sim_instr</name>
+        <qualifiedname>O3_CPU::sim_instr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="188" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="188" bodyend="188"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a1428fa25a2b5da4d8830a3b57889b146" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>uint64_t</type>
+        <definition>uint64_t O3_CPU::sim_cycle</definition>
+        <argsstring>() const</argsstring>
+        <name>sim_cycle</name>
+        <qualifiedname>O3_CPU::sim_cycle</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="189" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="189" bodyend="189"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a9a2f77b944dec4e15af7e3251ef11bd0" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void O3_CPU::print_deadlock</definition>
+        <argsstring>() override final</argsstring>
+        <name>print_deadlock</name>
+        <qualifiedname>O3_CPU::print_deadlock</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1a19019841fc4b9a0cb245552c1425bece">print_deadlock</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="191" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="636" bodyend="668"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ad845ae16d4611b30585ef5b083ed3b96" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::impl_initialize_branch_predictor</definition>
+        <argsstring>()</argsstring>
+        <name>impl_initialize_branch_predictor</name>
+        <qualifiedname>O3_CPU::impl_initialize_branch_predictor</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="223" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="223" bodyend="223"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ad9615c4dd60233d42279bccc1f984454" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::impl_last_branch_result</definition>
+        <argsstring>(uint64_t ip, uint64_t target, uint8_t taken, uint8_t branch_type)</argsstring>
+        <name>impl_last_branch_result</name>
+        <qualifiedname>O3_CPU::impl_last_branch_result</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>ip</declname>
+        </param>
+        <param>
+          <type>uint64_t</type>
+          <declname>target</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>taken</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>branch_type</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="224" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="224" bodyend="227"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a0baf16ebc596e5805149217be58cbbd2" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>uint8_t</type>
+        <definition>uint8_t O3_CPU::impl_predict_branch</definition>
+        <argsstring>(uint64_t ip)</argsstring>
+        <name>impl_predict_branch</name>
+        <qualifiedname>O3_CPU::impl_predict_branch</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>ip</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="228" column="11" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="228" bodyend="228"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1ab1141d6baeb3f071a3dd81847f11fbc6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::impl_initialize_btb</definition>
+        <argsstring>()</argsstring>
+        <name>impl_initialize_btb</name>
+        <qualifiedname>O3_CPU::impl_initialize_btb</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="230" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="230" bodyend="230"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a4d211840a1c05f9ee7c3f5281de42427" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void O3_CPU::impl_update_btb</definition>
+        <argsstring>(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)</argsstring>
+        <name>impl_update_btb</name>
+        <qualifiedname>O3_CPU::impl_update_btb</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>ip</declname>
+        </param>
+        <param>
+          <type>uint64_t</type>
+          <declname>predicted_target</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>taken</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>branch_type</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="231" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="231" bodyend="234"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1a5e4784f5983c516c5f222400fa273bec" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::pair&lt; uint64_t, uint8_t &gt;</type>
+        <definition>std::pair&lt; uint64_t, uint8_t &gt; O3_CPU::impl_btb_prediction</definition>
+        <argsstring>(uint64_t ip)</argsstring>
+        <name>impl_btb_prediction</name>
+        <qualifiedname>O3_CPU::impl_btb_prediction</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>ip</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="235" column="13" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="235" bodyend="235"/>
+      </memberdef>
+      <memberdef kind="function" id="classO3__CPU_1aeecb45bb48db6134f656f1628e3b3d40" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>unsigned long long</type>
+            <declname>B_FLAG</declname>
+            <defname>B_FLAG</defname>
+          </param>
+          <param>
+            <type>unsigned long long</type>
+            <declname>T_FLAG</declname>
+            <defname>T_FLAG</defname>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>O3_CPU::O3_CPU</definition>
+        <argsstring>(Builder&lt; B_FLAG, T_FLAG &gt; b)</argsstring>
+        <name>O3_CPU</name>
+        <qualifiedname>O3_CPU::O3_CPU</qualifiedname>
+        <param>
+          <type><ref refid="classO3__CPU_1_1Builder" kindref="compound">Builder</ref>&lt; B_FLAG, T_FLAG &gt;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="453" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="453" bodyend="462"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>O3_CPU</label>
+        <link refid="classO3__CPU"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>champsim::operable</label>
+        <link refid="classchampsim_1_1operable"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="5">
+        <label>CACHE</label>
+        <link refid="classCACHE"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+        <childnode refid="6" relation="usage">
+          <edgelabel>lower_level</edgelabel>
+          <edgelabel>lower_translate</edgelabel>
+        </childnode>
+        <childnode refid="8" relation="usage">
+          <edgelabel>roi_stats</edgelabel>
+          <edgelabel>sim_stats</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>CacheBus</label>
+        <link refid="classCacheBus"/>
+      </node>
+      <node id="1">
+        <label>O3_CPU</label>
+        <link refid="classO3__CPU"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>roi_stats</edgelabel>
+          <edgelabel>sim_stats</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>L1D_bus</edgelabel>
+          <edgelabel>L1I_bus</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>l1i</edgelabel>
+        </childnode>
+      </node>
+      <node id="8">
+        <label>cache_stats</label>
+        <link refid="structcache__stats"/>
+      </node>
+      <node id="7">
+        <label>champsim::cache_queue_stats</label>
+        <link refid="structchampsim_1_1cache__queue__stats"/>
+      </node>
+      <node id="6">
+        <label>champsim::channel</label>
+        <link refid="classchampsim_1_1channel"/>
+        <childnode refid="7" relation="usage">
+          <edgelabel>roi_stats</edgelabel>
+          <edgelabel>sim_stats</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>champsim::operable</label>
+        <link refid="classchampsim_1_1operable"/>
+      </node>
+      <node id="3">
+        <label>cpu_stats</label>
+        <link refid="structcpu__stats"/>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/ooo_cpu.h" line="94" column="1" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="95" bodyend="463"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1operable_1a3772b0e41a34c9c8384a44108d6f6165" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>_operate</name></member>
+      <member refid="classO3__CPU_1a94764669541a5568100aa2697317a2a2" prot="public" virt="virtual"><scope>O3_CPU</scope><name>begin_phase</name></member>
+      <member refid="classO3__CPU_1a31eea43a61992dc6f62ca919ccead65c" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>begin_phase_cycle</name></member>
+      <member refid="classO3__CPU_1ac40be957036ce0ecc5480205e1a09586" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>begin_phase_instr</name></member>
+      <member refid="classO3__CPU_1a526a30ee6327c03d4520572ba08f852f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>BRANCH_MISPREDICT_PENALTY</name></member>
+      <member refid="classO3__CPU_1a00afb88596267ffc29cc9e2b19ab7d2a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>check_dib</name></member>
+      <member refid="classchampsim_1_1operable_1ad92c48b440cad47adad20c0b3008a541" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>CLOCK_SCALE</name></member>
+      <member refid="classO3__CPU_1a6fa9cd7c5a0402f0e32280bac8ff0c78" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>complete_inflight_instruction</name></member>
+      <member refid="classO3__CPU_1aaa6f3db1ef7b2e60fb1d0919715f72f7" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>cpu</name></member>
+      <member refid="classchampsim_1_1operable_1a7c01174851f4ac835de1063844a335b6" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>current_cycle</name></member>
+      <member refid="classO3__CPU_1a6413c6e56e0b143bd15bc74874d9114f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DECODE_BUFFER</name></member>
+      <member refid="classO3__CPU_1a8759ddac1bc04b4cbffbe3c5be397a42" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DECODE_BUFFER_SIZE</name></member>
+      <member refid="classO3__CPU_1a712969a5e8d076066aae5916fe4e6d1d" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>decode_instruction</name></member>
+      <member refid="classO3__CPU_1a9c2575b8709670ffc7c0c9ecdcbd163c" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DECODE_LATENCY</name></member>
+      <member refid="classO3__CPU_1a063ffc7200d91dd959b5d76031f6df8e" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DECODE_WIDTH</name></member>
+      <member refid="classO3__CPU_1a5b8c993e6da56923101df43edecfe677" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DIB</name></member>
+      <member refid="classO3__CPU_1a82312302c9e130ff1f39ffc6b31719fd" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>dib_type</name></member>
+      <member refid="classO3__CPU_1aab8e9c020c443973db7446021bb7cfe1" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DISPATCH_BUFFER</name></member>
+      <member refid="classO3__CPU_1a1ca136cd90005fae77a75e7685c43468" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DISPATCH_BUFFER_SIZE</name></member>
+      <member refid="classO3__CPU_1a13ac16b09d3c1d384cec881f041fcbb1" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>dispatch_instruction</name></member>
+      <member refid="classO3__CPU_1a686edcf08a5dd341c16e8efb5efcd348" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DISPATCH_LATENCY</name></member>
+      <member refid="classO3__CPU_1a8c0b7335948e1211b99eab5b23fef4ce" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>DISPATCH_WIDTH</name></member>
+      <member refid="classO3__CPU_1a7bc34824747b6b3a1c756560804cebde" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_check_dib</name></member>
+      <member refid="classO3__CPU_1a92765cb51f3ede8719c8bf194df869a5" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_complete_execution</name></member>
+      <member refid="classO3__CPU_1a6c0e46df97929c9f3f23cea98507ca94" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_complete_store</name></member>
+      <member refid="classO3__CPU_1aa641eb22e198a5548bdc5b0a652859b2" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_dib_update</name></member>
+      <member refid="classO3__CPU_1af866eb55df93f75efd4133b0f4869d19" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_execution</name></member>
+      <member refid="classO3__CPU_1a2329218f4aee42e6df2bff194d65c482" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_fetch_instruction</name></member>
+      <member refid="classO3__CPU_1aaeaea99f1eba80a638c4f761578e8241" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_finish_store</name></member>
+      <member refid="classO3__CPU_1a752b3770b2b581fa2eb92e4f406a881a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_init_instruction</name></member>
+      <member refid="classO3__CPU_1a9f644ee51d92d3846e17e1b3aebf400c" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_memory_scheduling</name></member>
+      <member refid="classO3__CPU_1a3813950d763654431daf5aa56d1f864a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_predict_branch</name></member>
+      <member refid="classO3__CPU_1af60c422171e73169719f37a80927271e" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_scheduling</name></member>
+      <member refid="classO3__CPU_1ac082e3ec61c631118c12ab15916b1fef" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>do_sq_forward_to_lq</name></member>
+      <member refid="classO3__CPU_1a5c172860e0784db0feb59a9352fdf526" prot="public" virt="virtual"><scope>O3_CPU</scope><name>end_phase</name></member>
+      <member refid="classO3__CPU_1afc1678357873313e77e63577b8ba8ec4" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>EXEC_LATENCY</name></member>
+      <member refid="classO3__CPU_1aef8e05f05fc55aa6ba21acf332be2af1" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>EXEC_WIDTH</name></member>
+      <member refid="classO3__CPU_1ad644dba0ea73b56b7dd333dd7ac853f2" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>execute_instruction</name></member>
+      <member refid="classO3__CPU_1a5633c0d41157d2c5b2b8a10e78a4ed30" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>execute_load</name></member>
+      <member refid="classO3__CPU_1a430a71c7792655639db8a77830235310" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>fetch_instruction</name></member>
+      <member refid="classO3__CPU_1aec7cac9a55aa9a83fbb2a13504f3e033" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>fetch_resume_cycle</name></member>
+      <member refid="classO3__CPU_1a6b6a04e016725c9deceb5665dd9cda2a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>FETCH_WIDTH</name></member>
+      <member refid="classO3__CPU_1a41ebba65295b6d9f1cbbbd8fd67860f0" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>finish_phase_cycle</name></member>
+      <member refid="classO3__CPU_1a66017ad87a450fe679c2be0e7aff0d8f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>finish_phase_instr</name></member>
+      <member refid="classO3__CPU_1a754c6b399e98f92af95256d447ec3f2b" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>handle_memory_return</name></member>
+      <member refid="classO3__CPU_1a06da7d5d053c990526654743f28cfd44" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>IFETCH_BUFFER</name></member>
+      <member refid="classO3__CPU_1adbd091f8d2158316eafb97399efe4dce" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>IFETCH_BUFFER_SIZE</name></member>
+      <member refid="classO3__CPU_1a5e4784f5983c516c5f222400fa273bec" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_btb_prediction</name></member>
+      <member refid="classO3__CPU_1ad845ae16d4611b30585ef5b083ed3b96" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_initialize_branch_predictor</name></member>
+      <member refid="classO3__CPU_1ab1141d6baeb3f071a3dd81847f11fbc6" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_initialize_btb</name></member>
+      <member refid="classO3__CPU_1ad9615c4dd60233d42279bccc1f984454" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_last_branch_result</name></member>
+      <member refid="classO3__CPU_1a0baf16ebc596e5805149217be58cbbd2" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_predict_branch</name></member>
+      <member refid="classO3__CPU_1a4d211840a1c05f9ee7c3f5281de42427" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>impl_update_btb</name></member>
+      <member refid="classO3__CPU_1a7d01204dc338e02da30740c1e58f541a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>IN_QUEUE_SIZE</name></member>
+      <member refid="classO3__CPU_1a4b28a70f445af09e40248397b8e59f13" prot="public" virt="virtual"><scope>O3_CPU</scope><name>initialize</name></member>
+      <member refid="classO3__CPU_1a954399eb1c51dedcd785f0f4420a0325" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>initialize_instruction</name></member>
+      <member refid="classO3__CPU_1a2f7a98616ecd94b63edb02d893f5698f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>input_queue</name></member>
+      <member refid="classO3__CPU_1ae5a56c8d09954be798c449538e7e72f4" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>L1D_BANDWIDTH</name></member>
+      <member refid="classO3__CPU_1ac8b41ff25d0260a8f871d66d4140b6e7" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>L1D_bus</name></member>
+      <member refid="classO3__CPU_1af65b5ccdae1041dd801c5e2f6523d978" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>l1i</name></member>
+      <member refid="classO3__CPU_1a7467b8b0500e85af06af882eafbbfda2" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>L1I_BANDWIDTH</name></member>
+      <member refid="classO3__CPU_1a7b241d79056d9723cc0097a1dd2308df" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>L1I_bus</name></member>
+      <member refid="classO3__CPU_1a9edcf834ed70602f15d6e43ffcd675c4" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>last_heartbeat_cycle</name></member>
+      <member refid="classO3__CPU_1a0f45b612a59fb5bf2b57621998f7390d" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>last_heartbeat_instr</name></member>
+      <member refid="classchampsim_1_1operable_1a01987ce82bc1614f66f559e4857f78ba" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>leap_operation</name></member>
+      <member refid="classO3__CPU_1abba31cb45bf0beeee90ef96ea158a76a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>LQ</name></member>
+      <member refid="classO3__CPU_1a05f9f36016f725868de026246a1344e8" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>LQ_WIDTH</name></member>
+      <member refid="classO3__CPU_1ab354eaf15532af4beb519372e89b26a8" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>module_pimpl</name></member>
+      <member refid="classO3__CPU_1ad4bf4f900d6e82f7cd5b1241f78d3f80" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>next_print_instruction</name></member>
+      <member refid="classO3__CPU_1af038f22c02b6f1dabc6de5319faf5aea" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>num_retired</name></member>
+      <member refid="classO3__CPU_1aeecb45bb48db6134f656f1628e3b3d40" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>O3_CPU</name></member>
+      <member refid="classchampsim_1_1operable_1aae28abe79c0122d7eda58039f2235786" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>operable</name></member>
+      <member refid="classO3__CPU_1ad4cf28e3995dc85d06425acf0f6558de" prot="public" virt="virtual"><scope>O3_CPU</scope><name>operate</name></member>
+      <member refid="classO3__CPU_1a7171926ace273d181ad8a1deb8260d11" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>operate_lsq</name></member>
+      <member refid="classO3__CPU_1a9a2f77b944dec4e15af7e3251ef11bd0" prot="public" virt="virtual"><scope>O3_CPU</scope><name>print_deadlock</name></member>
+      <member refid="classO3__CPU_1ab1064ddc760d9df79d88e67169f77c6b" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>promote_to_decode</name></member>
+      <member refid="classO3__CPU_1a8113deef9350a66835d074b3403f9b9e" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>reg_producers</name></member>
+      <member refid="classO3__CPU_1aefd487ac3b63a6a326692ade0a9ed44b" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>retire_rob</name></member>
+      <member refid="classO3__CPU_1ade87f0f21daf3eead5ef7a7b245ab877" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>RETIRE_WIDTH</name></member>
+      <member refid="classO3__CPU_1af61ae17ffbe4ab3b1017c2d867535ac7" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>ROB</name></member>
+      <member refid="classO3__CPU_1a354bcb2087dee7bc0ff243ebb5e942c1" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>ROB_SIZE</name></member>
+      <member refid="classO3__CPU_1acfe93b766862d58f04235ee935935fd4" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>roi_cycle</name></member>
+      <member refid="classO3__CPU_1aaed505aa01b2be96c704449bcbb0999f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>roi_instr</name></member>
+      <member refid="classO3__CPU_1a18726bbb51b44c849e227ae10da7273f" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>roi_stats</name></member>
+      <member refid="classO3__CPU_1afd140d571d30f0cc38ebac93b0a3f236" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>schedule_instruction</name></member>
+      <member refid="classO3__CPU_1a08a29d13b948f1e37d285f317a8e92d3" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>SCHEDULER_SIZE</name></member>
+      <member refid="classO3__CPU_1a31b447d69eb4de2d64379455eaf9ef59" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>SCHEDULING_LATENCY</name></member>
+      <member refid="classO3__CPU_1a47fcab87c6c75497931055afcec52826" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>show_heartbeat</name></member>
+      <member refid="classO3__CPU_1a1428fa25a2b5da4d8830a3b57889b146" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>sim_cycle</name></member>
+      <member refid="classO3__CPU_1ab124e603c00c46820b1e414679dba640" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>sim_instr</name></member>
+      <member refid="classO3__CPU_1a3dfd31b572ab9bb6f9a8adeca419f5b6" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>sim_stats</name></member>
+      <member refid="classO3__CPU_1ac126ac33a3fc7c3928d22baa0bcd3ad7" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>SQ</name></member>
+      <member refid="classO3__CPU_1af9d3f93089addce495da8556a83602e3" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>SQ_SIZE</name></member>
+      <member refid="classO3__CPU_1afb316b43eaa884fcf405e2d9c5441c3a" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>SQ_WIDTH</name></member>
+      <member refid="classO3__CPU_1abcfbaf8b66d91e4ec8711e156fcfd8e4" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>stats_type</name></member>
+      <member refid="classchampsim_1_1operable_1a3464324490f33c24df3a11f4e30aa78b" prot="public" virt="non-virtual"><scope>O3_CPU</scope><name>warmup</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

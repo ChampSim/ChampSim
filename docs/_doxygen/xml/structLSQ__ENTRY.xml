@@ -1,0 +1,199 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structLSQ__ENTRY" kind="struct" language="C++" prot="public">
+    <compoundname>LSQ_ENTRY</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a78344ead03777424cceece783b3ae751" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t LSQ_ENTRY::instr_id</definition>
+        <argsstring></argsstring>
+        <name>instr_id</name>
+        <qualifiedname>LSQ_ENTRY::instr_id</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="78" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="78" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a8dddcebafa71f0020fb39b4bdb34c34c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t LSQ_ENTRY::virtual_address</definition>
+        <argsstring></argsstring>
+        <name>virtual_address</name>
+        <qualifiedname>LSQ_ENTRY::virtual_address</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="79" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="79" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a102fb6f96e4f49735b71605b5f663183" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t LSQ_ENTRY::ip</definition>
+        <argsstring></argsstring>
+        <name>ip</name>
+        <qualifiedname>LSQ_ENTRY::ip</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="80" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="80" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a7f20fb70df664c49a03e3bf0fbb01d22" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t LSQ_ENTRY::event_cycle</definition>
+        <argsstring></argsstring>
+        <name>event_cycle</name>
+        <qualifiedname>LSQ_ENTRY::event_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="81" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a140c86ddf5f555ca363e7f5c99b74f04" prot="public" static="no" mutable="no">
+        <type>std::array&lt; uint8_t, 2 &gt;</type>
+        <definition>std::array&lt;uint8_t, 2&gt; LSQ_ENTRY::asid</definition>
+        <argsstring></argsstring>
+        <name>asid</name>
+        <qualifiedname>LSQ_ENTRY::asid</qualifiedname>
+        <initializer>= {std::numeric_limits&lt;uint8_t&gt;::max(), std::numeric_limits&lt;uint8_t&gt;::max()}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="83" column="14" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="83" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a5076a44c144874b0657994940176a78a" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool LSQ_ENTRY::fetch_issued</definition>
+        <argsstring></argsstring>
+        <name>fetch_issued</name>
+        <qualifiedname>LSQ_ENTRY::fetch_issued</qualifiedname>
+        <initializer>= false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="84" column="8" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1ae30918748ab0bf06591ea380fe0537ec" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t LSQ_ENTRY::producer_id</definition>
+        <argsstring></argsstring>
+        <name>producer_id</name>
+        <qualifiedname>LSQ_ENTRY::producer_id</qualifiedname>
+        <initializer>= std::numeric_limits&lt;uint64_t&gt;::max()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="86" column="12" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="86" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structLSQ__ENTRY_1a6417533327812192771e29cb6decc732" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; std::reference_wrapper&lt; std::optional&lt; <ref refid="structLSQ__ENTRY" kindref="compound">LSQ_ENTRY</ref> &gt; &gt; &gt;</type>
+        <definition>std::vector&lt;std::reference_wrapper&lt;std::optional&lt;LSQ_ENTRY&gt; &gt; &gt; LSQ_ENTRY::lq_depend_on_me</definition>
+        <argsstring></argsstring>
+        <name>lq_depend_on_me</name>
+        <qualifiedname>LSQ_ENTRY::lq_depend_on_me</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="87" column="15" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="87" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structLSQ__ENTRY_1ac2efd9031b460aa33f79ee02770a78e4" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>LSQ_ENTRY::LSQ_ENTRY</definition>
+        <argsstring>(uint64_t id, uint64_t addr, uint64_t ip, std::array&lt; uint8_t, 2 &gt; asid)</argsstring>
+        <name>LSQ_ENTRY</name>
+        <qualifiedname>LSQ_ENTRY::LSQ_ENTRY</qualifiedname>
+        <param>
+          <type>uint64_t</type>
+          <declname>id</declname>
+        </param>
+        <param>
+          <type>uint64_t</type>
+          <declname>addr</declname>
+        </param>
+        <param>
+          <type>uint64_t</type>
+          <declname>ip</declname>
+        </param>
+        <param>
+          <type>std::array&lt; uint8_t, 2 &gt;</type>
+          <declname>asid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="89" column="3" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="671" bodyend="674"/>
+      </memberdef>
+      <memberdef kind="function" id="structLSQ__ENTRY_1a1d7a622f63c8744f30d90545411202a6" prot="public" static="no" const="yes" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void LSQ_ENTRY::finish</definition>
+        <argsstring>(std::deque&lt; ooo_model_instr &gt;::iterator begin, std::deque&lt; ooo_model_instr &gt;::iterator end) const</argsstring>
+        <name>finish</name>
+        <qualifiedname>LSQ_ENTRY::finish</qualifiedname>
+        <param>
+          <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;::iterator</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>std::deque&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt;::iterator</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ooo_cpu.h" line="90" column="8" bodyfile="/github/workspace/src/ooo_cpu.cc" bodystart="676" bodyend="689"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/ooo_cpu.h" line="77" column="1" bodyfile="/github/workspace/inc/ooo_cpu.h" bodystart="77" bodyend="91"/>
+    <listofallmembers>
+      <member refid="structLSQ__ENTRY_1a140c86ddf5f555ca363e7f5c99b74f04" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>asid</name></member>
+      <member refid="structLSQ__ENTRY_1a7f20fb70df664c49a03e3bf0fbb01d22" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>event_cycle</name></member>
+      <member refid="structLSQ__ENTRY_1a5076a44c144874b0657994940176a78a" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>fetch_issued</name></member>
+      <member refid="structLSQ__ENTRY_1a1d7a622f63c8744f30d90545411202a6" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>finish</name></member>
+      <member refid="structLSQ__ENTRY_1a78344ead03777424cceece783b3ae751" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>instr_id</name></member>
+      <member refid="structLSQ__ENTRY_1a102fb6f96e4f49735b71605b5f663183" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>ip</name></member>
+      <member refid="structLSQ__ENTRY_1a6417533327812192771e29cb6decc732" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>lq_depend_on_me</name></member>
+      <member refid="structLSQ__ENTRY_1ac2efd9031b460aa33f79ee02770a78e4" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>LSQ_ENTRY</name></member>
+      <member refid="structLSQ__ENTRY_1ae30918748ab0bf06591ea380fe0537ec" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>producer_id</name></member>
+      <member refid="structLSQ__ENTRY_1a8dddcebafa71f0020fb39b4bdb34c34c" prot="public" virt="non-virtual"><scope>LSQ_ENTRY</scope><name>virtual_address</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

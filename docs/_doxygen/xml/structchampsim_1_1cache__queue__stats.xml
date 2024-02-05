@@ -1,0 +1,223 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structchampsim_1_1cache__queue__stats" kind="struct" language="C++" prot="public">
+    <compoundname>champsim::cache_queue_stats</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1ad86b4aa12d1ac5e343cda0bc13bd9917" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::RQ_ACCESS</definition>
+        <argsstring></argsstring>
+        <name>RQ_ACCESS</name>
+        <qualifiedname>champsim::cache_queue_stats::RQ_ACCESS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="48" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="48" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a3856c5627b9a17fbb243b963e3f4aa2f" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::RQ_MERGED</definition>
+        <argsstring></argsstring>
+        <name>RQ_MERGED</name>
+        <qualifiedname>champsim::cache_queue_stats::RQ_MERGED</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="49" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a9d372716405af9f120a7cb1d780d25e8" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::RQ_FULL</definition>
+        <argsstring></argsstring>
+        <name>RQ_FULL</name>
+        <qualifiedname>champsim::cache_queue_stats::RQ_FULL</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="50" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="50" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a8ba686c6922d492a0d3e35c871613b84" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::RQ_TO_CACHE</definition>
+        <argsstring></argsstring>
+        <name>RQ_TO_CACHE</name>
+        <qualifiedname>champsim::cache_queue_stats::RQ_TO_CACHE</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="51" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1ad773ecc0fe697a7c23cc7bf7fbf38b11" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::PQ_ACCESS</definition>
+        <argsstring></argsstring>
+        <name>PQ_ACCESS</name>
+        <qualifiedname>champsim::cache_queue_stats::PQ_ACCESS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="52" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="52" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a282486cef201518a6d5bf67043852599" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::PQ_MERGED</definition>
+        <argsstring></argsstring>
+        <name>PQ_MERGED</name>
+        <qualifiedname>champsim::cache_queue_stats::PQ_MERGED</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="53" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1acd2132d9e696328117cb1f6b141a407c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::PQ_FULL</definition>
+        <argsstring></argsstring>
+        <name>PQ_FULL</name>
+        <qualifiedname>champsim::cache_queue_stats::PQ_FULL</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="54" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a8b3e3d206dfd80b5eee0a08f154ab980" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::PQ_TO_CACHE</definition>
+        <argsstring></argsstring>
+        <name>PQ_TO_CACHE</name>
+        <qualifiedname>champsim::cache_queue_stats::PQ_TO_CACHE</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="55" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1ad534ffa8e0710e047da6c99c7e1d8d4d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::WQ_ACCESS</definition>
+        <argsstring></argsstring>
+        <name>WQ_ACCESS</name>
+        <qualifiedname>champsim::cache_queue_stats::WQ_ACCESS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="56" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1ad3a53006092011455fde5f6786366a7a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::WQ_MERGED</definition>
+        <argsstring></argsstring>
+        <name>WQ_MERGED</name>
+        <qualifiedname>champsim::cache_queue_stats::WQ_MERGED</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="57" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="57" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a2f4b332f84217a8a7643d73893c0f2f2" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::WQ_FULL</definition>
+        <argsstring></argsstring>
+        <name>WQ_FULL</name>
+        <qualifiedname>champsim::cache_queue_stats::WQ_FULL</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="58" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1aca598af2f0870175f2a6b680c0e2822a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::WQ_TO_CACHE</definition>
+        <argsstring></argsstring>
+        <name>WQ_TO_CACHE</name>
+        <qualifiedname>champsim::cache_queue_stats::WQ_TO_CACHE</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="59" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structchampsim_1_1cache__queue__stats_1a183d967abd0df2fa47299602fd753dda" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t champsim::cache_queue_stats::WQ_FORWARD</definition>
+        <argsstring></argsstring>
+        <name>WQ_FORWARD</name>
+        <qualifiedname>champsim::cache_queue_stats::WQ_FORWARD</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/channel.h" line="60" column="12" bodyfile="/github/workspace/inc/channel.h" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/channel.h" line="47" column="1" bodyfile="/github/workspace/inc/channel.h" bodystart="47" bodyend="61"/>
+    <listofallmembers>
+      <member refid="structchampsim_1_1cache__queue__stats_1ad773ecc0fe697a7c23cc7bf7fbf38b11" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>PQ_ACCESS</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1acd2132d9e696328117cb1f6b141a407c" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>PQ_FULL</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a282486cef201518a6d5bf67043852599" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>PQ_MERGED</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a8b3e3d206dfd80b5eee0a08f154ab980" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>PQ_TO_CACHE</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1ad86b4aa12d1ac5e343cda0bc13bd9917" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>RQ_ACCESS</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a9d372716405af9f120a7cb1d780d25e8" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>RQ_FULL</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a3856c5627b9a17fbb243b963e3f4aa2f" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>RQ_MERGED</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a8ba686c6922d492a0d3e35c871613b84" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>RQ_TO_CACHE</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1ad534ffa8e0710e047da6c99c7e1d8d4d" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>WQ_ACCESS</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a183d967abd0df2fa47299602fd753dda" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>WQ_FORWARD</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1a2f4b332f84217a8a7643d73893c0f2f2" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>WQ_FULL</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1ad3a53006092011455fde5f6786366a7a" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>WQ_MERGED</name></member>
+      <member refid="structchampsim_1_1cache__queue__stats_1aca598af2f0870175f2a6b680c0e2822a" prot="public" virt="non-virtual"><scope>champsim::cache_queue_stats</scope><name>WQ_TO_CACHE</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

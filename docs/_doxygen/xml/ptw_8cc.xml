@@ -1,0 +1,418 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="ptw_8cc" kind="file" language="C++">
+    <compoundname>ptw.cc</compoundname>
+    <includes refid="ptw_8h" local="yes">ptw.h</includes>
+    <includes local="no">numeric</includes>
+    <includes refid="champsim_8h" local="yes">champsim.h</includes>
+    <includes local="yes">champsim_constants.h</includes>
+    <includes refid="deadlock_8h" local="yes">deadlock.h</includes>
+    <includes refid="instruction_8h" local="yes">instruction.h</includes>
+    <includes local="yes">util/span.h</includes>
+    <includes refid="vmem_8h" local="yes">vmem.h</includes>
+    <includes local="no">fmt/core.h</includes>
+    <incdepgraph>
+      <node id="15">
+        <label>champsim.h</label>
+        <link refid="champsim_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>channel.h</label>
+        <link refid="channel_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="18">
+        <label>deadlock.h</label>
+        <link refid="deadlock_8h_source"/>
+        <childnode refid="19" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="20" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+        <childnode refid="22" relation="include">
+        </childnode>
+        <childnode refid="23" relation="include">
+        </childnode>
+      </node>
+      <node id="24">
+        <label>instruction.h</label>
+        <link refid="instruction_8h_source"/>
+        <childnode refid="25" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="26" relation="include">
+        </childnode>
+      </node>
+      <node id="12">
+        <label>operable.h</label>
+        <link refid="operable_8h_source"/>
+      </node>
+      <node id="2">
+        <label>ptw.h</label>
+        <link refid="ptw_8h_source"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="26">
+        <label>trace_instruction.h</label>
+        <link refid="trace__instruction_8h_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="28">
+        <label>vmem.h</label>
+        <link refid="vmem_8h_source"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="29" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>ptw.cc</label>
+        <link refid="ptw_8cc"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+        <childnode refid="18" relation="include">
+        </childnode>
+        <childnode refid="24" relation="include">
+        </childnode>
+        <childnode refid="27" relation="include">
+        </childnode>
+        <childnode refid="28" relation="include">
+        </childnode>
+        <childnode refid="21" relation="include">
+        </childnode>
+      </node>
+      <node id="25">
+        <label>algorithm</label>
+      </node>
+      <node id="3">
+        <label>array</label>
+      </node>
+      <node id="17">
+        <label>champsim_constants.h</label>
+      </node>
+      <node id="7">
+        <label>cstdint</label>
+      </node>
+      <node id="4">
+        <label>deque</label>
+      </node>
+      <node id="16">
+        <label>exception</label>
+      </node>
+      <node id="21">
+        <label>fmt/core.h</label>
+      </node>
+      <node id="22">
+        <label>fmt/ranges.h</label>
+      </node>
+      <node id="8">
+        <label>functional</label>
+      </node>
+      <node id="9">
+        <label>limits</label>
+      </node>
+      <node id="29">
+        <label>map</label>
+      </node>
+      <node id="14">
+        <label>numeric</label>
+      </node>
+      <node id="19">
+        <label>optional</label>
+      </node>
+      <node id="5">
+        <label>string</label>
+      </node>
+      <node id="11">
+        <label>string_view</label>
+      </node>
+      <node id="20">
+        <label>type_traits</label>
+      </node>
+      <node id="13">
+        <label>util/lru_table.h</label>
+      </node>
+      <node id="27">
+        <label>util/span.h</label>
+      </node>
+      <node id="23">
+        <label>util/type_traits.h</label>
+      </node>
+      <node id="10">
+        <label>vector</label>
+      </node>
+    </incdepgraph>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">/*</highlight></codeline>
+<codeline lineno="2"><highlight class="comment"><sp/>*<sp/><sp/><sp/><sp/>Copyright<sp/>2023<sp/>The<sp/>ChampSim<sp/>Contributors</highlight></codeline>
+<codeline lineno="3"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="4"><highlight class="comment"><sp/>*<sp/>Licensed<sp/>under<sp/>the<sp/>Apache<sp/>License,<sp/>Version<sp/>2.0<sp/>(the<sp/>&quot;License&quot;);</highlight></codeline>
+<codeline lineno="5"><highlight class="comment"><sp/>*<sp/>you<sp/>may<sp/>not<sp/>use<sp/>this<sp/>file<sp/>except<sp/>in<sp/>compliance<sp/>with<sp/>the<sp/>License.</highlight></codeline>
+<codeline lineno="6"><highlight class="comment"><sp/>*<sp/>You<sp/>may<sp/>obtain<sp/>a<sp/>copy<sp/>of<sp/>the<sp/>License<sp/>at</highlight></codeline>
+<codeline lineno="7"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="8"><highlight class="comment"><sp/>*<sp/>http://www.apache.org/licenses/LICENSE-2.0</highlight></codeline>
+<codeline lineno="9"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="10"><highlight class="comment"><sp/>*<sp/>Unless<sp/>required<sp/>by<sp/>applicable<sp/>law<sp/>or<sp/>agreed<sp/>to<sp/>in<sp/>writing,<sp/>software</highlight></codeline>
+<codeline lineno="11"><highlight class="comment"><sp/>*<sp/>distributed<sp/>under<sp/>the<sp/>License<sp/>is<sp/>distributed<sp/>on<sp/>an<sp/>&quot;AS<sp/>IS&quot;<sp/>BASIS,</highlight></codeline>
+<codeline lineno="12"><highlight class="comment"><sp/>*<sp/>WITHOUT<sp/>WARRANTIES<sp/>OR<sp/>CONDITIONS<sp/>OF<sp/>ANY<sp/>KIND,<sp/>either<sp/>express<sp/>or<sp/>implied.</highlight></codeline>
+<codeline lineno="13"><highlight class="comment"><sp/>*<sp/>See<sp/>the<sp/>License<sp/>for<sp/>the<sp/>specific<sp/>language<sp/>governing<sp/>permissions<sp/>and</highlight></codeline>
+<codeline lineno="14"><highlight class="comment"><sp/>*<sp/>limitations<sp/>under<sp/>the<sp/>License.</highlight></codeline>
+<codeline lineno="15"><highlight class="comment"><sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;ptw.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight></codeline>
+<codeline lineno="19"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;numeric&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;champsim.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;champsim_constants.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;deadlock.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;instruction.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;util/span.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;vmem.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;fmt/core.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal">PageTableWalker::PageTableWalker(Builder<sp/>b)</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"><sp/><sp/><sp/><sp/>:<sp/>champsim::operable(b.m_freq_scale),<sp/>upper_levels(b.m_uls),<sp/>lower_level(b.m_ll),<sp/>NAME(b.m_name),<sp/>MSHR_SIZE(b.m_mshr_size),<sp/>MAX_READ(b.m_max_tag_check),</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>MAX_FILL(b.m_max_fill),<sp/>HIT_LATENCY(b.m_latency),<sp/>vmem(b.m_vmem),<sp/>CR3_addr(b.m_vmem-&gt;get_pte_pa(b.m_cpu,<sp/>0,<sp/>b.m_vmem-&gt;pt_levels).first)</highlight></codeline>
+<codeline lineno="32"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/>std::vector&lt;std::array&lt;uint32_t,<sp/>3&gt;&gt;<sp/>local_pscl_dims{};</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"><sp/><sp/>std::remove_copy_if(std::begin(b.m_pscl),<sp/>std::end(b.m_pscl),<sp/>std::back_inserter(local_pscl_dims),<sp/>[](</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>x)<sp/>{<sp/>return<sp/>std::get&lt;0&gt;(x)<sp/>==<sp/>0;<sp/>});</highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/>std::sort(std::begin(local_pscl_dims),<sp/>std::end(local_pscl_dims),<sp/>std::greater{});</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"></highlight></codeline>
+<codeline lineno="37"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>[level,<sp/>sets,<sp/>ways]<sp/>:<sp/>local_pscl_dims)</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"><sp/><sp/><sp/><sp/>pscl.emplace_back(sets,<sp/>ways,<sp/>pscl_indexer{b.m_vmem-&gt;shamt(level)},<sp/>pscl_indexer{b.m_vmem-&gt;shamt(level)});</highlight></codeline>
+<codeline lineno="39"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight></codeline>
+<codeline lineno="41"><highlight class="normal">PageTableWalker::mshr_type::mshr_type(request_type<sp/>req,<sp/>std::size_t<sp/>level)</highlight></codeline>
+<codeline lineno="42"><highlight class="normal"><sp/><sp/><sp/><sp/>:<sp/>address(req.address),<sp/>v_address(req.v_address),<sp/>instr_depend_on_me(req.instr_depend_on_me),<sp/>pf_metadata(req.pf_metadata),<sp/>cpu(req.cpu),</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>translation_level(level)</highlight></codeline>
+<codeline lineno="44"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/>asid[0]<sp/>=<sp/>req.asid[0];</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/>asid[1]<sp/>=<sp/>req.asid[1];</highlight></codeline>
+<codeline lineno="47"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49"><highlight class="normal"></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>PageTableWalker::handle_read(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>request_type&amp;<sp/>handle_pkt,<sp/>channel_type*<sp/>ul)<sp/>-&gt;<sp/>std::optional&lt;mshr_type&gt;</highlight></codeline>
+<codeline lineno="50"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/>pscl_entry<sp/>walk_init<sp/>=<sp/>{handle_pkt.v_address,<sp/>CR3_addr,<sp/>std::size(pscl)};</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/>std::vector&lt;std::optional&lt;pscl_entry&gt;&gt;<sp/>pscl_hits;</highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/>std::transform(std::begin(pscl),<sp/>std::end(pscl),<sp/>std::back_inserter(pscl_hits),<sp/>[walk_init](</highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>x)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>x.check_hit(walk_init);<sp/>});</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/>walk_init<sp/>=</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>std::accumulate(std::begin(pscl_hits),<sp/>std::end(pscl_hits),<sp/>std::optional&lt;pscl_entry&gt;(walk_init),<sp/>[](</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>x,<sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>y)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>y.value_or(*x);<sp/>}).value();</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"></highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>walk_offset<sp/>=<sp/>vmem-&gt;get_offset(handle_pkt.address,<sp/>walk_init.level)<sp/>*<sp/>PTE_BYTES;</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"></highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/>mshr_type<sp/>fwd_mshr{handle_pkt,<sp/>walk_init.level};</highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/>fwd_mshr.address<sp/>=<sp/>champsim::splice_bits(walk_init.ptw_addr,<sp/>walk_offset,<sp/>LOG2_PAGE_SIZE);</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/>fwd_mshr.v_address<sp/>=<sp/>handle_pkt.address;</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(handle_pkt.response_requested)</highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/>fwd_mshr.to_return<sp/>=<sp/>{&amp;ul-&gt;returned};</highlight></codeline>
+<codeline lineno="64"><highlight class="normal"></highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">constexpr</highlight><highlight class="normal"><sp/>(champsim::debug_print)<sp/>{</highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/>fmt::print(</highlight><highlight class="stringliteral">&quot;[{}]<sp/>{}<sp/>address:<sp/>{:#x}<sp/>v_address:<sp/>{:#x}<sp/>pt_page_offset:<sp/>{}<sp/>translation_level:<sp/>{}\n&quot;</highlight><highlight class="normal">,<sp/>NAME,<sp/>__func__,<sp/>fwd_mshr.address,<sp/>fwd_mshr.v_address,</highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>walk_offset<sp/>/<sp/>PTE_BYTES,<sp/>walk_init.level);</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"></highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>step_translation(fwd_mshr);</highlight></codeline>
+<codeline lineno="71"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="72"><highlight class="normal"></highlight></codeline>
+<codeline lineno="73"><highlight class="normal"></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>PageTableWalker::handle_fill(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>mshr_type&amp;<sp/>fill_mshr)<sp/>-&gt;<sp/>std::optional&lt;mshr_type&gt;</highlight></codeline>
+<codeline lineno="74"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">constexpr</highlight><highlight class="normal"><sp/>(champsim::debug_print)<sp/>{</highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/><sp/><sp/>fmt::print(</highlight><highlight class="stringliteral">&quot;[{}]<sp/>{}<sp/>address:<sp/>{:#x}<sp/>v_address:<sp/>{:#x}<sp/>data:<sp/>{:#x}<sp/>pt_page_offset:<sp/>{}<sp/>translation_level:<sp/>{}<sp/>event:<sp/>{}<sp/>current:<sp/>{}\n&quot;</highlight><highlight class="normal">,<sp/>NAME,<sp/>__func__,</highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>fill_mshr.address,<sp/>fill_mshr.v_address,<sp/>fill_mshr.data,<sp/>(fill_mshr.data<sp/>&amp;<sp/>champsim::bitmask(LOG2_PAGE_SIZE))<sp/>&gt;&gt;<sp/>champsim::lg2(PTE_BYTES),</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>fill_mshr.translation_level,<sp/>fill_mshr.event_cycle,<sp/>current_cycle);</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"></highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>pscl_idx<sp/>=<sp/>std::size(pscl)<sp/>-<sp/>fill_mshr.translation_level;</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"><sp/><sp/>pscl.at(pscl_idx).fill({fill_mshr.v_address,<sp/>fill_mshr.data,<sp/>fill_mshr.translation_level<sp/>-<sp/>1});</highlight></codeline>
+<codeline lineno="83"><highlight class="normal"></highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/>mshr_type<sp/>fwd_mshr<sp/>=<sp/>fill_mshr;</highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/>fwd_mshr.address<sp/>=<sp/>fill_mshr.data;</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/>fwd_mshr.translation_level<sp/>=<sp/>fill_mshr.translation_level<sp/>-<sp/>1;</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/>fwd_mshr.event_cycle<sp/>=<sp/>std::numeric_limits&lt;uint64_t&gt;::max();</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"></highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>step_translation(fwd_mshr);</highlight></codeline>
+<codeline lineno="90"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>PageTableWalker::step_translation(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>mshr_type&amp;<sp/>source)<sp/>-&gt;<sp/>std::optional&lt;mshr_type&gt;</highlight></codeline>
+<codeline lineno="93"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/>request_type<sp/>packet;</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/>packet.address<sp/>=<sp/>source.address;</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/>packet.v_address<sp/>=<sp/>source.v_address;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/>packet.pf_metadata<sp/>=<sp/>source.pf_metadata;</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/>packet.cpu<sp/>=<sp/>source.cpu;</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/>packet.asid[0]<sp/>=<sp/>source.asid[0];</highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/>packet.asid[1]<sp/>=<sp/>source.asid[1];</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"><sp/><sp/>packet.is_translated<sp/>=<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"><sp/><sp/>packet.type<sp/>=<sp/>access_type::TRANSLATION;</highlight></codeline>
+<codeline lineno="103"><highlight class="normal"></highlight></codeline>
+<codeline lineno="104"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>success<sp/>=<sp/>lower_level-&gt;add_rq(packet);</highlight></codeline>
+<codeline lineno="105"><highlight class="normal"></highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(success)</highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>source;</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"></highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>std::nullopt;</highlight></codeline>
+<codeline lineno="110"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="111"><highlight class="normal"></highlight></codeline>
+<codeline lineno="112"><highlight class="normal"></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>PageTableWalker::operate()</highlight></codeline>
+<codeline lineno="113"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>progress{0};</highlight></codeline>
+<codeline lineno="115"><highlight class="normal"></highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/>std::for_each(std::cbegin(lower_level-&gt;returned),<sp/>std::cend(lower_level-&gt;returned),<sp/>[</highlight><highlight class="keyword">this</highlight><highlight class="normal">](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>pkt)<sp/>{<sp/>this-&gt;finish_packet(pkt);<sp/>});</highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/>progress<sp/>+=<sp/>std::distance(std::cbegin(lower_level-&gt;returned),<sp/>std::cend(lower_level-&gt;returned));</highlight></codeline>
+<codeline lineno="118"><highlight class="normal"><sp/><sp/>lower_level-&gt;returned.clear();</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"></highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/>std::vector&lt;mshr_type&gt;<sp/>next_steps{};</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"></highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>fill_bw<sp/>=<sp/>MAX_FILL;</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>[complete_begin,<sp/>complete_end]<sp/>=<sp/>champsim::get_span_p(std::cbegin(completed),<sp/>std::cend(completed),<sp/>fill_bw,</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>[cycle<sp/>=<sp/>current_cycle](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>pkt)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>pkt.event_cycle<sp/>&lt;=<sp/>cycle;<sp/>});</highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/>std::for_each(complete_begin,<sp/>complete_end,<sp/>[](</highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>mshr_entry)<sp/>{</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>ret<sp/>:<sp/>mshr_entry.to_return)</highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>ret-&gt;emplace_back(mshr_entry.v_address,<sp/>mshr_entry.v_address,<sp/>mshr_entry.data,<sp/>mshr_entry.pf_metadata,<sp/>mshr_entry.instr_depend_on_me);</highlight></codeline>
+<codeline lineno="128"><highlight class="normal"><sp/><sp/>});</highlight></codeline>
+<codeline lineno="129"><highlight class="normal"><sp/><sp/>fill_bw<sp/>-=<sp/>std::distance(complete_begin,<sp/>complete_end);</highlight></codeline>
+<codeline lineno="130"><highlight class="normal"><sp/><sp/>progress<sp/>+=<sp/>std::distance(complete_begin,<sp/>complete_end);</highlight></codeline>
+<codeline lineno="131"><highlight class="normal"><sp/><sp/>completed.erase(complete_begin,<sp/>complete_end);</highlight></codeline>
+<codeline lineno="132"><highlight class="normal"></highlight></codeline>
+<codeline lineno="133"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>[mshr_begin,<sp/>mshr_end]<sp/>=</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>champsim::get_span_p(std::cbegin(finished),<sp/>std::cend(finished),<sp/>fill_bw,<sp/>[cycle<sp/>=<sp/>current_cycle](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>pkt)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>pkt.event_cycle<sp/>&lt;=<sp/>cycle;<sp/>});</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/>std::tie(mshr_begin,<sp/>mshr_end)<sp/>=<sp/>champsim::get_span_p(mshr_begin,<sp/>mshr_end,<sp/>[&amp;next_steps,<sp/></highlight><highlight class="keyword">this</highlight><highlight class="normal">](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>pkt)<sp/>{</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>result<sp/>=<sp/>this-&gt;handle_fill(pkt);</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(result.has_value())</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>next_steps.push_back(*result);</highlight></codeline>
+<codeline lineno="139"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>result.has_value();</highlight></codeline>
+<codeline lineno="140"><highlight class="normal"><sp/><sp/>});</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"><sp/><sp/>progress<sp/>+=<sp/>std::distance(mshr_begin,<sp/>mshr_end);</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"><sp/><sp/>finished.erase(mshr_begin,<sp/>mshr_end);</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"></highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>tag_bw<sp/>=<sp/>MAX_READ;</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>ul<sp/>:<sp/>upper_levels)<sp/>{</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>[rq_begin,<sp/>rq_end]<sp/>=<sp/>champsim::get_span_p(std::cbegin(ul-&gt;RQ),<sp/>std::cend(ul-&gt;RQ),<sp/>tag_bw,<sp/>[&amp;next_steps,<sp/>ul,<sp/></highlight><highlight class="keyword">this</highlight><highlight class="normal">](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>pkt)<sp/>{</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>auto<sp/>result<sp/>=<sp/>this-&gt;handle_read(pkt,<sp/>ul);</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>if<sp/>(result.has_value())</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>next_steps.push_back(*result);</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>return<sp/>result.has_value();</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"><sp/><sp/><sp/><sp/>});</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"><sp/><sp/><sp/><sp/>tag_bw<sp/>-=<sp/>std::distance(rq_begin,<sp/>rq_end);</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/>progress<sp/>+=<sp/>std::distance(rq_begin,<sp/>rq_end);</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/>ul-&gt;RQ.erase(rq_begin,<sp/>rq_end);</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"></highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/>MSHR.insert(std::cend(MSHR),<sp/>std::begin(next_steps),<sp/>std::end(next_steps));</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>progress;</highlight></codeline>
+<codeline lineno="159"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="160"><highlight class="normal"></highlight></codeline>
+<codeline lineno="161"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>PageTableWalker::finish_packet(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>response_type&amp;<sp/>packet)</highlight></codeline>
+<codeline lineno="162"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>finish_step<sp/>=<sp/>[</highlight><highlight class="keyword">this</highlight><highlight class="normal">](</highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>mshr_entry)<sp/>{</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/>penalty;</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/>std::tie(mshr_entry.data,<sp/>penalty)<sp/>=<sp/>this-&gt;vmem-&gt;get_pte_pa(mshr_entry.cpu,<sp/>mshr_entry.v_address,<sp/>mshr_entry.translation_level);</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/>mshr_entry.event_cycle<sp/>=<sp/>this-&gt;current_cycle<sp/>+<sp/>(this-&gt;warmup<sp/>?<sp/>0<sp/>:<sp/>penalty<sp/>+<sp/>HIT_LATENCY);</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight></codeline>
+<codeline lineno="168"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">constexpr</highlight><highlight class="normal"><sp/>(champsim::debug_print)<sp/>{</highlight></codeline>
+<codeline lineno="169"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>fmt::print(</highlight><highlight class="stringliteral">&quot;[{}]<sp/>finish_packet<sp/>address:<sp/>{:#x}<sp/>v_address:<sp/>{:#x}<sp/>data:<sp/>{:#x}<sp/>translation_level:<sp/>{}\n&quot;</highlight><highlight class="normal">,<sp/>NAME,<sp/>mshr_entry.address,<sp/>mshr_entry.v_address,</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>mshr_entry.data,<sp/>mshr_entry.translation_level);</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="172"><highlight class="normal"><sp/><sp/>};</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"></highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>finish_last_step<sp/>=<sp/>[</highlight><highlight class="keyword">this</highlight><highlight class="normal">](</highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>mshr_entry)<sp/>{</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/>penalty;</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"><sp/><sp/><sp/><sp/>std::tie(mshr_entry.data,<sp/>penalty)<sp/>=<sp/>this-&gt;vmem-&gt;va_to_pa(mshr_entry.cpu,<sp/>mshr_entry.v_address);</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"><sp/><sp/><sp/><sp/>mshr_entry.event_cycle<sp/>=<sp/>this-&gt;current_cycle<sp/>+<sp/>(this-&gt;warmup<sp/>?<sp/>0<sp/>:<sp/>penalty<sp/>+<sp/>HIT_LATENCY);</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"></highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">constexpr</highlight><highlight class="normal"><sp/>(champsim::debug_print)<sp/>{</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>fmt::print(</highlight><highlight class="stringliteral">&quot;[{}]<sp/>complete_packet<sp/>address:<sp/>{:#x}<sp/>v_address:<sp/>{:#x}<sp/>data:<sp/>{:#x}<sp/>translation_level:<sp/>{}\n&quot;</highlight><highlight class="normal">,<sp/>this-&gt;NAME,<sp/>mshr_entry.address,<sp/>mshr_entry.v_address,</highlight></codeline>
+<codeline lineno="181"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>mshr_entry.data,<sp/>mshr_entry.translation_level);</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"><sp/><sp/>};</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"></highlight></codeline>
+<codeline lineno="185"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>last_finished<sp/>=</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>std::partition(std::begin(MSHR),<sp/>std::end(MSHR),<sp/>[addr<sp/>=<sp/>packet.address](</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>x)<sp/>{<sp/>return<sp/>(x.address<sp/>&gt;&gt;<sp/>LOG2_BLOCK_SIZE)<sp/>==<sp/>(addr<sp/>&gt;&gt;<sp/>LOG2_BLOCK_SIZE);<sp/>});</highlight></codeline>
+<codeline lineno="187"><highlight class="normal"></highlight></codeline>
+<codeline lineno="188"><highlight class="normal"><sp/><sp/>std::for_each(std::begin(MSHR),<sp/>last_finished,<sp/>[finish_step,<sp/>finish_last_step](</highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>mshr_entry)<sp/>{</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(mshr_entry.translation_level<sp/>&gt;<sp/>0)</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>finish_step(mshr_entry);</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="192"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>finish_last_step(mshr_entry);</highlight></codeline>
+<codeline lineno="193"><highlight class="normal"><sp/><sp/>});</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"></highlight></codeline>
+<codeline lineno="195"><highlight class="normal"><sp/><sp/>std::partition_copy(std::begin(MSHR),<sp/>last_finished,<sp/>std::back_inserter(finished),<sp/>std::back_inserter(completed),</highlight></codeline>
+<codeline lineno="196"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>[](</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>x)<sp/>{<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>x.translation_level<sp/>&gt;<sp/>0;<sp/>});</highlight></codeline>
+<codeline lineno="197"><highlight class="normal"><sp/><sp/>MSHR.erase(std::begin(MSHR),<sp/>last_finished);</highlight></codeline>
+<codeline lineno="198"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="199"><highlight class="normal"></highlight></codeline>
+<codeline lineno="200"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>PageTableWalker::begin_phase()</highlight></codeline>
+<codeline lineno="201"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="202"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>ul<sp/>:<sp/>upper_levels)<sp/>{</highlight></codeline>
+<codeline lineno="203"><highlight class="normal"><sp/><sp/><sp/><sp/>channel_type::stats_type<sp/>ul_new_roi_stats,<sp/>ul_new_sim_stats;</highlight></codeline>
+<codeline lineno="204"><highlight class="normal"><sp/><sp/><sp/><sp/>ul-&gt;roi_stats<sp/>=<sp/>ul_new_roi_stats;</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"><sp/><sp/><sp/><sp/>ul-&gt;sim_stats<sp/>=<sp/>ul_new_sim_stats;</highlight></codeline>
+<codeline lineno="206"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="207"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="208"><highlight class="normal"></highlight></codeline>
+<codeline lineno="209"><highlight class="normal"></highlight><highlight class="comment">//<sp/>LCOV_EXCL_START<sp/>Exclude<sp/>the<sp/>following<sp/>function<sp/>from<sp/>LCOV</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="210"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>PageTableWalker::print_deadlock()</highlight></codeline>
+<codeline lineno="211"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="212"><highlight class="normal"><sp/><sp/>champsim::range_print_deadlock(MSHR,<sp/>NAME<sp/>+<sp/></highlight><highlight class="stringliteral">&quot;_MSHR&quot;</highlight><highlight class="normal">,<sp/></highlight><highlight class="stringliteral">&quot;address:<sp/>{:#x}<sp/>v_addr:<sp/>{:#x}<sp/>translation_level:<sp/>{}<sp/>event_cycle:<sp/>{}&quot;</highlight><highlight class="normal">,<sp/>[](</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal">&amp;<sp/>entry)<sp/>{</highlight></codeline>
+<codeline lineno="213"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>std::tuple{entry.address,<sp/>entry.v_address,<sp/>entry.translation_level,<sp/>entry.event_cycle};</highlight></codeline>
+<codeline lineno="214"><highlight class="normal"><sp/><sp/>});</highlight></codeline>
+<codeline lineno="215"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="216"><highlight class="normal"></highlight><highlight class="comment">//<sp/>LCOV_EXCL_STOP</highlight><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="/github/workspace/src/ptw.cc"/>
+  </compounddef>
+</doxygen>

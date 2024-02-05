@@ -1,0 +1,274 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classchampsim_1_1inf__istream_1_1inf__streambuf" kind="class" language="C++" prot="public">
+    <compoundname>champsim::inf_istream::inf_streambuf</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::basic_streambuf&lt; IStrm::char_type, std::char_traits&lt; IStrm::char_type &gt; &gt;</basecompoundref>
+    <templateparamlist>
+      <param>
+        <type>typename IStrm</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1acc179d29456aabbdaed5c0a62aab6517" prot="private" static="no">
+        <type>std::basic_streambuf&lt; typename IStrm::char_type, std::char_traits&lt; typename IStrm::char_type &gt; &gt;</type>
+        <definition>using champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::base_type =  std::basic_streambuf&lt;typename IStrm::char_type, std::char_traits&lt;typename IStrm::char_type&gt; &gt;</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::base_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="185" column="5" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="185" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1aaafd30a4642feea50911251de6ee22c7" prot="private" static="no">
+        <type>typename base_type::int_type</type>
+        <definition>using champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::int_type =  typename base_type::int_type</definition>
+        <argsstring></argsstring>
+        <name>int_type</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::int_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="186" column="5" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="186" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a33fa5c5d3e1b5084e32e9d113647f333" prot="private" static="no">
+        <type>typename base_type::char_type</type>
+        <definition>using champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::char_type =  typename base_type::char_type</definition>
+        <argsstring></argsstring>
+        <name>char_type</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::char_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="187" column="5" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="187" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a82be12b86983b97ff42e6a71ff19a6a3" prot="private" static="no">
+        <type>typename Tag::in_char_type</type>
+        <definition>using champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::strm_in_buf_type =  typename Tag::in_char_type</definition>
+        <argsstring></argsstring>
+        <name>strm_in_buf_type</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::strm_in_buf_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="188" column="5" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="188" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a7d1d612cf4704b18291eef09d2db5113" prot="private" static="no">
+        <type>typename Tag::out_char_type</type>
+        <definition>using champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::strm_out_buf_type =  typename Tag::out_char_type</definition>
+        <argsstring></argsstring>
+        <name>strm_out_buf_type</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::strm_out_buf_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="189" column="5" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="189" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a58d421f3f75bb7cdde1001a85788fbf2" prot="private" static="yes" constexpr="yes" mutable="no">
+        <type>constexpr std::size_t</type>
+        <definition>constexpr std::size_t champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::CHUNK</definition>
+        <argsstring></argsstring>
+        <name>CHUNK</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::CHUNK</qualifiedname>
+        <initializer>= (1 &lt;&lt; 16)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="191" column="34" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="191" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1aeef9cba2ad7d9c6f59a1d4ab2c5782f3" prot="private" static="no" mutable="no">
+        <type>std::array&lt; strm_in_buf_type, CHUNK &gt;</type>
+        <definition>std::array&lt;strm_in_buf_type, CHUNK&gt; champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::in_buf</definition>
+        <argsstring></argsstring>
+        <name>in_buf</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::in_buf</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="193" column="16" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="193" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a9e44fa5cbc41398c079129939df00c97" prot="private" static="no" mutable="no">
+        <type>std::array&lt; char_type, CHUNK &gt;</type>
+        <definition>std::array&lt;char_type, CHUNK&gt; champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::out_buf</definition>
+        <argsstring></argsstring>
+        <name>out_buf</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::out_buf</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="194" column="16" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="194" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a956a16c6a5929f9663b8ee17c1b926b4" prot="private" static="no" mutable="no">
+        <type>Tag::inflate_state_type</type>
+        <definition>Tag::inflate_state_type champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::strm</definition>
+        <argsstring></argsstring>
+        <name>strm</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::strm</qualifiedname>
+        <initializer>= Tag::new_inflate_state()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="195" column="38" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="195" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1aceee24c0dba3f185b60b9b258fb56f77" prot="private" static="no" mutable="no">
+        <type>std::add_pointer&lt; IStrm &gt;::type</type>
+        <definition>std::add_pointer&lt;IStrm&gt;::type champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::src</definition>
+        <argsstring></argsstring>
+        <name>src</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::src</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="196" column="38" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="196" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a294043ad0eb1c8c97740c0edbe14fd91" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::inf_streambuf</definition>
+        <argsstring>(IStrm *in)</argsstring>
+        <name>inf_streambuf</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::inf_streambuf</qualifiedname>
+        <param>
+          <type>IStrm *</type>
+          <declname>in</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="199" column="14" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="199" bodyend="199"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a4bef2ae5b4e40d4fc3d8503b0b6d1124" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::inf_streambuf</definition>
+        <argsstring>(Tag, IStrm *in)</argsstring>
+        <name>inf_streambuf</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::inf_streambuf</qualifiedname>
+        <param>
+          <type>Tag</type>
+        </param>
+        <param>
+          <type>IStrm *</type>
+          <declname>in</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="200" column="14" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="200" bodyend="200"/>
+      </memberdef>
+      <memberdef kind="function" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a155dd86104b8b0eed8a81787e3b334cc" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;::bytes_read</definition>
+        <argsstring>() const</argsstring>
+        <name>bytes_read</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::bytes_read</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="202" column="17" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="202" bodyend="202"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="protected-func">
+      <memberdef kind="function" id="classchampsim_1_1inf__istream_1_1inf__streambuf_1a23744e61ba432626f0e8e5d8fa825531" prot="protected" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int_type</type>
+        <definition>auto champsim::inf_istream&lt; T, S &gt;::inf_streambuf&lt; I &gt;::underflow</definition>
+        <argsstring>() override</argsstring>
+        <name>underflow</name>
+        <qualifiedname>champsim::inf_istream::inf_streambuf::underflow</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/inf_stream.h" line="205" column="14" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="231" bodyend="279"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;</label>
+        <link refid="classchampsim_1_1inf__istream_1_1inf__streambuf"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>std::basic_streambuf&lt; IStrm::char_type, std::char_traits&lt; IStrm::char_type &gt; &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1">
+        <label>champsim::inf_istream&lt; Tag, StreamType &gt;::inf_streambuf&lt; IStrm &gt;</label>
+        <link refid="classchampsim_1_1inf__istream_1_1inf__streambuf"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>std::basic_streambuf&lt; IStrm::char_type, std::char_traits&lt; IStrm::char_type &gt; &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/inf_stream.h" line="182" column="3" bodyfile="/github/workspace/inc/inf_stream.h" bodystart="183" bodyend="206"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1acc179d29456aabbdaed5c0a62aab6517" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>base_type</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a155dd86104b8b0eed8a81787e3b334cc" prot="public" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>bytes_read</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a33fa5c5d3e1b5084e32e9d113647f333" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>char_type</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a58d421f3f75bb7cdde1001a85788fbf2" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>CHUNK</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1aeef9cba2ad7d9c6f59a1d4ab2c5782f3" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>in_buf</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a294043ad0eb1c8c97740c0edbe14fd91" prot="public" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>inf_streambuf</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a4bef2ae5b4e40d4fc3d8503b0b6d1124" prot="public" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>inf_streambuf</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1aaafd30a4642feea50911251de6ee22c7" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>int_type</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a9e44fa5cbc41398c079129939df00c97" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>out_buf</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1aceee24c0dba3f185b60b9b258fb56f77" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>src</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a956a16c6a5929f9663b8ee17c1b926b4" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>strm</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a82be12b86983b97ff42e6a71ff19a6a3" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>strm_in_buf_type</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a7d1d612cf4704b18291eef09d2db5113" prot="private" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>strm_out_buf_type</name></member>
+      <member refid="classchampsim_1_1inf__istream_1_1inf__streambuf_1a23744e61ba432626f0e8e5d8fa825531" prot="protected" virt="non-virtual"><scope>champsim::inf_istream::inf_streambuf</scope><name>underflow</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

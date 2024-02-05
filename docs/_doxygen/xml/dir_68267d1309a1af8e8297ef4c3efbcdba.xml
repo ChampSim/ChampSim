@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="dir_68267d1309a1af8e8297ef4c3efbcdba" kind="dir">
+    <compoundname>src</compoundname>
+    <innerfile refid="cache_8cc">cache.cc</innerfile>
+    <innerfile refid="champsim_8cc">champsim.cc</innerfile>
+    <innerfile refid="channel_8cc">channel.cc</innerfile>
+    <innerfile refid="dram__controller_8cc">dram_controller.cc</innerfile>
+    <innerfile refid="json__printer_8cc">json_printer.cc</innerfile>
+    <innerfile refid="main_8cc">main.cc</innerfile>
+    <innerfile refid="ooo__cpu_8cc">ooo_cpu.cc</innerfile>
+    <innerfile refid="plain__printer_8cc">plain_printer.cc</innerfile>
+    <innerfile refid="ptw_8cc">ptw.cc</innerfile>
+    <innerfile refid="tracereader_8cc">tracereader.cc</innerfile>
+    <innerfile refid="vmem_8cc">vmem.cc</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/src/"/>
+  </compounddef>
+</doxygen>

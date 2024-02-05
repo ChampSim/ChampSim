@@ -1,0 +1,287 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="namespacechampsim_1_1defaults" kind="namespace" language="C++">
+    <compoundname>champsim::defaults</compoundname>
+      <sectiondef kind="var">
+      <memberdef kind="variable" id="defaults_8hpp_1a1d0937e55b15ad16d430799b326ab6ac" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_core</definition>
+        <argsstring></argsstring>
+        <name>default_core</name>
+        <qualifiedname>champsim::defaults::default_core</qualifiedname>
+        <initializer>= <ref refid="classO3__CPU_1_1Builder" kindref="compound">O3_CPU::Builder</ref>{}
+                              .dib_set(32)
+                              .dib_way(8)
+                              .dib_window(16)
+                              .ifetch_buffer_size(64)
+                              .decode_buffer_size(32)
+                              .dispatch_buffer_size(32)
+                              .rob_size(352)
+                              .lq_size(128)
+                              .sq_size(72)
+                              .fetch_width(6)
+                              .decode_width(6)
+                              .dispatch_width(6)
+                              .execute_width(4)
+                              .lq_width(2)
+                              .sq_width(2)
+                              .retire_width(5)
+                              .mispredict_penalty(1)
+                              .schedule_width(128)
+                              .decode_latency(1)
+                              .dispatch_latency(1)
+                              .schedule_latency(0)
+                              .execute_latency(0)
+                              .l1i_bandwidth(1)
+                              .l1d_bandwidth(1)
+                              
+                              
+                              
+                              .branch_predictor&lt;O3_CPU::bbranchDbimodal&gt;()
+                              .btb&lt;O3_CPU::tbtbDbasic_btb&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="27" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1af569118a7c630e860746bbe45d990479" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_l1i</definition>
+        <argsstring></argsstring>
+        <name>default_l1i</name>
+        <qualifiedname>champsim::defaults::default_l1i</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                             .sets(64)
+                             .ways(8)
+                             .pq_size(32)
+                             .mshr_size(8)
+                             .hit_latency(3)
+                             .fill_latency(1)
+                             .tag_bandwidth(2)
+                             .fill_bandwidth(2)
+                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .reset_prefetch_as_load()
+                             .set_virtual_prefetch()
+                             .set_wq_checks_full_addr()
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                             
+                             
+                             
+                             .prefetcher&lt;CACHE::pprefetcherDno_instr&gt;()
+                             .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="58" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1a8f665661ce6b42443291e6a4ecada5cc" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_l1d</definition>
+        <argsstring></argsstring>
+        <name>default_l1d</name>
+        <qualifiedname>champsim::defaults::default_l1d</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                             .sets(64)
+                             .ways(12)
+                             .pq_size(8)
+                             .mshr_size(16)
+                             .hit_latency(4)
+                             .fill_latency(1)
+                             .tag_bandwidth(2)
+                             .fill_bandwidth(2)
+                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .reset_prefetch_as_load()
+                             .reset_virtual_prefetch()
+                             .set_wq_checks_full_addr()
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                             .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                             .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="78" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="78" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1a644f692c35ddc409e8fc1a7fb9b8cc73" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_l2c</definition>
+        <argsstring></argsstring>
+        <name>default_l2c</name>
+        <qualifiedname>champsim::defaults::default_l2c</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                             .sets(1024)
+                             .ways(8)
+                             .pq_size(16)
+                             .mshr_size(32)
+                             .hit_latency(9)
+                             .fill_latency(1)
+                             .tag_bandwidth(1)
+                             .fill_bandwidth(1)
+                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .reset_prefetch_as_load()
+                             .reset_virtual_prefetch()
+                             .reset_wq_checks_full_addr()
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                             .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                             .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="95" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="95" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1af163e62c2c7545396ef5f1836f1ce7ac" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_itlb</definition>
+        <argsstring></argsstring>
+        <name>default_itlb</name>
+        <qualifiedname>champsim::defaults::default_itlb</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                              .sets(16)
+                              .ways(4)
+                              .pq_size(0)
+                              .mshr_size(8)
+                              .hit_latency(1)
+                              .fill_latency(1)
+                              .tag_bandwidth(2)
+                              .fill_bandwidth(2)
+                              .offset_bits(LOG2_PAGE_SIZE)
+                              .reset_prefetch_as_load()
+                              .set_virtual_prefetch()
+                              .set_wq_checks_full_addr()
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                              .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                              .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="112" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="112" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1a46840fc921d96c812282948804e2627e" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_dtlb</definition>
+        <argsstring></argsstring>
+        <name>default_dtlb</name>
+        <qualifiedname>champsim::defaults::default_dtlb</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                              .sets(16)
+                              .ways(4)
+                              .pq_size(0)
+                              .mshr_size(8)
+                              .hit_latency(1)
+                              .fill_latency(1)
+                              .tag_bandwidth(2)
+                              .fill_bandwidth(2)
+                              .offset_bits(LOG2_PAGE_SIZE)
+                              .reset_prefetch_as_load()
+                              .reset_virtual_prefetch()
+                              .set_wq_checks_full_addr()
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                              .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                              .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="129" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="129" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1ab3516615abf2690e757d78a8544ac415" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_stlb</definition>
+        <argsstring></argsstring>
+        <name>default_stlb</name>
+        <qualifiedname>champsim::defaults::default_stlb</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                              .sets(128)
+                              .ways(12)
+                              .pq_size(0)
+                              .mshr_size(16)
+                              .hit_latency(7)
+                              .fill_latency(1)
+                              .tag_bandwidth(1)
+                              .fill_bandwidth(1)
+                              .offset_bits(LOG2_PAGE_SIZE)
+                              .reset_prefetch_as_load()
+                              .reset_virtual_prefetch()
+                              .reset_wq_checks_full_addr()
+                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                              .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                              .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="146" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="146" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1a19aadaacb74893f4a6ce3fdd5cdd75d1" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_llc</definition>
+        <argsstring></argsstring>
+        <name>default_llc</name>
+        <qualifiedname>champsim::defaults::default_llc</qualifiedname>
+        <initializer>= <ref refid="classCACHE_1_1Builder" kindref="compound">CACHE::Builder</ref>{}
+                             .name(&quot;LLC&quot;)
+                             .sets(2048 * NUM_CPUS)
+                             .ways(16)
+                             .pq_size(32 * NUM_CPUS)
+                             .mshr_size(64 * NUM_CPUS)
+                             .hit_latency(19)
+                             .fill_latency(1)
+                             .tag_bandwidth(NUM_CPUS)
+                             .fill_bandwidth(NUM_CPUS)
+                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .reset_prefetch_as_load()
+                             .reset_virtual_prefetch()
+                             .reset_wq_checks_full_addr()
+                             .prefetch_activate(access_type::LOAD, access_type::PREFETCH)
+                             .prefetcher&lt;CACHE::pprefetcherDno&gt;()
+                             .replacement&lt;CACHE::rreplacementDlru&gt;()</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="163" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="163" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="defaults_8hpp_1a05196e080eb03864e5f5a10027af3c2b" prot="public" static="no" mutable="no">
+        <type>const auto</type>
+        <definition>const auto champsim::defaults::default_ptw</definition>
+        <argsstring></argsstring>
+        <name>default_ptw</name>
+        <qualifiedname>champsim::defaults::default_ptw</qualifiedname>
+        <initializer>=
+    <ref refid="classPageTableWalker_1_1Builder" kindref="compound">PageTableWalker::Builder</ref>{}.tag_bandwidth(2).fill_bandwidth(2).mshr_size(5).add_pscl(5, 1, 2).add_pscl(4, 1, 4).add_pscl(3, 2, 4).add_pscl(2, 4, 8)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/defaults.hpp" line="181" column="12" bodyfile="/github/workspace/inc/defaults.hpp" bodystart="181" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/defaults.hpp" line="25" column="1"/>
+  </compounddef>
+</doxygen>

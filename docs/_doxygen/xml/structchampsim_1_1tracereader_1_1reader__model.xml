@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structchampsim_1_1tracereader_1_1reader__model" kind="struct" language="C++" prot="private" final="yes">
+    <compoundname>champsim::tracereader::reader_model</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">champsim::tracereader::reader_concept</basecompoundref>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structchampsim_1_1tracereader_1_1reader__model_1a4894b76e7cb1fb40261702addd1981d3" prot="public" static="no">
+        <templateparamlist>
+          <param>
+            <type>typename U</type>
+          </param>
+        </templateparamlist>
+        <type>decltype(std::declval&lt; U &gt;().eof())</type>
+        <definition>using champsim::tracereader::reader_model&lt; T &gt;::has_eof =  decltype(std::declval&lt;U&gt;().eof())</definition>
+        <argsstring></argsstring>
+        <name>has_eof</name>
+        <qualifiedname>champsim::tracereader::reader_model::has_eof</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="46" column="5" bodyfile="/github/workspace/inc/tracereader.h" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structchampsim_1_1tracereader_1_1reader__model_1a660e940763e3cd1d73b72fbdb4ff801f" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T champsim::tracereader::reader_model&lt; T &gt;::intern_</definition>
+        <argsstring></argsstring>
+        <name>intern_</name>
+        <qualifiedname>champsim::tracereader::reader_model::intern_</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="42" column="7" bodyfile="/github/workspace/inc/tracereader.h" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__model_1a26f4d6aa816ecc269e20e47397d202d4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>champsim::tracereader::reader_model&lt; T &gt;::reader_model</definition>
+        <argsstring>(T &amp;&amp;val)</argsstring>
+        <name>reader_model</name>
+        <qualifiedname>champsim::tracereader::reader_model::reader_model</qualifiedname>
+        <param>
+          <type>T &amp;&amp;</type>
+          <declname>val</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="43" column="5" bodyfile="/github/workspace/inc/tracereader.h" bodystart="43" bodyend="43"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__model_1ac0517e9977f9da4571a1118a33cb96bf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref></type>
+        <definition>ooo_model_instr champsim::tracereader::reader_model&lt; T &gt;::operator()</definition>
+        <argsstring>() override</argsstring>
+        <name>operator()</name>
+        <qualifiedname>champsim::tracereader::reader_model::operator()</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="48" column="21" bodyfile="/github/workspace/inc/tracereader.h" bodystart="48" bodyend="48"/>
+      </memberdef>
+      <memberdef kind="function" id="structchampsim_1_1tracereader_1_1reader__model_1ae1d8c0ac53b3f33ab5d00c6130ab6ae9" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool champsim::tracereader::reader_model&lt; T &gt;::eof</definition>
+        <argsstring>() const override</argsstring>
+        <name>eof</name>
+        <qualifiedname>champsim::tracereader::reader_model::eof</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="49" column="10" bodyfile="/github/workspace/inc/tracereader.h" bodystart="49" bodyend="54"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2">
+        <label>champsim::tracereader::reader_concept</label>
+      </node>
+      <node id="1">
+        <label>champsim::tracereader::reader_model&lt; T &gt;</label>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2">
+        <label>champsim::tracereader::reader_concept</label>
+      </node>
+      <node id="1">
+        <label>champsim::tracereader::reader_model&lt; T &gt;</label>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/tracereader.h" line="41" column="3" bodyfile="/github/workspace/inc/tracereader.h" bodystart="41" bodyend="55"/>
+    <listofallmembers>
+      <member refid="structchampsim_1_1tracereader_1_1reader__model_1ae1d8c0ac53b3f33ab5d00c6130ab6ae9" prot="public" virt="non-virtual"><scope>champsim::tracereader::reader_model</scope><name>eof</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__model_1a4894b76e7cb1fb40261702addd1981d3" prot="public" virt="non-virtual"><scope>champsim::tracereader::reader_model</scope><name>has_eof</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__model_1a660e940763e3cd1d73b72fbdb4ff801f" prot="public" virt="non-virtual"><scope>champsim::tracereader::reader_model</scope><name>intern_</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__model_1ac0517e9977f9da4571a1118a33cb96bf" prot="public" virt="non-virtual"><scope>champsim::tracereader::reader_model</scope><name>operator()</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__model_1a26f4d6aa816ecc269e20e47397d202d4" prot="public" virt="non-virtual"><scope>champsim::tracereader::reader_model</scope><name>reader_model</name></member>
+      <member refid="structchampsim_1_1tracereader_1_1reader__concept_1acbe867040670e23345c30e8ebc4ea5c2" prot="public" virt="virtual"><scope>champsim::tracereader::reader_model</scope><name>~reader_concept</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

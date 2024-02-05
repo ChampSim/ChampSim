@@ -1,0 +1,301 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="namespacechampsim" kind="namespace" language="C++">
+    <compoundname>champsim</compoundname>
+    <innerclass refid="classchampsim_1_1bulk__tracereader" prot="public">champsim::bulk_tracereader</innerclass>
+    <innerclass refid="structchampsim_1_1cache__queue__stats" prot="public">champsim::cache_queue_stats</innerclass>
+    <innerclass refid="classchampsim_1_1channel" prot="public">champsim::channel</innerclass>
+    <innerclass refid="structchampsim_1_1deadlock" prot="public">champsim::deadlock</innerclass>
+    <innerclass refid="structchampsim_1_1environment" prot="public">champsim::environment</innerclass>
+    <innerclass refid="structchampsim_1_1inf__istream" prot="public">champsim::inf_istream</innerclass>
+    <innerclass refid="classchampsim_1_1json__printer" prot="public">champsim::json_printer</innerclass>
+    <innerclass refid="classchampsim_1_1operable" prot="public">champsim::operable</innerclass>
+    <innerclass refid="structchampsim_1_1phase__info" prot="public">champsim::phase_info</innerclass>
+    <innerclass refid="structchampsim_1_1phase__stats" prot="public">champsim::phase_stats</innerclass>
+    <innerclass refid="classchampsim_1_1plain__printer" prot="public">champsim::plain_printer</innerclass>
+    <innerclass refid="structchampsim_1_1repeatable" prot="public">champsim::repeatable</innerclass>
+    <innerclass refid="classchampsim_1_1tracereader" prot="public">champsim::tracereader</innerclass>
+    <innernamespace refid="namespacechampsim_1_1decomp__tags">champsim::decomp_tags</innernamespace>
+    <innernamespace refid="namespacechampsim_1_1defaults">champsim::defaults</innernamespace>
+      <sectiondef kind="var">
+      <memberdef kind="variable" id="champsim_8h_1a9eca8a5ff6e40c92247dac6ae906397c" prot="public" static="no" constexpr="yes" mutable="no">
+        <type>constexpr bool</type>
+        <definition>constexpr bool champsim::debug_print</definition>
+        <argsstring></argsstring>
+        <name>debug_print</name>
+        <qualifiedname>champsim::debug_print</qualifiedname>
+        <initializer>= false</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/champsim.h" line="33" column="16" bodyfile="/github/workspace/inc/champsim.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="trace__instruction_8h_1a2876e72fcf4a6b27fc4feeb1735ea100" prot="public" static="no" constexpr="yes" mutable="no">
+        <type>constexpr char</type>
+        <definition>constexpr char champsim::REG_STACK_POINTER</definition>
+        <argsstring></argsstring>
+        <name>REG_STACK_POINTER</name>
+        <qualifiedname>champsim::REG_STACK_POINTER</qualifiedname>
+        <initializer>= 6</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="25" column="16" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="25" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="trace__instruction_8h_1af65d0cff3f64f34bcfba48ff1e5479d6" prot="public" static="no" constexpr="yes" mutable="no">
+        <type>constexpr char</type>
+        <definition>constexpr char champsim::REG_FLAGS</definition>
+        <argsstring></argsstring>
+        <name>REG_FLAGS</name>
+        <qualifiedname>champsim::REG_FLAGS</qualifiedname>
+        <initializer>= 25</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="26" column="16" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="26" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="trace__instruction_8h_1a2ea702b1f01e15a89d77e1aa41f98281" prot="public" static="no" constexpr="yes" mutable="no">
+        <type>constexpr char</type>
+        <definition>constexpr char champsim::REG_INSTRUCTION_POINTER</definition>
+        <argsstring></argsstring>
+        <name>REG_INSTRUCTION_POINTER</name>
+        <qualifiedname>champsim::REG_INSTRUCTION_POINTER</qualifiedname>
+        <initializer>= 26</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="27" column="16" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="deadlock_8h_1a2cec92e62f55caafdb0fca67e47aed31" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename R</type>
+          </param>
+          <param>
+            <type>typename F</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void champsim::range_print_deadlock</definition>
+        <argsstring>(const R &amp;range, std::string kind_name, detail::fmtstr_type&lt; R, F &gt; fmtstr, F &amp;&amp;packing_func)</argsstring>
+        <name>range_print_deadlock</name>
+        <qualifiedname>champsim::range_print_deadlock</qualifiedname>
+        <param>
+          <type>const R &amp;</type>
+          <declname>range</declname>
+        </param>
+        <param>
+          <type>std::string</type>
+          <declname>kind_name</declname>
+        </param>
+        <param>
+          <type>detail::fmtstr_type&lt; R, F &gt;</type>
+          <declname>fmtstr</declname>
+        </param>
+        <param>
+          <type>F &amp;&amp;</type>
+          <declname>packing_func</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/deadlock.h" line="47" column="6" bodyfile="/github/workspace/inc/deadlock.h" bodystart="47" bodyend="72"/>
+      </memberdef>
+      <memberdef kind="function" id="tracereader_8h_1ad0506450134974a9f607f156bd0e161e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref></type>
+        <definition>ooo_model_instr champsim::apply_branch_target</definition>
+        <argsstring>(ooo_model_instr branch, const ooo_model_instr &amp;target)</argsstring>
+        <name>apply_branch_target</name>
+        <qualifiedname>champsim::apply_branch_target</qualifiedname>
+        <param>
+          <type><ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref></type>
+          <declname>branch</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>target</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/src/tracereader.cc" line="29" column="17" bodyfile="/github/workspace/src/tracereader.cc" bodystart="29" bodyend="33" declfile="/github/workspace/inc/tracereader.h" declline="98" declcolumn="17"/>
+      </memberdef>
+      <memberdef kind="function" id="tracereader_8h_1ab4629b8d3bc8b2900766fd624201a2a0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename It</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void champsim::set_branch_targets</definition>
+        <argsstring>(It begin, It end)</argsstring>
+        <name>set_branch_targets</name>
+        <qualifiedname>champsim::set_branch_targets</qualifiedname>
+        <param>
+          <type>It</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>It</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="101" column="6" bodyfile="/github/workspace/inc/tracereader.h" bodystart="101" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="tracereader_8h_1ae24c5a38b369781e70903e97fb7bab93" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>std::string</type>
+        <definition>std::string champsim::get_fptr_cmd</definition>
+        <argsstring>(std::string_view fname)</argsstring>
+        <name>get_fptr_cmd</name>
+        <qualifiedname>champsim::get_fptr_cmd</qualifiedname>
+        <param>
+          <type>std::string_view</type>
+          <declname>fname</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/tracereader.h" line="138" column="13" declfile="/github/workspace/inc/tracereader.h" declline="138" declcolumn="13"/>
+      </memberdef>
+      <memberdef kind="function" id="champsim_8cc_1a9c83626e7b473f8fff7679569f8e9c3d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structchampsim_1_1phase__stats" kindref="compound">phase_stats</ref></type>
+        <definition>phase_stats champsim::do_phase</definition>
+        <argsstring>(phase_info phase, environment &amp;env, std::vector&lt; tracereader &gt; &amp;traces)</argsstring>
+        <name>do_phase</name>
+        <qualifiedname>champsim::do_phase</qualifiedname>
+        <param>
+          <type><ref refid="structchampsim_1_1phase__info" kindref="compound">phase_info</ref></type>
+          <declname>phase</declname>
+        </param>
+        <param>
+          <type><ref refid="structchampsim_1_1environment" kindref="compound">environment</ref> &amp;</type>
+          <declname>env</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; <ref refid="classchampsim_1_1tracereader" kindref="compound">tracereader</ref> &gt; &amp;</type>
+          <declname>traces</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/src/champsim.cc" line="40" column="13" bodyfile="/github/workspace/src/champsim.cc" bodystart="40" bodyend="133"/>
+      </memberdef>
+      <memberdef kind="function" id="champsim_8cc_1a1c46d7f633fbc80ab8d7871ff873655c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>std::vector&lt; <ref refid="structchampsim_1_1phase__stats" kindref="compound">phase_stats</ref> &gt;</type>
+        <definition>std::vector&lt; phase_stats &gt; champsim::main</definition>
+        <argsstring>(environment &amp;env, std::vector&lt; phase_info &gt; &amp;phases, std::vector&lt; tracereader &gt; &amp;traces)</argsstring>
+        <name>main</name>
+        <qualifiedname>champsim::main</qualifiedname>
+        <param>
+          <type><ref refid="structchampsim_1_1environment" kindref="compound">environment</ref> &amp;</type>
+          <declname>env</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; <ref refid="structchampsim_1_1phase__info" kindref="compound">phase_info</ref> &gt; &amp;</type>
+          <declname>phases</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; <ref refid="classchampsim_1_1tracereader" kindref="compound">tracereader</ref> &gt; &amp;</type>
+          <declname>traces</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/src/champsim.cc" line="136" column="13" bodyfile="/github/workspace/src/champsim.cc" bodystart="136" bodyend="149" declfile="/github/workspace/src/main.cc" declline="35" declcolumn="13"/>
+      </memberdef>
+      <memberdef kind="function" id="json__printer_8cc_1ad44d9a94e6f9f2b3822024d2c7b26a18" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void champsim::to_json</definition>
+        <argsstring>(nlohmann::json &amp;j, const champsim::phase_stats stats)</argsstring>
+        <name>to_json</name>
+        <qualifiedname>champsim::to_json</qualifiedname>
+        <param>
+          <type>nlohmann::json &amp;</type>
+          <declname>j</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structchampsim_1_1phase__stats" kindref="compound">champsim::phase_stats</ref></type>
+          <declname>stats</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/src/json_printer.cc" line="74" column="6" bodyfile="/github/workspace/src/json_printer.cc" bodystart="74" bodyend="92"/>
+      </memberdef>
+      <memberdef kind="function" id="tracereader_8cc_1ad7f91c59a15694f21e9776cb29ace956" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>template&lt; class, class &gt; typename</type>
+            <declname>R</declname>
+            <defname>R</defname>
+          </param>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="classchampsim_1_1tracereader" kindref="compound">champsim::tracereader</ref></type>
+        <definition>champsim::tracereader champsim::get_tracereader_for_type</definition>
+        <argsstring>(std::string fname, uint8_t cpu)</argsstring>
+        <name>get_tracereader_for_type</name>
+        <qualifiedname>champsim::get_tracereader_for_type</qualifiedname>
+        <param>
+          <type>std::string</type>
+          <declname>fname</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>cpu</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/src/tracereader.cc" line="36" column="23" bodyfile="/github/workspace/src/tracereader.cc" bodystart="36" bodyend="50"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/champsim.h" line="23" column="1"/>
+  </compounddef>
+</doxygen>

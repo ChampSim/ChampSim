@@ -1,0 +1,469 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="classPageTableWalker" kind="class" language="C++" prot="public">
+    <compoundname>PageTableWalker</compoundname>
+    <basecompoundref refid="classchampsim_1_1operable" prot="public" virt="non-virtual">champsim::operable</basecompoundref>
+    <innerclass refid="classPageTableWalker_1_1Builder" prot="public">PageTableWalker::Builder</innerclass>
+    <innerclass refid="structPageTableWalker_1_1mshr__type" prot="private">PageTableWalker::mshr_type</innerclass>
+    <innerclass refid="structPageTableWalker_1_1pscl__entry" prot="private">PageTableWalker::pscl_entry</innerclass>
+    <innerclass refid="structPageTableWalker_1_1pscl__indexer" prot="private">PageTableWalker::pscl_indexer</innerclass>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classPageTableWalker_1aa35155c89100824ff470948460c4cc75" prot="private" static="no">
+        <type>champsim::lru_table&lt; pscl_entry, pscl_indexer, pscl_indexer &gt;</type>
+        <definition>using PageTableWalker::pscl_type =  champsim::lru_table&lt;pscl_entry, pscl_indexer, pscl_indexer&gt;</definition>
+        <argsstring></argsstring>
+        <name>pscl_type</name>
+        <qualifiedname>PageTableWalker::pscl_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="42" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classPageTableWalker_1a5b7394db4919a3446deca0be560b339b" prot="private" static="no">
+        <type><ref refid="classchampsim_1_1channel" kindref="compound">champsim::channel</ref></type>
+        <definition>using PageTableWalker::channel_type =  champsim::channel</definition>
+        <argsstring></argsstring>
+        <name>channel_type</name>
+        <qualifiedname>PageTableWalker::channel_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="43" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classPageTableWalker_1a781fbc03dbcbddfdae3ae71b82df75c7" prot="private" static="no">
+        <type>typename channel_type::request_type</type>
+        <definition>using PageTableWalker::request_type =  typename channel_type::request_type</definition>
+        <argsstring></argsstring>
+        <name>request_type</name>
+        <qualifiedname>PageTableWalker::request_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="44" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classPageTableWalker_1a47a46441f81c404eee3c7593121e687a" prot="private" static="no">
+        <type>typename channel_type::response_type</type>
+        <definition>using PageTableWalker::response_type =  typename channel_type::response_type</definition>
+        <argsstring></argsstring>
+        <name>response_type</name>
+        <qualifiedname>PageTableWalker::response_type</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="45" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classPageTableWalker_1a9e469d181f52164bd8a7da6c746015b8" prot="private" static="no" mutable="no">
+        <type>std::deque&lt; mshr_type &gt;</type>
+        <definition>std::deque&lt;mshr_type&gt; PageTableWalker::MSHR</definition>
+        <argsstring></argsstring>
+        <name>MSHR</name>
+        <qualifiedname>PageTableWalker::MSHR</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="65" column="14" bodyfile="/github/workspace/inc/ptw.h" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1aed4aa118f0269525d48bb18780b10d9e" prot="private" static="no" mutable="no">
+        <type>std::deque&lt; mshr_type &gt;</type>
+        <definition>std::deque&lt;mshr_type&gt; PageTableWalker::finished</definition>
+        <argsstring></argsstring>
+        <name>finished</name>
+        <qualifiedname>PageTableWalker::finished</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="66" column="14" bodyfile="/github/workspace/inc/ptw.h" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a57f79715d9105ed124b3eb074374a8f4" prot="private" static="no" mutable="no">
+        <type>std::deque&lt; mshr_type &gt;</type>
+        <definition>std::deque&lt;mshr_type&gt; PageTableWalker::completed</definition>
+        <argsstring></argsstring>
+        <name>completed</name>
+        <qualifiedname>PageTableWalker::completed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="67" column="14" bodyfile="/github/workspace/inc/ptw.h" bodystart="67" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a9508d73e82791ec1c1898510bb2876dd" prot="private" static="no" mutable="no">
+        <type>std::vector&lt; <ref refid="classchampsim_1_1channel" kindref="compound">channel_type</ref> * &gt;</type>
+        <definition>std::vector&lt;channel_type*&gt; PageTableWalker::upper_levels</definition>
+        <argsstring></argsstring>
+        <name>upper_levels</name>
+        <qualifiedname>PageTableWalker::upper_levels</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="69" column="15" bodyfile="/github/workspace/inc/ptw.h" bodystart="69" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1afa3c9f5c8e11092ed9d9bbb5110bbba7" prot="private" static="no" mutable="no">
+        <type><ref refid="classchampsim_1_1channel" kindref="compound">channel_type</ref> *</type>
+        <definition>channel_type* PageTableWalker::lower_level</definition>
+        <argsstring></argsstring>
+        <name>lower_level</name>
+        <qualifiedname>PageTableWalker::lower_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="70" column="16" bodyfile="/github/workspace/inc/ptw.h" bodystart="70" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classPageTableWalker_1aacd471bf55e06b98f309dd3805b31f9c" prot="public" static="no" mutable="no">
+        <type>const std::string</type>
+        <definition>const std::string PageTableWalker::NAME</definition>
+        <argsstring></argsstring>
+        <name>NAME</name>
+        <qualifiedname>PageTableWalker::NAME</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="79" column="21" bodyfile="/github/workspace/inc/ptw.h" bodystart="79" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a10b2a3d34169b8a2e037e1bf32ea5f76" prot="public" static="no" mutable="no">
+        <type>const uint32_t</type>
+        <definition>const uint32_t PageTableWalker::MSHR_SIZE</definition>
+        <argsstring></argsstring>
+        <name>MSHR_SIZE</name>
+        <qualifiedname>PageTableWalker::MSHR_SIZE</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="80" column="18" bodyfile="/github/workspace/inc/ptw.h" bodystart="80" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1aedf78dfcb4b9c711dede641b8cf60218" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int PageTableWalker::MAX_READ</definition>
+        <argsstring></argsstring>
+        <name>MAX_READ</name>
+        <qualifiedname>PageTableWalker::MAX_READ</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="81" column="18" bodyfile="/github/workspace/inc/ptw.h" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a08570ec3fa59595dece83d2696cd4451" prot="public" static="no" mutable="no">
+        <type>const long int</type>
+        <definition>const long int PageTableWalker::MAX_FILL</definition>
+        <argsstring></argsstring>
+        <name>MAX_FILL</name>
+        <qualifiedname>PageTableWalker::MAX_FILL</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="81" column="27" bodyfile="/github/workspace/inc/ptw.h" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a8044d14a81238eda52c2bb3bd10a7165" prot="public" static="no" mutable="no">
+        <type>const uint64_t</type>
+        <definition>const uint64_t PageTableWalker::HIT_LATENCY</definition>
+        <argsstring></argsstring>
+        <name>HIT_LATENCY</name>
+        <qualifiedname>PageTableWalker::HIT_LATENCY</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="82" column="18" bodyfile="/github/workspace/inc/ptw.h" bodystart="82" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a292f712d75ae75dab31aa50847c76d06" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; pscl_type &gt;</type>
+        <definition>std::vector&lt;pscl_type&gt; PageTableWalker::pscl</definition>
+        <argsstring></argsstring>
+        <name>pscl</name>
+        <qualifiedname>PageTableWalker::pscl</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="84" column="15" bodyfile="/github/workspace/inc/ptw.h" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1a1eb4bdb06d63f291009353177c28dd6b" prot="public" static="no" mutable="no">
+        <type><ref refid="classVirtualMemory" kindref="compound">VirtualMemory</ref> *</type>
+        <definition>VirtualMemory* PageTableWalker::vmem</definition>
+        <argsstring></argsstring>
+        <name>vmem</name>
+        <qualifiedname>PageTableWalker::vmem</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="85" column="17" bodyfile="/github/workspace/inc/ptw.h" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classPageTableWalker_1ad10de6aa809849302ab366ac8c600927" prot="public" static="no" mutable="no">
+        <type>const uint64_t</type>
+        <definition>const uint64_t PageTableWalker::CR3_addr</definition>
+        <argsstring></argsstring>
+        <name>CR3_addr</name>
+        <qualifiedname>PageTableWalker::CR3_addr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="87" column="18" bodyfile="/github/workspace/inc/ptw.h" bodystart="87" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classPageTableWalker_1acd96e6b39b7e7d96b6fac75a32244110" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>std::optional&lt; mshr_type &gt;</type>
+        <definition>auto PageTableWalker::handle_read</definition>
+        <argsstring>(const request_type &amp;pkt, channel_type *ul)</argsstring>
+        <name>handle_read</name>
+        <qualifiedname>PageTableWalker::handle_read</qualifiedname>
+        <param>
+          <type>const request_type &amp;</type>
+          <declname>pkt</declname>
+        </param>
+        <param>
+          <type><ref refid="classchampsim_1_1channel" kindref="compound">channel_type</ref> *</type>
+          <declname>ul</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="72" column="17" bodyfile="/github/workspace/src/ptw.cc" bodystart="49" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1aff3dff05c06ed9e4bb801239c9a4a18e" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>std::optional&lt; mshr_type &gt;</type>
+        <definition>auto PageTableWalker::handle_fill</definition>
+        <argsstring>(const mshr_type &amp;pkt)</argsstring>
+        <name>handle_fill</name>
+        <qualifiedname>PageTableWalker::handle_fill</qualifiedname>
+        <param>
+          <type>const mshr_type &amp;</type>
+          <declname>pkt</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="73" column="17" bodyfile="/github/workspace/src/ptw.cc" bodystart="73" bodyend="90"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1aee1c4757fdbbf983297d7ebd7755149a" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>std::optional&lt; mshr_type &gt;</type>
+        <definition>auto PageTableWalker::step_translation</definition>
+        <argsstring>(const mshr_type &amp;source)</argsstring>
+        <name>step_translation</name>
+        <qualifiedname>PageTableWalker::step_translation</qualifiedname>
+        <param>
+          <type>const mshr_type &amp;</type>
+          <declname>source</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="74" column="17" bodyfile="/github/workspace/src/ptw.cc" bodystart="92" bodyend="110"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1af0596b0885d854af506222c9f24549da" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void PageTableWalker::finish_packet</definition>
+        <argsstring>(const response_type &amp;packet)</argsstring>
+        <name>finish_packet</name>
+        <qualifiedname>PageTableWalker::finish_packet</qualifiedname>
+        <param>
+          <type>const response_type &amp;</type>
+          <declname>packet</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="76" column="8" bodyfile="/github/workspace/src/ptw.cc" bodystart="161" bodyend="198"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classPageTableWalker_1aed292f4d230904d925a00cc04e826e17" prot="public" static="no" const="no" explicit="yes" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>PageTableWalker::PageTableWalker</definition>
+        <argsstring>(Builder builder)</argsstring>
+        <name>PageTableWalker</name>
+        <qualifiedname>PageTableWalker::PageTableWalker</qualifiedname>
+        <param>
+          <type><ref refid="classPageTableWalker_1_1Builder" kindref="compound">Builder</ref></type>
+          <declname>builder</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="163" column="12" bodyfile="/github/workspace/src/ptw.cc" bodystart="29" bodyend="39"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1a91bfcb642a2d8fb21b7be8bc7295d100" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>long</type>
+        <definition>long PageTableWalker::operate</definition>
+        <argsstring>() override final</argsstring>
+        <name>operate</name>
+        <qualifiedname>PageTableWalker::operate</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1ad061945ce3179fa00d77a6e30e97ad84">operate</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="165" column="8" bodyfile="/github/workspace/src/ptw.cc" bodystart="112" bodyend="159"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1a023631ac54b29c6844535b37f4ce8a17" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void PageTableWalker::begin_phase</definition>
+        <argsstring>() override final</argsstring>
+        <name>begin_phase</name>
+        <qualifiedname>PageTableWalker::begin_phase</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1a4f44b35a5dbd9855d7dde0fcd45e39d4">begin_phase</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="167" column="8" bodyfile="/github/workspace/src/ptw.cc" bodystart="200" bodyend="207"/>
+      </memberdef>
+      <memberdef kind="function" id="classPageTableWalker_1a4af603af883306339fe5071777564117" prot="public" static="no" const="no" explicit="no" inline="no" final="yes" virt="virtual">
+        <type>void</type>
+        <definition>void PageTableWalker::print_deadlock</definition>
+        <argsstring>() override final</argsstring>
+        <name>print_deadlock</name>
+        <qualifiedname>PageTableWalker::print_deadlock</qualifiedname>
+        <reimplements refid="classchampsim_1_1operable_1a19019841fc4b9a0cb245552c1425bece">print_deadlock</reimplements>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="168" column="8" bodyfile="/github/workspace/src/ptw.cc" bodystart="210" bodyend="215"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>PageTableWalker</label>
+        <link refid="classPageTableWalker"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>champsim::operable</label>
+        <link refid="classchampsim_1_1operable"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1">
+        <label>PageTableWalker</label>
+        <link refid="classPageTableWalker"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>vmem</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>VirtualMemory</label>
+        <link refid="classVirtualMemory"/>
+      </node>
+      <node id="2">
+        <label>champsim::operable</label>
+        <link refid="classchampsim_1_1operable"/>
+      </node>
+    </collaborationgraph>
+    <location file="/github/workspace/inc/ptw.h" line="29" column="1" bodyfile="/github/workspace/inc/ptw.h" bodystart="30" bodyend="169"/>
+    <listofallmembers>
+      <member refid="classchampsim_1_1operable_1a3772b0e41a34c9c8384a44108d6f6165" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>_operate</name></member>
+      <member refid="classPageTableWalker_1a023631ac54b29c6844535b37f4ce8a17" prot="public" virt="virtual"><scope>PageTableWalker</scope><name>begin_phase</name></member>
+      <member refid="classPageTableWalker_1a5b7394db4919a3446deca0be560b339b" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>channel_type</name></member>
+      <member refid="classchampsim_1_1operable_1ad92c48b440cad47adad20c0b3008a541" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>CLOCK_SCALE</name></member>
+      <member refid="classPageTableWalker_1a57f79715d9105ed124b3eb074374a8f4" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>completed</name></member>
+      <member refid="classPageTableWalker_1ad10de6aa809849302ab366ac8c600927" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>CR3_addr</name></member>
+      <member refid="classchampsim_1_1operable_1a7c01174851f4ac835de1063844a335b6" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>current_cycle</name></member>
+      <member refid="classchampsim_1_1operable_1a2942511f46fbf590b7531d299fe60dac" prot="public" virt="virtual"><scope>PageTableWalker</scope><name>end_phase</name></member>
+      <member refid="classPageTableWalker_1af0596b0885d854af506222c9f24549da" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>finish_packet</name></member>
+      <member refid="classPageTableWalker_1aed4aa118f0269525d48bb18780b10d9e" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>finished</name></member>
+      <member refid="classPageTableWalker_1aff3dff05c06ed9e4bb801239c9a4a18e" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>handle_fill</name></member>
+      <member refid="classPageTableWalker_1acd96e6b39b7e7d96b6fac75a32244110" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>handle_read</name></member>
+      <member refid="classPageTableWalker_1a8044d14a81238eda52c2bb3bd10a7165" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>HIT_LATENCY</name></member>
+      <member refid="classchampsim_1_1operable_1aadc42488425d7b667c423bb30198c827" prot="public" virt="virtual"><scope>PageTableWalker</scope><name>initialize</name></member>
+      <member refid="classchampsim_1_1operable_1a01987ce82bc1614f66f559e4857f78ba" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>leap_operation</name></member>
+      <member refid="classPageTableWalker_1afa3c9f5c8e11092ed9d9bbb5110bbba7" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>lower_level</name></member>
+      <member refid="classPageTableWalker_1a08570ec3fa59595dece83d2696cd4451" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>MAX_FILL</name></member>
+      <member refid="classPageTableWalker_1aedf78dfcb4b9c711dede641b8cf60218" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>MAX_READ</name></member>
+      <member refid="classPageTableWalker_1a9e469d181f52164bd8a7da6c746015b8" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>MSHR</name></member>
+      <member refid="classPageTableWalker_1a10b2a3d34169b8a2e037e1bf32ea5f76" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>MSHR_SIZE</name></member>
+      <member refid="classPageTableWalker_1aacd471bf55e06b98f309dd3805b31f9c" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>NAME</name></member>
+      <member refid="classchampsim_1_1operable_1aae28abe79c0122d7eda58039f2235786" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>operable</name></member>
+      <member refid="classPageTableWalker_1a91bfcb642a2d8fb21b7be8bc7295d100" prot="public" virt="virtual"><scope>PageTableWalker</scope><name>operate</name></member>
+      <member refid="classPageTableWalker_1aed292f4d230904d925a00cc04e826e17" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>PageTableWalker</name></member>
+      <member refid="classPageTableWalker_1a4af603af883306339fe5071777564117" prot="public" virt="virtual"><scope>PageTableWalker</scope><name>print_deadlock</name></member>
+      <member refid="classPageTableWalker_1a292f712d75ae75dab31aa50847c76d06" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>pscl</name></member>
+      <member refid="classPageTableWalker_1aa35155c89100824ff470948460c4cc75" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>pscl_type</name></member>
+      <member refid="classPageTableWalker_1a781fbc03dbcbddfdae3ae71b82df75c7" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>request_type</name></member>
+      <member refid="classPageTableWalker_1a47a46441f81c404eee3c7593121e687a" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>response_type</name></member>
+      <member refid="classPageTableWalker_1aee1c4757fdbbf983297d7ebd7755149a" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>step_translation</name></member>
+      <member refid="classPageTableWalker_1a9508d73e82791ec1c1898510bb2876dd" prot="private" virt="non-virtual"><scope>PageTableWalker</scope><name>upper_levels</name></member>
+      <member refid="classPageTableWalker_1a1eb4bdb06d63f291009353177c28dd6b" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>vmem</name></member>
+      <member refid="classchampsim_1_1operable_1a3464324490f33c24df3a11f4e30aa78b" prot="public" virt="non-virtual"><scope>PageTableWalker</scope><name>warmup</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

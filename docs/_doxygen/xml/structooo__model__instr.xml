@@ -1,0 +1,483 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structooo__model__instr" kind="struct" language="C++" prot="public">
+    <compoundname>ooo_model_instr</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structooo__model__instr_1a1668314797c4d0a2baa293c5e3738b07" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t ooo_model_instr::instr_id</definition>
+        <argsstring></argsstring>
+        <name>instr_id</name>
+        <qualifiedname>ooo_model_instr::instr_id</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="42" column="12" bodyfile="/github/workspace/inc/instruction.h" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1adee00e8f2b132d4dad40d9b3949fe6c3" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t ooo_model_instr::ip</definition>
+        <argsstring></argsstring>
+        <name>ip</name>
+        <qualifiedname>ooo_model_instr::ip</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="43" column="12" bodyfile="/github/workspace/inc/instruction.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a3c41dca2123d4ec1ed636431bc8a4d99" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t ooo_model_instr::event_cycle</definition>
+        <argsstring></argsstring>
+        <name>event_cycle</name>
+        <qualifiedname>ooo_model_instr::event_cycle</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="44" column="12" bodyfile="/github/workspace/inc/instruction.h" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a30efbb0958ad22698d02b8bde02eb799" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool ooo_model_instr::is_branch</definition>
+        <argsstring></argsstring>
+        <name>is_branch</name>
+        <qualifiedname>ooo_model_instr::is_branch</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="46" column="8" bodyfile="/github/workspace/inc/instruction.h" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a15687625d88bef5513fc2847eed4028b" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool ooo_model_instr::branch_taken</definition>
+        <argsstring></argsstring>
+        <name>branch_taken</name>
+        <qualifiedname>ooo_model_instr::branch_taken</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="47" column="8" bodyfile="/github/workspace/inc/instruction.h" bodystart="47" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a0e21b7b22da5d0e0989de222618bcb95" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool ooo_model_instr::branch_prediction</definition>
+        <argsstring></argsstring>
+        <name>branch_prediction</name>
+        <qualifiedname>ooo_model_instr::branch_prediction</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="48" column="8" bodyfile="/github/workspace/inc/instruction.h" bodystart="48" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a5bb3dca8dac45274093019c0fb97e326" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool ooo_model_instr::branch_mispredicted</definition>
+        <argsstring></argsstring>
+        <name>branch_mispredicted</name>
+        <qualifiedname>ooo_model_instr::branch_mispredicted</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="49" column="8" bodyfile="/github/workspace/inc/instruction.h" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a4675c410ded85cdfbc453bfefd81a325" prot="public" static="no" mutable="no">
+        <type>std::array&lt; uint8_t, 2 &gt;</type>
+        <definition>std::array&lt;uint8_t, 2&gt; ooo_model_instr::asid</definition>
+        <argsstring></argsstring>
+        <name>asid</name>
+        <qualifiedname>ooo_model_instr::asid</qualifiedname>
+        <initializer>= {std::numeric_limits&lt;uint8_t&gt;::max(), std::numeric_limits&lt;uint8_t&gt;::max()}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="51" column="14" bodyfile="/github/workspace/inc/instruction.h" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a2cf0be4cb76f77cbc597bc23380e5f2c" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::branch_type</definition>
+        <argsstring></argsstring>
+        <name>branch_type</name>
+        <qualifiedname>ooo_model_instr::branch_type</qualifiedname>
+        <initializer>= NOT_BRANCH</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="53" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a010e6d832c34a26a7649d043cac44556" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t ooo_model_instr::branch_target</definition>
+        <argsstring></argsstring>
+        <name>branch_target</name>
+        <qualifiedname>ooo_model_instr::branch_target</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="54" column="12" bodyfile="/github/workspace/inc/instruction.h" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1ae9f00cabffba8336950a8855943f96b7" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::dib_checked</definition>
+        <argsstring></argsstring>
+        <name>dib_checked</name>
+        <qualifiedname>ooo_model_instr::dib_checked</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="56" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1aa7457a995366ce46847ad5c4229faaff" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::fetched</definition>
+        <argsstring></argsstring>
+        <name>fetched</name>
+        <qualifiedname>ooo_model_instr::fetched</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="57" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="57" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1ad473765c5108771022e78f1cb3b78143" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::decoded</definition>
+        <argsstring></argsstring>
+        <name>decoded</name>
+        <qualifiedname>ooo_model_instr::decoded</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="58" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a6930be39239cd5298d531fe536b3e79f" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::scheduled</definition>
+        <argsstring></argsstring>
+        <name>scheduled</name>
+        <qualifiedname>ooo_model_instr::scheduled</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="59" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a0f6b971bcbee1855b8b453172dad26ed" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t ooo_model_instr::executed</definition>
+        <argsstring></argsstring>
+        <name>executed</name>
+        <qualifiedname>ooo_model_instr::executed</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="60" column="11" bodyfile="/github/workspace/inc/instruction.h" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a3c3de65f6e591623c6104731248b2500" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned ooo_model_instr::completed_mem_ops</definition>
+        <argsstring></argsstring>
+        <name>completed_mem_ops</name>
+        <qualifiedname>ooo_model_instr::completed_mem_ops</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="62" column="12" bodyfile="/github/workspace/inc/instruction.h" bodystart="62" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1acfcd2354271678083f05190b8382ac49" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int ooo_model_instr::num_reg_dependent</definition>
+        <argsstring></argsstring>
+        <name>num_reg_dependent</name>
+        <qualifiedname>ooo_model_instr::num_reg_dependent</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="63" column="7" bodyfile="/github/workspace/inc/instruction.h" bodystart="63" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1ab4d835a4edd37606ded4511296e984fa" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; uint8_t &gt;</type>
+        <definition>std::vector&lt;uint8_t&gt; ooo_model_instr::destination_registers</definition>
+        <argsstring></argsstring>
+        <name>destination_registers</name>
+        <qualifiedname>ooo_model_instr::destination_registers</qualifiedname>
+        <initializer>= {}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="65" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a85d1342995505595c646a520d96f4306" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; uint8_t &gt;</type>
+        <definition>std::vector&lt;uint8_t&gt; ooo_model_instr::source_registers</definition>
+        <argsstring></argsstring>
+        <name>source_registers</name>
+        <qualifiedname>ooo_model_instr::source_registers</qualifiedname>
+        <initializer>= {}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="66" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a8f3b88ff44bff2ebe3702cf2d943c804" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; uint64_t &gt;</type>
+        <definition>std::vector&lt;uint64_t&gt; ooo_model_instr::destination_memory</definition>
+        <argsstring></argsstring>
+        <name>destination_memory</name>
+        <qualifiedname>ooo_model_instr::destination_memory</qualifiedname>
+        <initializer>= {}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="68" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1ac68ece052b73bdd1e69465e4d57dbafe" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; uint64_t &gt;</type>
+        <definition>std::vector&lt;uint64_t&gt; ooo_model_instr::source_memory</definition>
+        <argsstring></argsstring>
+        <name>source_memory</name>
+        <qualifiedname>ooo_model_instr::source_memory</qualifiedname>
+        <initializer>= {}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="69" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="69" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structooo__model__instr_1a16a2473e60889b7cdfdef03552477d73" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; std::reference_wrapper&lt; <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &gt; &gt;</type>
+        <definition>std::vector&lt;std::reference_wrapper&lt;ooo_model_instr&gt; &gt; ooo_model_instr::registers_instrs_depend_on_me</definition>
+        <argsstring></argsstring>
+        <name>registers_instrs_depend_on_me</name>
+        <qualifiedname>ooo_model_instr::registers_instrs_depend_on_me</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="72" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="72" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structooo__model__instr_1afa07df950d1d57e2933f062f4fb96e50" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>ooo_model_instr::ooo_model_instr</definition>
+        <argsstring>(T instr, std::array&lt; uint8_t, 2 &gt; local_asid)</argsstring>
+        <name>ooo_model_instr</name>
+        <qualifiedname>ooo_model_instr::ooo_model_instr</qualifiedname>
+        <param>
+          <type>T</type>
+          <declname>instr</declname>
+        </param>
+        <param>
+          <type>std::array&lt; uint8_t, 2 &gt;</type>
+          <declname>local_asid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="76" column="3" bodyfile="/github/workspace/inc/instruction.h" bodystart="76" bodyend="131"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structooo__model__instr_1a56ef18cba4c70a282986c24b68dddd43" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>ooo_model_instr::ooo_model_instr</definition>
+        <argsstring>(uint8_t cpu, input_instr instr)</argsstring>
+        <name>ooo_model_instr</name>
+        <qualifiedname>ooo_model_instr::ooo_model_instr</qualifiedname>
+        <param>
+          <type>uint8_t</type>
+          <declname>cpu</declname>
+        </param>
+        <param>
+          <type><ref refid="structinput__instr" kindref="compound">input_instr</ref></type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="134" column="3" bodyfile="/github/workspace/inc/instruction.h" bodystart="134" bodyend="134"/>
+      </memberdef>
+      <memberdef kind="function" id="structooo__model__instr_1aa791d2502cae0b61ee942222bbe82c2e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>ooo_model_instr::ooo_model_instr</definition>
+        <argsstring>(uint8_t, cloudsuite_instr instr)</argsstring>
+        <name>ooo_model_instr</name>
+        <qualifiedname>ooo_model_instr::ooo_model_instr</qualifiedname>
+        <param>
+          <type>uint8_t</type>
+        </param>
+        <param>
+          <type><ref refid="structcloudsuite__instr" kindref="compound">cloudsuite_instr</ref></type>
+          <declname>instr</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="135" column="3" bodyfile="/github/workspace/inc/instruction.h" bodystart="135" bodyend="135"/>
+      </memberdef>
+      <memberdef kind="function" id="structooo__model__instr_1a0d9c568af1840624efbaf130e7f41f18" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t ooo_model_instr::num_mem_ops</definition>
+        <argsstring>() const</argsstring>
+        <name>num_mem_ops</name>
+        <qualifiedname>ooo_model_instr::num_mem_ops</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="137" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="137" bodyend="137"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structooo__model__instr_1a901749e181b8226c549d87fc5cd09d79" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool ooo_model_instr::program_order</definition>
+        <argsstring>(const ooo_model_instr &amp;lhs, const ooo_model_instr &amp;rhs)</argsstring>
+        <name>program_order</name>
+        <qualifiedname>ooo_model_instr::program_order</qualifiedname>
+        <param>
+          <type>const <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>lhs</declname>
+        </param>
+        <param>
+          <type>const <ref refid="structooo__model__instr" kindref="compound">ooo_model_instr</ref> &amp;</type>
+          <declname>rhs</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/instruction.h" line="139" column="15" bodyfile="/github/workspace/inc/instruction.h" bodystart="139" bodyend="139"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/instruction.h" line="41" column="1" bodyfile="/github/workspace/inc/instruction.h" bodystart="41" bodyend="140"/>
+    <listofallmembers>
+      <member refid="structooo__model__instr_1a4675c410ded85cdfbc453bfefd81a325" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>asid</name></member>
+      <member refid="structooo__model__instr_1a5bb3dca8dac45274093019c0fb97e326" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>branch_mispredicted</name></member>
+      <member refid="structooo__model__instr_1a0e21b7b22da5d0e0989de222618bcb95" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>branch_prediction</name></member>
+      <member refid="structooo__model__instr_1a15687625d88bef5513fc2847eed4028b" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>branch_taken</name></member>
+      <member refid="structooo__model__instr_1a010e6d832c34a26a7649d043cac44556" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>branch_target</name></member>
+      <member refid="structooo__model__instr_1a2cf0be4cb76f77cbc597bc23380e5f2c" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>branch_type</name></member>
+      <member refid="structooo__model__instr_1a3c3de65f6e591623c6104731248b2500" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>completed_mem_ops</name></member>
+      <member refid="structooo__model__instr_1ad473765c5108771022e78f1cb3b78143" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>decoded</name></member>
+      <member refid="structooo__model__instr_1a8f3b88ff44bff2ebe3702cf2d943c804" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>destination_memory</name></member>
+      <member refid="structooo__model__instr_1ab4d835a4edd37606ded4511296e984fa" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>destination_registers</name></member>
+      <member refid="structooo__model__instr_1ae9f00cabffba8336950a8855943f96b7" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>dib_checked</name></member>
+      <member refid="structooo__model__instr_1a3c41dca2123d4ec1ed636431bc8a4d99" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>event_cycle</name></member>
+      <member refid="structooo__model__instr_1a0f6b971bcbee1855b8b453172dad26ed" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>executed</name></member>
+      <member refid="structooo__model__instr_1aa7457a995366ce46847ad5c4229faaff" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>fetched</name></member>
+      <member refid="structooo__model__instr_1a1668314797c4d0a2baa293c5e3738b07" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>instr_id</name></member>
+      <member refid="structooo__model__instr_1adee00e8f2b132d4dad40d9b3949fe6c3" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>ip</name></member>
+      <member refid="structooo__model__instr_1a30efbb0958ad22698d02b8bde02eb799" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>is_branch</name></member>
+      <member refid="structooo__model__instr_1a0d9c568af1840624efbaf130e7f41f18" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>num_mem_ops</name></member>
+      <member refid="structooo__model__instr_1acfcd2354271678083f05190b8382ac49" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>num_reg_dependent</name></member>
+      <member refid="structooo__model__instr_1afa07df950d1d57e2933f062f4fb96e50" prot="private" virt="non-virtual"><scope>ooo_model_instr</scope><name>ooo_model_instr</name></member>
+      <member refid="structooo__model__instr_1a56ef18cba4c70a282986c24b68dddd43" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>ooo_model_instr</name></member>
+      <member refid="structooo__model__instr_1aa791d2502cae0b61ee942222bbe82c2e" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>ooo_model_instr</name></member>
+      <member refid="structooo__model__instr_1a901749e181b8226c549d87fc5cd09d79" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>program_order</name></member>
+      <member refid="structooo__model__instr_1a16a2473e60889b7cdfdef03552477d73" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>registers_instrs_depend_on_me</name></member>
+      <member refid="structooo__model__instr_1a6930be39239cd5298d531fe536b3e79f" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>scheduled</name></member>
+      <member refid="structooo__model__instr_1ac68ece052b73bdd1e69465e4d57dbafe" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>source_memory</name></member>
+      <member refid="structooo__model__instr_1a85d1342995505595c646a520d96f4306" prot="public" virt="non-virtual"><scope>ooo_model_instr</scope><name>source_registers</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

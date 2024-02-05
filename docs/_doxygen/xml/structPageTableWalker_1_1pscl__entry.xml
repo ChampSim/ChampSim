@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structPageTableWalker_1_1pscl__entry" kind="struct" language="C++" prot="private">
+    <compoundname>PageTableWalker::pscl_entry</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structPageTableWalker_1_1pscl__entry_1a6b5750871d9f54555f9a78616df76f93" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t PageTableWalker::pscl_entry::vaddr</definition>
+        <argsstring></argsstring>
+        <name>vaddr</name>
+        <qualifiedname>PageTableWalker::pscl_entry::vaddr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="32" column="14" bodyfile="/github/workspace/inc/ptw.h" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPageTableWalker_1_1pscl__entry_1a6146fb4ff35c3346f9ac3c69a978cc7a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t PageTableWalker::pscl_entry::ptw_addr</definition>
+        <argsstring></argsstring>
+        <name>ptw_addr</name>
+        <qualifiedname>PageTableWalker::pscl_entry::ptw_addr</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="33" column="14" bodyfile="/github/workspace/inc/ptw.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPageTableWalker_1_1pscl__entry_1a1ece184703048c88ac33101ed70a8fb6" prot="public" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t PageTableWalker::pscl_entry::level</definition>
+        <argsstring></argsstring>
+        <name>level</name>
+        <qualifiedname>PageTableWalker::pscl_entry::level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/ptw.h" line="34" column="17" bodyfile="/github/workspace/inc/ptw.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/ptw.h" line="31" column="3" bodyfile="/github/workspace/inc/ptw.h" bodystart="31" bodyend="35"/>
+    <listofallmembers>
+      <member refid="structPageTableWalker_1_1pscl__entry_1a1ece184703048c88ac33101ed70a8fb6" prot="public" virt="non-virtual"><scope>PageTableWalker::pscl_entry</scope><name>level</name></member>
+      <member refid="structPageTableWalker_1_1pscl__entry_1a6146fb4ff35c3346f9ac3c69a978cc7a" prot="public" virt="non-virtual"><scope>PageTableWalker::pscl_entry</scope><name>ptw_addr</name></member>
+      <member refid="structPageTableWalker_1_1pscl__entry_1a6b5750871d9f54555f9a78616df76f93" prot="public" virt="non-virtual"><scope>PageTableWalker::pscl_entry</scope><name>vaddr</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structcloudsuite__instr" kind="struct" language="C++" prot="public">
+    <compoundname>cloudsuite_instr</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structcloudsuite__instr_1a25eaa7b35b63a9b2420ec5818cb72275" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long cloudsuite_instr::ip</definition>
+        <argsstring></argsstring>
+        <name>ip</name>
+        <qualifiedname>cloudsuite_instr::ip</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="52" column="22" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="52" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1a7a0896c9dfba2500c3ab68ea0836d5d3" prot="public" static="no" mutable="no">
+        <type>unsigned char</type>
+        <definition>unsigned char cloudsuite_instr::is_branch</definition>
+        <argsstring></argsstring>
+        <name>is_branch</name>
+        <qualifiedname>cloudsuite_instr::is_branch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="55" column="17" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1ac5ee594147388e2edd5afa37f3b3a19f" prot="public" static="no" mutable="no">
+        <type>unsigned char</type>
+        <definition>unsigned char cloudsuite_instr::branch_taken</definition>
+        <argsstring></argsstring>
+        <name>branch_taken</name>
+        <qualifiedname>cloudsuite_instr::branch_taken</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="56" column="17" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1ad764110e3581d47bce80a8c77eb69e59" prot="public" static="no" mutable="no">
+        <type>unsigned char</type>
+        <definition>unsigned char cloudsuite_instr::destination_registers[NUM_INSTR_DESTINATIONS_SPARC]</definition>
+        <argsstring>[NUM_INSTR_DESTINATIONS_SPARC]</argsstring>
+        <name>destination_registers</name>
+        <qualifiedname>cloudsuite_instr::destination_registers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="58" column="17" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1ab5f47ffca5f6bf8863c710520b973907" prot="public" static="no" mutable="no">
+        <type>unsigned char</type>
+        <definition>unsigned char cloudsuite_instr::source_registers[NUM_INSTR_SOURCES]</definition>
+        <argsstring>[NUM_INSTR_SOURCES]</argsstring>
+        <name>source_registers</name>
+        <qualifiedname>cloudsuite_instr::source_registers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="59" column="17" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1ad45526e62212e9f83c0335bdcb43f595" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long cloudsuite_instr::destination_memory[NUM_INSTR_DESTINATIONS_SPARC]</definition>
+        <argsstring>[NUM_INSTR_DESTINATIONS_SPARC]</argsstring>
+        <name>destination_memory</name>
+        <qualifiedname>cloudsuite_instr::destination_memory</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="61" column="22" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="61" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1a06de97eb66c6e30e19828ef566aa2bf3" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long cloudsuite_instr::source_memory[NUM_INSTR_SOURCES]</definition>
+        <argsstring>[NUM_INSTR_SOURCES]</argsstring>
+        <name>source_memory</name>
+        <qualifiedname>cloudsuite_instr::source_memory</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="62" column="22" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="62" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcloudsuite__instr_1a1cd85b86ec978f85202fffde36edd569" prot="public" static="no" mutable="no">
+        <type>unsigned char</type>
+        <definition>unsigned char cloudsuite_instr::asid[2]</definition>
+        <argsstring>[2]</argsstring>
+        <name>asid</name>
+        <qualifiedname>cloudsuite_instr::asid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/trace_instruction.h" line="64" column="17" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="64" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/trace_instruction.h" line="50" column="1" bodyfile="/github/workspace/inc/trace_instruction.h" bodystart="50" bodyend="65"/>
+    <listofallmembers>
+      <member refid="structcloudsuite__instr_1a1cd85b86ec978f85202fffde36edd569" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>asid</name></member>
+      <member refid="structcloudsuite__instr_1ac5ee594147388e2edd5afa37f3b3a19f" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>branch_taken</name></member>
+      <member refid="structcloudsuite__instr_1ad45526e62212e9f83c0335bdcb43f595" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>destination_memory</name></member>
+      <member refid="structcloudsuite__instr_1ad764110e3581d47bce80a8c77eb69e59" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>destination_registers</name></member>
+      <member refid="structcloudsuite__instr_1a25eaa7b35b63a9b2420ec5818cb72275" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>ip</name></member>
+      <member refid="structcloudsuite__instr_1a7a0896c9dfba2500c3ab68ea0836d5d3" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>is_branch</name></member>
+      <member refid="structcloudsuite__instr_1a06de97eb66c6e30e19828ef566aa2bf3" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>source_memory</name></member>
+      <member refid="structcloudsuite__instr_1ab5f47ffca5f6bf8863c710520b973907" prot="public" virt="non-virtual"><scope>cloudsuite_instr</scope><name>source_registers</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

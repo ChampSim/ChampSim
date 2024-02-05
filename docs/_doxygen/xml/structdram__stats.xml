@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.5" xml:lang="en-US">
+  <compounddef id="structdram__stats" kind="struct" language="C++" prot="public">
+    <compoundname>dram_stats</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structdram__stats_1acd294996dccc6b2690beda96bcffab94" prot="public" static="no" mutable="no">
+        <type>std::string</type>
+        <definition>std::string dram_stats::name</definition>
+        <argsstring></argsstring>
+        <name>name</name>
+        <qualifiedname>dram_stats::name</qualifiedname>
+        <initializer>{}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="31" column="15" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="31" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1a52dd067d593624e464c65e70fbcf1f78" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t dram_stats::dbus_cycle_congested</definition>
+        <argsstring></argsstring>
+        <name>dbus_cycle_congested</name>
+        <qualifiedname>dram_stats::dbus_cycle_congested</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="32" column="12" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1a687f0ce41a824bca90d25d41ed411f52" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t dram_stats::dbus_count_congested</definition>
+        <argsstring></argsstring>
+        <name>dbus_count_congested</name>
+        <qualifiedname>dram_stats::dbus_count_congested</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="32" column="34" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1a9579ce7731f871fef0f30af991636f7f" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned dram_stats::WQ_ROW_BUFFER_HIT</definition>
+        <argsstring></argsstring>
+        <name>WQ_ROW_BUFFER_HIT</name>
+        <qualifiedname>dram_stats::WQ_ROW_BUFFER_HIT</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="34" column="12" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1a30520319833442f67ad9d87000981ca0" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned dram_stats::WQ_ROW_BUFFER_MISS</definition>
+        <argsstring></argsstring>
+        <name>WQ_ROW_BUFFER_MISS</name>
+        <qualifiedname>dram_stats::WQ_ROW_BUFFER_MISS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="34" column="31" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1ab349aaf32abace7b280fc97e8b425e3a" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned dram_stats::RQ_ROW_BUFFER_HIT</definition>
+        <argsstring></argsstring>
+        <name>RQ_ROW_BUFFER_HIT</name>
+        <qualifiedname>dram_stats::RQ_ROW_BUFFER_HIT</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="34" column="51" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1a49174f0a53785f2b4c6f9c6b1304b07f" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned dram_stats::RQ_ROW_BUFFER_MISS</definition>
+        <argsstring></argsstring>
+        <name>RQ_ROW_BUFFER_MISS</name>
+        <qualifiedname>dram_stats::RQ_ROW_BUFFER_MISS</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="34" column="70" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structdram__stats_1ad1d5ffb09ca9976cab4178b806c01217" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned dram_stats::WQ_FULL</definition>
+        <argsstring></argsstring>
+        <name>WQ_FULL</name>
+        <qualifiedname>dram_stats::WQ_FULL</qualifiedname>
+        <initializer>= 0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/github/workspace/inc/dram_controller.h" line="34" column="90" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/github/workspace/inc/dram_controller.h" line="30" column="1" bodyfile="/github/workspace/inc/dram_controller.h" bodystart="30" bodyend="35"/>
+    <listofallmembers>
+      <member refid="structdram__stats_1a687f0ce41a824bca90d25d41ed411f52" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>dbus_count_congested</name></member>
+      <member refid="structdram__stats_1a52dd067d593624e464c65e70fbcf1f78" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>dbus_cycle_congested</name></member>
+      <member refid="structdram__stats_1acd294996dccc6b2690beda96bcffab94" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>name</name></member>
+      <member refid="structdram__stats_1ab349aaf32abace7b280fc97e8b425e3a" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>RQ_ROW_BUFFER_HIT</name></member>
+      <member refid="structdram__stats_1a49174f0a53785f2b4c6f9c6b1304b07f" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>RQ_ROW_BUFFER_MISS</name></member>
+      <member refid="structdram__stats_1ad1d5ffb09ca9976cab4178b806c01217" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>WQ_FULL</name></member>
+      <member refid="structdram__stats_1a9579ce7731f871fef0f30af991636f7f" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>WQ_ROW_BUFFER_HIT</name></member>
+      <member refid="structdram__stats_1a30520319833442f67ad9d87000981ca0" prot="public" virt="non-virtual"><scope>dram_stats</scope><name>WQ_ROW_BUFFER_MISS</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
