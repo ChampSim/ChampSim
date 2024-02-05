@@ -17,14 +17,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set Up Environment
         run: python3 -m pip install -r docs/requirements.txt
 
+      - name: Generate Doxygen
+        uses: mattnotmitt/doxygen-action@v1.9.5
+        with:
+          working-directory: docs
+
       - name: Build Documentation
-        run: sphinx-multiversion -c docs docs/src _build
+        run: sphinx-build -c docs docs/src _build
 
       - uses: actions/checkout@v4
         with:
@@ -32,7 +35,7 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: rsync -av _build/ .
+        run: rsync -av _build/ ${{ github.ref_name }}
 
       - uses: EndBug/add-and-commit@v9
         with:
