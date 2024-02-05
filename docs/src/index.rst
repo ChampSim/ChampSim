@@ -13,6 +13,7 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    Modules
    Creating-a-configuration-file
    Configuration-API
+   Address-operations
    Legacy-modules
 
 
