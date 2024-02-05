@@ -27,7 +27,7 @@ jobs:
           working-directory: docs
 
       - name: Build Documentation
-        run: sphinx-build -c docs docs/src _build
+        run: sphinx-build -v -c docs docs/src _build
 
       - uses: actions/checkout@v4
         with:
@@ -39,6 +39,7 @@ jobs:
 
       - uses: EndBug/add-and-commit@v9
         with:
+          pull: '--rebase --autostash'
           default_author: github_actions
           message: |
             Update documentation for ${{ github.ref }}.
