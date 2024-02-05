@@ -9,12 +9,14 @@
 #include "champsim_constants.h"
 #include "modules.h"
 
-struct va_ampm_lite : champsim::modules::prefetcher {
+class va_ampm_lite : champsim::modules::prefetcher
+{
+public:
   static constexpr std::size_t REGION_COUNT = 128;
   static constexpr int MAX_DISTANCE = 256;
   static constexpr int PREFETCH_DEGREE = 2;
 
-  using block_in_page = champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, LOG2_BLOCK_SIZE>>;
+  using block_in_page = champsim::address_slice<champsim::static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}>>;
 
   struct region_type {
     champsim::page_number vpn;

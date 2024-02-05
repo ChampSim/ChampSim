@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include "champsim.h"
 #include "util/units.h"
 
 TEST_CASE("A data size is default-constructible, with default value zero") {
@@ -119,6 +120,11 @@ TEST_CASE("Data sizes can be divided") {
   REQUIRE(2_kiB / 2 == 1_kiB);
 }
 
+TEST_CASE("Data sizes can be divided by sizes") {
+  using champsim::data::data_literals::operator""_kiB;
+  REQUIRE(2_kiB / 1_kiB == 2);
+}
+
 TEST_CASE("Data sizes are ordered") {
   using champsim::data::data_literals::operator""_MiB;
   CHECK(1_MiB == 1_MiB);
@@ -142,3 +148,13 @@ TEST_CASE("Data sizes are ordered") {
   CHECK_FALSE(2_MiB <= 1_MiB);
   CHECK(2_MiB >= 1_MiB);
 }
+
+TEST_CASE("A byte size prints something to libfmt") {
+  using namespace champsim::data::data_literals;
+  REQUIRE_THAT(fmt::format("{}", 5_B), Catch::Matchers::Matches("5 B"));
+  REQUIRE_THAT(fmt::format("{}", 5_kiB), Catch::Matchers::Matches("5 kiB"));
+  REQUIRE_THAT(fmt::format("{}", 5_MiB), Catch::Matchers::Matches("5 MiB"));
+  REQUIRE_THAT(fmt::format("{}", 5_GiB), Catch::Matchers::Matches("5 GiB"));
+  REQUIRE_THAT(fmt::format("{}", 5_TiB), Catch::Matchers::Matches("5 TiB"));
+}
+

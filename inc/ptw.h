@@ -42,7 +42,7 @@ class PageTableWalker : public champsim::operable
   };
 
   struct pscl_indexer {
-    std::size_t shamt;
+    champsim::data::bits shamt;
     auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 

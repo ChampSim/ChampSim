@@ -8,6 +8,7 @@
 #include <fmt/core.h>
 
 #include "util/detect.h"
+#include "util/units.h"
 #include "champsim_constants.h"
 
 TEST_CASE("An address is constructible from a uint64_t") {
@@ -176,32 +177,6 @@ TEST_CASE("An address can subtract a negative number in place") {
   REQUIRE(lhs == champsim::address{2});
 }
 
-/*
-TEST_CASE("An address can be shown to be a block address") {
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE + 4)}.is_block_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE + 2)}.is_block_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE + 1)}.is_block_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE)}.is_block_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE - 1)}.is_block_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE - 2)}.is_block_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_BLOCK_SIZE - 4)}.is_block_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff}.is_block_address());
-}
-
-TEST_CASE("An address can be shown to be a page address") {
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE + 4)}.is_page_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE + 3)}.is_page_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE + 2)}.is_page_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE + 1)}.is_page_address());
-  CHECK(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE)}.is_page_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE - 1)}.is_page_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE - 2)}.is_page_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE - 3)}.is_page_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff & ~champsim::bitmask(LOG2_PAGE_SIZE - 4)}.is_page_address());
-  CHECK_FALSE(champsim::address{0xffff'ffff}.is_page_address());
-}
-*/
-
 namespace {
   template <typename SliceA, typename SliceB>
     using can_find_offset = decltype( champsim::offset(std::declval<SliceA>(), std::declval<SliceB>()) );
@@ -229,6 +204,22 @@ TEST_CASE("The offset between two addresses is correct") {
   CHECK(champsim::offset(champsim::address{0x7fff'ffff'ffff'ffff}, champsim::address{0x0000'0000'0000'0000}) == std::numeric_limits<champsim::address::difference_type>::min()+1);
 
   CHECK_THROWS(champsim::offset(champsim::address{0x8000'0000'0000'0000}, champsim::address{0x0000'0000'0000'0000}));
+}
+
+TEST_CASE("The lowest address for a size can be found") {
+  using namespace champsim::data::data_literals;
+  CHECK(champsim::lowest_address_for_size(1_B) == champsim::address{1});
+  CHECK(champsim::lowest_address_for_size(2_kiB) == champsim::address{0x800});
+  CHECK(champsim::lowest_address_for_size(4_MiB) == champsim::address{0x40'0000});
+  CHECK(champsim::lowest_address_for_size(8_GiB) == champsim::address{0x2'0000'0000});
+}
+
+TEST_CASE("The lowest address for a width can be found") {
+  using namespace champsim::data::data_literals;
+  CHECK(champsim::lowest_address_for_width(0_b) == champsim::address{1});
+  CHECK(champsim::lowest_address_for_width(11_b) == champsim::address{0x800});
+  CHECK(champsim::lowest_address_for_width(22_b) == champsim::address{0x40'0000});
+  CHECK(champsim::lowest_address_for_width(33_b) == champsim::address{0x2'0000'0000});
 }
 
 TEST_CASE("An address prints something at all") {

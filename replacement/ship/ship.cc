@@ -39,6 +39,7 @@ long ship::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, con
 void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                     champsim::address victim_addr, access_type type, uint8_t hit)
 {
+  using namespace champsim::data::data_literals;
   // handle writeback access
   if (access_type{type} == access_type::WRITE) {
     if (!hit)
@@ -54,11 +55,11 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     auto s_set_end = std::next(s_set_begin, NUM_WAY);
 
     // check hit
-    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = 8 + champsim::lg2(NUM_WAY)](auto x) {
+    auto match = std::find_if(s_set_begin, s_set_end, [addr = full_addr, shamt = champsim::data::bits{8 + champsim::lg2(NUM_WAY)}](auto x) {
       return x.valid && x.address.slice_upper(shamt) == addr.slice_upper(shamt);
     });
     if (match != s_set_end) {
-      auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+      auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
       SHCT[triggering_cpu][SHCT_idx]--;
 
       match->used = true;
@@ -66,7 +67,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
       match = std::min_element(s_set_begin, s_set_end, [](auto x, auto y) { return x.last_used < y.last_used; });
 
       if (match->used) {
-        auto SHCT_idx = match->ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+        auto SHCT_idx = match->ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
         SHCT[triggering_cpu][SHCT_idx]++;
       }
 
@@ -84,7 +85,7 @@ void ship::update_replacement_state(uint32_t triggering_cpu, long set, long way,
     get_rrpv(set, way) = 0;
   else {
     // SHIP prediction
-    auto SHCT_idx = ip.slice_lower<32>().to<std::size_t>() % SHCT_PRIME;
+    auto SHCT_idx = ip.slice_lower<32_b>().to<std::size_t>() % SHCT_PRIME;
 
     get_rrpv(set, way) = maxRRPV - 1;
     if (SHCT[triggering_cpu][SHCT_idx].is_max())

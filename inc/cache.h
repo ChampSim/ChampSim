@@ -161,7 +161,7 @@ public:
   const std::size_t PQ_SIZE;
   const champsim::chrono::clock::duration HIT_LATENCY;
   const champsim::chrono::clock::duration FILL_LATENCY;
-  const unsigned OFFSET_BITS;
+  const champsim::data::bits OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;

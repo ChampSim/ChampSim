@@ -20,7 +20,6 @@ constexpr bool SPP_DEBUG_PRINT = false;
 constexpr std::size_t ST_SET = 1;
 constexpr std::size_t ST_WAY = 256;
 constexpr unsigned ST_TAG_BIT = 16;
-constexpr uint32_t ST_TAG_MASK = ((1 << ST_TAG_BIT) - 1);
 constexpr unsigned SIG_SHIFT = 3;
 constexpr unsigned SIG_BIT = 12;
 constexpr uint32_t SIG_MASK = ((1 << SIG_BIT) - 1);
@@ -50,31 +49,36 @@ constexpr std::size_t MAX_GHR_ENTRY = 8;
 enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT }; // Request type for prefetch filter
 uint64_t get_hash(uint64_t key);
 
+using offset_type = champsim::address_slice<champsim::static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}>>;
 class SIGNATURE_TABLE
 {
 public:
+  using tag_type = champsim::address_slice<champsim::static_extent<champsim::data::bits{ST_TAG_BIT + LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_PAGE_SIZE}>>;
+
   bool valid[ST_SET][ST_WAY];
-  uint32_t tag[ST_SET][ST_WAY], last_offset[ST_SET][ST_WAY], sig[ST_SET][ST_WAY], lru[ST_SET][ST_WAY];
+  tag_type tag[ST_SET][ST_WAY];
+  offset_type last_offset[ST_SET][ST_WAY];
+  uint32_t sig[ST_SET][ST_WAY], lru[ST_SET][ST_WAY];
 
   SIGNATURE_TABLE()
   {
     for (uint32_t set = 0; set < ST_SET; set++)
       for (uint32_t way = 0; way < ST_WAY; way++) {
         valid[set][way] = 0;
-        tag[set][way] = 0;
-        last_offset[set][way] = 0;
+        tag[set][way] = tag_type{};
+        last_offset[set][way] = offset_type{};
         sig[set][way] = 0;
         lru[set][way] = way;
       }
   };
 
-  void read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, int32_t& delta);
+  void read_and_update_sig(champsim::address addr, uint32_t& last_sig, uint32_t& curr_sig, typename offset_type::difference_type& delta);
 };
 
 class PATTERN_TABLE
 {
 public:
-  int delta[PT_SET][PT_WAY];
+  typename offset_type::difference_type delta[PT_SET][PT_WAY];
   uint32_t c_delta[PT_SET][PT_WAY], c_sig[PT_SET];
 
   PATTERN_TABLE()
@@ -88,8 +92,9 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, std::vector<int>&prefetch_delta, std::vector<uint32_t>&confidence_q,
-                                                                       uint32_t&lookahead_way, uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
+  void update_pattern(uint32_t last_sig, typename offset_type::difference_type curr_delta);
+  void read_pattern(uint32_t curr_sig, std::vector<typename offset_type::difference_type>& prefetch_delta, std::vector<uint32_t>& confidence_q,
+                    uint32_t& lookahead_way, uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth);
 };
 
 class PREFETCH_FILTER
@@ -120,8 +125,9 @@ public:
 
   // Global History Register (GHR) entries
   uint8_t valid[MAX_GHR_ENTRY];
-  uint32_t sig[MAX_GHR_ENTRY], confidence[MAX_GHR_ENTRY], offset[MAX_GHR_ENTRY];
-  int delta[MAX_GHR_ENTRY];
+  uint32_t sig[MAX_GHR_ENTRY], confidence[MAX_GHR_ENTRY];
+  offset_type offset[MAX_GHR_ENTRY];
+  typename offset_type::difference_type delta[MAX_GHR_ENTRY];
 
   GLOBAL_REGISTER()
   {
@@ -133,13 +139,13 @@ public:
       valid[i] = 0;
       sig[i] = 0;
       confidence[i] = 0;
-      offset[i] = 0;
+      offset[i] = offset_type{};
       delta[i] = 0;
     }
   }
 
-  void update_entry(uint32_t pf_sig, uint32_t pf_confidence, uint32_t pf_offset, int pf_delta);
-  uint32_t check_entry(uint32_t page_offset);
+  void update_entry(uint32_t pf_sig, uint32_t pf_confidence, offset_type pf_offset, typename offset_type::difference_type pf_delta);
+  uint32_t check_entry(offset_type page_offset);
 };
 } // namespace spp
 

@@ -13,7 +13,7 @@ SCENARIO("The page table steps have correct offsets") {
   auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
     VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
@@ -55,8 +55,9 @@ SCENARIO("The page table steps have correct offsets") {
           elem->_operate();
 
       THEN("The " + std::to_string(level) + "th request has the correct offset") {
+        using namespace champsim::data::data_literals;
         REQUIRE(mock_ll.packet_count() == levels);
-        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12).to<std::size_t>() == level * pte_entry::byte_multiple);
+        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12_b).to<std::size_t>() == level * pte_entry::byte_multiple);
       }
     }
   }

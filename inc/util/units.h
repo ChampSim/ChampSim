@@ -24,14 +24,22 @@
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
-#include "bits.h"
-#include "champsim.h"
+#include "bit_enum.h"
 #include "ratio.h"
+#include "to_underlying.h"
 
 namespace champsim
 {
 namespace data
 {
+/**
+ * The size of a byte
+ */
+inline constexpr unsigned bits_per_byte = 8;
+
+/**
+ * A class to represent data sizes as they are passed around the program
+ */
 template <typename Rep, typename Unit>
 class size
 {
@@ -51,8 +59,19 @@ public:
   size(const size<Rep, Unit>& other) = default;
   size<Rep, Unit>& operator=(const size<Rep, Unit>& other) = default;
 
+  /**
+   * Construct the size with the given value
+   */
   constexpr explicit size(rep other) : m_count(other) {}
 
+  /**
+   * Implicitly convert between data sizes.
+   *
+   * This permits constructions like
+   *
+   *     void func(champsim::data::kibibytes x);
+   *     func(champsim::data::bytes{1024});
+   */
   template <typename Rep2, typename Unit2>
   constexpr size(const size<Rep2, Unit2>& other)
   {
@@ -60,6 +79,9 @@ public:
     m_count = other.m_count * conversion::num / conversion::den;
   }
 
+  /**
+   * Unwrap the underlying value.
+   */
   constexpr auto count() const { return m_count; }
 
   constexpr size<Rep, Unit> operator+() const { return *this; }
@@ -148,10 +170,8 @@ auto constexpr operator/(const size<Rep1, Unit1>& lhs, const Rep2& rhs)
 template <class Rep1, class Unit1, class Rep2, class Unit2>
 auto constexpr operator/(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>& rhs)
 {
-  using result_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
-  result_type retval{lhs};
-  retval /= rhs;
-  return retval;
+  using joined_type = typename std::common_type<std::decay_t<decltype(lhs)>, std::decay_t<decltype(rhs)>>::type;
+  return joined_type{lhs}.count() / joined_type{rhs}.count();
 }
 
 template <class Rep1, class Unit1, class Rep2>
@@ -210,13 +230,19 @@ auto constexpr operator>=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>&
   return !(lhs < rhs);
 }
 
+/**
+ * Provides a set of literals to the user.
+ *
+ *     1024_kiB => champsim::data::kibibytes{1024}
+ */
 namespace data_literals
 {
-champsim::data::bytes operator""_B(unsigned long long val);
-champsim::data::kibibytes operator""_kiB(unsigned long long val);
-champsim::data::mebibytes operator""_MiB(unsigned long long val);
-champsim::data::gibibytes operator""_GiB(unsigned long long val);
-champsim::data::tebibytes operator""_TiB(unsigned long long val);
+constexpr auto operator""_b(unsigned long long val) { return bits{val}; }
+constexpr auto operator""_B(unsigned long long val) { return size<long long, std::ratio<1>>{static_cast<long long>(val)}; }
+constexpr auto operator""_kiB(unsigned long long val) { return size<long long, kibi>{static_cast<long long>(val)}; }
+constexpr auto operator""_MiB(unsigned long long val) { return size<long long, mebi>{static_cast<long long>(val)}; }
+constexpr auto operator""_GiB(unsigned long long val) { return size<long long, gibi>{static_cast<long long>(val)}; }
+constexpr auto operator""_TiB(unsigned long long val) { return size<long long, tebi>{static_cast<long long>(val)}; }
 } // namespace data_literals
 } // namespace data
 } // namespace champsim
@@ -225,6 +251,14 @@ template <class Rep1, class Unit1, class Rep2, class Unit2>
 struct std::common_type<champsim::data::size<Rep1, Unit1>, champsim::data::size<Rep2, Unit2>> {
   using type = champsim::data::size<typename std::common_type<Rep1, Rep2>::type,
                                     typename std::ratio<std::gcd(Unit1::num, Unit2::num), std::lcm(Unit1::den, Unit2::den)>::type>;
+};
+
+template <>
+struct fmt::formatter<champsim::data::bits> : fmt::formatter<std::underlying_type_t<champsim::data::bits>> {
+  auto format(const champsim::data::bits& val, format_context& ctx) const -> format_context::iterator
+  {
+    return fmt::formatter<std::underlying_type_t<champsim::data::bits>>::format(champsim::to_underlying(val), ctx);
+  }
 };
 
 template <typename Rep, typename Unit>
@@ -242,18 +276,19 @@ struct fmt::formatter<champsim::data::size<Rep, Unit>> {
 
   auto format(const value_type& val, format_context& ctx) const -> format_context::iterator
   {
-    const static std::map<unsigned long long, std::string_view> suffix_map{{champsim::data::bytes::byte_multiple, std::string_view{"B"}},
-                                                                           {champsim::data::kibibytes::byte_multiple, std::string_view{"kiB"}},
-                                                                           {champsim::data::mebibytes::byte_multiple, std::string_view{"MiB"}},
-                                                                           {champsim::data::gibibytes::byte_multiple, std::string_view{"GiB"}},
-                                                                           {champsim::data::tebibytes::byte_multiple, std::string_view{"TiB"}}};
+    const static std::map<unsigned long long, std::string_view> suffix_map{
+        {champsim::data::size<long long, std::ratio<1>>::byte_multiple, std::string_view{"B"}},
+        {champsim::data::size<long long, champsim::kibi>::byte_multiple, std::string_view{"kiB"}},
+        {champsim::data::size<long long, champsim::mebi>::byte_multiple, std::string_view{"MiB"}},
+        {champsim::data::size<long long, champsim::gibi>::byte_multiple, std::string_view{"GiB"}},
+        {champsim::data::size<long long, champsim::tebi>::byte_multiple, std::string_view{"TiB"}}};
 
     auto suffix_it = suffix_map.find(value_type::byte_multiple);
     std::string_view suffix{};
     if (suffix_it != std::end(suffix_map)) {
       suffix = suffix_it->second;
     }
-    return fmt::format_to(ctx.out(), "{}{}", val.count(), suffix);
+    return fmt::format_to(ctx.out(), "{} {}", val.count(), suffix);
   }
 };
 

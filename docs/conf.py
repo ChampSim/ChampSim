@@ -12,7 +12,10 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('./src'))
+import subprocess
+import itertools
+import operator
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -24,16 +27,21 @@ author = 'The ChampSim Contributors'
 
 # -- General configuration ---------------------------------------------------
 
+# The environment variable CHAMPSIM_DOCS_USE_REMOTE, if defined to a nonempty
+# string, will cause this script to properly build for GitHub Actions
+local = 'CHAMPSIM_DOCS_USE_REMOTE' not in os.environ
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
     'sphinx.ext.githubpages',
-    'sphinx_multiversion'
+    'sphinx.ext.autodoc',
+    'breathe'
 ]
 
 # The root document
-root_doc = 'src/index'
+root_doc = 'index'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -43,15 +51,58 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# -- Breathe configuration ---------------------------------------------------
+breathe_projects = {
+    project: "./_doxygen/xml"
+}
+breathe_default_project = project
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'nature'
+
+def get_cmd_lines(cmd):
+    return subprocess.run(cmd, capture_output=True).stdout.decode().splitlines()
+
+def get_current_branch():
+    return get_cmd_lines(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])[0]
+
+def get_branches():
+    result = [ l[2:] for l in get_cmd_lines(['git', 'branch', '--list', '--no-color'])] # remove '* ' marker for current branch
+    return [
+        'master',
+        'develop',
+        *(b for b in result if b.startswith('release/')),
+        *(b for b in result if b.startswith('feature/'))
+    ]
+
+def get_files(branch=None):
+    return get_cmd_lines(['git', 'ls-tree', '-r', '--name-only', branch or get_current_branch(), '--', 'src/'])
+
+def file_branch_map():
+    branch_to_file = { b: get_files(b) for b in get_branches() }
+
+    file_branch_pairs = list(itertools.chain(*(zip(f, itertools.repeat(b)) for b,f in branch_to_file.items())))
+    file_branch_pairs = sorted(file_branch_pairs, key=operator.itemgetter(0))
+    file_to_branch = { os.path.splitext(f[4:])[0]: [b[1] for b in branchlist] for f,branchlist in itertools.groupby(file_branch_pairs, key=operator.itemgetter(0)) }
+
+    return file_to_branch
+
+html_context = {
+    "current_version": get_current_branch(),
+    "branches": get_branches(),
+    "versions": file_branch_map()
+}
+
+html_sidebars = {
+    '**': ['localtoc.html', 'relations.html', 'sourcelink.html', 'other_branches.html', 'searchbox.html']
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
+

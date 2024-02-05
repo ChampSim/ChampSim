@@ -24,31 +24,36 @@
 #include "dram_controller.h"
 #include "util/bits.h"
 
+using namespace champsim::data::data_literals;
 // reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, champsim::data::mebibytes{1});
+inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, 1_MiB);
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
                              MEMORY_CONTROLLER& dram)
     : minor_fault_penalty(minor_penalty), pt_levels(page_table_levels), pte_page_size(page_table_page_size),
-      next_pte_page(champsim::dynamic_extent{LOG2_PAGE_SIZE, static_cast<std::size_t>(champsim::lg2(champsim::data::bytes{pte_page_size}.count()))}, 0),
+      next_pte_page(
+          champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0),
       next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
       last_ppage(champsim::lowest_address_for_size(
           champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
 {
-  assert(page_table_page_size > champsim::data::kibibytes{1});
+  assert(page_table_page_size > 1_kiB);
   assert(champsim::is_power_of_2(page_table_page_size.count()));
   assert(last_ppage > next_ppage);
 
-  auto required_bits = LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>());
+  champsim::data::bits required_bits{LOG2_PAGE_SIZE + champsim::lg2(last_ppage.to<uint64_t>())};
   if (required_bits > champsim::address::bits) {
     fmt::print("WARNING: virtual memory configuration would require {} bits of addressing.\n", required_bits); // LCOV_EXCL_LINE
   }
-  if (required_bits > champsim::lg2(dram.size().count())) {
+  if (required_bits > champsim::data::bits{champsim::lg2(dram.size().count())}) {
     fmt::print("WARNING: physical memory size is smaller than virtual memory size.\n"); // LCOV_EXCL_LINE
   }
 }
 
-uint64_t VirtualMemory::shamt(std::size_t level) const { return LOG2_PAGE_SIZE + champsim::lg2(pte_page_size.count()) * (level - 1); }
+champsim::data::bits VirtualMemory::shamt(std::size_t level) const
+{
+  return champsim::data::bits{LOG2_PAGE_SIZE + champsim::lg2(pte_page_size.count()) * (level - 1)};
+}
 
 uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
 {
@@ -108,10 +113,10 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   }
 
   auto offset = get_offset(vaddr, level);
-  champsim::address paddr{champsim::splice(
-      ppage->second,
-      champsim::address_slice{champsim::sized_extent{champsim::lg2(pte_entry::byte_multiple), static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
-                              offset})};
+  champsim::address paddr{
+      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)},
+                                                                                     static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
+                                                              offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);
   }
