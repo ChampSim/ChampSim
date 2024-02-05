@@ -35,7 +35,7 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: rsync -av _build/ ${{ github.ref_name }}
+        run: rsync --mkpath -av _build/ ${{ github.ref_name }}
 
       - uses: EndBug/add-and-commit@v9
         with:
