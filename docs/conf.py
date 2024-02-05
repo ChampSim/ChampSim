@@ -27,6 +27,10 @@ author = 'The ChampSim Contributors'
 
 # -- General configuration ---------------------------------------------------
 
+# The environment variable CHAMPSIM_DOCS_USE_REMOTE, if defined to a nonempty
+# string, will cause this script to properly build for GitHub Actions
+local = 'CHAMPSIM_DOCS_USE_REMOTE' not in os.environ
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
