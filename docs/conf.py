@@ -14,6 +14,7 @@ import os
 import sys
 import subprocess
 import itertools
+import functools
 import operator
 sys.path.insert(0, os.path.abspath('..'))
 
@@ -67,6 +68,7 @@ html_theme = 'nature'
 def get_cmd_lines(cmd):
     return subprocess.run(cmd, capture_output=True).stdout.decode().splitlines()
 
+@functools.cache
 def get_current_branch():
     return get_cmd_lines(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])[0]
 
@@ -93,6 +95,7 @@ def file_branch_map():
 
 html_context = {
     "current_version": get_current_branch(),
+    "up_prefix": { b: '/'.join(['..']*len(get_current_branch().split('/')) + [b]) for b in get_branches() },
     "branches": get_branches(),
     "versions": file_branch_map()
 }
