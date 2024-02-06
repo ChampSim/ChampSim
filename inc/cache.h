@@ -40,7 +40,6 @@
 #include "cache_builder.h"
 #include "cache_stats.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
 #include "modules.h"

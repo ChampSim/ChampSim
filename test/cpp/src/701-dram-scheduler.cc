@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "dram_controller.h"    
-#include "champsim_constants.h"
 #include <algorithm>
 #include <cfenv>
 #include <cmath>

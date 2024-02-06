@@ -17,14 +17,20 @@
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
 
+#include <cstdlib>
 #include <cstdint>
 #include <exception>
 #include <limits>
 
-#include "champsim_constants.h"
 #include "extent.h"
 #include "util/bit_enum.h"
 #include "util/ratio.h"
+
+extern std::size_t NUM_CPUS;
+extern unsigned BLOCK_SIZE;
+extern unsigned PAGE_SIZE;
+extern unsigned LOG2_BLOCK_SIZE;
+extern unsigned LOG2_PAGE_SIZE;
 
 namespace champsim
 {
@@ -55,18 +61,18 @@ using kibibytes = size<long long, kibi>;
 using mebibytes = size<long long, mebi>;
 using gibibytes = size<long long, gibi>;
 using tebibytes = size<long long, tebi>;
-using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
-using pages = size<long long, std::ratio<PAGE_SIZE>>;
+//using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
+//using pages = size<long long, std::ratio<PAGE_SIZE>>;
 } // namespace data
 
 /**
  * Convenience definitions for commmon address slices
  */
 using address = address_slice<static_extent<champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{}>>;
-using block_number = address_slice<static_extent<champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_BLOCK_SIZE}>>;
-using block_offset = address_slice<static_extent<champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::data::bits{}>>;
-using page_number = address_slice<static_extent<champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_PAGE_SIZE}>>;
-using page_offset = address_slice<static_extent<champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{}>>;
+using block_number = address_slice<block_number_extent>;
+using block_offset = address_slice<block_offset_extent>;
+using page_number = address_slice<page_number_extent>;
+using page_offset = address_slice<page_offset_extent>;
 
 /**
  * Get the lowest possible address for which the space between it and zero is the given size.

@@ -209,7 +209,7 @@ private:
   template <typename OTHER_EXT>
   static extent_type maybe_dynamic(OTHER_EXT other) noexcept
   {
-    if constexpr (is_static) {
+    if constexpr (std::is_constructible_v<extent_type>) {
       (void)other;
       return extent_type{};
     } else {

@@ -310,8 +310,7 @@ class NormalizedConfiguration:
             self.root,
             {
                 'block_size': int_or_prefixed_size("64B"),
-                'page_size': int_or_prefixed_size("4kB"),
-                'heartbeat_frequency': 10000000
+                'page_size': int_or_prefixed_size("4kB")
             }
         )
 

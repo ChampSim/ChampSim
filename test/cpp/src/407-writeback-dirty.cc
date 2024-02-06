@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("Blocks that have been written are marked dirty") {
   GIVEN("An empty cache") {

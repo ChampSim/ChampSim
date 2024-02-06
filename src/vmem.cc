@@ -20,13 +20,12 @@
 #include <fmt/core.h>
 
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "dram_controller.h"
 #include "util/bits.h"
 
 using namespace champsim::data::data_literals;
 // reserve 1MB or one page of space
-inline constexpr auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::pages{1}, 1_MiB);
+auto VMEM_RESERVE_CAPACITY = std::max<champsim::data::mebibytes>(champsim::data::bytes{PAGE_SIZE}, 1_MiB);
 
 VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::size_t page_table_levels, champsim::chrono::clock::duration minor_penalty,
                              MEMORY_CONTROLLER& dram)
@@ -35,7 +34,7 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
           champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0),
       next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
       last_ppage(champsim::lowest_address_for_size(
-          champsim::data::pages{champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
+          champsim::data::bytes{PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
 {
   assert(page_table_page_size > 1_kiB);
   assert(champsim::is_power_of_2(page_table_page_size.count()));
@@ -85,7 +84,7 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::v
     ppage_pop();
   }
 
-  auto paddr = champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr});
+  champsim::address paddr{champsim::splice(champsim::page_number{ppage->second}, champsim::page_offset{vaddr})};
   auto penalty = minor_fault_penalty;
   if (!fault) {
     penalty = champsim::chrono::clock::duration::zero();

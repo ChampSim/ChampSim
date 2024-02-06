@@ -1,7 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
 
-#include "champsim_constants.h"
 #include "defaults.hpp"
 #include "dram_controller.h"
 #include "ptw.h"

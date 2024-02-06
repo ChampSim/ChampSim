@@ -21,7 +21,6 @@ import json
 
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
-from .constants_file import get_constants_file
 from . import modules
 from . import util
 
@@ -155,7 +154,7 @@ class Fragment:
         return Fragment(fileparts)
 
     @staticmethod
-    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False, verbose=False):
+    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, verbose=False):
         ''' Produce a sequence of Fragments from the result of parse.parse_config(). '''
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         bindir_name = bindir_name or os.path.join(champsim_root, 'bin')
@@ -197,10 +196,7 @@ class Fragment:
 
         fileparts = [
             # Instantiation file
-            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
-
-            # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file))),
+            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(env=config_file, **elements))),
 
             # Module name mangling
             *generate_legacy_module_information(inc_dir, legacy_module_info),
@@ -208,7 +204,7 @@ class Fragment:
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
-                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info, omit_main)
+                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
@@ -244,14 +240,13 @@ class FileWriter:
         self.fragments = []
         return self
 
-    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False):
+    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
         ''' Apply defaults to get_file_lines() '''
         self.fragments.append(Fragment.from_config(
             parsed_config,
             bindir_name or self.bindir_name,
             srcdir_names or [],
             os.path.abspath(objdir_name or self.objdir_name),
-            omit_main,
             verbose=self.verbose
         ))
 

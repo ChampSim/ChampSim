@@ -22,21 +22,31 @@
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
+#include "cache.h" // for CACHE
 #include "champsim.h"
-#include "champsim_constants.h"
-#include "core_inst.inc"
 #include "defaults.hpp"
+#include "environment.h"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
 
+#include "core_inst.inc"
+
 namespace champsim
 {
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
+std::size_t NUM_CPUS = champsim::configured::generated_environment::num_cpus;
+
+unsigned BLOCK_SIZE = champsim::configured::generated_environment::block_size;
+unsigned PAGE_SIZE = champsim::configured::generated_environment::page_size;
+unsigned LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);
+unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
+
+#ifndef CHAMPSIM_TEST_BUILD
 int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
   champsim::configured::generated_environment gen_environment{};
@@ -130,3 +140,4 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 
   return 0;
 }
+#endif

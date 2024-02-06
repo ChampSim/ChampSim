@@ -9,7 +9,6 @@
 
 #include "util/detect.h"
 #include "util/units.h"
-#include "champsim_constants.h"
 
 TEST_CASE("An address is constructible from a uint64_t") {
   STATIC_REQUIRE(std::is_constructible_v<champsim::address, uint64_t>);

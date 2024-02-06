@@ -28,7 +28,6 @@
 #include <string>
 
 #include "address.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
 #include "dram_stats.h"

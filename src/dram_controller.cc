@@ -21,7 +21,6 @@
 #include <cmath>
 #include <fmt/core.h>
 
-#include "champsim_constants.h"
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h" // for lg2, bitmask
@@ -52,7 +51,7 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim
                            champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice)
     : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp),
       tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
-      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::blocks{1} / width))),
+      DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::bytes{BLOCK_SIZE} / width))),
       address_slicer(slice)
 {
 }
@@ -461,9 +460,9 @@ unsigned long DRAM_CHANNEL::get_row(champsim::address address) const { return st
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {
-  return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::blocks{}, [](auto acc, const auto& x) { return acc + x.size(); });
+  return std::accumulate(std::cbegin(channels), std::cend(channels), champsim::data::bytes{}, [](auto acc, const auto& x) { return acc + x.size(); });
 }
-champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::blocks{1 << address_slicer.bit_size()}; }
+champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::bytes{BLOCK_SIZE + (1 << address_slicer.bit_size())}; }
 
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()

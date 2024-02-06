@@ -20,10 +20,14 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
 
 #include "util/to_underlying.h"
 #include "util/units.h"
+
+extern unsigned LOG2_BLOCK_SIZE;
+extern unsigned LOG2_PAGE_SIZE;
 
 namespace champsim
 {
@@ -48,6 +52,34 @@ struct sized_extent {
 };
 
 /**
+ * An extent that is always the size of a page number
+ */
+struct page_number_extent : dynamic_extent {
+  page_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_PAGE_SIZE}) {}
+};
+
+/**
+ * An extent that is always the size of a page offset
+ */
+struct page_offset_extent : dynamic_extent {
+  page_offset_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{}) {}
+};
+
+/**
+ * An extent that is always the size of a block number
+ */
+struct block_number_extent : dynamic_extent {
+  block_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
+};
+
+/**
+ * An extent that is always the size of a block offset
+ */
+struct block_offset_extent : dynamic_extent {
+  block_offset_extent() : dynamic_extent(champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::data::bits{}) {}
+};
+
+/**
  * An extent with compile-time size
  */
 template <champsim::data::bits UP, champsim::data::bits LOW>
@@ -61,6 +93,10 @@ struct static_extent {
  */
 std::size_t size(dynamic_extent ext);
 std::size_t size(sized_extent ext);
+std::size_t size(page_number_extent ext);
+std::size_t size(page_offset_extent ext);
+std::size_t size(block_number_extent ext);
+std::size_t size(block_offset_extent ext);
 
 template <champsim::data::bits UP, champsim::data::bits LOW>
 constexpr std::size_t size(static_extent<UP, LOW> ext)
