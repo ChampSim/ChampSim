@@ -359,8 +359,8 @@ class NormalizedConfiguration:
             } for k,cache in caches.items() if 'prefetch_activate' in cache),
 
             # TLBs use page offsets, Caches use block offsets
-            ({'name': c['name'], '_offset_bits': f'champsim::lg2({root_config["page_size"]})'} for c in tlb_path),
-            ({'name': c['name'], '_offset_bits': f'champsim::lg2({root_config["block_size"]})'} for c in data_path),
+            ({'name': c['name'], '_offset_bits': f'champsim::lg2(page_size)'} for c in tlb_path),
+            ({'name': c['name'], '_offset_bits': f'champsim::lg2(block_size)'} for c in data_path),
 
             # Unfold suffixed strings
             ({'name': c['name'], **transform_for_keys(c, ('size',), int_or_prefixed_size)} for c in caches.values()),

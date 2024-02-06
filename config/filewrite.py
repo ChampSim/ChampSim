@@ -19,6 +19,7 @@ import operator
 import os
 import json
 
+from .instantiation_file import get_instantiation_lines
 from .makefile import get_makefile_lines
 from . import util
 
@@ -141,7 +142,7 @@ class Fragment:
 
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
-        executable_basename, _, modules_to_compile, module_info, _ = parsed_config
+        executable_basename, elements, modules_to_compile, module_info, env = parsed_config
 
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
@@ -152,6 +153,9 @@ class Fragment:
                 print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
 
         fileparts = [
+            # Instantiation file
+            (os.path.join(objdir_name, build_id, 'core_inst.inc'), cxx_file(get_instantiation_lines(env=env, **elements))),
+
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),

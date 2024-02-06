@@ -29,23 +29,6 @@
 #include "phase_info.h"
 #include "tracereader.h"
 
-std::size_t NUM_CPUS = 1;
-
-unsigned BLOCK_SIZE = 64;
-unsigned PAGE_SIZE = 4096;
-unsigned LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);
-unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
-uint64_t DRAM_IO_FREQ = 3200;
-
-std::size_t DRAM_CHANNELS = 1;
-std::size_t DRAM_RANKS = 1;
-std::size_t DRAM_BANKS = 8;
-std::size_t DRAM_ROWS = 65536;
-std::size_t DRAM_COLUMNS = 128;
-std::size_t DRAM_CHANNEL_WIDTH = 8;
-std::size_t DRAM_WQ_SIZE = 64;
-std::size_t DRAM_RQ_SIZE = 64;
-
 constexpr int DEADLOCK_CYCLE{500};
 
 const auto start_time = std::chrono::steady_clock::now();

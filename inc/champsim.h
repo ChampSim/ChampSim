@@ -31,15 +31,6 @@ extern unsigned BLOCK_SIZE;
 extern unsigned PAGE_SIZE;
 extern unsigned LOG2_BLOCK_SIZE;
 extern unsigned LOG2_PAGE_SIZE;
-extern uint64_t DRAM_IO_FREQ;
-extern std::size_t DRAM_CHANNELS;
-extern std::size_t DRAM_RANKS;
-extern std::size_t DRAM_BANKS;
-extern std::size_t DRAM_ROWS;
-extern std::size_t DRAM_COLUMNS;
-extern std::size_t DRAM_CHANNEL_WIDTH;
-extern std::size_t DRAM_WQ_SIZE;
-extern std::size_t DRAM_RQ_SIZE;
 
 namespace champsim
 {
