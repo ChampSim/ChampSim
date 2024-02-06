@@ -42,6 +42,7 @@ SCENARIO("The total latency is the sum of the stage latency") {
 
     WHEN("The instructions are added to the core")
     {
+      const auto start_time = uut.current_time;
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
       for (unsigned int i=0; static_cast<std::size_t>(uut.num_retired) < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
@@ -52,7 +53,7 @@ SCENARIO("The total latency is the sum of the stage latency") {
 
       THEN("The latency is the sum of the stage latencies")
       {
-        REQUIRE(uut.current_cycle == expected_cycle_when_done);
+        REQUIRE(uut.current_time - start_time == expected_cycle_when_done*uut.clock_period);
       }
     }
   }
@@ -92,6 +93,7 @@ SCENARIO("The minimum specified core latency is 1") {
 
     WHEN("The instructions are added to the core")
     {
+      const auto start_time = uut.current_time;
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
       for (unsigned int i=0; static_cast<std::size_t>(uut.num_retired) < std::size(test_instructions) && i < 2*expected_cycle_when_done; i++)
@@ -102,7 +104,7 @@ SCENARIO("The minimum specified core latency is 1") {
 
       THEN("The latency is the sum of the stage latencies")
       {
-        REQUIRE(uut.current_cycle == expected_cycle_when_done);
+        REQUIRE(uut.current_time == start_time + expected_cycle_when_done*uut.clock_period);
       }
     }
   }

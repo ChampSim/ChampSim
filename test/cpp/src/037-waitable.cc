@@ -4,6 +4,9 @@
 
 #include "waitable.h"
 
+using time_point = champsim::chrono::clock::time_point;
+using duration = typename time_point::duration;
+
 TEST_CASE("An empty waitable has indeterminate readiness", "") {
   champsim::waitable<int> seed{};
   REQUIRE(seed.has_unknown_readiness());
@@ -24,17 +27,17 @@ TEST_CASE("An indeterminate waitable is indeterminate after mapping", "") {
 }
 
 TEST_CASE("An unready waitable is unready after mapping", "") {
-  champsim::waitable<int> seed{40, 5};
+  champsim::waitable<int> seed{40, time_point{duration{5}}};
   auto result = seed.map([](int i) { return i + 2; });
   STATIC_REQUIRE(std::is_same_v<decltype(result), champsim::waitable<int>>);
-  REQUIRE_FALSE(result.is_ready_at(4));
+  REQUIRE_FALSE(result.is_ready_at(time_point{duration{4}}));
 }
 
 TEST_CASE("A ready waitable is ready after mapping", "") {
-  champsim::waitable<int> seed{40, 3};
+  champsim::waitable<int> seed{40, time_point{duration{3}}};
   auto result = seed.map([](int i) { return i + 2; });
   STATIC_REQUIRE(std::is_same_v<decltype(result), champsim::waitable<int>>);
-  REQUIRE(result.is_ready_at(4));
+  REQUIRE(result.is_ready_at(time_point{duration{4}}));
 }
 
 struct rval_call_map {
@@ -71,23 +74,23 @@ TEST_CASE("A waitable fmaps its value", "") {
 
 TEST_CASE("An indeterminate waitable can be ready after fmapping", "") {
   champsim::waitable<int> seed{40};
-  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, 1}; });
+  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, time_point{duration{1}}}; });
   STATIC_REQUIRE(std::is_same_v<decltype(result), champsim::waitable<float>>);
-  REQUIRE(result.is_ready_at(4));
+  REQUIRE(result.is_ready_at(time_point{duration{4}}));
 }
 
 TEST_CASE("An unready waitable can be ready after fmapping", "") {
-  champsim::waitable<int> seed{40, 5};
-  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, 1}; });
+  champsim::waitable<int> seed{40, time_point{duration{5}}};
+  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, time_point{duration{1}}}; });
   STATIC_REQUIRE(std::is_same_v<decltype(result), champsim::waitable<float>>);
-  REQUIRE(result.is_ready_at(4));
+  REQUIRE(result.is_ready_at(time_point{duration{4}}));
 }
 
 TEST_CASE("A ready waitable is unready after fmapping", "") {
-  champsim::waitable<int> seed{40, 3};
-  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, 5}; });
+  champsim::waitable<int> seed{40, time_point{duration{3}}};
+  auto result = seed.and_then([](int) { return champsim::waitable<float>{42.f, time_point{duration{5}}}; });
   STATIC_REQUIRE(std::is_same_v<decltype(result), champsim::waitable<float>>);
-  REQUIRE_FALSE(result.is_ready_at(4));
+  REQUIRE_FALSE(result.is_ready_at(time_point{duration{4}}));
 }
 
 struct rval_call_and_then {

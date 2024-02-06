@@ -15,7 +15,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       }));
 
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 7;
+    constexpr auto hit_latency = 7;
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -39,7 +39,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul)::request_type seed;
-      seed.address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
       seed.is_translated = true;
       seed.instr_id = id++;
       seed.cpu = 0;
@@ -72,12 +72,12 @@ SCENARIO("A cache returns a hit after the specified latency") {
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(std::size(mock_ul.packets) == 2);
-          REQUIRE(mock_ul.packets.back().return_time == mock_ul.packets.back().issue_time + hit_latency);
+          REQUIRE_THAT(mock_ul.packets, Catch::Matchers::SizeIs(2));
+          mock_ul.packets.back().assert_returned(hit_latency, 1);
         }
 
         THEN("The number of hits increases") {
-          REQUIRE(uut.sim_stats.hits.at(std::pair{test.type, test.cpu}) == initial_hits + 1);
+          REQUIRE(uut.sim_stats.hits.value_or(std::pair{test.type, test.cpu},0) == initial_hits + 1);
         }
       }
     }

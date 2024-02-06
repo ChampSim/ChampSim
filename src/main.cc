@@ -15,15 +15,8 @@
  */
 
 #include <algorithm>
-#include <cstddef>    // for size_t
-#include <cstdint>    // for uint64_t, uint8_t
-#include <functional> // for reference_wrapper
-#include <iostream>   // for cout, ofstream
-#include <iterator>   // for size, back_insert_iterator, begin
-#include <limits>     // for numeric_limits
-#include <memory>     // for allocator_traits<>::value_type
+#include <fstream>
 #include <numeric>
-#include <stdexcept> // for invalid_argument, out_of_range
 #include <string>
 #include <vector>
 #include <CLI/CLI.hpp>
@@ -32,15 +25,12 @@
 #include "cache.h" // for CACHE
 #include "champsim.h"
 #include "defaults.hpp"
+#include "environment.h"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
 #include "tracereader.h"
-
-namespace champsim
-{
-struct environment;
-}
+#include "vmem.h"
 
 namespace champsim
 {
@@ -48,7 +38,7 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
 }
 
 #ifndef CHAMPSIM_TEST_BUILD
-int main(int argc, char** argv)
+int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
   champsim::configured::generated_environment gen_environment{};
 
@@ -95,6 +85,8 @@ int main(int argc, char** argv)
   }
 
   if (simulation_given && !warmup_given) {
+    // Warmup is 20% by default
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     warmup_instructions = simulation_instructions / 5;
   }
 

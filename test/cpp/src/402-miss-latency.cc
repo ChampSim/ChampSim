@@ -14,9 +14,9 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }));
 
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
@@ -45,7 +45,7 @@ SCENARIO("A cache returns a miss after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
@@ -75,21 +75,21 @@ SCENARIO("A cache returns a miss after the specified latency") {
           elem->_operate();
 
       THEN("It takes exactly the specified cycles to return") {
-        REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
+        mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(std::pair{test.type, test.cpu}) == initial_misses + 1);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu},0) == initial_misses + 1);
       }
 
       THEN("The average miss latency increases") {
-        REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
       }
 
       THEN("The end-of-phase average miss latency increases") {
         uut.end_phase(0);
-        REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
-        REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
+        REQUIRE(uut.roi_stats.total_miss_latency_cycles == miss_latency + fill_latency);
       }
     }
   }
@@ -101,9 +101,9 @@ SCENARIO("A cache completes a fill after the specified latency") {
   auto match_offset = GENERATE(true, false);
 
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
-    constexpr uint64_t fill_latency = 2;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
+    constexpr auto fill_latency = 2;
     do_nothing_MRC mock_ll{miss_latency};
     to_wq_MRP mock_ul;
     auto builder = champsim::cache_builder{champsim::defaults::default_l1d}
@@ -133,7 +133,7 @@ SCENARIO("A cache completes a fill after the specified latency") {
       // Create a test packet
       static uint64_t id = 1;
       decltype(mock_ul)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.instr_id = id++;
       test.type = type;
@@ -153,30 +153,30 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       THEN("It takes exactly the specified cycles to return") {
         if (match_offset)
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + miss_latency + hit_latency + 1)); // +1 due to ordering of elements
+          mock_ul.packets.front().assert_returned((fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
         else
-          REQUIRE(mock_ul.packets.front().return_time == mock_ul.packets.front().issue_time + (fill_latency + hit_latency));
+          mock_ul.packets.front().assert_returned((fill_latency + hit_latency), 1); // +1 due to ordering of elements
       }
 
       THEN("The number of misses increases") {
-        REQUIRE(uut.sim_stats.misses.at(std::pair{test.type, test.cpu}) == initial_misses + 1);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{test.type, test.cpu},0) == initial_misses + 1);
       }
 
       THEN("The average miss latency increases") {
         if (match_offset)
-          REQUIRE(uut.sim_stats.total_miss_latency == miss_latency + fill_latency);
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
         else
-          REQUIRE(uut.sim_stats.total_miss_latency == fill_latency-1); // -1 due to ordering of elements
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == fill_latency-1); // -1 due to ordering of elements
       }
 
       THEN("The end-of-phase average miss latency increases") {
         uut.end_phase(0);
         if (match_offset) {
-          REQUIRE(uut.sim_stats.avg_miss_latency == miss_latency + fill_latency);
-          REQUIRE(uut.roi_stats.avg_miss_latency == miss_latency + fill_latency);
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
+          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
         } else {
-          REQUIRE(uut.sim_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
-          REQUIRE(uut.roi_stats.avg_miss_latency == fill_latency-1); // -1 due to ordering of elements
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == (fill_latency-1)); // -1 due to ordering of elements
+          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (fill_latency-1)); // -1 due to ordering of elements
         }
       }
     }
@@ -205,7 +205,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
     uint64_t id = 1;
     decltype(mock_ul_seed)::request_type test_a;
-    test_a.address = 0xdeadbeef;
+    test_a.address = champsim::address{0xdeadbeef};
     test_a.cpu = 0;
     test_a.type = access_type::LOAD;
     test_a.instr_id = id++;
@@ -223,7 +223,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
     WHEN("A packet with a different address is sent before the fill has completed") {
       decltype(mock_ul_test)::request_type test_b;
-      test_b.address = 0xcafebabe;
+      test_b.address = champsim::address{0xcafebabe};
       test_b.cpu = 0;
       test_b.type = access_type::LOAD;
       test_b.instr_id = id++;
@@ -236,8 +236,8 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
         REQUIRE(test_b_result);
       }
 
-      uint64_t first_packet_delay = 10;
-      for (uint64_t i = 0; i < first_packet_delay; ++i)
+      auto first_packet_delay = 10;
+      for (auto i = 0; i < first_packet_delay; ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -246,7 +246,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
       }
 
       THEN("The number of misses did not increase") {
-        REQUIRE(uut.sim_stats.misses.at(std::pair{access_type::LOAD, 0}) == initial_misses);
+        REQUIRE(uut.sim_stats.misses.value_or(std::pair{access_type::LOAD, 0},0) == initial_misses);
       }
     }
   }
@@ -254,7 +254,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
 SCENARIO("A lower-level queue refusal limits the number of outstanding misses") {
   GIVEN("An empty cache") {
-    champsim::channel refusal_channel{0,0,0,0,0}; // Refuses all packets
+    champsim::channel refusal_channel{0,0,0,champsim::data::bits{},0}; // Refuses all packets
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402c-uut")
@@ -273,7 +273,7 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
     WHEN("A packet is sent") {
       uint64_t id = 1;
       decltype(mock_ul)::request_type test_a;
-      test_a.address = 0xdeadbeef;
+      test_a.address = champsim::address{0xdeadbeef};
       test_a.cpu = 0;
       test_a.type = access_type::LOAD;
       test_a.instr_id = id++;
@@ -290,8 +290,8 @@ SCENARIO("A lower-level queue refusal limits the number of outstanding misses") 
         CHECK(test_a_result);
       }
 
-      uint64_t first_packet_delay = 10;
-      for (uint64_t i = 0; i < first_packet_delay; ++i)
+      auto first_packet_delay = 10;
+      for (auto i = 0; i < first_packet_delay; ++i)
         for (auto elem : elements)
           elem->_operate();
 

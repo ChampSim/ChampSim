@@ -35,14 +35,6 @@ ptw_deprecation_keys = {
     'ptw_rq_size': 'rq_size'
 }
 
-# Scale frequencies
-def scale_frequencies(iterable):
-    ''' Convert each element's 'frequency' member into a factor n where n >= 1 is the ratio above the highest frequency '''
-    it_a, it_b = itertools.tee(iterable, 2)
-    max_freq = max(element['frequency'] for element in it_a)
-    for element in it_b:
-        element['frequency'] = max_freq / element['frequency']
-
 def executable_name(*config_list):
     ''' Produce the executable name from a list of configurations '''
     name_parts = filter(None, ('champsim', *(c.get('name') for c in config_list)))
@@ -421,9 +413,6 @@ class NormalizedConfiguration:
             ).values()
         )
 
-        pmem['io_freq'] = pmem['frequency'] # Save value
-        scale_frequencies(itertools.chain(cores, caches.values(), ptws.values(), (pmem,)))
-
         elements = {
             'cores': cores,
             'caches': tuple(caches.values()),
@@ -446,7 +435,18 @@ class NormalizedConfiguration:
         return elements, module_info, config_extern
 
 def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_dir=None, repl_dir=None, compile_all_modules=False, verbose=False): # pylint: disable=line-too-long,
-    ''' Main parsing dispatch function '''
+    '''
+    This is the main parsing dispatch function. Programmatic use of the configuration system should use this as an entry point.
+
+    :param configs: The configurations given here will be joined into a single configuration, then parsed.
+    :param module_dir: A directory to search for all modules. The structure is assumed to follow the same as the ChampSim repository: branch direction predictors are under `branch/`, replacement policies under `replacement/`, etc.
+    :param branch_dir: A directory to search for branch direction predictors
+    :param btb_dir: A directory to search for branch target predictors
+    :param pref_dir: A directory to search for prefetchers
+    :param repl_dir: A directory to search for replacement policies
+    :param compile_all_modules: If true, all modules in the given directories will be compiled. If false, only the module in the configuration will be compiled.
+    :param verbose: Print extra verbose output
+    '''
     def list_dirs(dirname, var):
         return [
             *(os.path.join(m,dirname) for m in (module_dir or [])),

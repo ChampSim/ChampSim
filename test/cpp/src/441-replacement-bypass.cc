@@ -8,9 +8,9 @@ template <uint64_t bypass_addr>
 struct bypass_replacement : champsim::modules::replacement
 {
   using replacement::replacement;
-  auto find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, uint64_t, uint64_t addr, uint32_t)
+  long find_victim(uint32_t, uint64_t, long, const CACHE::BLOCK*, champsim::address, champsim::address addr, uint32_t)
   {
-    if (addr == bypass_addr)
+    if (addr == champsim::address{bypass_addr})
       return 1L;
     return 0L;
   }
@@ -32,7 +32,7 @@ SCENARIO("The replacement policy can bypass") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<bypass_replacement<0xcafebabe>>()
     };
 
@@ -46,7 +46,7 @@ SCENARIO("The replacement policy can bypass") {
 
     WHEN("A packet is issued") {
       decltype(mock_ul_seed)::request_type test;
-      test.address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
       test.cpu = 0;
       test.type = access_type::WRITE;
       auto test_result = mock_ul_seed.issue(test);
@@ -62,7 +62,7 @@ SCENARIO("The replacement policy can bypass") {
 
       AND_WHEN("A packet with a different address is sent") {
         decltype(mock_ul_test)::request_type test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = access_type::LOAD;
         test_b.instr_id = 1;

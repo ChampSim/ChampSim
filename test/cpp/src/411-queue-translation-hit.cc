@@ -30,8 +30,8 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = 0xdeadbeef;
-      test.v_address = 0xdeadbeef;
+      test.address = champsim::address{0xdeadbeef};
+      test.v_address = champsim::address{0xdeadbeef};
       test.is_translated = false;
       test.cpu = 0;
 
@@ -39,6 +39,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
       THEN("The issue is accepted") {
         REQUIRE(test_result);
       }
+
 
       for (auto elem : elements)
         elem->_operate();
@@ -53,8 +54,7 @@ TEMPLATE_TEST_CASE("Caches issue translations", "", to_wq_MRP, to_rq_MRP, to_pq_
       }
 
       THEN("The packet is translated") {
-        REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{champsim::address{0x11111eef}}));
       }
     }
   }
@@ -86,7 +86,7 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
     WHEN("A packet is sent") {
       // Create a test packet
       typename TestType::request_type test;
-      test.address = 0x11111eef;
+      test.address = champsim::address{0x11111eef};
       test.v_address = test.address;
       test.is_translated = false;
       test.cpu = 0;
@@ -110,10 +110,8 @@ TEMPLATE_TEST_CASE("Translations work even if the addresses happen to be the sam
       }
 
       THEN("The packet is translated") {
-        REQUIRE(std::size(mock_ll.addresses) == 1);
-        REQUIRE(mock_ll.addresses.front() == 0x11111eef);
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector{champsim::address{0x11111eef}}));
       }
     }
   }
 }
-

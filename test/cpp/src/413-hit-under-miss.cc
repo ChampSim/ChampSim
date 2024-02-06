@@ -8,7 +8,7 @@
 TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being issued", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache") {
     constexpr static uint64_t hit_latency = 5;
-    constexpr static uint64_t address_that_will_hit = 0xcafebabe;
+    const champsim::address address_that_will_hit{0xcafebabe};
     filter_MRC mock_translator{address_that_will_hit};
     do_nothing_MRC mock_ll;
     TestType mock_ul{[](auto x, auto y){ return x.v_address == y.v_address; }};
@@ -32,8 +32,8 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
     WHEN("A packet is issued that will miss the translator") {
       // Create a test packet
       typename TestType::request_type seed;
-      seed.address = 0xdeadbeef;
-      seed.v_address = 0xdeadbeef;
+      seed.address = champsim::address{0xdeadbeef};
+      seed.v_address = champsim::address{0xdeadbeef};
       seed.is_translated = false;
       seed.cpu = 0;
 
@@ -73,8 +73,8 @@ TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being i
 
       AND_WHEN("A translated packet is sent") {
         typename TestType::request_type test;
-        test.address = 0xfeedcafe;
-        test.v_address = 0xdeadbeef;
+        test.address = champsim::address{0xfeedcafe};
+        test.v_address = champsim::address{0xdeadbeef};
         test.is_translated = true;
         test.cpu = 0;
 

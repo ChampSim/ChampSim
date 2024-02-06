@@ -113,7 +113,7 @@ configclean: clean
 
 # Link test executable
 $(test_main_name): CPPFLAGS += -DCHAMPSIM_TEST_BUILD -I$(ROOT_DIR)/test/cpp/src
-$(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
+$(test_main_name): CXXFLAGS += -g3 -Og
 $(test_main_name): LDLIBS += -lCatch2Main -lCatch2
 
 $(DEP_ROOT)/test_src.mkpart: source_roots = $(ROOT_DIR)/test/cpp/src $(ROOT_DIR)/src MODULE $(ROOT_DIR)/btb MODULE $(ROOT_DIR)/branch MODULE $(ROOT_DIR)/prefetcher MODULE $(ROOT_DIR)/replacement
@@ -196,8 +196,11 @@ $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $(filter-out main.o,$^) $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
+ifdef TEST_NUM
+selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsubst %.cc,%,$(notdir $(wildcard $(ROOT_DIR)/test/cpp/src/*.cc)))))]"
+endif
 test: $(test_main_name)
-	$(test_main_name)
+	$(test_main_name) $(selected_test)
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'

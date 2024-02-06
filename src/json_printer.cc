@@ -14,35 +14,19 @@
  * limitations under the License.
  */
 
-#include <array>       // for array
-#include <cmath>       // for ceil
-#include <cstddef>     // for size_t
-#include <iostream>    // for ostream
-#include <iterator>    // for begin, end
-#include <map>         // for operator!=, map
-#include <numeric>     // for accumulate
-#include <string>      // for string, basic_string, operator<
-#include <string_view> // for string_view
+#include <algorithm>
 #include <utility>
-#include <vector> // for vector
 #include <nlohmann/json.hpp>
 
-#include "cache.h"           // for CACHE::stats_type, cache_stats, CACHE
-#include "channel.h"         // for access_type, access_type::LOAD, acc...
-#include "dram_controller.h" // for DRAM_CHANNEL::stats_type, DRAM_CHANNEL
-#include "instruction.h"     // for branch_type, BRANCH_CONDITIONAL
-#include "ooo_cpu.h"         // for O3_CPU::stats_type, O3_CPU
-#include "phase_info.h"      // for phase_stats
 #include "stats_printer.h"
-#include "util/bits.h" // for to_underlying
 
 void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
 {
   constexpr std::array types{branch_type::BRANCH_DIRECT_JUMP, branch_type::BRANCH_INDIRECT,      branch_type::BRANCH_CONDITIONAL,
                              branch_type::BRANCH_DIRECT_CALL, branch_type::BRANCH_INDIRECT_CALL, branch_type::BRANCH_RETURN};
 
-  auto total_mispredictions = std::ceil(std::accumulate(
-      std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+  auto total_mispredictions = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
 
   std::map<std::string, std::size_t> mpki{};
   for (auto type : types) {
@@ -65,7 +49,7 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
   statsmap.emplace("prefetch issued", stats.pf_issued);
   statsmap.emplace("useful prefetch", stats.pf_useful);
   statsmap.emplace("useless prefetch", stats.pf_useless);
-  statsmap.emplace("miss latency", stats.avg_miss_latency);
+  statsmap.emplace("miss latency", std::ceil(stats.total_miss_latency_cycles) / std::ceil(stats.misses.total()));
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::vector<hits_value_type> hits;
     std::vector<misses_value_type> misses;
@@ -87,7 +71,7 @@ void to_json(nlohmann::json& j, const DRAM_CHANNEL::stats_type stats)
                      {"RQ ROW_BUFFER_MISS", stats.RQ_ROW_BUFFER_MISS},
                      {"WQ ROW_BUFFER_HIT", stats.WQ_ROW_BUFFER_HIT},
                      {"WQ ROW_BUFFER_MISS", stats.WQ_ROW_BUFFER_MISS},
-                     {"AVG DBUS CONGESTED CYCLE", std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested)}};
+                     {"AVG DBUS CONGESTED CYCLE", (std::ceil(stats.dbus_cycle_congested) / std::ceil(stats.dbus_count_congested))}};
 }
 
 namespace champsim

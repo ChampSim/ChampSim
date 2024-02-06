@@ -48,10 +48,10 @@ class ModuleSearchContext:
     # Try the context's module directories, then try to interpret as a path
     def find(self, module):
         # Return a normalized directory: variables and user shorthands are expanded
-        paths = list(itertools.chain(
+        paths = itertools.chain(
             (os.path.join(dirname, module) for dirname in self.paths), # Prepend search paths
             (module,) # Interpret as file path
-        ))
+        )
 
         paths = map(os.path.expandvars, paths)
         paths = map(os.path.expanduser, paths)

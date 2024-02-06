@@ -22,12 +22,12 @@ bool issue_pq (Q& uut, typename Q::request_type pkt)
 }
 
 template <typename Q, typename F>
-bool issue(Q &uut, uint64_t seed_addr, bool want_return, F&& func)
+bool issue(Q &uut, champsim::address seed_addr, bool want_return, F&& func)
 {
   // Create a test packet
   typename Q::request_type seed;
   seed.address = seed_addr;
-  seed.v_address = 0;
+  seed.v_address = champsim::address{};
   seed.is_translated = true;
   seed.cpu = 0;
   seed.response_requested = want_return;
@@ -36,12 +36,12 @@ bool issue(Q &uut, uint64_t seed_addr, bool want_return, F&& func)
 }
 
 template <typename Q, typename F>
-bool issue(Q &uut, uint64_t seed_addr, F&& func)
+bool issue(Q &uut, champsim::address seed_addr, F&& func)
 {
   // Create a test packet
   typename Q::request_type seed;
   seed.address = seed_addr;
-  seed.v_address = 0;
+  seed.v_address = champsim::address{};
   seed.is_translated = true;
   seed.cpu = 0;
 
@@ -49,7 +49,7 @@ bool issue(Q &uut, uint64_t seed_addr, F&& func)
 }
 
 template <typename Q, typename F>
-bool issue_non_translated(Q &uut, uint64_t seed_addr, F&& func)
+bool issue_non_translated(Q &uut, champsim::address seed_addr, F&& func)
 {
   // Create a test packet
   typename Q::request_type seed;
@@ -63,8 +63,8 @@ bool issue_non_translated(Q &uut, uint64_t seed_addr, F&& func)
 
 SCENARIO("Cache queues perform forwarding WQ to WQ") {
   GIVEN("An empty write queue") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::address address{0xdeadbeef};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.WQ_ACCESS == 0);
@@ -109,8 +109,8 @@ SCENARIO("Cache queues perform forwarding WQ to WQ") {
 
 SCENARIO("Cache queues perform forwarding RQ to RQ") {
   GIVEN("An empty write queue") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::address address{0xdeadbeef};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.RQ_ACCESS == 0);
@@ -155,8 +155,8 @@ SCENARIO("Cache queues perform forwarding RQ to RQ") {
 
 SCENARIO("Cache queues perform forwarding PQ to PQ") {
   GIVEN("An empty prefetch queue") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::address address{0xdeadbeef};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     THEN("The statistics are zero") {
       CHECK(uut.sim_stats.PQ_ACCESS == 0);
@@ -202,8 +202,8 @@ SCENARIO("Cache queues perform forwarding PQ to PQ") {
 
 SCENARIO("Cache queues forward WQ to RQ") {
   GIVEN("An empty write queue and read queue") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::address address{0xdeadbeef};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -236,8 +236,8 @@ SCENARIO("Cache queues forward WQ to RQ") {
 
 SCENARIO("Cache queues forward WQ to PQ") {
   GIVEN("An empty write queue and prefetch queue") {
-    constexpr uint64_t address = 0xdeadbeef;
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::address address{0xdeadbeef};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     WHEN("A packet is sent to the write queue") {
       auto seed_result = issue(uut, address, issue_wq<champsim::channel>);
@@ -270,9 +270,9 @@ SCENARIO("Cache queues forward WQ to PQ") {
 
 SCENARIO("Translating cache queues forward RQ virtual to physical RQ") {
   GIVEN("A read queue with one item") {
-    constexpr uint64_t address = 0xdeadbeef;
+    champsim::address address{0xdeadbeef};
     do_nothing_MRC mock_ll{2};
-    champsim::channel uut{32, 32, 32, LOG2_BLOCK_SIZE, false};
+    champsim::channel uut{32, 32, 32, champsim::data::bits{LOG2_BLOCK_SIZE}, false};
 
     issue(uut, address, issue_rq<decltype(uut)>);
 

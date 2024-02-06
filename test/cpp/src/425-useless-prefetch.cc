@@ -8,8 +8,8 @@
 
 SCENARIO("A cache increments the useless prefetch count when it evicts an unhit prefetch") {
   GIVEN("An empty cache") {
-    constexpr uint64_t hit_latency = 4;
-    constexpr uint64_t miss_latency = 3;
+    constexpr auto hit_latency = 4;
+    constexpr auto miss_latency = 3;
     do_nothing_MRC mock_ll;
     to_wq_MRP mock_ul_seed;
     to_rq_MRP mock_ul_test;
@@ -37,10 +37,10 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
         elem->_operate();
 
     WHEN("A packet is sent") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      const champsim::address seed_addr{0xdeadbeef};
       auto seed_result = uut.prefetch_line(seed_addr, true, 0);
 
-      for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
+      for (auto i = 0; i < 2*(miss_latency+hit_latency); ++i)
         for (auto elem : elements)
           elem->_operate();
 
@@ -51,14 +51,14 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
 
       AND_WHEN("A packet with a different address is sent") {
         decltype(mock_ul_test)::request_type test_b;
-        test_b.address = 0xcafebabe;
+        test_b.address = champsim::address{0xcafebabe};
         test_b.cpu = 0;
         test_b.type = access_type::LOAD;
         test_b.instr_id = 1;
 
         auto test_b_result = mock_ul_test.issue(test_b);
 
-        for (uint64_t i = 0; i < hit_latency+2; ++i)
+        for (auto i = 0; i < hit_latency+2; ++i)
           for (auto elem : elements)
             elem->_operate();
 
@@ -67,12 +67,12 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
           CHECK_THAT(mock_ll.addresses, Catch::Matchers::RangeEquals(std::vector({seed_addr, test_b.address})));
         }
 
-        for (uint64_t i = 0; i < 2*(miss_latency+hit_latency); ++i)
+        for (auto i = 0; i < 2*(miss_latency+hit_latency); ++i)
           for (auto elem : elements)
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          REQUIRE(std::llabs((long long)mock_ul_test.packets.front().return_time - ((long long)mock_ul_test.packets.front().issue_time + (long long)(miss_latency + hit_latency))) <= 1);
+          mock_ul_test.packets.front().assert_returned(miss_latency + hit_latency + 1, 1);
         }
 
         THEN("The number of useless prefetches is increased") {
