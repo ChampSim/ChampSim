@@ -83,11 +83,12 @@ DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim
                            champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
                            std::size_t wq_size,
                            champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(champsim::size(get<1>(slice)) * champsim::size(get<0>(slice))), tRP(t_rp),
-      tRCD(t_rcd), tCAS(t_cas), tREF(champsim::chrono::picoseconds{64000000000 / (DRAM_ROWS/8)}), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, bank_request(1 << (champsim::size(get<2>(slice)) + champsim::size(get<0>(slice)))), tRP(t_rp),
+      tRCD(t_rcd), tCAS(t_cas), tREF(champsim::chrono::picoseconds{64000000000 / ((1 << champsim::size(get<3>(slice)))/8)}), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::blocks{1} / width))),
       address_slicer(slice)
 {
+  fmt::print("ROWS: {} COLS: {} RANKS: {} BANKS: {}",1 << champsim::size(get<3>(slice)),1 << champsim::size(get<1>(slice)), 1 << champsim::size(get<2>(slice)), 1 << champsim::size(get<0>(slice)));
 }
 
 long MEMORY_CONTROLLER::operate()
@@ -183,7 +184,7 @@ long DRAM_CHANNEL::schedule_refresh()
   {
     refresh_row += 8;
     sim_stats.refresh_cycles++;
-    if(refresh_row >= DRAM_ROWS)
+    if(refresh_row >=  1u << champsim::size(get<3>(address_slicer)))
       refresh_row = 0;
   }
 
@@ -318,10 +319,10 @@ DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
     }
 
 
-    auto lop_idx = this->get_rank(lhs.value().address) * this->BANKS + this->get_bank(lhs.value().address);
-    auto rop_idx = this->get_rank(rhs.value().address) * this->BANKS + this->get_bank(rhs.value().address);
-    auto rready = !this->bank_request[rop_idx].valid && !this->bank_request[rop_idx].under_refresh;
-    auto lready = !this->bank_request[lop_idx].valid && !this->bank_request[lop_idx].under_refresh;
+    auto lop_idx = this->bank_request_index(lhs.value().address);
+    auto rop_idx = this->bank_request_index(rhs.value().address);
+    auto rready = !this->bank_request[rop_idx].valid;
+    auto lready = !this->bank_request[lop_idx].valid;
     return !(rready ^ lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
 
   };
@@ -339,10 +340,10 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
 {
   long progress{0};
   if (pkt->has_value() && pkt->value().ready_time <= current_time) {
-    auto op_rank = get_rank(pkt->value().address);
-    auto op_bank = get_bank(pkt->value().address);
+    //auto op_rank = get_rank(pkt->value().address);
+    //auto op_bank = get_bank(pkt->value().address);
     auto op_row = get_row(pkt->value().address);
-    auto op_idx = op_rank * DRAM_BANKS + op_bank;
+    auto op_idx = bank_request_index(pkt->value().address);
 
     if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
@@ -622,31 +623,59 @@ unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) con
 
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { 
+  #ifdef RAMULATOR
+  assert(false);
+  #endif
+  return channels.at(dram_get_channel(address)).get_bank(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const { return channels.at(dram_get_channel(address)).get_column(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const {
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return channels.at(dram_get_channel(address)).get_column(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const {
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return channels.at(dram_get_channel(address)).get_rank(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { 
+  #ifdef RAMULATOR
+  assert(false);
+  #endif
+  return channels.at(dram_get_channel(address)).get_row(address); 
+}
 
 unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const {
-  #ifdef RAMULATOR assert(false); #endif 
+  #ifdef RAMULATOR 
+  assert(false); 
+  #endif 
   return std::get<0>(address_slicer(address)).to<unsigned long>(); 
 }
 
 unsigned long DRAM_CHANNEL::get_column(champsim::address address) const {
-  #ifdef RAMULATOR assert(false); #endif
+  #ifdef RAMULATOR 
+  assert(false); 
+  #endif
   return std::get<1>(address_slicer(address)).to<unsigned long>(); 
 }
 
 unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const {
-  #ifdef RAMULATOR assert(false); #endif
+  #ifdef RAMULATOR 
+  assert(false); 
+  #endif
   return std::get<2>(address_slicer(address)).to<unsigned long>(); 
 }
 
 unsigned long DRAM_CHANNEL::get_row(champsim::address address) const {
-  #ifdef RAMULATOR assert(false); #endif
+  #ifdef RAMULATOR 
+  assert(false); 
+  #endif
   return std::get<3>(address_slicer(address)).to<unsigned long>(); 
 }
 

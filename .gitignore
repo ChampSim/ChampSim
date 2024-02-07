@@ -18,6 +18,5 @@ vcpkg_installed/
 **/_build
 **/_doxygen
 
-ramulator2/
 absolute.options
 

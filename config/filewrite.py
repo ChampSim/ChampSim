@@ -200,7 +200,7 @@ class Fragment:
             (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
 
             # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file))),
+            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file,elements['pmem']))),
 
             # Module name mangling
             *generate_legacy_module_information(inc_dir, legacy_module_info),
