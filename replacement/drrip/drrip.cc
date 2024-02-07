@@ -1,10 +1,11 @@
 #include "drrip.h"
 
-#include "champsim.h"
 #include <algorithm>
 #include <cassert>
 #include <random>
 #include <utility>
+
+#include "champsim.h"
 
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {

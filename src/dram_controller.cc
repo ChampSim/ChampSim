@@ -41,9 +41,9 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                            champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-                           std::size_t wq_size,
-                           slicer_type slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+                           std::size_t wq_size, slicer_type slice)
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
+      DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::bytes{BLOCK_SIZE} / width)))
 {
   request_array_type br(ranks() * banks());
@@ -57,7 +57,7 @@ auto DRAM_CHANNEL::make_slicer(std::size_t start_pos, std::size_t rows, std::siz
   params.at(SLICER_COLUMN_IDX) = columns;
   params.at(SLICER_RANK_IDX) = ranks;
   params.at(SLICER_BANK_IDX) = banks;
-  return std::apply([start=start_pos](auto... p){ return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
+  return std::apply([start = start_pos](auto... p) { return champsim::make_contiguous_extent_set(start, champsim::lg2(p)...); }, params);
 }
 
 long MEMORY_CONTROLLER::operate()

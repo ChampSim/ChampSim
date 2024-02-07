@@ -24,6 +24,7 @@
 
 #include "cache.h" // for CACHE
 #include "champsim.h"
+#include "core_inst.inc"
 #include "defaults.hpp"
 #include "environment.h"
 #include "ooo_cpu.h" // for O3_CPU
@@ -31,8 +32,6 @@
 #include "stats_printer.h"
 #include "tracereader.h"
 #include "vmem.h"
-
-#include "core_inst.inc"
 
 namespace champsim
 {

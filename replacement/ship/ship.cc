@@ -1,9 +1,10 @@
 #include "ship.h"
 
-#include "champsim.h"
 #include <algorithm>
 #include <cassert>
 #include <random>
+
+#include "champsim.h"
 
 // initialize replacement state
 ship::ship(CACHE* cache)

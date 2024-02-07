@@ -30,7 +30,10 @@ public:
     static uint64_t region_lru;
 
     region_type() : region_type(champsim::page_number{}) {}
-    explicit region_type(champsim::page_number allocate_vpn) : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++) {}
+    explicit region_type(champsim::page_number allocate_vpn)
+        : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++)
+    {
+    }
   };
 
   using prefetcher::prefetcher;

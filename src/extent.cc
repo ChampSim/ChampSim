@@ -1,9 +1,13 @@
 #include "extent.h"
 
-namespace {
-  template <typename T>
-  auto size(const T& ext) { return champsim::to_underlying(ext.upper) - champsim::to_underlying(ext.lower); }
+namespace
+{
+template <typename T>
+auto size(const T& ext)
+{
+  return champsim::to_underlying(ext.upper) - champsim::to_underlying(ext.lower);
 }
+} // namespace
 
 std::size_t champsim::size(dynamic_extent ext) { return ::size(ext); }
 

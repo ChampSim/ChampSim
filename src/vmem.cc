@@ -33,8 +33,8 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
       next_pte_page(
           champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(champsim::data::bytes{pte_page_size}.count())}}, 0),
       next_ppage(champsim::lowest_address_for_size(VMEM_RESERVE_CAPACITY)),
-      last_ppage(champsim::lowest_address_for_size(
-          champsim::data::bytes{PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
+      last_ppage(champsim::lowest_address_for_size(champsim::data::bytes{
+          PAGE_SIZE + champsim::ipow(pte_page_size.count(), static_cast<unsigned>(pt_levels))})) // cast protected by assert in constructor
 {
   assert(page_table_page_size > 1_kiB);
   assert(champsim::is_power_of_2(page_table_page_size.count()));

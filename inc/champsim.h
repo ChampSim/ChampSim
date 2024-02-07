@@ -17,8 +17,8 @@
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
 
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <limits>
 
@@ -61,8 +61,8 @@ using kibibytes = size<long long, kibi>;
 using mebibytes = size<long long, mebi>;
 using gibibytes = size<long long, gibi>;
 using tebibytes = size<long long, tebi>;
-//using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
-//using pages = size<long long, std::ratio<PAGE_SIZE>>;
+// using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
+// using pages = size<long long, std::ratio<PAGE_SIZE>>;
 } // namespace data
 
 /**

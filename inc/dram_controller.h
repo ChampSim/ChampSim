@@ -59,10 +59,10 @@ struct DRAM_CHANNEL final : public champsim::operable {
   queue_type WQ;
   queue_type RQ;
 
-/*
- * | row address | rank index | column address | bank index | channel | block
- * offset |
- */
+  /*
+   * | row address | rank index | column address | bank index | channel | block
+   * offset |
+   */
   constexpr static std::size_t SLICER_ROW_IDX = 3;
   constexpr static std::size_t SLICER_COLUMN_IDX = 1;
   constexpr static std::size_t SLICER_RANK_IDX = 2;
@@ -97,8 +97,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-               std::size_t wq_size,
-               slicer_type slice);
+               std::size_t wq_size, slicer_type slice);
 
   void check_write_collision();
   void check_read_collision();
