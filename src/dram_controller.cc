@@ -464,6 +464,8 @@ champsim::data::bytes MEMORY_CONTROLLER::size() const
 }
 champsim::data::bytes DRAM_CHANNEL::size() const { return champsim::data::bytes{BLOCK_SIZE + (1 << address_slicer.bit_size())}; }
 
+std::size_t DRAM_CHANNEL::bank_request_capacity() const { return std::size(bank_request); }
+
 // LCOV_EXCL_START Exclude the following function from LCOV
 void MEMORY_CONTROLLER::print_deadlock()
 {

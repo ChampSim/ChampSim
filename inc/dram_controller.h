@@ -110,6 +110,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
   unsigned long get_bank(champsim::address address) const;
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
+
+  std::size_t bank_request_capacity() const;
 };
 
 class MEMORY_CONTROLLER : public champsim::operable
