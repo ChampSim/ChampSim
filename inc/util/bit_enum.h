@@ -19,6 +19,9 @@
 
 #include "to_underlying.h"
 
+#include <cstdint>
+#include <limits>
+
 namespace champsim
 {
 namespace data
@@ -27,7 +30,7 @@ namespace data
 /**
  * A strong type to represent a bit width. Being an enum prevents arbitrary arithmetic from being performed.
  */
-enum class bits : unsigned long long {};
+enum class bits : uint64_t { address_width = std::numeric_limits<uint64_t>::digits };
 } // namespace data
 } // namespace champsim
 

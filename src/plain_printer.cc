@@ -56,7 +56,7 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                               ::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
                               ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
 
-  lines.push_back("Branch type MPKI");
+  lines.emplace_back("Branch type MPKI");
   for (auto idx : types) {
     lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),
                                 ::print_ratio(std::kilo::num * stats.branch_type_misses.value_or(idx, 0), stats.instrs())));
@@ -133,14 +133,14 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
   }
 
   if (NUM_CPUS > 1) {
-    lines.push_back("");
-    lines.push_back("Total Simulation Statistics (not including warmup)");
+    lines.emplace_back("");
+    lines.emplace_back("Total Simulation Statistics (not including warmup)");
 
     for (const auto& stat : stats.sim_cpu_stats) {
       auto sublines = format(stat);
-      lines.push_back("");
+      lines.emplace_back("");
       std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
-      lines.push_back("");
+      lines.emplace_back("");
     }
 
     for (const auto& stat : stats.sim_cache_stats) {
@@ -149,14 +149,14 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     }
   }
 
-  lines.push_back("");
-  lines.push_back("Region of Interest Statistics");
+  lines.emplace_back("");
+  lines.emplace_back("Region of Interest Statistics");
 
   for (const auto& stat : stats.roi_cpu_stats) {
     auto sublines = format(stat);
-    lines.push_back("");
+    lines.emplace_back("");
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
-    lines.push_back("");
+    lines.emplace_back("");
   }
 
   for (const auto& stat : stats.roi_cache_stats) {
@@ -164,11 +164,11 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
 
-  lines.push_back("");
-  lines.push_back("DRAM Statistics");
+  lines.emplace_back("");
+  lines.emplace_back("DRAM Statistics");
   for (const auto& stat : stats.roi_dram_stats) {
     auto sublines = format(stat);
-    lines.push_back("");
+    lines.emplace_back("");
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
 

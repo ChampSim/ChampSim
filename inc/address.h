@@ -284,7 +284,7 @@ public:
     }
   }
 
-  constexpr static champsim::data::bits bits{std::numeric_limits<underlying_type>::digits};
+  constexpr static champsim::data::bits bits{champsim::data::bits::address_width};
   static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
 
   template <typename Ostr, typename ST>

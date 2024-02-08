@@ -26,8 +26,8 @@
 #include "util/to_underlying.h"
 #include "util/units.h"
 
-extern unsigned LOG2_BLOCK_SIZE;
-extern unsigned LOG2_PAGE_SIZE;
+extern const unsigned LOG2_BLOCK_SIZE;
+extern const unsigned LOG2_PAGE_SIZE;
 
 namespace champsim
 {
@@ -55,7 +55,7 @@ struct sized_extent {
  * An extent that is always the size of a page number
  */
 struct page_number_extent : dynamic_extent {
-  page_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_PAGE_SIZE}) {}
+  page_number_extent() : dynamic_extent(champsim::data::bits::address_width, champsim::data::bits{LOG2_PAGE_SIZE}) {}
 };
 
 /**
@@ -69,7 +69,7 @@ struct page_offset_extent : dynamic_extent {
  * An extent that is always the size of a block number
  */
 struct block_number_extent : dynamic_extent {
-  block_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
+  block_number_extent() : dynamic_extent(champsim::data::bits::address_width, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
 };
 
 /**
