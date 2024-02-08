@@ -14,7 +14,8 @@ Address Operations
 .. doxygentypedef:: champsim::block_offset
 
 .. doxygenstruct:: champsim::static_extent
-
 .. doxygenstruct:: champsim::dynamic_extent
-
-.. doxygenstruct:: champsim::sized_extent
+.. doxygenstruct:: champsim::page_number_extent
+.. doxygenstruct:: champsim::page_offset_extent
+.. doxygenstruct:: champsim::block_number_extent
+.. doxygenstruct:: champsim::block_offset_extent

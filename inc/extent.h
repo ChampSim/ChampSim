@@ -40,16 +40,7 @@ struct dynamic_extent {
   champsim::data::bits lower;
 
   constexpr dynamic_extent(champsim::data::bits up, champsim::data::bits low) : upper(up), lower(low) { assert(upper >= lower); }
-};
-
-/**
- * A runtime-sized extent that is constructed from its lower bound and width
- */
-struct sized_extent {
-  champsim::data::bits upper;
-  champsim::data::bits lower;
-
-  constexpr sized_extent(champsim::data::bits low, std::size_t size) : upper(low + champsim::data::bits{size}), lower(low) { assert(upper >= lower); }
+  constexpr dynamic_extent(champsim::data::bits low, std::size_t size) : dynamic_extent(low + champsim::data::bits{size}, low) {}
 };
 
 /**
@@ -93,7 +84,6 @@ struct static_extent {
  * Give the width of the extent. For static_extent, this function can be constexpr.
  */
 std::size_t size(dynamic_extent ext);
-std::size_t size(sized_extent ext);
 std::size_t size(page_number_extent ext);
 std::size_t size(page_offset_extent ext);
 std::size_t size(block_number_extent ext);

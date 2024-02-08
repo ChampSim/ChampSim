@@ -443,7 +443,7 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
-  return address.slice(champsim::sized_extent{champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::lg2(std::size(channels))}).to<unsigned long>();
+  return address.slice(champsim::dynamic_extent{champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::lg2(std::size(channels))}).to<unsigned long>();
 }
 
 unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }

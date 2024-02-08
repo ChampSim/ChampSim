@@ -106,10 +106,6 @@ struct splice_fold_wrapper;
  *    address_slice dyn_block{dynamic_extent{64_b, champsim::data::bits{LOG2_BLOCK_SIZE}}, dyn_full_addr}; // 0xffff'ffc0
  *    address_slice dyn_page{dynamic_extent{64_b, champsim::data::bits{LOG2_PAGE_SIZE}}, dyn_full_addr}; // 0xffff'f000
  *
- *    address_slice szd_full_addr{sized_extent{0_b, 64},0xffff'ffff};
- *    address_slice szd_block_offset{sized_extent{0_b, LOG2_BLOCK_SIZE}, szd_full_addr}; // 0x3f
- *    address_slice szd_page_offset{sized_extent{0_b, LOG2_PAGE_SIZE}, szd_full_addr}; // 0xfff
- *
  * \endcode
  *
  * For static extents, it can be useful to explicitly specify the template parameter.
@@ -188,7 +184,7 @@ struct splice_fold_wrapper;
  *
  * \endcode
  *
- * \tparam EXTENT One of ``champsim::static_extent<>``, ``champsim::dynamic_extent``, or ``champsim::sized_extent``.
+ * \tparam EXTENT One of ``champsim::static_extent<>``, ``champsim::dynamic_extent``, or one of the page- or block-sized extents.
  */
 template <typename EXTENT>
 class address_slice

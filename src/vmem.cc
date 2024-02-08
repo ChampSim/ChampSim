@@ -48,11 +48,11 @@ VirtualMemory::VirtualMemory(champsim::data::bytes page_table_page_size, std::si
   }
 }
 
-champsim::sized_extent VirtualMemory::extent(std::size_t level) const
+champsim::dynamic_extent VirtualMemory::extent(std::size_t level) const
 {
   const champsim::data::bits lower{LOG2_PAGE_SIZE + champsim::lg2(pte_page_size.count()) * (level - 1)};
   const auto size = static_cast<std::size_t>(champsim::lg2(pte_page_size.count()));
-  return champsim::sized_extent{lower, size};
+  return champsim::dynamic_extent{lower, size};
 }
 
 champsim::data::bits VirtualMemory::shamt(std::size_t level) const
@@ -119,7 +119,7 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
 
   auto offset = get_offset(vaddr, level);
   champsim::address paddr{
-      champsim::splice(ppage->second, champsim::address_slice{champsim::sized_extent{champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)},
+      champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)},
                                                                                      static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
                                                               offset})};
   if constexpr (champsim::debug_print) {

@@ -11,8 +11,6 @@ auto size(const T& ext)
 
 std::size_t champsim::size(dynamic_extent ext) { return ::size(ext); }
 
-std::size_t champsim::size(sized_extent ext) { return ::size(ext); }
-
 std::size_t champsim::size(page_offset_extent ext) { return ::size(ext); }
 
 std::size_t champsim::size(page_number_extent ext) { return ::size(ext); }

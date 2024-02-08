@@ -72,7 +72,7 @@ public:
   /**
    * Find the extent for the given page table level.
    */
-  [[nodiscard]] champsim::sized_extent extent(std::size_t level) const;
+  [[nodiscard]] champsim::dynamic_extent extent(std::size_t level) const;
 
   /**
    * Get the page table page offset of the address for the given level.
