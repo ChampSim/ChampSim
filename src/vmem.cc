@@ -55,20 +55,11 @@ champsim::sized_extent VirtualMemory::extent(std::size_t level) const
   return champsim::sized_extent{lower, size};
 }
 
-champsim::data::bits VirtualMemory::shamt(std::size_t level) const
-{
-  return extent(level).lower;
-}
+champsim::data::bits VirtualMemory::shamt(std::size_t level) const { return extent(level).lower; }
 
-uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const
-{
-  return champsim::address_slice{extent(level), vaddr}.to<uint64_t>();
-}
+uint64_t VirtualMemory::get_offset(champsim::address vaddr, std::size_t level) const { return champsim::address_slice{extent(level), vaddr}.to<uint64_t>(); }
 
-uint64_t VirtualMemory::get_offset(champsim::page_number vaddr, std::size_t level) const
-{
-  return get_offset(champsim::address{vaddr}, level);
-}
+uint64_t VirtualMemory::get_offset(champsim::page_number vaddr, std::size_t level) const { return get_offset(champsim::address{vaddr}, level); }
 
 champsim::page_number VirtualMemory::ppage_front() const
 {
@@ -110,7 +101,8 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   }
 
   champsim::dynamic_extent pte_table_entry_extent{champsim::address::bits, shamt(level)};
-  auto [ppage, fault] = page_table.try_emplace({cpu_num, level, champsim::address_slice{pte_table_entry_extent, vaddr}}, champsim::splice(active_pte_page, next_pte_page));
+  auto [ppage, fault] =
+      page_table.try_emplace({cpu_num, level, champsim::address_slice{pte_table_entry_extent, vaddr}}, champsim::splice(active_pte_page, next_pte_page));
 
   // this PTE doesn't yet have a mapping
   if (fault) {

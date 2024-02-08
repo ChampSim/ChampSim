@@ -17,10 +17,10 @@
 #ifndef UTIL_BIT_ENUM_H
 #define UTIL_BIT_ENUM_H
 
-#include "to_underlying.h"
-
 #include <cstdint>
 #include <limits>
+
+#include "to_underlying.h"
 
 namespace champsim
 {
