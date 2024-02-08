@@ -37,13 +37,13 @@ def iter_system(system, name, key='lower_level'):
         name = val.get(key)
 
 def wrap_list(attr):
-    ''' Wrap the given element in a list, if it is not already a list '''
+    ''' Wrap the given element in a list, if it is not already a list. '''
     if not isinstance(attr, list):
         attr = [attr]
     return attr
 
 def collect(iterable, key_func, join_func):
-    ''' Perform the "sort->groupby" idiom on an iterable, grouping according to the join_func '''
+    ''' Perform the "sort->groupby" idiom on an iterable, grouping according to the join_func. '''
     intern_iterable = sorted(iterable, key=key_func)
     intern_iterable = itertools.groupby(intern_iterable, key=key_func)
     return (join_func(it[1]) for it in intern_iterable)
@@ -55,6 +55,14 @@ def chain(*dicts):
     Values that are lists are joined.
 
     Dictionaries given earlier in the parameter list have priority.
+
+    >>> chain({ 'a': 1 }, { 'b': 2 })
+    { 'a': 1, 'b': 2 }
+    >>> chain({ 'a': 1 }, { 'a': 2 })
+    { 'a': 1 }
+    >>> chain({ 'd': { 'a': 1 } }, { 'd': { 'b': 2 } })
+    { 'd': { 'a': 1, 'b': 2 } }
+
     :param dicts: the sequence to be chained
     '''
     def merge(merger, tname, lhs, rhs):
@@ -68,7 +76,7 @@ def chain(*dicts):
     return functools.reduce(merge_dicts, dicts, {})
 
 def star(func):
-    ''' Convert a function object that takes a starred parameter into one that takes an iterable parameter '''
+    ''' Convert a function object that takes a starred parameter into one that takes an iterable parameter. '''
     def result(args):
         return func(*args)
     return result
@@ -140,7 +148,7 @@ def cut(iterable, n=-1):
     return head_iterator(), tail_iterator()
 
 def append_except_last(iterable, suffix):
-    ''' Append a string to each element of the iterable except the last one. '''
+    ''' Concatenate a suffix to each element of the iterable except the last one. '''
     head, tail = cut(iterable, n=-1)
     yield from map(operator.concat, head, itertools.repeat(suffix))
     yield from tail
@@ -155,6 +163,7 @@ def do_for_first(func, iterable):
     yield from tail
 
 def batch(it, n):
+    ''' A backport of itertools.batch(). '''
     it = iter(it)
     val = tuple(itertools.islice(it, n))
     while val:
@@ -182,7 +191,7 @@ def yield_from_star(gen, args, n=2):
 
 def explode(d, in_key, out_key=None):
     '''
-    Convert a dictionary with a list member to a list with dictionary members
+    Convert a dictionary with a list member to a list with dictionary members.
     :param d: the dictionary to be extracted
     :param in_key: the key holding the list
     :param out_key: the key to distinguish the resulting list elements
@@ -193,6 +202,7 @@ def explode(d, in_key, out_key=None):
     return [ { out_key: e, **d } for e in extracted ]
 
 def path_parts(p):
+    ''' Yield the components of a path, as if by repeated applications of os.path.split(). '''
     if not p:
         return
     head, tail = os.path.split(p)
@@ -200,9 +210,11 @@ def path_parts(p):
     yield tail
 
 def path_ancestors(p):
+    ''' Yield all directories that are ancestors of the path. '''
     yield from itertools.accumulate(path_parts(p), os.path.join)
 
 def sliding(iterable, n):
+    ''' A backport of itertools.sliding() '''
     it = iter(iterable)
     window = collections.deque(itertools.islice(it, n-1), maxlen=n)
     for x in it:
