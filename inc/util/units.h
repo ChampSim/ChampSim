@@ -38,7 +38,11 @@ namespace data
 inline constexpr unsigned bits_per_byte = 8;
 
 /**
- * A class to represent data sizes as they are passed around the program
+ * A class to represent data sizes as they are passed around the program.
+ * This type is modeled after ``std::chrono::duration``. The units are known as part of the size, but the types are convertible.
+ *
+ * \tparam Rep The type of the underlying representation.
+ * \tparam Unit A specialization of `std::ratio` that represents the multiple of a single byte.
  */
 template <typename Rep, typename Unit>
 class size
@@ -69,8 +73,10 @@ public:
    *
    * This permits constructions like
    *
+   * \code{.cpp}
    *     void func(champsim::data::kibibytes x);
    *     func(champsim::data::bytes{1024});
+   * \endcode
    */
   template <typename Rep2, typename Unit2>
   constexpr size(const size<Rep2, Unit2>& other)
