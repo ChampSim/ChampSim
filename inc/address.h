@@ -537,11 +537,11 @@ struct splice_fold_wrapper {
   auto operator+(splice_fold_wrapper<OtherExtent> other) const
   {
     auto return_extent = extent_union(this->extent, other.extent);
+    auto lhs_shifted = champsim::translate(underlying, extent, return_extent);
+    auto rhs_shifted = champsim::translate(other.underlying, other.extent, return_extent);
+    auto window = other.extent >> return_extent.lower;
     return splice_fold_wrapper<decltype(return_extent)>{
-        return_extent, splice_bits(underlying << (to_underlying(extent.lower) - to_underlying(return_extent.lower)),
-                                   other.underlying << (to_underlying(other.extent.lower) - to_underlying(return_extent.lower)),
-                                   to_underlying(other.extent.upper) - to_underlying(return_extent.lower),
-                                   to_underlying(other.extent.lower) - to_underlying(return_extent.lower))};
+        return_extent, splice_bits(lhs_shifted, rhs_shifted, window.upper, window.lower)};
   }
 
   auto address() const noexcept { return address_slice{extent, underlying}; }

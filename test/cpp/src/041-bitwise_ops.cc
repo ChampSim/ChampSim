@@ -3,6 +3,8 @@
 #include <bitset>
 #include <limits>
 
+using namespace champsim::data::data_literals;
+
 TEST_CASE("lg2 correctly identifies powers of 2") {
   auto i = GENERATE(range(0u,64u));
   REQUIRE(champsim::lg2((1ull << i)) == i);
@@ -22,8 +24,8 @@ TEST_CASE("next_pow2 promotes to powers of 2") {
 
 TEST_CASE("bitmask correctly produces lower-order bits") {
   auto i = GENERATE(range(0u, 64u));
-  REQUIRE(champsim::bitmask(i) < (1ull << i));
-  REQUIRE(std::bitset<64>{champsim::bitmask(i)}.count() == i);
+  REQUIRE(champsim::bitmask(champsim::data::bits{i}) < (1ull << i));
+  REQUIRE(std::bitset<64>{champsim::bitmask(champsim::data::bits{i})}.count() == i);
 }
 
 TEMPLATE_TEST_CASE("is_power_of_2 correctly identifies powers", "",
@@ -55,7 +57,7 @@ TEST_CASE("ipow operates correctly for higher powers") {
 }
 
 TEST_CASE("bitmask correctly produces slice masks") {
-  auto i = GENERATE(table<unsigned, unsigned>({
+  auto [up, low] = GENERATE(table<unsigned, unsigned>({
       {0,0}, {1,0}, {2,0}, {3,0}, {4,0}, {5,0}, {6,0}, {7,0}, {8,0}, {9,0}, {10,0}, {11,0}, {12,0}, {13,0}, {14,0}, {15,0}, {16,0},
       {20,0}, {24,0}, {28,0}, {32,0}, {40,0}, {48,0},
              {1,1}, {2,1}, {3,1}, {4,1}, {5,1}, {6,1}, {7,1}, {8,1}, {9,1}, {10,1}, {11,1}, {12,1}, {13,1}, {14,1}, {15,1}, {16,1},
@@ -88,16 +90,16 @@ TEST_CASE("bitmask correctly produces slice masks") {
                                                                                                                        {40,40}, {48,40},
                                                                                                                                 {48,48}
       }));
-  REQUIRE(champsim::bitmask(std::get<0>(i), std::get<1>(i)) < (1ull << std::get<0>(i)));
-  REQUIRE(std::bitset<64>{champsim::bitmask(std::get<0>(i), std::get<1>(i))}.count() == (std::get<0>(i) - std::get<1>(i)));
+  REQUIRE(champsim::bitmask(champsim::data::bits{up}, champsim::data::bits{low}) < (1ull << up));
+  REQUIRE(std::bitset<64>{champsim::bitmask(champsim::data::bits{up}, champsim::data::bits{low})}.count() == (up - low));
 }
 
 TEST_CASE("splice_bits performs correctly at the limits") {
   constexpr unsigned long long a{0xaaaaaaaaaaaaaaaa};
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
 
-  REQUIRE(champsim::splice_bits(a,b,64) == b);
-  REQUIRE(champsim::splice_bits(a,b,0) == a);
+  REQUIRE(champsim::splice_bits(a,b,64_b) == b);
+  REQUIRE(champsim::splice_bits(a,b,0_b) == a);
 }
 
 TEST_CASE("splice_bits performs correctly in the middle") {
@@ -105,18 +107,18 @@ TEST_CASE("splice_bits performs correctly in the middle") {
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
   constexpr unsigned long long zero{0};
 
-  REQUIRE(champsim::splice_bits(a,b,8) == 0xaaaaaaaaaaaaaabb);
-  REQUIRE(champsim::splice_bits(a,b,16) == 0xaaaaaaaaaaaabbbb);
-  REQUIRE(champsim::splice_bits(a,b,32) == 0xaaaaaaaabbbbbbbb);
-  REQUIRE(champsim::splice_bits(a,zero,8) == 0xaaaaaaaaaaaaaa00);
-  REQUIRE(champsim::splice_bits(a,zero,16) == 0xaaaaaaaaaaaa0000);
-  REQUIRE(champsim::splice_bits(a,zero,32) == 0xaaaaaaaa00000000);
-  REQUIRE(champsim::splice_bits(b,zero,8) == 0xbbbbbbbbbbbbbb00);
-  REQUIRE(champsim::splice_bits(b,zero,16) == 0xbbbbbbbbbbbb0000);
-  REQUIRE(champsim::splice_bits(b,zero,32) == 0xbbbbbbbb00000000);
-  REQUIRE(champsim::splice_bits(zero,b,8) == 0xbb);
-  REQUIRE(champsim::splice_bits(zero,b,16) == 0xbbbb);
-  REQUIRE(champsim::splice_bits(zero,b,32) == 0xbbbbbbbb);
+  REQUIRE(champsim::splice_bits(a,b,8_b) == 0xaaaaaaaaaaaaaabb);
+  REQUIRE(champsim::splice_bits(a,b,16_b) == 0xaaaaaaaaaaaabbbb);
+  REQUIRE(champsim::splice_bits(a,b,32_b) == 0xaaaaaaaabbbbbbbb);
+  REQUIRE(champsim::splice_bits(a,zero,8_b) == 0xaaaaaaaaaaaaaa00);
+  REQUIRE(champsim::splice_bits(a,zero,16_b) == 0xaaaaaaaaaaaa0000);
+  REQUIRE(champsim::splice_bits(a,zero,32_b) == 0xaaaaaaaa00000000);
+  REQUIRE(champsim::splice_bits(b,zero,8_b) == 0xbbbbbbbbbbbbbb00);
+  REQUIRE(champsim::splice_bits(b,zero,16_b) == 0xbbbbbbbbbbbb0000);
+  REQUIRE(champsim::splice_bits(b,zero,32_b) == 0xbbbbbbbb00000000);
+  REQUIRE(champsim::splice_bits(zero,b,8_b) == 0xbb);
+  REQUIRE(champsim::splice_bits(zero,b,16_b) == 0xbbbb);
+  REQUIRE(champsim::splice_bits(zero,b,32_b) == 0xbbbbbbbb);
 }
 
 TEST_CASE("splice_bits performs partial masks correctly in the middle") {
@@ -124,26 +126,26 @@ TEST_CASE("splice_bits performs partial masks correctly in the middle") {
   constexpr unsigned long long b{0xbbbbbbbbbbbbbbbb};
   constexpr unsigned long long zero{0};
 
-  REQUIRE(champsim::splice_bits(a,b,8,4) == 0xaaaaaaaaaaaaaaba);
-  REQUIRE(champsim::splice_bits(a,b,16,4) == 0xaaaaaaaaaaaabbba);
-  REQUIRE(champsim::splice_bits(a,b,16,8) == 0xaaaaaaaaaaaabbaa);
-  REQUIRE(champsim::splice_bits(a,b,32,8) == 0xaaaaaaaabbbbbbaa);
-  REQUIRE(champsim::splice_bits(a,b,32,16) == 0xaaaaaaaabbbbaaaa);
-  REQUIRE(champsim::splice_bits(a,zero,8,4) == 0xaaaaaaaaaaaaaa0a);
-  REQUIRE(champsim::splice_bits(a,zero,16,4) == 0xaaaaaaaaaaaa000a);
-  REQUIRE(champsim::splice_bits(a,zero,16,8) == 0xaaaaaaaaaaaa00aa);
-  REQUIRE(champsim::splice_bits(a,zero,32,8) == 0xaaaaaaaa000000aa);
-  REQUIRE(champsim::splice_bits(a,zero,32,16) == 0xaaaaaaaa0000aaaa);
-  REQUIRE(champsim::splice_bits(b,zero,8,4) == 0xbbbbbbbbbbbbbb0b);
-  REQUIRE(champsim::splice_bits(b,zero,16,4) == 0xbbbbbbbbbbbb000b);
-  REQUIRE(champsim::splice_bits(b,zero,16,8) == 0xbbbbbbbbbbbb00bb);
-  REQUIRE(champsim::splice_bits(b,zero,32,8) == 0xbbbbbbbb000000bb);
-  REQUIRE(champsim::splice_bits(b,zero,32,16) == 0xbbbbbbbb0000bbbb);
-  REQUIRE(champsim::splice_bits(zero,b,8,4) == 0xb0);
-  REQUIRE(champsim::splice_bits(zero,b,16,4) == 0xbbb0);
-  REQUIRE(champsim::splice_bits(zero,b,16,8) == 0xbb00);
-  REQUIRE(champsim::splice_bits(zero,b,32,8) == 0xbbbbbb00);
-  REQUIRE(champsim::splice_bits(zero,b,32,16) == 0xbbbb0000);
+  REQUIRE(champsim::splice_bits(a,b,8_b,4_b) == 0xaaaaaaaaaaaaaaba);
+  REQUIRE(champsim::splice_bits(a,b,16_b,4_b) == 0xaaaaaaaaaaaabbba);
+  REQUIRE(champsim::splice_bits(a,b,16_b,8_b) == 0xaaaaaaaaaaaabbaa);
+  REQUIRE(champsim::splice_bits(a,b,32_b,8_b) == 0xaaaaaaaabbbbbbaa);
+  REQUIRE(champsim::splice_bits(a,b,32_b,16_b) == 0xaaaaaaaabbbbaaaa);
+  REQUIRE(champsim::splice_bits(a,zero,8_b,4_b) == 0xaaaaaaaaaaaaaa0a);
+  REQUIRE(champsim::splice_bits(a,zero,16_b,4_b) == 0xaaaaaaaaaaaa000a);
+  REQUIRE(champsim::splice_bits(a,zero,16_b,8_b) == 0xaaaaaaaaaaaa00aa);
+  REQUIRE(champsim::splice_bits(a,zero,32_b,8_b) == 0xaaaaaaaa000000aa);
+  REQUIRE(champsim::splice_bits(a,zero,32_b,16_b) == 0xaaaaaaaa0000aaaa);
+  REQUIRE(champsim::splice_bits(b,zero,8_b,4_b) == 0xbbbbbbbbbbbbbb0b);
+  REQUIRE(champsim::splice_bits(b,zero,16_b,4_b) == 0xbbbbbbbbbbbb000b);
+  REQUIRE(champsim::splice_bits(b,zero,16_b,8_b) == 0xbbbbbbbbbbbb00bb);
+  REQUIRE(champsim::splice_bits(b,zero,32_b,8_b) == 0xbbbbbbbb000000bb);
+  REQUIRE(champsim::splice_bits(b,zero,32_b,16_b) == 0xbbbbbbbb0000bbbb);
+  REQUIRE(champsim::splice_bits(zero,b,8_b,4_b) == 0xb0);
+  REQUIRE(champsim::splice_bits(zero,b,16_b,4_b) == 0xbbb0);
+  REQUIRE(champsim::splice_bits(zero,b,16_b,8_b) == 0xbb00);
+  REQUIRE(champsim::splice_bits(zero,b,32_b,8_b) == 0xbbbbbb00);
+  REQUIRE(champsim::splice_bits(zero,b,32_b,16_b) == 0xbbbb0000);
 }
 
 TEST_CASE("lg2 correctly identifies powers of 2 in a constexpr") {
@@ -151,7 +153,7 @@ TEST_CASE("lg2 correctly identifies powers of 2 in a constexpr") {
 }
 
 TEST_CASE("bitmask correctly produces lower-bit masks in a constexpr") {
-  constexpr std::bitset<64> test_val{champsim::bitmask(8)};
+  constexpr std::bitset<64> test_val{champsim::bitmask(8_b)};
   STATIC_REQUIRE(test_val[0]);
   STATIC_REQUIRE(test_val[1]);
   STATIC_REQUIRE(test_val[2]);
@@ -163,7 +165,7 @@ TEST_CASE("bitmask correctly produces lower-bit masks in a constexpr") {
 }
 
 TEST_CASE("bitmask correctly produces slice masks in a constexpr") {
-  constexpr std::bitset<64> test_val{champsim::bitmask(8,2)};
+  constexpr std::bitset<64> test_val{champsim::bitmask(8_b,2_b)};
   STATIC_REQUIRE_FALSE(test_val[0]);
   STATIC_REQUIRE_FALSE(test_val[1]);
   STATIC_REQUIRE(test_val[2]);

@@ -18,6 +18,7 @@
 #define EXTENT_H
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <limits>
@@ -170,6 +171,31 @@ constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <
 template <auto LOW, typename EXTENT>
 struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {
 };
+
+template <typename T, typename FROM, typename TO>
+T translate(T value, FROM from, TO to) {
+  if (from.lower <= to.lower) {
+    return value >> (to_underlying(to.lower) - to_underlying(from.lower));
+  } else {
+    return value << (to_underlying(from.lower) - to_underlying(to.lower));
+  }
+}
 } // namespace champsim
+
+template <typename EXT>
+constexpr auto operator>>(EXT ext, champsim::data::bits shamt)
+{
+  champsim::data::bits new_up{champsim::to_underlying(ext.upper) - champsim::to_underlying(shamt)};
+  champsim::data::bits new_low{champsim::to_underlying(ext.lower) - champsim::to_underlying(shamt)};
+  return champsim::dynamic_extent{new_up, new_low};
+}
+
+template <typename EXT>
+constexpr auto operator<<(EXT ext, champsim::data::bits shamt)
+{
+  champsim::data::bits new_up{champsim::to_underlying(ext.upper) + champsim::to_underlying(shamt)};
+  champsim::data::bits new_low{champsim::to_underlying(ext.lower) + champsim::to_underlying(shamt)};
+  return champsim::dynamic_extent{new_up, new_low};
+}
 
 #endif

@@ -15,6 +15,7 @@ class hashed_perceptron : champsim::modules::branch_predictor
   constexpr static int MAXHIST = 232;                                                       // maximum history length
   constexpr static int MINHIST = 3;                                                         // minimum history length (for table 1; table 0 is biases)
   constexpr static std::size_t TABLE_SIZE = 1 << 12;                                        // 12-bit indices for the tables
+  constexpr static champsim::data::bits TABLE_INDEX_BITS{champsim::msl::lg2(TABLE_SIZE)};
   constexpr static std::size_t NGHIST_WORDS = MAXHIST / champsim::msl::lg2(TABLE_SIZE) + 1; // this many 12-bit words will be kept in the global history
   constexpr static int THRESHOLD = 1;
 

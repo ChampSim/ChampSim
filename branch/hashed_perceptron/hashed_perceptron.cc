@@ -54,7 +54,7 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
   auto get_table_index = [pc, ghist_words = ghist_words](auto hist_len) { // for each table...
     // hash global history bits 0..n-1 into x by XORing the words from the ghist_words array
     const auto most_words = hist_len / champsim::msl::lg2(TABLE_SIZE); // most of the words are 12 bits long
-    const auto last_word = hist_len % champsim::msl::lg2(TABLE_SIZE);  // the last word is fewer than 12 bits
+    const champsim::data::bits last_word{hist_len % champsim::msl::lg2(TABLE_SIZE)};  // the last word is fewer than 12 bits
 
     // seed in the PC to spread accesses around (like gshare) XOR in the last word
     constexpr auto slice_width{champsim::msl::lg2(TABLE_SIZE)}; // NOTE: GCC 9 gives internal compiler error if this has type champsim::data::bits
@@ -63,7 +63,7 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
     // XOR up to the next-to-the-last word
     x = std::accumulate(std::begin(ghist_words), std::next(std::begin(ghist_words), static_cast<long>(most_words)), x, std::bit_xor<>{});
 
-    return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE)); // stay within the table size
+    return x & champsim::msl::bitmask(TABLE_INDEX_BITS); // stay within the table size
   };
 
   perceptron_result result;
@@ -80,13 +80,13 @@ void hashed_perceptron::last_branch_result(champsim::address pc, champsim::addre
 {
   // insert this branch outcome into the global history
   auto shift_ghist_words = [](auto next_word, auto last_word) {
-    bool b = (last_word > champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE))); // get the MSB from the last word
+    bool b = (last_word > champsim::msl::bitmask(TABLE_INDEX_BITS)); // get the MSB from the last word
     return next_word | b;
   };
 
   // Remove MSBs that were shifted into the next word
   auto mask_ghist_words = [](auto x) {
-    return x & champsim::msl::bitmask(champsim::msl::lg2(TABLE_SIZE));
+    return x & champsim::msl::bitmask(TABLE_INDEX_BITS);
   };
 
   std::transform(std::cbegin(ghist_words), std::cend(ghist_words), std::begin(ghist_words), [](auto x) { return x << 1; });

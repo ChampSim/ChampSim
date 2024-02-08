@@ -112,7 +112,7 @@ constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, c
 /**
  * \overload
  */
-constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0) { return bitmask(champsim::data::bits{begin}, champsim::data::bits{end}); }
+[[deprecated]] constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0) { return bitmask(champsim::data::bits{begin}, champsim::data::bits{end}); }
 
 /**
  * Join two values, selecting some bits from one value and some bits from another.
@@ -147,7 +147,7 @@ constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits)
  * \overload
  */
 template <typename T>
-constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
+[[deprecated]] constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
 {
   return splice_bits(upper, lower, champsim::data::bits{bits_upper}, champsim::data::bits{bits_lower});
 }
@@ -156,7 +156,7 @@ constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t
  * \overload
  */
 template <typename T>
-constexpr auto splice_bits(T upper, T lower, std::size_t bits)
+[[deprecated]] constexpr auto splice_bits(T upper, T lower, std::size_t bits)
 {
   return splice_bits(upper, lower, champsim::data::bits{bits});
 }
