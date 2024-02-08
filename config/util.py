@@ -189,34 +189,34 @@ def yield_from_star(gen, args, n=2):
             seq.append(return_value)
     return retvals
 
-def explode(d, in_key, out_key=None):
+def explode(value, in_key, out_key=None):
     '''
     Convert a dictionary with a list member to a list with dictionary members.
-    :param d: the dictionary to be extracted
+    :param value: the dictionary to be extracted
     :param in_key: the key holding the list
     :param out_key: the key to distinguish the resulting list elements
     '''
     if out_key is None:
         out_key = in_key
-    extracted = d.pop(in_key)
-    return [ { out_key: e, **d } for e in extracted ]
+    extracted = value.pop(in_key)
+    return [ { out_key: extracted_element, **value } for extracted_element in extracted ]
 
-def path_parts(p):
+def path_parts(path):
     ''' Yield the components of a path, as if by repeated applications of os.path.split(). '''
-    if not p:
+    if not path:
         return
-    head, tail = os.path.split(p)
+    head, tail = os.path.split(path)
     yield from path_parts(head)
     yield tail
 
-def path_ancestors(p):
+def path_ancestors(path):
     ''' Yield all directories that are ancestors of the path. '''
-    yield from itertools.accumulate(path_parts(p), os.path.join)
+    yield from itertools.accumulate(path_parts(path), os.path.join)
 
 def sliding(iterable, n):
     ''' A backport of itertools.sliding() '''
     it = iter(iterable)
     window = collections.deque(itertools.islice(it, n-1), maxlen=n)
-    for x in it:
-        window.append(x)
+    for element in it:
+        window.append(element)
         yield tuple(window)
