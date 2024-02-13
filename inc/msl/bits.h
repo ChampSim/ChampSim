@@ -84,7 +84,7 @@ constexpr long long ipow(long long base, unsigned exp)
  * Produce a mask that can be used in a bitwise-and operation to select particular bits of a number.
  *
  * \code{.cpp}
- *     0xffff & bitmask(champsim::data::bits{8},champsim::data::bits{4}) == 0xf0;
+ *     0xffff & bitmask(8_b,4_b) == 0xf0;
  * \endcode
  *
  * If ``end`` is not specified, it is defaulted to 0, that is, the least-significant bit.
@@ -119,7 +119,7 @@ constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, c
  * Join two values, selecting some bits from one value and some bits from another.
  *
  * \code{.cpp}
- *     splice_bits(0xaaaa, 0xbbbb, champsim::data::bits{8}, champsim::data::bits{4}) == 0xaaba;
+ *     splice_bits(0xaaaa, 0xbbbb, 8_b, 4_b) == 0xaaba;
  * \endcode
  *
  * If ``end`` is not specified, it is defaulted to 0, that is, the least-significant bit.
