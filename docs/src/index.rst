@@ -17,6 +17,8 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    Address-operations
    Byte-sizes
    Bandwidth
+   Core-model
+   Cache-model
    Legacy-modules
 
 
