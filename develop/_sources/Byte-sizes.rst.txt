@@ -10,6 +10,8 @@ Objects of this type are convertible to other byte sizes, but are more difficult
 .. doxygenclass:: champsim::data::size
    :members:
 
+.. doxygenenum:: champsim::data::bits
+
 -----------------------------------------
 Convenience specializations
 -----------------------------------------
@@ -30,3 +32,14 @@ These types are also used in the convenience specializations:
 .. doxygentypedef:: champsim::data::mebibytes
 .. doxygentypedef:: champsim::data::gibibytes
 .. doxygentypedef:: champsim::data::tebibytes
+
+------------------------------------------
+Literals
+------------------------------------------
+
+.. doxygenfunction:: champsim::data::data_literals::operator""_b
+.. doxygenfunction:: champsim::data::data_literals::operator""_B
+.. doxygenfunction:: champsim::data::data_literals::operator""_kiB
+.. doxygenfunction:: champsim::data::data_literals::operator""_MiB
+.. doxygenfunction:: champsim::data::data_literals::operator""_GiB
+.. doxygenfunction:: champsim::data::data_literals::operator""_TiB
