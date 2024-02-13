@@ -111,6 +111,7 @@ constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, c
 
 /**
  * \overload
+ * \deprecated Users should prefer the overload with ``champsim::data::bits`` parameters.
  */
 [[deprecated]] constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0) { return bitmask(champsim::data::bits{begin}, champsim::data::bits{end}); }
 
@@ -145,6 +146,7 @@ constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits)
 
 /**
  * \overload
+ * \deprecated Users should prefer the overload with ``champsim::data::bits`` parameters.
  */
 template <typename T>
 [[deprecated]] constexpr auto splice_bits(T upper, T lower, std::size_t bits_upper, std::size_t bits_lower)
@@ -154,6 +156,7 @@ template <typename T>
 
 /**
  * \overload
+ * \deprecated Users should prefer the overload with ``champsim::data::bits`` parameters.
  */
 template <typename T>
 [[deprecated]] constexpr auto splice_bits(T upper, T lower, std::size_t bits)
