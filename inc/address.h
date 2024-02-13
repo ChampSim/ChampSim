@@ -46,13 +46,29 @@ namespace champsim
 template <typename Extent>
 class address_slice;
 
+/**
+ * Find the offset between two slices with the same types.
+ *
+ * \throws overflow_error if the difference cannot be represented in the difference type
+ */
 template <typename Extent>
 [[nodiscard]] constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type;
 
+/**
+ * Find the offset between two slices with the same types, where the first element must be less than or equal to than the second.
+ * The return type of this function is unsigned.
+ *
+ * \throws overflow_error if the difference cannot be represented in the difference type
+ */
 template <typename Extent>
 [[nodiscard]] constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other)
     -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
 
+/**
+ * Join address slices together. Later slices will overwrite bits from earlier slices.
+ * The extent of the returned slice is the superset of all slices.
+ * If all of the slices are statically-sized, the result will be statically-sized as well.
+ */
 template <typename... Extents>
 [[nodiscard]] constexpr auto splice(address_slice<Extents>... slices);
 
@@ -73,14 +89,6 @@ struct splice_fold_wrapper;
  * If you need to manipulate the bits of an address, you can, but you must explicitly enter an unsafe mode.
  *
  * This class is a generalization of a subset of address bits.
- * Champsim provides five specializations of this class in inc/champsim.h:
- *
- * \ref champsim::address
- * \ref champsim::block_number
- * \ref champsim::block_offset
- * \ref champsim::page_number
- * \ref champsim::page_offset
- *
  * Implicit conversions between address slices of different extents are compile-time errors, providing a measure of safety.
  * New slices must be explicitly constructed.
  *
@@ -481,11 +489,6 @@ public:
   }
 };
 
-/**
- * Find the offset between two slices with the same types.
- *
- * \throws overflow_error if the difference cannot be represented in the difference type
- */
 template <typename Extent>
 constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -> typename address_slice<Extent>::difference_type
 {
@@ -494,22 +497,16 @@ constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -
   const bool result_sign = (base <= other);
   auto abs_diff = result_sign ? uoffset(base, other) : uoffset(other, base);
   if (abs_diff > std::numeric_limits<difference_type>::max()) {
-    throw std::overflow_error{"The offset cannot be represented in the difference type. Consider using champsim::uoffset() instead."};
+    throw std::overflow_error{fmt::format("The offset between {} and {} cannot be represented in the difference type. Consider using champsim::uoffset() instead.", base, other)};
   }
   return result_sign ? static_cast<difference_type>(abs_diff) : -static_cast<difference_type>(abs_diff);
 }
 
-/**
- * Find the offset between two slices with the same types, where the first element must be less than or equal to than the second.
- * The return type of this function is unsigned.
- *
- * \throws overflow_error if the difference cannot be represented in the difference type
- */
 template <typename Extent>
 constexpr auto uoffset(address_slice<Extent> base, address_slice<Extent> other) -> std::make_unsigned_t<typename address_slice<Extent>::difference_type>
 {
   if (base > other) {
-    throw std::overflow_error{"The offset cannot be represented in the difference type. Consider using champsim::offset() instead."};
+    throw std::overflow_error{fmt::format("The offset between {} and {} cannot be represented in the difference type.", base, other)};
   }
 
   using difference_type = std::make_unsigned_t<typename address_slice<Extent>::difference_type>;
@@ -544,11 +541,6 @@ struct splice_fold_wrapper {
 };
 } // namespace detail
 
-/**
- * Join address slices together. Later slices will overwrite bits from earlier slices.
- * The extent of the returned slice is the superset of all slices.
- * If all of the slices are statically-sized, the result will be statically-sized as well.
- */
 template <typename... Extents>
 constexpr auto splice(address_slice<Extents>... slices)
 {
