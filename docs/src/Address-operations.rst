@@ -31,8 +31,14 @@ Extents
 --------------------------------------
 
 .. doxygenstruct:: champsim::static_extent
+   :members:
 .. doxygenstruct:: champsim::dynamic_extent
+   :members:
 .. doxygenstruct:: champsim::page_number_extent
+   :members:
 .. doxygenstruct:: champsim::page_offset_extent
+   :members:
 .. doxygenstruct:: champsim::block_number_extent
+   :members:
 .. doxygenstruct:: champsim::block_offset_extent
+   :members:

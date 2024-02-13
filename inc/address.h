@@ -198,8 +198,19 @@ template <typename EXTENT>
 class address_slice
 {
 public:
+  /**
+   * The extent passed as a template parameter.
+   */
   using extent_type = EXTENT;
+
+  /**
+   * The underlying representation of the address.
+   */
   using underlying_type = uint64_t;
+
+  /**
+   * The type of an offset between two addresses.
+   */
   using difference_type = std::make_signed_t<underlying_type>;
 
 private:
@@ -288,7 +299,10 @@ public:
     }
   }
 
-  constexpr static champsim::data::bits bits{champsim::data::bits::address_width};
+  /**
+   * The maximum width of any address slice. This is not the width of this slice, which can be found by `slice.upper_extent() - slice.lower_extent()`.
+   */
+  constexpr static champsim::data::bits bits{std::numeric_limits<underlying_type>::digits};
   static_assert(!is_static || (bounded_upper_v<bits, extent_type> && bounded_lower_v<bits, extent_type>));
 
   template <typename Ostr, typename ST>
@@ -372,28 +386,72 @@ public:
    */
   [[nodiscard]] constexpr bool operator>=(self_type other) const noexcept(is_static) { return *this > other || *this == other; }
 
+  /**
+   * Increment the slice in place by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   constexpr self_type& operator+=(difference_type delta)
   {
     value += static_cast<underlying_type>(delta);
     value &= bitmask(data::bits{size(extent)});
     return *this;
   }
+
+  /**
+   * Increment the slice in place by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   constexpr self_type& operator+=(champsim::data::bytes delta) { return operator+=(delta.count()); }
 
+  /**
+   * Increment the slice by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   [[nodiscard]] constexpr self_type operator+(difference_type delta) const
   {
     self_type retval = *this;
     retval += delta;
     return retval;
   }
+
+  /**
+   * Increment the slice by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   [[nodiscard]] constexpr self_type operator+(champsim::data::bytes delta) const { return operator+(delta.count()); }
 
+  /**
+   * Decrement the slice in place by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   constexpr self_type& operator-=(difference_type delta) { return operator+=(-delta); }
+
+  /**
+   * Decrement the slice in place by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   constexpr self_type& operator-=(champsim::data::bytes delta) { return operator-=(delta.count()); }
+
+  /**
+   * Decrement the slice by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   [[nodiscard]] constexpr self_type operator-(difference_type delta) const { return operator+(-delta); }
+
+  /**
+   * Decrement the slice by the given amount.
+   * The delta is interpreted in the domain of the slice. That is, the delta need not be scaled by ``1 << slice.lower_extent()``.
+   */
   [[nodiscard]] constexpr self_type operator-(champsim::data::bytes delta) const { return operator-(delta.count()); }
 
+  /**
+   * Increment the slice by one.
+   */
   constexpr self_type& operator++() { return operator+=(1); }
+
+  /**
+   * Increment the slice by one.
+   */
   constexpr self_type operator++(int)
   {
     self_type retval = *this;
@@ -401,7 +459,14 @@ public:
     return retval;
   }
 
+  /**
+   * Decrement the slice by one.
+   */
   constexpr self_type& operator--() { return operator-=(1); }
+
+  /**
+   * Decrement the slice by one.
+   */
   constexpr self_type operator--(int)
   {
     self_type retval = *this;

@@ -30,7 +30,7 @@ namespace data
 /**
  * A strong type to represent a bit width. Being an enum prevents arbitrary arithmetic from being performed.
  */
-enum class bits : uint64_t { address_width = std::numeric_limits<uint64_t>::digits };
+enum class bits : uint64_t {};
 } // namespace data
 } // namespace champsim
 
