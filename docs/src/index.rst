@@ -16,6 +16,7 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    Configuration-API
    Address-operations
    Byte-sizes
+   Bandwidth
    Legacy-modules
 
 

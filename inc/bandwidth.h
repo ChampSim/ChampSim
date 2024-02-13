@@ -43,11 +43,19 @@ private:
 
 public:
   /**
-   * Consume one or more unit of bandwidth. The default is 1 if nothing is specified.
+   * Consume some of the bandwidth.
+   *
+   * \param delta The amount of bandwidth to consume
    *
    * \throws std::range_error if more than the maximum amount of bandwidth will have been consumed.
    */
   void consume(underlying_type delta);
+
+  /**
+   * Consume one unit of bandwidth.
+   *
+   * \throws std::range_error if more than the maximum amount of bandwidth will have been consumed.
+   */
   void consume();
 
   /**
@@ -70,6 +78,9 @@ public:
    */
   void reset();
 
+  /**
+   * Initialize a bandwidth with the specified maximum.
+   */
   explicit bandwidth(maximum_type maximum);
 };
 } // namespace champsim
