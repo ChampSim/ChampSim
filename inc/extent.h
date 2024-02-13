@@ -197,7 +197,8 @@ struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {
 };
 
 template <typename T, typename FROM, typename TO>
-T translate(T value, FROM from, TO to) {
+T translate(T value, FROM from, TO to)
+{
   if (from.lower <= to.lower) {
     return value >> (to_underlying(to.lower) - to_underlying(from.lower));
   } else {

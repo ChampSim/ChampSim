@@ -112,7 +112,7 @@ std::pair<champsim::address, champsim::chrono::clock::duration> VirtualMemory::g
   auto offset = get_offset(vaddr, level);
   champsim::address paddr{
       champsim::splice(ppage->second, champsim::address_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)},
-                                                                                     static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
+                                                                                       static_cast<std::size_t>(champsim::lg2(pte_page_size.count()))},
                                                               offset})};
   if constexpr (champsim::debug_print) {
     fmt::print("[VMEM] {} paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", __func__, paddr, vaddr, offset, level, fault);

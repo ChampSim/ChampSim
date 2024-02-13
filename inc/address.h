@@ -562,7 +562,8 @@ constexpr auto offset(address_slice<Extent> base, address_slice<Extent> other) -
   const bool result_sign = (base <= other);
   auto abs_diff = result_sign ? uoffset(base, other) : uoffset(other, base);
   if (abs_diff > std::numeric_limits<difference_type>::max()) {
-    throw std::overflow_error{fmt::format("The offset between {} and {} cannot be represented in the difference type. Consider using champsim::uoffset() instead.", base, other)};
+    throw std::overflow_error{
+        fmt::format("The offset between {} and {} cannot be represented in the difference type. Consider using champsim::uoffset() instead.", base, other)};
   }
   return result_sign ? static_cast<difference_type>(abs_diff) : -static_cast<difference_type>(abs_diff);
 }
@@ -598,8 +599,7 @@ struct splice_fold_wrapper {
     auto lhs_shifted = champsim::translate(underlying, extent, return_extent);
     auto rhs_shifted = champsim::translate(other.underlying, other.extent, return_extent);
     auto window = other.extent >> return_extent.lower;
-    return splice_fold_wrapper<decltype(return_extent)>{
-        return_extent, splice_bits(lhs_shifted, rhs_shifted, window.upper, window.lower)};
+    return splice_fold_wrapper<decltype(return_extent)>{return_extent, splice_bits(lhs_shifted, rhs_shifted, window.upper, window.lower)};
   }
 
   auto address() const noexcept { return address_slice{extent, underlying}; }

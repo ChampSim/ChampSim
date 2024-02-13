@@ -53,8 +53,8 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
 {
   auto get_table_index = [pc, ghist_words = ghist_words](auto hist_len) { // for each table...
     // hash global history bits 0..n-1 into x by XORing the words from the ghist_words array
-    const auto most_words = hist_len / champsim::msl::lg2(TABLE_SIZE); // most of the words are 12 bits long
-    const champsim::data::bits last_word{hist_len % champsim::msl::lg2(TABLE_SIZE)};  // the last word is fewer than 12 bits
+    const auto most_words = hist_len / champsim::msl::lg2(TABLE_SIZE);               // most of the words are 12 bits long
+    const champsim::data::bits last_word{hist_len % champsim::msl::lg2(TABLE_SIZE)}; // the last word is fewer than 12 bits
 
     // seed in the PC to spread accesses around (like gshare) XOR in the last word
     constexpr auto slice_width{champsim::msl::lg2(TABLE_SIZE)}; // NOTE: GCC 9 gives internal compiler error if this has type champsim::data::bits

@@ -176,7 +176,8 @@ public:
 
   /**
    * Specify the reset penalty, in cycles, that follows a misprediction.
-   * Note that this value is in addition to the cost of restarting the pipeline, which will depend on the number of instructions inflight at the time when the misprediction is detected.
+   * Note that this value is in addition to the cost of restarting the pipeline, which will depend on the number of instructions inflight at the time when the
+   * misprediction is detected.
    */
   self_type& mispredict_penalty(unsigned mispredict_penalty_);
 
@@ -224,7 +225,6 @@ public:
    * Specify the downstream queues to the data cache.
    */
   self_type& data_queues(champsim::channel* data_queues_);
-
 
   /**
    * Specify the branch direction predictor.
