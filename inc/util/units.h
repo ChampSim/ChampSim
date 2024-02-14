@@ -247,32 +247,32 @@ namespace data_literals
 /**
  * Specify a literal number of ``champsim::data::bits``.
  */
-constexpr auto operator""_b(unsigned long long val) -> bits { return {val}; }
+constexpr auto operator""_b(unsigned long long val) -> bits { return bits{val}; }
 
 /**
  * Specify a literal number of ``champsim::data::bytes``.
  */
-constexpr auto operator""_B(unsigned long long val) -> size<long long, std::ratio<1>> { return {static_cast<long long>(val)}; }
+constexpr auto operator""_B(unsigned long long val) -> size<long long, std::ratio<1>> { return size<long long, std::ratio<1>>{static_cast<long long>(val)}; }
 
 /**
  * Specify a literal number of ``champsim::data::kibibytes``.
  */
-constexpr auto operator""_kiB(unsigned long long val) -> size<long long, kibi> { return {static_cast<long long>(val)}; }
+constexpr auto operator""_kiB(unsigned long long val) -> size<long long, kibi> { return size<long long, kibi>{static_cast<long long>(val)}; }
 
 /**
  * Specify a literal number of ``champsim::data::mebibytes``.
  */
-constexpr auto operator""_MiB(unsigned long long val) -> size<long long, mebi> { return {static_cast<long long>(val)}; }
+constexpr auto operator""_MiB(unsigned long long val) -> size<long long, mebi> { return size<long long, mebi>{static_cast<long long>(val)}; }
 
 /**
  * Specify a literal number of ``champsim::data::gibibytes``.
  */
-constexpr auto operator""_GiB(unsigned long long val) -> size<long long, gibi> { return {static_cast<long long>(val)}; }
+constexpr auto operator""_GiB(unsigned long long val) -> size<long long, gibi> { return size<long long, gibi>{static_cast<long long>(val)}; }
 
 /**
  * Specify a literal number of ``champsim::data::tebibytes``.
  */
-constexpr auto operator""_TiB(unsigned long long val) -> size<long long, tebi> { return {static_cast<long long>(val)}; }
+constexpr auto operator""_TiB(unsigned long long val) -> size<long long, tebi> { return size<long long, tebi>{static_cast<long long>(val)}; }
 } // namespace data_literals
 } // namespace data
 } // namespace champsim
