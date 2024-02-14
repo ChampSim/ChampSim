@@ -45,10 +45,6 @@ struct input_instr {
 
   unsigned long long destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
   unsigned long long source_memory[NUM_INSTR_SOURCES];           // input memory
-
-  // What type of load the instruction is.
-  // NOTE: Adding this makes us unable to parse any pre-existing traces; is there a way to avoid that?
-  unsigned char load_type;
 };
 
 struct cloudsuite_instr {
@@ -69,6 +65,31 @@ struct cloudsuite_instr {
 
   // What type of load the instruction is.
   unsigned char load_type;
+};
+
+enum class LOAD_TYPE {
+  NOT_LOAD = 1,
+  STANDARD_DATA = 2,
+  BYTECODE = 3
+}; 
+
+struct bytecode_instr {
+  // instruction pointer or PC (ProWgram Counter)
+  unsigned long long ip;
+
+  // branch info
+  unsigned char is_branch;
+  unsigned char branch_taken;
+
+  unsigned char destination_registers[NUM_INSTR_DESTINATIONS]; // output registers
+  unsigned char source_registers[NUM_INSTR_SOURCES];           // input registers
+
+  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
+  unsigned long long source_memory[NUM_INSTR_SOURCES];           // input memory
+
+  // What type of load the instruction is.
+  // NOTE: Adding this makes us unable to parse any pre-existing traces; is there a way to avoid that?
+  LOAD_TYPE load_type;
 };
 
 #endif

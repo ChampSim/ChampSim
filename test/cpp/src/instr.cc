@@ -2,7 +2,7 @@
 
 ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
 {
-  input_instr i;
+  bytecode_instr i;
   i.ip = ip;
   i.is_branch = false;
   i.branch_taken = false;
@@ -17,7 +17,7 @@ ooo_model_instr champsim::test::instruction_with_ip(uint64_t ip)
 
 ooo_model_instr champsim::test::instruction_with_registers(uint8_t reg)
 {
-  input_instr i;
+  bytecode_instr i;
   i.ip = 1;
   i.is_branch = false;
   i.branch_taken = false;

@@ -1,6 +1,8 @@
 {
+    "CFLAGS": ["-Wall -Wno-reorder -Werror -g -O0 -DDEBUG"],
+    "CXXFLAGS": ["-Wall -Wno-reorder -Werror -g -O0 -DDEBUG"],
     "executable_name": "champsim",
-    "block_size": 64,
+    "xblock_size": 64,
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
     "num_cores": 1,
