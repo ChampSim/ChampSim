@@ -110,19 +110,18 @@ struct DRAM_CHANNEL final : public champsim::operable {
   std::size_t refresh_row = 0;
   champsim::chrono::clock::time_point last_refresh{};
   champsim::chrono::clock::time_point dbus_cycle_available{};
-
+  std::size_t DRAM_ROWS_PER_REFRESH;
 
   using stats_type = dram_stats;
   stats_type roi_stats, sim_stats;
 
   // Latencies
-  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
-  champsim::chrono::clock::duration tREF;
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
 
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-               champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-               std::size_t wq_size, slicer_type slice);
+               champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::size_t rows_per_refresh, 
+               champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, slicer_type slice);
 
   void check_write_collision();
   void check_read_collision();
@@ -206,10 +205,17 @@ class MEMORY_CONTROLLER : public champsim::operable
 public:
   std::vector<DRAM_CHANNEL> channels;
 
+  #ifdef RAMULATOR
   MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                    champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul, std::size_t rq_size,
+                    champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul, std::size_t rq_size,
                     std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks,
-                    std::size_t banks);
+                    std::size_t banks, std::size_t rows_per_refresh, std::string ramulator_config_file);
+  #else
+  MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                    champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul, std::size_t rq_size,
+                    std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks,
+                    std::size_t banks, std::size_t rows_per_refresh);
+  #endif
 
   void initialize() final;
   long operate() final;

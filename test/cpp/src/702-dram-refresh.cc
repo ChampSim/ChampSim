@@ -34,11 +34,10 @@ void generate_packet(champsim::channel* channel,uint64_t packet_num, uint64_t DR
         channel->add_wq(r);
 }
 
-std::vector<bool> refresh_test(MEMORY_CONTROLLER* uut, champsim::channel* channel_uut, uint64_t refresh_cycles, uint64_t DRAM_CHANNELS, uint64_t DRAM_RANKS, uint64_t DRAM_BANKS, uint64_t DRAM_COLUMNS, uint64_t DRAM_ROWS)
+std::vector<bool> refresh_test(MEMORY_CONTROLLER* uut, champsim::channel* channel_uut, uint64_t refresh_cycles, uint64_t DRAM_CHANNELS, uint64_t DRAM_RANKS, uint64_t DRAM_BANKS, uint64_t DRAM_COLUMNS, uint64_t DRAM_ROWS, champsim::chrono::picoseconds tREF)
 {
-    //how many cycles should pass before the next refresh is scheduled. This is also the maximum time that can pass before
     //a refresh MUST be done. If this is violated, then DRAM spec is violated.
-    const champsim::chrono::clock::duration tREF = champsim::chrono::picoseconds{64000000000 / (DRAM_ROWS/8)};
+    
     //record the refresh status of each bank
     std::vector<bool> bank_refreshed(DRAM_BANKS,false);
 
@@ -80,12 +79,16 @@ SCENARIO("The memory controller refreshes each bank at the proper rate") {
         const std::size_t DRAM_RANKS = 2;
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 65536;
-        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
+
+        const champsim::chrono::picoseconds tREF{7812500};
+        const std::size_t DRAM_ROW_P_REF = 8;
+
+        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, tREF, champsim::chrono::picoseconds{7500}, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS,DRAM_ROW_P_REF};
         uut.warmup = false;
         uut.channels[0].warmup = false;
         
         WHEN("The memory controller is operated over 40 refresh cycles") {
-            std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,40,DRAM_CHANNELS, DRAM_RANKS, DRAM_BANKS, DRAM_COLUMNS, DRAM_ROWS);
+            std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,40,DRAM_CHANNELS, DRAM_RANKS, DRAM_BANKS, DRAM_COLUMNS, DRAM_ROWS, tREF);
             THEN("Each bank undergoes refresh according to specified timing")
             {
                 REQUIRE_THAT(refresh_status, Catch::Matchers::AllTrue());

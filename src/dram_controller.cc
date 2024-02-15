@@ -28,17 +28,24 @@
 #include "util/span.h"
 #include "util/units.h"
 
-
+#ifdef RAMULATOR
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
-                                     std::size_t columns, std::size_t ranks, std::size_t banks)
+                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string ramulator_config_file)
     : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
+#else
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
+                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
+                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh)
+    : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
+#endif
 {
   #ifdef RAMULATOR
   //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
   //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
-  config = Ramulator::Config::parse_config_file(RAMULATOR_CONFIG, {});
+  config = Ramulator::Config::parse_config_file(ramulator_config_file, {});
 
   //force frontend to be champsim, clock ratio == 1, no instruction limit, and no v->p address translation layers
   config["Frontend"]["impl"] = "ChampSim";
@@ -67,21 +74,20 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_
   #else
   const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
   for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size, slicer);
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, t_ref, turnaround, rows_per_refresh, chan_width, rq_size, wq_size, slicer);
   }
   #endif
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-                           std::size_t wq_size, slicer_type slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
-      DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::size_t rows_per_refresh, 
+                           champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, slicer_type slice)
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), DRAM_ROWS_PER_REFRESH(rows_per_refresh), tRP(t_rp), tRCD(t_rcd), 
+      tCAS(t_cas), tREF(t_ref), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::bytes{BLOCK_SIZE} / width)))
 {
   request_array_type br(ranks() * banks());
   bank_request = br;
-  tREF = {champsim::chrono::picoseconds{64000000000ul / std::max((rows()/8ul),1ul)}};
 }
 
 auto DRAM_CHANNEL::make_slicer(std::size_t start_pos, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks) -> slicer_type
@@ -185,9 +191,9 @@ long DRAM_CHANNEL::schedule_refresh()
   //if so, record stats
   if(schedule_refresh)
   {
-    refresh_row += 8;
+    refresh_row += DRAM_ROWS_PER_REFRESH;
     sim_stats.refresh_cycles++;
-    if(refresh_row >=  1u << champsim::size(get<3>(address_slicer)))
+    if(refresh_row >= rows())
       refresh_row = 0;
   }
 

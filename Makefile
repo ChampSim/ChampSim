@@ -7,7 +7,7 @@ override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 
 RAMULATOR_DIR=$(ROOT_DIR)/ramulator2/
 RAMULATOR_LIB=$(RAMULATOR_DIR)
-override LDLIBS   += -llzma -lz -lbz2 -lfmt
+LDLIBS   += -llzma -lz -lbz2 -lfmt
 INC=
 
 .PHONY: all clean configclean test
