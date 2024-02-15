@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim.h"
 #include "repl_interface.h"
 #include "modules.h"
 

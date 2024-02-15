@@ -3,7 +3,6 @@
 
 #include <cmath>
 
-#include "champsim.h"
 #include "dram_controller.h"
 #include "util/bits.h"
 
@@ -32,11 +31,11 @@ SCENARIO("The virtual memory issues references to blocks within a page if they a
     MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
     VirtualMemory uut{pte_page_size, 5, std::chrono::nanoseconds{6400}, dram};
 
-    champsim::data::bytes dist{champsim::data::bytes{PAGE_SIZE}};
+    champsim::data::bytes dist{1};
     for (std::size_t i = 0; i < level; ++i)
       dist *= pte_page_size.count();
-    std::vector<champsim::address> req_pages{};
-    req_pages.push_back(champsim::address{0xcccc000000000000});
+    std::vector<champsim::page_number> req_pages{};
+    req_pages.push_back(champsim::page_number{0xcccc000000000});
     for (auto i = pte_page_size; i < champsim::data::bytes{PAGE_SIZE}; i += pte_page_size)
       req_pages.push_back(req_pages.back() + dist);
 

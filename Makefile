@@ -112,9 +112,9 @@ configclean: clean
 	@-$(RM) -r $(dirs) _configuration.mk
 
 # Link test executable
-$(test_main_name): CPPFLAGS += -DCHAMPSIM_TEST_BUILD -I$(ROOT_DIR)/test/cpp/src
-$(test_main_name): CXXFLAGS += -g3 -Og
-$(test_main_name): LDLIBS += -lCatch2Main -lCatch2
+$(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD -I$(ROOT_DIR)/test/cpp/src
+$(test_main_name): override CXXFLAGS += -g3 -Og
+$(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 $(DEP_ROOT)/test_src.mkpart: source_roots = $(ROOT_DIR)/test/cpp/src $(ROOT_DIR)/src MODULE $(ROOT_DIR)/btb MODULE $(ROOT_DIR)/branch MODULE $(ROOT_DIR)/prefetcher MODULE $(ROOT_DIR)/replacement
 $(DEP_ROOT)/test_src.mkpart: exe = $(test_main_name)

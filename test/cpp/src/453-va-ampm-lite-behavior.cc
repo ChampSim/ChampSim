@@ -2,7 +2,6 @@
 #include <numeric>
 #include "mocks.hpp"
 #include "cache.h"
-#include "champsim.h"
 #include "defaults.hpp"
 
 #include "../../../prefetcher/va_ampm_lite/va_ampm_lite.h"

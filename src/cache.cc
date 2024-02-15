@@ -445,7 +445,7 @@ long CACHE::operate()
 uint64_t CACHE::get_set(uint64_t address) const { return static_cast<uint64_t>(get_set_index(champsim::address{address})); }
 // LCOV_EXCL_STOP
 
-long CACHE::get_set_index(champsim::address address) const { return address.slice(champsim::sized_extent{OFFSET_BITS, champsim::lg2(NUM_SET)}).to<long>(); }
+long CACHE::get_set_index(champsim::address address) const { return address.slice(champsim::dynamic_extent{OFFSET_BITS, champsim::lg2(NUM_SET)}).to<long>(); }
 
 template <typename It>
 std::pair<It, It> get_span(It anchor, typename std::iterator_traits<It>::difference_type set_idx, typename std::iterator_traits<It>::difference_type num_way)
@@ -556,7 +556,7 @@ void CACHE::finish_translation(const response_type& packet)
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
     auto old_address = entry.address;
     entry.address = champsim::address{champsim::splice(p_page, champsim::page_offset{entry.v_address})}; // translated address
-    entry.is_translated = true;                                                       // This entry is now translated
+    entry.is_translated = true;                                                                          // This entry is now translated
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}_TRANSLATE] finish_translation old: {} p_page: {} paddr: {} vaddr: {} type: {} cycle: {}\n", this->NAME, old_address, p_page, entry.address, entry.v_address,

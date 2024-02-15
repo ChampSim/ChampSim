@@ -18,6 +18,7 @@
 #define EXTENT_H
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <limits>
@@ -26,57 +27,75 @@
 #include "util/to_underlying.h"
 #include "util/units.h"
 
-extern unsigned LOG2_BLOCK_SIZE;
-extern unsigned LOG2_PAGE_SIZE;
-
 namespace champsim
 {
 /**
  * An extent with runtime size
  */
 struct dynamic_extent {
+  /**
+   * The upper limit of the extent. Generally, this is not inclusive.
+   */
   champsim::data::bits upper;
+
+  /**
+   * The lower limit of the extent. This is generally inclusive.
+   */
   champsim::data::bits lower;
 
+  /**
+   * Initialize the extent with the given upper and lower extents. The upper must be greater than or equal to the lower.
+   */
   constexpr dynamic_extent(champsim::data::bits up, champsim::data::bits low) : upper(up), lower(low) { assert(upper >= lower); }
-};
 
-/**
- * A runtime-sized extent that is constructed from its lower bound and width
- */
-struct sized_extent {
-  champsim::data::bits upper;
-  champsim::data::bits lower;
-
-  constexpr sized_extent(champsim::data::bits low, std::size_t size) : upper(low + champsim::data::bits{size}), lower(low) { assert(upper >= lower); }
+  /**
+   * Initialize the extent with a lower extent and size.
+   */
+  constexpr dynamic_extent(champsim::data::bits low, std::size_t size) : dynamic_extent(low + champsim::data::bits{size}, low) {}
 };
 
 /**
  * An extent that is always the size of a page number
  */
 struct page_number_extent : dynamic_extent {
-  page_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_PAGE_SIZE}) {}
+  /**
+   * This extent can only be default-initialized.
+   * It will have ``upper == champsim::address::bits`` and ``lower == LOG2_PAGE_SIZE``.
+   */
+  page_number_extent();
 };
 
 /**
  * An extent that is always the size of a page offset
  */
 struct page_offset_extent : dynamic_extent {
-  page_offset_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{}) {}
+  /**
+   * This extent can only be default-initialized.
+   * It will have ``upper == LOG2_PAGE_SIZE`` and ``lower == 0``.
+   */
+  page_offset_extent();
 };
 
 /**
  * An extent that is always the size of a block number
  */
 struct block_number_extent : dynamic_extent {
-  block_number_extent() : dynamic_extent(champsim::data::bits{std::numeric_limits<uint64_t>::digits}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
+  /**
+   * This extent can only be default-initialized.
+   * It will have ``upper == champsim::address::bits`` and ``lower == LOG2_BLOCK_SIZE``.
+   */
+  block_number_extent();
 };
 
 /**
  * An extent that is always the size of a block offset
  */
 struct block_offset_extent : dynamic_extent {
-  block_offset_extent() : dynamic_extent(champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::data::bits{}) {}
+  /**
+   * This extent can only be default-initialized.
+   * It will have ``upper == LOG2_BLOCK_SIZE`` and ``lower == 0``.
+   */
+  block_offset_extent();
 };
 
 /**
@@ -84,7 +103,14 @@ struct block_offset_extent : dynamic_extent {
  */
 template <champsim::data::bits UP, champsim::data::bits LOW>
 struct static_extent {
+  /**
+   * The upper limit of the extent. Generally, this is not inclusive.
+   */
   constexpr static champsim::data::bits upper{UP};
+
+  /**
+   * The lower limit of the extent. This is generally inclusive.
+   */
   constexpr static champsim::data::bits lower{LOW};
 };
 
@@ -92,7 +118,6 @@ struct static_extent {
  * Give the width of the extent. For static_extent, this function can be constexpr.
  */
 std::size_t size(dynamic_extent ext);
-std::size_t size(sized_extent ext);
 std::size_t size(page_number_extent ext);
 std::size_t size(page_offset_extent ext);
 std::size_t size(block_number_extent ext);
@@ -170,6 +195,32 @@ constexpr bool bounded_lower_v<LOW, static_extent<SUB_UP, SUB_LOW>> = (SUB_LOW <
 template <auto LOW, typename EXTENT>
 struct bounded_lower : std::bool_constant<bounded_lower_v<LOW, EXTENT>> {
 };
+
+template <typename T, typename FROM, typename TO>
+T translate(T value, FROM from, TO to)
+{
+  if (from.lower <= to.lower) {
+    return value >> (to_underlying(to.lower) - to_underlying(from.lower));
+  } else {
+    return value << (to_underlying(from.lower) - to_underlying(to.lower));
+  }
+}
 } // namespace champsim
+
+template <typename EXT>
+constexpr auto operator>>(EXT ext, champsim::data::bits shamt)
+{
+  champsim::data::bits new_up{champsim::to_underlying(ext.upper) - champsim::to_underlying(shamt)};
+  champsim::data::bits new_low{champsim::to_underlying(ext.lower) - champsim::to_underlying(shamt)};
+  return champsim::dynamic_extent{new_up, new_low};
+}
+
+template <typename EXT>
+constexpr auto operator<<(EXT ext, champsim::data::bits shamt)
+{
+  champsim::data::bits new_up{champsim::to_underlying(ext.upper) + champsim::to_underlying(shamt)};
+  champsim::data::bits new_low{champsim::to_underlying(ext.lower) + champsim::to_underlying(shamt)};
+  return champsim::dynamic_extent{new_up, new_low};
+}
 
 #endif

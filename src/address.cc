@@ -11,5 +11,5 @@ auto champsim::lowest_address_for_size(champsim::data::bytes sz) -> champsim::ad
 
 auto champsim::lowest_address_for_width(champsim::data::bits width) -> champsim::address
 {
-  return champsim::lowest_address_for_size(champsim::data::bytes{1ll << champsim::to_underlying(width)});
+  return champsim::lowest_address_for_size(champsim::data::bytes{1LL << champsim::to_underlying(width)});
 }

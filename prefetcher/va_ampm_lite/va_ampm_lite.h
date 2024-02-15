@@ -12,7 +12,7 @@
 class va_ampm_lite : champsim::modules::prefetcher
 {
   struct block_in_page_extent : champsim::dynamic_extent {
-    block_in_page_extent() : champsim::dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
+    block_in_page_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
   };
   using block_in_page = champsim::address_slice<block_in_page_extent>;
 
@@ -23,14 +23,17 @@ public:
 
   struct region_type {
     champsim::page_number vpn;
-    std::vector<bool> access_map;
-    std::vector<bool> prefetch_map;
+    std::vector<bool> access_map{};
+    std::vector<bool> prefetch_map{};
     uint64_t lru;
 
     static uint64_t region_lru;
 
     region_type() : region_type(champsim::page_number{}) {}
-    explicit region_type(champsim::page_number allocate_vpn) : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++) {}
+    explicit region_type(champsim::page_number allocate_vpn)
+        : vpn(allocate_vpn), access_map(PAGE_SIZE / BLOCK_SIZE), prefetch_map(PAGE_SIZE / BLOCK_SIZE), lru(region_lru++)
+    {
+    }
   };
 
   using prefetcher::prefetcher;

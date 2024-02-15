@@ -3,7 +3,6 @@
 #include "defaults.hpp"
 
 #include "cache.h"
-#include "champsim.h"
 
 TEMPLATE_TEST_CASE("Translation misses do not inhibit other packets from being issued", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache") {

@@ -19,6 +19,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <limits>
 
@@ -26,11 +27,11 @@
 #include "util/bit_enum.h"
 #include "util/ratio.h"
 
-extern std::size_t NUM_CPUS;
-extern unsigned BLOCK_SIZE;
-extern unsigned PAGE_SIZE;
-extern unsigned LOG2_BLOCK_SIZE;
-extern unsigned LOG2_PAGE_SIZE;
+extern const std::size_t NUM_CPUS;
+extern const unsigned BLOCK_SIZE;
+extern const unsigned PAGE_SIZE;
+extern const unsigned LOG2_BLOCK_SIZE;
+extern const unsigned LOG2_PAGE_SIZE;
 
 namespace champsim
 {
@@ -61,8 +62,8 @@ using kibibytes = size<long long, kibi>;
 using mebibytes = size<long long, mebi>;
 using gibibytes = size<long long, gibi>;
 using tebibytes = size<long long, tebi>;
-//using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
-//using pages = size<long long, std::ratio<PAGE_SIZE>>;
+// using blocks = size<long long, std::ratio<BLOCK_SIZE>>;
+// using pages = size<long long, std::ratio<PAGE_SIZE>>;
 } // namespace data
 
 /**

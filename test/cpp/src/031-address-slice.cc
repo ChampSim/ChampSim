@@ -13,19 +13,27 @@ TEST_CASE("An address slice is constructible from a uint64_t") {
 
   auto address = GENERATE(as<uint64_t>{}, 0xdeadbeef, 0xffff'ffff'ffff'ffff);
 
-  champsim::address_slice test_a{champsim::static_extent<20_b,16_b>{}, address};
-  REQUIRE(test_a.to<uint64_t>() == (address & champsim::bitmask(20-16)));
+  champsim::static_extent<20_b,16_b> extent_a{};
+  champsim::address_slice test_a{extent_a, address};
+  champsim::data::bits expected_size_a{champsim::size(extent_a)};
+  REQUIRE(test_a.to<uint64_t>() == (address & champsim::bitmask(expected_size_a)));
 
-  champsim::address_slice test_b{champsim::static_extent<64_b,16_b>{}, address};
-  REQUIRE(test_b.to<uint64_t>() == (address & champsim::bitmask(64-16)));
+  champsim::static_extent<64_b,16_b> extent_b{};
+  champsim::address_slice test_b{extent_b, address};
+  champsim::data::bits expected_size_b{champsim::size(extent_b)};
+  REQUIRE(test_b.to<uint64_t>() == (address & champsim::bitmask(expected_size_b)));
 }
 
 TEMPLATE_TEST_CASE_SIG("An address slice is constexpr constructible from a uint64_t", "", ((uint64_t ADDR), ADDR), 0xdeadbeef, 0xffff'ffff'ffff'ffff) {
-  constexpr champsim::address_slice test_a{champsim::static_extent<20_b,16_b>{}, ADDR};
-  STATIC_REQUIRE(test_a.to<uint64_t>() == (ADDR & champsim::bitmask(20-16)));
+  constexpr champsim::static_extent<20_b,16_b> extent_a{};
+  constexpr champsim::address_slice test_a{extent_a, ADDR};
+  champsim::data::bits expected_size_a{champsim::size(extent_a)};
+  STATIC_REQUIRE(test_a.to<uint64_t>() == (ADDR & champsim::bitmask(expected_size_a)));
 
-  constexpr champsim::address_slice test_b{champsim::static_extent<64_b,16_b>{}, ADDR};
-  STATIC_REQUIRE(test_b.to<uint64_t>() == (ADDR & champsim::bitmask(64-16)));
+  constexpr champsim::static_extent<64_b,16_b> extent_b{};
+  constexpr champsim::address_slice test_b{extent_b, ADDR};
+  champsim::data::bits expected_size_b{champsim::size(extent_b)};
+  STATIC_REQUIRE(test_b.to<uint64_t>() == (ADDR & champsim::bitmask(expected_size_b)));
 }
 
 TEST_CASE("An address slice is constructible from a wider address_slice") {

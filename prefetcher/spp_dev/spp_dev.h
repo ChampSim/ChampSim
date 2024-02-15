@@ -50,10 +50,10 @@ enum FILTER_REQUEST { SPP_L2C_PREFETCH, SPP_LLC_PREFETCH, L2C_DEMAND, L2C_EVICT 
 uint64_t get_hash(uint64_t key);
 
 struct block_in_page_extent : champsim::dynamic_extent {
-  block_in_page_extent() : dynamic_extent(champsim::data::bits{ST_TAG_BIT + LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_PAGE_SIZE}) {}
+  block_in_page_extent() : dynamic_extent(champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{LOG2_BLOCK_SIZE}) {}
 };
-
 using offset_type = champsim::address_slice<block_in_page_extent>;
+
 class SIGNATURE_TABLE
 {
   struct tag_extent : champsim::dynamic_extent {

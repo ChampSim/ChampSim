@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim.h"
 
 TEMPLATE_TEST_CASE("The read queue respects the tag bandwidth", "", to_rq_MRP, to_wq_MRP, to_pq_MRP) {
   constexpr auto hit_latency = 4;

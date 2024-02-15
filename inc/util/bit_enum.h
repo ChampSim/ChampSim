@@ -17,6 +17,9 @@
 #ifndef UTIL_BIT_ENUM_H
 #define UTIL_BIT_ENUM_H
 
+#include <cstdint>
+#include <limits>
+
 #include "to_underlying.h"
 
 namespace champsim
@@ -27,7 +30,7 @@ namespace data
 /**
  * A strong type to represent a bit width. Being an enum prevents arbitrary arithmetic from being performed.
  */
-enum class bits : unsigned long long {};
+enum class bits : uint64_t {};
 } // namespace data
 } // namespace champsim
 

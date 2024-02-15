@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim.h"
 
 SCENARIO("The prefetch queue size limits the number of prefetches that can be issued") {
   GIVEN("An empty cache with a short prefetch queue") {

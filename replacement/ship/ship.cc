@@ -5,6 +5,8 @@
 #include <cassert>
 #include <random>
 
+#include "champsim.h"
+
 // initialize replacement state
 ship::ship(CACHE* cache)
     : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET_FACTOR * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),

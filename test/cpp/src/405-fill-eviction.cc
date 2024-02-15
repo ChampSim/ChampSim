@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim.h"
 
 SCENARIO("A cache evicts a block when required") {
   GIVEN("An empty cache") {

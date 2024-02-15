@@ -30,9 +30,9 @@
 #include "instruction.h"
 #include "util/span.h"
 
-const long long STAT_PRINTING_PERIOD = 10000000;
-
 std::chrono::seconds elapsed_time();
+
+constexpr long long STAT_PRINTING_PERIOD = 10000000;
 
 long O3_CPU::operate()
 {
