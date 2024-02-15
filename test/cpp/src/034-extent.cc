@@ -142,3 +142,23 @@ TEST_CASE("Dynamic extents do not overflow when subextented") {
   REQUIRE(champsim::relative_extent(lhs, rhs).upper == std::min(v,8_b)+8_b);
   REQUIRE(champsim::relative_extent(lhs, rhs).lower == std::min(w,8_b)+8_b);
 }
+
+TEST_CASE("Values can be translated to lower extents") {
+  auto given = 0xabcd;
+  champsim::dynamic_extent from{champsim::data::bits{24}, champsim::data::bits{8}};
+  champsim::dynamic_extent to{champsim::data::bits{24}, champsim::data::bits{0}};
+  auto expected = 0xabcd00;
+  INFO((given << champsim::to_underlying(from.lower)));
+  INFO((given << (champsim::to_underlying(from.lower) - champsim::to_underlying(to.lower))));
+  REQUIRE(champsim::translate(given, from, to) == expected);
+}
+
+TEST_CASE("Values can be translated to higher extents") {
+  auto given = 0xabcd;
+  champsim::dynamic_extent from{champsim::data::bits{16}, champsim::data::bits{0}};
+  champsim::dynamic_extent to{champsim::data::bits{16}, champsim::data::bits{8}};
+  auto expected = 0xab;
+  INFO((given >> champsim::to_underlying(to.lower)));
+  INFO((given >> (champsim::to_underlying(to.lower) - champsim::to_underlying(from.lower))));
+  REQUIRE(champsim::translate(given, from, to) == expected);
+}

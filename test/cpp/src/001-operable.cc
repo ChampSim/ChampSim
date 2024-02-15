@@ -1,6 +1,5 @@
 #include <catch.hpp>
 #include "operable.h"
-#include "champsim_constants.h"
 
 namespace {
 struct mock_operable : champsim::operable {

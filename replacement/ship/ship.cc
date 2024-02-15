@@ -4,14 +4,18 @@
 #include <cassert>
 #include <random>
 
+#include "champsim.h"
+
 // initialize replacement state
 ship::ship(CACHE* cache)
-    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET * static_cast<std::size_t>(NUM_WAY)),
+    : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), sampler(SAMPLER_SET_FACTOR * NUM_CPUS * static_cast<std::size_t>(NUM_WAY)),
       rrpv_values(static_cast<std::size_t>(NUM_SET * NUM_WAY), maxRRPV)
 {
   // randomly selected sampler sets
-  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET, std::knuth_b{1});
+  std::generate_n(std::back_inserter(rand_sets), SAMPLER_SET_FACTOR * NUM_CPUS, std::knuth_b{1});
   std::sort(std::begin(rand_sets), std::end(rand_sets));
+
+  std::generate_n(std::back_inserter(SHCT), NUM_CPUS, []() -> typename decltype(SHCT)::value_type { return {}; });
 }
 
 int& ship::get_rrpv(long set, long way) { return rrpv_values.at(static_cast<std::size_t>(set * NUM_WAY + way)); }

@@ -25,7 +25,6 @@
 
 #include "address.h"
 #include "bandwidth.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
 #include "ptw_builder.h"

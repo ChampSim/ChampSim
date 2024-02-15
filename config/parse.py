@@ -45,13 +45,11 @@ def duplicate_to_length(elements, count):
     '''
     Duplicate an array of elements, truncating if the sequence is longer than the count
 
-    > duplicate_to_length([1,2,3], 6)
+    >>> duplicate_to_length([1,2,3], 6)
     [1,1,2,2,3,3]
-
-    > duplicate_to_length([1,2], 5)
+    >>> duplicate_to_length([1,2], 5)
     [1,1,1,2,2]
-
-    > duplicate_to_length([1,2,3,4], 3)
+    >>> duplicate_to_length([1,2,3,4], 3)
     [1,2,3]
 
     :param elements: the sequence of elements to be duplicated
@@ -310,8 +308,7 @@ class NormalizedConfiguration:
             self.root,
             {
                 'block_size': int_or_prefixed_size("64B"),
-                'page_size': int_or_prefixed_size("4kB"),
-                'heartbeat_frequency': 10000000
+                'page_size': int_or_prefixed_size("4kB")
             }
         )
 
@@ -438,7 +435,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
     '''
     This is the main parsing dispatch function. Programmatic use of the configuration system should use this as an entry point.
 
-    :param configs: The configurations given here will be joined into a single configuration, then parsed.
+    :param configs: The configurations given here will be joined into a single configuration, then parsed. These configurations may be simply the result of parsing a JSON file, although the root should be a JSON object.
     :param module_dir: A directory to search for all modules. The structure is assumed to follow the same as the ChampSim repository: branch direction predictors are under `branch/`, replacement policies under `replacement/`, etc.
     :param branch_dir: A directory to search for branch direction predictors
     :param btb_dir: A directory to search for branch target predictors

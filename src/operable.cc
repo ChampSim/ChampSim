@@ -16,8 +16,6 @@
 
 #include "operable.h"
 
-#include "champsim_constants.h"
-
 champsim::operable::operable() : operable(champsim::chrono::picoseconds{1}) {}
 
 champsim::operable::operable(champsim::chrono::picoseconds clock_period_) : clock_period(clock_period_) {}

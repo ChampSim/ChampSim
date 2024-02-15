@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "channel.h"
-#include "champsim_constants.h"
 
 SCENARIO("A cache keeps the address for packets that don't need translation") {
   GIVEN("An empty cache with one inflight translation") {

@@ -3,11 +3,11 @@ DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 
 RAMULATOR_DIR=$(ROOT_DIR)/ramulator2/
 RAMULATOR_LIB=$(RAMULATOR_DIR)
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+override LDLIBS   += -llzma -lz -lbz2 -lfmt
 INC=
 
 .PHONY: all clean configclean test
@@ -76,8 +76,9 @@ $(objs):
 
 
 # Link test executable
-$(test_main_name): CXXFLAGS += -g3 -Og
-$(test_main_name): LDLIBS += -lCatch2Main -lCatch2
+$(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
+$(test_main_name): override CXXFLAGS += -g3 -Og
+$(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 ifdef POSTBUILD_CLEAN
 .INTERMEDIATE: $(objs) $($(OBJS):.o=.d)

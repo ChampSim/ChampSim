@@ -116,7 +116,7 @@ def make_part(src_dirs, dest_dir, build_id):
     obj_varnames, dep_varnames = yield from util.yield_from_star(make_subpart, counted_arg_list, n=2)
     return obj_varnames, dep_varnames
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, omit_main, pmem):
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, pmem):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({
         'Build ID': build_id,
@@ -155,9 +155,6 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, o
     yield from dependency(map(dereference, itertools.chain(ragged_obj_varnames[0], ragged_dep_varnames[0])), *options_names[1:])
 
     objs = map(dereference, obj_varnames)
-    if omit_main:
-        objs = itertools.chain(('$(filter-out', '%/main.o,'), map(dereference, obj_varnames), (')',))
-
 
     yield from dependency([exec_fname], *objs)
     yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))

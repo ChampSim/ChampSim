@@ -1,7 +1,6 @@
 #include "catch.hpp"
 #include "mocks.hpp"
 
-#include "champsim_constants.h"
 #include "defaults.hpp"
 #include "dram_controller.h"
 #include "ptw.h"
@@ -32,12 +31,12 @@ SCENARIO("The issued steps incur appropriate latencies") {
     uut.begin_phase();
 
     if (level == 5) {
-      (void)vmem.va_to_pa(0, access_address);
+      (void)vmem.va_to_pa(0, champsim::page_number{access_address});
       for (unsigned i = 0; i < 4; ++i)
-        (void)vmem.get_pte_pa(0, access_address, i);
+        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
     } else {
       for (unsigned i = 0; i < level; ++i)
-        (void)vmem.get_pte_pa(0, access_address, i);
+        (void)vmem.get_pte_pa(0, champsim::page_number{access_address}, i);
     }
 
     WHEN("The PTW receives a request") {

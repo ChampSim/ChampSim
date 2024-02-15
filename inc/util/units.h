@@ -38,7 +38,11 @@ namespace data
 inline constexpr unsigned bits_per_byte = 8;
 
 /**
- * A class to represent data sizes as they are passed around the program
+ * A class to represent data sizes as they are passed around the program.
+ * This type is modeled after ``std::chrono::duration``. The units are known as part of the size, but the types are convertible.
+ *
+ * \tparam Rep The type of the underlying representation.
+ * \tparam Unit A specialization of `std::ratio` that represents the multiple of a single byte.
  */
 template <typename Rep, typename Unit>
 class size
@@ -69,8 +73,10 @@ public:
    *
    * This permits constructions like
    *
+   * \code{.cpp}
    *     void func(champsim::data::kibibytes x);
    *     func(champsim::data::bytes{1024});
+   * \endcode
    */
   template <typename Rep2, typename Unit2>
   constexpr size(const size<Rep2, Unit2>& other)
@@ -237,12 +243,36 @@ auto constexpr operator>=(const size<Rep1, Unit1>& lhs, const size<Rep2, Unit2>&
  */
 namespace data_literals
 {
-constexpr auto operator""_b(unsigned long long val) { return bits{val}; }
-constexpr auto operator""_B(unsigned long long val) { return size<long long, std::ratio<1>>{static_cast<long long>(val)}; }
-constexpr auto operator""_kiB(unsigned long long val) { return size<long long, kibi>{static_cast<long long>(val)}; }
-constexpr auto operator""_MiB(unsigned long long val) { return size<long long, mebi>{static_cast<long long>(val)}; }
-constexpr auto operator""_GiB(unsigned long long val) { return size<long long, gibi>{static_cast<long long>(val)}; }
-constexpr auto operator""_TiB(unsigned long long val) { return size<long long, tebi>{static_cast<long long>(val)}; }
+
+/**
+ * Specify a literal number of ``champsim::data::bits``.
+ */
+constexpr auto operator""_b(unsigned long long val) -> bits { return bits{val}; }
+
+/**
+ * Specify a literal number of ``champsim::data::bytes``.
+ */
+constexpr auto operator""_B(unsigned long long val) -> size<long long, std::ratio<1>> { return size<long long, std::ratio<1>>{static_cast<long long>(val)}; }
+
+/**
+ * Specify a literal number of ``champsim::data::kibibytes``.
+ */
+constexpr auto operator""_kiB(unsigned long long val) -> size<long long, kibi> { return size<long long, kibi>{static_cast<long long>(val)}; }
+
+/**
+ * Specify a literal number of ``champsim::data::mebibytes``.
+ */
+constexpr auto operator""_MiB(unsigned long long val) -> size<long long, mebi> { return size<long long, mebi>{static_cast<long long>(val)}; }
+
+/**
+ * Specify a literal number of ``champsim::data::gibibytes``.
+ */
+constexpr auto operator""_GiB(unsigned long long val) -> size<long long, gibi> { return size<long long, gibi>{static_cast<long long>(val)}; }
+
+/**
+ * Specify a literal number of ``champsim::data::tebibytes``.
+ */
+constexpr auto operator""_TiB(unsigned long long val) -> size<long long, tebi> { return size<long long, tebi>{static_cast<long long>(val)}; }
 } // namespace data_literals
 } // namespace data
 } // namespace champsim

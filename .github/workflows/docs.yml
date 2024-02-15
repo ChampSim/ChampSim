@@ -17,6 +17,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set Up Environment
         run: python3 -m pip install -r docs/requirements.txt
@@ -27,7 +29,7 @@ jobs:
           working-directory: docs
 
       - name: Build Documentation
-        run: sphinx-build -c docs docs/src _build
+        run: sphinx-build -v -c docs docs/src _build
 
       - uses: actions/checkout@v4
         with:
@@ -35,10 +37,11 @@ jobs:
           clean: false
 
       - name: Install HTML sources
-        run: rsync -av _build/ ${{ github.ref_name }}
+        run: rsync --mkpath -av _build/ ${{ github.ref_name }}
 
       - uses: EndBug/add-and-commit@v9
         with:
+          pull: '--rebase --autostash'
           default_author: github_actions
           message: |
             Update documentation for ${{ github.ref }}.

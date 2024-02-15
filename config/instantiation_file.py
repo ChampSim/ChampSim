@@ -265,25 +265,7 @@ def check_header_compiles_for_class(clazz, file):
         args = (
             f'-I{include_dir}',
             f'-I{triplet_dir}',
-            f'-I{dtemp}',
-
-            # patch constants
-            '-DBLOCK_SIZE=64',
-            '-DPAGE_SIZE=4096',
-            '-DSTAT_PRINTING_PERIOD=1000000',
-            '-DNUM_CPUS=1',
-            '-DLOG2_BLOCK_SIZE=6',
-            '-DLOG2_PAGE_SIZE=12',
-
-            '-DDRAM_IO_FREQ=3200',
-            '-DDRAM_CHANNELS=1',
-            '-DDRAM_RANKS=1',
-            '-DDRAM_BANKS=1',
-            '-DDRAM_ROWS=65536',
-            '-DDRAM_COLUMNS=16',
-            '-DDRAM_CHANNEL_WIDTH=8',
-            '-DDRAM_WQ_SIZE=8',
-            '-DDRAM_RQ_SIZE=8'
+            f'-I{dtemp}'
         )
 
         # touch this file
@@ -314,7 +296,7 @@ def module_include_files(datas):
     with mp.Pool() as pool:
         successes = pool.starmap(check_header_compiles_for_class, candidates)
     filtered_candidates = list(itertools.compress(candidates, successes))
-
+    
     class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
     for clazz in class_difference:
         tried_files = (f for c,f in candidates if c == clazz)
@@ -347,7 +329,7 @@ def get_queue_info(upper_levels, decoration):
     queue_info = util.chain(upper_levels, decoration)
     return list(itertools.chain(*(util.explode(v, 'upper_channels', 'name') for v in queue_info.values())))
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -376,6 +358,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
     global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
 
     struct_body = itertools.chain(
+        (
+            f'constexpr static std::size_t num_cpus = {len(cores)};',
+            f'constexpr static std::size_t block_size = {env["block_size"]};',
+            f'constexpr static std::size_t page_size = {env["page_size"]};'
+        ),
         (queue_fmtstr.format(**v) for v in get_queue_info(upper_levels, decorate_queues(caches, ptws, pmem))),
 
         (pmem_fmtstr.format(

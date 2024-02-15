@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "dram_controller.h"    
-#include "champsim_constants.h"
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
@@ -15,13 +14,13 @@ void generate_packet(champsim::channel* channel,uint64_t packet_num, uint64_t DR
     uint64_t offset = 0;
     champsim::address_slice block_slice{champsim::dynamic_extent{champsim::data::bits{LOG2_BLOCK_SIZE + offset}, champsim::data::bits{offset}}, 0};
     offset += LOG2_BLOCK_SIZE;
-    champsim::address_slice channel_slice{champsim::dynamic_extent{champsim::data::bits{DRAM_CHANNELS + offset}, champsim::data::bits{offset}}, 0};
+    champsim::address_slice channel_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_CHANNELS) + offset}, champsim::data::bits{offset}}, 0};
     offset += champsim::lg2(DRAM_CHANNELS);
-    champsim::address_slice bank_slice{champsim::dynamic_extent{champsim::data::bits{DRAM_BANKS + offset}, champsim::data::bits{offset}}, packet_num % DRAM_BANKS};
+    champsim::address_slice bank_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_BANKS) + offset}, champsim::data::bits{offset}}, packet_num % DRAM_BANKS};
     offset += champsim::lg2(DRAM_BANKS);
-    champsim::address_slice column_slice{champsim::dynamic_extent{champsim::data::bits{DRAM_COLUMNS + offset}, champsim::data::bits{offset}}, 1};
+    champsim::address_slice column_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_COLUMNS) + offset}, champsim::data::bits{offset}}, 1};
     offset += champsim::lg2(DRAM_COLUMNS);
-    champsim::address_slice rank_slice{champsim::dynamic_extent{champsim::data::bits{DRAM_RANKS + offset}, champsim::data::bits{offset}}, packet_num % DRAM_RANKS};
+    champsim::address_slice rank_slice{champsim::dynamic_extent{champsim::data::bits{champsim::lg2(DRAM_RANKS) + offset}, champsim::data::bits{offset}}, packet_num % DRAM_RANKS};
     offset += champsim::lg2(DRAM_RANKS);
     champsim::address_slice row_slice{champsim::dynamic_extent{champsim::data::bits{64}, champsim::data::bits{offset}}, packet_num % DRAM_ROWS};
     r.address = champsim::address{champsim::splice(row_slice, rank_slice, column_slice, bank_slice, channel_slice, block_slice)};
@@ -63,7 +62,6 @@ std::vector<bool> refresh_test(MEMORY_CONTROLLER* uut, champsim::channel* channe
         std::vector<bool> bank_under_refresh;
         std::transform(std::begin(uut->channels[0].bank_request),std::end(uut->channels[0].bank_request),std::back_inserter(bank_under_refresh),[](const auto& entry){return(entry.under_refresh);});
         std::transform(std::begin(bank_refreshed),std::end(bank_refreshed),std::begin(bank_under_refresh),std::begin(bank_refreshed), std::logical_or<>{});
-        
         if(uut->current_time >= champsim::chrono::clock::time_point{} + refresh_cycle*tREF)
         {
             refresh_done.push_back(std::all_of(std::begin(bank_refreshed),std::end(bank_refreshed),[](bool v) { return v;}));
@@ -76,25 +74,16 @@ std::vector<bool> refresh_test(MEMORY_CONTROLLER* uut, champsim::channel* channe
 
 SCENARIO("The memory controller refreshes each bank at the proper rate") {
     GIVEN("A random request stream to the memory controller") {
-        champsim::channel channel_uut{32, 32, 32, champsim::data::bits{BLOCK_SIZE}, false};
-        const auto clock_period = champsim::chrono::picoseconds{3200};
-        const uint64_t trp_cycles = 4;
-        const uint64_t trcd_cycles = 4;
-        const uint64_t tcas_cycles = 80;
+        champsim::channel channel_uut{32, 32, 32, champsim::data::bits{8}, false};
         const std::size_t DRAM_CHANNELS = 1;
         const std::size_t DRAM_BANKS = 8;
         const std::size_t DRAM_RANKS = 2;
         const std::size_t DRAM_COLUMNS = 128;
         const std::size_t DRAM_ROWS = 65536;
-        MEMORY_CONTROLLER uut{clock_period, trp_cycles*clock_period, trcd_cycles*clock_period, tcas_cycles*clock_period, 2*clock_period, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
-        //test
+        MEMORY_CONTROLLER uut{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {&channel_uut}, 64, 64, DRAM_CHANNELS, champsim::data::bytes{8}, DRAM_ROWS, DRAM_COLUMNS, DRAM_RANKS, DRAM_BANKS};
         uut.warmup = false;
         uut.channels[0].warmup = false;
-        //packets need address
-        /*
-        * | row address | rank index | column address | bank index | channel | block
-        * offset |
-        */
+        
         WHEN("The memory controller is operated over 40 refresh cycles") {
             std::vector<bool> refresh_status = refresh_test(&uut,&channel_uut,40,DRAM_CHANNELS, DRAM_RANKS, DRAM_BANKS, DRAM_COLUMNS, DRAM_ROWS);
             THEN("Each bank undergoes refresh according to specified timing")

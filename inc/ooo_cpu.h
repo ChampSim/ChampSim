@@ -35,7 +35,6 @@
 
 #include "bandwidth.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "core_stats.h"
@@ -93,7 +92,6 @@ public:
   long long finish_phase_instr = 0;
   champsim::chrono::clock::time_point last_heartbeat_time{};
   long long last_heartbeat_instr = 0;
-  long long next_print_instruction = STAT_PRINTING_PERIOD;
 
   // instruction
   long long num_retired = 0;

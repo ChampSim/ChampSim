@@ -28,7 +28,6 @@
 #include <string>
 
 #include "address.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
 #include "dram_stats.h"
@@ -76,6 +75,17 @@ struct DRAM_CHANNEL final : public champsim::operable {
   queue_type WQ;
   queue_type RQ;
 
+  /*
+   * | row address | rank index | column address | bank index | channel | block
+   * offset |
+   */
+  constexpr static std::size_t SLICER_ROW_IDX = 3;
+  constexpr static std::size_t SLICER_COLUMN_IDX = 1;
+  constexpr static std::size_t SLICER_RANK_IDX = 2;
+  constexpr static std::size_t SLICER_BANK_IDX = 0;
+  using slicer_type = champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent>;
+  const slicer_type address_slicer;
+
   struct BANK_REQUEST {
     bool valid = false;
     bool row_buffer_hit = false;
@@ -90,7 +100,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   };
 
   using request_array_type = std::vector<BANK_REQUEST>;
-  request_array_type bank_request = {};
+  request_array_type bank_request{ranks() * banks()};
   request_array_type::iterator active_request = std::end(bank_request);
 
   std::size_t bank_request_index(champsim::address addr) const;
@@ -106,14 +116,13 @@ struct DRAM_CHANNEL final : public champsim::operable {
   stats_type roi_stats, sim_stats;
 
   // Latencies
-  const champsim::chrono::clock::duration tRP, tRCD, tCAS, tREF, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
-  const champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent>
-      address_slicer; // const std::size_t ROWS, COLUMNS, RANKS, BANKS;
+  const champsim::chrono::clock::duration tRP, tRCD, tCAS, DRAM_DBUS_TURN_AROUND_TIME, DRAM_DBUS_RETURN_TIME;
+  champsim::chrono::clock::duration tREF;
+
 
   DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
                champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-               std::size_t wq_size,
-               champsim::extent_set<champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent, champsim::dynamic_extent> slice);
+               std::size_t wq_size, slicer_type slice);
 
   void check_write_collision();
   void check_read_collision();
@@ -136,6 +145,15 @@ struct DRAM_CHANNEL final : public champsim::operable {
   unsigned long get_bank(champsim::address address) const;
   unsigned long get_row(champsim::address address) const;
   unsigned long get_column(champsim::address address) const;
+
+
+  std::size_t rows() const;
+  std::size_t columns() const;
+  std::size_t ranks() const;
+  std::size_t banks() const;
+  std::size_t bank_request_capacity() const;
+  static slicer_type make_slicer(std::size_t start_pos, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t banks);
+
 };
 
 
