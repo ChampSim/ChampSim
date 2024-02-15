@@ -5,7 +5,7 @@ DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 
-RAMULATOR_DIR=$(ROOT_DIR)/ramulator2/
+RAMULATOR_DIR=$(ROOT_DIR)/ramulator2
 RAMULATOR_LIB=$(RAMULATOR_DIR)
 LDLIBS   += -llzma -lz -lbz2 -lfmt
 INC=
@@ -34,16 +34,29 @@ migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 include _configuration.mk
 
 
-#if ramulator exists include the library as well as the compile flags
+#if ramulator exists, include the library as well as the compile flags. We also add an extra dependency to the build, ensuring ramulator has been compiled.
 ifeq ($(RAMULATOR_MODEL),1)
-LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)deps/yaml-cpp-build -lramulator -lspdlog -lyaml-cpp $(LDLIBS)
+LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)/deps/yaml-cpp-build -lspdlog -lyaml-cpp $(LDLIBS)
 CPPFLAGS += -DRAMULATOR -I$(RAMULATOR_DIR)/src
+$(filter-out $(test_main_name), $(executable_name)) : -lramulator
 endif
+
+#this target invokes ramulator's build system and copies our local plugins into their system.
+-lramulator:
+	cp -r ramulator_plugins/* ramulator2/. && \
+	cd ramulator2 && \
+	mkdir -p build && \
+	cd build && \
+	cmake .. && \
+	make -j;
 
 
 all: $(filter-out $(test_main_name), $(executable_name))
 
 .DEFAULT_GOAL := all
+
+
+	
 
 
 # Remove all intermediate files

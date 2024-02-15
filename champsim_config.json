@@ -172,7 +172,9 @@
         "tRP": 12.5,
         "tRCD": 12.5,
         "tCAS": 12.5,
-        "turn_around_time": 7.5
+        "turn_around_time": 7.5,
+        "refresh_period": 64,
+        "rows_per_refresh": 8
     },
 
     "virtual_memory": {

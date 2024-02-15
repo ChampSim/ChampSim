@@ -17,7 +17,7 @@ MemorySystem:
     org:
       preset: DDR4_4Gb_x8
       channel: 1
-      rank: 2
+      rank: 1
     timing:
       preset: DDR4_3200W
 
@@ -30,4 +30,4 @@ MemorySystem:
     plugins: 
 
   AddrMapper:
-    impl: RoBaRaCoCh
+    impl: RoRaCoBaBgCh
