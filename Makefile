@@ -52,9 +52,12 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
 
 # All .o files should be made like .cc files
-$(objs):
+$(filter-out %/main.o, $(objs)):
 	mkdir -p $(@D)
 	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+$(filter %/main.o, $(objs)):
+	mkdir -p $(@D)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) -DCHAMPSIM_BUILD=$(CHAMPSIM_BUILD) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 %.d:
 	mkdir -p $(@D)

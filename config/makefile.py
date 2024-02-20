@@ -130,7 +130,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     exec_fname = os.path.join('$(BIN_ROOT)', exec_fname)
 
     yield from hard_assign_variable('BIN_ROOT', exec_dir)
-    yield from hard_assign_variable('OBJ_ROOT', os.path.normpath(os.path.join(objdir, '..')))
+    yield from hard_assign_variable('OBJ_ROOT', os.path.normpath(objdir))
     yield ''
     ragged_obj_varnames, ragged_dep_varnames = yield from util.yield_from_star(make_part, (
         (source_dirs, build_id, build_id),
@@ -147,7 +147,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
         name, mod_info = item
         if mod_info.get('legacy'):
-            module_options_fname = sanitize(os.path.join(objdir, 'inc', name+'.options'))
+            module_options_fname = sanitize(os.path.join(objdir, build_id, 'inc', name+'.options'))
             yield from dependency(map(dereference, var), module_options_fname)
 
     options_names = (global_module_options_fname, options_fname, global_options_fname)
@@ -157,7 +157,8 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     objs = map(dereference, obj_varnames)
 
     yield from dependency([exec_fname], *objs)
-    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
+    yield from assign_variable('CHAMPSIM_BUILD', f'0x{build_id}', targets=[exec_fname])
+    yield from append_variable('CPPFLAGS', f'-I{objdir}', f'-I{os.path.join(objdir, build_id, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
 
     yield from append_variable('executable_name', exec_fname)
     yield from append_variable('dirs', os.path.dirname(exec_fname))
