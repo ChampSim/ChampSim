@@ -85,8 +85,8 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
   if constexpr (champsim::debug_print) {
     champsim::dynamic_extent pte_offset_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)}};
     fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", NAME, __func__, fill_mshr.address,
-               fill_mshr.v_address, *fill_mshr.data, champsim::address_slice{pte_offset_extent, fill_mshr.data.value()}.to<int>(),
-               fill_mshr.translation_level, current_time.time_since_epoch() / clock_period);
+               fill_mshr.v_address, *fill_mshr.data, champsim::address_slice{pte_offset_extent, fill_mshr.data.value()}.to<int>(), fill_mshr.translation_level,
+               current_time.time_since_epoch() / clock_period);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
