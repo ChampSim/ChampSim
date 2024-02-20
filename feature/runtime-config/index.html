@@ -52,6 +52,11 @@ ChampSim was originally developed to provide a platform for microarchitectural c
 <li class="toctree-l2"><a class="reference internal" href="Modules.html#replacement-policies">Replacement Policies</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Module-support-library.html">Module Support Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Module-support-library.html#fixed-width-saturating-counter">Fixed-width saturating counter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Module-support-library.html#functions-for-bit-operations">Functions for bit operations</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="Creating-a-configuration-file.html">Creating a Configuration File</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#your-first-configuration-file">Your first configuration file</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Creating-a-configuration-file.html#cache-configuration">Cache Configuration</a></li>
@@ -61,18 +66,34 @@ ChampSim was originally developed to provide a platform for microarchitectural c
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Configuration-API.html">Configuration API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Configuration-API.html#parsing-api">Parsing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Configuration-API.html#file-generation-api">File Generation API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Configuration-API.html#utility-functions">Utility Functions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Address-operations.html">Address Operations</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4I0EN8champsim13address_sliceE"><code class="docutils literal notranslate"><span class="pre">address_slice</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim7addressE"><code class="docutils literal notranslate"><span class="pre">address</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim11page_numberE"><code class="docutils literal notranslate"><span class="pre">page_number</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim11page_offsetE"><code class="docutils literal notranslate"><span class="pre">page_offset</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim12block_numberE"><code class="docutils literal notranslate"><span class="pre">block_number</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim12block_offsetE"><code class="docutils literal notranslate"><span class="pre">block_offset</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4I_N8champsim4data4bitsE_N8champsim4data4bitsEEN8champsim13static_extentE"><code class="docutils literal notranslate"><span class="pre">static_extent</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim14dynamic_extentE"><code class="docutils literal notranslate"><span class="pre">dynamic_extent</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#_CPPv4N8champsim12sized_extentE"><code class="docutils literal notranslate"><span class="pre">sized_extent</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#addresses">Addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Address-operations.html#extents">Extents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Byte-sizes.html">Byte Sizes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Byte-sizes.html#_CPPv4I00EN8champsim4data4sizeE"><code class="docutils literal notranslate"><span class="pre">size</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="Byte-sizes.html#_CPPv4N8champsim4data4bitsE"><code class="docutils literal notranslate"><span class="pre">bits</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="Byte-sizes.html#convenience-specializations">Convenience specializations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Byte-sizes.html#literals">Literals</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Bandwidth.html">Bandwidth</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Bandwidth.html#_CPPv4N8champsim9bandwidthE"><code class="docutils literal notranslate"><span class="pre">bandwidth</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Core-model.html">Core Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Core-model.html#_CPPv46O3_CPU"><code class="docutils literal notranslate"><span class="pre">O3_CPU</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="Core-model.html#builder">Builder</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Cache-model.html">Cache Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Cache-model.html#_CPPv45CACHE"><code class="docutils literal notranslate"><span class="pre">CACHE</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="Cache-model.html#builder">Builder</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Legacy-modules.html">The Legacy ChampSim Module System</a><ul>
