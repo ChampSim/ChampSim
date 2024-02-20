@@ -36,7 +36,8 @@ struct environment {
   virtual std::vector<std::reference_wrapper<operable>> operable_view() = 0;
 };
 
-namespace configured {
+namespace configured
+{
 template <unsigned long long ID>
 struct generated_environment;
 }
