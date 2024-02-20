@@ -19,6 +19,14 @@ dirs:=
 # $4 - target suffix
 migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 
+# Migrate names from a source directory (and suffix) to a target directory (and suffix)
+# $1 - source directory
+# $2 - target directory
+# $3 - source suffix
+# $4 - target suffix
+migrate_main = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3)))
+migrate_nonmain = $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3)))
+
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - $(dirs), the list of all directories that hold object files
@@ -52,9 +60,9 @@ reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(
 	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
 
 # All .o files should be made like .cc files
-$(objs):
+$(sort $(objs)):
 	mkdir -p $(@D)
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(if $(CHAMPSIM_BUILD), -DCHAMPSIM_BUILD=$(CHAMPSIM_BUILD)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 %.d:
 	mkdir -p $(@D)
