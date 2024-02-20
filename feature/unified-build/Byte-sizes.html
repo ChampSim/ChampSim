@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Byte Sizes &#8212; ChampSim  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css?v=601dbdee" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Bandwidth" href="Bandwidth.html" />
+    <link rel="prev" title="Address Operations" href="Address-operations.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Bandwidth.html" title="Bandwidth"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="Address-operations.html" title="Address Operations"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Byte Sizes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="byte-sizes">
+<h1>Byte Sizes<a class="headerlink" href="#byte-sizes" title="Link to this heading">¶</a></h1>
+<p>ChampSim provides a strong type to represent a unit of byte size.
+Objects of this type are convertible to other byte sizes, but are more difficult to unintentionally use in arithmetic operations.</p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I00EN8champsim4data4sizeE">
+<span id="_CPPv3I00EN8champsim4data4sizeE"></span><span id="_CPPv2I00EN8champsim4data4sizeE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Rep</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unit</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1data_1_1size"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><a class="headerlink" href="#_CPPv4I00EN8champsim4data4sizeE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>A class to represent data sizes as they are passed around the program. This type is modeled after <code class="docutils literal notranslate"><span class="pre">std::chrono::duration</span></code>. The units are known as part of the size, but the types are convertible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Rep</strong> – The type of the underlying representation. </p></li>
+<li><p><strong>Unit</strong> – A specialization of <code class="docutils literal notranslate"><span class="pre">std::ratio</span></code> that represents the multiple of a single byte. </p></li>
+</ul>
+</dd>
+</dl>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data4size4sizeE3rep">
+<span id="_CPPv3N8champsim4data4size4sizeE3rep"></span><span id="_CPPv2N8champsim4data4size4sizeE3rep"></span><span id="champsim::data::size::size__repCE"></span><span class="target" id="classchampsim_1_1data_1_1size_1af0d701a668537f00bf08b1b92efb75e8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">rep</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim4data4size4sizeE3rep" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Construct the size with the given value </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E">
+<span id="_CPPv3I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E"></span><span id="_CPPv2I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Rep2</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unit2</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classchampsim_1_1data_1_1size_1a7e24e35b61d49c1d4f0c0c98bb7411c1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E" title="champsim::data::size::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E" title="champsim::data::size::size::Rep2"><span class="n"><span class="pre">Rep2</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E" title="champsim::data::size::size::Unit2"><span class="n"><span class="pre">Unit2</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Implicitly convert between data sizes.</p>
+<p>This permits constructions like</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">func</span><span class="p">(</span><span class="n">champsim</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">kibibytes</span><span class="w"> </span><span class="n">x</span><span class="p">);</span>
+<span class="n">func</span><span class="p">(</span><span class="n">champsim</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">bytes</span><span class="p">{</span><span class="mi">1024</span><span class="p">});</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8champsim4data4size5countEv">
+<span id="_CPPv3NK8champsim4data4size5countEv"></span><span id="_CPPv2NK8champsim4data4size5countEv"></span><span id="champsim::data::size::countCCE"></span><span class="target" id="classchampsim_1_1data_1_1size_1a6ed5bc500f8377fcad44499be48210c3"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">count</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8champsim4data4size5countEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Unwrap the underlying value. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data4bitsE">
+<span id="_CPPv3N8champsim4data4bitsE"></span><span id="_CPPv2N8champsim4data4bitsE"></span><span class="target" id="bit__enum_8h_1ad0c08db4b0778a8f24bcbc0fad05045a"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">bits</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint64_t</span></span><a class="headerlink" href="#_CPPv4N8champsim4data4bitsE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>A strong type to represent a bit width. Being an enum prevents arbitrary arithmetic from being performed. </p>
+<p><em>Values:</em></p>
+</dd></dl>
+
+<section id="convenience-specializations">
+<h2>Convenience specializations<a class="headerlink" href="#convenience-specializations" title="Link to this heading">¶</a></h2>
+<p>ChampSim provides a number of ratio specializations for use in sizes:</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4kibiE">
+<span id="_CPPv3N8champsim4kibiE"></span><span id="_CPPv2N8champsim4kibiE"></span><span class="target" id="ratio_8h_1ad019b41040c97598bc10080a32d8008b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">kibi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">10</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4kibiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4mebiE">
+<span id="_CPPv3N8champsim4mebiE"></span><span id="_CPPv2N8champsim4mebiE"></span><span class="target" id="ratio_8h_1a39520d7897283bd377ce746f51227e9f"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">mebi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">20</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4mebiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4gibiE">
+<span id="_CPPv3N8champsim4gibiE"></span><span id="_CPPv2N8champsim4gibiE"></span><span class="target" id="ratio_8h_1afa98cae940cf66d1550c101b12cea8a4"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">gibi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">30</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4gibiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4tebiE">
+<span id="_CPPv3N8champsim4tebiE"></span><span id="_CPPv2N8champsim4tebiE"></span><span class="target" id="ratio_8h_1a1e037b0fa7dcd1fa1bf863fc75664724"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">tebi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">40</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4tebiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4pebiE">
+<span id="_CPPv3N8champsim4pebiE"></span><span id="_CPPv2N8champsim4pebiE"></span><span class="target" id="ratio_8h_1a35819b61f7c41475f265d5aea4c85acf"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">pebi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">50</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4pebiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4exbiE">
+<span id="_CPPv3N8champsim4exbiE"></span><span id="_CPPv2N8champsim4exbiE"></span><span class="target" id="ratio_8h_1aa2e3f865702af43f74279c3801ffa3d0"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">exbi</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">(</span></span><span class="m"><span class="pre">1LL</span></span><span class="w"> </span><span class="o"><span class="pre">&lt;&lt;</span></span><span class="w"> </span><span class="m"><span class="pre">60</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4exbiE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<p>These types are also used in the convenience specializations:</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data5bytesE">
+<span id="_CPPv3N8champsim4data5bytesE"></span><span id="_CPPv2N8champsim4data5bytesE"></span><span class="target" id="champsim_8h_1a69cb0dad8dd0d46976ca6bdf51415bf9"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">bytes</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data5bytesE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Convenience definitions for common data types </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data9kibibytesE">
+<span id="_CPPv3N8champsim4data9kibibytesE"></span><span id="_CPPv2N8champsim4data9kibibytesE"></span><span class="target" id="champsim_8h_1acb373b86050c9dd77c2a90d25dbd86e4"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">kibibytes</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4kibiE" title="champsim::kibi"><span class="n"><span class="pre">kibi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data9kibibytesE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data9mebibytesE">
+<span id="_CPPv3N8champsim4data9mebibytesE"></span><span id="_CPPv2N8champsim4data9mebibytesE"></span><span class="target" id="champsim_8h_1a67c30019f26d9486276b2239da784786"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">mebibytes</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4mebiE" title="champsim::mebi"><span class="n"><span class="pre">mebi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data9mebibytesE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data9gibibytesE">
+<span id="_CPPv3N8champsim4data9gibibytesE"></span><span id="_CPPv2N8champsim4data9gibibytesE"></span><span class="target" id="champsim_8h_1aca22a40e61094e53fd0f20f5bb6597f8"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">gibibytes</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4gibiE" title="champsim::gibi"><span class="n"><span class="pre">gibi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data9gibibytesE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data9tebibytesE">
+<span id="_CPPv3N8champsim4data9tebibytesE"></span><span id="_CPPv2N8champsim4data9tebibytesE"></span><span class="target" id="champsim_8h_1af7ef87619fe6491bbd92d88c38d094b7"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">tebibytes</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4tebiE" title="champsim::tebi"><span class="n"><span class="pre">tebi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data9tebibytesE" title="Link to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</section>
+<section id="literals">
+<h2>Literals<a class="headerlink" href="#literals" title="Link to this heading">¶</a></h2>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli2_bEy">
+<span id="_CPPv3N8champsim4data13data_literalsli2_bEy"></span><span id="_CPPv2N8champsim4data13data_literalsli2_bEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1aca36a2393db4665322b7694ce5aa0342"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_b</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4data4bitsE" title="champsim::data::bits"><span class="n"><span class="pre">bits</span></span></a><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli2_bEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::bits</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli2_BEy">
+<span id="_CPPv3N8champsim4data13data_literalsli2_BEy"></span><span id="_CPPv2N8champsim4data13data_literalsli2_BEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1a75c858b108f66ff34b3b96b3e135179d"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_B</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ratio</span></span><span class="p"><span class="pre">&lt;</span></span><span class="m"><span class="pre">1</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli2_BEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::bytes</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli4_kiBEy">
+<span id="_CPPv3N8champsim4data13data_literalsli4_kiBEy"></span><span id="_CPPv2N8champsim4data13data_literalsli4_kiBEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1a7f576d8cbf864b8322f1ff19a1a6b624"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_kiB</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4kibiE" title="champsim::kibi"><span class="n"><span class="pre">kibi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli4_kiBEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::kibibytes</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli4_MiBEy">
+<span id="_CPPv3N8champsim4data13data_literalsli4_MiBEy"></span><span id="_CPPv2N8champsim4data13data_literalsli4_MiBEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1aa2ce5e3f178469afc0af8f7a7e71b61b"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_MiB</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4mebiE" title="champsim::mebi"><span class="n"><span class="pre">mebi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli4_MiBEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::mebibytes</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli4_GiBEy">
+<span id="_CPPv3N8champsim4data13data_literalsli4_GiBEy"></span><span id="_CPPv2N8champsim4data13data_literalsli4_GiBEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1af8ae672aa65c5429d6a1d9834d245885"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_GiB</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4gibiE" title="champsim::gibi"><span class="n"><span class="pre">gibi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli4_GiBEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::gibibytes</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim4data13data_literalsli4_TiBEy">
+<span id="_CPPv3N8champsim4data13data_literalsli4_TiBEy"></span><span id="_CPPv2N8champsim4data13data_literalsli4_TiBEy"></span><span class="target" id="namespacechampsim_1_1data_1_1data__literals_1ad65c7e961ac82131b78c48bc83e93c07"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">champsim</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">data_literals</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="n"><span class="pre">_TiB</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">unsigned</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE" title="champsim::data::size"><span class="n"><span class="pre">size</span></span></a><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8champsim4tebiE" title="champsim::tebi"><span class="n"><span class="pre">tebi</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N8champsim4data13data_literalsli4_TiBEy" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Specify a literal number of <code class="docutils literal notranslate"><span class="pre">champsim::data::tebibytes</span></code>. </p>
+</dd></dl>
+
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Byte Sizes</a><ul>
+<li><a class="reference internal" href="#_CPPv4I00EN8champsim4data4sizeE"><code class="docutils literal notranslate"><span class="pre">size</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data4size4sizeE3rep"><code class="docutils literal notranslate"><span class="pre">size::size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4I00EN8champsim4data4size4sizeERK4sizeI4Rep25Unit2E"><code class="docutils literal notranslate"><span class="pre">size::size()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8champsim4data4size5countEv"><code class="docutils literal notranslate"><span class="pre">size::count()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data4bitsE"><code class="docutils literal notranslate"><span class="pre">bits</span></code></a></li>
+<li><a class="reference internal" href="#convenience-specializations">Convenience specializations</a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim4kibiE"><code class="docutils literal notranslate"><span class="pre">kibi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4mebiE"><code class="docutils literal notranslate"><span class="pre">mebi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4gibiE"><code class="docutils literal notranslate"><span class="pre">gibi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4tebiE"><code class="docutils literal notranslate"><span class="pre">tebi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4pebiE"><code class="docutils literal notranslate"><span class="pre">pebi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4exbiE"><code class="docutils literal notranslate"><span class="pre">exbi</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data5bytesE"><code class="docutils literal notranslate"><span class="pre">bytes</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data9kibibytesE"><code class="docutils literal notranslate"><span class="pre">kibibytes</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data9mebibytesE"><code class="docutils literal notranslate"><span class="pre">mebibytes</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data9gibibytesE"><code class="docutils literal notranslate"><span class="pre">gibibytes</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data9tebibytesE"><code class="docutils literal notranslate"><span class="pre">tebibytes</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#literals">Literals</a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli2_bEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_b()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli2_BEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_B()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli4_kiBEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_kiB()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli4_MiBEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_MiB()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli4_GiBEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_GiB()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim4data13data_literalsli4_TiBEy"><code class="docutils literal notranslate"><span class="pre">operator&quot;&quot;_TiB()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="Address-operations.html"
+                          title="previous chapter">Address Operations</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="Bandwidth.html"
+                          title="next chapter">Bandwidth</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Byte-sizes.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div><div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  <ul>
+      
+        <li><a href="../../master/index.html">master</a></li>
+      
+      
+        <li><a href="../../develop/index.html">develop</a></li>
+      
+      
+        <li><strong>feature/unified-build</strong></li>
+      
+  </ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Bandwidth.html" title="Bandwidth"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="Address-operations.html" title="Address Operations"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Byte Sizes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2023, The ChampSim Contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    </div>
+  </body>
+</html>

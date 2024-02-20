@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Configuration API &#8212; ChampSim  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css?v=601dbdee" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Address Operations" href="Address-operations.html" />
+    <link rel="prev" title="Creating a Configuration File" href="Creating-a-configuration-file.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Address-operations.html" title="Address Operations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="Creating-a-configuration-file.html" title="Creating a Configuration File"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Configuration API</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-config">
+<span id="id1"></span><span id="configuration-api"></span><h1>Configuration API<a class="headerlink" href="#module-config" title="Link to this heading">¶</a></h1>
+<p>ChampSim uses an initial configuration step, written in Python, to parse the JSON configuration file into C++ files for
+building.
+The configuration mechanism can be used programmatically, as a Python module.</p>
+<section id="parsing-api">
+<h2>Parsing API<a class="headerlink" href="#parsing-api" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="config.parse.parse_config">
+<span class="sig-prename descclassname"><span class="pre">config.parse.</span></span><span class="sig-name descname"><span class="pre">parse_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">btb_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pref_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compile_all_modules</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.parse.parse_config" title="Link to this definition">¶</a></dt>
+<dd><p>This is the main parsing dispatch function. Programmatic use of the configuration system should use this as an entry point.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>configs</strong> – The configurations given here will be joined into a single configuration, then parsed. These configurations may be simply the result of parsing a JSON file, although the root should be a JSON object.</p></li>
+<li><p><strong>module_dir</strong> – A directory to search for all modules. The structure is assumed to follow the same as the ChampSim repository: branch direction predictors are under <cite>branch/</cite>, replacement policies under <cite>replacement/</cite>, etc.</p></li>
+<li><p><strong>branch_dir</strong> – A directory to search for branch direction predictors</p></li>
+<li><p><strong>btb_dir</strong> – A directory to search for branch target predictors</p></li>
+<li><p><strong>pref_dir</strong> – A directory to search for prefetchers</p></li>
+<li><p><strong>repl_dir</strong> – A directory to search for replacement policies</p></li>
+<li><p><strong>compile_all_modules</strong> – If true, all modules in the given directories will be compiled. If false, only the module in the configuration will be compiled.</p></li>
+<li><p><strong>verbose</strong> – Print extra verbose output</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="file-generation-api">
+<h2>File Generation API<a class="headerlink" href="#file-generation-api" title="Link to this heading">¶</a></h2>
+<p>The file generation API contains two interfaces: a high-level interface with <a class="reference internal" href="#config.filewrite.FileWriter" title="config.filewrite.FileWriter"><code class="xref py py-class docutils literal notranslate"><span class="pre">config.filewrite.FileWriter</span></code></a>, and a low-level interface with <a class="reference internal" href="#config.filewrite.Fragment" title="config.filewrite.Fragment"><code class="xref py py-class docutils literal notranslate"><span class="pre">config.filewrite.Fragment</span></code></a>.
+Users should prefer the high-level interface where possible.
+The low-level interface may provide greater flexibility when needed, for example a more parallel application.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">config.filewrite.</span></span><span class="sig-name descname"><span class="pre">FileWriter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bindir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objdir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter" title="Link to this definition">¶</a></dt>
+<dd><p>This class maintains the state of one or more configurations to be written.</p>
+<p>This class provides a context manager interface over a set of Fragments, and is more convenient for general use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bindir_name</strong> – The default directory for binaries if none is given to write_files().</p></li>
+<li><p><strong>objdir_name</strong> – The default directory for object files if none is given to write_files().</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter.__enter__">
+<span class="sig-name descname"><span class="pre">__enter__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter.__enter__" title="Link to this definition">¶</a></dt>
+<dd><p>This function forms one half of the context manager interface</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter.__exit__">
+<span class="sig-name descname"><span class="pre">__exit__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exc_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exc_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traceback</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter.__exit__" title="Link to this definition">¶</a></dt>
+<dd><p>This function terminates the context manager and calls <a class="reference internal" href="#config.filewrite.FileWriter.finish" title="config.filewrite.FileWriter.finish"><code class="xref py py-meth docutils literal notranslate"><span class="pre">finish()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter.finish">
+<span class="sig-name descname"><span class="pre">finish</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter.finish" title="Link to this definition">¶</a></dt>
+<dd><p>Write all accumulated configurations to their files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter.write_files">
+<span class="sig-name descname"><span class="pre">write_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parsed_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bindir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srcdir_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objdir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter.write_files" title="Link to this definition">¶</a></dt>
+<dd><p>Accumulate the results of parsing a configuration into the File Writer.
+Parameters passed here will override parameters given in the constructor</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parsed_config</strong> – the result of parsing a configuration file</p></li>
+<li><p><strong>bindir_name</strong> – the directory in which to place the binaries</p></li>
+<li><p><strong>srcdir_name</strong> – the directory to search for source files</p></li>
+<li><p><strong>objdir_name</strong> – the directory to place object files</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.FileWriter.write_fragments">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write_fragments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">fragments</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.FileWriter.write_fragments" title="Link to this definition">¶</a></dt>
+<dd><p>Write out a set of prepared fragments.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="config.filewrite.Fragment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">config.filewrite.</span></span><span class="sig-name descname"><span class="pre">Fragment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fileparts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.Fragment" title="Link to this definition">¶</a></dt>
+<dd><p>Examines the given config and prepares to write the needed files.</p>
+<p>Programs may use this class for fine-grained control of when and how files are written.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.Fragment.from_config">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parsed_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bindir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">srcdir_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objdir_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.Fragment.from_config" title="Link to this definition">¶</a></dt>
+<dd><p>Produce a sequence of Fragments from the result of parse.parse_config().</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parsed_config</strong> – the result of parsing a configuration file</p></li>
+<li><p><strong>bindir_name</strong> – the directory in which to place the binaries</p></li>
+<li><p><strong>srcdir_name</strong> – the directory to search for source files</p></li>
+<li><p><strong>objdir_name</strong> – the directory to place object files</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.Fragment.join">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">frags</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.Fragment.join" title="Link to this definition">¶</a></dt>
+<dd><p>Merge multiple Fragments into one.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="config.filewrite.Fragment.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#config.filewrite.Fragment.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the internal series of fragments to file.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="utility-functions">
+<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Link to this heading">¶</a></h2>
+<section id="system-operations">
+<h3>System operations<a class="headerlink" href="#system-operations" title="Link to this heading">¶</a></h3>
+<p>ChampSim’s configuration makes frequent use of sequences of dictionaries. The following functions operate on a system, a dictionary whose values are dictionaries.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.iter_system">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">iter_system</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lower_level'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.iter_system" title="Link to this definition">¶</a></dt>
+<dd><p>Iterate through a dictionary system.</p>
+<p>The system is organized as a dictionary of { c[‘name’]: c } for all c.
+Starting at the given name, generate a path through the system, traversing by the given key.
+Loops are not allowed, each element may be visited at most once.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> – the system to be iterated through</p></li>
+<li><p><strong>name</strong> – the key to start at</p></li>
+<li><p><strong>key</strong> – the key that points to the next element</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.combine_named">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">combine_named</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">iterables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.combine_named" title="Link to this definition">¶</a></dt>
+<dd><p>Collect a sequence of sequences of dictionaries by their ‘name’ parameter.
+Earlier parameters have priority over later parameters.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.upper_levels_for">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">upper_levels_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lower_level'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.upper_levels_for" title="Link to this definition">¶</a></dt>
+<dd><p>List all elements of the system who have the given element name under the given key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> – the system to be iterated through</p></li>
+<li><p><strong>name</strong> – the key to start at</p></li>
+<li><p><strong>key</strong> – the key that points to the next element</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.propogate_down">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">propogate_down</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.propogate_down" title="Link to this definition">¶</a></dt>
+<dd><p>Propogate the value of a key down a path of dictionaries.
+Later elements inherit the value from earlier elements, unless they have one themselves.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – an iterable of dictionary values</p></li>
+<li><p><strong>key</strong> – they dictionary key to propogate</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="itertools-extentions">
+<h3>Itertools extentions<a class="headerlink" href="#itertools-extentions" title="Link to this heading">¶</a></h3>
+<p>The following functions are extentions of the itertools package.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.collect">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">join_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.collect" title="Link to this definition">¶</a></dt>
+<dd><p>Perform the “sort-&gt;groupby” idiom on an iterable, grouping according to the join_func.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.batch">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">it</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.batch" title="Link to this definition">¶</a></dt>
+<dd><p>A backport of itertools.batch().</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.sliding">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">sliding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.sliding" title="Link to this definition">¶</a></dt>
+<dd><p>A backport of itertools.sliding()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.cut">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">cut</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.cut" title="Link to this definition">¶</a></dt>
+<dd><p>Split an iterable into a head and a tail. The head should be completely consumed before the tail is accesssed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>iterable</strong> – An iterable</p></li>
+<li><p><strong>n</strong> – The length of the head or, if the value is negative, the length of the tail.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.do_for_first">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">do_for_first</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.do_for_first" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the function for the first element in the iterable and yield it.
+Then yield the rest of the iterable.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.append_except_last">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">append_except_last</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.append_except_last" title="Link to this definition">¶</a></dt>
+<dd><p>Concatenate a suffix to each element of the iterable except the last one.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.multiline">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">multiline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">long_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line_end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.multiline" title="Link to this definition">¶</a></dt>
+<dd><p>Split a long string into lines with n words</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.yield_from_star">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">yield_from_star</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gen</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.yield_from_star" title="Link to this definition">¶</a></dt>
+<dd><p>Python generators can return values when they are finished.
+This adaptor yields the values from the generators and collects the returned values into a list.</p>
+</dd></dl>
+
+</section>
+<section id="dictionary-operations">
+<h3>Dictionary Operations<a class="headerlink" href="#dictionary-operations" title="Link to this heading">¶</a></h3>
+<p>ChampSim frequently operates on dictionaries, so these functions are provided as convenience functions.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.chain">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">chain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">dicts</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.chain" title="Link to this definition">¶</a></dt>
+<dd><p>Combine two or more dictionaries.
+Values that are dictionaries are merged recursively.
+Values that are lists are joined.</p>
+<p>Dictionaries given earlier in the parameter list have priority.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">chain</span><span class="p">({</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span> <span class="p">},</span> <span class="p">{</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">2</span> <span class="p">})</span>
+<span class="go">{ &#39;a&#39;: 1, &#39;b&#39;: 2 }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chain</span><span class="p">({</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span> <span class="p">},</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">2</span> <span class="p">})</span>
+<span class="go">{ &#39;a&#39;: 1 }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chain</span><span class="p">({</span> <span class="s1">&#39;d&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span> <span class="p">}</span> <span class="p">},</span> <span class="p">{</span> <span class="s1">&#39;d&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">2</span> <span class="p">}</span> <span class="p">})</span>
+<span class="go">{ &#39;d&#39;: { &#39;a&#39;: 1, &#39;b&#39;: 2 } }</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dicts</strong> – the sequence to be chained</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.subdict">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">subdict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">whole_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invert</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.subdict" title="Link to this definition">¶</a></dt>
+<dd><p>Extract only the given keys from a dictionary. If they keys are not present, they are not defaulted.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.extend_each">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">extend_each</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lhs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.extend_each" title="Link to this definition">¶</a></dt>
+<dd><p>For two dictionaries whose values are lists, join the values that have the same key.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.util.explode">
+<span class="sig-prename descclassname"><span class="pre">config.util.</span></span><span class="sig-name descname"><span class="pre">explode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.util.explode" title="Link to this definition">¶</a></dt>
+<dd><p>Convert a dictionary with a list member to a list with dictionary members.
+:param value: the dictionary to be extracted
+:param in_key: the key holding the list
+:param out_key: the key to distinguish the resulting list elements</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.parse.duplicate_to_length">
+<span class="sig-prename descclassname"><span class="pre">config.parse.</span></span><span class="sig-name descname"><span class="pre">duplicate_to_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.parse.duplicate_to_length" title="Link to this definition">¶</a></dt>
+<dd><p>Duplicate an array of elements, truncating if the sequence is longer than the count</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">duplicate_to_length</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span> <span class="mi">6</span><span class="p">)</span>
+<span class="go">[1,1,2,2,3,3]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">duplicate_to_length</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="mi">5</span><span class="p">)</span>
+<span class="go">[1,1,1,2,2]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">duplicate_to_length</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+<span class="go">[1,2,3]</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>elements</strong> – the sequence of elements to be duplicated</p></li>
+<li><p><strong>count</strong> – the final length</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="config.parse.extract_element">
+<span class="sig-prename descclassname"><span class="pre">config.parse.</span></span><span class="sig-name descname"><span class="pre">extract_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">parents</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#config.parse.extract_element" title="Link to this definition">¶</a></dt>
+<dd><p>Extract a certain key from the series of parents, returning the merged keys.
+Keys whose values are not dictionaries are ignored.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="mi">1</span> <span class="p">}</span> <span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;internal&#39;</span><span class="p">:</span> <span class="mi">2</span> <span class="p">}</span> <span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extract_element</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+<span class="go">{ &#39;internal&#39;: 1 }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;other&#39;</span><span class="p">:</span> <span class="mi">1</span> <span class="p">}</span> <span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extract_element</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+<span class="go">{ &#39;internal&#39;: 1, &#39;other&#39;: 1 }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="s1">&#39;foo&#39;</span> <span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">extract_element</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+<span class="go">{ &#39;internal&#39;: 1, &#39;other&#39;: 1 }</span>
+</pre></div>
+</div>
+<p>If one or more of the parents contains a ‘name’ key, the result will contain a ‘name’ key
+with value ‘{parent[“name”]}_{key}’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – the key to extract</p></li>
+<li><p><strong>parents</strong> – the dictionaries to extract from</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Configuration API</a><ul>
+<li><a class="reference internal" href="#parsing-api">Parsing API</a><ul>
+<li><a class="reference internal" href="#config.parse.parse_config"><code class="docutils literal notranslate"><span class="pre">parse_config()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#file-generation-api">File Generation API</a><ul>
+<li><a class="reference internal" href="#config.filewrite.FileWriter"><code class="docutils literal notranslate"><span class="pre">FileWriter</span></code></a><ul>
+<li><a class="reference internal" href="#config.filewrite.FileWriter.__enter__"><code class="docutils literal notranslate"><span class="pre">FileWriter.__enter__()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.FileWriter.__exit__"><code class="docutils literal notranslate"><span class="pre">FileWriter.__exit__()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.FileWriter.finish"><code class="docutils literal notranslate"><span class="pre">FileWriter.finish()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.FileWriter.write_files"><code class="docutils literal notranslate"><span class="pre">FileWriter.write_files()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.FileWriter.write_fragments"><code class="docutils literal notranslate"><span class="pre">FileWriter.write_fragments()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#config.filewrite.Fragment"><code class="docutils literal notranslate"><span class="pre">Fragment</span></code></a><ul>
+<li><a class="reference internal" href="#config.filewrite.Fragment.from_config"><code class="docutils literal notranslate"><span class="pre">Fragment.from_config()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.Fragment.join"><code class="docutils literal notranslate"><span class="pre">Fragment.join()</span></code></a></li>
+<li><a class="reference internal" href="#config.filewrite.Fragment.write"><code class="docutils literal notranslate"><span class="pre">Fragment.write()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#utility-functions">Utility Functions</a><ul>
+<li><a class="reference internal" href="#system-operations">System operations</a><ul>
+<li><a class="reference internal" href="#config.util.iter_system"><code class="docutils literal notranslate"><span class="pre">iter_system()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.combine_named"><code class="docutils literal notranslate"><span class="pre">combine_named()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.upper_levels_for"><code class="docutils literal notranslate"><span class="pre">upper_levels_for()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.propogate_down"><code class="docutils literal notranslate"><span class="pre">propogate_down()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#itertools-extentions">Itertools extentions</a><ul>
+<li><a class="reference internal" href="#config.util.collect"><code class="docutils literal notranslate"><span class="pre">collect()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.batch"><code class="docutils literal notranslate"><span class="pre">batch()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.sliding"><code class="docutils literal notranslate"><span class="pre">sliding()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.cut"><code class="docutils literal notranslate"><span class="pre">cut()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.do_for_first"><code class="docutils literal notranslate"><span class="pre">do_for_first()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.append_except_last"><code class="docutils literal notranslate"><span class="pre">append_except_last()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.multiline"><code class="docutils literal notranslate"><span class="pre">multiline()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.yield_from_star"><code class="docutils literal notranslate"><span class="pre">yield_from_star()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dictionary-operations">Dictionary Operations</a><ul>
+<li><a class="reference internal" href="#config.util.chain"><code class="docutils literal notranslate"><span class="pre">chain()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.subdict"><code class="docutils literal notranslate"><span class="pre">subdict()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.extend_each"><code class="docutils literal notranslate"><span class="pre">extend_each()</span></code></a></li>
+<li><a class="reference internal" href="#config.util.explode"><code class="docutils literal notranslate"><span class="pre">explode()</span></code></a></li>
+<li><a class="reference internal" href="#config.parse.duplicate_to_length"><code class="docutils literal notranslate"><span class="pre">duplicate_to_length()</span></code></a></li>
+<li><a class="reference internal" href="#config.parse.extract_element"><code class="docutils literal notranslate"><span class="pre">extract_element()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="Creating-a-configuration-file.html"
+                          title="previous chapter">Creating a Configuration File</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="Address-operations.html"
+                          title="next chapter">Address Operations</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Configuration-API.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div><div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  <ul>
+      
+        <li><a href="../../master/index.html">master</a></li>
+      
+      
+        <li><a href="../../develop/index.html">develop</a></li>
+      
+      
+        <li><strong>feature/unified-build</strong></li>
+      
+  </ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Address-operations.html" title="Address Operations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="Creating-a-configuration-file.html" title="Creating a Configuration File"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Configuration API</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2023, The ChampSim Contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    </div>
+  </body>
+</html>
