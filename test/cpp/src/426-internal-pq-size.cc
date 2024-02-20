@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("The prefetch queue size limits the number of prefetches that can be issued") {
   GIVEN("An empty cache with a short prefetch queue") {
@@ -34,7 +33,7 @@ SCENARIO("The prefetch queue size limits the number of prefetches that can be is
     WHEN(std::to_string(pq_size) + " prefetches are issued") {
       std::vector<bool> issue_results;
       std::generate_n(std::back_inserter(issue_results), pq_size, [&]{
-          constexpr uint64_t seed_addr = 0xdeadbeef;
+          constexpr champsim::address seed_addr{0xdeadbeef};
           return uut.prefetch_line(seed_addr, true, 0);
       });
 
@@ -53,7 +52,7 @@ SCENARIO("The prefetch queue size limits the number of prefetches that can be is
       }
 
       AND_WHEN("One more prefetch is issued") {
-        auto test_result = uut.prefetch_line(0xcafebabe, true, 0);
+        auto test_result = uut.prefetch_line(champsim::address{0xcafebabe}, true, 0);
 
         THEN("The prefetch is rejected") {
           REQUIRE_FALSE(test_result);

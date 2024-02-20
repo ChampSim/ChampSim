@@ -11,7 +11,14 @@ We encourage you to read below to see if ChampSim is right for your research, cl
    :caption: Contents:
 
    Modules
+   Module-support-library
    Creating-a-configuration-file
+   Configuration-API
+   Address-operations
+   Byte-sizes
+   Bandwidth
+   Core-model
+   Cache-model
    Legacy-modules
 
 

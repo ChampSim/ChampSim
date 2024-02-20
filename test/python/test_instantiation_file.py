@@ -110,14 +110,14 @@ class CpuBuilderTest(unittest.TestCase):
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_cache = { 'name': 'test_cache' }
+        base_cache = { 'name': 'test_cache', 'frequency': 250 }
         upper_levels = { 'test_cache': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_cache_builder(base_cache, upper_levels))
         modified = list(config.instantiation_file.get_cache_builder({**base_cache, **kwargs}, upper_levels))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
     def test_size(self):
-        self.get_element_diff(['.size(1)'], size=1)
+        self.get_element_diff(['.size(champsim::data::bytes{1})'], size=1)
 
     def test_log2_size(self):
         self.get_element_diff(['.log2_size(1)'], log2_size=1)
@@ -185,7 +185,7 @@ class CacheBuilderTests(unittest.TestCase):
 class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
-        base_ptw = { 'name': 'test_ptw' }
+        base_ptw = { 'name': 'test_ptw', 'frequency': 250 }
         upper_levels = { 'test_ptw': { 'upper_channels': [] } }
         empty = list(config.instantiation_file.get_ptw_builder(base_ptw, upper_levels))
         modified = list(config.instantiation_file.get_ptw_builder({**base_ptw, **kwargs}, upper_levels))

@@ -17,7 +17,7 @@ public:
   static constexpr int maxRRPV = 3;
   static constexpr std::size_t SHCT_SIZE = 16384;
   static constexpr unsigned SHCT_PRIME = 16381;
-  static constexpr std::size_t SAMPLER_SET = (256 * NUM_CPUS);
+  static constexpr std::size_t SAMPLER_SET_FACTOR = 256;
   static constexpr unsigned SHCT_MAX = 7;
 
   // sampler structure
@@ -26,7 +26,8 @@ public:
   public:
     bool valid = false;
     bool used = false;
-    uint64_t address = 0, cl_addr = 0, ip = 0;
+    champsim::address address{};
+    champsim::address ip{};
     uint64_t last_used = 0;
   };
 
@@ -39,13 +40,14 @@ public:
   std::vector<int> rrpv_values;
 
   // prediction table structure
-  std::array<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>, NUM_CPUS> SHCT;
+  std::vector<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>> SHCT;
 
   explicit ship(CACHE* cache);
 
-  long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type);
-  void update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                uint8_t hit);
+  long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+                   champsim::address full_addr, access_type type);
+  void update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip, champsim::address victim_addr,
+                                access_type type, uint8_t hit);
 
   // use this function to print out your own stats at the end of simulation
   // void replacement_final_stats() {}

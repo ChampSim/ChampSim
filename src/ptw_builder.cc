@@ -25,9 +25,9 @@ auto champsim::ptw_builder::name(std::string_view name_) -> ptw_builder&
   return *this;
 }
 
-auto champsim::ptw_builder::frequency(double freq_scale_) -> ptw_builder&
+auto champsim::ptw_builder::clock_period(champsim::chrono::picoseconds clock_period_) -> ptw_builder&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 

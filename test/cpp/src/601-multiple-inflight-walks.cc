@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 
-#include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"
@@ -12,12 +11,13 @@
 SCENARIO("A page table walker can handle multiple concurrent walks") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll{5};
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -32,12 +32,12 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
 
     WHEN("The PTW receives two requests") {
       decltype(mock_ul)::request_type test_a;
-      test_a.address = 0xdeadbeefdeadbeef;
+      test_a.address = champsim::address{0xdeadbeefdeadbeef};
       test_a.v_address = test_a.address;
       test_a.cpu = 0;
 
       decltype(mock_ul)::request_type test_b;
-      test_b.address = 0xcafebabecafebabe;
+      test_b.address = champsim::address{0xcafebabecafebabe};
       test_b.v_address = test_b.address;
       test_b.cpu = 0;
 
@@ -65,17 +65,17 @@ SCENARIO("A page table walker can handle multiple concurrent walks") {
 SCENARIO("Concurrent page table walks can be merged") {
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    constexpr uint64_t seed_address = 0xffff'ffff'ffff'ffff;
-    constexpr uint64_t base_address = seed_address;
-    constexpr uint64_t nearby_address = 0xffff'ffff'ffff'efff;
+    const champsim::address seed_address{0xffff'ffff'ffff'ffff};
+    const champsim::address base_address{seed_address};
+    const champsim::address nearby_address{0xffff'ffff'ffff'efff};
 
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 10, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{10}, dram};
     release_MRC mock_ll;
-    to_rq_MRP mock_ul{[](auto x, auto y){ return (x.address >> LOG2_BLOCK_SIZE) == (y.address >> LOG2_BLOCK_SIZE); }};
-    //PageTableWalker uut{"601-uut-1", 0, 1, {{1,1}, {1,1}, {1,1}, {0,0}}, 1, 1, 1, 1, 1, {&mock_ul.queues}, &mock_ll.queues, vmem};
+    to_rq_MRP mock_ul{[](auto x, auto y){ return champsim::block_number{x.address} == champsim::block_number{y.address}; }};
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("601-uut")
+      .clock_period(champsim::chrono::picoseconds{3200})
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
       .virtual_memory(&vmem)
@@ -108,9 +108,9 @@ SCENARIO("Concurrent page table walks can be merged") {
       }
 
       THEN("The PSCLs contain the request's address") {
-        CHECK(uut.pscl.at(0).check_hit({seed.address, 0, 4}).has_value());
-        CHECK(uut.pscl.at(1).check_hit({seed.address, 0, 3}).has_value());
-        CHECK(uut.pscl.at(2).check_hit({seed.address, 0, 2}).has_value());
+        CHECK(uut.pscl.at(0).check_hit(typename decltype(PageTableWalker::pscl)::value_type::value_type{seed.address, champsim::address{}, 4}).has_value());
+        CHECK(uut.pscl.at(1).check_hit(typename decltype(PageTableWalker::pscl)::value_type::value_type{seed.address, champsim::address{}, 3}).has_value());
+        CHECK(uut.pscl.at(2).check_hit(typename decltype(PageTableWalker::pscl)::value_type::value_type{seed.address, champsim::address{}, 2}).has_value());
       }
 
       AND_WHEN("The PTW receives a request") {
@@ -146,7 +146,7 @@ SCENARIO("Concurrent page table walks can be merged") {
           }
 
           AND_WHEN("The lower level returns") {
-            uint64_t nearby_paddr = 0x103ff8; // Hard coded to get the test to work...
+            champsim::address nearby_paddr{0x103ff8}; // Hard coded to get the test to work...
 
             mock_ll.release(nearby_paddr);
 

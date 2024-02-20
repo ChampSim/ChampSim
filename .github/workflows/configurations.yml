@@ -7,6 +7,7 @@ on:
       - develop
     paths-ignore:
       - '.gitignore'
+      - 'docs/**'
       - '*.md'
       - '.github/workflows/*.yml'
       # re-include current file to not be excluded
@@ -18,6 +19,7 @@ on:
       - develop
     paths-ignore:
       - '.gitignore'
+      - 'docs/**'
       - '*.md'
       - '.github/workflows/*.yml'
       # re-include current file to not be excluded

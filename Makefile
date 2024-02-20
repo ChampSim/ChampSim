@@ -3,12 +3,21 @@ DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 .PHONY: all clean configclean test
 
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
+executable_name:=
+dirs:=
+
+# Migrate names from a source directory (and suffix) to a target directory (and suffix)
+# $1 - source directory
+# $2 - target directory
+# $3 - source suffix
+# $4 - target suffix
+migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
@@ -49,11 +58,12 @@ $(objs):
 
 %.d:
 	mkdir -p $(@D)
-	$(CXX) -MM -MT $@ -MT $(objdep)/$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
-$(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
-$(test_main_name): LDLIBS += -lCatch2Main -lCatch2
+$(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
+$(test_main_name): override CXXFLAGS += -g3 -Og
+$(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 ifdef POSTBUILD_CLEAN
 .INTERMEDIATE: $(objs) $($(OBJS):.o=.d)
@@ -65,8 +75,11 @@ $(executable_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
+ifdef TEST_NUM
+selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsubst %.cc,%,$(notdir $(wildcard $(ROOT_DIR)/test/cpp/src/*.cc)))))]"
+endif
 test: $(test_main_name)
-	$(test_main_name)
+	$(test_main_name) $(selected_test)
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'

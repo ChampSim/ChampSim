@@ -14,7 +14,7 @@ TEST_CASE("A cache can examine the RQ sizes of its channels") {
 
   std::vector<champsim::channel> queues;
   for (std::size_t i = 0; i < queue_count; ++i)
-    queues.emplace_back(queue_sizes[i], 32, 32, 0, false);
+    queues.emplace_back(queue_sizes[i], 32, 32, champsim::data::bits{}, false);
   std::vector<champsim::channel*> queue_ptrs;
   std::transform(std::begin(queues), std::end(queues), std::back_inserter(queue_ptrs), [](auto& q){ return &q; });
 
@@ -34,7 +34,7 @@ TEST_CASE("A cache can examine the WQ sizes of its channels") {
 
   std::vector<champsim::channel> queues;
   for (std::size_t i = 0; i < queue_count; ++i)
-    queues.emplace_back(32, 32, queue_sizes[i], 0, false);
+    queues.emplace_back(32, 32, queue_sizes[i], champsim::data::bits{}, false);
   std::vector<champsim::channel*> queue_ptrs;
   std::transform(std::begin(queues), std::end(queues), std::back_inserter(queue_ptrs), [](auto& q){ return &q; });
 
@@ -54,7 +54,7 @@ TEST_CASE("A cache can examine the PQ sizes of its channels") {
 
   std::vector<champsim::channel> queues;
   for (std::size_t i = 0; i < queue_count; ++i)
-    queues.emplace_back(32, queue_sizes[i], 32, 0, false);
+    queues.emplace_back(32, queue_sizes[i], 32, champsim::data::bits{}, false);
   std::vector<champsim::channel*> queue_ptrs;
   std::transform(std::begin(queues), std::end(queues), std::back_inserter(queue_ptrs), [](auto& q){ return &q; });
 
@@ -89,7 +89,7 @@ SCENARIO("A cache can examine the RQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {
@@ -127,7 +127,7 @@ SCENARIO("A cache can examine the WQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {
@@ -165,7 +165,7 @@ SCENARIO("A cache can examine the PQ sizes of its channels") {
       WHEN("Upper level "+std::to_string(i)+" issues a request") {
         // Create a test packet
         champsim::channel::request_type test;
-        test.address = 0xdeadbeef;
+        test.address = champsim::address{0xdeadbeef};
 
         auto test_result = queues[i].issue(test);
         THEN("This issue is received") {
