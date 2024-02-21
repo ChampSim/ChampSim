@@ -101,7 +101,7 @@ BOOL ShouldWrite()
 
 void WriteCurrentInstruction()
 {
-  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
+j  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
   std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
   outfile.write(buf, sizeof(trace_instr_format_t));
 }

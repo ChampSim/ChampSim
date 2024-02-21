@@ -81,6 +81,10 @@
         "__verbose_abort": "cpp",
         "ios": "cpp",
         "locale": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "*.inc": "cpp",
+        "codecvt": "cpp",
+        "stop_token": "cpp",
+        "*.ipp": "cpp"
     }
 }

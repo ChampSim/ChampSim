@@ -185,7 +185,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, hit, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, handle_pkt.instr_id, hit, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+    // THIS might be the complety wrong place to put this
+    //impl_prefetcher_squash(handle_pkt.ip, handle_pkt.instr_id);
   }
 
   if (hit) {

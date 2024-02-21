@@ -90,7 +90,7 @@ void CACHE::prefetcher_initialize() {}
 
 void CACHE::prefetcher_cycle_operate() { ::trackers[this].advance_lookahead(this); }
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
 {
   ::trackers[this].initiate_lookahead(ip, addr >> LOG2_BLOCK_SIZE);
   return metadata_in;
@@ -102,3 +102,5 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
 }
 
 void CACHE::prefetcher_final_stats() {}
+
+void CACHE::prefetcher_squash(uint64_t ip, uint64_t instr_id) {}

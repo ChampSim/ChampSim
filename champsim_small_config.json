@@ -53,7 +53,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": true,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "entangling"
+        "prefetcher": "entangling_old"
     },
 
     "L1D": {

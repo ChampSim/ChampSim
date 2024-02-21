@@ -61,13 +61,14 @@ def get_btb_data(module_name):
 def get_pref_data(module_name, is_instruction_cache=False):
     prefix = 'ipref' if is_instruction_cache else 'pref'
     return util.chain(
-            data_getter(prefix, module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
+            data_getter(prefix, module_name, ('prefetcher_initialize', 'prefetcher_cache_operate', 'prefetcher_squash', 'prefetcher_branch_operate', 'prefetcher_cache_fill', 'prefetcher_cycle_operate', 'prefetcher_final_stats')),
             { 'deprecated_func_map' : {
                     'l1i_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
                     'l1d_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
                     'l2c_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
                     'llc_prefetcher_initialize': '_'.join((prefix, module_name, 'prefetcher_initialize')),
                     'l1i_prefetcher_cache_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
+                    'l1i_prefetcher_squash': '_'.join((prefix, module_name, 'prefetcher_squash')),
                     'l1d_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
                     'l2c_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
                     'llc_prefetcher_operate': '_'.join((prefix, module_name, 'prefetcher_cache_operate')),
@@ -199,7 +200,8 @@ def get_cache_module_lines(pref_data, repl_data):
 
     pref_nonbranch_variant_data = [
         ('prefetcher_initialize',),
-        ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
+        ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint64_t', 'instr_id'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
+        ('prefetcher_squash', (('uint64_t', 'ip'), ('uint64_t', 'instr_id')),),
         ('prefetcher_cache_fill', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
         ('prefetcher_cycle_operate',),
         ('prefetcher_final_stats',)
