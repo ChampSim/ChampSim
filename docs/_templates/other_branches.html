@@ -1,0 +1,17 @@
+<div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  {%- if versions %}
+  <ul>
+    {%- for branch in branches %}
+      {% if branch == current_version %}
+        <li><strong>{{ branch }}</strong></li>
+      {% elif branch in versions[pagename] %}
+        <li><a href="{{ pathto(up_prefix[branch] + "/" + pagename + ".html", 1) }}">{{ branch }}</a></li>
+      {% else %}
+        <li><a href="{{ pathto(up_prefix[branch] + "/index.html", 1) }}">{{ branch }}</a></li>
+      {% endif %}
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+</div>

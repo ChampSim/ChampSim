@@ -23,8 +23,9 @@
 #include <limits>
 #include <optional>
 
-#include "champsim_constants.h"
+#include "champsim.h"
 #include "channel.h"
+#include "chrono.h"
 #include "util/bits.h"
 #include "util/to_underlying.h"
 
@@ -40,8 +41,8 @@ namespace detail
 {
 struct cache_builder_base {
   std::string m_name{};
-  double m_freq_scale{1};
-  std::optional<uint64_t> m_size{};
+  chrono::picoseconds m_clock_period{250};
+  std::optional<champsim::data::bytes> m_size{};
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
   std::optional<uint32_t> m_ways{};
@@ -52,7 +53,7 @@ struct cache_builder_base {
   std::optional<uint64_t> m_latency{};
   std::optional<champsim::bandwidth::maximum_type> m_max_tag{};
   std::optional<champsim::bandwidth::maximum_type> m_max_fill{};
-  unsigned m_offset_bits{LOG2_BLOCK_SIZE};
+  champsim::data::bits m_offset_bits{LOG2_BLOCK_SIZE};
   bool m_pref_load{};
   bool m_wq_full_addr{};
   bool m_va_pref{};
@@ -90,37 +91,157 @@ class cache_builder : public detail::cache_builder_base
 public:
   cache_builder() = default;
 
+  /**
+   * Specify the name of the cache.
+   * This will be a unique identifier in the statistics.
+   */
   self_type& name(std::string name_);
-  self_type& frequency(double freq_scale_);
-  self_type& size(uint64_t size_);
+
+  /**
+   * Specify the clock period of the cache.
+   */
+  self_type& clock_period(champsim::chrono::picoseconds clock_period_);
+
+  /**
+   * Specify the size of the cache.
+   *
+   * If the number of sets or ways is not specified, this value can be used to derive them.
+   */
+  self_type& size(champsim::data::bytes size_);
+
+  /**
+   * Specify the logarithm of the cache size.
+   */
   self_type& log2_size(uint64_t log2_size_);
+
+  /**
+   * Specify the number of sets in the cache.
+   */
   self_type& sets(uint32_t sets_);
+
+  /**
+   * Specify the logarithm of the number of sets in the cache.
+   */
   self_type& log2_sets(uint32_t log2_sets_);
   self_type& sets_factor(double sets_factor_);
+
+  /**
+   * Specify the number of ways in the cache.
+   */
   self_type& ways(uint32_t ways_);
+
+  /**
+   * Specify the logarithm of the number of ways in the cache.
+   */
   self_type& log2_ways(uint32_t log2_ways_);
+
+  /**
+   * Specify the size of the internal prefetch queue.
+   */
   self_type& pq_size(uint32_t pq_size_);
+
+  /**
+   * Specify the number of MSHRs.
+   * If this is not specified, it will be derived from the number of sets, fill latency, and fill bandwidth.
+   */
   self_type& mshr_size(uint32_t mshr_size_);
+
+  /**
+   * Specify the latency of the cache, in cycles.
+   * If the hit latency and fill latency are not specified, this will be distributed evenly between them.
+   */
   self_type& latency(uint64_t lat_);
+
+  /**
+   * Specify the latency of the cache's tag check, in cycles.
+   */
   self_type& hit_latency(uint64_t hit_lat_);
+
+  /**
+   * Specify the latency of the cache fill operation, in cycles.
+   */
   self_type& fill_latency(uint64_t fill_lat_);
+
+  /**
+   * Specify the bandwidth of the cache's tag check.
+   */
   self_type& tag_bandwidth(champsim::bandwidth::maximum_type max_read_);
+
+  /**
+   * Specify the bandwidth of the cache fill.
+   */
   self_type& fill_bandwidth(champsim::bandwidth::maximum_type max_write_);
-  self_type& offset_bits(unsigned offset_bits_);
+
+  /**
+   * Specify the number of bits to be used as a block offset.
+   */
+  self_type& offset_bits(champsim::data::bits offset_bits_);
+
+  /**
+   * Specify the logarithm of the number of bits to be used as a block offset.
+   */
   self_type& log2_offset_bits(unsigned log2_offset_bits_);
+
+  /**
+   * Specify that prefetches should be issued with the same priority as loads.
+   */
   self_type& set_prefetch_as_load();
+
+  /**
+   * Specify that prefetches should be issued with lower priority than loads.
+   */
   self_type& reset_prefetch_as_load();
+
+  /**
+   * Specify that the write queue should check the full address (including the offset) when determining collisions.
+   */
   self_type& set_wq_checks_full_addr();
+
+  /**
+   * Specify that the write queue should ignore the offset bits when determining collisions.
+   */
   self_type& reset_wq_checks_full_addr();
+
+  /**
+   * Specify that prefetchers should operate in the virtual address space.
+   */
   self_type& set_virtual_prefetch();
+
+  /**
+   * Specify that prefetchers should operate in the physical address space.
+   */
   self_type& reset_virtual_prefetch();
+
+  /**
+   * Specify the ``access_type`` values that should activate the prefetcher.
+   */
   template <typename... Elems>
   self_type& prefetch_activate(Elems... pref_act_elems);
+
+  /**
+   * Specify the upper levels to this cache.
+   */
   self_type& upper_levels(std::vector<champsim::channel*>&& uls_);
+
+  /**
+   * Specify the lower level of the cache.
+   */
   self_type& lower_level(champsim::channel* ll_);
+
+  /**
+   * Specify the translator (TLB) for this cache.
+   */
   self_type& lower_translate(champsim::channel* lt_);
+
+  /**
+   * Specify the cache prefetcher.
+   */
   template <typename... Ps>
   cache_builder<cache_builder_module_type_holder<Ps...>, R, S> prefetcher();
+
+  /**
+   * Specify the cache replacement policy.
+   */
   template <typename... Rs>
   cache_builder<P, cache_builder_module_type_holder<Rs...>, S> replacement();
   template <typename... Ss>
@@ -135,7 +256,7 @@ auto champsim::cache_builder<P, R, S>::get_num_sets() const -> uint32_t
   if (m_sets.has_value())
     value = m_sets.value();
   else if (m_size.has_value() && m_ways.has_value())
-    value = static_cast<uint32_t>(m_size.value() / (m_ways.value() * (1 << m_offset_bits))); // casting the result of division
+    value = static_cast<uint32_t>(m_size.value().count() / (m_ways.value() * (1 << champsim::to_underlying(m_offset_bits)))); // casting the result of division
   else
     value = scaled_by_ul_size(m_sets_factor);
   return champsim::next_pow2(value);
@@ -147,7 +268,7 @@ auto champsim::cache_builder<P, R, S>::get_num_ways() const -> uint32_t
   if (m_ways.has_value())
     return m_ways.value();
   if (m_size.has_value())
-    return static_cast<uint32_t>(m_size.value() / (get_num_sets() * (1 << m_offset_bits))); // casting the result of division
+    return static_cast<uint32_t>(m_size.value().count() / (get_num_sets() * (1 << champsim::to_underlying(m_offset_bits)))); // casting the result of division
   return 1;
 }
 
@@ -212,14 +333,14 @@ auto champsim::cache_builder<P, R, S>::name(std::string name_) -> self_type&
 }
 
 template <typename P, typename R, typename S>
-auto champsim::cache_builder<P, R, S>::frequency(double freq_scale_) -> self_type&
+auto champsim::cache_builder<P, R, S>::clock_period(champsim::chrono::picoseconds clock_period_) -> self_type&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 
 template <typename P, typename R, typename S>
-auto champsim::cache_builder<P, R, S>::size(uint64_t size_) -> self_type&
+auto champsim::cache_builder<P, R, S>::size(champsim::data::bytes size_) -> self_type&
 {
   m_size = size_;
   return *this;
@@ -228,7 +349,7 @@ auto champsim::cache_builder<P, R, S>::size(uint64_t size_) -> self_type&
 template <typename P, typename R, typename S>
 auto champsim::cache_builder<P, R, S>::log2_size(uint64_t log2_size_) -> self_type&
 {
-  m_size = 1 << log2_size_;
+  m_size = champsim::data::bytes{1 << log2_size_};
   return *this;
 }
 
@@ -317,7 +438,7 @@ auto champsim::cache_builder<P, R, S>::fill_bandwidth(champsim::bandwidth::maxim
 }
 
 template <typename P, typename R, typename S>
-auto champsim::cache_builder<P, R, S>::offset_bits(unsigned offset_bits_) -> self_type&
+auto champsim::cache_builder<P, R, S>::offset_bits(champsim::data::bits offset_bits_) -> self_type&
 {
   m_offset_bits = offset_bits_;
   return *this;
@@ -326,8 +447,7 @@ auto champsim::cache_builder<P, R, S>::offset_bits(unsigned offset_bits_) -> sel
 template <typename P, typename R, typename S>
 auto champsim::cache_builder<P, R, S>::log2_offset_bits(unsigned log2_offset_bits_) -> self_type&
 {
-  m_offset_bits = 1 << log2_offset_bits_;
-  return *this;
+  return offset_bits(champsim::data::bits{1ull << log2_offset_bits_});
 }
 
 template <typename P, typename R, typename S>

@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 
-#include "champsim_constants.h"
 #include "dram_controller.h"
 #include "ptw.h"
 #include "vmem.h"
@@ -13,12 +12,13 @@ SCENARIO("The page table steps have correct offsets") {
   auto level = GENERATE(as<unsigned>{}, 1,2,3,4);
   GIVEN("A 5-level virtual memory") {
     constexpr std::size_t levels = 5;
-    MEMORY_CONTROLLER dram{1, 3200, 12.5, 12.5, 12.5, 7.5, {}};
-    VirtualMemory vmem{1<<12, levels, 200, dram};
+    MEMORY_CONTROLLER dram{champsim::chrono::picoseconds{3200}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{12500}, champsim::chrono::picoseconds{7500}, {}, 64, 64, 1, champsim::data::bytes{1}, 1, 1, 1, 1};
+    VirtualMemory vmem{champsim::data::bytes{1<<12}, levels, champsim::chrono::nanoseconds{640}, dram};
     do_nothing_MRC mock_ll;
     to_rq_MRP mock_ul;
     PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
       .name("603-uut-"+std::to_string(level))
+      .clock_period(champsim::chrono::picoseconds{3200})
       //.rq_size(16)
       //.tag_bandwidth(2)
       //.fill_bandwidth(2)
@@ -38,7 +38,7 @@ SCENARIO("The page table steps have correct offsets") {
     uut.begin_phase();
 
     //uint64_t addr = (0xffff'ffff'ffe0'0000 | ((3*(level+1)) << LOG2_PAGE_SIZE)) << (level * 9);
-    uint64_t addr = 0x0040'0200'c040'1000; // 0x4, 0x3, 0x2, 0x1
+    champsim::address addr{0x0040'0200'c040'1000}; // 0x4, 0x3, 0x2, 0x1
 
     WHEN("The PTW receives a request") {
       decltype(mock_ul)::request_type test;
@@ -54,8 +54,9 @@ SCENARIO("The page table steps have correct offsets") {
           elem->_operate();
 
       THEN("The " + std::to_string(level) + "th request has the correct offset") {
+        using namespace champsim::data::data_literals;
         REQUIRE(mock_ll.packet_count() == levels);
-        REQUIRE((mock_ll.addresses.at(levels-level) & champsim::bitmask(12)) == level * PTE_BYTES);
+        REQUIRE(mock_ll.addresses.at(levels-level).slice_lower(12_b).to<std::size_t>() == level * pte_entry::byte_multiple);
       }
     }
   }

@@ -81,6 +81,6 @@ if __name__ == '__main__':
     with config.filewrite.FileWriter(bindir_name, objdir_name, verbose=args.verbose) as wr:
         for c in parsed_configs:
             wr.write_files(c)
-        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'), omit_main=True)
+        wr.write_files(parsed_test, bindir_name=os.path.join(test_root, 'bin'), srcdir_names=[os.path.join(test_root, 'cpp', 'src')], objdir_name=os.path.join(objdir_name, 'test'))
 
 # vim: set filetype=python:

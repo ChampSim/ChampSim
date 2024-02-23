@@ -22,11 +22,8 @@
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
 #include "../state_model/weak/weak.h"
-#include "cache.h"
 #include "cache_builder.h"
 #include "core_builder.h"
-#include "ooo_cpu.h"
-#include "ptw.h"
 #include "ptw_builder.h"
 
 namespace champsim::defaults
@@ -64,7 +61,7 @@ const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_
                              .pq_size(32)
                              .hit_latency(3)
                              .fill_latency(1)
-                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .offset_bits(champsim::data::bits{LOG2_BLOCK_SIZE})
                              .reset_prefetch_as_load()
                              .set_virtual_prefetch()
                              .set_wq_checks_full_addr()
@@ -76,7 +73,7 @@ const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_
                              .pq_size(8)
                              .hit_latency(4)
                              .fill_latency(1)
-                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .offset_bits(champsim::data::bits{LOG2_BLOCK_SIZE})
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .set_wq_checks_full_addr()
@@ -88,7 +85,7 @@ const auto default_l2c = champsim::cache_builder<champsim::cache_builder_module_
                              .pq_size(16)
                              .hit_latency(9)
                              .fill_latency(1)
-                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .offset_bits(champsim::data::bits{LOG2_BLOCK_SIZE})
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()
@@ -100,7 +97,7 @@ const auto default_itlb = champsim::cache_builder<champsim::cache_builder_module
                               .pq_size(0)
                               .hit_latency(1)
                               .fill_latency(1)
-                              .offset_bits(LOG2_PAGE_SIZE)
+                              .offset_bits(champsim::data::bits{LOG2_PAGE_SIZE})
                               .reset_prefetch_as_load()
                               .set_virtual_prefetch()
                               .set_wq_checks_full_addr()
@@ -113,7 +110,7 @@ const auto default_dtlb = champsim::cache_builder<champsim::cache_builder_module
                               .mshr_size(8)
                               .hit_latency(1)
                               .fill_latency(1)
-                              .offset_bits(LOG2_PAGE_SIZE)
+                              .offset_bits(champsim::data::bits{LOG2_PAGE_SIZE})
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
                               .set_wq_checks_full_addr()
@@ -125,7 +122,7 @@ const auto default_stlb = champsim::cache_builder<champsim::cache_builder_module
                               .pq_size(0)
                               .hit_latency(7)
                               .fill_latency(1)
-                              .offset_bits(LOG2_PAGE_SIZE)
+                              .offset_bits(champsim::data::bits{LOG2_PAGE_SIZE})
                               .reset_prefetch_as_load()
                               .reset_virtual_prefetch()
                               .reset_wq_checks_full_addr()
@@ -138,7 +135,7 @@ const auto default_llc = champsim::cache_builder<champsim::cache_builder_module_
                              .pq_size(32)
                              .hit_latency(19)
                              .fill_latency(1)
-                             .offset_bits(LOG2_BLOCK_SIZE)
+                             .offset_bits(champsim::data::bits{LOG2_BLOCK_SIZE})
                              .reset_prefetch_as_load()
                              .reset_virtual_prefetch()
                              .reset_wq_checks_full_addr()

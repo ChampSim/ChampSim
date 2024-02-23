@@ -15,7 +15,8 @@ struct weak : champsim::modules::state_model {
 
   explicit weak(CACHE* cache);
   weak(CACHE* cache, long sets, long ways);
-
+  bool state_model_handle_request(champsim::channel::request_type req);
+  bool state_model_handle_response(champsim::channel::response_type resp);
 };
 
 #endif

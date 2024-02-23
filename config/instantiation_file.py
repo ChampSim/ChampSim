@@ -25,13 +25,12 @@ from . import cxx
 def channel_name(*, lower, upper):
     return f'{upper}_to_{lower}_channel'
 
-pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{{frequency}, {io_freq}, {tRP}, {tRCD}, {tCAS}, {turn_around_time}, {{{_ulptr}}}}};'
-vmem_fmtstr = 'VirtualMemory vmem{{{pte_page_size}, {num_levels}, {minor_fault_penalty}, {dram_name}}};'
+pmem_fmtstr = 'MEMORY_CONTROLLER {name}{{champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}}};'
+vmem_fmtstr = 'VirtualMemory vmem{{champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}}};'
 
-queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {iq_size}, {_offset_bits}, {_queue_check_full_addr:b}}};'
+queue_fmtstr = 'champsim::channel {name}{{{rq_size}, {pq_size}, {wq_size}, {iq_size},champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}}};'
 
 core_builder_parts = {
-    'frequency': '.frequency({frequency})',
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
     'decode_buffer_size': '.decode_buffer_size({decode_buffer_size})',
     'dispatch_buffer_size': '.dispatch_buffer_size({dispatch_buffer_size})',
@@ -58,7 +57,8 @@ core_builder_parts = {
     'L1D': ['.l1d_bandwidth({L1D}.MAX_TAG)', '.data_queues(&{^data_queues})'],
     '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
     '_btb_data': '.btb<{^btb_string}>()',
-    '_index': '.index({_index})'
+    '_index': '.index({_index})',
+    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 dib_builder_parts = {
@@ -68,9 +68,7 @@ dib_builder_parts = {
 }
 
 cache_builder_parts = {
-    'name': '.name("{name}")',
-    'frequency': '.frequency({frequency})',
-    'size': '.size({size})',
+    'size': '.size(champsim::data::bytes{{{size}}})',
     'log2_size': '.log2_size({log2_size})',
     'sets': '.sets({sets})',
     'log2_sets': '.log2_sets({log2_sets})',
@@ -84,13 +82,14 @@ cache_builder_parts = {
     'fill_latency': '.fill_latency({fill_latency})',
     'max_tag_check': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_tag_check}}})',
     'max_fill': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_fill}}})',
-    '_offset_bits': '.offset_bits({_offset_bits})',
+    '_offset_bits': '.offset_bits(champsim::data::bits{{{_offset_bits}}})',
     'prefetch_activate': '.prefetch_activate({^prefetch_activate_string})',
     '_replacement_data': '.replacement<{^replacement_string}>()',
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
     '_state_model_data': '.state_model<{^state_model_string}>()',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
-    'lower_level': '.lower_level(&{^lower_level_queues})'
+    'lower_level': '.lower_level(&{^lower_level_queues})',
+    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 ptw_builder_parts = {
@@ -99,7 +98,8 @@ ptw_builder_parts = {
     'lower_level': '.lower_level(&{^lower_level_queues})',
     'mshr_size': '.mshr_size({mshr_size})',
     'max_read': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_read}}})',
-    'max_write': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_write}}})'
+    'max_write': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_write}}})',
+    '^clock_period': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
 def vector_string(iterable):
@@ -130,7 +130,8 @@ def get_cpu_builder(cpu):
 
 def get_cache_builder(elem, upper_levels):
     required_parts = [
-        '.upper_levels({{{^upper_levels_string}}})'
+        '.name("{name}")',
+        '.upper_levels({{{^upper_levels_string}}})',
     ]
 
     local_cache_builder_parts = {
@@ -143,6 +144,7 @@ def get_cache_builder(elem, upper_levels):
     }
 
     local_params = {
+        '^clock_period': int(1000000/elem['frequency']),
         '^defaults': elem.get('_defaults', ''),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[elem["name"]]["upper_channels"]),
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
@@ -163,6 +165,7 @@ def get_cache_builder(elem, upper_levels):
 
 def get_ptw_builder(ptw, upper_levels):
     required_parts = [
+        '.name("{name}")',
         '.upper_levels({{{^upper_levels_string}}})',
         '.virtual_memory(&vmem)'
     ]
@@ -175,6 +178,7 @@ def get_ptw_builder(ptw, upper_levels):
     }
 
     local_params = {
+        '^clock_period': int(1000000/ptw['frequency']),
         '^upper_levels_string': vector_string("&"+v for v in upper_levels[ptw["name"]]["upper_channels"]),
         '^lower_level_queues': channel_name(upper=ptw.get('name'), lower=ptw.get('lower_level'))
     }
@@ -258,29 +262,15 @@ def check_header_compiles_for_class(clazz, file):
     ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     include_dir = os.path.join(champsim_root, 'inc')
+    vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
+    _, triplet_dirs, _ = next(os.walk(vcpkg_parent))
+    triplet_dir = os.path.join(vcpkg_parent, next(filter(lambda x: x != 'vcpkg', triplet_dirs), None), 'include')
 
     with tempfile.TemporaryDirectory() as dtemp:
         args = (
             f'-I{include_dir}',
+            f'-I{triplet_dir}',
             f'-I{dtemp}',
-
-            # patch constants
-            '-DBLOCK_SIZE=64',
-            '-DPAGE_SIZE=4096',
-            '-DSTAT_PRINTING_PERIOD=1000000',
-            '-DNUM_CPUS=1',
-            '-DLOG2_BLOCK_SIZE=6',
-            '-DLOG2_PAGE_SIZE=12',
-
-            '-DDRAM_IO_FREQ=3200',
-            '-DDRAM_CHANNELS=1',
-            '-DDRAM_RANKS=1',
-            '-DDRAM_BANKS=1',
-            '-DDRAM_ROWS=65536',
-            '-DDRAM_COLUMNS=16',
-            '-DDRAM_CHANNEL_WIDTH=8',
-            '-DDRAM_WQ_SIZE=8',
-            '-DDRAM_RQ_SIZE=8'
         )
 
         # touch this file
@@ -345,7 +335,7 @@ def get_queue_info(upper_levels, decoration):
     queue_info = util.chain(upper_levels, decoration)
     return list(itertools.chain(*(util.explode(v, 'upper_channels', 'name') for v in queue_info.values())))
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, env):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -368,13 +358,29 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     yield '#include "defaults.hpp"'
     yield '#include "vmem.h"'
+    yield '#include "chrono.h"'
     yield 'namespace champsim::configured {'
 
+    # Get fastest clock period in picoseconds
+    global_clock_period = int(1000000/max(x['frequency'] for x in itertools.chain(cores, caches, ptws, (pmem,))))
+
     struct_body = itertools.chain(
+        (
+            f'constexpr static std::size_t num_cpus = {len(cores)};',
+            f'constexpr static std::size_t block_size = {env["block_size"]};',
+            f'constexpr static std::size_t page_size = {env["page_size"]};'
+        ),
         (queue_fmtstr.format(**v) for v in get_queue_info(upper_levels, decorate_queues(caches, ptws, pmem))),
 
-        (pmem_fmtstr.format(_ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']), **pmem),),
-        (vmem_fmtstr.format(dram_name=pmem['name'], **vmem),),
+        (pmem_fmtstr.format(
+            clock_period=int(1000000/pmem['frequency']),
+            _tRP=int(1000*pmem['tRP']),
+            _tRCD=int(1000*pmem['tRCD']),
+            _tCAS=int(1000*pmem['tCAS']),
+            _turn_around_time=int(1000*pmem['turn_around_time']),
+            _ulptr=vector_string('&'+v for v in upper_levels[pmem['name']]['upper_channels']),
+            **pmem),),
+        (vmem_fmtstr.format(dram_name=pmem['name'], clock_period=global_clock_period, **vmem),),
 
         *map(functools.partial(get_ptw_builder, upper_levels=upper_levels), ptws),
         *map(functools.partial(get_cache_builder, upper_levels=upper_levels), caches),

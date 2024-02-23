@@ -21,7 +21,6 @@ import json
 
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
-from .constants_file import get_constants_file
 from . import modules
 from . import util
 
@@ -124,11 +123,6 @@ class Fragment:
     Examines the given config and prepares to write the needed files.
 
     Programs may use this class for fine-grained control of when and how files are written.
-
-    :param parsed_config: the result of parsing a configuration file
-    :param bindir_name: the directory in which to place the binaries
-    :param srcdir_name: the directory to search for source files
-    :param objdir_name: the directory to place object files
     '''
     @staticmethod
     def __part_joiner(iterable):
@@ -155,8 +149,15 @@ class Fragment:
         return Fragment(fileparts)
 
     @staticmethod
-    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False, verbose=False):
-        ''' Produce a sequence of Fragments from the result of parse.parse_config(). '''
+    def from_config(parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, verbose=False):
+        '''
+        Produce a sequence of Fragments from the result of parse.parse_config().
+
+        :param parsed_config: the result of parsing a configuration file
+        :param bindir_name: the directory in which to place the binaries
+        :param srcdir_name: the directory to search for source files
+        :param objdir_name: the directory to place object files
+        '''
         champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         bindir_name = bindir_name or os.path.join(champsim_root, 'bin')
         srcdir_names = srcdir_names or []
@@ -197,10 +198,7 @@ class Fragment:
 
         fileparts = [
             # Instantiation file
-            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(**elements))),
-
-            # Constants header
-            (os.path.join(inc_dir, 'champsim_constants.h'), cxx_file(get_constants_file(config_file, elements['pmem']))),
+            (os.path.join(inc_dir, 'core_inst.inc'), cxx_file(get_instantiation_lines(env=config_file, **elements))),
 
             # Module name mangling
             *generate_legacy_module_information(inc_dir, legacy_module_info),
@@ -208,7 +206,7 @@ class Fragment:
             # Makefile generation
             (makefile_file_name, (
                 *make_generated_warning(),
-                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info, omit_main)
+                *get_makefile_lines(unique_obj_dir, build_id, executable, makefile_sources, joined_module_info)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
@@ -226,45 +224,54 @@ class Fragment:
 
 class FileWriter:
     '''
-    This class maintains the state of one or more configurations to be written
+    This class maintains the state of one or more configurations to be written.
 
     This class provides a context manager interface over a set of Fragments, and is more convenient for general use.
+
+    :param bindir_name: The default directory for binaries if none is given to write_files().
+    :param objdir_name: The default directory for object files if none is given to write_files().
     '''
     def __init__(self, bindir_name=None, objdir_name=None, verbose=False):
-        '''
-        param bindir_name: The default directory for binaries if none is given to write_files().
-        param objdir_name: The default directory for object files if none is given to write_files().
-        '''
         self.fragments = []
         self.bindir_name = bindir_name
         self.objdir_name = objdir_name
         self.verbose = verbose
 
     def __enter__(self):
+        ''' This function forms one half of the context manager interface '''
         self.fragments = []
         return self
 
-    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None, omit_main=False):
-        ''' Apply defaults to get_file_lines() '''
+    def write_files(self, parsed_config, bindir_name=None, srcdir_names=None, objdir_name=None):
+        '''
+        Accumulate the results of parsing a configuration into the File Writer.
+        Parameters passed here will override parameters given in the constructor
+
+        :param parsed_config: the result of parsing a configuration file
+        :param bindir_name: the directory in which to place the binaries
+        :param srcdir_name: the directory to search for source files
+        :param objdir_name: the directory to place object files
+        '''
         self.fragments.append(Fragment.from_config(
             parsed_config,
             bindir_name or self.bindir_name,
             srcdir_names or [],
             os.path.abspath(objdir_name or self.objdir_name),
-            omit_main,
             verbose=self.verbose
         ))
 
     @staticmethod
     def write_fragments(*fragments):
-        ''' Write out a set of prepared fragments '''
+        ''' Write out a set of prepared fragments. '''
         if not fragments:
             return
         Fragment.join(*fragments).write()
 
     def finish(self):
+        ''' Write all accumulated configurations to their files. '''
         FileWriter.write_fragments(*self.fragments)
 
     def __exit__(self, exc_type, exc_value, traceback):
+        ''' This function terminates the context manager and calls :meth:`finish()`. '''
         if exc_type is None:
             self.finish()

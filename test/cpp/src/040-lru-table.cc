@@ -1,17 +1,22 @@
 #include <catch.hpp>
 #include "util/lru_table.h"
 
+#include "champsim.h"
+#include "address.h"
+
 #include <type_traits>
 
 namespace {
+  template <typename T>
   struct strong_type
   {
-    unsigned int value;
+    T value;
   };
 
   struct strong_type_getter
   {
-    auto operator()(const strong_type &elem) const
+    template <typename T>
+    auto operator()(const strong_type<T> &elem) const
     {
       return elem.value;
     }
@@ -34,7 +39,7 @@ namespace {
 }
 
 TEMPLATE_TEST_CASE("An lru_table is copiable and moveable", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   STATIC_REQUIRE(std::is_copy_constructible_v<TestType>);
   STATIC_REQUIRE(std::is_move_constructible_v<TestType>);
   STATIC_REQUIRE(std::is_copy_assignable_v<TestType>);
@@ -42,7 +47,7 @@ TEMPLATE_TEST_CASE("An lru_table is copiable and moveable", "",
 }
 
 TEMPLATE_TEST_CASE("An empty lru_table misses", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("An empty lru_table") {
     TestType uut{1, 1};
 
@@ -57,7 +62,7 @@ TEMPLATE_TEST_CASE("An empty lru_table misses", "",
 }
 
 TEMPLATE_TEST_CASE("A lru_table can hit", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
@@ -75,7 +80,7 @@ TEMPLATE_TEST_CASE("A lru_table can hit", "",
 }
 
 TEMPLATE_TEST_CASE("A lru_table can miss", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
@@ -91,8 +96,41 @@ TEMPLATE_TEST_CASE("A lru_table can miss", "",
   }
 }
 
+TEST_CASE("A lru_table of addresses can hit") {
+  GIVEN("A lru_table with one element") {
+    constexpr unsigned int data  = 0xcafebabe;
+    champsim::lru_table<::strong_type<champsim::address>, ::strong_type_getter, ::strong_type_getter> uut{1, 1};
+    uut.fill({champsim::address{data}});
+
+    WHEN("We check for a hit") {
+      auto result = uut.check_hit({champsim::address{data}});
+
+      THEN("The result matches the filled value") {
+        REQUIRE(result.has_value());
+        REQUIRE(result.value().value == champsim::address{data});
+      }
+    }
+  }
+}
+
+TEST_CASE("A lru_table of addresses can miss") {
+  GIVEN("A lru_table with one element") {
+    constexpr unsigned int data  = 0xcafebabe;
+    champsim::lru_table<::strong_type<champsim::address>, ::strong_type_getter, ::strong_type_getter> uut{1, 1};
+    uut.fill({champsim::address{data}});
+
+    WHEN("We check for a hit") {
+      auto result = uut.check_hit({champsim::address{data-1}});
+
+      THEN("The result is a miss") {
+        REQUIRE_FALSE(result.has_value());
+      }
+    }
+  }
+}
+
 TEMPLATE_TEST_CASE("A lru_table replaces LRU", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with two elements") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 2};
@@ -126,7 +164,7 @@ TEMPLATE_TEST_CASE("A lru_table replaces LRU", "",
 }
 
 TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with two elements") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{2, 1};
@@ -190,7 +228,7 @@ TEMPLATE_TEST_CASE("A lru_table exhibits set-associative behavior", "",
 }
 
 TEMPLATE_TEST_CASE("A lru_table misses after invalidation", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};
@@ -208,7 +246,7 @@ TEMPLATE_TEST_CASE("A lru_table misses after invalidation", "",
 }
 
 TEMPLATE_TEST_CASE("A lru_table returns the evicted block on invalidation", "",
-    (champsim::lru_table<::strong_type, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
+    (champsim::lru_table<::strong_type<unsigned int>, ::strong_type_getter, ::strong_type_getter>), champsim::lru_table<::type_with_getters>) {
   GIVEN("A lru_table with one element") {
     constexpr unsigned int data  = 0xcafebabe;
     TestType uut{1, 1};

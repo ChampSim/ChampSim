@@ -4,3 +4,4 @@
 -Wextra
 -Wshadow
 -Wpedantic
+-Wconversion

@@ -5,11 +5,15 @@
 #include <random>
 #include <utility>
 
+#include "champsim.h"
+
 drrip::drrip(CACHE* cache) : replacement(cache), NUM_SET(cache->NUM_SET), NUM_WAY(cache->NUM_WAY), rrpv(static_cast<std::size_t>(NUM_SET * NUM_WAY))
 {
   // randomly selected sampler sets
+  std::size_t TOTAL_SDM_SETS = NUM_CPUS * NUM_POLICY * SDM_SIZE;
   std::generate_n(std::back_inserter(rand_sets), TOTAL_SDM_SETS, std::knuth_b{1});
   std::sort(std::begin(rand_sets), std::end(rand_sets));
+  std::fill_n(std::back_inserter(PSEL), NUM_CPUS, typename decltype(PSEL)::value_type{0});
 }
 
 unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::size_t>(set * NUM_WAY + way)); }
@@ -28,8 +32,8 @@ void drrip::update_bip(long set, long way)
 void drrip::update_srrip(long set, long way) { get_rrpv(set, way) = maxRRPV - 1; }
 
 // called on every cache hit and cache fill
-void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, access_type type,
-                                     uint8_t hit)
+void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+                                     champsim::address victim_addr, access_type type, uint8_t hit)
 {
   // do not update replacement state for writebacks
   if (access_type{type} == access_type::WRITE) {
@@ -65,8 +69,8 @@ void drrip::update_replacement_state(uint32_t triggering_cpu, long set, long way
 }
 
 // find replacement victim
-long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr,
-                        access_type type)
+long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
+                        champsim::address full_addr, access_type type)
 {
   // look for the maxRRPV line
   auto begin = std::next(std::begin(rrpv), set * NUM_WAY);

@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("An inclusive block invalidates the upper levels on eviction") {
   GIVEN("Two cache levels with a single inclusive filled block") {
@@ -53,7 +52,7 @@ SCENARIO("An inclusive block invalidates the upper levels on eviction") {
     // Create a test packet
     static uint64_t id = 1;
     decltype(mock_ul_seed)::request_type seed;
-    seed.address = 0xdeadbeef;
+    seed.address = champsim::address{0xdeadbeef};
     seed.cpu = 0;
     seed.instr_id = id++;
     seed.clusivity = champsim::inclusivity::inclusive;
@@ -71,7 +70,7 @@ SCENARIO("An inclusive block invalidates the upper levels on eviction") {
 
     WHEN("The inclusive block is replaced") {
       decltype(mock_ul_test)::request_type evictor;
-      evictor.address = 0xcafebabe;
+      evictor.address = champsim::address{0xcafebabe};
       evictor.cpu = 0;
       evictor.instr_id = id++;
 

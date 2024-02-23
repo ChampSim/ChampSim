@@ -18,7 +18,6 @@
 #define CHANNEL_H
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <limits>
@@ -26,8 +25,8 @@
 #include <vector>
 
 #include "access_type.h"
-
-struct ooo_model_instr;
+#include "address.h"
+#include "champsim.h"
 
 namespace champsim
 {
@@ -67,26 +66,26 @@ class channel
     uint32_t pf_metadata = 0;
     uint32_t cpu = std::numeric_limits<uint32_t>::max();
 
-    uint64_t address = 0;
-    uint64_t v_address = 0;
-    uint64_t data = 0;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
     uint64_t instr_id = 0;
-    uint64_t ip = 0;
+    champsim::address ip{};
 
     std::vector<uint64_t> instr_depend_on_me{};
   };
 
   struct response {
-    uint64_t address;
-    uint64_t v_address;
-    uint64_t data;
+    champsim::address address{};
+    champsim::address v_address{};
+    champsim::address data{};
     uint32_t pf_metadata = 0;
 
     access_type type{access_type::ACK};
 
     std::vector<uint64_t> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<uint64_t> deps)
+    response(champsim::address addr, champsim::address v_addr, champsim::address data_, uint32_t pf_meta, std::vector<uint64_t> deps)
         : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
     {
     }
@@ -104,7 +103,7 @@ class channel
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t WQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t IQ_SIZE = std::numeric_limits<std::size_t>::max();
-  unsigned OFFSET_BITS = 0;
+  champsim::data::bits OFFSET_BITS{};
   bool match_offset_bits = false;
 
 public:
@@ -120,7 +119,7 @@ public:
   stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
-  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t iq_size, unsigned offset_bits, bool match_offset);
+  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, std::size_t iq_size, champsim::data::bits offset_bits, bool match_offset);
 
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);

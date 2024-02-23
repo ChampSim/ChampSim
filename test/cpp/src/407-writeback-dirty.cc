@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("Blocks that have been written are marked dirty") {
   GIVEN("An empty cache") {
@@ -37,7 +36,7 @@ SCENARIO("Blocks that have been written are marked dirty") {
     WHEN("A packet is sent") {
       uint64_t id = 1;
       decltype(mock_ul_seed)::request_type seed_a;
-      seed_a.address = 0xdeadbeef;
+      seed_a.address = champsim::address{0xdeadbeef};
       seed_a.cpu = 0;
       seed_a.type = access_type::WRITE;
       seed_a.instr_id = id++;
@@ -71,7 +70,7 @@ SCENARIO("Blocks that have been written are marked dirty") {
 
         AND_WHEN("A packet with a different address is sent") {
           decltype(mock_ul_test)::request_type test;
-          test.address = 0xcafebabe;
+          test.address = champsim::address{0xcafebabe};
           test.cpu = 0;
           test.type = access_type::LOAD;
           test.instr_id = id++;
@@ -92,7 +91,7 @@ SCENARIO("Blocks that have been written are marked dirty") {
               elem->_operate();
 
           THEN("It takes exactly the specified cycles to return") {
-            REQUIRE(mock_ul_test.packets.back().return_time == mock_ul_test.packets.back().issue_time + (miss_latency + hit_latency + 1));
+            mock_ul_test.packets.back().assert_returned(miss_latency + hit_latency + 1, 1);
           }
 
           THEN("The first block is evicted") {

@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 #include "modules.h"
 
 #include <map>
@@ -18,13 +17,13 @@ struct metadata_collector : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, bool, access_type, uint32_t metadata_in) {
+  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in) {
     auto it = test::metadata_operate_collector.try_emplace(intern_);
     it.first->second.push_back(metadata_in);
     return metadata_in;
   }
 
-  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t metadata_in)
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t metadata_in)
   {
     auto it = test::metadata_fill_collector.try_emplace(intern_);
     it.first->second.push_back(metadata_in);
@@ -37,8 +36,8 @@ struct metadata_fill_emitter : champsim::modules::prefetcher
 {
   using prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t, uint64_t, uint8_t, access_type, uint32_t metadata_in) { return metadata_in; }
-  uint32_t prefetcher_cache_fill(uint64_t, long, long, uint8_t, uint64_t, uint32_t) { return to_emit; }
+  uint32_t prefetcher_cache_operate(champsim::address, champsim::address, uint8_t, bool, access_type, uint32_t metadata_in) { return metadata_in; }
+  uint32_t prefetcher_cache_fill(champsim::address, long, long, uint8_t, champsim::address, uint32_t) { return to_emit; }
 };
 
 SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level") {
@@ -79,7 +78,7 @@ SCENARIO("Prefetch metadata from an issued prefetch is seen in the lower level")
       test::metadata_operate_collector.insert_or_assign(&lower, std::vector<uint32_t>{});
 
       // Request a prefetch
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
       constexpr uint32_t seed_metadata = 0xcafebabe;
       auto seed_result = upper.prefetch_line(seed_addr, true, seed_metadata);
       REQUIRE(seed_result);
@@ -132,7 +131,7 @@ SCENARIO("Prefetch metadata from an filled block is seen in the upper level") {
     }
 
     WHEN("The upper level experiences a miss and the lower level emits metadata on the fill") {
-      constexpr uint64_t seed_addr = 0xdeadbeef;
+      champsim::address seed_addr{0xdeadbeef};
 
       test::metadata_fill_collector.insert_or_assign(&upper, std::vector<uint32_t>{});
 

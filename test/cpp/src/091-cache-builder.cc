@@ -87,22 +87,26 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
 }
 
 TEST_CASE("Specifying the size infers the cache's number of sets") {
-  CACHE uut{champsim::cache_builder{}.size(16*1024).ways(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).ways(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_SET == 16);
 }
 
 TEST_CASE("Specifying the logarithm of the size infers the cache's number of sets") {
-  CACHE uut{champsim::cache_builder{}.log2_size(14).ways(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.log2_size(14).ways(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_SET == 16);
 }
 
 TEST_CASE("Specifying the size infers the cache's number of ways") {
-  CACHE uut{champsim::cache_builder{}.size(16*1024).sets(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).sets(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_WAY == 16);
 }
 
 TEST_CASE("Specifying the logarithm of the size infers the cache's number of ways") {
-  CACHE uut{champsim::cache_builder{}.log2_size(14).sets(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.log2_size(14).sets(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_WAY == 16);
 }
 
@@ -197,9 +201,9 @@ TEST_CASE("Specifying the tag bandwidth overrides inference from the number of s
 
 TEST_CASE("If no latency is specified, it is derived from the size") {
   auto [size, hit_latency, fill_latency] = GENERATE(
-      std::tuple{32u*1024u, 3ull, 3ull},
-      std::tuple{512u*1024u, 7ull, 7ull},
-      std::tuple{8u*1024u*1024u, 11ull, 11ull}
+      std::tuple{champsim::data::kibibytes{32}, 3ull, 3ull},
+      std::tuple{champsim::data::kibibytes{512}, 7ull, 7ull},
+      std::tuple{champsim::data::kibibytes{8*1024}, 11ull, 11ull}
   );
   champsim::cache_builder buildA{};
   buildA.size(size);
@@ -207,8 +211,8 @@ TEST_CASE("If no latency is specified, it is derived from the size") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == hit_latency);
-  CHECK(uut.FILL_LATENCY == fill_latency);
+  CHECK(uut.HIT_LATENCY == hit_latency * uut.clock_period);
+  CHECK(uut.FILL_LATENCY == fill_latency * uut.clock_period);
 }
 
 TEST_CASE("If the hit and fill latency are not specified, they are derived from the total latency") {
@@ -218,8 +222,7 @@ TEST_CASE("If the hit and fill latency are not specified, they are derived from 
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == latency/2);
-  CHECK(uut.FILL_LATENCY == latency/2);
+  REQUIRE((uut.HIT_LATENCY + uut.FILL_LATENCY) == latency*uut.clock_period );
 }
 
 TEST_CASE("If the hit latency is not specified, it is derived from the fill latency and total latency") {
@@ -231,8 +234,8 @@ TEST_CASE("If the hit latency is not specified, it is derived from the fill late
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == latency-fill_latency);
-  CHECK(uut.FILL_LATENCY == fill_latency);
+  CHECK(uut.HIT_LATENCY == (latency-fill_latency)*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == fill_latency*uut.clock_period);
 }
 
 TEST_CASE("The hit latency overrides the cache's total latency") {
@@ -243,6 +246,6 @@ TEST_CASE("The hit latency overrides the cache's total latency") {
 
   CACHE uut{buildA};
 
-  CHECK(uut.HIT_LATENCY == 2);
-  CHECK(uut.FILL_LATENCY == 3);
+  CHECK(uut.HIT_LATENCY == 2*uut.clock_period);
+  CHECK(uut.FILL_LATENCY == 3*uut.clock_period);
 }

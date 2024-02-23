@@ -9,11 +9,13 @@
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
-struct hashed_perceptron : champsim::modules::branch_predictor {
-  constexpr static std::size_t NTABLES = 16;                                                // this many tables
-  constexpr static int MAXHIST = 232;                                                       // maximum history length
-  constexpr static int MINHIST = 3;                                                         // minimum history length (for table 1; table 0 is biases)
-  constexpr static std::size_t TABLE_SIZE = 1 << 12;                                        // 12-bit indices for the tables
+class hashed_perceptron : champsim::modules::branch_predictor
+{
+  constexpr static std::size_t NTABLES = 16;         // this many tables
+  constexpr static int MAXHIST = 232;                // maximum history length
+  constexpr static int MINHIST = 3;                  // minimum history length (for table 1; table 0 is biases)
+  constexpr static std::size_t TABLE_SIZE = 1 << 12; // 12-bit indices for the tables
+  constexpr static champsim::data::bits TABLE_INDEX_BITS{champsim::msl::lg2(TABLE_SIZE)};
   constexpr static std::size_t NGHIST_WORDS = MAXHIST / champsim::msl::lg2(TABLE_SIZE) + 1; // this many 12-bit words will be kept in the global history
   constexpr static int THRESHOLD = 1;
 
@@ -34,9 +36,10 @@ struct hashed_perceptron : champsim::modules::branch_predictor {
 
   perceptron_result last_result{};
 
+public:
   using branch_predictor::branch_predictor;
-  bool predict_branch(uint64_t pc);
-  void last_branch_result(uint64_t pc, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+  bool predict_branch(champsim::address pc);
+  void last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type);
   void adjust_threshold(bool correct);
 };
 

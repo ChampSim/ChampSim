@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "chrono.h"
+
 class CACHE;
 class O3_CPU;
 namespace champsim
@@ -33,7 +35,7 @@ namespace detail
 {
 struct core_builder_base {
   uint32_t m_cpu{};
-  double m_freq_scale{1};
+  champsim::chrono::picoseconds m_clock_period{250};
   std::size_t m_dib_set{1};
   std::size_t m_dib_way{1};
   std::size_t m_dib_window{1};
@@ -81,37 +83,158 @@ public:
   core_builder() = default;
 
   self_type& index(uint32_t cpu_);
-  self_type& frequency(double freq_scale_);
+
+  /**
+   * Specify the core's clock period.
+   */
+  self_type& clock_period(champsim::chrono::picoseconds clock_period_);
+
+  /**
+   * Specify the number of sets in the Decoded Instruction Buffer.
+   */
   self_type& dib_set(std::size_t dib_set_);
+
+  /**
+   * Specify the number of ways in the Decoded Instruction Buffer.
+   */
   self_type& dib_way(std::size_t dib_way_);
+
+  /**
+   * Specify the size of the window within which Decoded Instruction Buffer entries are equivalent.
+   */
   self_type& dib_window(std::size_t dib_window_);
+
+  /**
+   * Specify the maximum size of the instruction fetch buffer.
+   */
   self_type& ifetch_buffer_size(std::size_t ifetch_buffer_size_);
+
+  /**
+   * Specify the maximum size of the decode buffer.
+   */
   self_type& decode_buffer_size(std::size_t decode_buffer_size_);
+
+  /**
+   * Specify the maximum size of the dispatch buffer.
+   */
   self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_);
+
+  /**
+   * Specify the maximum size of the reorder buffer.
+   */
   self_type& rob_size(std::size_t rob_size_);
+
+  /**
+   * Specify the maximum size of the load queue.
+   */
   self_type& lq_size(std::size_t lq_size_);
+
+  /**
+   * Specify the maximum size of the store queue.
+   */
   self_type& sq_size(std::size_t sq_size_);
+
+  /**
+   * Specify the width of the instruction fetch.
+   */
   self_type& fetch_width(champsim::bandwidth::maximum_type fetch_width_);
+
+  /**
+   * Specify the width of the decode.
+   */
   self_type& decode_width(champsim::bandwidth::maximum_type decode_width_);
+
+  /**
+   * Specify the width of the dispatch.
+   */
   self_type& dispatch_width(champsim::bandwidth::maximum_type dispatch_width_);
+
+  /**
+   * Specify the width of the scheduler.
+   */
   self_type& schedule_width(champsim::bandwidth::maximum_type schedule_width_);
+
+  /**
+   * Specify the width of the execution.
+   */
   self_type& execute_width(champsim::bandwidth::maximum_type execute_width_);
+
+  /**
+   * Specify the width of the load issue.
+   */
   self_type& lq_width(champsim::bandwidth::maximum_type lq_width_);
+
+  /**
+   * Specify the width of the store issue.
+   */
   self_type& sq_width(champsim::bandwidth::maximum_type sq_width_);
+
+  /**
+   * Specify the width of the retirement.
+   */
   self_type& retire_width(champsim::bandwidth::maximum_type retire_width_);
+
+  /**
+   * Specify the reset penalty, in cycles, that follows a misprediction.
+   * Note that this value is in addition to the cost of restarting the pipeline, which will depend on the number of instructions inflight at the time when the
+   * misprediction is detected.
+   */
   self_type& mispredict_penalty(unsigned mispredict_penalty_);
+
+  /**
+   * Specify the latency of the decode.
+   */
   self_type& decode_latency(unsigned decode_latency_);
+
+  /**
+   * Specify the latency of dispatch.
+   */
   self_type& dispatch_latency(unsigned dispatch_latency_);
+
+  /**
+   * Specify the latency of the scheduler.
+   */
   self_type& schedule_latency(unsigned schedule_latency_);
+
+  /**
+   * Specify the latency of execution.
+   */
   self_type& execute_latency(unsigned execute_latency_);
+
+  /**
+   * Specify a pointer to the L1I cache. This is only used to transmit branch triggers for prefetcher branch hooks.
+   */
   self_type& l1i(CACHE* l1i_);
+
+  /**
+   * Specify the instruction cache bandwidth.
+   */
   self_type& l1i_bandwidth(champsim::bandwidth::maximum_type l1i_bw_);
+
+  /**
+   * Specify the data cache bandwidth.
+   */
   self_type& l1d_bandwidth(champsim::bandwidth::maximum_type l1d_bw_);
+
+  /**
+   * Specify the downstream queues to the instruction cache.
+   */
   self_type& fetch_queues(champsim::channel* fetch_queues_);
+
+  /**
+   * Specify the downstream queues to the data cache.
+   */
   self_type& data_queues(champsim::channel* data_queues_);
 
+  /**
+   * Specify the branch direction predictor.
+   */
   template <typename... Bs>
   core_builder<core_builder_module_type_holder<Bs...>, T> branch_predictor();
+
+  /**
+   * Specify the branch target predictor.
+   */
   template <typename... Ts>
   core_builder<B, core_builder_module_type_holder<Ts...>> btb();
 };
@@ -125,9 +248,9 @@ auto champsim::core_builder<B, T>::index(uint32_t cpu_) -> self_type&
 }
 
 template <typename B, typename T>
-auto champsim::core_builder<B, T>::frequency(double freq_scale_) -> self_type&
+auto champsim::core_builder<B, T>::clock_period(champsim::chrono::picoseconds clock_period_) -> self_type&
 {
-  m_freq_scale = freq_scale_;
+  m_clock_period = clock_period_;
   return *this;
 }
 

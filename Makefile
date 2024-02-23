@@ -3,8 +3,8 @@ DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-LDLIBS   += -llzma -lz -lbz2 -lfmt
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
+override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 .PHONY: all clean configclean test
 
@@ -61,8 +61,9 @@ $(objs):
 	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
 
 # Link test executable
-$(test_main_name): CXXFLAGS += -g3 -Og -Wconversion
-$(test_main_name): LDLIBS += -lCatch2Main -lCatch2
+$(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
+$(test_main_name): override CXXFLAGS += -g3 -Og
+$(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 ifdef POSTBUILD_CLEAN
 .INTERMEDIATE: $(objs) $($(OBJS):.o=.d)
@@ -74,8 +75,11 @@ $(executable_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Tests: build and run
+ifdef TEST_NUM
+selected_test = -\# "[$(addprefix #,$(filter $(addsuffix %,$(TEST_NUM)), $(patsubst %.cc,%,$(notdir $(wildcard $(ROOT_DIR)/test/cpp/src/*.cc)))))]"
+endif
 test: $(test_main_name)
-	$(test_main_name)
+	$(test_main_name) $(selected_test)
 
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'

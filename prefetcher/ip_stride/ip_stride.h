@@ -4,22 +4,32 @@
 #include <cstdint>
 #include <optional>
 
+#include "address.h"
+#include "champsim.h"
 #include "modules.h"
 #include "msl/lru_table.h"
 
 struct ip_stride : champsim::modules::prefetcher {
   struct tracker_entry {
-    uint64_t ip = 0;           // the IP we're tracking
-    uint64_t last_cl_addr = 0; // the last address accessed by this IP
-    int64_t last_stride = 0;   // the stride between the last two addresses accessed by this IP
+    champsim::address ip{};                                // the IP we're tracking
+    champsim::block_number last_cl_addr{};                 // the last address accessed by this IP
+    champsim::block_number::difference_type last_stride{}; // the stride between the last two addresses accessed by this IP
 
-    auto index() const { return ip; }
-    auto tag() const { return ip; }
+    auto index() const
+    {
+      using namespace champsim::data::data_literals;
+      return ip.slice_upper<2_b>();
+    }
+    auto tag() const
+    {
+      using namespace champsim::data::data_literals;
+      return ip.slice_upper<2_b>();
+    }
   };
 
   struct lookahead_entry {
-    uint64_t address = 0;
-    int64_t stride = 0;
+    champsim::address address{};
+    champsim::address::difference_type stride{};
     int degree = 0; // degree remaining
   };
 
@@ -34,8 +44,9 @@ struct ip_stride : champsim::modules::prefetcher {
 public:
   using champsim::modules::prefetcher::prefetcher;
 
-  uint32_t prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, access_type type, uint32_t metadata_in);
-  uint32_t prefetcher_cache_fill(uint64_t addr, long set, long way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
+  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
+                                    uint32_t metadata_in);
+  uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
   void prefetcher_cycle_operate();
 };
 
