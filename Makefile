@@ -49,8 +49,12 @@ configclean: clean
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
+define absolute_options
+-I$(ROOT_DIR)/inc
+-isystem $(TRIPLET_DIR)/include
+endef
 %/absolute.options: | %
-	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
+	$(file >$@,$(absolute_options))
 
 $(sort $(dirs)):
 	-mkdir -p $@
