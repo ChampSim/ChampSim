@@ -17,15 +17,8 @@ dirs:=
 # $2 - target directory
 # $3 - source suffix
 # $4 - target suffix
-migrate = $(patsubst $1/%$3,$2/%$4,$(wildcard $1/*$3))
-
-# Migrate names from a source directory (and suffix) to a target directory (and suffix)
-# $1 - source directory
-# $2 - target directory
-# $3 - source suffix
-# $4 - target suffix
-migrate_main = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3)))
-migrate_nonmain = $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3)))
+# $5 - unique build id
+migrate = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3))) $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3)))
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
@@ -43,7 +36,7 @@ all: $(filter-out $(test_main_name), $(executable_name))
 
 # Remove all intermediate files
 clean:
-	@-find src test .csconfig branch btb prefetcher replacement $(clean_dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
+	@-find src test .csconfig branch btb prefetcher replacement $(dirs) \( -name '*.o' -o -name '*.d' \) -delete &> /dev/null
 	@-$(RM) inc/champsim_constants.h
 	@-$(RM) inc/cache_modules.h
 	@-$(RM) inc/ooo_cpu_modules.h
@@ -52,21 +45,22 @@ clean:
 
 # Remove all configuration files
 configclean: clean
-	@-$(RM) -r $(dirs) _configuration.mk
+	@-$(RM) -r _configuration.mk
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
 
 %/absolute.options: | %
 	echo '-I$(ROOT_DIR)/inc -isystem $(TRIPLET_DIR)/include' > $@
 
+$(sort $(dirs)):
+	-mkdir -p $@
+
 # All .o files should be made like .cc files
 $(sort $(objs)):
-	mkdir -p $(@D)
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(CPPFLAGS) $(if $(CHAMPSIM_BUILD), -DCHAMPSIM_BUILD=$(CHAMPSIM_BUILD)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(sort $(CPPFLAGS)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
-%.d:
-	mkdir -p $(@D)
-	$(CXX) -MM -MT $@ -MT $</$(*F).o -MF $@ $(CPPFLAGS) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(filter %.cc, $^)
+$(sort $(deps)):
+	$(CXX) -MM -MT $@ -MT $(objdep)/$(notdir $(basename $@)).o -MF $@ $(call reverse, $(addprefix @,$(filter %.options, $^))) $(sort $(CPPFLAGS)) $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD

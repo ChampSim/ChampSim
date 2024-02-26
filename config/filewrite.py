@@ -172,7 +172,7 @@ class Fragment:
             (os.path.join(objdir_name, 'core_inst.cc.inc'), cxx_file(get_instantiation_lines(build_id=build_id, **elements))),
 
             # Module name mangling
-            *generate_module_information(os.path.join(objdir_name, build_id, 'inc'), legacy_module_info),
+            *generate_module_information(objdir_name, legacy_module_info),
 
             # Makefile generation
             (makefile_file_name, (

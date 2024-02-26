@@ -35,12 +35,14 @@ def dereference(var):
     ''' Dereference the variable with the given name '''
     return '$(' + var + ')'
 
-def __do_dependency(dependents, targets=None, order_dependents=None):
+def __do_dependency(dependents, targets=None, order_dependents=None, static_pattern=None):
     targets_head, targets_tail = util.cut(targets or [], n=-1)
+    pattern_head, pattern_tail = util.cut(static_pattern or [], n=-1)
     orders_head, orders_tail = util.cut(order_dependents or [], n=1)
     targets_tail = (l+':' for l in targets_tail)
+    pattern_tail = (l+':' for l in pattern_tail)
     orders_head = ('| '+l for l in orders_head)
-    sequence = itertools.chain(targets_head, targets_tail, dependents, orders_head, orders_tail)
+    sequence = itertools.chain(targets_head, targets_tail, pattern_head, pattern_tail, dependents, orders_head, orders_tail)
     yield from util.multiline(sequence, length=3, indent=1, line_end=' \\')
 
 def __do_assign_variable(operator, var, val, targets):
@@ -86,39 +88,36 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     # Define variables
     yield from append_variable('dirs', *util.path_ancestors(rel_dest_dir), *util.path_ancestors(rel_deps_dir))
 
-    map_source_to_main_obj = f'$(call migrate_main,{rel_src_dir},{rel_dest_dir},.cc,.o,{build_id})'
-    yield from hard_assign_variable(local_obj_varname + '_main', map_source_to_main_obj)
+    map_source_to_obj = f'$(call migrate,{rel_src_dir},{rel_dest_dir},.cc,.o,{build_id})'
+    yield from hard_assign_variable(local_obj_varname, map_source_to_obj)
 
-    map_source_to_nonmain_obj = f'$(call migrate_nonmain,{rel_src_dir},{rel_dest_dir},.cc,.o)'
-    yield from hard_assign_variable(local_obj_varname + '_nonmain', map_source_to_nonmain_obj)
+    map_source_to_dep = f'$(call migrate,{rel_src_dir},{rel_deps_dir},.cc,.d,{build_id})'
+    yield from hard_assign_variable(local_dep_varname, map_source_to_dep)
 
-    yield from hard_assign_variable(local_obj_varname, dereference(local_obj_varname + '_main'), dereference(local_obj_varname + '_nonmain'))
-    yield from assign_variable('CHAMPSIM_BUILD', f'0x{build_id}', targets=[dereference(local_obj_varname + '_main')])
+    def link_dependencies(obj_list, dest_dir, suffix):
+        yield from __do_dependency(
+            targets=[f'$(filter %main{suffix}, {obj_list})'],
+            static_pattern=[f'{os.path.join(dest_dir, f"{build_id}_%{suffix}")}'],
+            order_dependents=[dest_dir],
+            dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
+        )
+        yield from __do_dependency(
+            targets=[f'$(filter-out %main{suffix}, {obj_list})'],
+            static_pattern=[f'{os.path.join(dest_dir, f"%{suffix}")}'],
+            order_dependents=[dest_dir],
+            dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
+        )
+        yield from append_variable('CPPFLAGS', f'-DCHAMPSIM_BUILD=0x{build_id}', targets=[f'$(filter %main{suffix}, {obj_list})'])
 
     # Assign dependencies
-    obj_main_wildcards = dependency([os.path.join(rel_dest_dir, f'{build_id}_%.o')], os.path.join(rel_src_dir, '%.cc'))
-    yield from dependency([dereference(local_obj_varname + '_main')], *obj_main_wildcards)
+    yield from link_dependencies(dereference(local_obj_varname), rel_dest_dir, '.o')
+    yield from link_dependencies(dereference(local_dep_varname), rel_deps_dir, '.d')
+    yield from hard_assign_variable('objdep', rel_dest_dir, targets=[dereference(local_dep_varname)])
 
-    obj_nonmain_wildcards = dependency([os.path.join(rel_dest_dir, '%.o')], os.path.join(rel_src_dir, '%.cc'))
-    yield from dependency([dereference(local_obj_varname + '_nonmain')], *obj_nonmain_wildcards)
     yield ''
 
-    map_source_to_main_dep = f'$(call migrate_main,{rel_src_dir},{rel_deps_dir},.cc,.d,{build_id})'
-    yield from hard_assign_variable(local_dep_varname + '_main', map_source_to_main_dep)
-
-    map_source_to_nonmain_dep = f'$(call migrate_nonmain,{rel_src_dir},{rel_deps_dir},.cc,.d)'
-    yield from hard_assign_variable(local_dep_varname + '_nonmain', map_source_to_nonmain_dep)
-
-    yield from hard_assign_variable(local_dep_varname, dereference(local_dep_varname + '_main'), dereference(local_dep_varname + '_nonmain'))
-
-    dep_main_wildcards = dependency([os.path.join(rel_deps_dir, f'{build_id}_%.d')], rel_dest_dir, os.path.join(rel_src_dir, '%.cc'))
-    yield from dependency([dereference(local_dep_varname + '_main')], *dep_main_wildcards)
-
-    dep_nonmain_wildcards = dependency([os.path.join(rel_deps_dir, '%.d')], rel_dest_dir, os.path.join(rel_src_dir, '%.cc'))
-    yield from dependency([dereference(local_dep_varname + '_nonmain')], *dep_nonmain_wildcards)
-
     yield 'ifeq (,$(filter clean configclean, $(MAKECMDGOALS)))'
-    yield f'-include $({local_dep_varname})'
+    yield f'include $({local_dep_varname})'
     yield 'endif'
     yield ''
 
@@ -168,12 +167,6 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     global_options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'global.options'))
     global_module_options_fname = sanitize(os.path.join('$(ROOT_DIR)', 'module.options'))
 
-    for var, item in zip(ragged_obj_varnames[1:], module_info.items()):
-        name, mod_info = item
-        if mod_info.get('legacy'):
-            module_options_fname = sanitize(os.path.join(objdir, build_id, 'inc', name+'.options'))
-            yield from dependency(map(dereference, var), module_options_fname)
-
     options_names = (global_module_options_fname, options_fname, global_options_fname)
     yield from dependency(map(dereference, itertools.chain(*ragged_obj_varnames[1:], *ragged_dep_varnames[1:])), *options_names)
     yield from dependency(map(dereference, itertools.chain(ragged_obj_varnames[0], ragged_dep_varnames[0])), *options_names[1:])
@@ -181,9 +174,10 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     objs = map(dereference, obj_varnames)
 
     yield from dependency([exec_fname], *objs)
-    yield from append_variable('CPPFLAGS', f'-I{objdir}', f'-I{os.path.join(objdir, build_id, "inc")}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
+    yield from append_variable('CPPFLAGS', f'-I{objdir}', targets=map(dereference, itertools.chain(obj_varnames, dep_varnames)))
 
     yield from append_variable('executable_name', exec_fname)
     yield from append_variable('dirs', os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
+    yield from append_variable('deps', *map(dereference, dep_varnames))
     yield ''
