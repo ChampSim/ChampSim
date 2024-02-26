@@ -46,7 +46,8 @@ using namespace std::literals::string_view_literals;
 inline constexpr std::array branch_type_names{"BRANCH_DIRECT_JUMP"sv, "BRANCH_INDIRECT"sv,      "BRANCH_CONDITIONAL"sv,
                                               "BRANCH_DIRECT_CALL"sv, "BRANCH_INDIRECT_CALL"sv, "BRANCH_RETURN"sv};
 
-namespace champsim {
+namespace champsim
+{
 template <typename T>
 struct program_ordered {
   using id_type = uint64_t;
@@ -56,7 +57,12 @@ struct program_ordered {
    * Return a functor that matches this element's ID.
    * \overload
    */
-  static auto matches_id(id_type id) { return [id](const T& instr){ return instr.instr_id == id; }; }
+  static auto matches_id(id_type id)
+  {
+    return [id](const T& instr) {
+      return instr.instr_id == id;
+    };
+  }
 
   /**
    * Return a functor that matches this element's ID.
@@ -72,14 +78,19 @@ struct program_ordered {
    * Return a functor that tests whether an instruction precededes the given instruction ID.
    * \overload
    */
-  static auto precedes(id_type id) { return [id](const T& instr){ return instr.instr_id < id; }; }
+  static auto precedes(id_type id)
+  {
+    return [id](const T& instr) {
+      return instr.instr_id < id;
+    };
+  }
 
   /**
    * Return a functor that tests whether an instruction precededes the given instruction.
    */
   static auto precedes(const T& instr) { return precedes(instr.instr_id); }
 };
-}
+} // namespace champsim
 
 struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   champsim::address ip{};
