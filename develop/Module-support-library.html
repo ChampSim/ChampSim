@@ -162,11 +162,15 @@
 </pre></div>
 </div>
 <p>If <code class="docutils literal notranslate"><span class="pre">end</span></code> is not specified, it is defaulted to 0, that is, the least-significant bit.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This should not be used as a mask generator for address types. Use <a class="reference internal" href="Address-operations.html#classchampsim_1_1address__slice"><span class="std std-ref">champsim::address_slice</span></a> instead. </p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>begin</strong> – The most-significant bit of the mask, not inclusive. </p></li>
-<li><p><strong>end</strong> – The least-significant bit of the mask, inclusive. </p></li>
+<li><p><strong>end</strong> – The least-significant bit of the mask, inclusive.</p></li>
 </ul>
 </dd>
 </dl>
@@ -198,13 +202,17 @@
 </pre></div>
 </div>
 <p>If <code class="docutils literal notranslate"><span class="pre">end</span></code> is not specified, it is defaulted to 0, that is, the least-significant bit.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is an implementation detail of <a class="reference internal" href="Address-operations.html#address_8h_1a596906c014000a57ab285841014f0602"><span class="std std-ref">champsim::splice()</span></a>, which should be preferred for address types. This function is provided for general use. </p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>upper</strong> – The operand from which to take the not-selected bits. </p></li>
 <li><p><strong>lower</strong> – The operand from which to take the selected bits. </p></li>
 <li><p><strong>bits_upper</strong> – The most-significant bit of the mask, not inclusive. </p></li>
-<li><p><strong>bits_lower</strong> – The least-significant bit of the mask, inclusive. </p></li>
+<li><p><strong>bits_lower</strong> – The least-significant bit of the mask, inclusive.</p></li>
 </ul>
 </dd>
 </dl>
