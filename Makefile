@@ -53,7 +53,7 @@ define absolute_options
 -I$(ROOT_DIR)/inc
 -isystem $(TRIPLET_DIR)/include
 endef
-%/absolute.options: | %
+$(ROOT_DIR)/absolute.options:
 	$(file >$@,$(absolute_options))
 
 $(sort $(dirs)):
