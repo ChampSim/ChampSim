@@ -24,7 +24,9 @@
 
 #include "cache.h" // for CACHE
 #include "champsim.h"
+#ifndef CHAMPSIM_TEST_BUILD
 #include "core_inst.inc"
+#endif
 #include "defaults.hpp"
 #include "environment.h"
 #include "ooo_cpu.h" // for O3_CPU
@@ -38,17 +40,21 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
-const std::size_t NUM_CPUS = champsim::configured::generated_environment::num_cpus;
+#ifndef CHAMPSIM_TEST_BUILD
+using configured_environment = champsim::configured::generated_environment<CHAMPSIM_BUILD>;
 
-const unsigned BLOCK_SIZE = champsim::configured::generated_environment::block_size;
-const unsigned PAGE_SIZE = champsim::configured::generated_environment::page_size;
+const std::size_t NUM_CPUS = configured_environment::num_cpus;
+
+const unsigned BLOCK_SIZE = configured_environment::block_size;
+const unsigned PAGE_SIZE = configured_environment::page_size;
+#endif
 const unsigned LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);
 const unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
 
 #ifndef CHAMPSIM_TEST_BUILD
 int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
-  champsim::configured::generated_environment gen_environment{};
+  configured_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
 

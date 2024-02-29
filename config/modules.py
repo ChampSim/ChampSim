@@ -14,10 +14,8 @@
 
 import os
 import itertools
-import functools
 
 from . import util
-from . import cxx
 
 def get_module_name(path, start=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
     ''' Create a mangled module name from the path to its sources '''
