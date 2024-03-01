@@ -80,23 +80,19 @@ def make_subpart(i, base, sub_src, sub_dest, build_id):
     map_source_to_obj = f'$(call migrate,{rel_src_dir},{rel_dest_dir},.cc,.o,{build_id})'
     yield from hard_assign_variable(local_obj_varname, map_source_to_obj)
 
-    def link_dependencies(obj_list, dest_dir, suffix):
-        yield from __do_dependency(
-            targets=[f'$(filter %main{suffix}, {obj_list})'],
-            static_pattern=[f'{os.path.join(dest_dir, f"{build_id}_%{suffix}")}'],
-            order_dependents=[dest_dir],
-            dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
-        )
-        yield from __do_dependency(
-            targets=[f'$(filter-out %main{suffix}, {obj_list})'],
-            static_pattern=[f'{os.path.join(dest_dir, f"%{suffix}")}'],
-            order_dependents=[dest_dir],
-            dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
-        )
-        yield from append_variable('CPPFLAGS', f'-DCHAMPSIM_BUILD=0x{build_id}', targets=[f'$(filter %main{suffix}, {obj_list})'])
-
     # Assign dependencies
-    yield from link_dependencies(dereference(local_obj_varname), rel_dest_dir, '.o')
+    yield from __do_dependency(
+        targets=[f'$(filter %main.o, {dereference(local_obj_varname)})'],
+        static_pattern=[f'{os.path.join(rel_dest_dir, f"{build_id}_%.o")}'],
+        order_dependents=[rel_dest_dir],
+        dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
+    )
+    yield from __do_dependency(
+        targets=[f'$(filter-out %main.o, {dereference(local_obj_varname)})'],
+        static_pattern=[f'{os.path.join(rel_dest_dir, f"%.o")}'],
+        order_dependents=[rel_dest_dir],
+        dependents=[os.path.join(rel_src_dir, '%.cc'), f'$(wildcard {os.path.join(rel_src_dir, "*.options")})']
+    )
     yield ''
 
     return local_obj_varname
@@ -159,6 +155,7 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
 
     yield from dependency([exec_fname], *objs)
     yield from append_variable('CPPFLAGS', f'-I{objdir}', targets=map(dereference, obj_varnames))
+    yield from append_variable('CPPFLAGS', f'-DCHAMPSIM_BUILD=0x{build_id}', targets=[f'$(filter %main.o, {" ".join(map(dereference, obj_varnames))})'])
 
     yield from append_variable('executable_name', exec_fname)
     yield from append_variable('dirs', os.path.dirname(exec_fname))
