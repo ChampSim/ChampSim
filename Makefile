@@ -1,5 +1,4 @@
 override ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
-DEP_ROOT = $(ROOT_DIR)/.csconfig/dep
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
@@ -11,6 +10,7 @@ override LDLIBS   += -llzma -lz -lbz2 -lfmt
 test_main_name=$(ROOT_DIR)/test/bin/000-test-main
 executable_name:=
 dirs:=
+deps:=
 
 # Migrate names from a source directory (and suffix) to a target directory (and suffix)
 # $1 - source directory
@@ -61,10 +61,7 @@ $(sort $(dirs)):
 
 # All .o files should be made like .cc files
 $(sort $(objs)):
-	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) $(sort $(CPPFLAGS)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
-
-$(sort $(deps)):
-	$(CXX) -MM -MT $@ -MT $(objdep)/$(notdir $(basename $@)).o -MF $@ $(call reverse, $(addprefix @,$(filter %.options, $^))) $(sort $(CPPFLAGS)) $(filter %.cc, $^)
+	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) -MMD -MT $@ -MT $(@:.o=.d) $(sort $(CPPFLAGS)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
 # Link test executable
 $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
@@ -90,3 +87,6 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
+ifeq (,$(filter clean configclean pytest, $(MAKECMDGOALS)))
+-include $(objs:.o=.d)
+endif
