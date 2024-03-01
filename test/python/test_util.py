@@ -281,7 +281,7 @@ class YieldFromStar(unittest.TestCase):
     def test_identity_collects_one(self):
         gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.identity_gen1, ((2,), (4,)), n=1))
         yielded = list(iter(gen))
-        first = gen.value
+        first = gen.value[0]
         self.assertEqual(yielded, [0,1,0,1,2,3])
         self.assertEqual(first, ['identity_first', 'identity_first'])
 
