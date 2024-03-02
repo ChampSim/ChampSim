@@ -55,7 +55,9 @@ if __name__ == '__main__':
     search_group.add_argument('--replacement-dir', action='append', default=[], metavar='DIR',
             help='A directory to search for replacement policies')
 
-    parser.add_argument('--compile-all-modules', action='store_true',
+    parser.add_argument('--no-compile-all-modules', action='store_false', dest='compile_all_modules',
+            help='Do not compile all modules in the search path')
+    parser.add_argument('--compile-all-modules', action='store_true', dest='compile_all_modules',
             help='Compile all modules in the search path')
 
     parser.add_argument('-v', action='store_true', dest='verbose')

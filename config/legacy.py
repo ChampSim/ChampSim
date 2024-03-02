@@ -50,26 +50,26 @@ def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, re
         local_branch_variant_data = modules.pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
         return get_discriminator([*modules.pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
 
-    yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), filewrite.cxx_file(
-        mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(modules.branch_variant_data, branch_data),
-            itertools.product(modules.btb_variant_data, btb_data)
-        )
-    )
+    yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), filewrite.cxx_file((
+        '#ifndef CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
+        '#define CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
+        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(branch_data, btb_data)),
+        '#endif'
+    ))
 
-    yield os.path.join(containing_dir, 'cache_module_decl.inc'), filewrite.cxx_file(
-        mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data, pref_data),
-            itertools.product(modules.repl_variant_data, repl_data)
-        )
-    )
+    yield os.path.join(containing_dir, 'cache_module_decl.inc'), filewrite.cxx_file((
+        '#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
+        '#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
+        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(pref_data, repl_data)),
+        '#endif'
+    ))
 
     core_bridge_params = itertools.chain(
-        zip(itertools.repeat(branch_discriminator), branch_data),
-        zip(itertools.repeat(btb_discriminator), btb_data),
+        zip(itertools.repeat(branch_discriminator), itertools.repeat(modules.branch_variant_data), branch_data),
+        zip(itertools.repeat(btb_discriminator), itertools.repeat(modules.btb_variant_data), btb_data),
     )
 
-    for discrim, mod_info in core_bridge_params:
+    for discrim, variant, mod_info in core_bridge_params:
         yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
             '#include "modules.h"',
             '#include "ooo_cpu.h"',
@@ -79,18 +79,35 @@ def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, re
             '}'
         ))
 
+        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+            *(mangled_declaration(*var, mod_info) for var in variant),
+            '#endif'
+        ))
+
     cache_bridge_params = itertools.chain(
-        zip(itertools.repeat(pref_discriminator), pref_data),
-        zip(itertools.repeat(repl_discriminator), repl_data)
+        zip(itertools.repeat(pref_discriminator), itertools.repeat(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data), pref_data),
+        zip(itertools.repeat(repl_discriminator), itertools.repeat(modules.repl_variant_data), repl_data)
     )
-    for discrim, mod_info in cache_bridge_params:
+    for discrim, variant, mod_info in cache_bridge_params:
         yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
             '#include "modules.h"',
             '#include "cache.h"',
             'namespace champsim::modules::generated',
             '{',
             *discrim(mod_info),
-            '}'
+            '}',
+            '#endif'
+        ))
+
+        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+            *(mangled_declaration(*var, mod_info) for var in variant),
+            '#endif'
         ))
 
     joined_info_items = itertools.chain(branch_data, btb_data, pref_data, repl_data)
