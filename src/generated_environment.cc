@@ -20,8 +20,8 @@ auto build(PTWs... builders)
   (retval.emplace_back(builders), ...);
   return retval;
 }
+} // namespace champsim::configured
 
 #include "core_inst.cc.inc"
-} // namespace champsim::configured
 
 // NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)

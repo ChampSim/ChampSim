@@ -91,6 +91,8 @@ constexpr long long ipow(long long base, unsigned exp)
  *
  * \param begin The most-significant bit of the mask, not inclusive.
  * \param end The least-significant bit of the mask, inclusive.
+ *
+ * \note This should not be used as a mask generator for address types. Use champsim::address_slice instead.
  */
 constexpr uint64_t bitmask(champsim::data::bits begin, champsim::data::bits end)
 {
@@ -128,6 +130,8 @@ constexpr uint64_t bitmask(champsim::data::bits begin) { return bitmask(begin, c
  * \param lower The operand from which to take the selected bits.
  * \param bits_upper The most-significant bit of the mask, not inclusive.
  * \param bits_lower The least-significant bit of the mask, inclusive.
+ *
+ * \note This is an implementation detail of champsim::splice(), which should be preferred for address types. This function is provided for general use.
  */
 template <typename T>
 constexpr auto splice_bits(T upper, T lower, champsim::data::bits bits_upper, champsim::data::bits bits_lower)

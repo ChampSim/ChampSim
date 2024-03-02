@@ -396,7 +396,7 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
   for (auto dreg : instr.destination_registers) {
     auto begin = std::begin(reg_producers.at(dreg));
     auto end = std::end(reg_producers.at(dreg));
-    auto ins = std::lower_bound(begin, end, instr, [](const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; });
+    auto ins = std::lower_bound(begin, end, instr, ooo_model_instr::program_order);
     reg_producers.at(dreg).insert(ins, std::ref(instr));
   }
 
@@ -450,7 +450,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
-      return lhs.virtual_address != smem || (rhs.virtual_address == smem && lhs.instr_id < rhs.instr_id);
+      return lhs.virtual_address != smem || (rhs.virtual_address == smem && LSQ_ENTRY::program_order(lhs, rhs));
     });
     if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
       if (sq_it->fetch_issued) { // Store already executed
@@ -484,8 +484,8 @@ long O3_CPU::operate_lsq()
   champsim::bandwidth store_bw{SQ_WIDTH};
 
   const auto complete_id = std::empty(ROB) ? std::numeric_limits<uint64_t>::max() : ROB.front().instr_id;
-  auto do_complete = [time = current_time, complete_id, this](const auto& x) {
-    return x.instr_id < complete_id && x.ready_time <= time && this->do_complete_store(x);
+  auto do_complete = [time = current_time, finished = LSQ_ENTRY::precedes(complete_id), this](const auto& x) {
+    return finished(x) && x.ready_time <= time && this->do_complete_store(x);
   };
 
   auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x) { return x.fetch_issued; });
@@ -569,7 +569,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   for (auto dreg : instr.destination_registers) {
     auto begin = std::begin(reg_producers.at(dreg));
     auto end = std::end(reg_producers.at(dreg));
-    auto elem = std::find_if(begin, end, [id = instr.instr_id](ooo_model_instr& x) { return x.instr_id == id; });
+    auto elem = std::find_if(begin, end, ooo_model_instr::matches_id(instr.instr_id));
     assert(elem != end);
     reg_producers.at(dreg).erase(elem);
   }
@@ -613,8 +613,7 @@ long O3_CPU::handle_memory_return()
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
-      auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER),
-                                  [id = l1i_entry.instr_depend_on_me.front()](const auto& x) { return x.instr_id == id; });
+      auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), ooo_model_instr::matches_id(l1i_entry.instr_depend_on_me.front()));
       if (fetched != std::end(IFETCH_BUFFER) && champsim::block_number{fetched->ip} == champsim::block_number{l1i_entry.v_address} && fetched->fetch_issued) {
         fetched->fetch_completed = true;
         l1i_bw.consume();
@@ -737,14 +736,14 @@ void O3_CPU::print_deadlock()
 }
 // LCOV_EXCL_STOP
 
-LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, uint64_t id, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
-    : virtual_address(addr), instr_id(id), ip(local_ip), asid(local_asid)
+LSQ_ENTRY::LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address local_ip, std::array<uint8_t, 2> local_asid)
+    : champsim::program_ordered<LSQ_ENTRY>{id}, virtual_address(addr), ip(local_ip), asid(local_asid)
 {
 }
 
 void LSQ_ENTRY::finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const
 {
-  auto rob_entry = std::partition_point(begin, end, [id = this->instr_id](auto x) { return x.instr_id < id; });
+  auto rob_entry = std::partition_point(begin, end, ooo_model_instr::precedes(this->instr_id));
   assert(rob_entry != end);
   finish(*rob_entry);
 }

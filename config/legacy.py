@@ -35,7 +35,7 @@ def get_discriminator(variant_data, module_data, classname):
     yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
-def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
+def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, repl_data):
     '''
     Create three generators:
       - The first generates C++ code declaring all functions for the O3_CPU modules,
@@ -50,53 +50,80 @@ def get_legacy_module_lines(branch_data, btb_data, pref_data, repl_data):
         local_branch_variant_data = modules.pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
         return get_discriminator([*modules.pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
 
-    return (
-        (mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(modules.branch_variant_data, branch_data),
-            itertools.product(modules.btb_variant_data, btb_data)
-        )),
+    yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), filewrite.cxx_file((
+        '#ifndef CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
+        '#define CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
+        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(branch_data, btb_data)),
+        '#endif'
+    ))
 
-        (mangled_declaration(*var, data) for var,data in itertools.chain(
-            itertools.product(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data, pref_data),
-            itertools.product(modules.repl_variant_data, repl_data)
-        )),
+    yield os.path.join(containing_dir, 'cache_module_decl.inc'), filewrite.cxx_file((
+        '#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
+        '#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
+        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(pref_data, repl_data)),
+        '#endif'
+    ))
 
-        itertools.chain(
-            *map(branch_discriminator, branch_data),
-            *map(btb_discriminator, btb_data),
-            *map(pref_discriminator, pref_data),
-            *map(repl_discriminator, repl_data)
-        )
-       )
+    core_bridge_params = itertools.chain(
+        zip(itertools.repeat(branch_discriminator), itertools.repeat(modules.branch_variant_data), branch_data),
+        zip(itertools.repeat(btb_discriminator), itertools.repeat(modules.btb_variant_data), btb_data),
+    )
+
+    for discrim, variant, mod_info in core_bridge_params:
+        yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+            '#include "modules.h"',
+            '#include "ooo_cpu.h"',
+            'namespace champsim::modules::generated',
+            '{',
+            *discrim(mod_info),
+            '}'
+        ))
+
+        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+            *(mangled_declaration(*var, mod_info) for var in variant),
+            '#endif'
+        ))
+
+    cache_bridge_params = itertools.chain(
+        zip(itertools.repeat(pref_discriminator), itertools.repeat(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data), pref_data),
+        zip(itertools.repeat(repl_discriminator), itertools.repeat(modules.repl_variant_data), repl_data)
+    )
+    for discrim, variant, mod_info in cache_bridge_params:
+        yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
+            '#include "modules.h"',
+            '#include "cache.h"',
+            'namespace champsim::modules::generated',
+            '{',
+            *discrim(mod_info),
+            '}',
+            '#endif'
+        ))
+
+        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+            *(mangled_declaration(*var, mod_info) for var in variant),
+            '#endif'
+        ))
+
+    joined_info_items = itertools.chain(branch_data, btb_data, pref_data, repl_data)
+    for v in joined_info_items:
+        fname = os.path.join(v['path'], 'legacy.options')
+        yield fname, get_legacy_module_opts_lines(v)
 
 def generate_module_information(containing_dir, module_info):
     ''' Generates all of the include-files with module information '''
-    if any(module_info.values()):
-        core_declarations, cache_declarations, module_definitions = get_legacy_module_lines(
-                module_info['branch'].values(),
-                module_info['btb'].values(),
-                module_info['pref'].values(),
-                module_info['repl'].values()
-            )
-
-        yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), filewrite.cxx_file(core_declarations)
-        yield os.path.join(containing_dir, 'cache_module_decl.inc'), filewrite.cxx_file(cache_declarations)
-        yield os.path.join(containing_dir, 'module_def.inc'), filewrite.cxx_file((
-                '#ifndef GENERATED_MODULES_INC',
-                '#define GENERATED_MODULES_INC',
-                '#include "modules.h"',
-                'namespace champsim::modules::generated',
-                '{',
-                *module_definitions,
-                '}',
-                '#endif'
-        ))
-
-        joined_info_items = itertools.chain(*(v.items() for v in module_info.values()))
-        for k,v in joined_info_items:
-            fname = os.path.join(containing_dir, k+'.options')
-            yield fname, get_legacy_module_opts_lines(v)
-
+    yield from get_legacy_module_lines(
+        containing_dir,
+        module_info['branch'].values(),
+        module_info['btb'].values(),
+        module_info['pref'].values(),
+        module_info['repl'].values()
+    )
 
 if __name__ == '__main__':
     import argparse
