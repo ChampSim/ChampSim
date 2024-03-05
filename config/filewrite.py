@@ -143,8 +143,6 @@ class Fragment:
             print('Object directory:', objdir_name)
             print('Makefile directory:', makedir_name)
 
-        makefile_sources = (*srcdir_names, os.path.join(champsim_root, 'src'))
-
         build_id = hashlib.shake_128(json.dumps(parsed_config, sort_keys=True, default=try_int).encode('utf-8')).hexdigest(8)
 
         executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
@@ -178,7 +176,7 @@ class Fragment:
             # Makefile generation
             (os.path.join(makedir_name, '_configuration.mk'), (
                 *make_generated_warning(),
-                *get_makefile_lines(objdir_name, build_id, executable, makefile_sources, joined_module_info)
+                *get_makefile_lines(build_id, executable, joined_module_info)
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts

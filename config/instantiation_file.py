@@ -272,36 +272,11 @@ def get_upper_levels(cores, caches, ptws):
         map(functools.partial(named_selector, key='L1D'), cores)
     )))
 
-def check_header_compiles_for_class(clazz, file):
-    ''' Check if including the given header file is sufficient to compile an instance of the given class. '''
-    champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    include_dir = os.path.join(champsim_root, 'inc')
-    vcpkg_parent = os.path.join(champsim_root, 'vcpkg_installed')
-    _, triplet_dirs, _ = next(os.walk(vcpkg_parent))
-    triplet_dir = os.path.join(vcpkg_parent, next(filter(lambda x: x != 'vcpkg', triplet_dirs), None), 'include')
-
-    with tempfile.TemporaryDirectory() as dtemp:
-        args = (
-            f'-I{include_dir}',
-            f'-I{triplet_dir}',
-            f'-I{dtemp}',
-        )
-
-        # touch this file
-        with open(os.path.join(dtemp, 'champsim_constants.h'), 'wt') as wfp:
-            print('', file=wfp)
-
-        return cxx.check_compiles((f'#include "{file}"', f'class {clazz} x{{nullptr}};'), *args)
-
 def module_include_files(datas):
     '''
     Generate C++ include lines for all header files necessary to compile the given modules.
 
-    Each module's paths are searched, and compilation checked (linking is not performed. If the compilation succeeds,
-    the file is emitted as a candidate.
-
-    A warning is printed if a class is entirely dropped from the list, that is, if it failed to compile with any header.
-    In this case, we procede, but ChampSim's compilation will likely fail.
+    It is assumed that all header files in the directory contribute to compilation.
     '''
 
     def all_headers_on(path):
@@ -311,24 +286,9 @@ def module_include_files(datas):
                     yield os.path.abspath(os.path.join(base, file))
 
     class_paths = (zip(itertools.repeat(module_data['class']), all_headers_on(module_data['path'])) for module_data in datas)
-    candidates = list(set(itertools.chain.from_iterable(class_paths)))
-    with mp.Pool() as pool:
-        successes = pool.starmap(check_header_compiles_for_class, candidates)
-    filtered_candidates = list(itertools.compress(candidates, successes))
+    candidates = set(itertools.chain.from_iterable(class_paths))
 
-    class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
-    for clazz in class_difference:
-        tried_files = (f for c,f in candidates if c == clazz)
-        print('WARNING: no header found for', clazz)
-        print('NOTE: after trying files')
-        for file in tried_files:
-            failed = successes[candidates.index((clazz,file))]
-            print('NOTE:', file)
-            print('NOTE:', failed.args)
-            for line in failed.stderr.splitlines():
-                print('NOTE:  ', line)
-
-    yield from (f'#include "{f}"' for _,f in filtered_candidates)
+    yield from (f'#include "{f}"' for _,f in candidates)
 
 def decorate_queues(caches, ptws, pmem):
     return util.chain(

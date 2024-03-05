@@ -35,6 +35,26 @@ def get_discriminator(variant_data, module_data, classname):
     yield from cxx.struct(discriminator_classname, body, superclass=classname)
     yield ''
 
+def get_bridge(header_name, discrim, variant, mod_info):
+    yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+        '#include "modules.h"',
+        f'#include "{header_name}"',
+        'namespace champsim::modules::generated',
+        '{',
+        *discrim(mod_info),
+        '}'
+    ))
+
+    yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+        f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+        f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+        *(mangled_declaration(*var, mod_info) for var in variant),
+        '#endif'
+    ))
+
+    fname = os.path.join(mod_info['path'], 'legacy.options')
+    yield fname, get_legacy_module_opts_lines(mod_info)
+
 def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, repl_data):
     '''
     Create three generators:
@@ -64,60 +84,22 @@ def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, re
         '#endif'
     ))
 
-    core_bridge_params = itertools.chain(
-        zip(itertools.repeat(branch_discriminator), itertools.repeat(modules.branch_variant_data), branch_data),
-        zip(itertools.repeat(btb_discriminator), itertools.repeat(modules.btb_variant_data), btb_data),
-    )
+    #core_bridge_params = itertools.chain(
+        #zip(itertools.repeat(branch_discriminator), itertools.repeat(modules.branch_variant_data), branch_data),
+        #zip(itertools.repeat(btb_discriminator), itertools.repeat(modules.btb_variant_data), btb_data),
+    #)
 
-    for discrim, variant, mod_info in core_bridge_params:
-        yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
-            '#include "modules.h"',
-            '#include "ooo_cpu.h"',
-            'namespace champsim::modules::generated',
-            '{',
-            *discrim(mod_info),
-            '}'
-        ))
+    #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'ooo_cpu.h'), core_bridge_params))
 
-        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
-            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
-            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
-            *(mangled_declaration(*var, mod_info) for var in variant),
-            '#endif'
-        ))
-
-    cache_bridge_params = itertools.chain(
-        zip(itertools.repeat(pref_discriminator), itertools.repeat(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data), pref_data),
-        zip(itertools.repeat(repl_discriminator), itertools.repeat(modules.repl_variant_data), repl_data)
-    )
-    for discrim, variant, mod_info in cache_bridge_params:
-        yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
-            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
-            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}_SOURCE',
-            '#include "modules.h"',
-            '#include "cache.h"',
-            'namespace champsim::modules::generated',
-            '{',
-            *discrim(mod_info),
-            '}',
-            '#endif'
-        ))
-
-        yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
-            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
-            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
-            *(mangled_declaration(*var, mod_info) for var in variant),
-            '#endif'
-        ))
-
-    joined_info_items = itertools.chain(branch_data, btb_data, pref_data, repl_data)
-    for v in joined_info_items:
-        fname = os.path.join(v['path'], 'legacy.options')
-        yield fname, get_legacy_module_opts_lines(v)
+    #cache_bridge_params = itertools.chain(
+        #zip(itertools.repeat(pref_discriminator), itertools.repeat(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data), pref_data),
+        #zip(itertools.repeat(repl_discriminator), itertools.repeat(modules.repl_variant_data), repl_data)
+    #)
+    #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'cache.h'), cache_bridge_params))
 
 def generate_module_information(containing_dir, module_info):
     ''' Generates all of the include-files with module information '''
-    yield from get_legacy_module_lines(
+    return get_legacy_module_lines(
         containing_dir,
         module_info['branch'].values(),
         module_info['btb'].values(),
@@ -129,15 +111,32 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
-    parser.add_argument('legacyfiles', action='append')
+    parser.add_argument('paths', action='append')
     args = parser.parse_args()
 
-    paths = map(os.path.dirname, args.legacyfiles)
     infos = [{
         'name': modules.get_module_name(p),
         'path': p,
-        'legacy': True,
-        'class': f'champsim::modules::generated::{p}'
-    } for p in paths]
+        'legacy': True
+    } for p in args.paths]
+    for i in infos:
+        i.update({'class': f'champsim::modules::generated::{i["name"]}'})
 
+    fileparts = []
 
+    for i in infos:
+        if 'branch' in i['path']:
+            variant = modules.branch_variant_data
+            fileparts.extend(get_bridge('ooo_cpu.h', functools.partial(get_discriminator, variant, classname='branch_predictor'), variant, modules.get_branch_data(i)))
+        if 'btb' in i['path']:
+            variant = modules.btb_variant_data
+            fileparts.extend(get_bridge('ooo_cpu.h', functools.partial(get_discriminator, variant, classname='btb'), variant, modules.get_btb_data(i)))
+        if 'prefetcher' in i['path']:
+            local_branch_variant_data = modules.pref_branch_variant_data if i.get('_is_instruction_prefetcher') else []
+            variant = modules.pref_nonbranch_variant_data + local_branch_variant_data
+            fileparts.extend(get_bridge('cache.h', functools.partial(get_discriminator, variant, classname='prefetcher'), variant, modules.get_pref_data(i)))
+        if 'branch' in i['path']:
+            variant = modules.replacement_variant_data
+            fileparts.extend(get_bridge('cache.h', functools.partial(get_discriminator, variant, classname='replacement'), variant, modules.get_repl_data(i)))
+
+    filewrite.Fragment(fileparts).write()

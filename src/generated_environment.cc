@@ -22,6 +22,8 @@ auto build(PTWs... builders)
 }
 } // namespace champsim::configured
 
+#if __has_include("core_inst.cc.inc")
 #include "core_inst.cc.inc"
+#endif
 
 // NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers)
