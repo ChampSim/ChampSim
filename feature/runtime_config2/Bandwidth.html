@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Bandwidth &#8212; ChampSim  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css?v=601dbdee" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Core Model" href="Core-model.html" />
+    <link rel="prev" title="Byte Sizes" href="Byte-sizes.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Core-model.html" title="Core Model"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="Byte-sizes.html" title="Byte Sizes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Bandwidth</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="bandwidth">
+<span id="id1"></span><h1>Bandwidth<a class="headerlink" href="#bandwidth" title="Link to this heading">¶</a></h1>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidthE">
+<span id="_CPPv3N8champsim9bandwidthE"></span><span id="_CPPv2N8champsim9bandwidthE"></span><span id="champsim::bandwidth"></span><span class="target" id="classchampsim_1_1bandwidth"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">bandwidth</span></span></span><a class="headerlink" href="#_CPPv4N8champsim9bandwidthE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>This class encapuslates the operation of consuming a fixed number of operations, a very common operation in ChampSim. Once initialized, the maximum bandwidth cannot be changed. Instead, consuming the bandwidth reduces the amount available until it is depleted. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidth12maximum_typeE">
+<span id="_CPPv3N8champsim9bandwidth12maximum_typeE"></span><span id="_CPPv2N8champsim9bandwidth12maximum_typeE"></span><span class="target" id="classchampsim_1_1bandwidth_1a07ad2edae0993e7c9cb3607aee75d694"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">maximum_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">max_t</span></span><a class="headerlink" href="#_CPPv4N8champsim9bandwidth12maximum_typeE" title="Link to this definition">¶</a><br /></dt>
+<dd><p>The type of the maximum. This type is integer-like, with the exception that it is immutable.</p>
+<p>This type is exported so that other types can keep maximums as members. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidth7consumeE15underlying_type">
+<span id="_CPPv3N8champsim9bandwidth7consumeE15underlying_type"></span><span id="_CPPv2N8champsim9bandwidth7consumeE15underlying_type"></span><span id="champsim::bandwidth::consume__underlying_type"></span><span class="target" id="classchampsim_1_1bandwidth_1a96fca0aea79c677dc2d3aa784c0a9786"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">consume</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">underlying_type</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">delta</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim9bandwidth7consumeE15underlying_type" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Consume some of the bandwidth.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>delta</strong> – The amount of bandwidth to consume</p>
+</dd>
+<dt class="field-even">Throws<span class="colon">:</span></dt>
+<dd class="field-even"><p><span><span class="cpp-expr sig sig-inline cpp"><span class="n">std</span><span class="p">::</span><span class="n">range_error</span></span></span> – if more than the maximum amount of bandwidth will have been consumed. </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidth7consumeEv">
+<span id="_CPPv3N8champsim9bandwidth7consumeEv"></span><span id="_CPPv2N8champsim9bandwidth7consumeEv"></span><span id="champsim::bandwidth::consume"></span><span class="target" id="classchampsim_1_1bandwidth_1ad08312ca732f3c02feb3bb506a537285"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">consume</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim9bandwidth7consumeEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Consume one unit of bandwidth.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Throws<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span><span class="cpp-expr sig sig-inline cpp"><span class="n">std</span><span class="p">::</span><span class="n">range_error</span></span></span> – if more than the maximum amount of bandwidth will have been consumed. </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8champsim9bandwidth13has_remainingEv">
+<span id="_CPPv3NK8champsim9bandwidth13has_remainingEv"></span><span id="_CPPv2NK8champsim9bandwidth13has_remainingEv"></span><span id="champsim::bandwidth::has_remainingC"></span><span class="target" id="classchampsim_1_1bandwidth_1ad72c75d12fff49a94fe1f4b537a00ed8"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_remaining</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8champsim9bandwidth13has_remainingEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Report if the bandwidth has one or more unit remaining. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8champsim9bandwidth15amount_consumedEv">
+<span id="_CPPv3NK8champsim9bandwidth15amount_consumedEv"></span><span id="_CPPv2NK8champsim9bandwidth15amount_consumedEv"></span><span id="champsim::bandwidth::amount_consumedC"></span><span class="target" id="classchampsim_1_1bandwidth_1a05edc12e2fd580001e3ba0871cdf26ad"></span><span class="n"><span class="pre">underlying_type</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">amount_consumed</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8champsim9bandwidth15amount_consumedEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Report the amount of bandwidth that has been consumed </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8champsim9bandwidth16amount_remainingEv">
+<span id="_CPPv3NK8champsim9bandwidth16amount_remainingEv"></span><span id="_CPPv2NK8champsim9bandwidth16amount_remainingEv"></span><span id="champsim::bandwidth::amount_remainingC"></span><span class="target" id="classchampsim_1_1bandwidth_1a1b492350cb62fceb78cb60fe178c829c"></span><span class="n"><span class="pre">underlying_type</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">amount_remaining</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8champsim9bandwidth16amount_remainingEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Report the amount of bandwidth that remains </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidth5resetEv">
+<span id="_CPPv3N8champsim9bandwidth5resetEv"></span><span id="_CPPv2N8champsim9bandwidth5resetEv"></span><span id="champsim::bandwidth::reset"></span><span class="target" id="classchampsim_1_1bandwidth_1a52a8e31d651427eaeface1bdaec89239"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">reset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim9bandwidth5resetEv" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Reset the bandwidth, so that it can be used again. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8champsim9bandwidth9bandwidthE12maximum_type">
+<span id="_CPPv3N8champsim9bandwidth9bandwidthE12maximum_type"></span><span id="_CPPv2N8champsim9bandwidth9bandwidthE12maximum_type"></span><span id="champsim::bandwidth::bandwidth__maximum_type"></span><span class="target" id="classchampsim_1_1bandwidth_1ad8e2fa332413165188289b4a8c9cceb4"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">bandwidth</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8champsim9bandwidth12maximum_typeE" title="champsim::bandwidth::maximum_type"><span class="n"><span class="pre">maximum_type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">maximum</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8champsim9bandwidth9bandwidthE12maximum_type" title="Link to this definition">¶</a><br /></dt>
+<dd><p>Initialize a bandwidth with the specified maximum. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Bandwidth</a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidthE"><code class="docutils literal notranslate"><span class="pre">bandwidth</span></code></a><ul>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidth12maximum_typeE"><code class="docutils literal notranslate"><span class="pre">bandwidth::maximum_type</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidth7consumeE15underlying_type"><code class="docutils literal notranslate"><span class="pre">bandwidth::consume()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidth7consumeEv"><code class="docutils literal notranslate"><span class="pre">bandwidth::consume()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8champsim9bandwidth13has_remainingEv"><code class="docutils literal notranslate"><span class="pre">bandwidth::has_remaining()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8champsim9bandwidth15amount_consumedEv"><code class="docutils literal notranslate"><span class="pre">bandwidth::amount_consumed()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4NK8champsim9bandwidth16amount_remainingEv"><code class="docutils literal notranslate"><span class="pre">bandwidth::amount_remaining()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidth5resetEv"><code class="docutils literal notranslate"><span class="pre">bandwidth::reset()</span></code></a></li>
+<li><a class="reference internal" href="#_CPPv4N8champsim9bandwidth9bandwidthE12maximum_type"><code class="docutils literal notranslate"><span class="pre">bandwidth::bandwidth()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="Byte-sizes.html"
+                          title="previous chapter">Byte Sizes</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="Core-model.html"
+                          title="next chapter">Core Model</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Bandwidth.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div><div role="note">
+  <h3> This page on other branches</h3>
+  <h4>Branches</h4>
+  <ul>
+      
+        <li><a href="../../master/index.html">master</a></li>
+      
+      
+        <li><a href="../../develop/index.html">develop</a></li>
+      
+      
+        <li><strong>feature/runtime_config2</strong></li>
+      
+  </ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="Core-model.html" title="Core Model"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="Byte-sizes.html" title="Byte Sizes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ChampSim  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Bandwidth</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2023, The ChampSim Contributors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    </div>
+  </body>
+</html>
