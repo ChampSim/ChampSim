@@ -36,7 +36,7 @@ SCENARIO("The same instruction hits the DIB on the second time") {
     uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
     const std::size_t expected_cycles = decode_latency + dispatch_latency + schedule_latency + execute_latency + 5;
-    for (std::size_t i=0; uut.num_retired < std::size(test_instructions) && i < 5*expected_cycles; i++)
+    for (std::size_t i=0; static_cast<std::size_t>(uut.num_retired) < std::size(test_instructions) && i < 5*expected_cycles; i++)
     {
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
@@ -48,7 +48,7 @@ SCENARIO("The same instruction hits the DIB on the second time") {
 
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
-      for (std::size_t i=0; uut.num_retired < 2*std::size(test_instructions) && i < 2*expected_cycles; i++)
+      for (std::size_t i=0; static_cast<std::size_t>(uut.num_retired) < 2*std::size(test_instructions) && i < 2*expected_cycles; i++)
       {
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
@@ -57,10 +57,10 @@ SCENARIO("The same instruction hits the DIB on the second time") {
 
       THEN("The latency is the sum of the stage latencies")
       {
-        REQUIRE(uut.num_retired == 2*std::size(test_instructions));
+        REQUIRE(static_cast<std::size_t>(uut.num_retired) == 2*std::size(test_instructions));
 
         // A hit in the DIB should skip the decode latency
-        REQUIRE((end_second_time - begin_second_time)/uut.clock_period == (expected_cycles - decode_latency));
+        REQUIRE((end_second_time - begin_second_time)/uut.clock_period == static_cast<long>((expected_cycles - decode_latency)));
       }
     }
   }
