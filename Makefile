@@ -9,7 +9,7 @@ OBJ_ROOT:=.csconfig
 DEP_ROOT:=$(OBJ_ROOT)
 
 MODULE_ROOT =
-BRANCH_ROOT = branch $($(addsuffix /branch,$(MODULE_ROOT))
+BRANCH_ROOT = branch $(addsuffix /branch,$(MODULE_ROOT))
 BTB_ROOT = btb $(addsuffix /btb,$(MODULE_ROOT))
 PREFETCH_ROOT = prefetcher $(addsuffix /prefetcher,$(MODULE_ROOT))
 REPLACEMENT_ROOT = replacement $(addsuffix /replacement,$(MODULE_ROOT))
@@ -87,7 +87,7 @@ endef
 
 # Get a list of module objects descended from the given directories
 # $1 - list of directories to traverse
-get_module_list = $(foreach mod_type,$1,$(call migrate,$(mod_type),$(OBJ_ROOT)/$(mod_type),.cc,.o))
+get_module_list = $(foreach mod_type,$1,$(call migrate,$(mod_type),$(OBJ_ROOT)/modules/$(mod_type),.cc,.o))
 
 # The base modules shipped with ChampSim
 base_module_objs = $(call get_module_list, $(module_dirs))
@@ -152,8 +152,10 @@ $(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files)
 
 # Connect module objects to their sources
 base_module_prereqs = $*.cc $(call maybe_legacy_file,$*,legacy.options) module.options $(base_options)
-$(base_module_objs): $(OBJ_ROOT)/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
 	$(obj_recipe)
+$(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files)
+	$(dep_recipe)
 
 # Give the test executable some additional options
 $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
@@ -171,12 +173,13 @@ $(executable_name) $(test_main_name):
 
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
-module_decl_prereqs = $(foreach mod,$(patsubst $(OBJ_ROOT)/%,%,$(basename $1)),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
+module_decl_prereqs = $(foreach mod,$(patsubst $(OBJ_ROOT)/modules/%,%,$(basename $1)),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
 define module_decl_lines
 $(if $^,echo "#include \"$(abspath $(firstword $^))\"" >> $@)
 $(if $(wordlist 2,$(words $^),$^),$(call $0,$(wordlist 2,$(words $^),$^)))
 endef
 $(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(base_module_objs))
+	$(info Building $@ with modules $^)
 	@echo "#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL" > $@
 	@echo "#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL" >> $@
 	@$(module_decl_lines)

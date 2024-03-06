@@ -170,9 +170,6 @@ class Fragment:
             (os.path.join(objdir_name, 'core_inst.inc'), cxx_file(get_instantiation_header(len(elements['cores']), config_file, build_id=build_id))),
             (os.path.join(objdir_name, 'core_inst.cc.inc'), cxx_file(get_instantiation_lines(build_id=build_id, **elements))),
 
-            # Module name mangling
-            *generate_module_information(objdir_name, legacy_module_info),
-
             # Makefile generation
             (os.path.join(makedir_name, '_configuration.mk'), (
                 *make_generated_warning(),

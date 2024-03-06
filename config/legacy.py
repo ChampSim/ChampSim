@@ -70,31 +70,7 @@ def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, re
         local_branch_variant_data = modules.pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
         return get_discriminator([*modules.pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
 
-    yield os.path.join(containing_dir, 'ooo_cpu_module_decl.inc'), filewrite.cxx_file((
-        '#ifndef CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
-        '#define CHAMPSIM_LEGACY_OOO_CPU_MODULE_DECL',
-        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(branch_data, btb_data)),
-        '#endif'
-    ))
-
-    yield os.path.join(containing_dir, 'cache_module_decl.inc'), filewrite.cxx_file((
-        '#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
-        '#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL',
-        *(f'#include "{os.path.join(mod_info["path"], "legacy_bridge.h")}"' for mod_info in itertools.chain(pref_data, repl_data)),
-        '#endif'
-    ))
-
-    #core_bridge_params = itertools.chain(
-        #zip(itertools.repeat(branch_discriminator), itertools.repeat(modules.branch_variant_data), branch_data),
-        #zip(itertools.repeat(btb_discriminator), itertools.repeat(modules.btb_variant_data), btb_data),
-    #)
-
     #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'ooo_cpu.h'), core_bridge_params))
-
-    #cache_bridge_params = itertools.chain(
-        #zip(itertools.repeat(pref_discriminator), itertools.repeat(modules.pref_nonbranch_variant_data + modules.pref_branch_variant_data), pref_data),
-        #zip(itertools.repeat(repl_discriminator), itertools.repeat(modules.repl_variant_data), repl_data)
-    #)
     #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'cache.h'), cache_bridge_params))
 
 def generate_module_information(containing_dir, module_info):
