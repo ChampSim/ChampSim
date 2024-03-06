@@ -42,9 +42,13 @@ struct core_builder_base {
   std::size_t m_ifetch_buffer_size{1};
   std::size_t m_decode_buffer_size{1};
   std::size_t m_dispatch_buffer_size{1};
+
+  std::size_t m_dib_hit_buffer_size{1};       //Khoi added
+
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
   std::size_t m_sq_size{1};
+
   champsim::bandwidth::maximum_type m_fetch_width{1};
   champsim::bandwidth::maximum_type m_decode_width{1};
   champsim::bandwidth::maximum_type m_dispatch_width{1};
@@ -53,6 +57,8 @@ struct core_builder_base {
   champsim::bandwidth::maximum_type m_lq_width{1};
   champsim::bandwidth::maximum_type m_sq_width{1};
   champsim::bandwidth::maximum_type m_retire_width{1};
+  champsim::bandwidth::maximum_type m_dib_inorder_width{1}; //Khoi added
+
   unsigned m_mispredict_penalty{};
   unsigned m_decode_latency{};
   unsigned m_dispatch_latency{};
@@ -119,6 +125,11 @@ public:
    */
   self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_);
 
+    /**
+   * Specify the maximum size of the DIB hit buffer.        
+   */
+  self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);         //Khoi added
+
   /**
    * Specify the maximum size of the reorder buffer.
    */
@@ -173,6 +184,11 @@ public:
    * Specify the width of the retirement.
    */
   self_type& retire_width(champsim::bandwidth::maximum_type retire_width_);
+
+     /**
+   * Specify the maximum size of the DIB inorder width.        
+   */
+  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);         //Khoi added
 
   /**
    * Specify the reset penalty, in cycles, that follows a misprediction.
@@ -304,6 +320,13 @@ auto champsim::core_builder<B, T>::rob_size(std::size_t rob_size_) -> self_type&
 }
 
 template <typename B, typename T>
+auto champsim::core_builder<B, T>::dib_hit_buffer_size(std::size_t dib_hit_buffer_size_) -> self_type&
+{
+  m_dib_hit_buffer_size = dib_hit_buffer_size_;
+  return *this;
+}
+
+template <typename B, typename T>
 auto champsim::core_builder<B, T>::lq_size(std::size_t lq_size_) -> self_type&
 {
   m_lq_size = lq_size_;
@@ -370,6 +393,13 @@ template <typename B, typename T>
 auto champsim::core_builder<B, T>::retire_width(champsim::bandwidth::maximum_type retire_width_) -> self_type&
 {
   m_retire_width = retire_width_;
+  return *this;
+}
+
+template <typename B, typename T>
+auto champsim::core_builder<B, T>::dib_inorder_width(champsim::bandwidth::maximum_type dib_inorder_width_) -> self_type&
+{
+  m_dib_inorder_width = dib_inorder_width_;             //Khoi added
   return *this;
 }
 
