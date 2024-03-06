@@ -114,7 +114,7 @@ public:
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
-  std::deque<ooo_model_instr> DIB_HIT_BUFFER; //Khoi added
+  std::deque<ooo_model_instr> DIB_HIT_BUFFER;
 
   std::vector<std::optional<LSQ_ENTRY>> LQ;
   std::deque<LSQ_ENTRY> SQ;
