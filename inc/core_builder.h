@@ -43,7 +43,7 @@ struct core_builder_base {
   std::size_t m_decode_buffer_size{1};
   std::size_t m_dispatch_buffer_size{1};
 
-  std::size_t m_dib_hit_buffer_size{1};
+  std::size_t m_dib_hit_buffer_size{1};       //Khoi added
 
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
@@ -57,7 +57,9 @@ struct core_builder_base {
   champsim::bandwidth::maximum_type m_lq_width{1};
   champsim::bandwidth::maximum_type m_sq_width{1};
   champsim::bandwidth::maximum_type m_retire_width{1};
-  champsim::bandwidth::maximum_type m_dib_inorder_width{1};
+  champsim::bandwidth::maximum_type m_dib_inorder_width{1}; //Khoi added
+
+  unsigned m_dib_hit_latency{};
 
   unsigned m_mispredict_penalty{};
   unsigned m_decode_latency{};
@@ -126,9 +128,9 @@ public:
   self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_);
 
     /**
-   * Specify the maximum size of the DIB hit buffer.
+   * Specify the maximum size of the DIB hit buffer.        
    */
-  self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);
+  self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);         //Khoi added
 
   /**
    * Specify the maximum size of the reorder buffer.
@@ -186,9 +188,9 @@ public:
   self_type& retire_width(champsim::bandwidth::maximum_type retire_width_);
 
      /**
-   * Specify the maximum size of the DIB inorder width.
+   * Specify the maximum size of the DIB inorder width.        
    */
-  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);
+  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);         //Khoi added
 
   /**
    * Specify the reset penalty, in cycles, that follows a misprediction.
@@ -216,6 +218,11 @@ public:
    * Specify the latency of execution.
    */
   self_type& execute_latency(unsigned execute_latency_);
+
+  /**
+   * Specify the latency of execution.
+   */
+  self_type& dib_hit_latency(unsigned dib_hit_latency_);
 
   /**
    * Specify a pointer to the L1I cache. This is only used to transmit branch triggers for prefetcher branch hooks.
@@ -399,7 +406,7 @@ auto champsim::core_builder<B, T>::retire_width(champsim::bandwidth::maximum_typ
 template <typename B, typename T>
 auto champsim::core_builder<B, T>::dib_inorder_width(champsim::bandwidth::maximum_type dib_inorder_width_) -> self_type&
 {
-  m_dib_inorder_width = dib_inorder_width_;
+  m_dib_inorder_width = dib_inorder_width_;             //Khoi added
   return *this;
 }
 
@@ -414,6 +421,13 @@ template <typename B, typename T>
 auto champsim::core_builder<B, T>::decode_latency(unsigned decode_latency_) -> self_type&
 {
   m_decode_latency = decode_latency_;
+  return *this;
+}
+
+template <typename B, typename T>
+auto champsim::core_builder<B, T>::dib_hit_latency(unsigned dib_hit_latency_) -> self_type&
+{
+  m_dib_hit_latency = dib_hit_latency_;
   return *this;
 }
 
