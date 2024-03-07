@@ -72,14 +72,14 @@ attach_options = $(call reverse, $(addprefix @,$(filter %.options, $^)))
 
 # All .o files should be made like .cc files
 define obj_recipe
-	@mkdir -p $(@D)
+	mkdir -p $(dir $@)
 	$(CXX) $(attach_options) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 endef
 
 # All .d files should be preprocessed only
 DEPFLAGS = -MM -MT $@ -MT $(@:.d=.o)
 define dep_recipe
-	@mkdir -p $(@D)
+	mkdir -p $(dir $@)
 	$(CXX) $(attach_options) $(DEPFLAGS) $(CPPFLAGS) -MF $@ $(filter %.cc, $^)
 endef
 
@@ -113,6 +113,17 @@ base_source_dir = src
 test_source_dir = test/cpp/src
 base_options = absolute.options global.options
 
+$(sort $(OBJ_ROOT) $(DEP_ROOT) $(BIN_ROOT) test/bin):
+	mkdir -p $@
+
+$(OBJ_ROOT)/test $(OBJ_ROOT)/modules: | $(OBJ_ROOT)
+	mkdir $@
+
+ifneq ($(OBJ_ROOT),$(DEP_ROOT))
+$(DEP_ROOT)/test $(DEP_ROOT)/modules: | $(DEP_ROOT)
+	mkdir $@
+endif
+
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build
 get_base_objs = $(call migrate,src,$(OBJ_ROOT),.cc,.o,$1)
@@ -124,37 +135,37 @@ $(DEP_ROOT)/%_main.d: CPPFLAGS += -DCHAMPSIM_BUILD=0x$*
 
 # Connect the main sources to the src/ directory
 base_main_prereqs = $(base_source_dir)/main.cc $(base_options)
-$(OBJ_ROOT)/%_main.o: $(base_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/%_main.o: $(base_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)
 	$(obj_recipe)
-$(DEP_ROOT)/%_main.d: $(base_main_prereqs) | $(generated_files)
+$(DEP_ROOT)/%_main.d: $(base_main_prereqs) | $(generated_files) $(DEP_ROOT)
 	$(dep_recipe)
 
 # Connect non-main sources to the src/ directory
 base_nonmain_prereqs = $(base_source_dir)/$*.cc $(base_options)
-$(OBJ_ROOT)/%.o: $$(base_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/%.o: $$(base_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)
 	$(obj_recipe)
-$(DEP_ROOT)/%.d: $$(base_nonmain_prereqs) | $(generated_files)
+$(DEP_ROOT)/%.d: $$(base_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)
 	$(dep_recipe)
 
 # Connect the test main to the test/cpp/src/ directory
 test_main_prereqs = $(test_source_dir)/000-test-main.cc $(base_options)
-$(OBJ_ROOT)/test/TEST_000-test-main.o: $(test_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/test/TEST_000-test-main.o: $(test_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/test
 	$(obj_recipe)
-$(DEP_ROOT)/test/TEST_000-test-main.d: $(test_main_prereqs) | $(generated_files)
+$(DEP_ROOT)/test/TEST_000-test-main.d: $(test_main_prereqs) | $(generated_files) $(DEP_ROOT)/test
 	$(dep_recipe)
 
 # Connect non-main test sources to the test/cpp/src/ drirctory
 test_nonmain_prereqs = $(test_source_dir)/$*.cc $(base_options)
-$(OBJ_ROOT)/test/%.o: $$(test_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/test/%.o: $$(test_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/test
 	$(obj_recipe)
-$(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files)
+$(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)/test
 	$(dep_recipe)
 
 # Connect module objects to their sources
 base_module_prereqs = $*.cc $(call maybe_legacy_file,$*,legacy.options) module.options $(base_options)
-$(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d)
+$(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/modules
 	$(obj_recipe)
-$(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files)
+$(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $(DEP_ROOT)/modules
 	$(dep_recipe)
 
 # Give the test executable some additional options
@@ -163,12 +174,11 @@ $(test_main_name): override CXXFLAGS += -g3 -Og
 $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 # Associate objects with executables
-$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs)
-$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs)
+$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) | test/bin
+$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) | $(BIN_ROOT)
 
 # Link main executables
 $(executable_name) $(test_main_name):
-	mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
 
 # Get prerequisites for module_decl.inc
@@ -178,7 +188,7 @@ define module_decl_lines
 $(if $^,echo "#include \"$(abspath $(firstword $^))\"" >> $@)
 $(if $(wordlist 2,$(words $^),$^),$(call $0,$(wordlist 2,$(words $^),$^)))
 endef
-$(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(base_module_objs))
+$(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(base_module_objs)) | $(OBJ_ROOT)
 	$(info Building $@ with modules $^)
 	@echo "#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL" > $@
 	@echo "#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL" >> $@
