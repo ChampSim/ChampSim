@@ -30,6 +30,7 @@ public:
   bool warmup = true;
 
   operable();
+  virtual ~operable() = default;
   explicit operable(champsim::chrono::picoseconds clock_period);
 
   long _operate();

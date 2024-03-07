@@ -185,6 +185,8 @@ def yield_from_star(gen, args, n=2):
     retvals = [[] for _ in range(n)]
     for argument in args:
         instance_retval = yield from gen(*argument)
+        if not isinstance(instance_retval, tuple):
+            instance_retval = (instance_retval,)
         for seq,return_value in zip(retvals, instance_retval):
             seq.append(return_value)
     return retvals
