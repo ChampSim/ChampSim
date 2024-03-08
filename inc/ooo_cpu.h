@@ -110,7 +110,8 @@ public:
   dib_type DIB;
 
   // reorder buffer, load/store queue, register file
-  std::deque<ooo_model_instr> IFETCH_BUFFER;
+  using ifetch_buffer_type = std::deque<ooo_model_instr>;
+  ifetch_buffer_type IFETCH_BUFFER;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
@@ -122,7 +123,7 @@ public:
 
   // Constants
   const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
-  champsim::bandwidth::maximum_type FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
+  champsim::bandwidth::maximum_type DIB_WIDTH, FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
   champsim::bandwidth::maximum_type LQ_WIDTH, SQ_WIDTH;
   champsim::bandwidth::maximum_type RETIRE_WIDTH;
   champsim::chrono::clock::duration BRANCH_MISPREDICT_PENALTY;
@@ -161,8 +162,8 @@ public:
 
   bool do_init_instruction(ooo_model_instr& instr);
   bool do_predict_branch(ooo_model_instr& instr);
-  void do_check_dib(ooo_model_instr& instr);
-  bool do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end);
+  void do_check_dib(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end);
+  bool do_fetch_instruction(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end);
   void do_dib_update(const ooo_model_instr& instr);
   void do_scheduling(ooo_model_instr& instr);
   void do_execution(ooo_model_instr& instr);
@@ -239,7 +240,7 @@ public:
       : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
         DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
-        ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
+        ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), DIB_WIDTH(b.m_dib_width), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty * b.m_clock_period), DISPATCH_LATENCY(b.m_dispatch_latency * b.m_clock_period),
         DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),

@@ -45,6 +45,7 @@ struct core_builder_base {
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
   std::size_t m_sq_size{1};
+  champsim::bandwidth::maximum_type m_dib_width{1};
   champsim::bandwidth::maximum_type m_fetch_width{1};
   champsim::bandwidth::maximum_type m_decode_width{1};
   champsim::bandwidth::maximum_type m_dispatch_width{1};
@@ -133,6 +134,11 @@ public:
    * Specify the maximum size of the store queue.
    */
   self_type& sq_size(std::size_t sq_size_);
+
+  /**
+   * Specify the width of the instruction fetch.
+   */
+  self_type& dib_width(champsim::bandwidth::maximum_type dib_width_);
 
   /**
    * Specify the width of the instruction fetch.
@@ -314,6 +320,13 @@ template <typename B, typename T>
 auto champsim::core_builder<B, T>::sq_size(std::size_t sq_size_) -> self_type&
 {
   m_sq_size = sq_size_;
+  return *this;
+}
+
+template <typename B, typename T>
+auto champsim::core_builder<B, T>::dib_width(champsim::bandwidth::maximum_type dib_width_) -> self_type&
+{
+  m_dib_width = dib_width_;
   return *this;
 }
 

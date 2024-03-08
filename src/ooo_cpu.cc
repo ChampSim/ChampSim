@@ -203,32 +203,55 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
 long O3_CPU::check_dib()
 {
+  auto match_in_dib = [set_match = DIB.index_func(), tag_match = DIB.tag_func()](const auto& lhs, const auto& rhs) {
+    return set_match(lhs.ip) == set_match(rhs.ip) && tag_match(lhs.ip) == tag_match(rhs.ip);
+  };
+  auto ifb_begin = std::begin(IFETCH_BUFFER);
+  auto ifb_end = std::end(IFETCH_BUFFER);
+
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
-  auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
-  auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), champsim::bandwidth{FETCH_WIDTH});
-  std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
-  return std::distance(window_begin, window_end);
+  auto window_begin = std::find_if(ifb_begin, ifb_end, [](const ooo_model_instr& x) { return !x.dib_checked; });
+  for (champsim::bandwidth dib_bandwidth{DIB_WIDTH}; dib_bandwidth.has_remaining(); dib_bandwidth.consume()) {
+    auto window_end = std::adjacent_find(window_begin, ifb_end, std::not_fn(match_in_dib));
+    if (window_end != ifb_end) {
+      window_end = std::next(window_end); // adjacent_find returns the first of the non-equal elements
+    }
+
+    do_check_dib(window_begin, window_end);
+    window_begin = window_end;
+  }
+  // after loop, window_begin is past the end
+
+  return std::distance(ifb_begin, window_begin);
 }
 
-void O3_CPU::do_check_dib(ooo_model_instr& instr)
+void O3_CPU::do_check_dib(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end)
 {
-  // Check DIB to see if we recently fetched this line
-  auto dib_result = DIB.check_hit(instr.ip);
-  if (dib_result) {
-    // The cache line is in the L0, so we can mark this as complete
-    instr.fetch_completed = true;
-
-    // Also mark it as decoded
-    instr.decoded = true;
-
-    // It can be acted on immediately
-    instr.ready_time = current_time;
+  if (begin == end) {
+    return;
   }
 
-  instr.dib_checked = true;
+  // Check DIB to see if we recently fetched this line
+  auto hit = DIB.check_hit(begin->ip).has_value();
+  auto mark_entry = [time=current_time, hit](auto& instr) {
+    if (hit) {
+      // The cache line is in the L0, so we can mark this as complete
+      instr.fetch_completed = true;
+
+      // Also mark it as decoded
+      instr.decoded = true;
+
+      // It can be acted on immediately
+      instr.ready_time = time;
+    }
+
+    instr.dib_checked = true;
+  };
+
+  std::for_each(begin, end, mark_entry);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, instr.instr_id, instr.ip, dib_result.has_value(),
+    fmt::print("[DIB] {} instr_id: {} ip: {:#x} hit: {} cycle: {}\n", __func__, begin->instr_id, begin->ip, hit,
                current_time.time_since_epoch() / clock_period);
   }
 }
@@ -267,7 +290,7 @@ long O3_CPU::fetch_instruction()
   return progress;
 }
 
-bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
+bool O3_CPU::do_fetch_instruction(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end)
 {
   CacheBus::request_type fetch_packet;
   fetch_packet.v_address = begin->ip;
