@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 #include "repl_interface.h"
 #include "modules.h"
 
@@ -47,7 +46,7 @@ SCENARIO("The replacement policy is not triggered on a miss, but on a fill") {
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .prefetch_activate(type)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<update_state_collector, lru>()
     };
 
@@ -121,7 +120,7 @@ SCENARIO("The replacement policy is triggered on a hit") {
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .prefetch_activate(type)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<update_state_collector, lru>()
     };
 
@@ -191,7 +190,7 @@ SCENARIO("The replacement policy notes the correct eviction information") {
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .prefetch_activate(access_type::LOAD)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<update_state_collector, lru>()
     };
 

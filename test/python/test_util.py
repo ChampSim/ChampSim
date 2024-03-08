@@ -261,6 +261,11 @@ class YieldFromStar(unittest.TestCase):
         return 'empty_gen_first', 'empty_gen_second', 'empty_gen_third'
 
     @staticmethod
+    def identity_gen1(count):
+        yield from range(count)
+        return 'identity_first'
+
+    @staticmethod
     def identity_gen2(count):
         yield from range(count)
         return 'identity_first', 'identity_second'
@@ -281,6 +286,13 @@ class YieldFromStar(unittest.TestCase):
         self.assertEqual(first, ['empty_gen_first', 'empty_gen_first'])
         self.assertEqual(second, ['empty_gen_second', 'empty_gen_second'])
         self.assertEqual(third, ['empty_gen_third', 'empty_gen_third'])
+
+    def test_identity_collects_one(self):
+        gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.identity_gen1, ((2,), (4,)), n=1))
+        yielded = list(iter(gen))
+        first = gen.value[0]
+        self.assertEqual(yielded, [0,1,0,1,2,3])
+        self.assertEqual(first, ['identity_first', 'identity_first'])
 
     def test_identity_collects_two(self):
         gen = YieldFromStar.Generator(config.util.yield_from_star(YieldFromStar.identity_gen2, ((2,), (4,)), n=2))

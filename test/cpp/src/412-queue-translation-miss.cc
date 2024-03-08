@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "channel.h"
-#include "champsim_constants.h"
 
 TEMPLATE_TEST_CASE("Caches detect translation misses", "", to_wq_MRP, to_rq_MRP, to_pq_MRP) {
   GIVEN("An empty cache with a translator") {

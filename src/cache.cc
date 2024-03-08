@@ -25,7 +25,6 @@
 
 #include "bandwidth.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "chrono.h"
 #include "deadlock.h"
 #include "instruction.h"
@@ -100,7 +99,7 @@ template <typename T>
 champsim::address CACHE::module_address(const T& element) const
 {
   auto address = virtual_prefetch ? element.v_address : element.address;
-  return champsim::address{address.slice_upper(match_offset_bits ? 0 : OFFSET_BITS)};
+  return champsim::address{address.slice_upper(match_offset_bits ? champsim::data::bits{} : OFFSET_BITS)};
 }
 
 bool CACHE::handle_fill(const mshr_type& fill_mshr)
@@ -172,7 +171,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   }
 
   // COLLECT STATS
-  sim_stats.total_miss_latency += current_time - (fill_mshr.time_enqueued + clock_period);
+  sim_stats.total_miss_latency_cycles += (current_time - (fill_mshr.time_enqueued + clock_period)) / clock_period;
 
   response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data_promise->data, metadata_thru, fill_mshr.instr_depend_on_me};
   for (auto* ret : fill_mshr.to_return) {
@@ -446,7 +445,7 @@ long CACHE::operate()
 uint64_t CACHE::get_set(uint64_t address) const { return static_cast<uint64_t>(get_set_index(champsim::address{address})); }
 // LCOV_EXCL_STOP
 
-long CACHE::get_set_index(champsim::address address) const { return address.slice(champsim::sized_extent{OFFSET_BITS, champsim::lg2(NUM_SET)}).to<long>(); }
+long CACHE::get_set_index(champsim::address address) const { return address.slice(champsim::dynamic_extent{OFFSET_BITS, champsim::lg2(NUM_SET)}).to<long>(); }
 
 template <typename It>
 std::pair<It, It> get_span(It anchor, typename std::iterator_traits<It>::difference_type set_idx, typename std::iterator_traits<It>::difference_type num_way)
@@ -552,12 +551,12 @@ void CACHE::finish_packet(const response_type& packet)
 void CACHE::finish_translation(const response_type& packet)
 {
   auto matches_vpage = [page_num = champsim::page_number{packet.v_address}](const auto& entry) {
-    return champsim::page_number{entry.v_address} == page_num;
+    return (champsim::page_number{entry.v_address} == page_num) && !entry.is_translated;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
     auto old_address = entry.address;
-    entry.address = champsim::splice(p_page, champsim::page_offset{entry.v_address}); // translated address
-    entry.is_translated = true;                                                       // This entry is now translated
+    entry.address = champsim::address{champsim::splice(p_page, champsim::page_offset{entry.v_address})}; // translated address
+    entry.is_translated = true;                                                                          // This entry is now translated
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}_TRANSLATE] finish_translation old: {} paddr: {} vaddr: {} type: {} cycle: {}\n", this->NAME, old_address, entry.address, entry.v_address,
@@ -775,7 +774,7 @@ void CACHE::begin_phase()
 
 void CACHE::end_phase(unsigned finished_cpu)
 {
-  roi_stats.total_miss_latency = sim_stats.total_miss_latency;
+  roi_stats.total_miss_latency_cycles = sim_stats.total_miss_latency_cycles;
 
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::pair key{type, finished_cpu};

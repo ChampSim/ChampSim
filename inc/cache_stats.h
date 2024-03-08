@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "channel.h"
-#include "chrono.h"
 #include "event_counter.h"
 
 struct cache_stats {
@@ -22,7 +21,7 @@ struct cache_stats {
   champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> hits = {};
   champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> misses = {};
 
-  champsim::chrono::clock::duration total_miss_latency{};
+  long total_miss_latency_cycles{};
 };
 
 cache_stats operator-(cache_stats lhs, cache_stats rhs);

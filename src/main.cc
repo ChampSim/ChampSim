@@ -22,10 +22,13 @@
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
+#include "cache.h" // for CACHE
 #include "champsim.h"
-#include "champsim_constants.h"
+#ifndef CHAMPSIM_TEST_BUILD
 #include "core_inst.inc"
+#endif
 #include "defaults.hpp"
+#include "environment.h"
 #include "ooo_cpu.h" // for O3_CPU
 #include "phase_info.h"
 #include "stats_printer.h"
@@ -37,9 +40,21 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
-int main(int argc, char** argv)
+#ifndef CHAMPSIM_TEST_BUILD
+using configured_environment = champsim::configured::generated_environment<CHAMPSIM_BUILD>;
+
+const std::size_t NUM_CPUS = configured_environment::num_cpus;
+
+const unsigned BLOCK_SIZE = configured_environment::block_size;
+const unsigned PAGE_SIZE = configured_environment::page_size;
+#endif
+const unsigned LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);
+const unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
+
+#ifndef CHAMPSIM_TEST_BUILD
+int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
-  champsim::configured::generated_environment gen_environment{};
+  configured_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
 
@@ -84,6 +99,8 @@ int main(int argc, char** argv)
   }
 
   if (simulation_given && !warmup_given) {
+    // Warmup is 20% by default
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     warmup_instructions = simulation_instructions / 5;
   }
 
@@ -128,3 +145,4 @@ int main(int argc, char** argv)
 
   return 0;
 }
+#endif

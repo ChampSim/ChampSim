@@ -7,7 +7,7 @@ std::pair<champsim::address, bool> return_stack::prediction()
 
   // peek at the top of the RAS and adjust for the size of the call instr
   auto target = stack.back();
-  auto size = call_size_trackers[target.slice_lower<champsim::msl::lg2(num_call_size_trackers)>().to<std::size_t>()];
+  auto size = call_size_trackers[target.slice_lower<champsim::data::bits{champsim::msl::lg2(num_call_size_trackers)}>().to<std::size_t>()];
 
   return {target + size, true};
 }
@@ -28,7 +28,7 @@ void return_stack::calibrate_call_size(champsim::address branch_target)
 
     auto estimated_call_instr_size = champsim::offset(call_ip, branch_target);
     if (estimated_call_instr_size <= 10) {
-      call_size_trackers[call_ip.slice_lower<champsim::msl::lg2(num_call_size_trackers)>().to<std::size_t>()] = estimated_call_instr_size;
+      call_size_trackers[call_ip.slice_lower<champsim::data::bits{champsim::msl::lg2(num_call_size_trackers)}>().to<std::size_t>()] = estimated_call_instr_size;
     }
   }
 }

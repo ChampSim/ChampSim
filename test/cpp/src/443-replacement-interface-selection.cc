@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 #include "modules.h"
 
 #include <map>
@@ -56,7 +55,7 @@ SCENARIO("The simulator selects the address-based victim finder in replacement p
       .ways(1)
       .upper_levels({&mock_ul.queues})
       .lower_level(&mock_ll.queues)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<::dual_interface, lru>()
     };
 
@@ -134,7 +133,7 @@ SCENARIO("The simulator selects the address-based update function in replacement
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
       .prefetch_activate(type)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<::dual_interface, lru>()
     };
 

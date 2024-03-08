@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include "champsim.h"
 #include "util/units.h"
 
 TEST_CASE("A data size is default-constructible, with default value zero") {
@@ -117,6 +118,11 @@ TEST_CASE("Data sizes can be divided in-place") {
 TEST_CASE("Data sizes can be divided") {
   using champsim::data::data_literals::operator""_kiB;
   REQUIRE(2_kiB / 2 == 1_kiB);
+}
+
+TEST_CASE("Data sizes can be divided by sizes") {
+  using champsim::data::data_literals::operator""_kiB;
+  REQUIRE(2_kiB / 1_kiB == 2);
 }
 
 TEST_CASE("Data sizes are ordered") {

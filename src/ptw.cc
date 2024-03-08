@@ -22,7 +22,6 @@
 #include <fmt/core.h>
 
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "deadlock.h"
 #include "instruction.h"
 #include "ptw_builder.h" // for ptw_builder
@@ -35,7 +34,7 @@ PageTableWalker::PageTableWalker(champsim::ptw_builder b)
       MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
       MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
       MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
-      HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::address{}, b.m_vmem->pt_levels).first)
+      HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::page_number{}, b.m_vmem->pt_levels).first)
 {
   std::vector<decltype(b.m_pscl)::value_type> local_pscl_dims{};
   std::remove_copy_if(std::begin(b.m_pscl), std::end(b.m_pscl), std::back_inserter(local_pscl_dims), [](auto x) { return std::get<0>(x) == 0; });
@@ -62,11 +61,12 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
-  champsim::address_slice<champsim::static_extent<LOG2_PAGE_SIZE, champsim::lg2(pte_entry::byte_multiple)>> walk_offset{
+  champsim::address_slice walk_offset{
+      champsim::dynamic_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)}},
       vmem->get_offset(handle_pkt.address, walk_init.level)};
 
   mshr_type fwd_mshr{handle_pkt, walk_init.level};
-  fwd_mshr.address = champsim::splice(champsim::page_number{walk_init.ptw_addr}, champsim::page_offset{walk_offset});
+  fwd_mshr.address = champsim::address{champsim::splice(champsim::page_number{walk_init.ptw_addr}, champsim::page_offset{walk_offset})};
   fwd_mshr.v_address = handle_pkt.address;
   if (handle_pkt.response_requested) {
     fwd_mshr.to_return = {&ul->returned};
@@ -83,9 +83,9 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if constexpr (champsim::debug_print) {
+    champsim::dynamic_extent pte_offset_extent{champsim::data::bits{LOG2_PAGE_SIZE}, champsim::data::bits{champsim::lg2(pte_entry::byte_multiple)}};
     fmt::print("[{}] {} address: {} v_address: {} data: {} pt_page_offset: {} translation_level: {} cycle: {}\n", NAME, __func__, fill_mshr.address,
-               fill_mshr.v_address, *fill_mshr.data,
-               fill_mshr.data->slice<LOG2_PAGE_SIZE + champsim::lg2(pte_entry::byte_multiple), LOG2_PAGE_SIZE>().to<int>(), fill_mshr.translation_level,
+               fill_mshr.v_address, *fill_mshr.data, champsim::address_slice{pte_offset_extent, fill_mshr.data.value()}.to<int>(), fill_mshr.translation_level,
                current_time.time_since_epoch() / clock_period);
   }
 
@@ -183,7 +183,7 @@ long PageTableWalker::operate()
 void PageTableWalker::finish_packet(const response_type& packet)
 {
   auto finish_step = [this](auto mshr_entry) {
-    auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
+    auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, champsim::page_number{mshr_entry.v_address}, mshr_entry.translation_level);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}] finish_packet address: {} v_address: {} data: {} translation_level: {} cycle: {} penalty: {}\n", NAME, mshr_entry.address,
@@ -195,7 +195,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
   };
 
   auto finish_last_step = [this](auto mshr_entry) {
-    auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, mshr_entry.v_address);
+    auto [ppage, penalty] = this->vmem->va_to_pa(mshr_entry.cpu, champsim::page_number{mshr_entry.v_address});
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}] complete_packet address: {} v_address: {} data: {} translation_level: {} clock: {} penalty: {}\n", NAME, mshr_entry.address,
@@ -203,7 +203,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
                  penalty / this->clock_period);
     }
 
-    return champsim::waitable{ppage, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
+    return champsim::waitable{champsim::address{ppage}, this->current_time + penalty + (this->warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY)};
   };
 
   auto matches_addr = [block = champsim::block_number{packet.address}](auto x) {

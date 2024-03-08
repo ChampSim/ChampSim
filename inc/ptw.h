@@ -25,7 +25,6 @@
 
 #include "address.h"
 #include "bandwidth.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "operable.h"
 #include "ptw_builder.h"
@@ -42,7 +41,7 @@ class PageTableWalker : public champsim::operable
   };
 
   struct pscl_indexer {
-    std::size_t shamt;
+    champsim::data::bits shamt;
     auto operator()(const pscl_entry& entry) const { return entry.vaddr.slice_upper(shamt); }
   };
 

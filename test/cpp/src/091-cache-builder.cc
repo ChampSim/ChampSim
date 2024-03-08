@@ -87,22 +87,26 @@ TEST_CASE("Specifying the sets overrides the cache's sets factor") {
 }
 
 TEST_CASE("Specifying the size infers the cache's number of sets") {
-  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).ways(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).ways(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_SET == 16);
 }
 
 TEST_CASE("Specifying the logarithm of the size infers the cache's number of sets") {
-  CACHE uut{champsim::cache_builder{}.log2_size(14).ways(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.log2_size(14).ways(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_SET == 16);
 }
 
 TEST_CASE("Specifying the size infers the cache's number of ways") {
-  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).sets(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.size(champsim::data::kibibytes{16}).sets(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_WAY == 16);
 }
 
 TEST_CASE("Specifying the logarithm of the size infers the cache's number of ways") {
-  CACHE uut{champsim::cache_builder{}.log2_size(14).sets(16).offset_bits(6)};
+  using namespace champsim::data::data_literals;
+  CACHE uut{champsim::cache_builder{}.log2_size(14).sets(16).offset_bits(6_b)};
   REQUIRE(uut.NUM_WAY == 16);
 }
 

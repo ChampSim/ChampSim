@@ -35,7 +35,6 @@
 
 #include "bandwidth.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "core_builder.h"
 #include "core_stats.h"
@@ -63,9 +62,8 @@ public:
   bool issue_write(request_type packet);
 };
 
-struct LSQ_ENTRY {
+struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
   champsim::address virtual_address{};
-  uint64_t instr_id = 0;
   champsim::address ip{};
   champsim::chrono::clock::time_point ready_time{};
 
@@ -75,7 +73,7 @@ struct LSQ_ENTRY {
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
 
-  LSQ_ENTRY(champsim::address addr, uint64_t id, champsim::address ip, std::array<uint8_t, 2> asid);
+  LSQ_ENTRY(champsim::address addr, champsim::program_ordered<LSQ_ENTRY>::id_type id, champsim::address ip, std::array<uint8_t, 2> asid);
   void finish(ooo_model_instr& rob_entry) const;
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
@@ -93,7 +91,6 @@ public:
   long long finish_phase_instr = 0;
   champsim::chrono::clock::time_point last_heartbeat_time{};
   long long last_heartbeat_instr = 0;
-  long long next_print_instruction = STAT_PRINTING_PERIOD;
 
   // instruction
   long long num_retired = 0;
@@ -106,7 +103,7 @@ public:
 
   // instruction buffer
   struct dib_shift {
-    std::size_t shamt;
+    champsim::data::bits shamt;
     auto operator()(champsim::address val) const { return val.slice_upper(shamt); }
   };
   using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
@@ -239,7 +236,8 @@ public:
 
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
-      : champsim::operable(b.m_clock_period), cpu(b.m_cpu), DIB(b.m_dib_set, b.m_dib_way, {champsim::lg2(b.m_dib_window)}, {champsim::lg2(b.m_dib_window)}),
+      : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
+        DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), FETCH_WIDTH(b.m_fetch_width), DECODE_WIDTH(b.m_decode_width), DISPATCH_WIDTH(b.m_dispatch_width),
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),

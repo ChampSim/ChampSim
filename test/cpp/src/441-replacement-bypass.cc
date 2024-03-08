@@ -32,7 +32,7 @@ SCENARIO("The replacement policy can bypass") {
       .lower_level(&mock_ll.queues)
       .hit_latency(hit_latency)
       .fill_latency(fill_latency)
-      .offset_bits(0)
+      .offset_bits(champsim::data::bits{})
       .replacement<bypass_replacement<0xcafebabe>>()
     };
 

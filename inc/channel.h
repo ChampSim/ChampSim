@@ -89,7 +89,7 @@ class channel
   std::size_t RQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t PQ_SIZE = std::numeric_limits<std::size_t>::max();
   std::size_t WQ_SIZE = std::numeric_limits<std::size_t>::max();
-  unsigned OFFSET_BITS = 0;
+  champsim::data::bits OFFSET_BITS{};
   bool match_offset_bits = false;
 
 public:
@@ -103,7 +103,7 @@ public:
   stats_type sim_stats{}, roi_stats{};
 
   channel() = default;
-  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, unsigned offset_bits, bool match_offset);
+  channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, champsim::data::bits offset_bits, bool match_offset);
 
   bool add_rq(const request_type& packet);
   bool add_wq(const request_type& packet);

@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("A cache returns a miss after the specified latency") {
   using namespace std::literals;
@@ -83,13 +82,13 @@ SCENARIO("A cache returns a miss after the specified latency") {
       }
 
       THEN("The average miss latency increases") {
-        REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
       }
 
       THEN("The end-of-phase average miss latency increases") {
         uut.end_phase(0);
-        REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
-        REQUIRE(uut.roi_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
+        REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
+        REQUIRE(uut.roi_stats.total_miss_latency_cycles == miss_latency + fill_latency);
       }
     }
   }
@@ -164,19 +163,19 @@ SCENARIO("A cache completes a fill after the specified latency") {
 
       THEN("The average miss latency increases") {
         if (match_offset)
-          REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == miss_latency + fill_latency);
         else
-          REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (fill_latency-1)); // -1 due to ordering of elements
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == fill_latency-1); // -1 due to ordering of elements
       }
 
       THEN("The end-of-phase average miss latency increases") {
         uut.end_phase(0);
         if (match_offset) {
-          REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
-          REQUIRE(uut.roi_stats.total_miss_latency == uut.clock_period * (miss_latency + fill_latency));
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
+          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (miss_latency + fill_latency));
         } else {
-          REQUIRE(uut.sim_stats.total_miss_latency == uut.clock_period * (fill_latency-1)); // -1 due to ordering of elements
-          REQUIRE(uut.roi_stats.total_miss_latency == uut.clock_period * (fill_latency-1)); // -1 due to ordering of elements
+          REQUIRE(uut.sim_stats.total_miss_latency_cycles == (fill_latency-1)); // -1 due to ordering of elements
+          REQUIRE(uut.roi_stats.total_miss_latency_cycles == (fill_latency-1)); // -1 due to ordering of elements
         }
       }
     }
@@ -254,7 +253,7 @@ SCENARIO("The MSHR bandwidth limits the number of outstanding misses") {
 
 SCENARIO("A lower-level queue refusal limits the number of outstanding misses") {
   GIVEN("An empty cache") {
-    champsim::channel refusal_channel{0,0,0,0,0}; // Refuses all packets
+    champsim::channel refusal_channel{0,0,0,champsim::data::bits{},0}; // Refuses all packets
     to_rq_MRP mock_ul;
     CACHE uut{champsim::cache_builder{champsim::defaults::default_l1d}
       .name("402c-uut")

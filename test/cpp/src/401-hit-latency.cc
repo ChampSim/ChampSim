@@ -2,7 +2,6 @@
 #include "mocks.hpp"
 #include "defaults.hpp"
 #include "cache.h"
-#include "champsim_constants.h"
 
 SCENARIO("A cache returns a hit after the specified latency") {
   using namespace std::literals;

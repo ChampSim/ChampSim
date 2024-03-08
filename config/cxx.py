@@ -2,6 +2,8 @@ import subprocess
 import tempfile
 import os
 
+from . import util
+
 class CompileResult:
     '''
     The result from check_compiles(), which is convertible to boolean, but retains the output from the compilation check.
@@ -15,17 +17,19 @@ class CompileResult:
     def __bool__(self):
         return self.returncode == 0
 
-def check_compiles(body, *args, cxx='c++'):
+def check_compiles(body, *args, cxx=None):
     '''
     Check whether the given body compiles as a valid C++ file.
     Additional arguments to the compiler can be provided.
     '''
+    cxxflags = [*filter(None, os.environ.get('CXXFLAGS','').split()), '--std=c++17', '-c']
+    cppflags = [*filter(None, os.environ.get('CPPFLAGS','').split())]
     with tempfile.TemporaryDirectory() as dtemp:
         fname = os.path.join(dtemp, 'temp.cc')
         with open(fname, 'wt') as wfp:
             for line in body:
                 print(line, file=wfp)
-        process_args = (cxx, '--std=c++17', '-c', '-o', os.devnull, *args, '-x', 'c++', fname)
+        process_args = (cxx or os.environ.get('CXX', 'c++'), *cppflags, *cxxflags, '-o', os.devnull, *args, '-x', 'c++', fname)
         result = subprocess.run(
             process_args,
             stdout=subprocess.PIPE,
@@ -34,6 +38,12 @@ def check_compiles(body, *args, cxx='c++'):
             check=False
         )
         return CompileResult(result)
+
+def brace_wrap(body):
+    ''' Wrap and indent the iterable. '''
+    yield '{'
+    yield from ('  '+l for l in body)
+    yield '}'
 
 def function(name, body, args=None, rtype=None, qualifiers=tuple()):
     '''
@@ -48,10 +58,9 @@ def function(name, body, args=None, rtype=None, qualifiers=tuple()):
     local_args = args or tuple()
     arg_string = ', '.join((a[0]+' '+a[1]) for a in local_args)
     rtype_string = f' -> {rtype}' if rtype is not None else ''
-    yield f'auto {name}({arg_string}){rtype_string}{" ".join(qualifiers)}'
-    yield '{'
-    yield from ('  '+l for l in body)
-    yield '}'
+    qualifier_string = (' '+' '.join(qualifiers)) if qualifiers else ''
+    yield f'auto {name}({arg_string}){rtype_string}{qualifier_string}'
+    yield from brace_wrap(body)
 
 def struct(name, body, superclass=None):
     '''
@@ -63,6 +72,6 @@ def struct(name, body, superclass=None):
     '''
     superclass_string = f' : public {superclass}' if superclass is not None else ''
     yield f'struct {name}{superclass_string}'
-    yield '{'
-    yield from ('  '+l for l in body)
-    yield '};'
+    head, tail = util.cut(brace_wrap(body), n=-1)
+    yield from head
+    yield from (l+';' for l in tail)

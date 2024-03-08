@@ -40,7 +40,6 @@
 #include "cache_builder.h"
 #include "cache_stats.h"
 #include "champsim.h"
-#include "champsim_constants.h"
 #include "channel.h"
 #include "chrono.h"
 #include "modules.h"
@@ -161,7 +160,7 @@ public:
   const std::size_t PQ_SIZE;
   const champsim::chrono::clock::duration HIT_LATENCY;
   const champsim::chrono::clock::duration FILL_LATENCY;
-  const unsigned OFFSET_BITS;
+  const champsim::data::bits OFFSET_BITS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
   champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
   const bool prefetch_as_load;
@@ -177,7 +176,6 @@ public:
   std::deque<mshr_type> inflight_writes;
 
   long operate() final;
-
   void initialize() final;
   void begin_phase() final;
   void end_phase(unsigned cpu) final;
