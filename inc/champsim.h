@@ -22,6 +22,8 @@
 #include <exception>
 #include <limits>
 
+#include "event_listener.h"
+
 #include "extent.h"
 #include "util/bit_enum.h"
 #include "util/ratio.h"

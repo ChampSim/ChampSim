@@ -22,6 +22,7 @@
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
+#include "event_listener.h" // for event listeners
 #include "cache.h" // for CACHE
 #include "champsim.h"
 #ifndef CHAMPSIM_TEST_BUILD
@@ -54,6 +55,10 @@ const unsigned LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);
 #ifndef CHAMPSIM_TEST_BUILD
 int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 {
+
+  // init event listeners
+  init_event_listeners();
+
   configured_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};

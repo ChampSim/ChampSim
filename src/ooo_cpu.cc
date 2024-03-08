@@ -24,6 +24,7 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#include "event_listener.h"
 #include "cache.h"
 #include "champsim.h"
 #include "deadlock.h"
@@ -163,6 +164,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
+    }
+    for (auto & listener : champsim::event_listeners) {
+      listener->process_event(event::BRANCH, nullptr, 0);
     }
 
     // call code prefetcher every time the branch predictor is used
