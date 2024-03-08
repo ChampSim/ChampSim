@@ -201,28 +201,43 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
   return do_predict_branch(arch_instr);
 }
 
-long O3_CPU::check_dib()
+namespace {
+template <typename It, typename SelectFunc, typename MatchFunc, typename DoFunc>
+void for_each_group_n(It begin, It end, champsim::bandwidth bw, SelectFunc selector, MatchFunc matcher, DoFunc mutator)
 {
-  auto match_in_dib = [set_match = DIB.index_func(), tag_match = DIB.tag_func()](const auto& lhs, const auto& rhs) {
-    return set_match(lhs.ip) == set_match(rhs.ip) && tag_match(lhs.ip) == tag_match(rhs.ip);
-  };
-  auto ifb_begin = std::begin(IFETCH_BUFFER);
-  auto ifb_end = std::end(IFETCH_BUFFER);
-
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
-  auto window_begin = std::find_if(ifb_begin, ifb_end, [](const ooo_model_instr& x) { return !x.dib_checked; });
-  for (champsim::bandwidth dib_bandwidth{DIB_WIDTH}; dib_bandwidth.has_remaining(); dib_bandwidth.consume()) {
-    auto window_end = std::adjacent_find(window_begin, ifb_end, std::not_fn(match_in_dib));
-    if (window_end != ifb_end) {
+  auto window_begin = std::find_if(begin, end, selector);
+  for (; bw.has_remaining() && window_begin != end; bw.consume()) {
+    auto window_end = std::adjacent_find(window_begin, end, std::not_fn(matcher));
+    if (window_end != end) {
       window_end = std::next(window_end); // adjacent_find returns the first of the non-equal elements
     }
 
-    do_check_dib(window_begin, window_end);
-    window_begin = window_end;
+    if (window_begin != window_end) {
+      mutator(window_begin, window_end);
+    }
+    window_begin = std::find_if(window_end, end, selector);
   }
-  // after loop, window_begin is past the end
+}
+}
 
-  return std::distance(ifb_begin, window_begin);
+long O3_CPU::check_dib()
+{
+  long progress{0};
+
+  auto is_dib_ready = [](const ooo_model_instr& x) { return !x.dib_checked; };
+  auto match_in_dib = [set_match = DIB.index_func(), tag_match = DIB.tag_func()](const auto& lhs, const auto& rhs) {
+    return set_match(lhs.ip) == set_match(rhs.ip) && tag_match(lhs.ip) == tag_match(rhs.ip);
+  };
+
+  auto work_on = [this, &progress](auto x, auto y){
+    this->do_check_dib(x,y);
+    ++progress;
+  };
+
+  // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
+  ::for_each_group_n(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), champsim::bandwidth{DIB_WIDTH}, is_dib_ready, match_in_dib, work_on);
+
+  return progress;
 }
 
 void O3_CPU::do_check_dib(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end)
@@ -266,26 +281,17 @@ long O3_CPU::fetch_instruction()
   };
 
   // Find the chunk of instructions in the block
-  auto no_match_ip = [](const auto& lhs, const auto& rhs) {
-    return champsim::block_number{lhs.ip} != champsim::block_number{rhs.ip};
+  auto match_ip = [](const auto& lhs, const auto& rhs) {
+    return champsim::block_number{lhs.ip} == champsim::block_number{rhs.ip};
   };
 
-  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
-  for (champsim::bandwidth to_read{L1I_BANDWIDTH}; to_read.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER); to_read.consume()) {
-    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
-    if (l1i_req_end != std::end(IFETCH_BUFFER)) {
-      l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
-    }
+  auto work_on = [this, &progress](auto l1i_req_begin, auto l1i_req_end){
+    this->do_fetch_instruction(l1i_req_begin, l1i_req_end);
+    std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetch_issued = true; });
+    ++progress;
+  };
 
-    // Issue to L1I
-    auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
-    if (success) {
-      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetch_issued = true; });
-      ++progress;
-    }
-
-    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
-  }
+  ::for_each_group_n(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), champsim::bandwidth{L1I_BANDWIDTH}, fetch_ready, match_ip, work_on);
 
   return progress;
 }
