@@ -196,9 +196,9 @@ struct state_model {
   static auto initialize_member_impl(long) -> std::false_type;
 
   template <typename T, typename... Args>
-  static auto handle_request(int) -> decltype(std::declval<T>().handle_request(std::declval<Args>()...), std::true_type{});
+  static auto handle_pkt_impl(bool) -> decltype(std::declval<T>().handle_pkt(std::declval<Args>()...), std::true_type{});
   template <typename, typename...>
-  static auto handle_request_member_impl(long) -> std::false_type;
+  static auto handle_pkt_member_impl(bool) -> std::false_type;
 
   template <typename T, typename... Args>
   static auto handle_response(int) -> decltype(std::declval<T>().handle_response(std::declval<Args>()...), std::true_type{});
@@ -206,7 +206,7 @@ struct state_model {
   static auto handle_response_member_impl(long) -> std::false_type;
 
   template <typename T, typename... Args>
-  static auto final_stats_member_impl(int) -> decltype(std::declval<T>().state_model_final_stats(std::declval<Args>()...), std::true_type{});
+  static auto final_stats_member_impl(int) -> decltype(std::declval<T>().final_stats(std::declval<Args>()...), std::true_type{});
   template <typename, typename...>
   static auto final_stats_member_impl(long) -> std::false_type;
 
@@ -214,7 +214,7 @@ struct state_model {
   constexpr static bool has_initialize = decltype(initialize_member_impl<T, Args...>(0))::value;
   
   template <typename T, typename... Args>
-  constexpr static bool has_handle_request = decltype(handle_request_member_impl<T, Args...>(0))::value;
+  constexpr static bool has_handle_pkt = decltype(handle_pkt_member_impl<T, Args...>(0))::value;
 
   template <typename T, typename... Args>
   constexpr static bool has_handle_response = decltype(handle_response_member_impl<T, Args...>(0))::value;

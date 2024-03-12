@@ -257,8 +257,8 @@ public:
     virtual ~state_model_module_concept() = default;
 
     virtual void impl_initialize_state_model() = 0;
-    virtual bool impl_state_model_handle_request(request_type req) = 0;
-    virtual bool impl_state_model_handle_response(response_type resp) = 0;
+    virtual bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) = 0;
+    virtual bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) = 0;
     virtual void impl_state_model_final_stats() = 0;
   };
 
@@ -300,8 +300,8 @@ public:
     explicit state_model_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
 
     void impl_initialize_state_model() final;
-    bool impl_state_model_handle_request(request_type req) final;
-    bool impl_state_model_handle_response(response_type resp) final;
+    bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) final;
+    bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) final;
     void impl_state_model_final_stats() final;
   };
 
@@ -328,8 +328,8 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   void impl_initialize_state_model() const; 
-  bool impl_state_model_handle_request(request_type req) const;
-  bool impl_state_model_handle_response(response_type resp) const;
+  bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const;
+  bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const;
   void impl_state_model_final_stats() const;
 
   template <typename... Ps, typename... Rs, typename... Ss>
@@ -525,27 +525,38 @@ void CACHE::state_model_module_model<Ss...>::impl_initialize_state_model()
 }
 
 template <typename... Ss>
-bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_request(request_type req)
+bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu)
 {
   [[maybe_unused]] auto process_one = [&](auto& s) {
     using namespace champsim::modules;
-    if constexpr (state_model::has_handle_request<decltype(s)>)
-      s.state_model_final_stats();
+
+    if constexpr (state_model::has_handle_pkt<decltype(s), champsim::address, champsim::address, access_type, uint32_t>){
+      printf("Dumb error1\n");
+      return s.handle_pkt(address, v_address, type, triggering_cpu);
+    }
+    //printf("[ERROR] CACHE MODEL WILL DEADLOCK - NO PACKET HANDLER IS IMPLEMENTED IN THE STATE_MODEL\n");
+    //assert(false);
+    return 1L;
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
+  return 1L;
 }
 
 template <typename... Ss>
-bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_response(response_type resp)
+bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu)
 {
   [[maybe_unused]] auto process_one = [&](auto& s) {
     using namespace champsim::modules;
-    if constexpr (state_model::has_handle_response<decltype(s)>)
-      s.state_model_handle_response();
+   
+   if constexpr (state_model::has_handle_response<decltype(s), champsim::address, champsim::address, access_type, uint32_t>)
+      return s.state_model_handle_response(address, v_address, type, triggering_cpu);
+    
+    return 0L;
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
+  return 0;
 }
 
 template <typename... Ss>
@@ -554,7 +565,7 @@ void CACHE::state_model_module_model<Ss...>::impl_state_model_final_stats()
   [[maybe_unused]] auto process_one = [&](auto& s) {
     using namespace champsim::modules;
     if constexpr (state_model::has_final_stats<decltype(s)>)
-      s.state_model_final_stats();
+      s.final_stats();
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);

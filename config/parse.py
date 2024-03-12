@@ -388,7 +388,7 @@ class NormalizedConfiguration:
                 # Get module path names and unique module names
                '_replacement_data': list(map(replacement_parse, util.wrap_list(cache.get('replacement', 'lru')))),
                '_prefetcher_data': [*map(functools.partial(prefetcher_parse, cache=cache), util.wrap_list(cache.get('prefetcher', 'no')))],
-               '_state_model_data': list(map(state_model_parse, util.wrap_list(cache.get('state_model', 'weak'))))
+               '_state_model_data': list(map(state_model_parse, util.wrap_list(cache.get('state_model', 'inclusive'))))
             } for k,cache in caches.items())
         )
 

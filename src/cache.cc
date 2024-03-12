@@ -295,7 +295,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
 
     const bool send_to_rq = (prefetch_as_load || handle_pkt.type != access_type::PREFETCH);
-    bool success = send_to_rq ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
+    const bool state_model_permit = impl_state_model_handle_pkt(handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.cpu); 
+    printf("Send to rq %d permit %d\n", send_to_rq, state_model_permit);
+    bool success = (send_to_rq && state_model_permit) ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
 
     if (!success) {
       return false;
@@ -497,7 +499,7 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 
 long CACHE::invalidate_entry(champsim::address inval_addr)
 {
-  fmt::print("Invalidating entry {inval_addr}\n");
+  printf("Invalidating entry %lx\n", inval_addr);
   auto [begin, end] = get_set_span(inval_addr);
   auto inv_way = std::find_if(begin, end, matches_address(inval_addr));
 
@@ -807,8 +809,8 @@ void CACHE::impl_initialize_state_model() const { sm_module_pimpl->impl_initiali
 
 void CACHE::impl_state_model_final_stats() const { sm_module_pimpl->impl_state_model_final_stats(); }
     
-bool CACHE::impl_state_model_handle_request(request_type req) const { return sm_module_pimpl->impl_state_model_handle_request(req); };
-bool CACHE::impl_state_model_handle_response(response_type resp) const { return sm_module_pimpl->impl_state_model_handle_response(resp); };
+bool CACHE::impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_pkt(address, v_address, type, triggering_cpu); };
+bool CACHE::impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_response(address, v_address, type, triggering_cpu); };
 
 void CACHE::initialize()
 {

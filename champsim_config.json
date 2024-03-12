@@ -53,7 +53,7 @@
         "virtual_prefetch": true,
         "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "no",
-        "state_model": "weak"
+        "state_model": "inclusive"
     },
 
     "L1D": {

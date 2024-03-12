@@ -160,7 +160,6 @@ def get_cache_builder(elem, ul_pairs):
         '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
         '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
         '^state_model_string': ', '.join(f'class {k["class"]}' for k in elem.get('_state_model_data',[])),
-        '^lower_translate_queues': channel_name(upper=elem.get('name'), lower=elem.get('lower_translate')),
         '^lower_level_queues': f'channels.at({ul_pairs.index((elem.get("lower_level"), elem.get("name")))})'
     }
     if 'lower_translate' in elem:

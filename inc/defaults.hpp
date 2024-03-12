@@ -21,7 +21,7 @@
 #include "../btb/basic_btb/basic_btb.h"
 #include "../prefetcher/no/no.h"
 #include "../replacement/lru/lru.h"
-#include "../state_model/weak/weak.h"
+#include "../state_model/inclusive/inclusive.h"
 #include "cache_builder.h"
 #include "core_builder.h"
 #include "ptw_builder.h"
@@ -55,7 +55,7 @@ const auto default_core =
         .l1i_bandwidth(champsim::bandwidth::maximum_type{1})
         .l1d_bandwidth(champsim::bandwidth::maximum_type{1});
 
-const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                              .sets_factor(64)
                              .ways(8)
                              .pq_size(32)
@@ -67,7 +67,7 @@ const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_
                              .set_wq_checks_full_addr()
                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                              .sets_factor(64)
                              .ways(12)
                              .pq_size(8)
@@ -79,7 +79,7 @@ const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_
                              .set_wq_checks_full_addr()
                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_l2c = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_l2c = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                              .sets_factor(512)
                              .ways(8)
                              .pq_size(16)
@@ -91,7 +91,7 @@ const auto default_l2c = champsim::cache_builder<champsim::cache_builder_module_
                              .reset_wq_checks_full_addr()
                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_itlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_itlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                               .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
@@ -103,7 +103,7 @@ const auto default_itlb = champsim::cache_builder<champsim::cache_builder_module
                               .set_wq_checks_full_addr()
                               .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_dtlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_dtlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                               .sets_factor(16)
                               .ways(4)
                               .pq_size(0)
@@ -116,7 +116,7 @@ const auto default_dtlb = champsim::cache_builder<champsim::cache_builder_module
                               .set_wq_checks_full_addr()
                               .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_stlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_stlb = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                               .sets_factor(64)
                               .ways(12)
                               .pq_size(0)
@@ -128,7 +128,7 @@ const auto default_stlb = champsim::cache_builder<champsim::cache_builder_module
                               .reset_wq_checks_full_addr()
                               .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
-const auto default_llc = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<weak>>{}
+const auto default_llc = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>, champsim::cache_builder_module_type_holder<inclusive>>{}
                              .name("LLC")
                              .sets_factor(2048)
                              .ways(16)
