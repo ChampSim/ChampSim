@@ -533,7 +533,10 @@ public:
    * Split the slice into an upper and lower slice.
    */
   template <champsim::data::bits split_loc>
-  [[nodiscard]] auto split() const { return std::pair{slice_upper<split_loc>(), slice_lower<split_loc>()}; }
+  [[nodiscard]] auto split() const
+  {
+    return std::pair{slice_upper<split_loc>(), slice_lower<split_loc>()};
+  }
 
   /**
    * Split the slice into an upper and lower slice.
