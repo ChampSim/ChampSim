@@ -59,17 +59,16 @@ hashed_perceptron::indexer::indexer(unsigned long hist_len)
   hist_masks.at(most_words) = champsim::msl::bitmask(last_word);
 }
 
-std::size_t hashed_perceptron::indexer::get_index(champsim::address pc, ghist_type ghist_words) const
+std::size_t hashed_perceptron::indexer::get_index(champsim::address pc, ghist_type ghist) const
 {
   constexpr auto slice_width{champsim::msl::lg2(TABLE_SIZE)}; // NOTE: GCC 9 gives internal compiler error if this has type champsim::data::bits
 
   // Mask the words in this table's history
-  std::transform(std::begin(ghist_words), std::end(ghist_words), std::begin(hist_masks), std::begin(ghist_words), std::bit_and<>{});
+  std::transform(std::begin(ghist), std::end(ghist), std::begin(hist_masks), std::begin(ghist), std::bit_and<>{});
 
   // XOR up to the next-to-the-last word
   // seed in the PC to spread accesses around (like gshare) XOR in the last word
-  auto x =
-      std::accumulate(std::begin(ghist_words), std::end(ghist_words), pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>(), std::bit_xor<>{});
+  auto x = std::accumulate(std::begin(ghist), std::end(ghist), pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>(), std::bit_xor<>{});
 
   return x & champsim::msl::bitmask(TABLE_INDEX_BITS); // stay within the table size
 }

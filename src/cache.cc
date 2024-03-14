@@ -554,7 +554,7 @@ void CACHE::finish_translation(const response_type& packet)
     return (champsim::page_number{entry.v_address} == page_num) && !entry.is_translated;
   };
   auto mark_translated = [p_page = champsim::page_number{packet.data}, this](auto& entry) {
-    auto old_address = entry.address;
+    [[maybe_unused]] auto old_address = entry.address;
     entry.address = champsim::address{champsim::splice(p_page, champsim::page_offset{entry.v_address})}; // translated address
     entry.is_translated = true;                                                                          // This entry is now translated
 
