@@ -336,7 +336,7 @@ void O3_CPU::btb_module_model<Ts...>::impl_update_btb(champsim::address ip, cham
 template <typename... Ts>
 std::pair<champsim::address, bool> O3_CPU::btb_module_model<Ts...>::impl_btb_prediction(champsim::address ip, uint8_t branch_type)
 {
-  using return_type = std::pair<uint64_t, bool>;
+  using return_type = std::pair<champsim::address, bool>;
   [[maybe_unused]] auto process_one = [&](auto& t) {
     using namespace champsim::modules;
 
