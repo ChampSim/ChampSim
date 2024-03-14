@@ -50,7 +50,7 @@ const auto default_core =
         .mispredict_penalty(1)
         .schedule_width(champsim::bandwidth::maximum_type{128})
         .decode_latency(1)
-        .dib_hit_latency(2)
+        .dib_hit_latency(1)
         .dispatch_latency(1)
         .schedule_latency(0)
         .execute_latency(0)
