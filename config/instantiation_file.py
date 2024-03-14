@@ -434,11 +434,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 
     yield from cxx.function(f'{classname}::operable_view', (
         'std::vector<std::reference_wrapper<champsim::operable>> retval{};',
-        'auto make_ref = [](auto& x){ return std::ref(x); };',
+        'auto make_ref = [](auto& x){ return std::ref<champsim::operable>(x); };',
         'std::transform(std::begin(cores), std::end(cores), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(caches), std::end(caches), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(retval), make_ref);',
-        'retval.push_back(std::ref(DRAM));',
+        'retval.push_back(std::ref<champsim::operable>(DRAM));',
         'return retval;'
     ), rtype='std::vector<std::reference_wrapper<champsim::operable>>')
     yield ''
