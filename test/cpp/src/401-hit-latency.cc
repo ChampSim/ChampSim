@@ -72,7 +72,7 @@ SCENARIO("A cache returns a hit after the specified latency") {
 
         THEN("It takes exactly the specified cycles to return") {
           REQUIRE_THAT(mock_ul.packets, Catch::Matchers::SizeIs(2));
-          mock_ul.packets.back().assert_returned(hit_latency, 1);
+          REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
         }
 
         THEN("The number of hits increases") {

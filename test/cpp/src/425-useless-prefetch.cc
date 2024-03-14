@@ -71,7 +71,7 @@ SCENARIO("A cache increments the useless prefetch count when it evicts an unhit 
             elem->_operate();
 
         THEN("It takes exactly the specified cycles to return") {
-          mock_ul_test.packets.front().assert_returned(miss_latency + hit_latency + 1, 1);
+          REQUIRE_THAT(mock_ul_test.packets.front(), champsim::test::ReturnedMatcher(miss_latency + hit_latency + 1, 1));
         }
 
         THEN("The number of useless prefetches is increased") {
