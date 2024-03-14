@@ -42,7 +42,7 @@ SCENARIO("Blocks that hit the DIB are removed from fetch candidacy") {
       }
 
       THEN("Only one fetch request is issued") {
-        REQUIRE_THAT(mock_L1I.addresses, Catch::Matchers::RangeEquals(std::array{test_instr_first.ip}));
+        REQUIRE_THAT(mock_L1I.addresses, Catch::Matchers::RangeEquals(std::array{test_instr_first.ip,test_instr_second.ip}));
       }
     }
   }
