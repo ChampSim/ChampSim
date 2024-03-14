@@ -68,14 +68,17 @@ std::size_t hashed_perceptron::indexer::get_index(champsim::address pc, ghist_ty
 
   // XOR up to the next-to-the-last word
   // seed in the PC to spread accesses around (like gshare) XOR in the last word
-  auto x = std::accumulate(std::begin(ghist_words), std::end(ghist_words), pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>(), std::bit_xor<>{});
+  auto x =
+      std::accumulate(std::begin(ghist_words), std::end(ghist_words), pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>(), std::bit_xor<>{});
 
   return x & champsim::msl::bitmask(TABLE_INDEX_BITS); // stay within the table size
 }
 
 bool hashed_perceptron::predict_branch(champsim::address pc)
 {
-  auto get_index = [pc, ghist_words = ghist_words](const auto& idxer) { return idxer.get_index(pc, ghist_words); };
+  auto get_index = [pc, ghist_words = ghist_words](const auto& idxer) {
+    return idxer.get_index(pc, ghist_words);
+  };
   perceptron_result result;
   std::transform(std::cbegin(indexers), std::cend(indexers), std::begin(result.indices), get_index);
 

@@ -24,12 +24,11 @@ class hashed_perceptron : champsim::modules::branch_predictor
                                                                          26, 36, 49, 67, 91, 125, 170, MAXHIST}; // geometric global history lengths
 
   // tables of 8-bit weights
-  std::vector<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>> tables = []{
+  std::vector<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>> tables = [] {
     decltype(tables) retval;
     std::generate_n(std::back_inserter(retval), std::size(history_lengths), [] { return typename decltype(retval)::value_type{}; });
     return retval;
   }(); // immediately invoked
-
 
   using ghist_type = std::array<unsigned long long, NGHIST_WORDS>;
   ghist_type ghist_words = {}; // words that store the global history
@@ -37,14 +36,16 @@ class hashed_perceptron : champsim::modules::branch_predictor
   int theta = 10;
   int tc = 0; // counter for threshold setting algorithm
 
-  class indexer {
+  class indexer
+  {
     ghist_type hist_masks;
-    public:
+
+  public:
     explicit indexer(unsigned long hist_len);
     std::size_t get_index(champsim::address pc, ghist_type ghist_words) const;
   };
 
-  std::vector<indexer> indexers = []{
+  std::vector<indexer> indexers = [] {
     decltype(indexers) retval;
     std::transform(std::begin(history_lengths), std::end(history_lengths), std::back_inserter(retval), [](unsigned long len) { return indexer{len}; });
     return retval;
@@ -52,7 +53,7 @@ class hashed_perceptron : champsim::modules::branch_predictor
 
   struct perceptron_result {
     std::array<uint64_t, std::tuple_size_v<decltype(history_lengths)>> indices = {}; // remember the indices into the tables from prediction to update
-    int yout = 0;                                                           // perceptron sum
+    int yout = 0;                                                                    // perceptron sum
   };
 
   perceptron_result last_result{};
