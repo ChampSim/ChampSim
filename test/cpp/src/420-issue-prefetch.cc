@@ -103,7 +103,7 @@ SCENARIO("A prefetch can be issued") {
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          mock_ul.packets.back().assert_returned(hit_latency + 1, 1);
+          REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency + 1, 1));
         }
 
         THEN("The number of useful prefetches is incremented") {

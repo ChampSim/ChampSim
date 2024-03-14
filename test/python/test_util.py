@@ -33,6 +33,15 @@ class ChainTests(unittest.TestCase):
         self.assertEqual(config.util.chain(a,b), {'a': {'a.a': 2}, 'b': 'test'});
         self.assertEqual(config.util.chain(b,a), {'a': {'a.a': 3}, 'b': 'test'});
 
+    def test_modified_result_leaves_priors_unmodified(self):
+        a = {'a': 1}
+        b = {'a': 2}
+        c = config.util.chain(a,b)
+        c.update(a=5000)
+        self.assertEqual(c, {'a': 5000})
+        self.assertEqual(a, {'a': 1})
+        self.assertEqual(b, {'a': 2})
+
 class SubdictTests(unittest.TestCase):
     def test_subdict_removes_keys(self):
         self.assertEqual(config.util.subdict({'a':1, 'b':2, 'c':3}, ('a','b')), {'a':1, 'b':2})

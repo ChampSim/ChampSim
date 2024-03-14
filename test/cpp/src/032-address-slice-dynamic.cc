@@ -149,6 +149,15 @@ TEST_CASE("Dynamically-sized address sliced can be re-sliced") {
   REQUIRE(champsim::address_slice{champsim::dynamic_extent{20_b,8_b},addr}.slice(champsim::dynamic_extent{8_b,2_b}) == champsim::address_slice{champsim::dynamic_extent{16_b,10_b},addr});
 }
 
+TEST_CASE("Dynamically-sized address slices can be split") {
+  champsim::address_slice addr{champsim::dynamic_extent{32_b,0_b}, 0xabcdef89};
+
+  auto [up, low] = addr.split(12_b);
+
+  REQUIRE(up == champsim::address_slice{champsim::dynamic_extent{32_b,12_b}, addr});
+  REQUIRE(low == champsim::address_slice{champsim::dynamic_extent{12_b,0_b}, addr});
+}
+
 TEST_CASE("A dynamically-sized address slice compares for equality") {
   champsim::address_slice lhs{champsim::dynamic_extent{20_b,16_b},10};
   REQUIRE_FALSE(lhs == champsim::address_slice{champsim::dynamic_extent{20_b,16_b},9});
