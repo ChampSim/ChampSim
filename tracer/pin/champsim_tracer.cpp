@@ -77,6 +77,7 @@ INT32 Usage()
 // Addresses used for knowing mainModule memory range
 ADDRINT mainModuleBase = 0;
 ADDRINT mainModuleHigh = 0;
+int seenBytecodes = 0;
 
 // Callback for loaded images - to find the base and high of the program, and thus calculate offsets
 VOID Image(IMG img, VOID* v) {
@@ -101,7 +102,7 @@ BOOL ShouldWrite()
 
 void WriteCurrentInstruction()
 {
-j  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
+  typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
   std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
   outfile.write(buf, sizeof(trace_instr_format_t));
 }
@@ -124,6 +125,7 @@ void WriteToSet(T* begin, T* end, UINT32 r)
 // assigns it to be data or bytecode.
 void DataOrBytecode(BOOL bytecodeLoad) {
   if (bytecodeLoad) {
+    std::cout << "\r" << "Seen bytecodes: " << seenBytecodes++ << std::endl;
     curr_instr.load_type = LOAD_TYPE::BYTECODE;
   } else {
     curr_instr.load_type = LOAD_TYPE::STANDARD_DATA;
@@ -241,6 +243,9 @@ int main(int argc, char* argv[])
     exit(1);
   }
 
+  // Fix base adress to enable calculation of offset
+  IMG_AddInstrumentFunction(Image, 0);
+  
   // Register function to be called to instrument instructions
   INS_AddInstrumentFunction(Instruction, 0);
 
