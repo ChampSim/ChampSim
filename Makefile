@@ -8,11 +8,11 @@ BIN_ROOT:=bin
 OBJ_ROOT:=.csconfig
 DEP_ROOT:=$(OBJ_ROOT)
 
-MODULE_ROOT =
-BRANCH_ROOT = branch $(addsuffix /branch,$(MODULE_ROOT))
-BTB_ROOT = btb $(addsuffix /btb,$(MODULE_ROOT))
-PREFETCH_ROOT = prefetcher $(addsuffix /prefetcher,$(MODULE_ROOT))
-REPLACEMENT_ROOT = replacement $(addsuffix /replacement,$(MODULE_ROOT))
+override MODULE_ROOT += $(ROOT_DIR)
+override BRANCH_ROOT += $(addsuffix /branch,$(MODULE_ROOT))
+override BTB_ROOT += $(addsuffix /btb,$(MODULE_ROOT))
+override PREFETCH_ROOT += $(addsuffix /prefetcher,$(MODULE_ROOT))
+override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
@@ -20,11 +20,10 @@ override CPPFLAGS += -I$(OBJ_ROOT)
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
-.PHONY: all clean configclean test pytest
+.PHONY: all clean configclean test pytest maketest
 
 test_main_name=test/bin/000-test-main
 executable_name:=
-module_dirs = $(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT)
 
 # List all subdirectories of a given directory
 # $1 - parent directory
@@ -38,6 +37,41 @@ ls_dirs = $(patsubst %/,%,$(filter %/,$(wildcard $1/*/)))
 # $5 - unique build id
 migrate = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3))) $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3))) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3,$4,$5))
 
+# Return the trailing portion of a word sequence
+# $1 - the sequence
+tail = $(wordlist 2,$(words $1),$1)
+
+# Split a path into a series of words that are path componenents
+# $1 - the path to split
+_root_standin=__ROOT__
+split_path = $(subst /, ,$(patsubst /%,$(_root_standin)/%,$1))
+
+# Join a series of words into a path
+# $1 - the path componenents
+join_path = $(subst $(eval) $(eval),,$(filter-out $(_root_standin),$(firstword $1) $(addprefix /,$(call tail,$1))))
+
+# Return the common prefix between two paths
+# $1 - the first path
+# $2 - the second path
+common_prefix_impl = $(if $(and $1,$2),$(if $(findstring $(firstword $1),$(firstword $2)),$(firstword $1) $(call $0,$(call tail,$1),$(call tail,$2))))
+common_prefix = $(call join_path,$(call $0_impl,$(call split_path,$1),$(call split_path,$2)))
+
+# Remove the given prefix from each word
+# $1 - the prefix to remove
+# $2 - the words to remove from
+remove_prefix_impl = $(if $1,$(if $(findstring $(firstword $1),$(firstword $2)),$(call $0,$(call tail,$1),$(call tail,$2))),$2)
+remove_prefix = $(call join_path,$(call $0_impl,$(call split_path,$1),$(call split_path,$2)))
+
+# Given a prefix, return the relative prefix of the same length
+# $1 - the prefix
+make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
+
+# Return the relative path from one path to another
+# $1 - the destination path
+# $2 - the origin path
+relative_path_impl = $(if $2,$(call make_relative_prefix,$2)/$1,$1)
+relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
+
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - All dependencies and flags assigned according to the modules
@@ -48,6 +82,7 @@ all: $(executable_name)
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc
+module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
 
 # Remove all intermediate files
 clean:
@@ -63,7 +98,7 @@ configclean: clean
 	@-find $(module_dirs) \( -name legacy_bridge.h -o -name legacy_bridge.cc -o -name legacy.options \) -delete &> /dev/null
 	@-$(RM) $(generated_files) _configuration.mk
 
-reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)),$(1))
+reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(call tail,$1)) $(firstword $(1)),$(1))
 
 absolute.options:
 	@echo "-I$(realpath inc) -isystem $(realpath $(TRIPLET_DIR)/include)" > $@
@@ -72,22 +107,23 @@ attach_options = $(call reverse, $(addprefix @,$(filter %.options, $^)))
 
 # All .o files should be made like .cc files
 define obj_recipe
-	mkdir -p $(dir $@)
 	$(CXX) $(attach_options) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 endef
 
 # All .d files should be preprocessed only
 DEPFLAGS = -MM -MT $@ -MT $(@:.d=.o)
 define dep_recipe
-	mkdir -p $(dir $@)
 	$(CXX) $(attach_options) $(DEPFLAGS) $(CPPFLAGS) -MF $@ $(filter %.cc, $^)
 endef
 
 ### Module support
 
+get_module_obj_dir=$(OBJ_ROOT)/modules/$(patsubst ..%,externUPdir%,$(subst /..,_UPdir,$1))
+get_module_src_dir=$(patsubst externUPdir%,..%,$(subst _UPdir,/..,$(patsubst $(DEP_ROOT)/modules/%,%,$(patsubst $(OBJ_ROOT)/modules/%,%,$1))))
+
 # Get a list of module objects descended from the given directories
 # $1 - list of directories to traverse
-get_module_list = $(foreach mod_type,$1,$(call migrate,$(mod_type),$(OBJ_ROOT)/modules/$(mod_type),.cc,.o))
+get_module_list = $(foreach mod_type,$1,$(call migrate,$(mod_type),$(call get_module_obj_dir,$(mod_type)),.cc,.o))
 
 # The base modules shipped with ChampSim
 base_module_objs = $(call get_module_list, $(module_dirs))
@@ -102,7 +138,7 @@ nonbase_module_objs = $(filter-out $(base_module_objs),$1)
 # Expands to the given legacy file if the module folder contains a file named "__legacy__"
 # $1 - path to search
 # $2 - file to produce
-maybe_legacy_file = $(and $(filter-out legacy%,$(notdir $1)),$(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)$2)
+maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)$2)
 
 # Secondary expansion is required to pass the build ID into executables and also to connect legacy options as prerequisites
 .SECONDEXPANSION:
@@ -162,7 +198,7 @@ $(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)/
 	$(dep_recipe)
 
 # Connect module objects to their sources
-base_module_prereqs = $*.cc $(call maybe_legacy_file,$*,legacy.options) module.options $(base_options)
+base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(if $(filter-out %/legacy_bridge,$(basename $@)),$(call maybe_legacy_file,$(call get_module_src_dir,$@),legacy.options)) module.options $(base_options)
 $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/modules
 	$(obj_recipe)
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $(DEP_ROOT)/modules
@@ -183,16 +219,16 @@ $(executable_name) $(test_main_name):
 
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
-module_decl_prereqs = $(foreach mod,$(patsubst $(OBJ_ROOT)/modules/%,%,$(basename $1)),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
+module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
 define module_decl_lines
-$(if $^,echo "#include \"$(abspath $(firstword $^))\"" >> $@)
-$(if $(wordlist 2,$(words $^),$^),$(call $0,$(wordlist 2,$(words $^),$^)))
+$(if $1,echo "#include \"$(call relative_path,$(firstword $(patsubst %/,%,$(dir $1))),$(@D))/$(firstword $(notdir $1))\"" >> $@)
+$(if $1,$(call $0,$(call tail,$1)))
 endef
-$(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(base_module_objs)) | $(OBJ_ROOT)
+$(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(sort $(dir $(base_module_objs)))) | $(OBJ_ROOT)
 	$(info Building $@ with modules $^)
 	@echo "#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL" > $@
 	@echo "#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL" >> $@
-	@$(module_decl_lines)
+	@$(call module_decl_lines,$^)
 	@echo "#endif" >> $@
 
 # Tests: build and run
@@ -207,4 +243,8 @@ pytest:
 
 ifeq (,$(filter clean configclean pytest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
+endif
+
+ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))
+include $(ROOT_DIR)/test/make/Makefile.test
 endif
