@@ -165,9 +165,13 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
-    for (auto & listener : champsim::event_listeners) {
-      listener->process_event(event::BRANCH, nullptr, 0);
-    }
+    // call event listeners with a BRANCH event
+    //BRANCH_data* data = static_cast<BRANCH_data *>(malloc(sizeof(BRANCH_data)));
+    BRANCH_data* b_data = new BRANCH_data();
+    b_data->instr = &arch_instr;
+    call_event_listeners(event::BRANCH, (void*) b_data);
+    delete b_data;
+    //free(b_data);
 
     // call code prefetcher every time the branch predictor is used
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch, predicted_branch_target);

@@ -16,9 +16,17 @@ namespace champsim {
 std::vector<EventListener*> event_listeners;
 }
 
-void EventListener::process_event(event eventType, char* data, int datalen) {
+void EventListener::process_event(event eventType, void* data) {
   if (eventType == event::BRANCH) {
-    fmt::print("Got a branch\n");
+    BRANCH_data* b_data = static_cast<BRANCH_data *>(data);
+    fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", b_data->instr->instr_id, b_data->instr->ip, b_data->instr->branch_taken);
+    //fmt::print("Got a branch\n");
+  }
+}
+
+void call_event_listeners(event eventType, void* data) {
+  for (auto & el : champsim::event_listeners) {
+    el->process_event(eventType, data);
   }
 }
 
