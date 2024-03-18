@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <set>
 
 #include "../../inc/trace_instruction.h"
 #include "pin.H"
@@ -38,6 +39,7 @@ using trace_instr_format_t = bytecode_instr;
 UINT64 instrCount = 0;
 
 std::ofstream outfile;
+std::ofstream debugFile; 
 
 trace_instr_format_t curr_instr;
 
@@ -45,6 +47,7 @@ trace_instr_format_t curr_instr;
 // Command line switches
 /* ===================================================================== */
 KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "champsim.trace", "specify file name for Champsim tracer output");
+KNOB<std::string> KnobDebugFile(KNOB_MODE_WRITEONCE, "pintool", "d", "tool_debug.out", "debug file");
 
 KNOB<UINT64> KnobSkipInstructions(KNOB_MODE_WRITEONCE, "pintool", "s", "0", "How many instructions to skip before tracing begins");
 
@@ -79,6 +82,7 @@ ADDRINT mainModuleBase = 0;
 ADDRINT mainModuleHigh = 0;
 int seenBytecodes = 0;
 int seenTableLoads = 0;
+bool startTracing = false;
 
 // Callback for loaded images - to find the base and high of the program, and thus calculate offsets
 VOID Image(IMG img, VOID* v) {
@@ -103,6 +107,7 @@ BOOL ShouldWrite()
 
 void WriteCurrentInstruction()
 {
+  if (!startTracing) return;
   typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
   std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
   outfile.write(buf, sizeof(trace_instr_format_t));
@@ -136,6 +141,39 @@ void DataOrBytecode(BOOL bytecodeLoad, BOOL dispatchTableLoad) {
   }
 }
 
+std::set<ADDRINT> wrongBytecodes;
+template <typename T> 
+VOID foundByteCode(T readValue, ADDRINT PC, ADDRINT readAddr, UINT32 readSize) {
+    if (PIN_SafeCopy(readValue, reinterpret_cast<void*>(readAddr), readSize) == readSize) {
+        // Print the memory read value in hex
+        INT bytecode = static_cast<INT>(*readValue & 0xFF);
+        INT bytecodeBigEndian = static_cast<INT>(*readValue >> 8);
+        debugFile << std::dec << bytecode << " " << bytecodeBigEndian << "\n";
+        if (bytecode == 0) {
+          wrongBytecodes.insert(PC - mainModuleBase); 
+        }
+    }
+    DataOrBytecode(true, false);
+}
+
+
+VOID ByteCodeLoad(ADDRINT PC, ADDRINT readAddr, UINT32 readSize) {
+    if (readSize == 8){
+        UINT64 readValue;
+        foundByteCode(&readValue, PC, readAddr, readSize);
+    } else if (readSize == 4) {
+        UINT32 readValue;
+        foundByteCode(&readValue, PC, readAddr, readSize);
+    } else if (readSize == 2) {
+        UINT16 readValue;
+        foundByteCode(&readValue, PC, readAddr, readSize);
+    }
+    else if (readSize == 1) {
+        UINT8 readValue;
+        foundByteCode(&readValue, PC, readAddr, readSize);
+    }
+  } 
+
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
@@ -152,7 +190,9 @@ VOID Instruction(INS ins, VOID* v)
 
   if (INS_IsMemoryRead(ins)) {
     static const std::vector<ADDRINT> byteCodeLoadAddresses = {
-      0x25c168,0x25c2c6,0x25c444,0x25c58a,0x25c68e,0x264340,0x2645f2,0x264897,0x26c661,0x26c72d,0x25bbf5,0x26c762,0x25bc6b,0x25bd25,0x25be2f,0x25bf0e,0x25bfe9,0x25c0bc,0x25c1fb,0x25c34e,0x25c495,0x25c5cc,0x25c721,0x25c80c,0x25c8b0,0x25c95a,0x25ca04,0x25cacf,0x25cb6b,0x25cc56,0x25cd65,0x25ceba,0x25d007,0x25d159,0x25d2ae,0x25d436,0x25d5d9,0x25d72b,0x25d853,0x25da79,0x25dcac,0x25de77,0x25e1c3,0x25e2b0,0x25e3cf,0x25e5f4,0x25e771,0x25e893,0x25e9a9,0x25ed5d,0x25ef05,0x25f05a,0x25f260,0x25f468,0x25f57f,0x25f7a5,0x25fa46,0x25fbe8,0x25fd43,0x25fe2d,0x25ffdb,0x2600ed,0x260240,0x2604e1,0x2606f7,0x2608a5,0x2609ba,0x260b38,0x260c2e,0x260d25,0x260dde,0x260efc,0x2611c2,0x2614ca,0x261690,0x261795,0x261843,0x2618ed,0x261a0c,0x261bfc,0x261ce3,0x261e1b,0x261f40,0x262069,0x262192,0x2622a1,0x2623c1,0x262535,0x2626a7,0x2628d2,0x2629b0,0x262cba,0x262d9f,0x262eee,0x263015,0x263111,0x2632de,0x2636c9,0x2634a8,0x263871,0x263aab,0x263d30,0x263ffb,0x26417b,0x2643d9,0x26468b,0x264944,0x264b70,0x264cea,0x264f0c,0x26514e,0x2652de,0x2653f2,0x26552a,0x2655c6,0x26567c,0x265739,0x2657a8,0x26583b,0x26597e,0x265ac1,0x265b2e,0x265bc1,0x265d01,0x265e2a,0x265ebe,0x265f7e,0x26605a,0x266157,0x26626e,0x2662db,0x266372,0x266486,0x2664f3,0x26658a,0x26669a,0x2667b5,0x266926,0x266aab,0x266b98,0x266c76,0x266d3d,0x266e04,0x266f03,0x267018,0x26714a,0x267311,0x2674f6,0x267640,0x2677a1,0x267a65,0x267cb6,0x267e9d,0x2680b1,0x2682c4,0x2683f5,0x268559,0x26860b,0x2686b3,0x268a11,0x268c0f,0x269370,0x269532,0x2696e2,0x269974,0x269b9b,0x269f1e,0x26a273,0x26a47a,0x26a709,0x26a95e,0x26ac14,0x26af50,0x26b161,0x26b4ac,0x26b7c2,0x26ba6a,0x26be76,0x26c0f3,0x26c204,0x26c356,0x26c510,0x26cd06
+      //0x25c168, 0x25c444,0x25c68e,
+      0x25c2c6,0x25c58a,0x264340,0x2645f2,0x264897,0x26c661,0x26c72d,0x25bbf5,
+      0x26c762,0x25bc6b,0x25bd25,0x25be2f,0x25bf0e,0x25bfe9,0x25c0bc,0x25c1fb,0x25c34e,0x25c495,0x25c5cc,0x25c721,0x25c80c,0x25c8b0,0x25c95a,0x25ca04,0x25cacf,0x25cb6b,0x25cc56,0x25cd65,0x25ceba,0x25d007,0x25d159,0x25d2ae,0x25d436,0x25d5d9,0x25d72b,0x25d853,0x25da79,0x25dcac,0x25de77,0x25e1c3,0x25e2b0,0x25e3cf,0x25e5f4,0x25e771,0x25e893,0x25e9a9,0x25ed5d,0x25ef05,0x25f05a,0x25f260,0x25f468,0x25f57f,0x25f7a5,0x25fa46,0x25fbe8,0x25fd43,0x25fe2d,0x25ffdb,0x2600ed,0x260240,0x2604e1,0x2606f7,0x2608a5,0x2609ba,0x260b38,0x260c2e,0x260d25,0x260dde,0x260efc,0x2611c2,0x2614ca,0x261690,0x261795,0x261843,0x2618ed,0x261a0c,0x261bfc,0x261ce3,0x261e1b,0x261f40,0x262069,0x262192,0x2622a1,0x2623c1,0x262535,0x2626a7,0x2628d2,0x2629b0,0x262cba,0x262d9f,0x262eee,0x263015,0x263111,0x2632de,0x2636c9,0x2634a8,0x263871,0x263aab,0x263d30,0x263ffb,0x26417b,0x2643d9,0x26468b,0x264944,0x264b70,0x264cea,0x264f0c,0x26514e,0x2652de,0x2653f2,0x26552a,0x2655c6,0x26567c,0x265739,0x2657a8,0x26583b,0x26597e,0x265ac1,0x265b2e,0x265bc1,0x265d01,0x265e2a,0x265ebe,0x265f7e,0x26605a,0x266157,0x26626e,0x2662db,0x266372,0x266486,0x2664f3,0x26658a,0x26669a,0x2667b5,0x266926,0x266aab,0x266b98,0x266c76,0x266d3d,0x266e04,0x266f03,0x267018,0x26714a,0x267311,0x2674f6,0x267640,0x2677a1,0x267a65,0x267cb6,0x267e9d,0x2680b1,0x2682c4,0x2683f5,0x268559,0x26860b,0x2686b3,0x268a11,0x268c0f,0x269370,0x269532,0x2696e2,0x269974,0x269b9b,0x269f1e,0x26a273,0x26a47a,0x26a709,0x26a95e,0x26ac14,0x26af50,0x26b161,0x26b4ac,0x26b7c2,0x26ba6a,0x26be76,0x26c0f3,0x26c204,0x26c356,0x26c510,0x26cd06
       };  
     
     static const std::vector<ADDRINT> dispatchTableLoadAddresses = {
@@ -164,7 +204,14 @@ VOID Instruction(INS ins, VOID* v)
         [insAddr](ADDRINT byteCodeLoadAddress) {
             return byteCodeLoadAddress == insAddr;
       }) != byteCodeLoadAddresses.end()) {
-          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) DataOrBytecode, IARG_BOOL, true, IARG_BOOL, false, IARG_END);
+          UINT32 readOperandSize = 0;
+          // Start tracing when encountering bytecodes
+          if (!startTracing) startTracing = true; 
+          for (UINT32 index = 0; index < INS_MemoryOperandCount(ins); index++) {
+              if (INS_MemoryOperandIsRead(ins, index)) {
+                  readOperandSize = INS_MemoryOperandSize(ins, index);
+                  break;}}
+          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) ByteCodeLoad, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_UINT32, readOperandSize, IARG_END);
       } else if (std::find_if(dispatchTableLoadAddresses.begin(), dispatchTableLoadAddresses.end(),
         [insAddr](ADDRINT byteCodeLoadAddress) {
             return byteCodeLoadAddress == insAddr;
@@ -219,8 +266,12 @@ VOID Instruction(INS ins, VOID* v)
  */
 VOID Fini(INT32 code, VOID* v) { 
     outfile.close(); 
+    debugFile.close();
     std::cout << "\r" << "Seen bytecodes: " << seenBytecodes << std::endl;
     std::cout << "\r" << "Seen dispatch table loads: " << seenTableLoads << std::endl;
+    for (ADDRINT wrongByteCodeIns : wrongBytecodes) {
+      std::cout << "Loaded 0 " << std::hex << wrongByteCodeIns << "\n";
+    }
   }
 
 /*!
@@ -238,6 +289,8 @@ int main(int argc, char* argv[])
     return Usage();
 
   outfile.open(KnobOutputFile.Value().c_str(), std::ios_base::binary | std::ios_base::trunc);
+  debugFile.open(KnobDebugFile.Value().c_str());
+  debugFile.setf(std::ios::showbase);
   if (!outfile) {
     std::cout << "Couldn't open output trace file. Exiting." << std::endl;
     exit(1);
