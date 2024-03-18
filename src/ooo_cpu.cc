@@ -263,11 +263,11 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
   fetch_packet.instr_depend_on_me = {begin, end};
-  fetch_packet.bytecode_load = (begin->ld_type == load_type::BYTECODE_LOAD); 
+  fetch_packet.ld_type = (LOAD_TYPE) begin->ld_type; 
 
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} load_type: {}\n", __func__, begin->instr_id, begin->ip,
-               std::size(fetch_packet.instr_depend_on_me), begin->event_cycle, begin->ld_type);
+               std::size(fetch_packet.instr_depend_on_me), begin->event_cycle, (unsigned) begin->ld_type);
   }
 
   return L1I_bus.issue_read(fetch_packet);
@@ -422,7 +422,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   for (auto& smem : instr.source_memory) {
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
-    q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid, instr.ld_type); // add it to the load queue
+    q_entry->emplace(instr.instr_id, smem, instr.ip, instr.asid, (LOAD_TYPE) instr.ld_type); // add it to the load queue
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -529,7 +529,7 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.v_address = lq_entry.virtual_address;
   data_packet.instr_id = lq_entry.instr_id;
   data_packet.ip = lq_entry.ip;
-  data_packet.bytecode_load = (lq_entry.ld_type == load_type::BYTECODE_LOAD);
+  data_packet.ld_type = lq_entry.ld_type;
 
   if constexpr (champsim::debug_print) {
     fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
@@ -675,7 +675,7 @@ LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<u
 {
 }
 
-LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid, load_type load_type)
+LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid, LOAD_TYPE load_type)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid), ld_type(load_type)
 {
 }

@@ -34,13 +34,13 @@
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me), bytecode_load(req.bytecode_load)
+      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me), ld_type(req.ld_type)
 {
 }
 
 CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return), bytecode_load(req.bytecode_load)
+      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return), ld_type(req.ld_type)
 {
 }
 
@@ -155,6 +155,13 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   if (success) {
     // COLLECT STATS
     sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
+    if (fill_mshr.ld_type == LOAD_TYPE::BYTECODE) {
+
+    } else if (fill_mshr.ld_type == LOAD_TYPE::DISPATCH_TABLE) {
+
+    } else {
+
+    }
 
     response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
     for (auto ret : fill_mshr.to_return)
@@ -189,8 +196,13 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
 
   if (hit) {
-    ++sim_stats.hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
-    if (handle_pkt.bytecode_load) ++sim_stats.bytecode_hits[handle_pkt.cpu];
+    if (handle_pkt.ld_type == LOAD_TYPE::BYTECODE) {
+      ++sim_stats.bytecode_hits[handle_pkt.cpu];
+    } else if (handle_pkt.ld_type == LOAD_TYPE::DISPATCH_TABLE) {
+      ++sim_stats.table_hits[handle_pkt.cpu];
+    } else {
+      ++sim_stats.hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+    }
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
@@ -285,7 +297,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
   }
-  if (handle_pkt.bytecode_load) ++sim_stats.bytecode_miss[handle_pkt.cpu];
+  if (handle_pkt.ld_type == LOAD_TYPE::BYTECODE) ++sim_stats.bytecode_miss[handle_pkt.cpu];
+  if (handle_pkt.ld_type == LOAD_TYPE::DISPATCH_TABLE) ++sim_stats.table_miss[handle_pkt.cpu];
   ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
 
   return true;
@@ -707,6 +720,8 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_fill = sim_stats.pf_fill;
   roi_stats.bytecode_hits[finished_cpu] = sim_stats.bytecode_hits[finished_cpu];
   roi_stats.bytecode_miss[finished_cpu] = sim_stats.bytecode_miss[finished_cpu];
+  roi_stats.table_hits[finished_cpu] = sim_stats.table_hits[finished_cpu];
+  roi_stats.table_miss[finished_cpu] = sim_stats.table_miss[finished_cpu];
 
   auto total_miss = 0ull;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {

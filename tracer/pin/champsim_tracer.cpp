@@ -96,7 +96,7 @@ void ResetCurrentInstruction(VOID* ip)
 {
   curr_instr = {};
   curr_instr.ip = (unsigned long long int)ip;
-  curr_instr.load_type = LOAD_TYPE::NOT_LOAD;
+  curr_instr.ld_type = load_type::NOT_LOAD;
 }
 
 BOOL ShouldWrite()
@@ -127,20 +127,22 @@ void WriteToSet(T* begin, T* end, UINT32 r)
   *found_reg = r;
 }
 
-// Determine what type of load the memory read is; currently just randomly
-// assigns it to be data or bytecode.
-void DataOrBytecode(BOOL bytecodeLoad, BOOL dispatchTableLoad) {
+// Determine what type of load the memory read is
+void MemoryLoadType(BOOL bytecodeLoad, BOOL dispatchTableLoad) {
   if (bytecodeLoad) {
     seenBytecodes++;    
-    curr_instr.load_type = LOAD_TYPE::BYTECODE;
+    curr_instr.ld_type = load_type::BYTECODE;
   } else if (dispatchTableLoad) {
     seenTableLoads++;    
-    curr_instr.load_type = LOAD_TYPE::DISPATCH_TABLE;
+    curr_instr.ld_type = load_type::DISPATCH_TABLE;
   } else {
-    curr_instr.load_type = LOAD_TYPE::STANDARD_DATA;
+    curr_instr.ld_type = load_type::STANDARD_DATA;
   }
 }
 
+/* ===================================================================== */
+// Used for debbuing purposes
+/* ===================================================================== */
 std::set<ADDRINT> wrongBytecodes;
 template <typename T> 
 VOID foundByteCode(T readValue, ADDRINT PC, ADDRINT readAddr, UINT32 readSize) {
@@ -153,7 +155,7 @@ VOID foundByteCode(T readValue, ADDRINT PC, ADDRINT readAddr, UINT32 readSize) {
           wrongBytecodes.insert(PC - mainModuleBase); 
         }
     }
-    DataOrBytecode(true, false);
+    MemoryLoadType(true, false);
 }
 
 
@@ -204,22 +206,17 @@ VOID Instruction(INS ins, VOID* v)
         [insAddr](ADDRINT byteCodeLoadAddress) {
             return byteCodeLoadAddress == insAddr;
       }) != byteCodeLoadAddresses.end()) {
-          UINT32 readOperandSize = 0;
           // Start tracing when encountering bytecodes
           if (!startTracing) startTracing = true; 
-          for (UINT32 index = 0; index < INS_MemoryOperandCount(ins); index++) {
-              if (INS_MemoryOperandIsRead(ins, index)) {
-                  readOperandSize = INS_MemoryOperandSize(ins, index);
-                  break;}}
-          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) ByteCodeLoad, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_UINT32, readOperandSize, IARG_END);
+          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) MemoryLoadType, IARG_BOOL, true, IARG_BOOL, false, IARG_END);
       } else if (std::find_if(dispatchTableLoadAddresses.begin(), dispatchTableLoadAddresses.end(),
         [insAddr](ADDRINT byteCodeLoadAddress) {
             return byteCodeLoadAddress == insAddr;
       }) != dispatchTableLoadAddresses.end()) {
-          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) DataOrBytecode, IARG_BOOL, false, IARG_BOOL, true, IARG_END);
+          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) MemoryLoadType, IARG_BOOL, false, IARG_BOOL, true, IARG_END);
       }
         else {
-          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) DataOrBytecode, IARG_BOOL, false, IARG_BOOL, false, IARG_END);
+          INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) MemoryLoadType, IARG_BOOL, false, IARG_BOOL, false, IARG_END);
       }
   }
 

@@ -51,6 +51,8 @@ struct cache_stats {
   
   std::array<uint64_t, NUM_CPUS> bytecode_miss = {};
   std::array<uint64_t, NUM_CPUS> bytecode_hits = {};
+  std::array<uint64_t, NUM_CPUS> table_miss = {};
+  std::array<uint64_t, NUM_CPUS> table_hits = {};
 
   double avg_miss_latency = 0;
   uint64_t total_miss_latency = 0;
@@ -81,7 +83,7 @@ class CACHE : public champsim::operable
     bool skip_fill;
     bool is_translated;
     bool translate_issued = false;
-    bool bytecode_load = false;
+    LOAD_TYPE ld_type = LOAD_TYPE::NOT_IMPLEMENTED;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -106,7 +108,7 @@ class CACHE : public champsim::operable
 
     access_type type;
     bool prefetch_from_this;
-    load bytecode_load = false;
+    LOAD_TYPE ld_type = LOAD_TYPE::NOT_IMPLEMENTED;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 

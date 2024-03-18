@@ -79,7 +79,7 @@ struct LSQ_ENTRY {
   uint64_t virtual_address = 0;
   uint64_t ip = 0;
   uint64_t event_cycle = 0;
-  load_type ld_type = load_type::NOT_IMPLEMENTED;
+  LOAD_TYPE ld_type = LOAD_TYPE::NOT_IMPLEMENTED;
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
@@ -88,7 +88,7 @@ struct LSQ_ENTRY {
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
   
   LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid);
-  LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid, load_type ld_type);
+  LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t ip, std::array<uint8_t, 2> asid, LOAD_TYPE ld_type);
   void finish(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end) const;
 };
 

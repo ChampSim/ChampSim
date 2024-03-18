@@ -28,6 +28,14 @@
 
 struct ooo_model_instr;
 
+enum class LOAD_TYPE : unsigned {
+  NOT_IMPLEMENTED = 0,
+  NOT_LOAD = 1,
+  STANDARD_DATA = 2,
+  BYTECODE = 3,
+  DISPATCH_TABLE  = 4,
+}; 
+
 enum class access_type : unsigned {
   LOAD = 0,
   RFO,
@@ -66,7 +74,7 @@ class channel
     bool forward_checked = false;
     bool is_translated = true;
     bool response_requested = true;
-    bool bytecode_load = false;
+    LOAD_TYPE ld_type = LOAD_TYPE::NOT_IMPLEMENTED;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
     access_type type{access_type::LOAD};

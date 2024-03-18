@@ -19,10 +19,10 @@
             "fetch_width": 6,
             "decode_width": 6,
             "dispatch_width": 6,
-            "execute_width": 4,
+            "execute_width": 8,
             "lq_width": 2,
             "sq_width": 2,
-            "retire_width": 5,
+            "retire_width": 8,
             "mispredict_penalty": 1,
             "scheduler_size": 128,
             "decode_latency": 1,
@@ -58,7 +58,7 @@
 
     "L1D": {
         "sets": 64,
-        "ways": 12,
+        "ways": 8,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 8,
@@ -69,17 +69,17 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no"
+        "prefetcher": "bingo_dpc3_l1d"
     },
 
     "L2C": {
-        "sets": 1024,
+        "sets": 2048,
         "ways": 8,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 16,
         "mshr_size": 32,
-        "latency": 10,
+        "latency": 12,
         "max_tag_check": 1,
         "max_fill": 1,
         "prefetch_as_load": false,
@@ -144,13 +144,13 @@
 
     "LLC": {
         "frequency": 4000,
-        "sets": 2048,
+        "sets": 32768,
         "ways": 16,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 32,
         "mshr_size": 64,
-        "latency": 20,
+        "latency": 42,
         "max_tag_check": 1,
         "max_fill": 1,
         "prefetch_as_load": false,

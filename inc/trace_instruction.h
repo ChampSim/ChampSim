@@ -67,12 +67,14 @@ struct cloudsuite_instr {
   unsigned char load_type;
 };
 
-enum class LOAD_TYPE {
+// branch types
+enum load_type : unsigned {
+  NOT_IMPLEMENTED = 0,
   NOT_LOAD = 1,
   STANDARD_DATA = 2,
   BYTECODE = 3,
-  DISPATCH_TABLE  = 4,
-}; 
+  DISPATCH_TABLE  = 4
+};
 
 struct bytecode_instr {
   // instruction pointer or PC (ProWgram Counter)
@@ -90,7 +92,7 @@ struct bytecode_instr {
 
   // What type of load the instruction is.
   // NOTE: Adding this makes us unable to parse any pre-existing traces; is there a way to avoid that?
-  LOAD_TYPE load_type;
+  load_type ld_type;
 };
 
 #endif

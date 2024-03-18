@@ -76,7 +76,9 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
 
     fmt::print(stream, "{} AVERAGE MISS LATENCY: {:.4g} cycles\n", stats.name, stats.avg_miss_latency);
 
-    fmt::print(stream, "{} BYTECODE MISS {:10d} HIT: {:10d} \n", stats.name, stats.bytecode_hits[cpu], stats.bytecode_miss[cpu]);
+    fmt::print(stream, "{} BYTECODE HIT {:10d} MISS: {:10d} \n", stats.name, stats.bytecode_hits[cpu], stats.bytecode_miss[cpu]);
+    
+    fmt::print(stream, "{} DISPATCH TABLE HIT {:10d} MISS: {:10d} \n", stats.name, stats.table_hits[cpu], stats.table_miss[cpu]);
   }
 }
 

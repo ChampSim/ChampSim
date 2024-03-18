@@ -85,6 +85,17 @@
         "*.inc": "cpp",
         "codecvt": "cpp",
         "stop_token": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "future": "cpp",
+        "syncstream": "cpp",
+        "__std_stream": "cpp",
+        "shared_mutex": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "charconv": "cpp",
+        "semaphore": "cpp",
+        "barrier": "cpp",
+        "latch": "cpp",
+        "cassert": "cpp"
     }
 }
