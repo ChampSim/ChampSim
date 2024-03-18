@@ -34,13 +34,13 @@
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
+      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me), bytecode_load(req.bytecode_load)
 {
 }
 
 CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+      type(req.type), prefetch_from_this(req.prefetch_from_this), cycle_enqueued(cycle), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return), bytecode_load(req.bytecode_load)
 {
 }
 
@@ -186,13 +186,11 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, handle_pkt.instr_id, hit, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
-    // THIS might be the complety wrong place to put this
-    //impl_prefetcher_squash(handle_pkt.ip, handle_pkt.instr_id);
   }
 
   if (hit) {
     ++sim_stats.hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
-
+    if (handle_pkt.bytecode_load) ++sim_stats.bytecode_hits[handle_pkt.cpu];
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
     impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
@@ -287,7 +285,7 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
   }
-
+  if (handle_pkt.bytecode_load) ++sim_stats.bytecode_miss[handle_pkt.cpu];
   ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
 
   return true;
@@ -707,6 +705,8 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useful = sim_stats.pf_useful;
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
+  roi_stats.bytecode_hits[finished_cpu] = sim_stats.bytecode_hits[finished_cpu];
+  roi_stats.bytecode_miss[finished_cpu] = sim_stats.bytecode_miss[finished_cpu];
 
   auto total_miss = 0ull;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {

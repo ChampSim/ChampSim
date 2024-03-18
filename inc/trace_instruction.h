@@ -70,7 +70,8 @@ struct cloudsuite_instr {
 enum class LOAD_TYPE {
   NOT_LOAD = 1,
   STANDARD_DATA = 2,
-  BYTECODE = 3
+  BYTECODE = 3,
+  DISPATCH_TABLE  = 4,
 }; 
 
 struct bytecode_instr {
