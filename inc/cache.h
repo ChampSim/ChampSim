@@ -531,16 +531,15 @@ bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_pkt(champsi
     using namespace champsim::modules;
 
     if constexpr (state_model::has_handle_pkt<decltype(s), champsim::address, champsim::address, access_type, uint32_t>){
-      printf("Dumb error1\n");
+      //printf("Dumb error1\n");
       return s.handle_pkt(address, v_address, type, triggering_cpu);
     }
-    //printf("[ERROR] CACHE MODEL WILL DEADLOCK - NO PACKET HANDLER IS IMPLEMENTED IN THE STATE_MODEL\n");
-    //assert(false);
-    return 1L;
+    assert(false);
+    return true;
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
-  return 1L;
+  return true;
 }
 
 template <typename... Ss>
@@ -552,11 +551,11 @@ bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_response(ch
    if constexpr (state_model::has_handle_response<decltype(s), champsim::address, champsim::address, access_type, uint32_t>)
       return s.state_model_handle_response(address, v_address, type, triggering_cpu);
     
-    return 0L;
+    return false;
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
-  return 0;
+  return false;
 }
 
 template <typename... Ss>
