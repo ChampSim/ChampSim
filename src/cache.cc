@@ -154,13 +154,12 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   if (success) {
     // COLLECT STATS
-    sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
     if (fill_mshr.ld_type == LOAD_TYPE::BYTECODE) {
-
+      sim_stats.total_miss_latency_bytecode += current_cycle - (fill_mshr.cycle_enqueued + 1);
     } else if (fill_mshr.ld_type == LOAD_TYPE::DISPATCH_TABLE) {
-
+      sim_stats.total_miss_latency_dispatch_table += current_cycle - (fill_mshr.cycle_enqueued + 1);
     } else {
-
+      sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
     }
 
     response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data, metadata_thru, fill_mshr.instr_depend_on_me};
@@ -197,9 +196,9 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   if (hit) {
     if (handle_pkt.ld_type == LOAD_TYPE::BYTECODE) {
-      ++sim_stats.bytecode_hits[handle_pkt.cpu];
+      ++sim_stats.bytecode_hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
     } else if (handle_pkt.ld_type == LOAD_TYPE::DISPATCH_TABLE) {
-      ++sim_stats.table_hits[handle_pkt.cpu];
+      ++sim_stats.table_hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
     } else {
       ++sim_stats.hits[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
     }
@@ -297,9 +296,13 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
       MSHR.back().pf_metadata = fwd_pkt.pf_metadata;
     }
   }
-  if (handle_pkt.ld_type == LOAD_TYPE::BYTECODE) ++sim_stats.bytecode_miss[handle_pkt.cpu];
-  if (handle_pkt.ld_type == LOAD_TYPE::DISPATCH_TABLE) ++sim_stats.table_miss[handle_pkt.cpu];
-  ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+  if (handle_pkt.ld_type == LOAD_TYPE::BYTECODE){
+    ++sim_stats.bytecode_miss[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+  } else if (handle_pkt.ld_type == LOAD_TYPE::DISPATCH_TABLE) {
+     ++sim_stats.table_miss[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+  } else {
+    ++sim_stats.misses[champsim::to_underlying(handle_pkt.type)][handle_pkt.cpu];
+  } 
 
   return true;
 }
@@ -711,6 +714,10 @@ void CACHE::end_phase(unsigned finished_cpu)
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     roi_stats.hits.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.hits.at(champsim::to_underlying(type)).at(finished_cpu);
     roi_stats.misses.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.misses.at(champsim::to_underlying(type)).at(finished_cpu);
+    roi_stats.bytecode_hits.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.bytecode_hits.at(champsim::to_underlying(type)).at(finished_cpu);
+    roi_stats.bytecode_miss.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.bytecode_miss.at(champsim::to_underlying(type)).at(finished_cpu);
+    roi_stats.table_hits.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.table_hits.at(champsim::to_underlying(type)).at(finished_cpu);
+    roi_stats.table_miss.at(champsim::to_underlying(type)).at(finished_cpu) = sim_stats.table_miss.at(champsim::to_underlying(type)).at(finished_cpu);
   }
 
   roi_stats.pf_requested = sim_stats.pf_requested;
@@ -718,17 +725,21 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useful = sim_stats.pf_useful;
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
-  roi_stats.bytecode_hits[finished_cpu] = sim_stats.bytecode_hits[finished_cpu];
-  roi_stats.bytecode_miss[finished_cpu] = sim_stats.bytecode_miss[finished_cpu];
-  roi_stats.table_hits[finished_cpu] = sim_stats.table_hits[finished_cpu];
-  roi_stats.table_miss[finished_cpu] = sim_stats.table_miss[finished_cpu];
 
   auto total_miss = 0ull;
+  auto total_miss_bytecode = 0ull;
+  auto total_miss_dispatch_table = 0ull;
   for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     total_miss =
         std::accumulate(std::begin(roi_stats.hits.at(champsim::to_underlying(type))), std::end(roi_stats.hits.at(champsim::to_underlying(type))), total_miss);
+    total_miss_bytecode =
+        std::accumulate(std::begin(roi_stats.hits.at(champsim::to_underlying(type))), std::end(roi_stats.hits.at(champsim::to_underlying(type))), total_miss);
+    total_miss_dispatch_table =
+        std::accumulate(std::begin(roi_stats.hits.at(champsim::to_underlying(type))), std::end(roi_stats.hits.at(champsim::to_underlying(type))), total_miss);
   }
   roi_stats.avg_miss_latency = std::ceil(sim_stats.total_miss_latency) / std::ceil(total_miss);
+  roi_stats.avg_miss_latency_bytecode = std::ceil(sim_stats.total_miss_latency_bytecode) / std::ceil(total_miss_bytecode);
+  roi_stats.avg_miss_latency_table = std::ceil(sim_stats.total_miss_latency_dispatch_table) / std::ceil(total_miss_dispatch_table);
 
   for (auto ul : upper_levels) {
     ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;

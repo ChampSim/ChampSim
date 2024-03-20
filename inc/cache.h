@@ -49,13 +49,18 @@ struct cache_stats {
   std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> hits = {};
   std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> misses = {};
   
-  std::array<uint64_t, NUM_CPUS> bytecode_miss = {};
-  std::array<uint64_t, NUM_CPUS> bytecode_hits = {};
-  std::array<uint64_t, NUM_CPUS> table_miss = {};
-  std::array<uint64_t, NUM_CPUS> table_hits = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> bytecode_miss = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> bytecode_hits = {};
+  
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> table_miss = {};
+  std::array<std::array<uint64_t, NUM_CPUS>, champsim::to_underlying(access_type::NUM_TYPES)> table_hits = {};
 
   double avg_miss_latency = 0;
+  double avg_miss_latency_bytecode = 0;
+  double avg_miss_latency_table = 0;
   uint64_t total_miss_latency = 0;
+  uint64_t total_miss_latency_bytecode = 0;
+  uint64_t total_miss_latency_dispatch_table = 0;
 };
 
 class CACHE : public champsim::operable

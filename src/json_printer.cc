@@ -53,8 +53,12 @@ void to_json(nlohmann::json& j, const CACHE::stats_type stats)
   statsmap.emplace("useful prefetch", stats.pf_useful);
   statsmap.emplace("useless prefetch", stats.pf_useless);
   statsmap.emplace("miss latency", stats.avg_miss_latency);
+  statsmap.emplace("bytecode miss latency", stats.avg_miss_latency_bytecode);
+  statsmap.emplace("dispatch table miss latency", stats.avg_miss_latency_table);
   for (const auto& type : types) {
     statsmap.emplace(type.first, nlohmann::json{{"hit", stats.hits[type.second]}, {"miss", stats.misses[type.second]}});
+    statsmap.emplace(type.first, nlohmann::json{{"bytecode hit", stats.bytecode_hits[type.second]}, {"bytecode miss", stats.bytecode_miss[type.second]}});
+    statsmap.emplace(type.first, nlohmann::json{{"dispatch hit", stats.table_hits[type.second]}, {"dispatch miss", stats.table_miss[type.second]}});
   }
 
   j = statsmap;

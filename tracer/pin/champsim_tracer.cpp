@@ -101,13 +101,14 @@ void ResetCurrentInstruction(VOID* ip)
 
 BOOL ShouldWrite()
 {
+  if (!startTracing) return false;
   ++instrCount;
   return (instrCount > KnobSkipInstructions.Value()) && (instrCount <= (KnobTraceInstructions.Value() + KnobSkipInstructions.Value()));
 }
 
 void WriteCurrentInstruction()
 {
-  if (!startTracing) return;
+  if (!ShouldWrite()) return; 
   typename decltype(outfile)::char_type buf[sizeof(trace_instr_format_t)];
   std::memcpy(buf, &curr_instr, sizeof(trace_instr_format_t));
   outfile.write(buf, sizeof(trace_instr_format_t));
@@ -129,6 +130,9 @@ void WriteToSet(T* begin, T* end, UINT32 r)
 
 // Determine what type of load the memory read is
 void MemoryLoadType(BOOL bytecodeLoad, BOOL dispatchTableLoad) {
+  std::cout << "\r Trace value: " << KnobTraceInstructions.Value() << " ShouldWrite: " << ShouldWrite() <<  " Writing instruction: " << std::dec << instrCount << std::flush;   
+  
+  if (!ShouldWrite()) return; 
   if (bytecodeLoad) {
     seenBytecodes++;    
     curr_instr.ld_type = load_type::BYTECODE;
