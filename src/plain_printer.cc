@@ -112,6 +112,11 @@ std::vector<std::string> champsim::plain_printer::format(DRAM_CHANNEL::stats_typ
   lines.push_back(fmt::format("{} WQ ROW_BUFFER_HIT: {:10}", stats.name, stats.WQ_ROW_BUFFER_HIT));
   lines.push_back(fmt::format("  ROW_BUFFER_MISS: {:10}", stats.WQ_ROW_BUFFER_MISS));
   lines.push_back(fmt::format("  FULL: {:10}", stats.WQ_FULL));
+  
+  if (stats.refresh_cycles > 0)
+  lines.push_back(fmt::format("{} REFRESHES ISSUED: {:10}",stats.name, stats.refresh_cycles));
+  else
+  lines.push_back(fmt::format("{} REFRESHES ISSUED: -",stats.name));
 
   return lines;
 }
@@ -163,6 +168,11 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     auto sublines = format(stat);
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
+  
+  #ifdef RAMULATOR
+  //need to do this, perhaps disable when ramulator is active?
+  
+  #else
 
   lines.emplace_back("");
   lines.emplace_back("DRAM Statistics");
@@ -171,7 +181,7 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     lines.emplace_back("");
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
-
+  #endif
   return lines;
 }
 

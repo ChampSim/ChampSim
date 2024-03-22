@@ -22,7 +22,7 @@ import multiprocessing as mp
 from . import util
 from . import cxx
 
-pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}'
+pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period}}}, champsim::chrono::picoseconds{{{_tRP}}}, champsim::chrono::picoseconds{{{_tRCD}}}, champsim::chrono::picoseconds{{{_tCAS}}}, champsim::chrono::picoseconds{{{_tREF}}}, champsim::chrono::picoseconds{{{_turn_around_time}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {rows}, {columns}, {ranks}, {banks}, {_rows_per_refresh}{_ramulator_config}'
 vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}'
 
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
@@ -284,7 +284,7 @@ def check_header_compiles_for_class(clazz, file):
         args = (
             f'-I{include_dir}',
             f'-I{triplet_dir}',
-            f'-I{dtemp}',
+            f'-I{dtemp}'
         )
 
         # touch this file
@@ -315,7 +315,7 @@ def module_include_files(datas):
     with mp.Pool() as pool:
         successes = pool.starmap(check_header_compiles_for_class, candidates)
     filtered_candidates = list(itertools.compress(candidates, successes))
-
+    
     class_difference = set(n for n,_ in candidates) - set(n for n,_ in filtered_candidates)
     for clazz in class_difference:
         tried_files = (f for c,f in candidates if c == clazz)
@@ -381,8 +381,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
             _tRP=int(1000*pmem['tRP']),
             _tRCD=int(1000*pmem['tRCD']),
             _tCAS=int(1000*pmem['tCAS']),
+            _tREF=int(1e9*pmem['refresh_period'] / (pmem['rows']/pmem['rows_per_refresh'])),
+            _rows_per_refresh=int(pmem['rows_per_refresh']),
             _turn_around_time=int(1000*pmem['turn_around_time']),
             _ulptr=vector_string(f'&channels.at({ul_pairs.index(v)})' for v in ul_pairs if v[0] == pmem['name']),
+            _ramulator_config=', ' + '"' + pmem['ramulator_config'] + '"' if pmem['model'] == 'ramulator' else "",
             **pmem),
         '},'
     )

@@ -178,7 +178,7 @@ class Fragment:
             # Makefile generation
             (os.path.join(makedir_name, '_configuration.mk'), (
                 *make_generated_warning(),
-                *get_makefile_lines(objdir_name, build_id, executable, makefile_sources, joined_module_info)
+                *get_makefile_lines(objdir_name, build_id, executable, makefile_sources, joined_module_info, elements['pmem'])
             ))
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts

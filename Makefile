@@ -3,7 +3,11 @@ override ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-override LDLIBS   += -llzma -lz -lbz2 -lfmt
+
+RAMULATOR_DIR=$(ROOT_DIR)/ramulator2
+RAMULATOR_LIB=$(RAMULATOR_DIR)
+LDLIBS   += -llzma -lz -lbz2 -lfmt
+INC=
 
 .PHONY: all clean configclean test
 
@@ -30,9 +34,31 @@ migrate = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3))) $
 #  - OBJ_ROOT: at make-time, override the object file directory
 include _configuration.mk
 
+
+#if ramulator exists, include the library as well as the compile flags. We also add an extra dependency to the build, ensuring ramulator has been compiled.
+ifeq ($(RAMULATOR_MODEL),1)
+LDLIBS := -L$(RAMULATOR_LIB) -L$(RAMULATOR_DIR)deps/spdlog-build -L$(RAMULATOR_DIR)/deps/yaml-cpp-build -lspdlog -lyaml-cpp $(LDLIBS)
+CPPFLAGS += -DRAMULATOR -I$(RAMULATOR_DIR)/src
+$(filter-out $(test_main_name), $(executable_name)) : -lramulator
+endif
+
+#this target invokes ramulator's build system and copies our local plugins into their system.
+-lramulator:
+	cp -r ramulator_plugins/* ramulator2/. && \
+	cd ramulator2 && \
+	mkdir -p build && \
+	cd build && \
+	cmake .. && \
+	make -j;
+
+
 all: $(filter-out $(test_main_name), $(executable_name))
 
 .DEFAULT_GOAL := all
+
+
+	
+
 
 # Remove all intermediate files
 clean:
@@ -59,6 +85,7 @@ $(sort $(dirs)):
 $(sort $(objs)):
 	$(CXX) $(call reverse, $(addprefix @,$(filter %.options, $^))) -MMD -MT $@ -MT $(@:.o=.d) $(sort $(CPPFLAGS)) $(CXXFLAGS) -c -o $@ $(filter %.cc, $^)
 
+
 # Link test executable
 $(test_main_name): override CPPFLAGS += -DCHAMPSIM_TEST_BUILD
 $(test_main_name): override CXXFLAGS += -g3 -Og
@@ -70,8 +97,10 @@ endif
 
 # Link main executables
 $(executable_name):
+
 	mkdir -p $(@D)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+
 
 # Tests: build and run
 ifdef TEST_NUM

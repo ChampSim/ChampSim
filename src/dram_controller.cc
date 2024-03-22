@@ -17,6 +17,7 @@
 #include "dram_controller.h"
 
 #include <algorithm>
+#include <map>
 #include <cfenv>
 #include <cmath>
 #include <fmt/core.h>
@@ -27,23 +28,62 @@
 #include "util/span.h"
 #include "util/units.h"
 
+#ifdef RAMULATOR
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
-                                     std::size_t columns, std::size_t ranks, std::size_t banks)
+                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh, std::string ramulator_config_file)
     : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
+#else
+MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
+                                     champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::vector<channel_type*>&& ul,
+                                     std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
+                                     std::size_t columns, std::size_t ranks, std::size_t banks, std::size_t rows_per_refresh)
+    : champsim::operable(clock_period_), queues(std::move(ul)), channel_width(chan_width)
+#endif
 {
+  #ifdef RAMULATOR
+  //this line can be used to read in the config as a file (this might be easier and more intuitive for users familiar with Ramulator)
+  //the full file path should be included, otherwise Ramulator looks in the current working directory (BAD)
+  config = Ramulator::Config::parse_config_file(ramulator_config_file, {});
+
+  //force frontend to be champsim, clock ratio == 1, no instruction limit, and no v->p address translation layers
+  config["Frontend"]["impl"] = "ChampSim";
+  config["Frontend"]["clock_ratio"] = 1;
+  config["Frontend"]["num_expected_insts"] = 0;
+  config["Frontend"]["Translation"]["impl"] = "None";
+
+  //force memory controller clock scale to 1
+  config["MemorySystem"]["clock_ratio"] = 1;
+
+  //create our frontend (us) and the memory system (ramulator)
+  ramulator2_frontend = Ramulator::Factory::create_frontend(config);
+  ramulator2_memorysystem = Ramulator::Factory::create_memory_system(config);
+
+  //connect the two. we can use this connection to get some more information from ramulator
+  ramulator2_frontend->connect_memory_system(ramulator2_memorysystem);
+  ramulator2_memorysystem->connect_frontend(ramulator2_frontend);
+
+  //correct clock scale for ramulator2 frequency. Looks like this may point to an inaccuracy in our own model:
+  //although the data bus is running at freq f, the memory controller runs at half this (f/2). This is where "DDR" gets its name
+
+  //not sure how to do this any better. I don't like relying on DRAM_IO_FREQ, but we also can't determine this value
+  //ahead of time, since it is controlled by the ramulator config file.
+  clock_period = clock_period * 2;
+
+  #else
   const auto slicer = DRAM_CHANNEL::make_slicer(LOG2_BLOCK_SIZE + champsim::lg2(chans), rows, columns, ranks, banks);
   for (std::size_t i{0}; i < chans; ++i) {
-    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, turnaround, chan_width, rq_size, wq_size, slicer);
+    channels.emplace_back(clock_period_, t_rp, t_rcd, t_cas, t_ref, turnaround, rows_per_refresh, chan_width, rq_size, wq_size, slicer);
   }
+  #endif
 }
 
 DRAM_CHANNEL::DRAM_CHANNEL(champsim::chrono::picoseconds clock_period_, champsim::chrono::picoseconds t_rp, champsim::chrono::picoseconds t_rcd,
-                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds turnaround, champsim::data::bytes width, std::size_t rq_size,
-                           std::size_t wq_size, slicer_type slice)
-    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), tRP(t_rp), tRCD(t_rcd), tCAS(t_cas),
-      DRAM_DBUS_TURN_AROUND_TIME(turnaround),
+                           champsim::chrono::picoseconds t_cas, champsim::chrono::picoseconds t_ref, champsim::chrono::picoseconds turnaround, std::size_t rows_per_refresh, 
+                           champsim::data::bytes width, std::size_t rq_size, std::size_t wq_size, slicer_type slice)
+    : champsim::operable(clock_period_), WQ{wq_size}, RQ{rq_size}, address_slicer(slice), DRAM_ROWS_PER_REFRESH(rows_per_refresh), tRP(t_rp), tRCD(t_rcd), 
+      tCAS(t_cas), tREF(t_ref), DRAM_DBUS_TURN_AROUND_TIME(turnaround),
       DRAM_DBUS_RETURN_TIME(std::chrono::duration_cast<champsim::chrono::clock::duration>(clock_period_ * std::ceil(champsim::data::bytes{BLOCK_SIZE} / width)))
 {
   request_array_type br(ranks() * banks());
@@ -66,10 +106,18 @@ long MEMORY_CONTROLLER::operate()
 
   initiate_requests();
 
+  #ifdef RAMULATOR
+  //tick ramulator.
+  //we will assume no deadlock, since there are no ways to measure progress
+  ramulator2_memorysystem->tick();
+  progress = 1;
+  #else
   for (auto& channel : channels) {
     progress += channel._operate();
   }
+  #endif
 
+  
   return progress;
 }
 
@@ -102,8 +150,9 @@ long DRAM_CHANNEL::operate()
   check_read_collision();
   progress += finish_dbus_request();
   swap_write_mode();
+  progress += schedule_refresh();
   progress += populate_dbus();
-  progress += schedule_packets();
+  progress += service_packet(schedule_packet());
 
   return progress;
 }
@@ -127,6 +176,51 @@ long DRAM_CHANNEL::finish_dbus_request()
   }
 
   return progress;
+}
+
+long DRAM_CHANNEL::schedule_refresh()
+{
+  long progress = {0};
+  //check if we reached refresh cycle
+
+  bool schedule_refresh = current_time >= last_refresh + tREF;
+  if(schedule_refresh)
+  last_refresh = current_time;
+  
+
+  //if so, record stats
+  if(schedule_refresh)
+  {
+    refresh_row += DRAM_ROWS_PER_REFRESH;
+    sim_stats.refresh_cycles++;
+    if(refresh_row >= rows())
+      refresh_row = 0;
+  }
+
+  //go through each bank, and handle refreshes
+  for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it)
+  {
+    //refresh is now needed for this bank
+    if(schedule_refresh)
+    {
+      it->need_refresh = true;
+    }
+    //refresh is being scheduled for this bank
+    if(it->need_refresh && !it->valid)
+    {
+      it->ready_time = current_time + tCAS + tRCD;
+      it->need_refresh = false;
+      it->under_refresh = true;
+    }
+    //refresh is done for this bank
+    else if(it->under_refresh && it->ready_time <= current_time)
+    {
+      it->under_refresh = false;
+      it->open_row.reset();
+      progress++;
+    }
+  }
+  return(progress);
 }
 
 void DRAM_CHANNEL::swap_write_mode()
@@ -174,7 +268,7 @@ void DRAM_CHANNEL::swap_write_mode()
 // Look for requests to put on the bus
 long DRAM_CHANNEL::populate_dbus()
 {
-  long progress{0};
+ long progress{0};
 
   auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
@@ -220,13 +314,12 @@ std::size_t DRAM_CHANNEL::bank_request_index(champsim::address addr) const
 }
 
 // Look for queued packets that have not been scheduled
-long DRAM_CHANNEL::schedule_packets()
+DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
 {
-  long progress{0};
-
   // Look for queued packets that have not been scheduled
   // prioritize packets that are ready to execute, bank is free
   auto next_schedule = [this](const auto& lhs, const auto& rhs) {
+
     if (!(rhs.has_value() && !rhs.value().scheduled)) {
       return true;
     }
@@ -234,11 +327,13 @@ long DRAM_CHANNEL::schedule_packets()
       return false;
     }
 
+
     auto lop_idx = this->bank_request_index(lhs.value().address);
     auto rop_idx = this->bank_request_index(rhs.value().address);
     auto rready = !this->bank_request[rop_idx].valid;
     auto lready = !this->bank_request[lop_idx].valid;
-    return (rready && lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
+    return !(rready ^ lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
+
   };
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
@@ -246,20 +341,27 @@ long DRAM_CHANNEL::schedule_packets()
   } else {
     iter_next_schedule = std::min_element(std::begin(RQ), std::end(RQ), next_schedule);
   }
+  return(iter_next_schedule);
+}
 
-  if (iter_next_schedule->has_value() && iter_next_schedule->value().ready_time <= current_time) {
-    auto op_row = get_row(iter_next_schedule->value().address);
-    auto op_idx = bank_request_index(iter_next_schedule->value().address);
 
-    if (!bank_request[op_idx].valid) {
+long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
+{
+  long progress{0};
+  if (pkt->has_value() && pkt->value().ready_time <= current_time) {
+    //auto op_rank = get_rank(pkt->value().address);
+    //auto op_bank = get_bank(pkt->value().address);
+    auto op_row = get_row(pkt->value().address);
+    auto op_idx = bank_request_index(pkt->value().address);
+
+    if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
 
       // this bank is now busy
-      bank_request[op_idx] = {true, row_buffer_hit, std::optional{op_row},
-                              current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : tRP + tRCD), iter_next_schedule};
-
-      iter_next_schedule->value().scheduled = true;
-      iter_next_schedule->value().ready_time = champsim::chrono::clock::time_point::max();
+      auto row_charge_delay = champsim::chrono::clock::duration{bank_request[op_idx].open_row.has_value() ? tRP + tRCD : tRCD};
+      bank_request[op_idx] = {true,row_buffer_hit,false,false,std::optional{op_row}, current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : row_charge_delay),pkt};
+      pkt->value().scheduled = true;
+      pkt->value().ready_time = champsim::chrono::clock::time_point::max();
 
       ++progress;
     }
@@ -270,6 +372,13 @@ long DRAM_CHANNEL::schedule_packets()
 
 void MEMORY_CONTROLLER::initialize()
 {
+  #ifdef RAMULATOR
+  //ramulator will print this information out upon startup. We might be able to derive size somehow
+  fmt::print("Refer to Ramulator configuration for Off-chip DRAM Size and Configuration\n");
+  YAML::Emitter em;
+  em << config;
+  fmt::print("{}\n",em.c_str());
+  #else
   using namespace champsim::data::data_literals;
   using namespace std::literals::chrono_literals;
   auto sz = this->size();
@@ -284,12 +393,14 @@ void MEMORY_CONTROLLER::initialize()
   }
   fmt::print(" Channels: {} Width: {}-bit Data Rate: {} MT/s\n", std::size(channels), champsim::data::bits_per_byte * channel_width.count(),
              1us / clock_period);
+  #endif
 }
 
 void DRAM_CHANNEL::initialize() {}
 
 void MEMORY_CONTROLLER::begin_phase()
 {
+
   std::size_t chan_idx = 0;
   for (auto& chan : channels) {
     DRAM_CHANNEL::stats_type new_stats;
@@ -310,6 +421,15 @@ void DRAM_CHANNEL::begin_phase() {}
 
 void MEMORY_CONTROLLER::end_phase(unsigned cpu)
 {
+  #ifdef RAMULATOR
+  //this happens to also print stats. Finalize for each phase past the warmup
+  if(!warmup)
+  {
+    ramulator2_frontend->finalize();
+    ramulator2_memorysystem->finalize();
+  }
+  #endif
+
   for (auto& chan : channels) {
     chan.end_phase(cpu);
   }
@@ -403,28 +523,80 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
   asid[1] = req.asid[1];
 }
 
+#ifdef RAMULATOR
+void MEMORY_CONTROLLER::return_packet_rq_rr(Ramulator::Request& req, DRAM_CHANNEL::request_type pkt)
+{
+  response_type response{pkt.address, pkt.v_address, pkt.data,
+                        pkt.pf_metadata, pkt.instr_depend_on_me};
+
+  for (auto* ret : pkt.to_return) {
+    ret->push_back(response);
+  }
+  return;
+};
+#endif
+
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
-  auto& channel = channels[dram_get_channel(packet.address)];
+  #ifdef RAMULATOR
+    //if packet needs response, we need to track its data to return later
+    if(!warmup)
+    {
+      //if not warmup
+      if(packet.response_requested)
+      {
+        DRAM_CHANNEL::request_type pkt = DRAM_CHANNEL::request_type{packet};
+        pkt.to_return = {&ul->returned};
+        return ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0, [=](Ramulator::Request& req) {return_packet_rq_rr(req,pkt);});
+      }
+      else
+      {
+        //otherwise feed to ramulator directly with no response requested
+        return ramulator2_frontend->receive_external_requests(int(Ramulator::Request::Type::Read), packet.address.to<int64_t>(), packet.type == access_type::PREFETCH ? 1 : 0,[this](Ramulator::Request& req){});
+      }
+    }
+    else
+    {
+      //if warmup, just return true and send necessary responses
+      if(packet.response_requested)
+      {
+          response_type response{packet.address, packet.v_address, packet.data,
+                                packet.pf_metadata, packet.instr_depend_on_me};
+          for (auto* ret : {&ul->returned}) {
+            ret->push_back(response);
+          }
+      }
+      return true;
+    }
+  #else
+    auto& channel = channels[dram_get_channel(packet.address)];
 
-  // Find empty slot
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
-      rq_it != std::end(channel.RQ)) {
-    *rq_it = DRAM_CHANNEL::request_type{packet};
-    rq_it->value().forward_checked = false;
-    rq_it->value().ready_time = current_time;
-    if (packet.response_requested) {
-      rq_it->value().to_return = {&ul->returned};
+    // Find empty slot
+    if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
+        rq_it != std::end(channel.RQ)) {
+      *rq_it = DRAM_CHANNEL::request_type{packet};
+      rq_it->value().forward_checked = false;
+      rq_it->value().ready_time = current_time;
+      if (packet.response_requested) {
+        rq_it->value().to_return = {&ul->returned};
+      }
+
+      return true;
     }
 
-    return true;
-  }
-
-  return false;
+    return false;
+  #endif
 }
 
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
+
+  #ifdef RAMULATOR
+    //if ramulator, feed directly. Since its a write, no response is needed
+    if(!warmup)
+      return ramulator2_frontend->receive_external_requests(Ramulator::Request::Type::Write, packet.address.to<int64_t>(), 0, [this](Ramulator::Request& req){});
+    return true;
+  #else
   auto& channel = channels[dram_get_channel(packet.address)];
 
   // search for the empty index
@@ -439,28 +611,84 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 
   ++channel.sim_stats.WQ_FULL;
   return false;
+  #endif
 }
+
+/*
+ * | row address | rank index | column address | bank index | channel | block
+ * offset |
+ */
+
+//These are all inaccurate and will need to be updated when using Ramulator. We can grab some of these values from the config
+//others are part of spec that aren't as easily obtained
 
 unsigned long MEMORY_CONTROLLER::dram_get_channel(champsim::address address) const
 {
+  #ifdef RAMULATOR
+  assert(false);
+  #endif
   return address.slice(champsim::dynamic_extent{champsim::data::bits{LOG2_BLOCK_SIZE}, champsim::lg2(std::size(channels))}).to<unsigned long>();
 }
 
-unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_bank(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_bank(champsim::address address) const { 
+  #ifdef RAMULATOR
+  assert(false);
+  #endif
+  return channels.at(dram_get_channel(address)).get_bank(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const { return channels.at(dram_get_channel(address)).get_column(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_column(champsim::address address) const {
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return channels.at(dram_get_channel(address)).get_column(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const { return channels.at(dram_get_channel(address)).get_rank(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_rank(champsim::address address) const {
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return channels.at(dram_get_channel(address)).get_rank(address); 
+}
 
-unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { return channels.at(dram_get_channel(address)).get_row(address); }
+unsigned long MEMORY_CONTROLLER::dram_get_row(champsim::address address) const { 
+  #ifdef RAMULATOR
+  assert(false);
+  #endif
+  return channels.at(dram_get_channel(address)).get_row(address); 
+}
 
-unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const { return std::get<SLICER_BANK_IDX>(address_slicer(address)).to<unsigned long>(); }
+unsigned long DRAM_CHANNEL::get_bank(champsim::address address) const 
+{
+  #ifdef RAMULATOR
+  assert(false);
+  #endif 
+  return std::get<SLICER_BANK_IDX>(address_slicer(address)).to<unsigned long>(); 
+}
 
-unsigned long DRAM_CHANNEL::get_column(champsim::address address) const { return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>(); }
+unsigned long DRAM_CHANNEL::get_column(champsim::address address) const 
+{
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return std::get<SLICER_COLUMN_IDX>(address_slicer(address)).to<unsigned long>(); 
+}
 
-unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const { return std::get<SLICER_RANK_IDX>(address_slicer(address)).to<unsigned long>(); }
+unsigned long DRAM_CHANNEL::get_rank(champsim::address address) const 
+{
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return std::get<SLICER_RANK_IDX>(address_slicer(address)).to<unsigned long>();
+}
 
-unsigned long DRAM_CHANNEL::get_row(champsim::address address) const { return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>(); }
+unsigned long DRAM_CHANNEL::get_row(champsim::address address) const 
+{
+  #ifdef RAMULATOR
+  assert(false);
+  #endif  
+  return std::get<SLICER_ROW_IDX>(address_slicer(address)).to<unsigned long>();
+}
 
 champsim::data::bytes MEMORY_CONTROLLER::size() const
 {

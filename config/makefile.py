@@ -116,7 +116,7 @@ def make_part(src_dirs, dest_dir, build_id):
 def flatten_ragged(to_flatten):
     return list(itertools.chain.from_iterable(to_flatten))
 
-def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
+def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info, pmem):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({
         'Build ID': build_id,
@@ -157,6 +157,12 @@ def get_makefile_lines(objdir, build_id, executable, source_dirs, module_info):
     yield from append_variable('CPPFLAGS', f'-I{objdir}', targets=map(dereference, obj_varnames))
     yield from append_variable('CPPFLAGS', f'-DCHAMPSIM_BUILD=0x{build_id}', targets=[f'$(filter %main.o, {" ".join(map(dereference, obj_varnames))})'])
 
+
+    #ramulator support (add DRAMULATOR to flags and set model flag)
+    if pmem['model'] == 'ramulator':
+        yield from assign_variable('RAMULATOR_MODEL', '1')
+
+    yield from append_variable('CPPFLAGS', f'-I{os.path.join(objdir, "inc")}', targets=map(dereference, obj_varnames))
     yield from append_variable('executable_name', exec_fname)
     yield from append_variable('dirs', os.path.dirname(exec_fname))
     yield from append_variable('objs', *map(dereference, obj_varnames))
