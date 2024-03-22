@@ -295,35 +295,33 @@ long O3_CPU::promote_to_decode()
   auto is_decoded = [](const ooo_model_instr& x) {
     return x.decoded; 
   };    
-  auto fetched_check_end = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetch_completed; });
+  auto to_promote_end = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.fetch_completed; });
    //find the first not dib_checked
 
-  auto decoded_window_end = std::stable_partition(std::begin(IFETCH_BUFFER),fetched_check_end,is_decoded); // reorder instructions 
+  auto decoded_window_end = std::stable_partition(std::begin(IFETCH_BUFFER),to_promote_end,is_decoded); // reorder instructions 
 
   auto fetch_complete_and_ready = [time = current_time](const auto& x) { return x.fetch_completed && x.ready_time <= time; };
- auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), decoded_window_end, available_fetch_bandwidth_dib, fetch_complete_and_ready); // to DIB_HIT_BUFFER
+  auto [dib_window_begin, dib_window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER), decoded_window_end, available_fetch_bandwidth_dib, fetch_complete_and_ready); // to DIB_HIT_BUFFER
 
- auto [window_begin_, window_end_] = champsim::get_span_p(decoded_window_end, fetched_check_end, available_fetch_bandwidth, fetch_complete_and_ready);  //to DECODE_BUFFER
- long progress{std::distance(window_begin, window_end) + std::distance(window_begin_, window_end_)};
- auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) {return x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);};
+ auto [decode_window_begin, decode_window_end] = champsim::get_span_p(decoded_window_end, to_promote_end, available_fetch_bandwidth, fetch_complete_and_ready);  //to DECODE_BUFFER
+ long progress{std::distance(dib_window_begin, dib_window_end) + std::distance(decode_window_begin, decode_window_end)};
+ auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) { x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);};
   //to DIB_HIT_BUFFER
- auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) {return x.ready_time = time + lat;};
+ auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) { x.ready_time = time + lat;};
 
- std::for_each(window_begin, window_end, mark_for_dib); // assume DECODE_LATENCY = DIB_HIT_LATENCY
-  std::move(window_begin, window_end, std::back_inserter(DIB_HIT_BUFFER));
-  IFETCH_BUFFER.erase(window_begin, window_end);
+ std::for_each(dib_window_begin, dib_window_end, mark_for_dib); // assume DECODE_LATENCY = DIB_HIT_LATENCY
+  std::move(dib_window_begin, dib_window_end, std::back_inserter(DIB_HIT_BUFFER));
+  IFETCH_BUFFER.erase(dib_window_begin, dib_window_end);
   //to DECODE_BUFFER
  
- std::for_each(window_begin_, window_end_, mark_for_decode);
-  std::move(window_begin_, window_end_, std::back_inserter(DECODE_BUFFER));
-  IFETCH_BUFFER.erase(window_begin_, window_end_);
+ std::for_each(decode_window_begin, decode_window_end, mark_for_decode);
+  std::move(decode_window_begin, decode_window_end, std::back_inserter(DECODE_BUFFER));
+  IFETCH_BUFFER.erase(decode_window_begin, decode_window_end);
   return progress;
 }
 long O3_CPU::decode_instruction()
 {
   auto is_ready = [time = current_time](const auto& x) { return x.ready_time <= time; };
-
-// new
 
   auto dib_hit_buffer_begin = std::begin(DIB_HIT_BUFFER);
   auto dib_hit_buffer_end = dib_hit_buffer_begin;
@@ -364,11 +362,8 @@ champsim::bandwidth available_dib_inorder_bandwidth{
   (decode_buffer_end == std::end(DECODE_BUFFER) || ooo_model_instr::program_order(*dib_hit_buffer_end , *decode_buffer_end))
   )
   {
-    {
     dib_hit_buffer_end++;
     available_dib_inorder_bandwidth.consume();
-    }
-
   }
   while (
     decode_buffer_end != std::end(DECODE_BUFFER) && 
@@ -378,11 +373,9 @@ champsim::bandwidth available_dib_inorder_bandwidth{
     (dib_hit_buffer_end == std::end(DIB_HIT_BUFFER) || ooo_model_instr::program_order(*decode_buffer_end , *dib_hit_buffer_end))
     )
   {
-    {
     decode_buffer_end++;
     available_dib_inorder_bandwidth.consume();
     available_decode_bandwidth.consume();
-    }
   }
 
  // decode instructions have not decoded, merge instructions with dib_hit_buffer then send to dispatch_buffer

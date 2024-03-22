@@ -43,7 +43,7 @@ struct core_builder_base {
   std::size_t m_decode_buffer_size{1};
   std::size_t m_dispatch_buffer_size{1};
 
-  std::size_t m_dib_hit_buffer_size{1};       //Khoi added
+  std::size_t m_dib_hit_buffer_size{1};
 
   std::size_t m_rob_size{1};
   std::size_t m_lq_size{1};
@@ -57,7 +57,7 @@ struct core_builder_base {
   champsim::bandwidth::maximum_type m_lq_width{1};
   champsim::bandwidth::maximum_type m_sq_width{1};
   champsim::bandwidth::maximum_type m_retire_width{1};
-  champsim::bandwidth::maximum_type m_dib_inorder_width{1}; //Khoi added
+  champsim::bandwidth::maximum_type m_dib_inorder_width{1};
 
   unsigned m_dib_hit_latency{};
 
@@ -130,7 +130,7 @@ public:
     /**
    * Specify the maximum size of the DIB hit buffer.        
    */
-  self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);         //Khoi added
+  self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);
 
   /**
    * Specify the maximum size of the reorder buffer.
@@ -190,7 +190,7 @@ public:
      /**
    * Specify the maximum size of the DIB inorder width.        
    */
-  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);         //Khoi added
+  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);
 
   /**
    * Specify the reset penalty, in cycles, that follows a misprediction.
@@ -406,7 +406,7 @@ auto champsim::core_builder<B, T>::retire_width(champsim::bandwidth::maximum_typ
 template <typename B, typename T>
 auto champsim::core_builder<B, T>::dib_inorder_width(champsim::bandwidth::maximum_type dib_inorder_width_) -> self_type&
 {
-  m_dib_inorder_width = dib_inorder_width_;             //Khoi added
+  m_dib_inorder_width = dib_inorder_width_;
   return *this;
 }
 
