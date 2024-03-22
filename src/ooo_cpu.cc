@@ -305,9 +305,9 @@ long O3_CPU::promote_to_decode()
 
  auto [decode_window_begin, decode_window_end] = champsim::get_span_p(decoded_window_end, to_promote_end, available_fetch_bandwidth, fetch_complete_and_ready);  //to DECODE_BUFFER
  long progress{std::distance(dib_window_begin, dib_window_end) + std::distance(decode_window_begin, decode_window_end)};
- auto mark_for_decode = [time = current_time, lat = DECODE_LATENCY, warmup = warmup](auto& x) { x.ready_time = time + (warmup ? champsim::chrono::clock::duration{} : lat);};
+ auto mark_for_decode = [time = current_time + (warmup ? champsim::chrono::clock::duration{} : DECODE_LATENCY)](auto& x) { x.ready_time = time;};
   //to DIB_HIT_BUFFER
- auto mark_for_dib = [time = current_time, lat = DIB_HIT_LATENCY, warmup = warmup](auto& x) { x.ready_time = time + lat;};
+ auto mark_for_dib = [time = current_time + DIB_HIT_LATENCY](auto& x) { x.ready_time = time;};
 
  std::for_each(dib_window_begin, dib_window_end, mark_for_dib); // assume DECODE_LATENCY = DIB_HIT_LATENCY
   std::move(dib_window_begin, dib_window_end, std::back_inserter(DIB_HIT_BUFFER));
