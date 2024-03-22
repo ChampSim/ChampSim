@@ -19,7 +19,8 @@ struct IsSortedMatcher : Catch::Matchers::MatcherGenericBase {
   }
 };
 
-auto block_sequence_generator(champsim::block_number blk) {
+template <typename Addr>
+auto block_sequence_generator(Addr blk) {
   return [blk]() mutable { return champsim::address{blk++}; };
 }
 
@@ -27,7 +28,8 @@ auto instr_id_sequence_generator(uint64_t id) {
   return [id]() mutable { return id++; };
 }
 
-auto instruction_generator(champsim::block_number base_ip, uint64_t base_id) {
+template <typename Addr>
+auto instruction_generator(Addr base_ip, uint64_t base_id) {
   return [ip_gen = block_sequence_generator(base_ip), id_gen = instr_id_sequence_generator(base_id)]() mutable {
     ooo_model_instr instr{champsim::test::instruction_with_ip(ip_gen())};
     instr.instr_id = id_gen();
@@ -35,7 +37,8 @@ auto instruction_generator(champsim::block_number base_ip, uint64_t base_id) {
   };
 }
 
-auto instruction_smem_generator(champsim::block_number base_ip, champsim::block_number base_smem, uint64_t base_id) {
+template <typename IPType, typename SmemType>
+auto instruction_smem_generator(IPType base_ip, SmemType base_smem, uint64_t base_id) {
   return [ip_gen = block_sequence_generator(base_ip), smem_gen = block_sequence_generator(base_smem), id_gen = instr_id_sequence_generator(base_id)]() mutable {
     ooo_model_instr instr{champsim::test::instruction_with_ip_and_source_memory(ip_gen(), smem_gen())};
     instr.instr_id = id_gen();
@@ -44,9 +47,10 @@ auto instruction_smem_generator(champsim::block_number base_ip, champsim::block_
 }
 
 SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions that miss") {
-  const std::size_t num_seeds = 3;
-  const std::size_t num_additional_tests = 2;
-  GIVEN("A core that has decode a few instructions") {
+  const std::size_t num_seeds = GENERATE(as<std::size_t>{}, 3, 5, 7);
+  const std::size_t num_additional_tests = GENERATE(as<std::size_t>{}, 2, 4, 6);
+  const long num_cycles = GENERATE(as<long>{}, 1, 2, 3);
+  GIVEN("A core that has decoded a few instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
 
     O3_CPU uut{champsim::core_builder{champsim::defaults::default_core}
@@ -56,11 +60,14 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
     };
     uut.warmup = false;
 
-    const champsim::block_number seed_base_addr{0xfeed001};
+    const champsim::page_number root_page{0xaaa1};
+    const champsim::block_number seed_base_addr{num_additional_tests};
 
     // Create a sequence of seed instructions
     std::vector<ooo_model_instr> seed_instructions{};
-    std::generate_n(std::back_inserter(seed_instructions), num_seeds, instruction_generator(seed_base_addr, 1));
+    for (long cycle = 0; cycle < num_cycles; ++cycle) {
+      std::generate_n(std::back_inserter(seed_instructions), num_seeds, instruction_generator(champsim::splice(root_page + cycle, seed_base_addr), static_cast<uint64_t>(1+10*cycle)));
+    }
 
     uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(seed_instructions), std::end(seed_instructions));
 
@@ -69,13 +76,14 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
         op->_operate();
     }
 
-    WHEN("A new instruction is issued, followed by the instructions already seen") {
+    WHEN("The same instructions are issued with new instructions interspersed") {
       const auto num_tests = num_seeds + num_additional_tests;
-      const auto test_base_addr = seed_base_addr - num_additional_tests;
-      const champsim::block_number test_store_base_addr{0xbeef000}; // Use the store buffer to examine the order in which the instructions are retired
+      const champsim::page_number test_store_base_addr{0xbeef00}; // Use the store buffer to examine the order in which the instructions are retired
 
       std::vector<ooo_model_instr> test_instructions{};
-      std::generate_n(std::back_inserter(test_instructions), num_tests, instruction_smem_generator(test_base_addr, test_store_base_addr, 11));
+      for (long cycle = 0; cycle < num_cycles; ++cycle) {
+        std::generate_n(std::back_inserter(test_instructions), num_tests, instruction_smem_generator(champsim::block_number{root_page+cycle}, champsim::block_number{test_store_base_addr + cycle}, static_cast<uint64_t>(101+10*cycle)));
+      }
 
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
@@ -85,7 +93,7 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
       }
 
       THEN("The instructions are dispatched in order") {
-        REQUIRE_THAT(mock_L1D.addresses, IsSortedMatcher{} && Catch::Matchers::SizeIs(num_tests));
+        REQUIRE_THAT(mock_L1D.addresses, IsSortedMatcher{} && Catch::Matchers::SizeIs(num_tests*(std::size_t)num_cycles));
       }
     }
   }
