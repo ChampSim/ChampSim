@@ -69,13 +69,16 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 # Return the relative path from one path to another
 # $1 - the destination path
 # $2 - the origin path
-relative_path_impl = $(if $2,$(call make_relative_prefix,$2)/$1,$1)
-relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
+#relative_path_impl = $(if $2,$(call make_relative_prefix,$2)/$1,$1)
+#relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
+relative_path = $(shell python -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - All dependencies and flags assigned according to the modules
+ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 include _configuration.mk
+endif
 
 all: $(executable_name)
 
@@ -241,7 +244,7 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
-ifeq (,$(filter clean configclean pytest, $(MAKECMDGOALS)))
+ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs))
 endif
 

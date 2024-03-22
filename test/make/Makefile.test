@@ -42,6 +42,7 @@ maketest:
 	$(call test_func2,relative_path,../../cat.txt,common/prefix/cat.txt,common/prefix/for/path/dog.txt)
 	$(call test_func2,relative_path,../../cat.txt,/common/prefix/cat.txt,/common/prefix/for/path/dog.txt)
 	$(call test_func2,relative_path,../for/cat.txt,/common/prefix/for/cat.txt,/common/prefix/dog.txt)
+	$(call test_func2,relative_path,../../for/cat.txt,/common/prefix/for/cat.txt,/common/prefix/to/dog.txt)
 	$(call test_func2,relative_path,cat.txt,/prefix/cat.txt,/prefix)
 	$(call test_func2,relative_path,for/cat.txt,/common/prefix/for/cat.txt,/common/prefix)
 	$(call test_func2,relative_path,branch,$(ROOT_DIR)/branch,$(ROOT_DIR))
