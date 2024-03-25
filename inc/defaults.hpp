@@ -35,7 +35,7 @@ const auto default_core =
         .ifetch_buffer_size(64)
         .decode_buffer_size(32)
         .dispatch_buffer_size(32)
-        .dib_hit_buffer_size(32)  // assumed
+        .dib_hit_buffer_size(32) // assumed
         .rob_size(352)
         .lq_size(128)
         .sq_size(72)

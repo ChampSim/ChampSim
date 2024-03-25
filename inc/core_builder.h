@@ -127,8 +127,8 @@ public:
    */
   self_type& dispatch_buffer_size(std::size_t dispatch_buffer_size_);
 
-    /**
-   * Specify the maximum size of the DIB hit buffer.        
+  /**
+   * Specify the maximum size of the DIB hit buffer.
    */
   self_type& dib_hit_buffer_size(std::size_t dib_hit_buffer_size_);
 
@@ -187,10 +187,10 @@ public:
    */
   self_type& retire_width(champsim::bandwidth::maximum_type retire_width_);
 
-     /**
-   * Specify the maximum size of the DIB inorder width.        
+  /**
+   * Specify the maximum size of the DIB inorder width.
    */
-  self_type& dib_inorder_width(champsim::bandwidth::maximum_type  dib_inorder_width_);
+  self_type& dib_inorder_width(champsim::bandwidth::maximum_type dib_inorder_width_);
 
   /**
    * Specify the reset penalty, in cycles, that follows a misprediction.
