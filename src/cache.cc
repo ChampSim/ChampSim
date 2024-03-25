@@ -156,7 +156,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   auto metadata_thru = impl_prefetcher_cache_fill(module_address(fill_mshr), get_set_index(fill_mshr.address), way_idx,
                                                   (fill_mshr.type == access_type::PREFETCH), evicting_address, fill_mshr.data_promise->pf_metadata);
   impl_replacement_cache_fill(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, module_address(fill_mshr), fill_mshr.ip, evicting_address,
-                                fill_mshr.type);
+                              fill_mshr.type);
 
   if (way != set_end) {
     if (way->valid && way->prefetch) {
@@ -204,7 +204,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // update replacement policy
   const auto way_idx = std::distance(set_begin, way);
-  impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(handle_pkt), handle_pkt.ip, {}, handle_pkt.type, hit);
+  impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, module_address(handle_pkt), handle_pkt.ip, {}, handle_pkt.type,
+                                hit);
 
   if (hit) {
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
@@ -745,7 +746,7 @@ void CACHE::impl_update_replacement_state(uint32_t triggering_cpu, long set, lon
 }
 
 void CACHE::impl_replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
-                                          champsim::address victim_addr, access_type type) const
+                                        champsim::address victim_addr, access_type type) const
 {
   repl_module_pimpl->impl_replacement_cache_fill(triggering_cpu, set, way, full_addr, ip, victim_addr, type);
 }
