@@ -169,6 +169,11 @@ struct replacement {
   static auto update_state_member_impl(long) -> std::false_type;
 
   template <typename T, typename... Args>
+  static auto cache_fill_member_impl(int) -> decltype(std::declval<T>().replacement_cache_fill(std::declval<Args>()...), std::true_type{});
+  template <typename, typename...>
+  static auto cache_fill_member_impl(long) -> std::false_type;
+
+  template <typename T, typename... Args>
   static auto final_stats_member_impl(int) -> decltype(std::declval<T>().replacement_final_stats(std::declval<Args>()...), std::true_type{});
   template <typename, typename...>
   static auto final_stats_member_impl(long) -> std::false_type;
@@ -181,6 +186,9 @@ struct replacement {
 
   template <typename T, typename... Args>
   constexpr static bool has_update_state = decltype(update_state_member_impl<T, Args...>(0))::value;
+
+  template <typename T, typename... Args>
+  constexpr static bool has_cache_fill = decltype(cache_fill_member_impl<T, Args...>(0))::value;
 
   template <typename T, typename... Args>
   constexpr static bool has_final_stats = decltype(final_stats_member_impl<T, Args...>(0))::value;
