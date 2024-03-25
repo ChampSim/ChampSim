@@ -47,9 +47,9 @@ auto instruction_smem_generator(IPType base_ip, SmemType base_smem, uint64_t bas
 }
 
 SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions that miss") {
-  const std::size_t num_seeds = GENERATE(as<std::size_t>{}, 3, 5, 7);
-  const std::size_t num_additional_tests = GENERATE(as<std::size_t>{}, 2, 4, 6);
-  const long num_cycles = GENERATE(as<long>{}, 1, 2, 3);
+  const std::size_t num_seeds = GENERATE(as<std::size_t>{}, 3,5,7,20 );
+  const std::size_t num_additional_tests = GENERATE(as<std::size_t>{},2,4,6,10);
+  const long num_cycles = GENERATE(as<long>{},1,2,3,4);
   GIVEN("A core that has decoded a few instructions") {
     do_nothing_MRC mock_L1I, mock_L1D;
 
@@ -57,6 +57,7 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
       .fetch_queues(&mock_L1I.queues)
         .data_queues(&mock_L1D.queues)
         .decode_latency(10)
+
     };
     uut.warmup = false;
 
@@ -66,14 +67,15 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
     // Create a sequence of seed instructions
     std::vector<ooo_model_instr> seed_instructions{};
     for (long cycle = 0; cycle < num_cycles; ++cycle) {
-      std::generate_n(std::back_inserter(seed_instructions), num_seeds, instruction_generator(champsim::splice(root_page + cycle, seed_base_addr), static_cast<uint64_t>(1+10*cycle)));
+      std::generate_n(std::back_inserter(seed_instructions), num_seeds, instruction_generator(champsim::splice(root_page + cycle, seed_base_addr), static_cast<uint64_t>(1+100*cycle)));
     }
 
     uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(seed_instructions), std::end(seed_instructions));
 
-    for (auto i = 0; i < 100; i++) {
+    for (auto i = 0; i < 1000; i++) {
       for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
         op->_operate();
+
     }
 
     WHEN("The same instructions are issued with new instructions interspersed") {
@@ -82,14 +84,15 @@ SCENARIO("Instructions that hit the DIB do not reorder ahead of instructions tha
 
       std::vector<ooo_model_instr> test_instructions{};
       for (long cycle = 0; cycle < num_cycles; ++cycle) {
-        std::generate_n(std::back_inserter(test_instructions), num_tests, instruction_smem_generator(champsim::block_number{root_page+cycle}, champsim::block_number{test_store_base_addr + cycle}, static_cast<uint64_t>(101+10*cycle)));
+        std::generate_n(std::back_inserter(test_instructions), num_tests, instruction_smem_generator(champsim::block_number{root_page+cycle}, champsim::block_number{test_store_base_addr + cycle}, static_cast<uint64_t>(101+100*cycle)));
       }
 
       uut.IFETCH_BUFFER.insert(std::end(uut.IFETCH_BUFFER), std::begin(test_instructions), std::end(test_instructions));
 
-      for (auto i = 0; i < 100; i++) {
+      for (auto i = 0; i < 1000; i++) {
         for (auto op : std::array<champsim::operable*,3>{{&uut, &mock_L1I, &mock_L1D}})
           op->_operate();
+
       }
 
       THEN("The instructions are dispatched in order") {
