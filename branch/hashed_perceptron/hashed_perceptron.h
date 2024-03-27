@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <tuple>
+#include <vector>
 
 #include "modules.h"
 #include "msl/bits.h"
@@ -22,16 +23,37 @@ class hashed_perceptron : champsim::modules::branch_predictor
   constexpr static std::array<unsigned long, NTABLES> history_lengths = {0,  3,  4,  6,  8,  10,  14,  19,
                                                                          26, 36, 49, 67, 91, 125, 170, MAXHIST}; // geometric global history lengths
 
-  std::array<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>, NTABLES> tables = {}; // tables of 8-bit weights
+  // tables of 8-bit weights
+  std::vector<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>> tables = [] {
+    decltype(tables) retval;
+    std::generate_n(std::back_inserter(retval), std::size(history_lengths), [] { return typename decltype(retval)::value_type{}; });
+    return retval;
+  }(); // immediately invoked
 
-  std::array<unsigned int, NGHIST_WORDS> ghist_words = {}; // words that store the global history
+  using ghist_type = std::array<unsigned long long, NGHIST_WORDS>;
+  ghist_type ghist_words = {}; // words that store the global history
 
   int theta = 10;
   int tc = 0; // counter for threshold setting algorithm
 
+  class indexer
+  {
+    ghist_type hist_masks;
+
+  public:
+    explicit indexer(unsigned long hist_len);
+    std::size_t get_index(champsim::address pc, ghist_type ghist_words) const;
+  };
+
+  std::vector<indexer> indexers = [] {
+    decltype(indexers) retval;
+    std::transform(std::begin(history_lengths), std::end(history_lengths), std::back_inserter(retval), [](unsigned long len) { return indexer{len}; });
+    return retval;
+  }(); // immediately invoked
+
   struct perceptron_result {
-    std::array<uint64_t, std::tuple_size_v<decltype(tables)>> indices = {}; // remember the indices into the tables from prediction to update
-    int yout = 0;                                                           // perceptron sum
+    std::array<uint64_t, std::tuple_size_v<decltype(history_lengths)>> indices = {}; // remember the indices into the tables from prediction to update
+    int yout = 0;                                                                    // perceptron sum
   };
 
   perceptron_result last_result{};

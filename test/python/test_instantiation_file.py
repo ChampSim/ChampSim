@@ -93,7 +93,7 @@ class CpuBuilderTest(unittest.TestCase):
         self.get_element_diff(['.dib_window(1)'], dib_window=1)
 
     def test_dib_width(self):
-        self.get_element_diff(['.dib_width(champsim::bandwidth::maximum_type{1})'], dib_max_tag_check=1)
+        self.get_element_diff(['.dib_max_read(champsim::bandwidth::maximum_type{1})'], dib_max_tag_check=1)
 
     def test_dib_set_dict(self):
         self.get_element_diff(['.dib_set(1)'], DIB={ 'sets': 1 })
@@ -105,7 +105,7 @@ class CpuBuilderTest(unittest.TestCase):
         self.get_element_diff(['.dib_window(1)'], DIB={ 'window_size': 1 })
 
     def test_dib_width_dict(self):
-        self.get_element_diff(['.dib_width(champsim::bandwidth::maximum_type{1})'], DIB={ 'max_tag_check': 1 })
+        self.get_element_diff(['.dib_max_read(champsim::bandwidth::maximum_type{1})'], DIB={ 'max_tag_check': 1 })
 
     def test_branch_predictor(self):
         self.get_element_diff(['.branch_predictor<class a_class>()'], _branch_predictor_data=[{ 'name': 'a', 'class': 'a_class' }])

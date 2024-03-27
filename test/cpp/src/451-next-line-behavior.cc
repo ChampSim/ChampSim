@@ -1,25 +1,10 @@
 #include <catch.hpp>
 #include "mocks.hpp"
+#include "matchers.hpp"
 #include "defaults.hpp"
 #include "cache.h"
 
 #include "../../../prefetcher/next_line/next_line.h"
-
-struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
-  champsim::block_number::difference_type stride;
-
-  explicit StrideMatcher(champsim::block_number::difference_type s) : stride(s) {}
-
-    template<typename Range>
-    bool match(const Range& range) const {
-      std::vector<decltype(stride)> diffs;
-      return std::adjacent_find(std::cbegin(range), std::cend(range), [stride=stride](const auto& x, const auto& y){ return champsim::offset(champsim::block_number{x}, champsim::block_number{y}) != stride; }) == std::cend(range);
-    }
-
-    std::string describe() const override {
-        return "has stride " + std::to_string(stride);
-    }
-};
 
 SCENARIO("The next line prefetcher issues prefetches") {
   GIVEN("An empty cache") {
@@ -60,7 +45,7 @@ SCENARIO("The next line prefetcher issues prefetches") {
           elem->_operate();
 
       THEN("All of the issued requests have the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2) && StrideMatcher{1});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(2) && champsim::test::StrideMatcher<champsim::block_number>{1});
       }
     }
   }

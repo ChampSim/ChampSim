@@ -133,7 +133,7 @@ SCENARIO("A prefetch fill the first level") {
             elem->_operate();
 
         THEN("The packet hits the cache") {
-          mock_ut.packets.back().assert_returned(hit_latency, 1);
+          REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
         }
       }
     }
@@ -208,7 +208,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
           REQUIRE(std::size(mock_ut.packets) == 1);
 
           // The packet return time should be: issue time + hit_latency L2C + hit_latency L1D + fill latency L1D
-          mock_ut.packets.back().assert_returned(2*hit_latency + fill_latency + 1, 1);
+          REQUIRE_THAT(mock_ut.packets.back(), champsim::test::ReturnedMatcher(2*hit_latency + fill_latency + 1, 1));
         }
       }
     }
@@ -247,7 +247,7 @@ SCENARIO("A prefetch not fill the first level and fill the second level") {
           REQUIRE(std::size(mock_ul.packets) == 1);
 
           // The packet return time should be: issue time + hit_latency L2C
-          mock_ul.packets.back().assert_returned(hit_latency, 1);
+          REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency, 1));
         }
       }
     }

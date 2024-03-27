@@ -50,7 +50,7 @@ core_builder_parts = {
     'dib_set': '  .dib_set({dib_set})',
     'dib_way': '  .dib_way({dib_way})',
     'dib_window': '  .dib_window({dib_window})',
-    'dib_max_tag_check': '  .dib_width(champsim::bandwidth::maximum_type{{{dib_max_tag_check}}})',
+    'dib_max_tag_check': '  .dib_max_read(champsim::bandwidth::maximum_type{{{dib_max_tag_check}}})',
     'L1I': ['.l1i(&{^l1i_ptr})', '.l1i_bandwidth({^l1i_ptr}.MAX_TAG)', '.fetch_queues(&{^fetch_queues})'],
     'L1D': ['.l1d_bandwidth({^l1d_ptr}.MAX_TAG)', '.data_queues(&{^data_queues})'],
     '_branch_predictor_data': '.branch_predictor<{^branch_predictor_string}>()',
@@ -63,7 +63,7 @@ dib_builder_parts = {
     'sets': '  .dib_set({DIB[sets]})',
     'ways': '  .dib_way({DIB[ways]})',
     'window_size': '  .dib_window({DIB[window_size]})',
-    'max_tag_check': '  .dib_width(champsim::bandwidth::maximum_type{{{DIB[max_tag_check]}}})'
+    'max_tag_check': '  .dib_max_read(champsim::bandwidth::maximum_type{{{DIB[max_tag_check]}}})'
 }
 
 cache_builder_parts = {
@@ -436,11 +436,11 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
 
     yield from cxx.function(f'{classname}::operable_view', (
         'std::vector<std::reference_wrapper<champsim::operable>> retval{};',
-        'auto make_ref = [](auto& x){ return std::ref(x); };',
+        'auto make_ref = [](auto& x){ return std::ref<champsim::operable>(x); };',
         'std::transform(std::begin(cores), std::end(cores), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(caches), std::end(caches), std::back_inserter(retval), make_ref);',
         'std::transform(std::begin(ptws), std::end(ptws), std::back_inserter(retval), make_ref);',
-        'retval.push_back(std::ref(DRAM));',
+        'retval.push_back(std::ref<champsim::operable>(DRAM));',
         'return retval;'
     ), rtype='std::vector<std::reference_wrapper<champsim::operable>>')
     yield ''
