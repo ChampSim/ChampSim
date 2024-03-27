@@ -203,7 +203,7 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 
 namespace {
 template <typename It, typename SelectFunc, typename MatchFunc, typename DoFunc>
-void for_each_group_n(It begin, It end, champsim::bandwidth bw, SelectFunc selector, MatchFunc matcher, DoFunc mutator)
+auto for_each_group_n(It begin, It end, champsim::bandwidth bw, SelectFunc selector, MatchFunc matcher, DoFunc mutator)
 {
   auto window_begin = std::find_if(begin, end, selector);
   for (; bw.has_remaining() && window_begin != end; bw.consume()) {
@@ -217,6 +217,8 @@ void for_each_group_n(It begin, It end, champsim::bandwidth bw, SelectFunc selec
     }
     window_begin = std::find_if(window_end, end, selector);
   }
+
+  return window_begin;
 }
 }
 
@@ -242,10 +244,6 @@ long O3_CPU::check_dib()
 
 void O3_CPU::do_check_dib(typename ifetch_buffer_type::iterator begin, typename ifetch_buffer_type::iterator end)
 {
-  if (begin == end) {
-    return;
-  }
-
   // Check DIB to see if we recently fetched this line
   auto hit = DIB.check_hit(begin->ip).has_value();
   auto mark_entry = [time=current_time, hit](auto& instr) {
