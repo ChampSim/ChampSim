@@ -182,6 +182,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
   }
 
+  if (arch_instr.ld_type == load_type::BYTECODE) {
+    sim_stats.bytecodes_seen++;
+    if (previousBytecodeCycle != 0) sim_stats.bytecode_lengths += num_retired - previousBytecodeCycle; 
+    previousBytecodeCycle = num_retired; 
+  }
+
   return stop_fetch;
 }
 

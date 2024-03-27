@@ -69,7 +69,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "bingo_dpc3_l1d"
+        "prefetcher": "berti"
     },
 
     "L2C": {

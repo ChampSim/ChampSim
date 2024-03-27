@@ -70,6 +70,12 @@ struct cpu_stats {
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
 
+  uint64_t bytecodes_seen = 0;
+  uint64_t bytecode_lengths = 0; 
+
+  uint64_t avgInstrPrBytecode() const { 
+    if (bytecode_lengths != 0) return bytecodes_seen/bytecode_lengths;
+    return 0;}
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
 };
@@ -145,6 +151,9 @@ public:
 
   // branch
   uint64_t fetch_resume_cycle = 0;
+
+  // bytecode
+  uint64_t previousBytecodeCycle = 0;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;

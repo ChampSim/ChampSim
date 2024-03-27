@@ -48,6 +48,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "Branch type MPKI\n");
   for (auto [str, idx] : types)
     fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
+  fmt::print(stream, "Seen bytecodes: {}\n", stats.bytecodes_seen);
+  fmt::print(stream, "Average bytecode length (ins): {}\n", stats.avgInstrPrBytecode());
   fmt::print(stream, "\n");
 }
 
@@ -65,7 +67,7 @@ void champsim::plain_printer::print(CACHE::stats_type stats)
       TOTAL_MISS += stats.misses.at(type.second).at(cpu);
     }
 
-    fmt::print(stream, "{} TOTAL        ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
+    fmt::print(stream, "{} TOTAL ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, TOTAL_HIT + TOTAL_MISS, TOTAL_HIT, TOTAL_MISS);
     for (const auto& type : types) {
       fmt::print(stream, "{} {:<12s} ACCESS: {:10d} HIT: {:10d} MISS: {:10d}\n", stats.name, type.first,
                  stats.hits[type.second][cpu] + stats.misses[type.second][cpu], stats.hits[type.second][cpu], stats.misses[type.second][cpu]);
