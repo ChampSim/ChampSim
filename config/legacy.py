@@ -21,14 +21,22 @@ def mangled_declaration(fname, args, rtype, module_data):
 
 def variant_function_body(fname, args, module_data):
     argnamestring = ', '.join(a[1] for a in args)
-    body = [f'return intern_->{module_data["func_map"][fname]}({argnamestring});']
-    yield from cxx.function(fname, body, args=args)
+    mangled_name = module_data['func_map'][fname]
+    body = [
+        f'if constexpr (has_function("{mangled_name}"sv)) {{',
+        f'  return intern_->{mangled_name}({argnamestring});',
+        '}',
+    ]
     yield ''
+    yield from cxx.function(fname, body, args=args)
 
 def get_discriminator(variant_data, module_data, classname):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
     discriminator_classname = module_data['class'].split('::')[-1]
     body = itertools.chain(
+        ('private:',),
+        ('constexpr static',*cxx.function('has_function',['return "CHAMPSIM_LEGACY_FUNCTION_NAMES"sv.find(name);'], args=(('std::string_view','name'),)),''),
+        ('public:',),
         (f'using {classname}::{classname};',),
         *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
     )
@@ -37,8 +45,10 @@ def get_discriminator(variant_data, module_data, classname):
 
 def get_bridge(header_name, discrim, variant, mod_info):
     yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+        '#include <string_view>',
         '#include "modules.h"',
-        f'#include "{header_name}"',
+        f'#include "{header_name}"', '',
+        'using namespace std::literals::string_view_literals;', '',
         'namespace champsim::modules::generated',
         '{',
         *discrim(mod_info),
@@ -87,6 +97,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
+    parser.add_argument('--kind', choices=['options','header','source'])
     parser.add_argument('paths', action='append')
     args = parser.parse_args()
 
@@ -96,23 +107,44 @@ if __name__ == '__main__':
         'legacy': True
     } for p in args.paths]
     for i in infos:
-        i.update({'class': f'champsim::modules::generated::{i["name"]}'})
+        i.update({
+            'type_guess': next(filter(lambda t: t in i['path'], ('branch', 'btb', 'prefetcher', 'replacement')), ''),
+            'class': f'champsim::modules::generated::{i["name"]}'
+        })
+
+    parts = {
+        'branch': ('ooo_cpu.h', functools.partial(get_discriminator, modules.branch_variant_data, classname='branch_predictor'), modules.branch_variant_data, modules.get_branch_data),
+        'btb': ('ooo_cpu.h', functools.partial(get_discriminator, modules.btb_variant_data, classname='btb'), modules.btb_variant_data, modules.get_btb_data),
+        'prefetcher': ('cache.h', functools.partial(get_discriminator, modules.pref_branch_variant_data + modules.pref_nonbranch_variant_data, classname='prefetcher'), modules.pref_branch_variant_data + modules.pref_nonbranch_variant_data, modules.get_pref_data),
+        'replacement': ('cache.h', functools.partial(get_discriminator, modules.repl_variant_data, classname='replacement'), modules.repl_variant_data, modules.get_repl_data)
+    }
+    zipped_parts = ((parts.get(i['type_guess'], ('', lambda _: tuple(), {},lambda x: x)),i) for i in infos)
 
     fileparts = []
 
-    for i in infos:
-        if 'branch' in i['path']:
-            variant = modules.branch_variant_data
-            fileparts.extend(get_bridge('ooo_cpu.h', functools.partial(get_discriminator, variant, classname='branch_predictor'), variant, modules.get_branch_data(i)))
-        if 'btb' in i['path']:
-            variant = modules.btb_variant_data
-            fileparts.extend(get_bridge('ooo_cpu.h', functools.partial(get_discriminator, variant, classname='btb'), variant, modules.get_btb_data(i)))
-        if 'prefetcher' in i['path']:
-            local_branch_variant_data = modules.pref_branch_variant_data if i.get('_is_instruction_prefetcher') else []
-            variant = modules.pref_nonbranch_variant_data + local_branch_variant_data
-            fileparts.extend(get_bridge('cache.h', functools.partial(get_discriminator, variant, classname='prefetcher'), variant, modules.get_pref_data(i)))
-        if 'branch' in i['path']:
-            variant = modules.replacement_variant_data
-            fileparts.extend(get_bridge('cache.h', functools.partial(get_discriminator, variant, classname='replacement'), variant, modules.get_repl_data(i)))
+    if args.kind == 'options':
+        fileparts.extend(
+            (os.path.join(mod_info['path'], 'legacy.options'), get_legacy_module_opts_lines(getfunc(mod_info)))
+        for (_, _, _, getfunc), mod_info in zipped_parts)
+
+    if args.kind == 'header':
+        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+            f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
+            f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
+            *(mangled_declaration(*v, getfunc(mod_info)) for v in var),
+            '#endif'
+        ))) for (_, _, var, getfunc), mod_info in zipped_parts)
+
+    if args.kind == 'source':
+        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+            '#include <string_view>',
+            '#include "modules.h"',
+            f'#include "{header_name}"', '',
+            'using namespace std::literals::string_view_literals;', '',
+            'namespace champsim::modules::generated',
+            '{',
+            *discrim(getfunc(mod_info)),
+            '}'
+        ))) for (header_name, discrim, _, getfunc), mod_info in zipped_parts)
 
     filewrite.Fragment(fileparts).write()

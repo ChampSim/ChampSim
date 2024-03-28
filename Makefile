@@ -29,13 +29,17 @@ executable_name:=
 # $1 - parent directory
 ls_dirs = $(patsubst %/,%,$(filter %/,$(wildcard $1/*/)))
 
+# Expands to the given legacy file if the module folder contains a file named "__legacy__"
+# $1 - path to search
+# $2 - file to produce
+maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)$2)
+
 # Migrate names from a source directory (and suffix) to a target directory (and suffix)
 # $1 - source directory
 # $2 - target directory
-# $3 - source suffix
-# $4 - target suffix
-# $5 - unique build id
-migrate = $(patsubst $1/%$3,$2/$(5)_%$4,$(filter %main.cc,$(wildcard $1/*$3))) $(patsubst $1/%$3,$2/%$4,$(filter-out %main.cc,$(wildcard $1/*$3))) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3,$4,$5))
+# $3 - unique build id
+migrate = $(patsubst $1/%.cc,$2/%.o,$(join $(dir $4),$(patsubst %main.cc,$3_%main.cc,$(notdir $4))))
+get_object_list = $(call migrate,$1,$2,$3,$(wildcard $1/*.cc) $(call maybe_legacy_file,$1/,legacy_bridge.cc)) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3))
 
 # Return the trailing portion of a word sequence
 # $1 - the sequence
@@ -126,7 +130,7 @@ get_module_src_dir=$(patsubst externUPdir%,..%,$(subst _UPdir,/..,$(patsubst $(D
 
 # Get a list of module objects descended from the given directories
 # $1 - list of directories to traverse
-get_module_list = $(foreach mod_type,$1,$(call migrate,$(mod_type),$(call get_module_obj_dir,$(mod_type)),.cc,.o))
+get_module_list = $(foreach mod_type,$1,$(call get_object_list,$(mod_type),$(call get_module_obj_dir,$(mod_type))))
 
 # The base modules shipped with ChampSim
 base_module_objs = $(call get_module_list, $(module_dirs))
@@ -134,17 +138,24 @@ base_module_objs = $(call get_module_list, $(module_dirs))
 # Get the module objects that are not base
 nonbase_module_objs = $(filter-out $(base_module_objs),$1)
 
-# Make the legacy support structure
-%/legacy.options %/legacy_bridge.h %/legacy_bridge.cc:
-	python3 -m config.legacy $*
-
-# Expands to the given legacy file if the module folder contains a file named "__legacy__"
-# $1 - path to search
-# $2 - file to produce
-maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)$2)
-
 # Secondary expansion is required to pass the build ID into executables and also to connect legacy options as prerequisites
 .SECONDEXPANSION:
+
+# Make the legacy support structure
+%/legacy.options: config/legacy.py
+	python3 -m config.legacy --kind=options $*
+
+%/legacy_bridge.h: config/legacy.py
+	python3 -m config.legacy --kind=header $*
+
+%/legacy_bridge.cc: config/legacy.py
+	python3 -m config.legacy --kind=source $*
+
+# This is a hacky way to get this to work:
+# Examine the module object files to learn which functions are defined, and legacy_bridge.cc will select them at constexpr time
+function_patch_options_prereqs = $(filter-out %/legacy_bridge.o,$(call get_object_list,$*,$(call get_module_obj_dir,$*)))
+%/function_patch.options: $$(function_patch_options_prereqs)
+	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"" > $@
 
 ### Object Files
 
@@ -165,8 +176,8 @@ endif
 
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build
-get_base_objs = $(call migrate,src,$(OBJ_ROOT),.cc,.o,$1)
-test_base_objs = $(call migrate,$(test_source_dir),$(OBJ_ROOT)/test,.cc,.o,TEST)
+get_base_objs = $(call get_object_list,$(base_source_dir),$(OBJ_ROOT),$1)
+test_base_objs = $(call get_object_list,$(test_source_dir),$(OBJ_ROOT)/test,TEST)
 
 # Pass the build ID into the main file
 $(OBJ_ROOT)/%_main.o: CPPFLAGS += -DCHAMPSIM_BUILD=0x$*
@@ -201,7 +212,7 @@ $(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)/
 	$(dep_recipe)
 
 # Connect module objects to their sources
-base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(if $(filter-out %/legacy_bridge,$(basename $@)),$(call maybe_legacy_file,$(call get_module_src_dir,$@),legacy.options)) module.options $(base_options)
+base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(call maybe_legacy_file,$(call get_module_src_dir,$@),$(if $(filter-out %/legacy_bridge,$(basename $@)),legacy.options,function_patch.options)) module.options $(base_options)
 $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/modules
 	$(obj_recipe)
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $(DEP_ROOT)/modules
@@ -222,7 +233,7 @@ $(executable_name) $(test_main_name):
 
 # Get prerequisites for module_decl.inc
 # $1 - object file paths
-module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
+module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.h)),$(ROOT_DIR)
 define module_decl_lines
 $(if $1,echo "#include \"$(call relative_path,$(firstword $(patsubst %/,%,$(dir $1))),$(@D))/$(firstword $(notdir $1))\"" >> $@)
 $(if $1,$(call $0,$(call tail,$1)))
