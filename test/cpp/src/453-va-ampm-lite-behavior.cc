@@ -1,26 +1,11 @@
 #include <catch.hpp>
 #include <numeric>
 #include "mocks.hpp"
+#include "matchers.hpp"
 #include "cache.h"
 #include "defaults.hpp"
 
 #include "../../../prefetcher/va_ampm_lite/va_ampm_lite.h"
-
-struct StrideMatcher : Catch::Matchers::MatcherGenericBase {
-  champsim::block_number::difference_type stride;
-
-  explicit StrideMatcher(champsim::block_number::difference_type s) : stride(s) {}
-
-    template<typename Range>
-    bool match(const Range& range) const {
-      std::vector<decltype(stride)> diffs;
-      return std::adjacent_find(std::cbegin(range), std::cend(range), [stride=stride](const auto& x, const auto& y){ return champsim::offset(champsim::block_number{x}, champsim::block_number{y}) != stride; }) == std::cend(range);
-    }
-
-    std::string describe() const override {
-        return "has stride " + std::to_string(stride);
-    }
-};
 
 SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in the positive direction") {
   auto stride = GENERATE(as<typename champsim::block_number::difference_type>{}, 1, 2, 3, -1, -2, -3);
@@ -105,7 +90,7 @@ SCENARIO("The va_ampm_lite prefetcher issues prefetches when addresses stride in
           elem->_operate();
 
       THEN("A total of 5 requests were generated with the same stride") {
-        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && StrideMatcher{static_cast<int64_t>(stride)});
+        REQUIRE_THAT(mock_ll.addresses, Catch::Matchers::SizeIs(5) && champsim::test::StrideMatcher<champsim::block_number>{static_cast<int64_t>(stride)});
       }
     }
   }

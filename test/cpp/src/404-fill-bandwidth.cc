@@ -67,7 +67,7 @@ SCENARIO("The MSHR respects the fill bandwidth") {
       auto cycle = (size-1)/fill_bandwidth;
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        mock_ul.packets.back().assert_returned(100 + fill_latency + cycle, 1);
+        REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(100 + fill_latency + cycle, 1));
       }
     }
   }
@@ -136,7 +136,7 @@ SCENARIO("Writebacks respect the fill bandwidth") {
       }
 
       THEN("Packet " + std::to_string(size-1) + " was served in cycle " + std::to_string(cycle)) {
-        mock_ul.packets.back().assert_returned(hit_latency + fill_latency + cycle, 1);
+        REQUIRE_THAT(mock_ul.packets.back(), champsim::test::ReturnedMatcher(hit_latency + fill_latency + cycle, 1));
       }
     }
   }

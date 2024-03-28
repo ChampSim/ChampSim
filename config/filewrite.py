@@ -183,10 +183,10 @@ class Fragment:
         ]
         return Fragment(list(util.collect(fileparts, operator.itemgetter(0), Fragment.__part_joiner))) # hoist the parts
 
-    def write(self):
+    def write(self, verbose=False):
         ''' Write the internal series of fragments to file. '''
         for fname, fcontents in self.fileparts:
-            write_if_different(fname, '\n'.join(l.rstrip() for l in fcontents))
+            write_if_different(fname, '\n'.join(l.rstrip() for l in fcontents), verbose=verbose)
 
     def file_parts(self):
         return self.fileparts

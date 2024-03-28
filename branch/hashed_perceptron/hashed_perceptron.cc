@@ -49,25 +49,38 @@ sources for you to plagiarize.
 
 #include <numeric>
 
+hashed_perceptron::indexer::indexer(unsigned long hist_len)
+{
+  const auto lg2_table_size = champsim::msl::lg2(TABLE_SIZE);
+  const auto most_words = hist_len / lg2_table_size;               // most of the words are 12 bits long
+  const champsim::data::bits last_word{hist_len % lg2_table_size}; // the last word is fewer than 12 bits
+
+  std::fill_n(std::begin(hist_masks), most_words, champsim::msl::bitmask(champsim::data::bits{lg2_table_size}));
+  hist_masks.at(most_words) = champsim::msl::bitmask(last_word);
+}
+
+std::size_t hashed_perceptron::indexer::get_index(champsim::address pc, ghist_type ghist_words) const
+{
+  constexpr auto slice_width{champsim::msl::lg2(TABLE_SIZE)}; // NOTE: GCC 9 gives internal compiler error if this has type champsim::data::bits
+
+  // Mask the words in this table's history
+  std::transform(std::begin(ghist_words), std::end(ghist_words), std::begin(hist_masks), std::begin(ghist_words), std::bit_and<>{});
+
+  // XOR up to the next-to-the-last word
+  // seed in the PC to spread accesses around (like gshare) XOR in the last word
+  auto x =
+      std::accumulate(std::begin(ghist_words), std::end(ghist_words), pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>(), std::bit_xor<>{});
+
+  return x & champsim::msl::bitmask(TABLE_INDEX_BITS); // stay within the table size
+}
+
 bool hashed_perceptron::predict_branch(champsim::address pc)
 {
-  auto get_table_index = [pc, ghist_words = ghist_words](auto hist_len) { // for each table...
-    // hash global history bits 0..n-1 into x by XORing the words from the ghist_words array
-    const auto most_words = hist_len / champsim::msl::lg2(TABLE_SIZE);               // most of the words are 12 bits long
-    const champsim::data::bits last_word{hist_len % champsim::msl::lg2(TABLE_SIZE)}; // the last word is fewer than 12 bits
-
-    // seed in the PC to spread accesses around (like gshare) XOR in the last word
-    constexpr auto slice_width{champsim::msl::lg2(TABLE_SIZE)}; // NOTE: GCC 9 gives internal compiler error if this has type champsim::data::bits
-    auto x = pc.slice_lower<champsim::data::bits{slice_width}>().to<uint64_t>() ^ (ghist_words[most_words] & champsim::msl::bitmask(last_word));
-
-    // XOR up to the next-to-the-last word
-    x = std::accumulate(std::begin(ghist_words), std::next(std::begin(ghist_words), static_cast<long>(most_words)), x, std::bit_xor<>{});
-
-    return x & champsim::msl::bitmask(TABLE_INDEX_BITS); // stay within the table size
+  auto get_index = [pc, ghist_words = ghist_words](const auto& idxer) {
+    return idxer.get_index(pc, ghist_words);
   };
-
   perceptron_result result;
-  std::transform(std::cbegin(history_lengths), std::cend(history_lengths), std::begin(result.indices), get_table_index);
+  std::transform(std::cbegin(indexers), std::cend(indexers), std::begin(result.indices), get_index);
 
   // add the selected weights to the perceptron sum
   result.yout = std::inner_product(std::begin(tables), std::end(tables), std::begin(result.indices), 0, std::plus<>{},

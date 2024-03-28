@@ -91,7 +91,7 @@ SCENARIO("Blocks that have been written are marked dirty") {
               elem->_operate();
 
           THEN("It takes exactly the specified cycles to return") {
-            mock_ul_test.packets.back().assert_returned(miss_latency + hit_latency + 1, 1);
+            REQUIRE_THAT(mock_ul_test.packets.back(), champsim::test::ReturnedMatcher(miss_latency + hit_latency + 1, 1));
           }
 
           THEN("The first block is evicted") {

@@ -109,9 +109,8 @@ SCENARIO("A cache merges two requests in the MSHR") {
         }
 
         THEN("The upper level for the test packet received its return without delay") {
-          REQUIRE(std::size(mock_ul_test.packets) == 1);
-          REQUIRE(std::size(mock_ul_seed.packets) == 1);
-          mock_ul_test.packets.front().assert_relative_returned(mock_ul_seed.packets.front(), (fill_latency + miss_latency + hit_latency + 1), 1); // +1 due to ordering of elements
+          REQUIRE_THAT(mock_ul_seed.packets, Catch::Matchers::SizeIs(1));
+          REQUIRE_THAT(mock_ul_test.packets, Catch::Matchers::SizeIs(1) && Catch::Matchers::AllMatch(champsim::test::RelativeReturnedMatcher(mock_ul_seed.packets.front(), (fill_latency + miss_latency + hit_latency + 1), 1)));
         }
       }
     }

@@ -23,3 +23,6 @@ absolute.options
 **/legacy.options
 **/legacy_bridge.cc
 **/legacy_bridge.h
+
+.vscode/
+**/.DS_Store
