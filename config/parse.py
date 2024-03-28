@@ -418,10 +418,10 @@ class NormalizedConfiguration:
             'vmem': vmem
         }
         module_info = {
-            'repl': {k:modules.get_repl_data(v) for k,v in util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()).items()},
-            'pref': {k:modules.get_pref_data(v) for k,v in util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()).items()},
-            'branch': {k:modules.get_branch_data(v) for k,v in util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()).items()},
-            'btb': {k:modules.get_btb_data(v) for k,v in util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all()).items()}
+            'repl': util.combine_named(*(c['_replacement_data'] for c in caches.values()), replacement_context.find_all()),
+            'pref': util.combine_named(*(c['_prefetcher_data'] for c in caches.values()), prefetcher_context.find_all()),
+            'branch': util.combine_named(*(c['_branch_predictor_data'] for c in cores), branch_context.find_all()),
+            'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
         }
 
         config_extern = {

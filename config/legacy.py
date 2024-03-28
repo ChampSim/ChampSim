@@ -7,6 +7,71 @@ from . import cxx
 from . import modules
 from . import filewrite
 
+branch_variant_data = [
+    ('initialize_branch_predictor', tuple(), 'void'),
+    ('last_branch_result', (('uint64_t', 'ip'), ('uint64_t', 'target'), ('uint8_t', 'taken'), ('uint8_t', 'branch_type')), 'void'),
+    ('predict_branch', (('uint64_t','ip'),), 'uint8_t')
+]
+def get_branch_data(module_data):
+    func_map = { v[0]: f'b_{module_data["name"]}_{v[0]}' for v in branch_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
+
+btb_variant_data = [
+    ('initialize_btb', tuple(), 'void'),
+    ('update_btb', (('uint64_t','ip'), ('uint64_t','predicted_target'), ('uint8_t','taken'), ('uint8_t','branch_type')), 'void'),
+    ('btb_prediction', (('uint64_t','ip'),), 'std::pair<uint64_t, uint8_t>')
+]
+def get_btb_data(module_data):
+    func_map = { v[0]: f't_{module_data["name"]}_{v[0]}' for v in btb_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
+
+pref_variant_data = [
+    ('prefetcher_initialize', tuple(), 'void'),
+    ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t'),
+    ('prefetcher_cache_fill', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in')), 'uint32_t'),
+    ('prefetcher_cycle_operate', tuple(), 'void'),
+    ('prefetcher_final_stats', tuple(), 'void'),
+    ('prefetcher_branch_operate', (('uint64_t', 'ip'), ('uint8_t', 'branch_type'), ('uint64_t', 'branch_target')), 'void')
+]
+def get_pref_data(module_data):
+    prefix = 'pref'
+    func_map = { v[0]: f'{prefix}_{module_data["name"]}_{v[0]}' for v in pref_variant_data }
+
+    return util.chain(module_data,
+        { 'func_map': func_map },
+        { 'deprecated_func_map' : {
+                'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l2c_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'llc_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
+                'l1i_prefetcher_cache_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l1d_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l2c_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'llc_prefetcher_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cache_operate')),
+                'l1i_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l1d_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l2c_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'llc_prefetcher_cache_fill': '_'.join((prefix, module_data['name'], 'prefetcher_cache_fill')),
+                'l1i_prefetcher_cycle_operate': '_'.join((prefix, module_data['name'], 'prefetcher_cycle_operate')),
+                'l1i_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l1d_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l2c_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'llc_prefetcher_final_stats': '_'.join((prefix, module_data['name'], 'prefetcher_final_stats')),
+                'l1i_prefetcher_branch_operate': '_'.join((prefix, module_data['name'], 'prefetcher_branch_operate'))
+            }
+        }
+    )
+
+repl_variant_data = [
+    ('initialize_replacement', tuple(), 'void'),
+    ('find_victim', (('uint32_t','triggering_cpu'), ('uint64_t','instr_id'), ('uint32_t','set'), ('const CACHE::BLOCK*','current_set'), ('uint64_t','ip'), ('uint64_t','full_addr'), ('uint32_t','type')), 'uint32_t'),
+    ('update_replacement_state', (('uint32_t','triggering_cpu'), ('uint32_t','set'), ('uint32_t','way'), ('uint64_t','full_addr'), ('uint64_t','ip'), ('uint64_t','victim_addr'), ('uint32_t','type'), ('uint8_t','hit')), 'void'),
+    ('replacement_final_stats', tuple(), 'void')
+]
+def get_repl_data(module_data):
+    func_map = { v[0]: f'r_{module_data["name"]}_{v[0]}' for v in repl_variant_data }
+    return util.chain(module_data, { 'func_map': func_map })
+
 def get_legacy_module_opts_lines(module_data):
     '''
     Generate an iterable of the compiler options for a particular module
@@ -65,34 +130,6 @@ def get_bridge(header_name, discrim, variant, mod_info):
     fname = os.path.join(mod_info['path'], 'legacy.options')
     yield fname, get_legacy_module_opts_lines(mod_info)
 
-def get_legacy_module_lines(containing_dir, branch_data, btb_data, pref_data, repl_data):
-    '''
-    Create three generators:
-      - The first generates C++ code declaring all functions for the O3_CPU modules,
-      - The second generates C++ code declaring all functions for the CACHE modules,
-      - The third generates C++ code defining the functions.
-    '''
-    branch_discriminator = functools.partial(get_discriminator, modules.branch_variant_data, classname='branch_predictor')
-    btb_discriminator = functools.partial(get_discriminator, modules.btb_variant_data, classname='btb')
-    repl_discriminator = functools.partial(get_discriminator, modules.repl_variant_data, classname='replacement')
-
-    def pref_discriminator(v):
-        local_branch_variant_data = modules.pref_branch_variant_data if v.get('_is_instruction_prefetcher') else []
-        return get_discriminator([*modules.pref_nonbranch_variant_data, *local_branch_variant_data], v, classname='prefetcher')
-
-    #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'ooo_cpu.h'), core_bridge_params))
-    #yield from itertools.chain.from_iterable(itertools.starmap(functools.partial(get_bridge, 'cache.h'), cache_bridge_params))
-
-def generate_module_information(containing_dir, module_info):
-    ''' Generates all of the include-files with module information '''
-    return get_legacy_module_lines(
-        containing_dir,
-        module_info['branch'].values(),
-        module_info['btb'].values(),
-        module_info['pref'].values(),
-        module_info['repl'].values()
-    )
-
 if __name__ == '__main__':
     import argparse
 
@@ -113,10 +150,10 @@ if __name__ == '__main__':
         })
 
     parts = {
-        'branch': ('ooo_cpu.h', functools.partial(get_discriminator, modules.branch_variant_data, classname='branch_predictor'), modules.branch_variant_data, modules.get_branch_data),
-        'btb': ('ooo_cpu.h', functools.partial(get_discriminator, modules.btb_variant_data, classname='btb'), modules.btb_variant_data, modules.get_btb_data),
-        'prefetcher': ('cache.h', functools.partial(get_discriminator, modules.pref_branch_variant_data + modules.pref_nonbranch_variant_data, classname='prefetcher'), modules.pref_branch_variant_data + modules.pref_nonbranch_variant_data, modules.get_pref_data),
-        'replacement': ('cache.h', functools.partial(get_discriminator, modules.repl_variant_data, classname='replacement'), modules.repl_variant_data, modules.get_repl_data)
+        'branch': ('ooo_cpu.h', functools.partial(get_discriminator, branch_variant_data, classname='branch_predictor'), branch_variant_data, get_branch_data),
+        'btb': ('ooo_cpu.h', functools.partial(get_discriminator, btb_variant_data, classname='btb'), btb_variant_data, get_btb_data),
+        'prefetcher': ('cache.h', functools.partial(get_discriminator, pref_variant_data, classname='prefetcher'), pref_variant_data, get_pref_data),
+        'replacement': ('cache.h', functools.partial(get_discriminator, repl_variant_data, classname='replacement'), repl_variant_data, get_repl_data)
     }
     zipped_parts = ((parts.get(i['type_guess'], ('', lambda _: tuple(), {},lambda x: x)),i) for i in infos)
 

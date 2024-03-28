@@ -22,7 +22,6 @@ import json
 from .makefile import get_makefile_lines
 from .instantiation_file import get_instantiation_lines
 from .instantiation_file import get_instantiation_header
-from .legacy import generate_module_information
 from . import util
 
 warning_text = (
