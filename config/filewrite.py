@@ -146,19 +146,10 @@ class Fragment:
 
         executable_basename, elements, modules_to_compile, module_info, config_file = parsed_config
 
-        legacy_module_info = {
-            mod_type: {
-                k:v for k,v in util.subdict(mod_set, modules_to_compile).items() if v.get('legacy')
-            } for mod_type, mod_set in module_info.items()
-        }
         joined_module_info = util.subdict(util.chain(*module_info.values()), modules_to_compile) # remove module type tag
         executable = os.path.join(bindir_name, executable_basename)
         if verbose:
             print('For Executable', executable)
-            if any(legacy_module_info.values()):
-                print('Legacy modules detected:')
-                for module in itertools.chain.from_iterable(v.values() for v in legacy_module_info.values()):
-                    print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
             print('Modules:')
             for module in joined_module_info.values():
                 print(f'  {module["name"]}: {module["path"]} -> {module["class"]}')
