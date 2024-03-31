@@ -77,6 +77,11 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   return retval;
 }
 
+CACHE::state_response_type::state_response_type(access_type send_upper, access_type send_lower, bool stall, champsim::address addr) : 
+  send_upper_level(send_upper), send_lower_level(send_lower), state_model_stall(stall), address(addr)
+{
+}
+
 auto CACHE::fill_block(mshr_type mshr, uint32_t metadata) -> BLOCK
 {
   CACHE::BLOCK to_fill;
@@ -130,6 +135,16 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   const bool bypass = (way == set_end);// || fill_mshr.clusivity == champsim::inclusivity::exclusive
   assert(!bypass || fill_mshr.type != access_type::WRITE); // Writes may not bypass
+
+  state_response_type state_response_eviction = impl_state_model_handle_request(way->address, get_set_index(way->address), access_type::EVICT, false, fill_mshr.cpu);
+  if (handle_state_response(state_response_eviction)) {
+    return false; 
+  }
+
+  state_response_type state_response_fill = impl_state_model_handle_request(fill_mshr.address, get_set_index(fill_mshr.address), access_type::FILL, false, fill_mshr.cpu);
+  if (handle_state_response(state_response_fill)) {
+    return false; 
+  }
 
   if (!bypass && way->valid && way->dirty) {
     request_type writeback_packet;
@@ -209,7 +224,15 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     metadata_thru = impl_prefetcher_cache_operate(module_address(handle_pkt), handle_pkt.ip, hit, useful_prefetch, handle_pkt.type, metadata_thru);
   }
 
-  if (hit) {
+  if (hit) { 
+
+    state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, get_set_index(handle_pkt.address), handle_pkt.type, hit, handle_pkt.cpu);
+
+    if (handle_state_response(state_response)) {
+      return false; 
+    }
+
+
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
     // update replacement policy
@@ -231,7 +254,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
       way->prefetch = false;
     }
 
-    invalidate_entry(*way);
+    //invalidate_entry(*way);
   }
 
   return hit;
@@ -295,9 +318,14 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
 
     const bool send_to_rq = (prefetch_as_load || handle_pkt.type != access_type::PREFETCH);
-    const bool state_model_permit = impl_state_model_handle_pkt(handle_pkt.address, handle_pkt.v_address, handle_pkt.type, handle_pkt.cpu); 
-    printf("Send to rq %d permit %d\n", send_to_rq, state_model_permit);
-    bool success = (send_to_rq && state_model_permit) ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
+
+    const auto set_idx = get_set_index(handle_pkt.address);
+    state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
+    if (handle_state_response(state_response)) {
+      return false; 
+    }
+
+    bool success = (send_to_rq) ? lower_level->add_rq(mshr_pkt.second) : lower_level->add_pq(mshr_pkt.second);
 
     if (!success) {
       return false;
@@ -318,18 +346,52 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 {
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
-               handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
-               current_time.time_since_epoch() / clock_period);
+        handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
+        current_time.time_since_epoch() / clock_period);
   }
 
   mshr_type to_allocate{handle_pkt, current_time};
   to_allocate.data_promise.ready_at(current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
   inflight_writes.push_back(to_allocate);
 
+  const auto set_idx = get_set_index(handle_pkt.address);
+  state_response_type state_response = impl_state_model_handle_request(handle_pkt.address, set_idx, handle_pkt.type, false, handle_pkt.cpu);
+
+  if (handle_state_response(state_response)) {
+    return false; 
+  }
+
+
   sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
   return true;
 }
+
+bool CACHE::handle_state_response(const state_response_type& handle_state_resp)
+{
+
+  request_type upper_request;
+  request_type lower_request;
+
+  upper_request.type = handle_state_resp.send_upper_level;
+  lower_request.type = handle_state_resp.send_lower_level;
+
+  if (upper_request.type != access_type::NONE) {
+    if (upper_request.type == access_type::INVALIDATE ) {
+      for (auto *ul : upper_levels) {
+        ul->add_iq(upper_request);
+      } 
+    } 
+  }
+
+  if (lower_request.type != access_type::NONE) {
+    if (lower_request.type == access_type::INVALIDATE ) {
+      lower_level->add_iq(lower_request);
+    } 
+  }
+  
+  return handle_state_resp.state_model_stall; 
+} 
 
 template <bool UpdateRequest>
 auto CACHE::initiate_tag_check(champsim::channel* ul)
@@ -809,8 +871,8 @@ void CACHE::impl_initialize_state_model() const { sm_module_pimpl->impl_initiali
 
 void CACHE::impl_state_model_final_stats() const { sm_module_pimpl->impl_state_model_final_stats(); }
     
-bool CACHE::impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_pkt(address, v_address, type, triggering_cpu); };
-bool CACHE::impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_response(address, v_address, type, triggering_cpu); };
+CACHE::state_response_type CACHE::impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_request(address, set, type, hit, triggering_cpu); };
+CACHE::state_response_type CACHE::impl_state_model_handle_response(champsim::address address, long set, access_type type, uint32_t triggering_cpu) const { return sm_module_pimpl->impl_state_model_handle_response(address, set, type, triggering_cpu); };
 
 void CACHE::initialize()
 {

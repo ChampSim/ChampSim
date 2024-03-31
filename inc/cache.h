@@ -112,11 +112,22 @@ public:
     static mshr_type merge(mshr_type predecessor, mshr_type successor);
   };
 
+  struct state_response_type {
+    access_type send_upper_level;  
+    access_type send_lower_level; 
+    access_type handle_at_this_level; 
+    bool state_model_stall;
+    champsim::address address;
+    state_response_type(access_type send_upper = access_type::NONE, access_type send_lower = access_type::NONE, bool stall = false, champsim::address address = champsim::address{0xffff'ffff});
+    
+  }; 
+
 private:
   bool try_hit(const tag_lookup_type& handle_pkt);
   bool handle_fill(const mshr_type& fill_mshr);
   bool handle_miss(const tag_lookup_type& handle_pkt);
   bool handle_write(const tag_lookup_type& handle_pkt);
+  bool handle_state_response(const state_response_type& handle_state_resp);
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
 
@@ -257,8 +268,8 @@ public:
     virtual ~state_model_module_concept() = default;
 
     virtual void impl_initialize_state_model() = 0;
-    virtual bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) = 0;
-    virtual bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) = 0;
+    virtual state_response_type impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) = 0;
+    virtual state_response_type impl_state_model_handle_response(champsim::address address, long set, access_type type, uint32_t triggering_cpu) = 0;
     virtual void impl_state_model_final_stats() = 0;
   };
 
@@ -300,8 +311,8 @@ public:
     explicit state_model_module_model(CACHE* cache) : intern_(Ss{cache}...) { (void)cache; /* silence -Wunused-but-set-parameter when sizeof...(Rs) == 0 */ }
 
     void impl_initialize_state_model() final;
-    bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) final;
-    bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) final;
+    state_response_type impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) final;
+    state_response_type impl_state_model_handle_response(champsim::address address, long set, access_type type, uint32_t triggering_cpu) final;
     void impl_state_model_final_stats() final;
   };
 
@@ -328,8 +339,8 @@ public:
   // NOLINTEND(readability-make-member-function-const)
 
   void impl_initialize_state_model() const; 
-  bool impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const;
-  bool impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu) const;
+  state_response_type impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu) const;
+  state_response_type impl_state_model_handle_response(champsim::address address, long set, access_type type, uint32_t triggering_cpu) const;
   void impl_state_model_final_stats() const;
 
   template <typename... Ps, typename... Rs, typename... Ss>
@@ -525,37 +536,37 @@ void CACHE::state_model_module_model<Ss...>::impl_initialize_state_model()
 }
 
 template <typename... Ss>
-bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_pkt(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu)
+CACHE::state_response_type CACHE::state_model_module_model<Ss...>::impl_state_model_handle_request(champsim::address address, long set, access_type type, bool hit, uint32_t triggering_cpu)
 {
   [[maybe_unused]] auto process_one = [&](auto& s) {
     using namespace champsim::modules;
 
-    if constexpr (state_model::has_handle_pkt<decltype(s), champsim::address, champsim::address, access_type, uint32_t>){
+    if constexpr (state_model::has_handle_request<decltype(s), champsim::address, long, access_type, bool, uint32_t>){
       //printf("Dumb error1\n");
-      return s.handle_pkt(address, v_address, type, triggering_cpu);
+      return s.handle_request(address, set, type, hit, triggering_cpu);
     }
     assert(false);
-    return true;
+    return CACHE::state_response_type();
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
-  return true;
+  return CACHE::state_response_type();
 }
 
 template <typename... Ss>
-bool CACHE::state_model_module_model<Ss...>::impl_state_model_handle_response(champsim::address address, champsim::address v_address, access_type type, uint32_t triggering_cpu)
+CACHE::state_response_type CACHE::state_model_module_model<Ss...>::impl_state_model_handle_response(champsim::address address, long set, access_type type, uint32_t triggering_cpu)
 {
   [[maybe_unused]] auto process_one = [&](auto& s) {
     using namespace champsim::modules;
    
-   if constexpr (state_model::has_handle_response<decltype(s), champsim::address, champsim::address, access_type, uint32_t>)
-      return s.state_model_handle_response(address, v_address, type, triggering_cpu);
+   if constexpr (state_model::has_handle_response<decltype(s), champsim::address, long, access_type, uint32_t>)
+      return s.state_model_handle_response(address, set, type, triggering_cpu);
     
-    return false;
+    return CACHE::state_response_type();
   };
 
   std::apply([&](auto&... s) { (..., process_one(s)); }, intern_);
-  return false;
+  return CACHE::state_response_type();
 }
 
 template <typename... Ss>

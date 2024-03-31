@@ -30,6 +30,9 @@ enum class access_type : unsigned {
   INVALIDATE,
   DATA,
   ACK,
+  FILL,
+  EVICT,
+  NONE,
 };
 
 using namespace std::literals::string_view_literals;
