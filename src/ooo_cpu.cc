@@ -62,6 +62,9 @@ long O3_CPU::operate()
     fmt::print("Heartbeat CPU {} instructions: {} cycles: {} heartbeat IPC: {:.4g} cumulative IPC: {:.4g} (Simulation time: {:%H hr %M min %S sec})\n", cpu,
                num_retired, current_cycle, heartbeat_instr / heartbeat_cycle, phase_instr / phase_cycle, elapsed_time());
     next_print_instruction += STAT_PRINTING_PERIOD;
+    
+    // LOOK_INSIDE_CACHE_TO_SEE_BYTECODE_FILLS
+    CACHE::percentageOccupiedByBytecode();
 
     last_heartbeat_instr = num_retired;
     last_heartbeat_cycle = current_cycle;
@@ -180,12 +183,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-  }
-
-  if (arch_instr.ld_type == load_type::BYTECODE) {
-    sim_stats.bytecodes_seen++;
-    if (previousBytecodeCycle != 0) sim_stats.bytecode_lengths += num_retired - previousBytecodeCycle; 
-    previousBytecodeCycle = num_retired; 
   }
 
   return stop_fetch;
@@ -539,6 +536,17 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 
   if constexpr (champsim::debug_print) {
     fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
+  }
+
+  if (lq_entry.ld_type == LOAD_TYPE::BYTECODE) {
+    sim_stats.bytecodes_seen++;
+    if (previousBytecodeInstrId != 0) {
+      sim_stats.addByteCodeLength(lq_entry.instr_id - previousBytecodeInstrId);       
+        if constexpr (champsim::debug_print) {
+          fmt::print("[Bytecode] length {} seen upontil now {} \n", lq_entry.instr_id - previousBytecodeInstrId, sim_stats.bytecodes_seen);
+        }                        
+    }
+    previousBytecodeInstrId = lq_entry.instr_id; 
   }
 
   return L1D_bus.issue_read(data_packet);

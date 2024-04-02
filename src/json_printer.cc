@@ -34,12 +34,17 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
   for (auto [name, idx] : types)
     mpki.emplace(name, stats.branch_type_misses[idx]);
 
+  std::map<std::size_t, std::size_t> bytelengths{};
+  for (auto [length, freq] : stats.bytecode_lengths) {
+    bytelengths.emplace(length * 10, freq);
+  }
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
                      {"mispredict", mpki},
                      {"seen bytecoes", stats.bytecodes_seen},
-                     {"avg bytecode length (ins)", stats.avgInstrPrBytecode()}
+                     {"avg bytecode length (ins)", stats.avgInstrPrBytecode()},
+                     {"bytecode lengths", bytelengths}
                      };
 }
 

@@ -133,13 +133,15 @@ class CACHE : public champsim::operable
   bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
-
+  float percentageOccupiedByBytecode();
+  
   void issue_translation();
 
   struct BLOCK {
     bool valid = false;
     bool prefetch = false;
     bool dirty = false;
+    bool bytecode = false;
 
     uint64_t address = 0;
     uint64_t v_address = 0;
@@ -223,7 +225,9 @@ public:
   [[deprecated("This function should not be used to access the blocks directly.")]] uint64_t get_way(uint64_t address, uint64_t set) const;
 
   uint64_t invalidate_entry(uint64_t inval_addr);
+  int prefetch_line(uint64_t pf_addr, bool fill_this_level, LOAD_TYPE ld_type, uint32_t prefetch_metadata);
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
+
 
   [[deprecated("Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] int
   prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
@@ -236,7 +240,7 @@ public:
     virtual ~module_concept() = default;
 
     virtual void impl_prefetcher_initialize() = 0;
-    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) = 0;
+    virtual uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint8_t ld_type, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_squash(uint64_t ip, uint64_t instr_id) = 0;
     virtual uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_cycle_operate() = 0;
@@ -257,7 +261,7 @@ public:
     explicit module_model(CACHE* cache) : intern_(cache) {}
 
     void impl_prefetcher_initialize();
-    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
+    uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint8_t ld_type, uint32_t metadata_in);
     void impl_prefetcher_squash(uint64_t ip, uint64_t instr_id);
     uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
     void impl_prefetcher_cycle_operate();
@@ -275,9 +279,9 @@ public:
   std::unique_ptr<module_concept> module_pimpl;
 
   void impl_prefetcher_initialize() { module_pimpl->impl_prefetcher_initialize(); }
-  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
+  uint32_t impl_prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint8_t ld_type, uint32_t metadata_in)
   {
-    return module_pimpl->impl_prefetcher_cache_operate(addr, ip, instr_id, cache_hit, useful_prefetch, type, metadata_in);
+    return module_pimpl->impl_prefetcher_cache_operate(addr, ip, instr_id, cache_hit, useful_prefetch, type, ld_type, metadata_in);
   }
   uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
   {

@@ -75,7 +75,7 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
 }
 
 CACHE::BLOCK::BLOCK(mshr_type mshr)
-    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data)
+    : valid(true), prefetch(mshr.prefetch_from_this), dirty(mshr.type == access_type::WRITE), address(mshr.address), v_address(mshr.v_address), data(mshr.data), bytecode(mshr.ld_type == LOAD_TYPE::BYTECODE || mshr.ld_type == LOAD_TYPE::DISPATCH_TABLE)
 {
 }
 
@@ -191,7 +191,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   auto metadata_thru = handle_pkt.pf_metadata;
   if (should_activate_prefetcher(handle_pkt)) {
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, handle_pkt.instr_id, hit, useful_prefetch, champsim::to_underlying(handle_pkt.type), metadata_thru);
+    metadata_thru = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, handle_pkt.instr_id, hit, useful_prefetch, champsim::to_underlying(handle_pkt.type), champsim::to_underlying(handle_pkt.ld_type), metadata_thru);
   }
 
   if (hit) {
@@ -483,7 +483,7 @@ uint64_t CACHE::invalidate_entry(uint64_t inval_addr)
   return std::distance(begin, inv_way);
 }
 
-int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, LOAD_TYPE ld_type, uint32_t prefetch_metadata)
 {
   ++sim_stats.pf_requested;
 
@@ -497,6 +497,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.is_translated = !virtual_prefetch;
+  pf_packet.ld_type = ld_type;
 
   internal_PQ.emplace_back(pf_packet, true, !fill_this_level);
   ++sim_stats.pf_issued;
@@ -507,7 +508,11 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
 // LCOV_EXCL_START exclude deprecated function
 int CACHE::prefetch_line(uint64_t, uint64_t, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {
-  return prefetch_line(pf_addr, fill_this_level, prefetch_metadata);
+  return prefetch_line(pf_addr, fill_this_level, LOAD_TYPE::NOT_IMPLEMENTED, prefetch_metadata);
+}
+int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
+{
+  return prefetch_line(pf_addr, fill_this_level, LOAD_TYPE::NOT_IMPLEMENTED, prefetch_metadata);
 }
 // LCOV_EXCL_STOP
 
@@ -796,3 +801,11 @@ void CACHE::print_deadlock()
   }
 }
 // LCOV_EXCL_STOP
+
+float CACHE::percentageOccupiedByBytecode() {  
+  for (auto way : block) {
+      if (way.bytecode) {
+        fmt::print("Found bytecode related cache line!");
+      }
+  }
+}

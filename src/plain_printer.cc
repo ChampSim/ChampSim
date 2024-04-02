@@ -50,6 +50,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
   fmt::print(stream, "Seen bytecodes: {}\n", stats.bytecodes_seen);
   fmt::print(stream, "Average bytecode length (ins): {}\n", stats.avgInstrPrBytecode());
+  fmt::print(stream, "Average bytecode length buckets (#ins, #freq): {}\n", stats.avgInstrPrBytecode());
+  for (auto const bytecodeLength : stats.bytecode_lengths) {
+      fmt::print(stream, " ({} , {})", bytecodeLength.first * 10, bytecodeLength.second);
+  }
   fmt::print(stream, "\n");
 }
 

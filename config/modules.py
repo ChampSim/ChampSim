@@ -200,7 +200,7 @@ def get_cache_module_lines(pref_data, repl_data):
 
     pref_nonbranch_variant_data = [
         ('prefetcher_initialize',),
-        ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint64_t', 'instr_id'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
+        ('prefetcher_cache_operate', (('uint64_t', 'addr'), ('uint64_t', 'ip'), ('uint64_t', 'instr_id'), ('uint8_t', 'cache_hit'), ('bool', 'useful_prefetch'), ('uint8_t', 'type'), ('uint8_t', 'ld_type'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
         ('prefetcher_squash', (('uint64_t', 'ip'), ('uint64_t', 'instr_id')),),
         ('prefetcher_cache_fill', (('uint64_t', 'addr'), ('uint32_t', 'set'), ('uint32_t', 'way'), ('uint8_t', 'prefetch'), ('uint64_t', 'evicted_addr'), ('uint32_t', 'metadata_in')), 'uint32_t', 'std::bit_xor'),
         ('prefetcher_cycle_operate',),

@@ -31,6 +31,8 @@
 #include <queue>
 #include <stdexcept>
 #include <vector>
+#include <map>
+#include <numeric>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -61,6 +63,8 @@ public:
   bool issue_write(request_type packet);
 };
 
+static const uint64_t lengthGranularity = 10;
+
 struct cpu_stats {
   std::string name;
   uint64_t begin_instrs = 0, begin_cycles = 0;
@@ -71,10 +75,14 @@ struct cpu_stats {
   std::array<long long, 8> branch_type_misses = {};
 
   uint64_t bytecodes_seen = 0;
-  uint64_t bytecode_lengths = 0; 
+  std::map<uint64_t, uint64_t> bytecode_lengths; 
+
+  void addByteCodeLength(uint64_t length) { bytecode_lengths[length/lengthGranularity]++; } 
+  uint64_t totalBytecodeLengths() const { return std::accumulate(std::begin(bytecode_lengths), std::end(bytecode_lengths), 0, 
+  [](const uint64_t previous, const std::pair<const uint64_t, uint64_t>& p) { return previous + (p.first * p.second); }) * lengthGranularity; };
 
   uint64_t avgInstrPrBytecode() const { 
-    if (bytecode_lengths != 0) return bytecodes_seen/bytecode_lengths;
+    if (bytecodes_seen != 0) return totalBytecodeLengths()/bytecodes_seen;
     return 0;}
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
@@ -153,7 +161,7 @@ public:
   uint64_t fetch_resume_cycle = 0;
 
   // bytecode
-  uint64_t previousBytecodeCycle = 0;
+  uint64_t previousBytecodeInstrId = 0;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;

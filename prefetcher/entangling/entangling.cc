@@ -986,7 +986,7 @@ void CACHE::prefetcher_squash(uint64_t ip, uint64_t instr_id)
 
 // NOTE: Here metadata_in receives a boolean indicating if the instruction is from wrong_path or not.
 // This information is only used to gather stats.
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool prefetch_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool prefetch_hit, uint8_t type, uint8_t, uint32_t metadata_in)
 {
   l1i_cpu_id = cpu;
   l1i_current_cycle = current_cycle;

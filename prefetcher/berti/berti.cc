@@ -799,7 +799,7 @@ void CACHE::prefetcher_initialize()
 
 }
 
-uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool prefetch_hit, uint8_t type, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t instr_id, uint8_t cache_hit, bool prefetch_hit, uint8_t type, uint8_t ld_type, uint32_t metadata_in)
 {
   assert((access_type) type == access_type::LOAD || (access_type) type == access_type::RFO);
 
@@ -1063,7 +1063,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t in
 	  // We are doing the berti here. Do not leave space for it
 	  if (get_pq_occupancy().back() < get_pq_size().back() && bursts < L1D_BURST_THROTTLING) { 
 	    //if (ip_index == 0x10f) cout << "BURST PREFETCH " << hex << page_addr << dec << " <" << pf_offset << ">" << endl;
-	    bool prefetched = prefetch_line(pf_addr, true, 1);
+	    bool prefetched = prefetch_line(pf_addr, true, (LOAD_TYPE) ld_type, 1);
 	    assert(prefetched);
 	    l1d_add_latencies_table(index, pf_offset, current_cycle);
 	    bursts++;
@@ -1093,7 +1093,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t in
 	// Same page, prefetch standard
 	if (pf_page_addr == page_addr) { 
 	  //if (ip_index == 0x10f) cout << "BERTI PREFETCH " << hex << page_addr << dec << " <" << pf_offset << ">" << endl;
-	  bool prefetched = prefetch_line(pf_addr, true, 1);
+	  bool prefetched = prefetch_line(pf_addr, true, (LOAD_TYPE) ld_type, 1);
 	  assert(prefetched);
 	  l1d_add_latencies_table(index, pf_offset, current_cycle);
 	  
@@ -1126,7 +1126,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t in
 	  //cout << "CONSECUTIVE " << hex << new_page << " " << dec << pf_offset << hex << " " << " " << new_line << " " << new_pf_line << " " << new_addr << " " << new_pf_addr << dec << endl;
 	  
 	  //if (ip_index == 0x10f) cout << "CONSECUTIVE PREFETCH " << hex << new_page << dec << " <" << pf_offset << ">" << endl;
-	  bool prefetched = prefetch_line(new_pf_addr, true, 1);
+	  bool prefetched = prefetch_line(new_pf_addr, true, (LOAD_TYPE) ld_type, 1);
 	  assert(prefetched);
 	  l1d_add_latencies_table(new_index, pf_offset, current_cycle);
 	  
@@ -1157,7 +1157,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t in
 	    //cout << "LINNEA " << hex << new_page << " " << dec << pf_offset << hex << " " << " " << new_line << " " << new_pf_line << " " << new_addr << " " << new_pf_addr << dec << endl;
 
 	    //if (ip_index == 0x10f) cout << "LINNEA PREFETCH " << hex << new_page << dec << " <" << pf_offset << ">" << endl;
-	    bool prefetched = prefetch_line(new_pf_addr, true, 1);
+	    bool prefetched = prefetch_line(new_pf_addr, true, (LOAD_TYPE) ld_type, 1);
 	    assert(prefetched);
 	    l1d_add_latencies_table(new_index, pf_offset, current_cycle);
 	  }
@@ -1210,7 +1210,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint64_t in
 	  //cout << "LINNEA " << hex << new_page << " " << dec << pf_offset << hex << " " << " " << new_line << " " << new_pf_line << " " << new_addr << " " << new_pf_addr << dec << endl;
 	    
 	  //if (ip_index == 0x10f) cout << "STRIDE PREFETCH " << hex << new_page << dec << " <" << pf_offset << ">" << endl;
-	  bool prefetched = prefetch_line(new_pf_addr, true, (count_reuse < 3) ? 0 : 1);
+	  bool prefetched = prefetch_line(new_pf_addr, true, (LOAD_TYPE) ld_type, (count_reuse < 3) ? 0 : 1);
 	  assert(prefetched);
 	  l1d_add_latencies_table(new_index, pf_offset, current_cycle);
 	}
