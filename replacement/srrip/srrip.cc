@@ -37,7 +37,7 @@ long srrip_set_helper::victim()
   auto victim = std::max_element(std::begin(rrpv_values), std::end(rrpv_values));
 
   // If the maximum element has RRPV less than the maximum, increment everything to the maximum
-  std::for_each(std::begin(rrpv_values), std::end(rrpv_values), [diff = maxRRPV - *victim](auto& x) { x += diff; });
+  std::transform(std::cbegin(rrpv_values), std::cend(rrpv_values), std::begin(rrpv_values), [diff = maxRRPV - *victim](auto x) { return x + diff; });
 
   // Return the way index
   return std::distance(std::begin(rrpv_values), victim);

@@ -456,13 +456,16 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
         return lhs
     merged_config = functools.reduce(do_merge, (NormalizedConfiguration(c, verbose=verbose) for c in configs))
 
-    elements, module_info, config_file = merged_config.apply_defaults_in(
+    contexts = dict(
         branch_context = modules.ModuleSearchContext(list_dirs('branch', branch_dir or []), verbose=verbose),
         btb_context = modules.ModuleSearchContext(list_dirs('btb', btb_dir or []), verbose=verbose),
         replacement_context = modules.ModuleSearchContext(list_dirs('replacement', repl_dir or []), verbose=verbose),
-        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose),
-        verbose=verbose
+        prefetcher_context = modules.ModuleSearchContext(list_dirs('prefetcher', pref_dir or []), verbose=verbose)
     )
+    if verbose:
+        for k,v in contexts.items():
+            print(k, v.paths)
+    elements, module_info, config_file = merged_config.apply_defaults_in(**contexts, verbose=verbose)
 
     if compile_all_modules:
         modules_to_compile = [*set(itertools.chain(*(d.keys() for d in module_info.values())))]
