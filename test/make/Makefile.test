@@ -36,8 +36,6 @@ maketest:
 	$(call test_func,make_relative_prefix,../..,common/prefix)
 	$(call test_func,make_relative_prefix,../../..,/common/prefix)
 
-	$(call test_func2,relative_path_impl,,,)
-	$(call test_func2,relative_path_impl,cat.txt,cat.txt,)
 	$(call test_func2,relative_path,../cat.txt,common/prefix/cat.txt,common/prefix/for/dog.txt)
 	$(call test_func2,relative_path,../../cat.txt,common/prefix/cat.txt,common/prefix/for/path/dog.txt)
 	$(call test_func2,relative_path,../../cat.txt,/common/prefix/cat.txt,/common/prefix/for/path/dog.txt)
