@@ -3,8 +3,8 @@
 #include "core_inst.inc"
 #include "environment.h"
 
-#if __has_include("module_def.inc")
-#include "module_def.inc"
+#if __has_include("legacy_bridge.h")
+#include "legacy_bridge.h"
 #endif
 
 #include "chrono.h"

@@ -39,7 +39,7 @@ maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)
 # $2 - target directory
 # $3 - unique build id
 migrate = $(patsubst $1/%.cc,$2/%.o,$(join $(dir $4),$(patsubst %main.cc,$3_%main.cc,$(notdir $4))))
-get_object_list = $(call migrate,$1,$2,$3,$(wildcard $1/*.cc) $(call maybe_legacy_file,$1/,legacy_bridge.cc)) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3))
+get_object_list = $(call migrate,$1,$2,$3,$(wildcard $1/*.cc)) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3))
 
 # Return the trailing portion of a word sequence
 # $1 - the sequence
@@ -77,18 +77,9 @@ make_relative_prefix = $(call join_path,$(patsubst %,..,$(call split_path,$1)))
 #relative_path = $(call $0_impl,$(call remove_prefix,$(call common_prefix,$1,$2),$1),$(call remove_prefix,$(call common_prefix,$1,$2),$2))
 relative_path = $(shell python -c "import os.path; print(os.path.relpath(\"$1\", start=\"$2\"))")
 
-# Generated configuration makefile contains:
-#  - $(executable_name), the list of all executables in the configuration
-#  - All dependencies and flags assigned according to the modules
-ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
-include _configuration.mk
-endif
-
-all: $(executable_name)
-
 .DEFAULT_GOAL := all
 
-generated_files = $(OBJ_ROOT)/module_decl.inc
+generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
 module_dirs = $(foreach d,$(BRANCH_ROOT) $(BTB_ROOT) $(PREFETCH_ROOT) $(REPLACEMENT_ROOT),$(call relative_path,$(abspath $d),$(ROOT_DIR)))
 
 # Remove all intermediate files
@@ -102,7 +93,7 @@ clean:
 
 # Remove all configuration files
 configclean: clean
-	@-find $(module_dirs) \( -name legacy_bridge.h -o -name legacy_bridge.cc -o -name legacy.options \) -delete &> /dev/null
+	@-find $(module_dirs) -name 'legacy*' -delete &> /dev/null
 	@-$(RM) $(generated_files) _configuration.mk
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(call tail,$1)) $(firstword $(1)),$(1))
@@ -148,14 +139,27 @@ nonbase_module_objs = $(filter-out $(base_module_objs),$1)
 %/legacy_bridge.h: config/legacy.py
 	python3 -m config.legacy --kind=header $*
 
-%/legacy_bridge.cc: config/legacy.py
-	python3 -m config.legacy --kind=source $*
+%/legacy_bridge.inc: config/legacy.py
+	python3 -m config.legacy --kind=mangle $*
 
 # This is a hacky way to get this to work:
-# Examine the module object files to learn which functions are defined, and legacy_bridge.cc will select them at constexpr time
+# Examine the module object files to learn which functions are defined, and legacy_bridge.h will select them at constexpr time
 function_patch_options_prereqs = $(filter-out %/legacy_bridge.o,$(call get_object_list,$*,$(call get_module_obj_dir,$*)))
 %/function_patch.options: $$(function_patch_options_prereqs)
 	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"" > $@
+
+# Write a file that is a sequence of included files
+define include_sequence_lines_impl
+$(if $1,echo "#include \"$(call relative_path,$(firstword $(patsubst %/,%,$(dir $1))),$(@D))/$(firstword $(notdir $1))\"" >> $@)
+$(if $1,$(call $0,$(call tail,$1)))
+endef
+define include_sequence_lines
+$(info Building $@ with modules $^)
+echo "#ifndef $1" > $@
+echo "#define $1" >> $@
+$(call $0_impl,$^)
+echo "#endif" >> $@
+endef
 
 ### Object Files
 
@@ -163,16 +167,47 @@ base_source_dir = src
 test_source_dir = test/cpp/src
 base_options = absolute.options global.options
 
-$(sort $(OBJ_ROOT) $(DEP_ROOT) $(BIN_ROOT) test/bin):
+$(sort $(OBJ_ROOT)/ $(DEP_ROOT)/ $(BIN_ROOT)/ test/bin/):
 	mkdir -p $@
 
-$(OBJ_ROOT)/test $(OBJ_ROOT)/modules: | $(OBJ_ROOT)
+$(OBJ_ROOT)/test/ $(OBJ_ROOT)/modules/: | $(OBJ_ROOT)/
 	mkdir $@
 
+$(OBJ_ROOT)/test/%/: | $(OBJ_ROOT)/test/
+	mkdir -p $@
+
+$(OBJ_ROOT)/modules/%/: | $(OBJ_ROOT)/modules/
+	mkdir -p $@
+
 ifneq ($(OBJ_ROOT),$(DEP_ROOT))
-$(DEP_ROOT)/test $(DEP_ROOT)/modules: | $(DEP_ROOT)
+$(DEP_ROOT)/test/ $(DEP_ROOT)/modules/: | $(DEP_ROOT)/
 	mkdir $@
+
+$(DEP_ROOT)/test/%/: | $(DEP_ROOT)/test/
+	mkdir -p $@
+
+$(DEP_ROOT)/modules/%/: | $(DEP_ROOT)/modules/
+	mkdir -p $@
 endif
+
+# Get prerequisites for module_decl.inc
+# $1 - object file paths
+module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.inc))
+$(OBJ_ROOT)/module_decl.inc: $$(call module_decl_prereqs,$$(dir $(base_module_objs)) $$(prereq_for_generated)) | $$(dir $$@)
+	@$(call include_sequence_lines, CHAMPSIM_LEGACY_MODULE_DECL)
+
+legacy_bridge_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.h))
+$(OBJ_ROOT)/legacy_bridge.h: $$(call legacy_bridge_prereqs,$$(dir $(base_module_objs)) $$(prereq_for_generated)) | $$(dir $$@)
+	@$(call include_sequence_lines, CHAMPSIM_LEGACY_BRIDGE)
+
+# Generated configuration makefile contains:
+#  - $(executable_name), the list of all executables in the configuration
+#  - All dependencies and flags assigned according to the modules
+ifeq (,$(filter clean configclean pytest maketest, $(MAKECMDGOALS)))
+include _configuration.mk
+endif
+
+all: $(executable_name)
 
 # Get the base object files, with the 'main' file mangled
 # $1 - A unique key identifying the build
@@ -185,37 +220,37 @@ $(DEP_ROOT)/%_main.d: CPPFLAGS += -DCHAMPSIM_BUILD=0x$*
 
 # Connect the main sources to the src/ directory
 base_main_prereqs = $(base_source_dir)/main.cc $(base_options)
-$(OBJ_ROOT)/%_main.o: $(base_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)
+$(OBJ_ROOT)/%_main.o: $(base_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
-$(DEP_ROOT)/%_main.d: $(base_main_prereqs) | $(generated_files) $(DEP_ROOT)
+$(DEP_ROOT)/%_main.d: $(base_main_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Connect non-main sources to the src/ directory
 base_nonmain_prereqs = $(base_source_dir)/$*.cc $(base_options)
-$(OBJ_ROOT)/%.o: $$(base_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)
+$(OBJ_ROOT)/%.o: $$(base_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
-$(DEP_ROOT)/%.d: $$(base_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)
+$(DEP_ROOT)/%.d: $$(base_nonmain_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Connect the test main to the test/cpp/src/ directory
 test_main_prereqs = $(test_source_dir)/000-test-main.cc $(base_options)
-$(OBJ_ROOT)/test/TEST_000-test-main.o: $(test_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/test
+$(OBJ_ROOT)/test/TEST_000-test-main.o: $(test_main_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
-$(DEP_ROOT)/test/TEST_000-test-main.d: $(test_main_prereqs) | $(generated_files) $(DEP_ROOT)/test
+$(DEP_ROOT)/test/TEST_000-test-main.d: $(test_main_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Connect non-main test sources to the test/cpp/src/ drirctory
 test_nonmain_prereqs = $(test_source_dir)/$*.cc $(base_options)
-$(OBJ_ROOT)/test/%.o: $$(test_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/test
+$(OBJ_ROOT)/test/%.o: $$(test_nonmain_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
-$(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $(DEP_ROOT)/test
+$(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Connect module objects to their sources
 base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(call maybe_legacy_file,$(call get_module_src_dir,$@),$(if $(filter-out %/legacy_bridge,$(basename $@)),legacy.options,function_patch.options)) module.options $(base_options)
-$(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $(OBJ_ROOT)/modules
+$(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
-$(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $(DEP_ROOT)/modules
+$(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Give the test executable some additional options
@@ -224,26 +259,12 @@ $(test_main_name): override CXXFLAGS += -g3 -Og
 $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 # Associate objects with executables
-$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) | test/bin
-$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) | $(BIN_ROOT)
+$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) | $$(dir $$@)
+$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) | $$(dir $$@)
 
 # Link main executables
 $(executable_name) $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
-
-# Get prerequisites for module_decl.inc
-# $1 - object file paths
-module_decl_prereqs = $(foreach mod,$(call get_module_src_dir,$1),$(call maybe_legacy_file,$(mod),legacy_bridge.h)),$(ROOT_DIR)
-define module_decl_lines
-$(if $1,echo "#include \"$(call relative_path,$(firstword $(patsubst %/,%,$(dir $1))),$(@D))/$(firstword $(notdir $1))\"" >> $@)
-$(if $1,$(call $0,$(call tail,$1)))
-endef
-$(OBJ_ROOT)/module_decl.inc: $(call module_decl_prereqs,$(sort $(dir $(base_module_objs)))) | $(OBJ_ROOT)
-	$(info Building $@ with modules $^)
-	@echo "#ifndef CHAMPSIM_LEGACY_CACHE_MODULE_DECL" > $@
-	@echo "#define CHAMPSIM_LEGACY_CACHE_MODULE_DECL" >> $@
-	@$(call module_decl_lines,$^)
-	@echo "#endif" >> $@
 
 # Tests: build and run
 ifdef TEST_NUM

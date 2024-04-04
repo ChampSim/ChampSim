@@ -38,8 +38,8 @@ def get_pref_data(module_data):
     func_map = { v[0]: f'{prefix}_{module_data["name"]}_{v[0]}' for v in pref_variant_data }
 
     return util.chain(module_data,
-        { 'func_map': func_map },
-        { 'deprecated_func_map' : {
+        { 'func_map' : {
+                **func_map,
                 'l1i_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
                 'l1d_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
                 'l2c_prefetcher_initialize': '_'.join((prefix, module_data['name'], 'prefetcher_initialize')),
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
-    parser.add_argument('--kind', choices=['options','header','source'])
+    parser.add_argument('--kind', choices=['options','header','mangle'])
     parser.add_argument('paths', action='append')
     args = parser.parse_args()
 
@@ -164,16 +164,16 @@ if __name__ == '__main__':
             (os.path.join(mod_info['path'], 'legacy.options'), get_legacy_module_opts_lines(getfunc(mod_info)))
         for (_, _, _, getfunc), mod_info in zipped_parts)
 
-    if args.kind == 'header':
-        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
+    if args.kind == 'mangle':
+        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.inc'), filewrite.cxx_file((
             f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
             f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
             *(mangled_declaration(*v, getfunc(mod_info)) for v in var),
             '#endif'
         ))) for (_, _, var, getfunc), mod_info in zipped_parts)
 
-    if args.kind == 'source':
-        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+    if args.kind == 'header':
+        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
             '#include <string_view>',
             '#include "modules.h"',
             f'#include "{header_name}"', '',
