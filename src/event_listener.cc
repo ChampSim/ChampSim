@@ -33,6 +33,12 @@ void EventListener::process_event(event eventType, void* data) {
     /*std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {
       fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
     });*/
+  } else if (eventType == event::VA_TO_PA) {
+    VA_TO_PA_data* v_data = static_cast<VA_TO_PA_data *>(data);
+    fmt::print("[VMEM] va_to_pa paddr: {} vaddr: {} fault: {}\n", v_data->paddr, v_data->vaddr, v_data->fault);
+  } else if (eventType == event::GET_PTE_PA) {
+    GET_PTE_PA_data* g_data = static_cast<GET_PTE_PA_data *>(data);
+    fmt::print("[VMEM] get_pta_pa paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", g_data->paddr, g_data->vaddr, g_data->offset, g_data->level, g_data->fault);
   }
 }
 

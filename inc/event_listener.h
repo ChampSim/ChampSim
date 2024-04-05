@@ -15,7 +15,9 @@
 enum class event {
   CYCLE_BEGIN,
   BRANCH,
-  RETIRE
+  RETIRE,
+  VA_TO_PA,
+  GET_PTE_PA
 };
 
 struct CYCLE_BEGIN_data {};
@@ -39,6 +41,20 @@ struct RETIRE_data {
     //begin_instr = nullptr;
     //end_instr = nullptr;
   }
+};
+
+struct VA_TO_PA_data {
+  champsim::page_number paddr;
+  champsim::page_number vaddr;
+  bool fault;
+};
+
+struct GET_PTE_PA_data {
+  champsim::address paddr;
+  champsim::page_number vaddr;
+  uint64_t offset;
+  std::size_t level;
+  bool fault;
 };
 
 class EventListener {
