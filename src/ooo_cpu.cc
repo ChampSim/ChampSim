@@ -668,6 +668,15 @@ long O3_CPU::retire_rob()
       fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
     });
   }
+  // call event listeners
+  RETIRE_data* r_data = new RETIRE_data();
+  r_data->cycle = current_time.time_since_epoch() / clock_period;
+  r_data->instrs = std::vector<ooo_model_instr>(retire_begin, retire_end);
+  //r_data->begin_instr = retire_begin;
+  //r_data->end_instr = retire_end;
+  call_event_listeners(event::RETIRE, (void*) r_data);
+  delete r_data;
+
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
   ROB.erase(retire_begin, retire_end);

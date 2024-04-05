@@ -14,7 +14,8 @@
 
 enum class event {
   CYCLE_BEGIN,
-  BRANCH
+  BRANCH,
+  RETIRE
 };
 
 struct CYCLE_BEGIN_data {};
@@ -24,6 +25,19 @@ struct BRANCH_data {
 
   BRANCH_data() {
     instr = nullptr;
+  }
+};
+
+struct RETIRE_data {
+  long cycle;
+  std::vector<ooo_model_instr> instrs;
+  //ooo_model_instr* begin_instr;
+  //ooo_model_instr* end_instr;
+
+  RETIRE_data() {
+    cycle = 0;
+    //begin_instr = nullptr;
+    //end_instr = nullptr;
   }
 };
 

@@ -20,7 +20,19 @@ void EventListener::process_event(event eventType, void* data) {
   if (eventType == event::BRANCH) {
     BRANCH_data* b_data = static_cast<BRANCH_data *>(data);
     fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", b_data->instr->instr_id, b_data->instr->ip, b_data->instr->branch_taken);
-    //fmt::print("Got a branch\n");
+  } else if (eventType == event::RETIRE) {
+    RETIRE_data* r_data = static_cast<RETIRE_data *>(data);
+    /*fmt::print("[RETIRE] cycle: {}", r_data->cycle);
+    for (auto instr : r_data->instrs) {
+      fmt::print(" instr_id: {}", instr.instr_id);
+    }
+    fmt::print("\n");*/
+    for (auto instr: r_data->instrs) {
+      fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", instr.instr_id, r_data->cycle);
+    }
+    /*std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {
+      fmt::print("[ROB] retire_rob instr_id: {} is retired cycle: {}\n", x.instr_id, cycle);
+    });*/
   }
 }
 
