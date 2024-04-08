@@ -133,19 +133,23 @@ nonbase_module_objs = $(filter-out $(base_module_objs),$1)
 .SECONDEXPANSION:
 
 # Make the legacy support structure
-%/legacy.options: config/legacy.py
-	python3 -m config.legacy --kind=options $*
+define python_legacy_recipe
+python3 -m config.legacy $(addprefix --kind=,$1) $(dir $(abspath $@))
+endef
 
-%/legacy_bridge.h: config/legacy.py
-	python3 -m config.legacy --kind=header $*
+%/legacy.options: config/legacy.py | %/__legacy__
+	$(call python_legacy_recipe, options)
 
-%/legacy_bridge.inc: config/legacy.py
-	python3 -m config.legacy --kind=mangle $*
+%/legacy_bridge.h: config/legacy.py | %/__legacy__
+	$(call python_legacy_recipe, header)
+
+%/legacy_bridge.inc: config/legacy.py | %/__legacy__
+	$(call python_legacy_recipe, mangle)
 
 # This is a hacky way to get this to work:
 # Examine the module object files to learn which functions are defined, and legacy_bridge.h will select them at constexpr time
 function_patch_options_prereqs = $(filter-out %/legacy_bridge.o,$(call get_object_list,$*,$(call get_module_obj_dir,$*)))
-%/function_patch.options: $$(function_patch_options_prereqs)
+%/function_patch.options: $$(function_patch_options_prereqs) | %/__legacy__
 	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"" > $@
 
 # Write a file that is a sequence of included files

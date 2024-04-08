@@ -130,6 +130,14 @@ def get_bridge(header_name, discrim, variant, mod_info):
     fname = os.path.join(mod_info['path'], 'legacy.options')
     yield fname, get_legacy_module_opts_lines(mod_info)
 
+def apply_getfunction(info):
+    return {
+        'branch': get_branch_data,
+        'btb': get_btb_data,
+        'prefetcher': get_pref_data,
+        'replacement': get_repl_data
+    }.get(info['type_guess'], lambda x: x)(info)
+
 if __name__ == '__main__':
     import argparse
 
@@ -148,29 +156,30 @@ if __name__ == '__main__':
             'type_guess': next(filter(lambda t: t in i['path'], ('branch', 'btb', 'prefetcher', 'replacement')), ''),
             'class': f'champsim::modules::generated::{i["name"]}'
         })
+    infos = list(map(apply_getfunction, infos))
 
     parts = {
-        'branch': ('ooo_cpu.h', functools.partial(get_discriminator, branch_variant_data, classname='branch_predictor'), branch_variant_data, get_branch_data),
-        'btb': ('ooo_cpu.h', functools.partial(get_discriminator, btb_variant_data, classname='btb'), btb_variant_data, get_btb_data),
-        'prefetcher': ('cache.h', functools.partial(get_discriminator, pref_variant_data, classname='prefetcher'), pref_variant_data, get_pref_data),
-        'replacement': ('cache.h', functools.partial(get_discriminator, repl_variant_data, classname='replacement'), repl_variant_data, get_repl_data)
+        'branch': ('ooo_cpu.h', 'branch_predictor', branch_variant_data),
+        'btb': ('ooo_cpu.h', 'btb', btb_variant_data),
+        'prefetcher': ('cache.h', 'prefetcher', pref_variant_data),
+        'replacement': ('cache.h', 'replacement', repl_variant_data)
     }
-    zipped_parts = ((parts.get(i['type_guess'], ('', lambda _: tuple(), {},lambda x: x)),i) for i in infos)
+    zipped_parts = ((parts.get(i['type_guess'], ('', '', {})),i) for i in infos)
 
     fileparts = []
 
     if args.kind == 'options':
         fileparts.extend(
-            (os.path.join(mod_info['path'], 'legacy.options'), get_legacy_module_opts_lines(getfunc(mod_info)))
-        for (_, _, _, getfunc), mod_info in zipped_parts)
+            (os.path.join(mod_info['path'], 'legacy.options'), get_legacy_module_opts_lines(mod_info))
+        for mod_info in infos)
 
     if args.kind == 'mangle':
         fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.inc'), filewrite.cxx_file((
             f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
             f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
-            *(mangled_declaration(*v, getfunc(mod_info)) for v in var),
+            *(mangled_declaration(*v, mod_info) for v in var),
             '#endif'
-        ))) for (_, _, var, getfunc), mod_info in zipped_parts)
+        ))) for (_, _, var), mod_info in zipped_parts)
 
     if args.kind == 'header':
         fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
@@ -180,8 +189,11 @@ if __name__ == '__main__':
             'using namespace std::literals::string_view_literals;', '',
             'namespace champsim::modules::generated',
             '{',
-            *discrim(getfunc(mod_info)),
+            *get_discriminator(variant, mod_info, classname),
             '}'
-        ))) for (header_name, discrim, _, getfunc), mod_info in zipped_parts)
+        ))) for (header_name, classname, variant), mod_info in zipped_parts)
 
-    filewrite.Fragment(fileparts).write()
+    for fname, fcontents in fileparts:
+        with open(fname, 'wt') as wfp:
+            for line in fcontents:
+                print(line, file=wfp)
