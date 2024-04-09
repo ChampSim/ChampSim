@@ -32,14 +32,14 @@ ls_dirs = $(patsubst %/,%,$(filter %/,$(wildcard $1/*/)))
 # Expands to the given legacy file if the module folder contains a file named "__legacy__"
 # $1 - path to search
 # $2 - file to produce
-maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(dir $1)$2)
+maybe_legacy_file = $(if $(filter %/__legacy__,$(wildcard $(dir $1)*)),$(addprefix $(dir $1),$2))
 
 # Migrate names from a source directory (and suffix) to a target directory (and suffix)
 # $1 - source directory
 # $2 - target directory
 # $3 - unique build id
 migrate = $(patsubst $1/%.cc,$2/%.o,$(join $(dir $4),$(patsubst %main.cc,$3_%main.cc,$(notdir $4))))
-get_object_list = $(call migrate,$1,$2,$3,$(wildcard $1/*.cc)) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3))
+get_object_list = $(call migrate,$1,$2,$3,$(wildcard $1/*.cc) $(call maybe_legacy_file,$1/,legacy_bridge.cc)) $(foreach subdir,$(call ls_dirs,$1),$(call $0,$(subdir),$(patsubst $1/%,$2/%,$(subdir)),$3))
 
 # Return the trailing portion of a word sequence
 # $1 - the sequence
@@ -143,6 +143,9 @@ endef
 %/legacy_bridge.h: config/legacy.py | %/__legacy__
 	$(call python_legacy_recipe, header)
 
+%/legacy_bridge.cc: config/legacy.py | %/__legacy__
+	$(call python_legacy_recipe, source)
+
 %/legacy_bridge.inc: config/legacy.py | %/__legacy__
 	$(call python_legacy_recipe, mangle)
 
@@ -150,7 +153,7 @@ endef
 # Examine the module object files to learn which functions are defined, and legacy_bridge.h will select them at constexpr time
 function_patch_options_prereqs = $(filter-out %/legacy_bridge.o,$(call get_object_list,$*,$(call get_module_obj_dir,$*)))
 %/function_patch.options: $$(function_patch_options_prereqs) | %/__legacy__
-	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"" > $@
+	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"\\\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"\\\"" > $@
 
 # Write a file that is a sequence of included files
 define include_sequence_lines_impl

@@ -84,29 +84,38 @@ def mangled_declaration(fname, args, rtype, module_data):
     argstring = ', '.join(a[0] for a in args)
     return f'{rtype} {module_data["func_map"][fname]}({argstring});'
 
-def variant_function_body(fname, args, module_data):
+def variant_declaration(variant_data, module_data, classname):
+    ''' Generate C++ code giving the mangled module specialization functions. '''
+    discriminator_classname = module_data['class'].split('::')[-1]
+    body = [
+        'private:',
+        'constexpr static bool has_function(std::string_view name);',
+        'public:',
+        f'using {classname}::{classname};',
+        *(f'{rtype} {fname}({", ".join(a[0] for a in args)});' for fname, args, rtype in variant_data)
+    ]
+    yield from cxx.struct(discriminator_classname, body, superclass=classname)
+
+def variant_function_body(fname, args, rtype, module_data):
     argnamestring = ', '.join(a[1] for a in args)
-    mangled_name = module_data['func_map'][fname]
+    dequalified_name = fname.split('::')[-1]
+    mangled_name = module_data['func_map'][dequalified_name]
     body = [
         f'if constexpr (has_function("{mangled_name}"sv)) {{',
         f'  return intern_->{mangled_name}({argnamestring});',
         '}',
     ]
-    yield ''
-    yield from cxx.function(fname, body, args=args)
+    yield from cxx.function(fname, body, rtype=rtype, args=args)
 
-def get_discriminator(variant_data, module_data, classname):
+def get_discriminator(variant_data, module_data):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
-    discriminator_classname = module_data['class'].split('::')[-1]
-    body = itertools.chain(
-        ('private:',),
-        ('constexpr static',*cxx.function('has_function',['return "CHAMPSIM_LEGACY_FUNCTION_NAMES"sv.find(name);'], args=(('std::string_view','name'),)),''),
-        ('public:',),
-        (f'using {classname}::{classname};',),
-        *(variant_function_body(n,a,module_data) for n,a,_ in variant_data)
-    )
-    yield from cxx.struct(discriminator_classname, body, superclass=classname)
-    yield ''
+    classname = module_data['class']
+    yield 'constexpr'
+    yield from cxx.function(f'{classname}::has_function',['return std::string_view{{CHAMPSIM_LEGACY_FUNCTION_NAMES}}.find(name) != std::string_view::npos;'], rtype='bool', args=(('std::string_view','name'),))
+
+    for fname, args, rtype in variant_data:
+        yield ''
+        yield from variant_function_body(f'{classname}::{fname}', args, rtype, module_data)
 
 def get_bridge(header_name, discrim, variant, mod_info):
     yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
@@ -142,7 +151,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser('Legacy module support generator')
-    parser.add_argument('--kind', choices=['options','header','mangle'])
+    parser.add_argument('--kind', choices=['options','header','mangle','source'])
     parser.add_argument('paths', action='append')
     args = parser.parse_args()
 
@@ -186,12 +195,18 @@ if __name__ == '__main__':
             '#include <string_view>',
             '#include "modules.h"',
             f'#include "{header_name}"', '',
-            'using namespace std::literals::string_view_literals;', '',
             'namespace champsim::modules::generated',
             '{',
-            *get_discriminator(variant, mod_info, classname),
+            *variant_declaration(variant, mod_info, classname),
             '}'
         ))) for (header_name, classname, variant), mod_info in zipped_parts)
+
+    if args.kind == 'source':
+        fileparts.extend((os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
+            '#include "legacy_bridge.h"', '',
+            *get_discriminator(variant, mod_info),
+        ))) for (header_name, _, variant), mod_info in zipped_parts)
+
 
     for fname, fcontents in fileparts:
         with open(fname, 'wt') as wfp:
