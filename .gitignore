@@ -20,5 +20,7 @@ vcpkg_installed/
 
 absolute.options
 **/legacy.options
+**/function_patch.options
 **/legacy_bridge.inc
 **/legacy_bridge.h
+**/legacy_bridge.cc
