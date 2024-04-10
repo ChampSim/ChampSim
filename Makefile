@@ -24,6 +24,7 @@ override LDLIBS   += -llzma -lz -lbz2 -lfmt
 
 test_main_name=test/bin/000-test-main
 executable_name:=
+prereq_for_generated:=
 
 # List all subdirectories of a given directory
 # $1 - parent directory
@@ -126,8 +127,8 @@ get_module_list = $(foreach mod_type,$1,$(call get_object_list,$(mod_type),$(cal
 # The base modules shipped with ChampSim
 base_module_objs = $(call get_module_list, $(module_dirs))
 
-# Get the module objects that are not base
-nonbase_module_objs = $(filter-out $(base_module_objs),$1)
+# The module objects that are not base
+nonbase_module_objs =
 
 # Secondary expansion is required to pass the build ID into executables and also to connect legacy options as prerequisites
 .SECONDEXPANSION:
@@ -266,8 +267,8 @@ $(test_main_name): override CXXFLAGS += -g3 -Og
 $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 
 # Associate objects with executables
-$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) | $$(dir $$@)
-$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) | $$(dir $$@)
+$(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
+$(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 
 # Link main executables
 $(executable_name) $(test_main_name):
@@ -290,3 +291,5 @@ endif
 ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))
 include $(ROOT_DIR)/test/make/Makefile.test
 endif
+
+#.SECONDARY: $(call maybe_legacy_file,$(call get_module_src_dir,$(dir $(base_module_objs) $(nonbase_module_objs))),legacy_bridge.cc legacy_bridge.h legacy_bridge.inc function_patch.options legacy.options)

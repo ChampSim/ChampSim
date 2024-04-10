@@ -101,7 +101,7 @@ def variant_function_body(fname, args, rtype, module_data):
     dequalified_name = fname.split('::')[-1]
     mangled_name = module_data['func_map'][dequalified_name]
     body = [
-        f'if constexpr (has_function("{mangled_name}"sv)) {{',
+        f'if constexpr (has_function("{mangled_name}")) {{',
         f'  return intern_->{mangled_name}({argnamestring});',
         '}',
     ]
@@ -111,33 +111,11 @@ def get_discriminator(variant_data, module_data):
     ''' For a given module function, generate C++ code defining the discriminator struct. '''
     classname = module_data['class']
     yield 'constexpr'
-    yield from cxx.function(f'{classname}::has_function',['return std::string_view{{CHAMPSIM_LEGACY_FUNCTION_NAMES}}.find(name) != std::string_view::npos;'], rtype='bool', args=(('std::string_view','name'),))
+    yield from cxx.function(f'{classname}::has_function',['return std::string_view{CHAMPSIM_LEGACY_FUNCTION_NAMES}.find(name) != std::string_view::npos;'], rtype='bool', args=(('std::string_view','name'),))
 
     for fname, args, rtype in variant_data:
         yield ''
         yield from variant_function_body(f'{classname}::{fname}', args, rtype, module_data)
-
-def get_bridge(header_name, discrim, variant, mod_info):
-    yield os.path.join(mod_info['path'], 'legacy_bridge.cc'), filewrite.cxx_file((
-        '#include <string_view>',
-        '#include "modules.h"',
-        f'#include "{header_name}"', '',
-        'using namespace std::literals::string_view_literals;', '',
-        'namespace champsim::modules::generated',
-        '{',
-        *discrim(mod_info),
-        '}'
-    ))
-
-    yield os.path.join(mod_info['path'], 'legacy_bridge.h'), filewrite.cxx_file((
-        f'#ifndef CHAMPSIM_LEGACY_{mod_info["name"]}',
-        f'#define CHAMPSIM_LEGACY_{mod_info["name"]}',
-        *(mangled_declaration(*var, mod_info) for var in variant),
-        '#endif'
-    ))
-
-    fname = os.path.join(mod_info['path'], 'legacy.options')
-    yield fname, get_legacy_module_opts_lines(mod_info)
 
 def apply_getfunction(info):
     return {

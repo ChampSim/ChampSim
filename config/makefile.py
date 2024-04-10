@@ -78,11 +78,11 @@ def get_makefile_lines(build_id, executable, module_info):
     yield from hard_assign_variable('build_id', build_id, targets=[exe_basename])
 
     mod_paths = [relroot(mod["path"]) for mod in module_info.values()]
-    yield f'{exe_basename}: $(call nonbase_module_objs,$(call get_module_list,{" ".join(mod_paths)}))'
+    yield from append_variable('nonbase_module_objs', '$(filter-out $(base_module_objs),$(call get_module_list,', *mod_paths, '))')
 
     legacy_paths = [relroot(mod['path'])+'/' for mod in module_info.values() if mod.get('legacy',False)]
     if legacy_paths:
-        yield from assign_variable('prereq_for_generated', *legacy_paths, targets=['$(generated_files)'])
+        yield from append_variable('prereq_for_generated', *legacy_paths, targets=['$(generated_files)'])
 
     yield from append_variable('executable_name', exe_basename)
 
