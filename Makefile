@@ -153,7 +153,7 @@ endef
 # Examine the module object files to learn which functions are defined, and legacy_bridge.h will select them at constexpr time
 function_patch_options_prereqs = $(filter-out %/legacy_bridge.o,$(call get_object_list,$*,$(call get_module_obj_dir,$*)))
 %/function_patch.options: $$(function_patch_options_prereqs) | %/__legacy__
-	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"\\\"$(shell nm --format=just-symbols --demangle $^ | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"\\\"" > $@
+	@echo -DCHAMPSIM_LEGACY_FUNCTION_NAMES="\"\\\"$(shell nm --demangle $^ | cut -c20- | sed -n "s/CACHE:://gp" | sed "s/(.*)//g")\"\\\"" > $@
 
 # Write a file that is a sequence of included files
 define include_sequence_lines_impl
