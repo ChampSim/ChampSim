@@ -39,6 +39,18 @@ void EventListener::process_event(event eventType, void* data) {
   } else if (eventType == event::GET_PTE_PA) {
     GET_PTE_PA_data* g_data = static_cast<GET_PTE_PA_data *>(data);
     fmt::print("[VMEM] get_pta_pa paddr: {} vaddr: {} pt_page_offset: {} translation_level: {} fault: {}\n", g_data->paddr, g_data->vaddr, g_data->offset, g_data->level, g_data->fault);
+  } else if (eventType == event::ADD_RQ) {
+    ADD_RQ_data* a_data = static_cast<ADD_RQ_data *>(data);
+    fmt::print("[channel_rq] add_rq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
+               access_type_names.at(champsim::to_underlying(a_data->type)));
+  } else if (eventType == event::ADD_WQ) {
+    ADD_WQ_data* a_data = static_cast<ADD_WQ_data *>(data);
+    fmt::print("[channel_wq] add_wq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
+               access_type_names.at(champsim::to_underlying(a_data->type)));
+  } else if (eventType == event::ADD_PQ) {
+    ADD_PQ_data* a_data = static_cast<ADD_PQ_data *>(data);
+    fmt::print("[channel_pq] add_pq instr_id: {} address: {} v_address: {} type: {}\n", a_data->instr_id, a_data->address, a_data->v_address,
+               access_type_names.at(champsim::to_underlying(a_data->type)));
   }
 }
 

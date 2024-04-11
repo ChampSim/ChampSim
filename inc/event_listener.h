@@ -11,13 +11,18 @@
 
 #include "champsim.h"
 #include "instruction.h"
+#include "channel.h"
+#include "access_type.h"
 
 enum class event {
   CYCLE_BEGIN,
   BRANCH,
   RETIRE,
   VA_TO_PA,
-  GET_PTE_PA
+  GET_PTE_PA,
+  ADD_RQ,
+  ADD_WQ,
+  ADD_PQ
 };
 
 struct CYCLE_BEGIN_data {};
@@ -55,6 +60,27 @@ struct GET_PTE_PA_data {
   uint64_t offset;
   std::size_t level;
   bool fault;
+};
+
+struct ADD_RQ_data {
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
+};
+
+struct ADD_WQ_data {
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
+};
+
+struct ADD_PQ_data {
+  uint64_t instr_id;
+  champsim::address address;
+  champsim::address v_address;
+  access_type type;
 };
 
 class EventListener {
